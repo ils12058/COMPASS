@@ -116,6 +116,11 @@ Policy or Permissions-Policy currently restricts that; one added later must allo
 hosts and `camera`/`microphone` for the COMPASS origin. Verify a real two-person join on staging after
 deploying a frontend change to the call, because local and CI runs use a fake Call Object.
 
+A joined call belongs to the portal session (ADR-094): it continues across portal pages in a call
+dock and ends on Leave, sign-out, a confirmed lost session, or when the tab closes or reloads. On
+staging, also check that moving from the session to the Routine Interview and back keeps one
+connection for both participants.
+
 Participant tokens keep chat, screen sharing, live captions UI, recording UI, automatic
 transcription, and automatic recording disabled. Student and Counselor remain non-owner and
 non-admin. Media capture is instead requested by COMPASS backend REST calls only after explicit

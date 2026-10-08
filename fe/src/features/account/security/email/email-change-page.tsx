@@ -14,6 +14,7 @@ import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { isTurnstileConfigured, TurnstileWidget } from "@/features/auth/components/turnstile-widget";
 import { accountErrorCode, accountErrorMessage } from "@/features/account/components/account-errors";
 import { SecurityBackLink, StepUpDialog } from "@/features/account/security/security-shared";
+import { useOptionalActiveECounselingCall } from "@/features/ecounseling/runtime/active-call-context";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   useAuthConfirmEmailChange,
@@ -26,6 +27,7 @@ import type { EmailChangeRequestResponse } from "@/lib/api/generated/model";
 export function EmailChangePage() {
   const { user } = usePortalSession();
   const queryClient = useQueryClient();
+  const call = useOptionalActiveECounselingCall();
   const mfa = useAuthGetMfaStatus({ query: { retry: false } });
   const challenge = useAuthRequestEmailChangeSecurityChallenge();
   const requestChange = useAuthRequestEmailChange();
@@ -108,6 +110,8 @@ export function EmailChangePage() {
         return;
       }
       setNewCode("");
+      // The change ended this sign-in, so an E-Counseling call ends with it before the reload.
+      await call?.end();
       queryClient.clear();
       window.location.replace("/login?email_changed=1");
     } catch (caught) {

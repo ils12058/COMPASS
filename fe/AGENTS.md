@@ -2186,6 +2186,12 @@ overlays and no nested scroll panes. Keep the call stage mounted at one place in
 changes only reflow it. The call is a Daily Call Object rendered by COMPASS; recording and
 transcription start and stop only through the COMPASS backend.
 
+A joined call belongs to the portal session, not the page (ADR-094). The portal's E-Counseling
+runtime (`features/ecounseling/runtime/`) owns the one call object and the one remote-audio element;
+the session stage and the call dock are views of it. Never create or end a call from a page, never
+render a second remote audio element, and never warn that portal navigation ends a call. Only Leave,
+the call ending, sign-out, a server-confirmed lost session and the portal unmounting end it.
+
 Overview is the portal's home, not a dashboard. It greets the reader by name and gives today's date,
 then puts what needs attention first, the reader's primary action (a `PageAction`) beside the greeting, and
 announcements after the work. The summary counts are secondary context: one compact "At a glance"

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ComponentProps } from "react";
 
+import { useOptionalActiveECounselingCall } from "@/features/ecounseling/runtime/active-call-context";
 import { useUnsavedNavigation } from "@/features/form-safety/unsaved-changes-provider";
 
 type GuardedPortalLinkProps = ComponentProps<typeof Link>;
@@ -24,13 +25,22 @@ export function GuardedPortalLink({
   ...props
 }: GuardedPortalLinkProps) {
   const { confirmNavigation } = useUnsavedNavigation();
+  const call = useOptionalActiveECounselingCall();
 
   return (
     <Link
       {...props}
       href={href}
       onNavigate={(event) => {
-        if (!confirmNavigation(destinationPathname(href))) {
+        const destination = destinationPathname(href);
+        if (!confirmNavigation(destination)) {
+          event.preventDefault();
+          return;
+        }
+        // Portal pages keep a live E-Counseling call (ADR-094); only leaving the portal ends it.
+        // This is separate from unsaved changes, which keep their own question above.
+        const leavesPortal = destination !== null && destination !== "/portal" && !destination.startsWith("/portal/");
+        if (call?.live && leavesPortal && !window.confirm("Leaving the portal will end your E-Counseling call.")) {
           event.preventDefault();
           return;
         }

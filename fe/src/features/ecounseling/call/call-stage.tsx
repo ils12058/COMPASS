@@ -12,8 +12,9 @@ import { CallControl, CallTray } from "./call-control";
 import { activeCallPhases, type ParticipantView } from "./call-model";
 import { CaptureIndicators } from "./capture-indicators";
 import { DeviceDialog } from "./device-dialog";
-import { ParticipantVideo, RemoteAudio } from "./participant-media";
-import type { DailyCallControls } from "./use-daily-call";
+import type { CallControls } from "@/features/ecounseling/runtime/active-call-context";
+
+import { ParticipantVideo, PlayAudioPrompt } from "./participant-media";
 import { leaveFullscreen, useFullscreen } from "./use-fullscreen";
 
 export function joinAvailabilityMessage(readiness: ProviderReadiness): string | null {
@@ -28,7 +29,7 @@ export function joinAvailabilityMessage(readiness: ProviderReadiness): string | 
 }
 
 // What the screen reader hears when the call changes, once per change.
-function callAnnouncement(call: DailyCallControls, participantName: string): string {
+function callAnnouncement(call: CallControls, participantName: string): string {
   switch (call.phase) {
     case "requesting":
     case "joining":
@@ -111,8 +112,10 @@ function StageMessage({ children, action, alert = false }: { children: ReactNode
 
 // The live session surface (ADR-093): the other participant as the dominant picture, this person's
 // self view as a small inset, the call's state, what COMPASS is capturing, and the call controls.
-// Daily supplies only media; everything here is COMPASS UI. The stage stays mounted at one place
-// in the workspace, so layout presets and dock changes only reflow it.
+// Daily supplies only media; everything here is COMPASS UI. It is a view of the portal's one call
+// (ADR-094): mounting or unmounting it never joins or leaves, and the other person's audio plays
+// from the portal runtime, not from here. The stage stays mounted at one place in the workspace,
+// so layout presets only reflow it.
 export function CallStage({
   call,
   participantName,
@@ -121,11 +124,14 @@ export function CallStage({
   media,
   governedControls,
   devicesInTray = "always",
-  onLeaveRequest,
+  onJoin,
+  onLeave,
+  joinBlocked,
+  audio,
   footer,
   className,
 }: {
-  call: DailyCallControls;
+  call: CallControls;
   participantName: string;
   readiness: ProviderReadiness;
   canJoin: boolean;
@@ -134,7 +140,12 @@ export function CallStage({
   governedControls?: ReactNode;
   // With six controls, Devices moves to the stage's top bar on narrow stages.
   devicesInTray?: "always" | "when-wide";
-  onLeaveRequest?: () => void;
+  onJoin: () => void;
+  // Leave, with the portal runtime's warning when the Counselor's capture is still running.
+  onLeave: () => void;
+  // Shown instead of Join when this tab or another already has a call.
+  joinBlocked?: ReactNode;
+  audio?: { blocked: boolean; resume: () => void };
   // Session status that belongs with the call, such as the Counselor's media permission strip.
   footer?: ReactNode;
   className?: string;
@@ -146,7 +157,7 @@ export function CallStage({
   const connected = call.phase === "joined" || call.phase === "reconnecting";
   const open = readiness.join_state === ECounselingJoinState.OPEN;
   const availability = joinAvailabilityMessage(readiness);
-  const joinAction = open && canJoin ? (label: string) => <Button className="ring-1 ring-on-brand/40" onClick={() => void call.join()}>{label}</Button> : () => null;
+  const joinAction = (label: string) => joinBlocked ?? (open && canJoin ? <Button className="ring-1 ring-on-brand/40" onClick={onJoin}>{label}</Button> : null);
   const networkNotice = connected
     ? call.network === "warning" || call.network === "bad"
       ? "Your connection is unstable"
@@ -161,12 +172,8 @@ export function CallStage({
   }
 
   function requestLeave() {
-    if (onLeaveRequest) {
-      leaveFullscreen();
-      onLeaveRequest();
-    } else {
-      void call.leave();
-    }
+    leaveFullscreen();
+    onLeave();
   }
 
   let main: ReactNode;
@@ -256,7 +263,7 @@ export function CallStage({
           {networkNotice ? (
             <p className="inline-flex items-center gap-1.5 rounded-sm bg-ink/85 px-2 py-1 text-xs font-semibold"><WifiLow aria-hidden="true" size={14} />{networkNotice}</p>
           ) : null}
-          {connected ? <RemoteAudio track={call.remote?.audio.track ?? null} speakerId={call.devices.speaker} /> : null}
+          {connected && audio?.blocked ? <PlayAudioPrompt onPlay={audio.resume} /> : null}
         </div>
 
         {connected ? <SelfView local={call.local} cameraOn={call.cameraOn} microphoneOn={call.microphoneOn} /> : null}

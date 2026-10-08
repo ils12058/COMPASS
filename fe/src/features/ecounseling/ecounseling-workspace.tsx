@@ -1,11 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
-import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { DisclosureSection } from "@/components/ui/disclosure";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
@@ -16,11 +15,11 @@ import { CounselingContextPanel } from "@/features/counseling/counseling-workspa
 import { RecordEncounterDialog } from "@/features/counseling/record-encounter-dialog";
 import { type EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
 import { CallStage } from "@/features/ecounseling/call/call-stage";
-import { activeCallPhases } from "@/features/ecounseling/call/call-model";
-import { useDailyCall, type DailyCallControls } from "@/features/ecounseling/call/use-daily-call";
+import { useActiveECounselingCall } from "@/features/ecounseling/runtime/active-call-context";
+import { useSessionCallView } from "@/features/ecounseling/runtime/use-session-call-view";
 import { CaptureStartDialogs, CounselorMediaStrip, GovernedCaptureControls, useCounselorMedia } from "@/features/ecounseling/counselor-media";
 import { getECounselingAccess, type ECounselingAccess } from "@/features/ecounseling/ecounseling-access";
-import { captureStatusLabel, ecounselingErrorMessage, hasLiveOrTransitionalMedia, hasPreparingMediaFile } from "@/features/ecounseling/ecounseling-shared";
+import { captureStatusLabel, ecounselingErrorMessage, sessionRefreshInterval } from "@/features/ecounseling/ecounseling-shared";
 import { ECounselingHelp } from "@/features/ecounseling/session-help";
 import { SessionFiles } from "@/features/ecounseling/session-files";
 import { LayoutPresetControl, phoneBleed, sessionGrid, sessionStageClass, useWideWorkspace, type LayoutPreset } from "@/features/ecounseling/session-layout";
@@ -39,19 +38,11 @@ import {
 import { getRoutineInterviewsListEncounterCandidatesQueryKey } from "@/lib/api/generated/routine-interviews/routine-interviews";
 import {
   getECounselingGetAssignedWorkspaceQueryKey,
-  getECounselingGetMyWorkspaceQueryKey,
   useECounselingGetAssignedWorkspace,
   useECounselingGetMyWorkspace,
 } from "@/lib/api/generated/e-counseling/e-counseling";
 import { cn } from "@/lib/utils/cn";
 
-// The session state refreshes while the call is joined or something is being captured or prepared,
-// so capture and file states stay current. Provider events in the call only ask for an extra refresh.
-const SESSION_REFRESH_MS = 7000;
-
-function sessionRefreshInterval(inCall: boolean, media: MediaWorkspaceState | undefined): number | false {
-  return inCall || hasLiveOrTransitionalMedia(media) || hasPreparingMediaFile(media) ? SESSION_REFRESH_MS : false;
-}
 
 // Who the session is with, its status and time. The Appointment reference and the Routine Interview
 // sit under Session details, lower on the page.
@@ -221,23 +212,21 @@ export function ECounselingWorkspace({ appointmentId }: { appointmentId: string 
     : <CounselorWorkspace appointmentId={appointmentId} access={access} />;
 }
 
-// The call belongs to the workspace, above its loading and error states: a session refresh that
-// fails keeps the last confirmed session on screen and never unmounts a live call.
-function useSessionCall(appointmentId: string, workspaceKey: readonly unknown[]) {
-  const queryClient = useQueryClient();
-  const refresh = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: workspaceKey });
-  }, [queryClient, workspaceKey]);
-  const call = useDailyCall({ appointmentId, onProviderMediaEvent: refresh, onJoinFailed: refresh });
-  return { call, inCall: activeCallPhases.has(call.phase) };
+// While this Appointment has the portal's live call, the portal runtime keeps its session state
+// fresh through the same query, so the page adds no second poll (ADR-094). Otherwise the page
+// refreshes while something is being captured or prepared. A failed refresh keeps the last confirmed
+// session on screen.
+function usePagePolling(appointmentId: string) {
+  const runtime = useActiveECounselingCall();
+  const runtimePolls = runtime.appointmentId === appointmentId && runtime.live;
+  return (media: MediaWorkspaceState | undefined) => (runtimePolls ? false : sessionRefreshInterval(false, media));
 }
 
 function StudentWorkspace({ appointmentId, access }: { appointmentId: string; access: ECounselingAccess }) {
-  const [workspaceKey] = useState(() => getECounselingGetMyWorkspaceQueryKey(appointmentId));
-  const { call, inCall } = useSessionCall(appointmentId, workspaceKey);
+  const refreshInterval = usePagePolling(appointmentId);
   const workspace = useECounselingGetMyWorkspace(appointmentId, { query: {
     retry: false,
-    refetchInterval: (query) => sessionRefreshInterval(inCall, query.state.data?.data.media),
+    refetchInterval: (query) => refreshInterval(query.state.data?.data.media),
   } });
   const data = workspace.data?.data;
   useECounselingBoundaryRefresh(appointmentId, data?.provider_readiness, workspace.refetch);
@@ -245,16 +234,15 @@ function StudentWorkspace({ appointmentId, access }: { appointmentId: string; ac
   if (!data) {
     return workspace.isPending ? <WorkspaceSkeleton /> : <WorkspaceLoadError error={workspace.error} retry={() => void workspace.refetch()} />;
   }
-  return <StudentSession appointmentId={appointmentId} access={access} data={data} call={call} inCall={inCall} />;
+  return <StudentSession appointmentId={appointmentId} access={access} data={data} />;
 }
 
-function StudentSession({ appointmentId, access, data, call, inCall }: {
+function StudentSession({ appointmentId, access, data }: {
   appointmentId: string;
   access: ECounselingAccess;
   data: StudentWorkspaceResponse;
-  call: DailyCallControls;
-  inCall: boolean;
 }) {
+  const view = useSessionCallView({ appointmentId, participantName: data.counselor.display_name });
   const routine = data.routine_interview;
   return (
     <div className="@container">
@@ -268,14 +256,18 @@ function StudentSession({ appointmentId, access, data, call, inCall }: {
       <div className="grid items-start gap-4 @4xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] @4xl:gap-5">
         <CallStage
           className={cn(phoneBleed, sessionStageClass.balanced, "[--call-stage-max-height:max(14rem,calc(100dvh-18rem))]")}
-          call={call}
+          call={view.call}
           participantName={data.counselor.display_name}
           readiness={data.provider_readiness}
           canJoin={access.canJoinSelf}
           media={data.media}
+          onJoin={view.join}
+          onLeave={view.leave}
+          joinBlocked={view.joinBlocked}
+          audio={view.audio}
         />
         <div className="min-w-0 space-y-4">
-          <StudentConsentPanel appointmentId={appointmentId} access={access} media={data.media} inCall={inCall} />
+          <StudentConsentPanel appointmentId={appointmentId} access={access} media={data.media} inCall={view.inCall} />
           <SessionDetails
             appointment={data.appointment}
             routine={routine ? { id: routine.id, status: `${routineIntakeStatusLabel(routine.intake_status)} Intake` } : null}
@@ -288,11 +280,10 @@ function StudentSession({ appointmentId, access, data, call, inCall }: {
 }
 
 function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; access: ECounselingAccess }) {
-  const [workspaceKey] = useState(() => getECounselingGetAssignedWorkspaceQueryKey(appointmentId));
-  const { call, inCall } = useSessionCall(appointmentId, workspaceKey);
+  const refreshInterval = usePagePolling(appointmentId);
   const workspace = useECounselingGetAssignedWorkspace(appointmentId, { query: {
     retry: false,
-    refetchInterval: (query) => sessionRefreshInterval(inCall, query.state.data?.data.media),
+    refetchInterval: (query) => refreshInterval(query.state.data?.data.media),
   } });
   const data = workspace.data?.data;
   useECounselingBoundaryRefresh(appointmentId, data?.provider_readiness, workspace.refetch);
@@ -305,8 +296,6 @@ function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; 
       appointmentId={appointmentId}
       access={access}
       data={data}
-      call={call}
-      inCall={inCall}
       sessionStateCurrent={!workspace.isRefetchError}
     />
   );
@@ -389,31 +378,19 @@ function StudentInformation({ appointmentId, available, defaultOpen }: { appoint
   );
 }
 
-function leaveWarning(active: ReadonlyArray<"recording" | "transcription">) {
-  const both = active.length > 1;
-  const subject = both ? "Recording and transcription are" : active[0] === "recording" ? "Recording is" : "Transcription is";
-  return (
-    <>
-      <p>{subject} still active.</p>
-      <p>Leaving the call doesn’t confirm that {both ? "they have" : "it has"} stopped. Stop {both ? "them" : "it"} first if {both ? "they’re" : "it’s"} no longer needed.</p>
-    </>
-  );
-}
-
-function CounselorSession({ appointmentId, access, data, call, inCall, sessionStateCurrent }: {
+function CounselorSession({ appointmentId, access, data, sessionStateCurrent }: {
   appointmentId: string;
   access: ECounselingAccess;
   data: CounselorWorkspaceResponse;
-  call: DailyCallControls;
-  inCall: boolean;
   sessionStateCurrent: boolean;
 }) {
+  const view = useSessionCallView({ appointmentId, participantName: data.student.display_name });
+  const inCall = view.inCall;
   const { user } = usePortalSession();
   const counselingAccess = getCounselingAccess(user);
   const rootRef = useRef<HTMLDivElement>(null);
   const wide = useWideWorkspace(rootRef);
   const [preset, setPreset] = useState<LayoutPreset>("balanced");
-  const [leaveOpen, setLeaveOpen] = useState(false);
   const media = useCounselorMedia({ appointmentId, access, workspace: data, inCall, sessionStateCurrent });
   // Secondary work starts open beside the call; in Focus and on narrow screens it starts collapsed
   // below it, each section keeping a one-line status.
@@ -432,17 +409,17 @@ function CounselorSession({ appointmentId, access, data, call, inCall, sessionSt
       <div data-layout={preset} className={cn("grid items-start gap-4 @4xl:gap-5", sessionGrid[preset])}>
         <CallStage
           className={cn(phoneBleed, sessionStageClass[preset], "[--call-stage-max-height:max(14rem,calc(100dvh-18rem))]")}
-          call={call}
+          call={view.call}
           participantName={data.student.display_name}
           readiness={data.provider_readiness}
           canJoin={access.canJoinAssigned}
           media={data.media}
           governedControls={<GovernedCaptureControls media={media} />}
           devicesInTray="when-wide"
-          onLeaveRequest={() => {
-            if (media.captureActive.length) setLeaveOpen(true);
-            else void call.leave();
-          }}
+          onJoin={view.join}
+          onLeave={view.leave}
+          joinBlocked={view.joinBlocked}
+          audio={view.audio}
           footer={<CounselorMediaStrip media={media} />}
         />
         <div className="min-w-0 space-y-2">
@@ -456,22 +433,6 @@ function CounselorSession({ appointmentId, access, data, call, inCall, sessionSt
         </div>
       </div>
       <CaptureStartDialogs media={media} />
-      <ConsequentialActionDialog
-        open={leaveOpen}
-        title="Leave this session?"
-        confirmLabel="Leave session"
-        pendingLabel="Leaving…"
-        pending={false}
-        error={null}
-        variant="danger"
-        onOpenChange={setLeaveOpen}
-        onConfirm={() => {
-          setLeaveOpen(false);
-          void call.leave();
-        }}
-      >
-        {leaveWarning(media.captureActive)}
-      </ConsequentialActionDialog>
     </div>
   );
 }
