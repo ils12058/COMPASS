@@ -2,15 +2,25 @@ name: Backend full regression
 
 # Runs every backend test for each staging revision, split into runtime-balanced shards that each
 # have their own PostgreSQL and Redis. deploy-staging.yml deploys a revision only if this workflow
-# succeeded for that exact commit. Dispatch it manually to validate any branch.
+# succeeded for that exact commit.
 #
-# Concurrency: a newer staging push cancels the regression of the revision it supersedes. A
-# cancelled run is not a success, so the superseded revision cannot be deployed without a new
-# run; only the current staging tip is deployable anyway. Other refs run independently.
+# It also runs on pull requests that change this workflow or the CI selection/sharding scripts,
+# so changes to the regression machinery are proven on the complete suite before merge. Manual
+# dispatch works once this file exists on the default branch (a GitHub requirement).
+#
+# Every run validates the exact commit it reports as head_sha (a pull request's head, not
+# GitHub's merge commit). Concurrency: a newer push to the same ref cancels the run it
+# supersedes. A cancelled run is not a success, so the superseded revision cannot be deployed
+# without a new run; only the current staging tip is deployable anyway.
 
 on:
   push:
     branches: [staging]
+  pull_request:
+    branches: [staging]
+    paths:
+      - ".github/scripts/**"
+      - ".github/workflows/backend-full.yml"
   workflow_dispatch:
 
 permissions:
@@ -29,6 +39,8 @@ jobs:
       shard_count: ${{ steps.plan.outputs.shard_count }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -68,6 +80,8 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -124,6 +138,8 @@ jobs:
           --health-retries 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
@@ -161,6 +177,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
@@ -191,6 +209,7 @@ jobs:
           if-no-files-found: ignore
       - name: Require every shard and check to pass
         env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           PLAN_RESULT: ${{ needs.plan.result }}
           STATIC_RESULT: ${{ needs.static.result }}
           SHARDS_RESULT: ${{ needs.shards.result }}
@@ -198,8 +217,8 @@ jobs:
           echo "plan=$PLAN_RESULT static=$STATIC_RESULT shards=$SHARDS_RESULT"
           for result in "$PLAN_RESULT" "$STATIC_RESULT" "$SHARDS_RESULT"; do
             if [ "$result" != "success" ]; then
-              echo "Backend full regression did not pass for $GITHUB_SHA." >&2
+              echo "Backend full regression did not pass for $HEAD_SHA." >&2
               exit 1
             fi
           done
-          echo "Backend full regression passed for $GITHUB_SHA."
+          echo "Backend full regression passed for $HEAD_SHA."

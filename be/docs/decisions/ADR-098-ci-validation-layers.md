@@ -79,7 +79,16 @@ transitively.
 
 ### 2. Staging: `Backend full regression` (`backend-full.yml`)
 
-The workflow runs on every push to `staging`, and on demand for any branch. It has four parts:
+The workflow runs:
+
+- on every push to `staging`;
+- on pull requests that change it or `.github/scripts/`, so changes to selection and sharding are
+  proven on the complete suite before merge;
+- on demand for any branch. GitHub allows manual dispatch only once the workflow file is on the
+  default branch.
+
+Every run checks out the exact commit it reports as `head_sha`. For a pull request that is the head
+commit, not GitHub's merge commit. The workflow has four parts:
 
 - **`plan`** proves that every `be/tests/test_*.py` runs in exactly one shard.
   - Coverage holds by construction: shards are computed from the files on disk, and a new file
