@@ -215,6 +215,9 @@ def ensure_counseling_configuration(session: SeedSession) -> None:
         session.record("Provider weekly schedules", created=not exists)
 
     timeline = session.timeline
+    # Unavailability must still be upcoming when recorded; the demo records it before the anchor so
+    # a fixed (past) anchor in tests keeps the same story as a live seed.
+    configured_at = timeline.past(1, 9)
     office_day = timeline.business_day(10)
     if not OfficeUnavailability.objects.filter(reason=OFFICE_EXCEPTION_REASON).exists():
         create_office_exception(
@@ -223,6 +226,7 @@ def ensure_counseling_configuration(session: SeedSession) -> None:
             mode_scope="ALL",
             reason=OFFICE_EXCEPTION_REASON,
             context=context,
+            now=configured_at,
         )
         session.record("Availability exceptions", created=True)
     else:
@@ -240,6 +244,7 @@ def ensure_counseling_configuration(session: SeedSession) -> None:
             mode_scope="ALL",
             reason=PROVIDER_EXCEPTION_REASON,
             context=context,
+            now=configured_at,
         )
         session.record("Availability exceptions", created=True)
     else:

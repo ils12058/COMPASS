@@ -1,13 +1,13 @@
 from __future__ import annotations
 
 import json
-from datetime import timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
 from django.apps import apps
 from django.core.management import call_command
-from django.test import Client
+from django.test import Client, override_settings
 from django.utils import timezone
 
 from compass.account_management.services import serialize_account
@@ -28,6 +28,7 @@ from compass.accounts.policy import (
 )
 from compass.accounts.profiles import (
     ADDRESS_MAX_LENGTH,
+    InvalidProfileInput,
     PersonProfileContext,
     get_person_profile_context,
     update_my_profile,
@@ -38,6 +39,7 @@ from compass.audit.models import AuditEvent
 from compass.authentication.models import AuthSession
 from compass.authentication.sessions import create_auth_session
 from compass.call_slips.models import CallSlip
+from compass.common.institutional_time import institution_today
 from compass.institutional_forms.models import FormFamily, FormRevision
 from compass.inventory.confidential_content import read_confidential_content
 from compass.inventory.models import StudentInventory
@@ -348,19 +350,43 @@ def test_profile_validation_rejects_future_dob_but_allows_today_and_old_dates_wi
 
     future = patch_profile(
         client,
-        {"date_of_birth": (timezone.localdate() + timedelta(days=1)).isoformat()},
+        {"date_of_birth": (institution_today() + timedelta(days=1)).isoformat()},
     )
     assert future.status_code == 422
     assert future.json()["error"]["code"] == "invalid_profile_request"
 
-    today = patch_profile(client, {"date_of_birth": timezone.localdate().isoformat()})
+    today = patch_profile(client, {"date_of_birth": institution_today().isoformat()})
     assert today.status_code == 200
 
     old = patch_profile(
         client,
-        {"date_of_birth": (timezone.localdate() - timedelta(days=365 * 120)).isoformat()},
+        {"date_of_birth": (institution_today() - timedelta(days=365 * 120)).isoformat()},
     )
     assert old.status_code == 200
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_profile_dob_limit_is_the_institutional_date_not_the_utc_date():
+    sync_policy()
+    user = make_user("dob-boundary@example.edu")
+    # 17:00 UTC on 8 October is already 01:00 on 9 October in Manila.
+    instant = datetime(2026, 10, 8, 17, tzinfo=UTC)
+
+    with patch("django.utils.timezone.now", return_value=instant):
+        result = update_my_profile(
+            user=user,
+            changes={"date_of_birth": date(2026, 10, 9)},
+            context=AuditContext.user(user),
+        )
+        assert result.changed_fields == ("date_of_birth",)
+        assert get_person_profile_context(result.user).date_of_birth == date(2026, 10, 9)
+        with pytest.raises(InvalidProfileInput, match="future"):
+            update_my_profile(
+                user=user,
+                changes={"date_of_birth": date(2026, 10, 10)},
+                context=AuditContext.user(user),
+            )
 
 
 @pytest.mark.django_db

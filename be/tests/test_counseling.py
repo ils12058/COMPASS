@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import json
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from uuid import uuid4
+from zoneinfo import ZoneInfo
 
 import pytest
 from django.core.management import call_command
@@ -594,6 +595,53 @@ def test_actual_time_validation_requires_aware_ordered_completed_interval_withou
         context=context(counselor),
     )
     assert item.ended_at - item.started_at > timedelta(hours=3)
+
+
+@pytest.mark.django_db
+def test_historical_encounter_keeps_actual_times_and_the_real_compass_entry_time():
+    sync_policy()
+    admin = make_user("admin@example.edu", "IT_ADMIN")
+    counselor = make_user("counselor@example.edu", "COUNSELOR")
+    student = make_user("student@example.edu", "STUDENT")
+    create_counseling_service(admin)
+    zone = ZoneInfo("Asia/Manila")
+    session_day = timezone.now().astimezone(zone).date() - timedelta(days=45)
+    started_at = datetime.combine(session_day, time(9), tzinfo=zone)
+    ended_at = datetime.combine(session_day, time(10), tzinfo=zone)
+
+    before = timezone.now()
+    item = create_encounter(
+        counselor=counselor,
+        student_id=student.pk,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=started_at,
+        ended_at=ended_at,
+        context=context(counselor),
+    )
+    assert (item.started_at, item.ended_at) == (started_at, ended_at)
+    # Recording a past session later never backdates when COMPASS recorded it.
+    assert before <= item.created_at <= timezone.now()
+
+    corrected = update_encounter(
+        encounter_id=item.pk,
+        counselor=counselor,
+        changes={
+            "started_at": started_at - timedelta(days=1),
+            "ended_at": ended_at - timedelta(days=1),
+        },
+        context=context(counselor),
+    )
+    assert corrected.started_at == started_at - timedelta(days=1)
+    assert corrected.created_at == item.created_at
+
+    with pytest.raises(CounselingInvalidTime, match="future"):
+        update_encounter(
+            encounter_id=item.pk,
+            counselor=counselor,
+            changes={"ended_at": timezone.now() + timedelta(minutes=5)},
+            context=context(counselor),
+        )
 
 
 @pytest.mark.django_db

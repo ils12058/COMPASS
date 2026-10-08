@@ -1,7 +1,8 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
+from unittest.mock import patch
 from zoneinfo import ZoneInfo
 
 import pytest
@@ -15,7 +16,9 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.availability.services import replace_office_weekly, replace_provider_weekly
+from compass.common.institutional_time import institution_today
 from compass.inventory.confidential_content import read_confidential_content
+from compass.inventory.models import StudentInventory
 from compass.inventory.services import (
     CurrentAcademicYearNotConfigured,
     InvalidInventoryInput,
@@ -303,6 +306,94 @@ def test_submission_enforces_only_confirmed_conditional_consistency():
                 "prior_counselor_name": "Should be empty",
             },
         )
+
+
+@pytest.mark.django_db
+def test_birth_dates_may_be_any_past_date_but_never_after_the_institutional_today():
+    sync_policy()
+    student = make_user("student@example.edu", "STUDENT")
+    actor = make_user("actor@example.edu", "IT_ADMIN")
+    configure_year(actor)
+    ensure_current_inventory(student=student, context=context(student))
+    program = configure_program()
+    today = institution_today()
+
+    def save(date_of_birth, *, father_date_of_birth=None):
+        values = minimum_normalized_inventory_values(program_id=program.pk)
+        values["date_of_birth"] = date_of_birth
+        values["family_members"][0]["date_of_birth"] = father_date_of_birth
+        return replace_current_inventory(student=student, values=values)
+
+    for accepted in (date(1998, 2, 14), today - timedelta(days=1), today):
+        assert save(accepted).date_of_birth == accepted
+
+    with pytest.raises(InvalidInventoryInput, match="date_of_birth must not be in the future"):
+        save(today + timedelta(days=1))
+    with pytest.raises(InvalidInventoryInput, match="family_members.date_of_birth"):
+        save(date(1998, 2, 14), father_date_of_birth=today + timedelta(days=1))
+    assert get_current_inventory_status(student).inventory.date_of_birth == today
+    assert save(date(1998, 2, 14), father_date_of_birth=date(1970, 3, 1)).date_of_birth == date(
+        1998, 2, 14
+    )
+
+    client = auth_client(student)
+    payload = minimum_normalized_inventory_values(program_id=program.pk)
+    payload["date_of_birth"] = today + timedelta(days=1)
+    response = client.put(
+        "/api/v1/inventory/me/current",
+        data=json.dumps(payload, default=str),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "inventory_invalid"
+
+
+@pytest.mark.django_db
+def test_submission_rejects_a_future_birth_date_saved_before_write_validation():
+    sync_policy()
+    student = make_user("student@example.edu", "STUDENT")
+    actor = make_user("actor@example.edu", "IT_ADMIN")
+    configure_year(actor)
+    item = ensure_current_inventory(student=student, context=context(student))
+    set_inventory_context(student)
+    StudentInventory.objects.filter(pk=item.pk).update(
+        date_of_birth=institution_today() + timedelta(days=1)
+    )
+
+    with pytest.raises(InvalidInventoryInput, match="date_of_birth must not be in the future"):
+        submit_current_inventory(student=student, context=context(student))
+    item.refresh_from_db()
+    assert item.submitted_at is None
+
+    StudentInventory.objects.filter(pk=item.pk).update(date_of_birth=date(2003, 7, 9))
+    before = timezone.now()
+    submitted = submit_current_inventory(student=student, context=context(student))
+    assert submitted.date_of_birth == date(2003, 7, 9)
+    # The submission timestamp is when COMPASS received it, not a date the Student supplied.
+    assert submitted.submitted_at >= before
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_birth_date_limit_follows_the_institutional_calendar_day():
+    sync_policy()
+    student = make_user("student@example.edu", "STUDENT")
+    actor = make_user("actor@example.edu", "IT_ADMIN")
+    configure_year(actor)
+    ensure_current_inventory(student=student, context=context(student))
+    program = configure_program()
+    values = minimum_normalized_inventory_values(program_id=program.pk)
+    # 17:00 UTC on 8 October is already 01:00 on 9 October in Manila.
+    with patch("django.utils.timezone.now", return_value=datetime(2026, 10, 8, 17, tzinfo=UTC)):
+        saved = replace_current_inventory(
+            student=student, values={**values, "date_of_birth": date(2026, 10, 9)}
+        )
+        assert saved.date_of_birth == date(2026, 10, 9)
+        with pytest.raises(InvalidInventoryInput, match="future"):
+            replace_current_inventory(
+                student=student, values={**values, "date_of_birth": date(2026, 10, 10)}
+            )
 
 
 @pytest.mark.django_db

@@ -191,6 +191,13 @@ export function isFutureInstitutionalDateInput(
   return parseDateOnly(value) !== null && value > institutionalDateInputValue(now);
 }
 
+export function isPastInstitutionalDateInput(
+  value: string,
+  now = new Date(),
+): boolean {
+  return parseDateOnly(value) !== null && value < institutionalDateInputValue(now);
+}
+
 export function isFutureInstitutionalDateTimeInput(
   value: string,
   now = new Date(),

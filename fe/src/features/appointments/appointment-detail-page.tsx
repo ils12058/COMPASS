@@ -45,7 +45,7 @@ import { getAppointmentAccess } from "@/features/appointments/appointments-acces
 import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CompassApiError } from "@/lib/api/errors";
-import { formatInstitutionalDateTime } from "@/lib/institutional-time";
+import { formatInstitutionalDateTime, institutionalDateInputValue } from "@/lib/institutional-time";
 import { isCounselingService } from "@/features/counseling/canonical-counseling-service";
 import {
   AppointmentActionBlocker,
@@ -679,6 +679,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                 <Input
                   id="reschedule-date"
                   type="date"
+                  min={institutionalDateInputValue()}
                   value={rescheduleDate}
                   disabled={rescheduling}
                   onChange={(event) => {

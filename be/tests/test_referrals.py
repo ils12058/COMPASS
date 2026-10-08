@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timedelta
+from datetime import date, datetime, time, timedelta
 from io import BytesIO
 from zoneinfo import ZoneInfo
 
@@ -18,6 +18,7 @@ from compass.appointments.models import Appointment, AppointmentReferenceCounter
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.common.institutional_time import institution_today
 from compass.counseling.models import CounselingEncounter
 from compass.institutional_forms.canonical import supported_schema_versions
 from compass.institutional_forms.models import FormFamily, FormRevision
@@ -191,6 +192,105 @@ def test_back_entered_referral_preserves_referred_received_and_created_chronolog
     Referral.objects.filter(pk=item.pk).update(created_at=item.created_at + timedelta(minutes=1))
     item.refresh_from_db()
     assert item.received_at == original_received
+
+
+@pytest.mark.django_db
+def test_historical_source_dates_are_kept_while_compass_entry_times_stay_system_generated():
+    sync_policy()
+    head = make_head()
+    student = make_user("student@example.edu", "STUDENT")
+    zone = ZoneInfo("Asia/Manila")
+    referred_on = institution_today() - timedelta(days=400)
+    received_at = datetime.combine(referred_on + timedelta(days=1), time(10), tzinfo=zone)
+
+    before = timezone.now()
+    item = create_referral(
+        actor=head,
+        student_id=student.pk,
+        course_year_block="BSIS 2B",
+        reason="Paper referral slip from last year",
+        referrer_name="Prof. Source Referrer",
+        referred_on=referred_on,
+        received_at=received_at,
+        idempotency_key="historical-source",
+        request_fingerprint="a" * 64,
+        context=context(head),
+    )
+    action = record_action(
+        actor=head,
+        referral_id=item.pk,
+        action_type="CALL_PARENT_GUARDIAN",
+        occurred_at=received_at + timedelta(days=2),
+        remarks="Recorded from the paper log",
+        context=context(head),
+    )
+    item.refresh_from_db()
+    action.refresh_from_db()
+
+    assert item.referred_on == referred_on
+    assert item.received_at == received_at
+    assert action.occurred_at == received_at + timedelta(days=2)
+    # Back-entry never rewrites when COMPASS recorded the Referral or its action.
+    for recorded in (item.created_at, action.created_at):
+        assert before <= recorded <= timezone.now()
+
+    with pytest.raises(InvalidReferralInput, match="occurred_at cannot be in the future"):
+        record_action(
+            actor=head,
+            referral_id=item.pk,
+            action_type="CALL_PARENT_GUARDIAN",
+            occurred_at=timezone.now() + timedelta(hours=1),
+            remarks="Not yet happened",
+            context=context(head),
+        )
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_future_referred_on_is_rejected_against_the_institutional_date():
+    sync_policy()
+    head = make_head()
+    student = make_user("student@example.edu", "STUDENT")
+    # 17:00 UTC on 8 October is already 01:00 on 9 October in Manila.
+    now = datetime(2026, 10, 8, 17, tzinfo=ZoneInfo("UTC"))
+
+    def create(referred_on, key):
+        return create_referral(
+            actor=head,
+            student_id=student.pk,
+            course_year_block="BSIS 2B",
+            reason="Source reason",
+            referrer_name="Referrer",
+            referred_on=referred_on,
+            received_at=None,
+            idempotency_key=key,
+            request_fingerprint="b" * 64,
+            context=context(head),
+            now=now,
+        )
+
+    assert create(date(2026, 10, 9), "institutional-today").referred_on == date(2026, 10, 9)
+    with pytest.raises(InvalidReferralInput, match="referred_on cannot be in the future"):
+        create(date(2026, 10, 10), "institutional-tomorrow")
+
+    client = auth_client(head)
+    response = client.post(
+        "/api/v1/referrals",
+        data=json.dumps(
+            {
+                "student_id": str(student.pk),
+                "course_year_block": "BSIS 2B",
+                "reason": "Source reason",
+                "referrer_name": "Referrer",
+                "referred_on": (institution_today() + timedelta(days=1)).isoformat(),
+            }
+        ),
+        content_type="application/json",
+        HTTP_IDEMPOTENCY_KEY="api-future-source",
+        **csrf(client),
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_referral_request"
 
 
 @pytest.mark.django_db

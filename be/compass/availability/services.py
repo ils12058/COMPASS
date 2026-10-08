@@ -168,6 +168,23 @@ def _aware_range(starts_at: object, ends_at: object) -> tuple[datetime, datetime
     return starts_at, ends_at
 
 
+def _require_active_or_upcoming(ends_at: datetime, now: datetime | None) -> None:
+    """A new dated unavailability must still remove bookable time.
+
+    The start may already have passed, so an absence that began earlier today can be recorded;
+    a period that has completely ended changes nothing and is rejected. Stored past periods stay.
+    """
+
+    current = now or timezone.now()
+    if timezone.is_naive(current):
+        raise InvalidAvailabilityInput("The server time must be timezone-aware.")
+    if ends_at <= current:
+        raise InvalidAvailabilityInput(
+            "The unavailability must still be active or upcoming. "
+            "The end date and time must be in the future."
+        )
+
+
 def _scope_overlaps(left: str, right: str) -> bool:
     return left == AvailabilityModeScope.ALL or right == AvailabilityModeScope.ALL or left == right
 
@@ -421,8 +438,10 @@ def create_office_exception(
     mode_scope: str,
     reason: str = "",
     context: AuditContext,
+    now: datetime | None = None,
 ) -> OfficeUnavailability:
     starts_at, ends_at = _aware_range(starts_at, ends_at)
+    _require_active_or_upcoming(ends_at, now)
     normalized_scope = _mode_value(mode_scope)
     cleaned_reason = _reason(reason)
     with transaction.atomic():
@@ -481,8 +500,10 @@ def create_provider_exception(
     mode_scope: str,
     reason: str = "",
     context: AuditContext,
+    now: datetime | None = None,
 ) -> ProviderUnavailability:
     starts_at, ends_at = _aware_range(starts_at, ends_at)
+    _require_active_or_upcoming(ends_at, now)
     normalized_scope = _mode_value(mode_scope)
     cleaned_reason = _reason(reason)
     with transaction.atomic():

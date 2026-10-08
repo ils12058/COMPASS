@@ -7,12 +7,12 @@ from datetime import date
 from uuid import UUID
 
 from django.db import transaction
-from django.utils import timezone
 
 from compass.audit.actions import PROFILE_UPDATED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.institutional_time import institution_today
 
 from .confidential_profile import (
     AccountProfileConfidentialContent,
@@ -109,7 +109,7 @@ def _normalize_date_of_birth(value: object) -> date | None:
         return None
     if type(value) is not date:
         raise InvalidProfileInput("date_of_birth must be a date or null.")
-    if value > timezone.localdate():
+    if value > institution_today():
         raise InvalidProfileInput("date_of_birth must not be in the future.")
     return value
 

@@ -29,7 +29,28 @@ import {
 import {
   INSTITUTION_TIME_ZONE_LABEL,
   institutionalDateTimeInputToISO,
+  institutionalDateTimeInputValue,
 } from "@/lib/institutional-time";
+
+// A new unavailability may record an absence that has already started, but one that has already
+// ended removes no bookable time. COMPASS applies the same rule with its own clock.
+export function unavailabilityRangeError(
+  startsAt: string,
+  endsAt: string,
+  now = new Date(),
+): string | null {
+  const startsIso = institutionalDateTimeInputToISO(startsAt);
+  const endsIso = institutionalDateTimeInputToISO(endsAt);
+  if (!startsIso || !endsIso) return "Enter a valid start and end date/time.";
+  const ends = new Date(endsIso).getTime();
+  if (new Date(startsIso).getTime() >= ends) {
+    return "The start date/time must be earlier than the end date/time.";
+  }
+  if (ends <= now.getTime()) {
+    return "The unavailability must still be active or upcoming. The end date and time must be in the future.";
+  }
+  return null;
+}
 
 function ExceptionRows({
   items,
@@ -140,14 +161,11 @@ export function UnavailabilitySection({
     event.preventDefault();
     setLocalError(null);
 
+    const rangeError = unavailabilityRangeError(startsAt, endsAt);
     const startsIso = institutionalDateTimeInputToISO(startsAt);
     const endsIso = institutionalDateTimeInputToISO(endsAt);
-    if (!startsIso || !endsIso) {
-      setLocalError("Enter a valid start and end date/time.");
-      return;
-    }
-    if (new Date(startsIso).getTime() >= new Date(endsIso).getTime()) {
-      setLocalError("The start date/time must be earlier than the end date/time.");
+    if (rangeError || !startsIso || !endsIso) {
+      setLocalError(rangeError ?? "Enter a valid start and end date/time.");
       return;
     }
 
@@ -265,13 +283,15 @@ export function UnavailabilitySection({
                 id="unavailability-until"
                 type="datetime-local"
                 required
+                min={institutionalDateTimeInputValue()}
                 value={endsAt}
                 aria-describedby="unavailability-timezone-help"
                 onChange={(event) => setEndsAt(event.target.value)}
               />
             </div>
             <p id="unavailability-timezone-help" className="text-xs leading-5 text-muted">
-              From and Until use {INSTITUTION_TIME_ZONE_LABEL}.
+              From and Until use {INSTITUTION_TIME_ZONE_LABEL}. From may already have passed if the
+              unavailability has started; Until must be in the future.
             </p>
             <div className="grid gap-2">
               <Label htmlFor="unavailability-mode">Applies to</Label>

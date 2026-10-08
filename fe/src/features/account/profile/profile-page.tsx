@@ -17,6 +17,7 @@ import { accountErrorMessage } from "@/features/account/components/account-error
 import { userRoleLabel } from "@/features/portal/components/portal-presentation";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import type { MyProfilePhotoResponse, MyProfileResponse, MyProfileUpdateRequest } from "@/lib/api/generated/model";
+import { institutionalDateInputValue } from "@/lib/institutional-time";
 import {
   getProfileGetMyProfileQueryKey,
   profileGetMyProfile,
@@ -178,7 +179,7 @@ function ProfileEditor({
         <div className="grid gap-5 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="date-of-birth">Date of birth</Label>
-            <Input id="date-of-birth" type="date" value={values.date_of_birth ?? ""} onChange={(event) => setField("date_of_birth", event.target.value || null)} />
+            <Input id="date-of-birth" type="date" max={institutionalDateInputValue()} value={values.date_of_birth ?? ""} onChange={(event) => setField("date_of_birth", event.target.value || null)} />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="civil-status">Civil status</Label>

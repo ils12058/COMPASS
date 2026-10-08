@@ -43,6 +43,7 @@ import {
   formatInstitutionalDateTime,
   INSTITUTION_TIME_ZONE_LABEL,
   institutionalDateTimeInputToISO,
+  institutionalDateTimeInputValue,
   isFutureInstitutionalDateTimeInput,
   isoToInstitutionalDateTimeInput,
 } from "@/lib/institutional-time";
@@ -291,6 +292,8 @@ export function AnnouncementForm({ announcement }: { announcement: AnnouncementM
               id="announcement-expires"
               type="datetime-local"
               className="w-auto"
+              // A published Announcement needs a future expiry; a draft's is checked when published.
+              min={isPublished ? institutionalDateTimeInputValue() : undefined}
               value={values.expiresAt}
               aria-invalid={errors.expiresAt ? true : undefined}
               aria-describedby={`announcement-expires-hint${errors.expiresAt ? " announcement-expires-error" : ""}`}

@@ -77,6 +77,30 @@ def scheduling():
 
 @pytest.mark.django_db
 @override_settings(TIME_ZONE="Asia/Manila")
+def test_only_times_after_the_server_now_are_offered(scheduling):
+    s = scheduling
+
+    def offered_at(now):
+        result = list_bookable_slots(
+            student=s["student_a"],
+            service_id=s["service"].pk,
+            provider_id=s["provider"].pk,
+            delivery_mode="IN_PERSON",
+            target_date=s["start"].date(),
+            now=now,
+        )
+        return [slot.starts_at for slot in result.items]
+
+    # The date picker's minimum is UX; the server decides which times are still bookable.
+    assert offered_at(s["start"] + timedelta(days=1)) == []
+    later_today = offered_at(s["start"])
+    assert later_today
+    assert all(starts_at > s["start"] for starts_at in later_today)
+    assert s["start"] in offered_at(s["start"] - timedelta(minutes=1))
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
 def test_scheduled_counselor_appointment_removes_overlapping_slot_for_other_students(scheduling):
     s = scheduling
     book(s["student_a"], s["service"], s["provider"], s["start"])

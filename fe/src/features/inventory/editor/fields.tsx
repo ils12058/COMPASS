@@ -36,8 +36,8 @@ export function TextField({
   disabled?: boolean;
   hint?: string;
   error?: string;
-  min?: number;
-  max?: number;
+  min?: number | string;
+  max?: number | string;
   step?: number | "any";
   maxLength?: number;
   autoComplete?: string;

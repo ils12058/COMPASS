@@ -24,6 +24,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.institutional_time import institution_today
 from compass.common.ordering import parse_ordering
 from compass.institutional_forms.filter_options import represented_form_revisions
 from compass.institutional_forms.models import FormRevision
@@ -162,6 +163,19 @@ def classify_parent_annual_income(combined: CombinedParentIncome) -> ParentIncom
     if amount <= Decimal("2626680"):
         return ParentIncomeBand.UPPER_INCOME
     return ParentIncomeBand.RICH
+
+
+def _reject_future_birth_date(value: object, field_name: str) -> None:
+    """A birth date is a historical fact: it may be any past date but never after today."""
+
+    if isinstance(value, str):
+        try:
+            value = date.fromisoformat(value)
+        except ValueError:
+            return  # Typed validation reports malformed dates.
+    if isinstance(value, date) and not isinstance(value, datetime):
+        if value > institution_today():
+            raise InvalidInventoryInput(f"{field_name} must not be in the future.")
 
 
 def derive_age_on(*, date_of_birth: date, on_date: date) -> int:
@@ -583,6 +597,7 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
         if kind in seen:
             raise InvalidInventoryInput("Only one family-member row per kind is allowed.")
         seen.add(kind)
+        _reject_future_birth_date(row.get("date_of_birth"), "family_members.date_of_birth")
         status = row.get("annual_income_status")
         if status is not None:
             status = str(status)
@@ -900,6 +915,12 @@ def _validate_submission(
         raise InvalidInventoryInput(
             "Inventory submission requires normalized fields: " + ", ".join(missing) + "."
         )
+    # Drafts saved before birth dates were checked at the write boundary are caught here.
+    _reject_future_birth_date(item.date_of_birth, "date_of_birth")
+    for row in item.family_members.all():
+        _reject_future_birth_date(
+            private.children[row.pk].date_of_birth, "family_members.date_of_birth"
+        )
 
     root_values = content.payload()
     normalized_root = _normalize_snapshot_categories(
@@ -1036,6 +1057,8 @@ def _apply_scalar_values(item: StudentInventory, values: dict[str, object], priv
         item.full_clean(exclude=("student", "academic_year", "form_revision"))
     except ValidationError:
         raise InvalidInventoryInput("The Inventory contains invalid typed values.") from None
+    if "date_of_birth" in values:
+        _reject_future_birth_date(item.date_of_birth, "date_of_birth")
 
 
 def _normalize_sibling_rows(rows: object) -> list[dict[str, object]]:
