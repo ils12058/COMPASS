@@ -180,3 +180,11 @@ CI environments have no Daily credentials.
 Live captions, a transcript viewer, Student downloads, screen sharing, chat, reactions, group calls,
 AI summaries or notes, background effects, a drag-resizable layout, browser recording or
 transcription authority, and any consent or retention change remain out of scope.
+
+## Call ownership refinement (ADR-094)
+
+[ADR-094](ADR-094-persistent-ecounseling-runtime-and-global-call-continuity.md) moves ownership of the
+one `DailyCallSession` from the session page to the authenticated portal runtime, so a call continues
+across portal pages in a call dock. `useDailyCall` is replaced by that runtime; the stage becomes one
+of its views and the remote audio plays from it. This decision's client boundary, controls, layouts
+and governance are otherwise unchanged.
