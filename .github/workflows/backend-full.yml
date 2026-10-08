@@ -1,0 +1,205 @@
+name: Backend full regression
+
+# Runs every backend test for each staging revision, split into runtime-balanced shards that each
+# have their own PostgreSQL and Redis. deploy-staging.yml deploys a revision only if this workflow
+# succeeded for that exact commit. Dispatch it manually to validate any branch.
+#
+# Concurrency: a newer staging push cancels the regression of the revision it supersedes. A
+# cancelled run is not a success, so the superseded revision cannot be deployed without a new
+# run; only the current staging tip is deployable anyway. Other refs run independently.
+
+on:
+  push:
+    branches: [staging]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backend-full-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  plan:
+    name: plan
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.plan.outputs.matrix }}
+      shard_count: ${{ steps.plan.outputs.shard_count }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Every test file runs in exactly one shard
+        run: |
+          python -m unittest discover -s .github/scripts
+          python .github/scripts/backend_ci.py verify
+      - name: Shard plan
+        id: plan
+        run: python .github/scripts/backend_ci.py plan
+
+  static:
+    name: static and contract
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: compass_test
+          POSTGRES_USER: compass
+          POSTGRES_PASSWORD: test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U compass -d compass_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install locked dependencies
+        working-directory: be
+        run: uv sync --frozen
+      - name: Static and migration checks
+        working-directory: be
+        run: |
+          uv lock --check
+          uv run ruff format --check .
+          uv run ruff check .
+          uv run python -m compileall -q compass tests
+          uv run python manage.py makemigrations --check --dry-run --settings=tests.settings
+          uv run python manage.py migrate --noinput --settings=tests.settings
+          uv run python manage.py check --settings=tests.settings
+      # Verification only: the regression never writes to the repository.
+      - name: Committed contract matches the generator
+        working-directory: be
+        run: uv run python manage.py export_openapi --check --settings=tests.settings
+
+  shards:
+    name: shard ${{ matrix.label }}
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: compass_test
+          POSTGRES_USER: compass
+          POSTGRES_PASSWORD: test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U compass -d compass_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install locked dependencies
+        working-directory: be
+        run: uv sync --frozen
+      - name: Install Chromium for document rendering
+        working-directory: be
+        run: uv run playwright install --with-deps --only-shell chromium
+      # Daily provider traffic is fully mocked; CI must never contact Daily.co.
+      - name: Backend tests
+        working-directory: be
+        env:
+          SHARD_INDEX: ${{ matrix.index }}
+          SHARD_TOTAL: ${{ needs.plan.outputs.shard_count }}
+        run: >-
+          uv run python ../.github/scripts/backend_ci.py run-shard
+          --index "$SHARD_INDEX" --total "$SHARD_TOTAL"
+          --junitxml "$RUNNER_TEMP/junit.xml"
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-full-${{ matrix.index }}
+          path: ${{ runner.temp }}/junit.xml
+          if-no-files-found: ignore
+
+  full-regression:
+    name: full-regression
+    needs: [plan, static, shards]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Download test reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: junit-full-*
+          path: ${{ runner.temp }}/junit
+      - name: Measured durations for rebalancing shards
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          reports=("$RUNNER_TEMP"/junit/*/junit.xml)
+          if [ "${#reports[@]}" -eq 0 ]; then
+            echo "No test reports were produced."
+            exit 0
+          fi
+          python .github/scripts/backend_ci.py durations "${reports[@]}" > "$RUNNER_TEMP/backend_test_durations.json"
+          echo "Copy this artifact to .github/scripts/backend_test_durations.json to rebalance shards."
+      - name: Upload measured durations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-test-durations
+          path: ${{ runner.temp }}/backend_test_durations.json
+          if-no-files-found: ignore
+      - name: Require every shard and check to pass
+        env:
+          PLAN_RESULT: ${{ needs.plan.result }}
+          STATIC_RESULT: ${{ needs.static.result }}
+          SHARDS_RESULT: ${{ needs.shards.result }}
+        run: |
+          echo "plan=$PLAN_RESULT static=$STATIC_RESULT shards=$SHARDS_RESULT"
+          for result in "$PLAN_RESULT" "$STATIC_RESULT" "$SHARDS_RESULT"; do
+            if [ "$result" != "success" ]; then
+              echo "Backend full regression did not pass for $GITHUB_SHA." >&2
+              exit 1
+            fi
+          done
+          echo "Backend full regression passed for $GITHUB_SHA."

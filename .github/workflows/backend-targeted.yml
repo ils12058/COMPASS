@@ -1,23 +1,51 @@
 name: Backend targeted validation
 
+# Fast pull-request confidence: static, migration, and contract checks plus the tests selected
+# for the changed backend areas (see .github/scripts/backend_ci.py). Shared or unrecognized
+# changes select the complete suite. The complete suite always runs again on every staging
+# revision (backend-full.yml), and staging deployment requires that exact revision to pass it.
+
 on:
   pull_request:
     branches: [staging]
     paths:
       - "be/**"
       - "contracts/**"
+      - ".github/scripts/**"
       - ".github/workflows/backend-targeted.yml"
+      - ".github/workflows/backend-full.yml"
   workflow_dispatch:
+    inputs:
+      base_ref:
+        description: "Branch to compare against when selecting tests"
+        required: false
+        default: staging
+        type: string
 
 permissions:
   contents: read
 
+# A newer push to the same pull request supersedes the older validation.
+concurrency:
+  group: backend-targeted-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  targeted-backend:
+  prepare:
+    name: prepare
+    # Write access is used only to commit a regenerated OpenAPI contract to this repository's
+    # pull-request branch and to dispatch validation of the resulting exact head.
     permissions:
       contents: write
       actions: write
     runs-on: ubuntu-latest
+    outputs:
+      validate: ${{ steps.openapi_sync.outputs.auto_committed != 'true' }}
+      head_sha: ${{ steps.revisions.outputs.head }}
+      full: ${{ steps.select.outputs.full }}
+      files: ${{ steps.select.outputs.files }}
+      matrix: ${{ steps.select.outputs.matrix }}
+      shard_count: ${{ steps.select.outputs.shard_count }}
     services:
       postgres:
         image: postgres:17
@@ -44,19 +72,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Validate the exact pull-request head, not GitHub's synthetic merge commit. Full
+          # history lets the selector diff the head against its merge base.
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
         with:
           enable-cache: true
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
+      - name: CI selection self-tests and shard coverage
+        run: |
+          python -m unittest discover -s .github/scripts
+          python .github/scripts/backend_ci.py verify
       - name: Install locked dependencies
         working-directory: be
         run: uv sync --frozen
-      - name: Install Chromium for document rendering
-        working-directory: be
-        run: uv run playwright install --with-deps --only-shell chromium
       - name: Static and migration checks
         working-directory: be
         run: |
@@ -88,6 +120,8 @@ jobs:
             exit 0
           fi
 
+          # Only a pull-request run may commit, and only to a branch of this repository. A
+          # dispatched run never commits, so the sync cannot loop.
           if [ "$GITHUB_EVENT_NAME" != "pull_request" ] || [ "$PR_HEAD_REPO" != "$GITHUB_REPOSITORY" ]; then
             echo "auto_committed=false" >> "$GITHUB_OUTPUT"
             exit 0
@@ -106,15 +140,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        run: gh workflow run backend-targeted.yml --ref "$PR_HEAD_REF"
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: gh workflow run backend-targeted.yml --ref "$PR_HEAD_REF" -f base_ref="$PR_BASE_REF"
       - name: Contract must be committed
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         run: git diff --exit-code -- contracts/openapi.json
-      # Daily provider traffic is fully mocked; targeted CI must never contact Daily.co.
-      - name: Backend tests
-        if: steps.openapi_sync.outputs.auto_committed != 'true'
-        working-directory: be
-        run: uv run pytest tests
       - name: Contract check
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         working-directory: be
@@ -122,3 +152,129 @@ jobs:
       - name: Diff whitespace check
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         run: git diff --check
+      - name: Resolve compared revisions
+        id: revisions
+        if: steps.openapi_sync.outputs.auto_committed != 'true'
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          BASE_REF: ${{ inputs.base_ref || 'staging' }}
+        run: |
+          set -euo pipefail
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            base="$PR_BASE_SHA"
+          else
+            git fetch --no-tags origin "+refs/heads/$BASE_REF:refs/remotes/origin/$BASE_REF"
+            base="$(git rev-parse "refs/remotes/origin/$BASE_REF")"
+          fi
+          head="$(git rev-parse HEAD)"
+          echo "Comparing $head against its merge base with $base"
+          echo "base=$base" >> "$GITHUB_OUTPUT"
+          echo "head=$head" >> "$GITHUB_OUTPUT"
+      - name: Select backend tests
+        id: select
+        if: steps.openapi_sync.outputs.auto_committed != 'true'
+        env:
+          BASE_SHA: ${{ steps.revisions.outputs.base }}
+          HEAD_SHA: ${{ steps.revisions.outputs.head }}
+        run: |
+          set -euo pipefail
+          python .github/scripts/backend_ci.py select --base "$BASE_SHA" --head "$HEAD_SHA" > "$RUNNER_TEMP/selection.txt"
+          cat "$RUNNER_TEMP/selection.txt"
+          { echo '### Backend test selection'; echo '```'; cat "$RUNNER_TEMP/selection.txt"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+
+  tests:
+    name: tests ${{ matrix.label }}
+    needs: prepare
+    if: needs.prepare.outputs.validate == 'true'
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: compass_test
+          POSTGRES_USER: compass
+          POSTGRES_PASSWORD: test-password
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U compass -d compass_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:8
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.prepare.outputs.head_sha }}
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install locked dependencies
+        working-directory: be
+        run: uv sync --frozen
+      # Many domains render controlled-form PDFs, so every test job keeps the browser renderer.
+      - name: Install Chromium for document rendering
+        working-directory: be
+        run: uv run playwright install --with-deps --only-shell chromium
+      # Daily provider traffic is fully mocked; CI must never contact Daily.co.
+      - name: Backend tests
+        working-directory: be
+        env:
+          SELECTED_FILES: ${{ needs.prepare.outputs.files }}
+          SHARD_INDEX: ${{ matrix.index }}
+          SHARD_TOTAL: ${{ needs.prepare.outputs.shard_count }}
+        run: >-
+          uv run python ../.github/scripts/backend_ci.py run-shard
+          --index "$SHARD_INDEX" --total "$SHARD_TOTAL"
+          --files-json "$SELECTED_FILES"
+          --junitxml "$RUNNER_TEMP/junit.xml"
+      - name: Upload test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-targeted-${{ matrix.index }}
+          path: ${{ runner.temp }}/junit.xml
+          if-no-files-found: ignore
+
+  targeted-backend:
+    name: targeted-backend
+    needs: [prepare, tests]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every targeted check to pass
+        env:
+          PREPARE_RESULT: ${{ needs.prepare.result }}
+          TESTS_RESULT: ${{ needs.tests.result }}
+          VALIDATE: ${{ needs.prepare.outputs.validate }}
+          FULL: ${{ needs.prepare.outputs.full }}
+        run: |
+          echo "prepare=$PREPARE_RESULT tests=$TESTS_RESULT validate=$VALIDATE full_suite=$FULL"
+          if [ "$PREPARE_RESULT" != "success" ]; then
+            echo "Static, migration, contract, or selection checks failed." >&2
+            exit 1
+          fi
+          if [ "$VALIDATE" != "true" ]; then
+            echo "The OpenAPI contract was synchronized; the new head is validated by a dispatched run."
+            exit 0
+          fi
+          if [ "$TESTS_RESULT" != "success" ]; then
+            echo "Selected backend tests did not all pass." >&2
+            exit 1
+          fi

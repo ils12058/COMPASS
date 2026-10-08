@@ -41,6 +41,11 @@ jobs:
         working-directory: fe
         run: pnpm api:generate
 
+      # Component, presentation, and contract tests (node:test); they import the generated client.
+      - name: Unit tests
+        working-directory: fe
+        run: pnpm test
+
       - name: Lint
         working-directory: fe
         run: pnpm lint

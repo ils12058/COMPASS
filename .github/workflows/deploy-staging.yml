@@ -24,6 +24,8 @@ jobs:
       url: https://staging-api.compass-gco.com
     permissions:
       contents: read
+      # Read-only: confirms Backend full regression passed for the exact revision.
+      actions: read
     env:
       DO_REGISTRY_NAME: ${{ vars.DO_REGISTRY_NAME }}
       DO_REGISTRY_REPOSITORY: ${{ vars.DO_REGISTRY_REPOSITORY }}
@@ -69,6 +71,17 @@ jobs:
           git checkout --detach "$remote_sha"
           deploy_sha="$(git rev-parse HEAD)"
           echo "deploy_sha=$deploy_sha" >> "$GITHUB_OUTPUT"
+
+      # Pull requests run targeted tests; the complete backend suite is the deployment gate.
+      - name: Require Backend full regression for this exact revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/require_full_regression.py \
+            --repo "$GITHUB_REPOSITORY" --sha "$DEPLOY_SHA"
 
       - name: Validate deployment configuration
         shell: bash
