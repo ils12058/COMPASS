@@ -7,11 +7,11 @@ from uuid import uuid4
 
 import pytest
 from django.core.management import call_command
-from django.utils import timezone
 
 from compass.accounts.models import Capability, UserCapabilityOverride
 from compass.appointments.services import InvalidAppointmentInput, list_my_appointments
 from compass.availability.models import ProviderAvailabilityWindow
+from compass.common.institutional_time import institution_date, institution_today
 from compass.counseling.services import create_encounter
 from compass.good_moral.services import issue_request, prepare_request
 from compass.institutional_forms.models import FormRevision
@@ -251,8 +251,9 @@ def test_encounter_search_is_identity_only_and_collection_projection_is_narrow()
             "entry_mode": "APPOINTMENT",
             "delivery_mode": "IN_PERSON",
             "student_id": student.pk,
-            "from_date": start.date(),
-            "to_date": end.date(),
+            # Counseling date filters are institutional (Manila) days.
+            "from_date": institution_date(start),
+            "to_date": institution_date(end),
         },
     )
     assert ids(response) == [str(mine.pk)]
@@ -323,8 +324,8 @@ def test_call_slip_revision_filter_composes_with_lifecycle_search_and_scope():
             "destination_type": "GUIDANCE_OFFICE",
             "student_id": student.pk,
             "issued_by_id": counselor.pk,
-            "from_date": timezone.localdate(),
-            "to_date": timezone.localdate() + timedelta(days=2),
+            "from_date": institution_today(),
+            "to_date": institution_today() + timedelta(days=2),
         },
     )
     assert ids(response) == [str(first.pk)]
@@ -468,8 +469,8 @@ def test_customer_feedback_revision_filter_keeps_service_date_name_and_domain_au
             "form_revision_id": old.pk,
             "search": "Feedback",
             "service": "COUNSELING",
-            "submitted_from": timezone.localdate(),
-            "submitted_to": timezone.localdate(),
+            "submitted_from": institution_today(),
+            "submitted_to": institution_today(),
         },
     )
     assert ids(response) == [first.json()["id"]]
