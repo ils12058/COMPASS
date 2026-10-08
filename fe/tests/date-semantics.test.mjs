@@ -11,6 +11,8 @@ import { unavailabilityRangeError } from "../src/features/availability/unavailab
 import { UnsavedChangesProvider } from "../src/features/form-safety/unsaved-changes-provider.tsx";
 import { GoodMoralCorrectionForm } from "../src/features/good-moral/good-moral-correction-form.tsx";
 import { GoodMoralRequestPage } from "../src/features/good-moral/good-moral-request-page.tsx";
+import { goodMoralErrorMessage } from "../src/features/good-moral/good-moral-shared.tsx";
+import { CompassApiError } from "../src/lib/api/errors.ts";
 import { FamilySection } from "../src/features/inventory/editor/family-section.tsx";
 import { PersonalSection } from "../src/features/inventory/editor/personal-section.tsx";
 import { getInventoryDraftIssues, getInventorySubmissionIssues } from "../src/features/inventory/inventory-payload.ts";
@@ -151,6 +153,15 @@ test("Good Moral graduation and receipt dates offer no future date", () => {
   const correction = render(h(GoodMoralCorrectionForm, { item, open: true, onClose() {}, onRefresh: async () => item }));
   assert.match(inputTag(correction, "good-moral-correction-graduation-date"), new RegExp(`max="${today}"`));
   assert.match(inputTag(correction, "good-moral-correction-receipt-date"), new RegExp(`max="${today}"`));
+});
+
+test("a refused issuance names the certificate date that must be corrected", () => {
+  const refused = (body) => new CompassApiError({ status: 409, body, headers: {}, method: "POST", url: "/api/v1/good-moral/requests/r/issue" });
+  const message = "Graduation date cannot be in the future. Correct the certificate details before issuance.";
+  assert.equal(goodMoralErrorMessage(refused({ error: { code: "good_moral_certificate_date_in_future", message } }), "fallback"), message);
+  assert.match(goodMoralErrorMessage(refused({ error: { code: "good_moral_certificate_date_in_future" } }), "fallback"), /Correct the certificate details before issuance/);
+  // Other conflicts keep their reviewed copy rather than the raw server text.
+  assert.equal(goodMoralErrorMessage(refused({ error: { code: "good_moral_conflict", message: "An ISSUED Good Moral request cannot be cancelled." } }), "fallback"), "fallback");
 });
 
 // --- Future-facing operations ----------------------------------------------------------------
