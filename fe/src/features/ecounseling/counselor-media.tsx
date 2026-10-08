@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { CallControl, type CallControlTone } from "@/features/ecounseling/call/call-control";
 import { leaveFullscreen } from "@/features/ecounseling/call/use-fullscreen";
 import type { ECounselingAccess } from "@/features/ecounseling/ecounseling-access";
+import { useCaptureStop, type CaptureKind } from "@/features/ecounseling/use-capture-stop";
 import {
   captureStatusLabel,
   ecounselingErrorMessage,
@@ -24,8 +25,6 @@ import {
   useECounselingRequestConsent,
   useECounselingStartAssignedRecording,
   useECounselingStartAssignedTranscription,
-  useECounselingStopAssignedRecording,
-  useECounselingStopAssignedTranscription,
 } from "@/lib/api/generated/e-counseling/e-counseling";
 import {
   ECounselingCaptureStatus,
@@ -37,7 +36,6 @@ import {
 } from "@/lib/api/generated/model";
 import { cn } from "@/lib/utils/cn";
 
-type CaptureKind = "recording" | "transcription";
 
 function latestConsent(rows: ConsentResponse[], scope: ECounselingConsentScope): ConsentResponse | undefined {
   return rows.filter((item) => item.scope === scope).sort((a, b) => b.requested_at.localeCompare(a.requested_at))[0];
@@ -114,14 +112,12 @@ export function useCounselorMedia({
   });
   const request = useECounselingRequestConsent({ mutation: { retry: false } });
   const startRecording = useECounselingStartAssignedRecording({ mutation: { retry: false } });
-  const stopRecording = useECounselingStopAssignedRecording({ mutation: { retry: false } });
   const startTranscription = useECounselingStartAssignedTranscription({ mutation: { retry: false } });
-  const stopTranscription = useECounselingStopAssignedTranscription({ mutation: { retry: false } });
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pendingStart, setPendingStart] = useState<CaptureKind | null>(null);
   const [storeTranscript, setStoreTranscript] = useState(false);
-  const [stopping, setStopping] = useState<Record<CaptureKind, boolean>>({ recording: false, transcription: false });
+  const capture = useCaptureStop(appointmentId, () => refreshCanonicalState());
 
   const media = workspace.media;
   const isV2 = media.media_policy_version === 2;
@@ -204,17 +200,7 @@ export function useCounselorMedia({
   async function stop(kind: CaptureKind) {
     setError(null);
     setNotice(null);
-    setStopping((current) => ({ ...current, [kind]: true }));
-    try {
-      if (kind === "recording") await stopRecording.mutateAsync({ appointmentId });
-      else await stopTranscription.mutateAsync({ appointmentId });
-    } catch (caught) {
-      setError(ecounselingErrorMessage(caught, kind === "recording"
-        ? "Recording couldn’t be stopped. Try again."
-        : "Transcription couldn’t be stopped. Try again."));
-    }
-    await refreshCanonicalState();
-    setStopping((current) => ({ ...current, [kind]: false }));
+    await capture.stop(kind);
   }
 
   // The permission rows the Counselor sees, with the request each one still allows. V1 sessions keep
@@ -270,20 +256,19 @@ export function useCounselorMedia({
     status,
     canStart,
     canStop,
-    stopping,
+    stopping: capture.stopping,
     starting,
     requesting,
     storageApproved,
     consentQuery,
     permissions,
-    error,
+    error: error ?? capture.error,
     notice,
     pendingStart,
     storeTranscript,
     setStoreTranscript,
     sessionStateCurrent,
     inCall,
-    captureActive: (["recording", "transcription"] as const).filter((kind) => status[kind] === ECounselingCaptureStatus.ACTIVE || status[kind] === ECounselingCaptureStatus.START_REQUESTED),
     openStart,
     closeStart: () => {
       if (!starting) setPendingStart(null);

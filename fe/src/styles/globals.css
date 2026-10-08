@@ -223,6 +223,22 @@ h6 {
   --action-status-offset: var(--list-tools-clearance);
 }
 
+/* The E-Counseling call dock (features/ecounseling/runtime/global-call-dock.tsx) sits at the bottom
+   right of the workspace, above a collection's floating tools when they are on the page. While it is
+   on screen it publishes its height, so the portal content and the action status stay clear of it. */
+:root {
+  --call-dock-offset: max(1rem, env(safe-area-inset-bottom));
+}
+
+:root:has([data-floating-list-tools]) {
+  --call-dock-offset: var(--list-tools-clearance);
+}
+
+:root:has([data-call-dock]) {
+  --call-dock-clearance: calc(var(--call-dock-offset) + var(--call-dock-height, 0px) + 1rem);
+  --action-status-offset: calc(var(--call-dock-offset) + var(--call-dock-height, 0px) + 0.75rem);
+}
+
 /* A routine success message settles into place once; reduced-motion settings make it instant. */
 @keyframes action-status-in {
   from {

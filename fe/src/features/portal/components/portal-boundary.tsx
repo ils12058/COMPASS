@@ -14,10 +14,12 @@ import { PortalSessionLoading } from "@/features/portal/components/portal-sessio
 import { PortalShell } from "@/features/portal/components/portal-shell";
 import { PortalUserMenu } from "@/features/portal/components/portal-user-menu";
 import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
+import { ActiveECounselingRuntimeProvider, type PortalAuthState } from "@/features/ecounseling/runtime/active-call-runtime";
 import { PortalMaintenanceGate } from "@/features/platform/maintenance-presentation";
 import { hasPlatformView } from "@/features/platform/platform-gate";
 import { CompassApiError } from "@/lib/api/errors";
 import { useAuthGetSession } from "@/lib/api/generated/auth/auth";
+import type { UserSummary } from "@/lib/api/generated/model";
 import { requestSessionRevalidation, subscribeSessionRevalidation } from "@/lib/auth/session-revalidation";
 
 export function PortalBoundary({ children }: { children: ReactNode }) {
@@ -36,6 +38,19 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
   );
   const confirmedSignedOut =
     session.isError && session.error instanceof CompassApiError && session.error.status === 401;
+  // The E-Counseling call belongs to the authenticated portal session, not to a page (ADR-094). It
+  // keeps the last confirmed user while the session is being checked again, and ends only when the
+  // server confirms the session is gone ("signed-out"), never because a check couldn't complete.
+  const confirmedUser = currentSession ? session.data?.data?.user ?? null : null;
+  const [callUser, setCallUser] = useState<UserSummary | null>(null);
+  if (confirmedUser && confirmedUser !== callUser) setCallUser(confirmedUser);
+  const authState: PortalAuthState = confirmedSignedOut
+    ? "signed-out"
+    : session.isPending
+      ? "pending"
+      : currentSession && !session.isError && !verificationRequired
+        ? "confirmed"
+        : "unverified";
 
   const verifySession = useCallback(async (failClosed: boolean) => {
     if (failClosed) setVerificationRequired(true);
@@ -69,12 +84,11 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
     router.replace(loginPathForPortal(currentPath));
   }, [confirmedSignedOut, currentPath, queryClient, router]);
 
+  let content: ReactNode;
   if (session.isPending || confirmedSignedOut || (verificationRequired && session.isFetching)) {
-    return <PortalSessionLoading />;
-  }
-
-  if (session.isError || verificationRequired || invalidProjection || !session.data?.data) {
-    return (
+    content = <PortalSessionLoading />;
+  } else if (session.isError || verificationRequired || invalidProjection || !session.data?.data) {
+    content = (
       <main className="mx-auto flex min-h-dvh max-w-lg items-center px-5">
         <Notice
           role="alert"
@@ -90,12 +104,10 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
         </Notice>
       </main>
     );
-  }
-
-  const user = session.data.data.user;
-  return (
-    <PortalSessionProvider value={session.data.data}>
-      <UnsavedChangesProvider>
+  } else {
+    const user = session.data.data.user;
+    content = (
+      <PortalSessionProvider value={session.data.data}>
         <PortalMaintenanceGate
           pathname={pathname}
           canOperate={hasPlatformView(user)}
@@ -104,7 +116,18 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
           controls={<><AccessibilityControl placement="header" /><PortalUserMenu /></>}
           loading={<PortalSessionLoading />}
         />
-      </UnsavedChangesProvider>
-    </PortalSessionProvider>
+      </PortalSessionProvider>
+    );
+  }
+
+  // The unsaved-changes guard and the call runtime sit above the session, maintenance and loading
+  // presentations, so swapping those never unmounts a live call. Keyed by user: another account
+  // never inherits a call.
+  return (
+    <UnsavedChangesProvider>
+      <ActiveECounselingRuntimeProvider key={callUser?.id ?? "anonymous"} user={callUser} authState={authState}>
+        {content}
+      </ActiveECounselingRuntimeProvider>
+    </UnsavedChangesProvider>
   );
 }

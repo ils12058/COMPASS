@@ -46,10 +46,12 @@ export function ParticipantVideo({ track, mirrored = false, className }: { track
   );
 }
 
-// The other participant's sound, rendered by COMPASS and only for the remote participant. When the
-// browser refuses to start audio without a click (autoplay policy), a compact "Play audio" control
-// appears instead of leaving the person unable to hear.
-export function RemoteAudio({ track, speakerId }: { track: MediaStreamTrack | null; speakerId: string | null }) {
+// The other participant's sound. The portal's E-Counseling runtime owns the one <audio> element
+// for the call (ADR-094), so moving between pages, or between the full stage and the call dock,
+// never doubles the sound or restarts playback; this person's own audio is never played. When the
+// browser refuses to start audio without a click (autoplay policy), `blocked` asks for the compact
+// "Play audio" control instead of leaving the person unable to hear.
+export function useRemoteAudioPlayback(track: MediaStreamTrack | null, speakerId: string | null) {
   const ref = useRef<HTMLAudioElement>(null);
   const [blockedTrack, setBlockedTrack] = useState<MediaStreamTrack | null>(null);
 
@@ -91,22 +93,22 @@ export function RemoteAudio({ track, speakerId }: { track: MediaStreamTrack | nu
     }
   }
 
+  return { ref, blocked: Boolean(blockedTrack && blockedTrack === track), resume };
+}
+
+// The compact intervention when the browser is holding the other person's audio back.
+export function PlayAudioPrompt({ onPlay, className }: { onPlay: () => void; className?: string }) {
   return (
-    <>
-      <audio ref={ref} autoPlay className="hidden" />
-      {blockedTrack && blockedTrack === track ? (
-        <div role="status" className="flex items-center gap-2 rounded-sm bg-ink/85 py-1 pl-3 pr-1 text-sm text-on-brand">
-          <span>Audio is ready</span>
-          <button
-            type="button"
-            onClick={() => void resume()}
-            className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-on-brand px-3 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
-          >
-            <Volume2 aria-hidden="true" size={16} />
-            Play audio
-          </button>
-        </div>
-      ) : null}
-    </>
+    <div role="status" className={cn("flex items-center gap-2 rounded-sm bg-ink/85 py-1 pl-3 pr-1 text-sm text-on-brand", className)}>
+      <span>Audio is ready</span>
+      <button
+        type="button"
+        onClick={onPlay}
+        className="inline-flex min-h-10 items-center gap-1.5 rounded-md bg-on-brand px-3 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-ink"
+      >
+        <Volume2 aria-hidden="true" size={16} />
+        Play audio
+      </button>
+    </div>
   );
 }

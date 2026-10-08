@@ -113,11 +113,11 @@ export function PortalShell({ children }: { children: ReactNode }) {
         {/* tabIndex lets the skip link move focus here in every browser; the region itself draws
             no focus ring, and the next Tab continues to the first control in the content. While a
             collection's floating list tools are on the page, the extra bottom space keeps its last
-            records and pagination clear of them. */}
+            records and pagination clear of them; an E-Counseling call dock does the same. */}
         <main
           id="main-content"
           tabIndex={-1}
-          className="mx-auto max-w-[96rem] px-4 py-5 focus:outline-none has-[[data-floating-list-tools]]:pb-(--list-tools-clearance) sm:px-6 lg:px-8 lg:py-6"
+          className="mx-auto max-w-[96rem] px-4 py-5 focus:outline-none has-[[data-floating-list-tools]]:pb-(--list-tools-clearance) sm:px-6 lg:px-8 lg:py-6 [:root:has([data-call-dock])_&]:pb-(--call-dock-clearance)"
         >
           <MaintenanceNotice />
           {children}

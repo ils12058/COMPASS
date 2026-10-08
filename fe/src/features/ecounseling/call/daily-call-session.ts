@@ -89,8 +89,9 @@ export type CallSessionOptions = {
 };
 
 // One E-Counseling call: a Daily Call Object, the events it reports, and the COMPASS projection the
-// stage renders. It has no React dependency; `useDailyCall` binds it to a component with
-// useSyncExternalStore.
+// stage and the call dock render. It has no React dependency. The portal's E-Counseling runtime
+// (ADR-094) owns the only instance and binds it to React with useSyncExternalStore, so the call
+// outlives any one page.
 //
 // Each join is an attempt with its own number. Every asynchronous continuation and Daily event
 // checks that its attempt is still current, so a late credential, a slow join or an event from a
@@ -208,13 +209,16 @@ export class DailyCallSession {
     this.update({ ...initialCallSnapshot, phase: "left" });
   }
 
-  // Terminal cleanup when the workspace unmounts. The session object stays reusable, which is what
-  // React Strict Mode's simulated unmount and remount expect.
-  dispose() {
+  // Terminal cleanup: the portal runtime ending (unmount, sign-out, a confirmed lost session). It
+  // supersedes any attempt, leaves and destroys the call, and resolves once destruction finishes.
+  // The session object stays reusable, which is what React Strict Mode's simulated unmount and
+  // remount expect. A page that merely stops showing the call never calls this.
+  dispose(): Promise<void> {
     this.attempt += 1;
-    void this.teardown();
+    const done = this.teardown();
     this.requested = {};
     this.update(initialCallSnapshot);
+    return done;
   }
 
   setMicrophone(on: boolean) {

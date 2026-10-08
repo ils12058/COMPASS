@@ -5,7 +5,10 @@ import { LogOut, UserRound } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { useOptionalActiveECounselingCall } from "@/features/ecounseling/runtime/active-call-context";
+import { activeCaptureKinds } from "@/features/ecounseling/runtime/runtime-model";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedNavigation } from "@/features/form-safety/unsaved-changes-provider";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -21,6 +24,9 @@ export function PortalUserMenu() {
   const router = useRouter();
   const { confirmDiscard } = useUnsavedNavigation();
   const [error, setError] = useState<string | null>(null);
+  const [endCallOpen, setEndCallOpen] = useState(false);
+  const [ending, setEnding] = useState(false);
+  const call = useOptionalActiveECounselingCall();
   const logout = useAuthLogout();
   const profile = useProfileGetMyProfile({ query: { retry: false, staleTime: 60_000 } }).data?.data;
 
@@ -29,8 +35,7 @@ export function PortalUserMenu() {
     router.replace("/");
   }
 
-  async function signOut() {
-    if (!confirmDiscard()) return;
+  async function performSignOut() {
     setError(null);
     try {
       await logout.mutateAsync();
@@ -44,7 +49,32 @@ export function PortalUserMenu() {
     }
   }
 
+  async function signOut() {
+    if (!confirmDiscard()) return;
+    // A live E-Counseling call ends with the portal session, so signing out asks first (ADR-094).
+    if (call?.live) {
+      setEndCallOpen(true);
+      return;
+    }
+    await performSignOut();
+  }
+
+  // Leaves the call first, then signs out. Leaving the call doesn't stop recording or transcription.
+  async function endCallAndSignOut() {
+    setEnding(true);
+    try {
+      await call?.end();
+    } finally {
+      setEnding(false);
+      setEndCallOpen(false);
+    }
+    await performSignOut();
+  }
+
+  const runningCapture = call?.role === "COUNSELOR" ? activeCaptureKinds(call.canonical.media) : [];
+
   return (
+    <>
     <AccountMenu user={user} profile={profile} error={error}>
       <DropdownMenuItem asChild>
         <GuardedPortalLink href="/portal/account/profile">
@@ -58,5 +88,24 @@ export function PortalUserMenu() {
         {logout.isPending ? "Signing out…" : "Sign out"}
       </DropdownMenuItem>
     </AccountMenu>
+    <ConsequentialActionDialog
+      open={endCallOpen}
+      title="Sign out and end this call?"
+      confirmLabel="Sign out"
+      pendingLabel="Signing out…"
+      pending={ending || logout.isPending}
+      error={null}
+      onOpenChange={setEndCallOpen}
+      onConfirm={() => void endCallAndSignOut()}
+    >
+      <p>Signing out ends your E-Counseling call.</p>
+      {runningCapture.length ? (
+        <p>
+          {runningCapture.length > 1 ? "Recording and transcription are" : runningCapture[0] === "recording" ? "Recording is" : "Transcription is"} still
+          active. Ending your call doesn’t confirm that {runningCapture.length > 1 ? "they have" : "it has"} stopped.
+        </p>
+      ) : null}
+    </ConsequentialActionDialog>
+    </>
   );
 }

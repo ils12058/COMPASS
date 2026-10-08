@@ -17,8 +17,9 @@ const transcriptionLabels: Partial<Record<ECounselingCaptureStatus, string>> = {
 
 // What is being captured right now, from the COMPASS session state only: never from consent alone
 // and never from a provider event in the browser. Shown on the call stage for both people.
-export function captureIndicators(media: MediaWorkspaceState): Indicator[] {
+export function captureIndicators(media: MediaWorkspaceState | undefined): Indicator[] {
   const indicators: Indicator[] = [];
+  if (!media) return indicators;
   const recording = recordingLabels[media.recording.capture_status];
   const transcription = transcriptionLabels[media.transcription.capture_status];
   if (recording) indicators.push({ key: "recording", label: recording, recording: media.recording.capture_status === ECounselingCaptureStatus.ACTIVE });
@@ -27,7 +28,7 @@ export function captureIndicators(media: MediaWorkspaceState): Indicator[] {
 }
 
 // The live region is always present, so a capture starting or stopping is announced.
-export function CaptureIndicators({ media, className }: { media: MediaWorkspaceState; className?: string }) {
+export function CaptureIndicators({ media, className }: { media: MediaWorkspaceState | undefined; className?: string }) {
   const indicators = captureIndicators(media);
   return (
     <div aria-live="polite" className={className}>

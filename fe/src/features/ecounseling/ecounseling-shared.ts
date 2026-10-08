@@ -99,3 +99,11 @@ export function formatECounselingDateTime(value: string | null | undefined): str
   if (!value) return "Not available";
   return formatInstitutionalDateTime(value);
 }
+
+// The session state refreshes while the call is joined or something is being captured or prepared,
+// so capture and file states stay current. Provider events in the call only ask for an extra refresh.
+export const SESSION_REFRESH_MS = 7000;
+
+export function sessionRefreshInterval(inCall: boolean, media: MediaWorkspaceState | undefined): number | false {
+  return inCall || hasLiveOrTransitionalMedia(media) || hasPreparingMediaFile(media) ? SESSION_REFRESH_MS : false;
+}

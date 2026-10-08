@@ -16,6 +16,15 @@ const tones: Record<CallControlTone, string> = {
   leave: "border-danger bg-danger text-on-brand hover:bg-danger/90",
 };
 
+// The tile styling, shared with links that act as call controls (the dock's Return to session).
+export function callControlClass(tone: CallControlTone = "default", className?: string) {
+  return cn(
+    "relative inline-flex min-h-14 min-w-[3.25rem] max-w-28 flex-auto flex-col items-center justify-center gap-1 rounded-md border px-1.5 py-1.5 text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none",
+    tones[tone],
+    className,
+  );
+}
+
 // One square-ish call control: an icon above a short visible label, at least 44px each way. It is
 // a feature control for the live call, not the global IconAction (ADR-091 keeps IconAction for
 // conventional low-risk actions). The visible label is always part of the accessible name; pass
@@ -37,11 +46,7 @@ export const CallControl = forwardRef<
     type="button"
     aria-label={accessibleName}
     disabled={disabled}
-    className={cn(
-      "relative inline-flex min-h-14 min-w-[3.25rem] max-w-28 flex-auto flex-col items-center justify-center gap-1 rounded-md border px-1.5 py-1.5 text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none",
-      tones[tone],
-      className,
-    )}
+    className={callControlClass(tone, className)}
     {...props}
   >
     <Icon aria-hidden="true" size={20} strokeWidth={2} />
