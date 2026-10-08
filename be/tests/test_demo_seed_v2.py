@@ -82,8 +82,10 @@ def assert_encrypted(item, column, sentence):
         cursor.execute(f"SELECT row_to_json(t)::text FROM {table} t WHERE {pk} = %s", [item.pk])
         (stored,) = cursor.fetchone()
     assert bool(sentence)
-    assert sentence not in stored
-    assert getattr(item, column).startswith("gAAAAA")
+    contains_plaintext = sentence in stored
+    encrypted_token_present = getattr(item, column).startswith("gAAAAA")
+    assert not contains_plaintext, "Known confidential prose appeared in the persisted row."
+    assert encrypted_token_present, "Expected an encrypted confidential-content token."
 
 
 class DemoV2CompositionTests(TestCase):
