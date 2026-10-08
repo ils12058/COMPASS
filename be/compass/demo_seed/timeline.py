@@ -13,8 +13,7 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
 
-from django.conf import settings
-from django.utils import timezone
+from compass.common import institutional_time
 
 HISTORICAL_ACADEMIC_YEARS = ("2024-2025", "2025-2026")
 CURRENT_ACADEMIC_YEAR = "2026-2027"
@@ -53,7 +52,7 @@ class DemoTimelineError(RuntimeError):
 def institution_today() -> date:
     """The institutional date used as the default anchor; a narrow seam for tests."""
 
-    return timezone.localdate()
+    return institutional_time.institution_today()
 
 
 def _is_business_day(day: date) -> bool:
@@ -116,7 +115,7 @@ def resolve_timeline(*, anchor: date | None = None) -> DemoTimeline:
             f"between {EARLIEST_ANCHOR.isoformat()} and {LATEST_ANCHOR.isoformat()} "
             f"(institutional date is {resolved.isoformat()})."
         )
-    return DemoTimeline(anchor=resolved, zone=ZoneInfo(settings.TIME_ZONE))
+    return DemoTimeline(anchor=resolved, zone=institutional_time.institution_zone())
 
 
 __all__ = [

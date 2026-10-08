@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID
 
@@ -20,7 +20,7 @@ from compass.audit.actions import GRADUATE_TRACER_DRAFT_CREATED, GRADUATE_TRACER
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
-from compass.common.institutional_time import institution_today
+from compass.common.institutional_time import institution_day_start, institution_today
 from compass.common.ordering import parse_ordering
 
 from .confidential_content import (
@@ -923,10 +923,7 @@ def _submission_boundary(value: date, *, following_day: bool = False) -> datetim
     if not isinstance(value, date) or isinstance(value, datetime):
         raise InvalidGraduateTracerInput("submission date filters must be calendar dates.")
     local_date = value + timedelta(days=1) if following_day else value
-    return timezone.make_aware(
-        datetime.combine(local_date, time.min),
-        timezone.get_current_timezone(),
-    )
+    return institution_day_start(local_date)
 
 
 def list_submitted_for_head(

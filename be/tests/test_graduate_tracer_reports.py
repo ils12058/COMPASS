@@ -20,6 +20,7 @@ from compass.accounts.models import (
 )
 from compass.accounts.services import set_user_capability_override
 from compass.authentication.sessions import create_auth_session
+from compass.common.institutional_time import institution_zone
 from compass.graduate_tracer.models import (
     GraduateTracerEducation,
     GraduateTracerProfessionalExam,
@@ -91,10 +92,9 @@ def auth_client(user: User) -> Client:
 
 
 def at_local(year: int, month: int, day: int, hour: int = 12):
-    return timezone.make_aware(
-        datetime(year, month, day, hour, 0, 0),
-        timezone.get_current_timezone(),
-    )
+    """A UCN civil time; report date filters are institutional days (ADR-096)."""
+
+    return datetime(year, month, day, hour, 0, 0, tzinfo=institution_zone())
 
 
 def make_response(
@@ -237,7 +237,7 @@ def test_empty_report_is_typed_and_zero_safe():
 
 
 @pytest.mark.django_db
-@override_settings(TIME_ZONE="Asia/Manila")
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
 def test_submission_period_filters_are_inclusive_local_dates_not_cohorts():
     sync_policy()
     make_response(

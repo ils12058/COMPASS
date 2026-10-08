@@ -29,7 +29,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
-from compass.common.institutional_time import institution_today
+from compass.common.institutional_time import institution_date, institution_today
 from compass.common.ordering import parse_ordering
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
 from compass.documents.template_specs import (
@@ -124,6 +124,10 @@ class GoodMoralNotReady(GoodMoralConflict):
 
 class GoodMoralPreparationChanged(GoodMoralConflict):
     pass
+
+
+class GoodMoralCertificateDateInFuture(GoodMoralConflict):
+    """A stored certificate date is after the institutional date of preparation or issuance."""
 
 
 class GoodMoralDocumentUnavailable(GoodMoralError):
@@ -876,7 +880,7 @@ def prepare_request(
             return _queryset().get(pk=item.pk)
         if item.status != GoodMoralStatus.REQUESTED:
             raise GoodMoralConflict("Only a requested Good Moral certificate can be prepared.")
-        _validate_issuance_completeness(item)
+        _validate_issuance_completeness(item, on=institution_date(prepared_at))
         item.status = GoodMoralStatus.READY_FOR_ISSUANCE
         item.prepared_by = actor
         item.prepared_at = prepared_at
@@ -897,8 +901,19 @@ def _require_meaningful(value: str, label: str) -> None:
         raise GoodMoralConflict(f"{label} must be completed before issuance.")
 
 
-def _validate_issuance_completeness(item: GoodMoralRequest) -> None:
+def _validate_issuance_completeness(item: GoodMoralRequest, *, on: date) -> None:
+    """Check what the certificate will state, as of the institutional date ``on``.
+
+    The date checks repeat the write-time rules for rows saved before them (ADR-096); a stored date
+    is never changed here, only refused until corrected.
+    """
+
     _require_meaningful(item.applicant_name_snapshot, "Applicant name")
+    if item.official_receipt_date is not None and item.official_receipt_date > on:
+        raise GoodMoralCertificateDateInFuture(
+            "Official Receipt date cannot be in the future. "
+            "Correct the certificate details before issuance."
+        )
     if item.variant == GoodMoralVariant.CURRENT_STUDENT:
         if item.inventory_id is None or item.academic_year_id is None:
             raise GoodMoralConflict("Current Student Good Moral provenance is incomplete.")
@@ -911,6 +926,11 @@ def _validate_issuance_completeness(item: GoodMoralRequest) -> None:
         _require_meaningful(item.degree_snapshot, "Degree")
         if item.graduation_date is None:
             raise GoodMoralConflict("Graduation date must be completed before issuance.")
+        if item.graduation_date > on:
+            raise GoodMoralCertificateDateInFuture(
+                "Graduation date cannot be in the future. "
+                "Correct the certificate details before issuance."
+            )
         return
     raise GoodMoralConfigurationConflict("The Good Moral variant is not supported.")
 
@@ -975,7 +995,7 @@ def issue_request(
                     "The Student must still be CURRENT before an F4 certificate can be issued."
                 )
 
-        _validate_issuance_completeness(item)
+        _validate_issuance_completeness(item, on=institution_date(issued_at))
         family_key = _family_for_variant(item.variant)
         try:
             revision = require_active_supported_form_revision(family_key)
@@ -1169,7 +1189,7 @@ def build_certificate_render_context(item: GoodMoralRequest) -> dict[str, object
             "academic_year": item.academic_year.label if item.academic_year_id else "",
             "degree": item.degree_snapshot,
             "graduation_date": item.graduation_date,
-            "issued_on": timezone.localtime(item.issued_at).date(),
+            "issued_on": institution_date(item.issued_at),
             "issuer_name": item.issued_by_name_snapshot,
             "official_receipt_number": item.official_receipt_number,
             "official_receipt_date": item.official_receipt_date,

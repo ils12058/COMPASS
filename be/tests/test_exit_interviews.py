@@ -32,6 +32,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.call_slips.models import CallSlip
+from compass.common.institutional_time import institution_today
 from compass.counseling.models import CounselingEncounter
 from compass.exit_interviews.confidential_content import (
     CONTENT_LIMITS,
@@ -407,7 +408,7 @@ def test_ensure_uses_profile_and_inventory_prefill_once_and_is_idempotent():
         first_name="Current",
         last_name="Person",
     )
-    birthday = date(timezone.localdate().year - 22, 1, 1)
+    birthday = date(institution_today().year - 22, 1, 1)
     set_profile(student, date_of_birth=birthday)
     set_profile(student, civil_status="Single")
     set_profile(student, contact_number="09170000000")
@@ -431,12 +432,10 @@ def test_ensure_uses_profile_and_inventory_prefill_once_and_is_idempotent():
     assert ExitInterview.objects.filter(student=student, academic_year=current).count() == 1
 
     body = first.json()
+    # The age snapshot is taken on the institutional (Manila) date.
+    today = institution_today()
     expected_age = (
-        timezone.localdate().year
-        - birthday.year
-        - int(
-            (timezone.localdate().month, timezone.localdate().day) < (birthday.month, birthday.day)
-        )
+        today.year - birthday.year - int((today.month, today.day) < (birthday.month, birthday.day))
     )
     assert body["student_name"] == "Current Person"
     assert body["age"] == expected_age

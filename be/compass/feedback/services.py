@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID
 
@@ -19,6 +19,7 @@ from compass.audit.actions import CSM_SUBMITTED, CUSTOMER_FEEDBACK_SUBMITTED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.institutional_time import institution_day_start
 from compass.common.ordering import parse_ordering
 from compass.institutional_forms.filter_options import represented_form_revisions
 from compass.institutional_forms.models import FormRevision
@@ -199,10 +200,7 @@ def _submission_boundary(value: date, *, following_day: bool = False) -> datetim
     if not isinstance(value, date) or isinstance(value, datetime):
         raise InvalidFeedbackInput("submission date filters must be calendar dates.")
     local_date = value + timedelta(days=1) if following_day else value
-    return timezone.make_aware(
-        datetime.combine(local_date, time.min),
-        timezone.get_current_timezone(),
-    )
+    return institution_day_start(local_date)
 
 
 def _validate_submission_range(

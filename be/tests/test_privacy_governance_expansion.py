@@ -8,9 +8,9 @@ from unittest.mock import patch
 import pytest
 from django.db import IntegrityError, transaction
 from django.test import Client
-from django.utils import timezone
 
 from compass.audit.models import AuditEvent
+from compass.common.institutional_time import institution_today
 from compass.privacy_governance.models import (
     PrivacyNotice,
     PrivacyNoticeAcknowledgment,
@@ -37,7 +37,7 @@ def notice_payload(code="NOTICE-1", audiences=None, effective_on=None):
         "summary": "A short human-entered notice summary.",
         "body": "Plain text\nwith two lines.",
         "requires_acknowledgment": True,
-        "effective_on": str(effective_on or timezone.localdate()),
+        "effective_on": str(effective_on or institution_today()),
     }
 
 
@@ -100,7 +100,7 @@ def test_audiences_future_effective_date_and_publication_step_up():
     no_mfa = auth_client(dpo_user)
     student = auth_client(make_user("audience-student@example.edu", role="STUDENT"))
     staff = auth_client(make_user("audience-staff@example.edu"))
-    payload = notice_payload("STAFF-ONLY", ["STAFF"], timezone.localdate() + timedelta(days=1))
+    payload = notice_payload("STAFF-ONLY", ["STAFF"], institution_today() + timedelta(days=1))
     assert (
         post_json(dpo, f"{ROOT}/notices", payload | {"audiences": ["STAFF", "STAFF"]}).status_code
         == 422
@@ -119,7 +119,7 @@ def test_audiences_future_effective_date_and_publication_step_up():
         patch_json(
             dpo,
             f"{ROOT}/notice-revisions/{revision_id}",
-            {"effective_on": str(timezone.localdate())},
+            {"effective_on": str(institution_today())},
         ).status_code
         == 200
     )

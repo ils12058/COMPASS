@@ -10,6 +10,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 
 from compass.accounts.models import StudentLifecycleStatus, User
+from compass.common.institutional_time import institution_date
 from compass.inventory.models import (
     CivilStatusCategory,
     CurrentReligionCategory,
@@ -496,7 +497,7 @@ def _age_section(
             category = LEGACY_KEY
             legacy_seen = True
         else:
-            age = derive_age_on(date_of_birth=dob, on_date=submitted_at.date())
+            age = derive_age_on(date_of_birth=dob, on_date=institution_date(submitted_at))
             if age < 0:
                 category = LEGACY_KEY
                 legacy_seen = True

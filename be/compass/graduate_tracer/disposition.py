@@ -1,12 +1,14 @@
 """Irreversible, allowlisted aggregate-preserving Graduate Tracer anonymization."""
 
-from datetime import datetime, time
-
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from django.utils import timezone
 
 from compass.accounts.models import User
+from compass.common.institutional_time import (
+    institution_date,
+    institution_day_start,
+    institution_today,
+)
 
 from .models import GTS_SCHEMA_VERSION, GraduateTracerResponse, GraduateTracerStatus
 from .participation import GraduateTracerDisposedParticipation
@@ -88,11 +90,10 @@ def anonymize_response(source_id):
         or source.instrument_schema_version != GTS_SCHEMA_VERSION
     ):
         raise ValueError("Only identifiable submitted responses may be anonymized.")
-    # Preserve calendar-day report filters without retaining exact submission timestamps.
-    submitted_day = timezone.make_aware(
-        datetime.combine(timezone.localdate(source.submitted_at), time.min)
-    )
-    operation_day = timezone.make_aware(datetime.combine(timezone.localdate(), time.min))
+    # Preserve calendar-day report filters without retaining exact submission timestamps. Those
+    # filters use institutional days, so the retained values are institutional day starts.
+    submitted_day = institution_day_start(institution_date(source.submitted_at))
+    operation_day = institution_day_start(institution_today())
     retained = GraduateTracerResponse.objects.create(
         student=None,
         confidential_content_ciphertext=None,
@@ -110,7 +111,7 @@ def anonymize_response(source_id):
     GraduateTracerDisposedParticipation.objects.get_or_create(
         student_id=source.student_id,
         instrument_schema_version=GTS_SCHEMA_VERSION,
-        defaults={"disposed_on": timezone.localdate()},
+        defaults={"disposed_on": institution_today()},
     )
     # Only the three domain-owned child tables cascade; protected relationships stay intact.
     source.delete()

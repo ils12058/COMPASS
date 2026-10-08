@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import timedelta
 
 import pytest
-from django.utils import timezone
 
+from compass.common.institutional_time import institution_today
 from tests.test_privacy_governance import (
     auth_client,
     make_dpo,
@@ -35,7 +35,7 @@ def test_retained_privacy_conflicts_use_stable_codes_for_distinct_recoveries():
     dpo = auth_client(make_dpo(), recent_mfa=True)
     student = auth_client(make_user("conflict-student@example.edu", role="STUDENT"))
 
-    future = notice_payload("FUTURE", effective_on=timezone.localdate() + timedelta(days=3))
+    future = notice_payload("FUTURE", effective_on=institution_today() + timedelta(days=3))
     notice = post_json(dpo, f"{ROOT}/notices", future)
     notice_id = notice.json()["id"]
     draft_id = notice.json()["draft_revision"]["id"]
@@ -51,7 +51,7 @@ def test_retained_privacy_conflicts_use_stable_codes_for_distinct_recoveries():
     missing_date = post_json(dpo, f"{ROOT}/notice-revisions/{draft_id}/publish", {})
     assert error_code(missing_date) == "privacy_notice_not_yet_effective"
     patch_json(
-        dpo, f"{ROOT}/notice-revisions/{draft_id}", {"effective_on": str(timezone.localdate())}
+        dpo, f"{ROOT}/notice-revisions/{draft_id}", {"effective_on": str(institution_today())}
     )
     assert post_json(dpo, f"{ROOT}/notice-revisions/{draft_id}/publish", {}).status_code == 200
 
@@ -125,7 +125,7 @@ def test_notice_family_projects_current_and_draft_revisions_without_n_plus_one(
 def test_revision_publish_readiness_follows_server_date_and_state():
     sync_policy()
     dpo = auth_client(make_dpo("readiness-dpo@example.edu"), recent_mfa=True)
-    future = timezone.localdate() + timedelta(days=2)
+    future = institution_today() + timedelta(days=2)
     created = post_json(dpo, f"{ROOT}/notices", notice_payload("READY", effective_on=future))
     notice_id = created.json()["id"]
     revision_id = created.json()["draft_revision"]["id"]
@@ -137,7 +137,7 @@ def test_revision_publish_readiness_follows_server_date_and_state():
     patch_json(dpo, f"{ROOT}/notice-revisions/{revision_id}", {"effective_on": None})
     assert readiness() == {"ready": False, "blocker": "EFFECTIVE_DATE_MISSING"}
     patch_json(
-        dpo, f"{ROOT}/notice-revisions/{revision_id}", {"effective_on": str(timezone.localdate())}
+        dpo, f"{ROOT}/notice-revisions/{revision_id}", {"effective_on": str(institution_today())}
     )
     assert readiness() == {"ready": True, "blocker": None}
     listed = dpo.get(f"{ROOT}/notices/{notice_id}/revisions").json()["items"][0]

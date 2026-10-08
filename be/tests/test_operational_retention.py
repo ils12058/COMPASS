@@ -1,11 +1,12 @@
 """Governance boundaries, real anonymization and fake-only provider disposition."""
 
 import json
-from datetime import timedelta
+from datetime import UTC, date, datetime, timedelta
 from unittest.mock import patch
 
 import pytest
 from django.db import IntegrityError, transaction
+from django.test import override_settings
 from django.utils import timezone
 
 from compass.accounts.models import Capability, UserCapabilityOverride
@@ -15,6 +16,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.models import TOTPFactor
 from compass.common.errors import APIError
+from compass.common.institutional_time import institution_today
 from compass.ecounseling.media import process_media_webhook_event
 from compass.ecounseling.models import ECounselingConsent, ECounselingMediaCapture, ECounselingRoom
 from compass.graduate_tracer.disposition import (
@@ -66,7 +68,7 @@ def rule_values(category="GRADUATE_TRACER"):
         "action": action,
         "duration_days": 30,
         "policy_reference": "TEST FIXTURE ONLY - not institutional policy",
-        "effective_on": timezone.localdate(),
+        "effective_on": institution_today(),
     }
 
 
@@ -227,7 +229,7 @@ def test_api_rejects_invalid_or_unsupported_rules(dpo, update):
 
 def test_historical_effective_date_is_policy_metadata_and_activation_time_stays_real(dpo):
     source = tracer()
-    effective_on = timezone.localdate() - timedelta(days=730)
+    effective_on = institution_today() - timedelta(days=730)
     item = retention.create_rule(
         actor=dpo,
         values={**rule_values(), "effective_on": effective_on},
@@ -258,6 +260,60 @@ def test_historical_effective_date_is_policy_metadata_and_activation_time_stays_
     assert drafted.json()["effective_on"] == effective_on.isoformat()
 
 
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_effective_on_starts_on_the_manila_day_under_a_utc_runtime(dpo):
+    source = tracer()
+    item = retention.create_rule(
+        actor=dpo,
+        values={**rule_values(), "effective_on": date(2026, 10, 9)},
+        context=AuditContext.user(dpo),
+    )
+    item = retention.transition_rule(
+        actor=dpo,
+        rule_id=item.pk,
+        expected_revision=item.revision,
+        activate=True,
+        context=AuditContext.user(dpo),
+    )
+    # 15:30 UTC is still 8 October in Manila; 16:30 UTC is already 9 October.
+    before_midnight = datetime(2026, 10, 8, 15, 30, tzinfo=UTC)
+    after_midnight = datetime(2026, 10, 8, 16, 30, tzinfo=UTC)
+    assert not retention.active(item, before_midnight)
+    assert retention.active(item, after_midnight)
+
+    with patch("django.utils.timezone.now", return_value=before_midnight):
+        assert retention.discover_eligibility() == 0
+    GraduateTracerResponse.objects.filter(pk=source.pk).update(
+        submitted_at=after_midnight - timedelta(days=31)
+    )
+    with patch("django.utils.timezone.now", return_value=after_midnight):
+        assert retention.discover_eligibility() == 1
+    # The retention period itself stays exact instant arithmetic.
+    case = DispositionCase.objects.get(source_id=source.pk)
+    assert case.eligible_at == after_midnight - timedelta(days=1)
+
+
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_anonymized_submission_keeps_its_manila_day_for_report_filters(dpo):
+    source = tracer()
+    # 00:30 on 9 October in Manila is still 8 October in UTC.
+    GraduateTracerResponse.objects.filter(pk=source.pk).update(
+        submitted_at=datetime(2026, 10, 8, 16, 30, tzinfo=UTC)
+    )
+    anonymize_response(source.pk)
+
+    anonymous = GraduateTracerResponse.objects.get(anonymized_at__isnull=False)
+    assert anonymous.submitted_at == datetime(2026, 10, 8, 16, 0, tzinfo=UTC)
+    on_the_day = build_graduate_tracer_report(
+        submitted_from=date(2026, 10, 9), submitted_to=date(2026, 10, 9)
+    )
+    day_before = build_graduate_tracer_report(
+        submitted_from=date(2026, 10, 8), submitted_to=date(2026, 10, 8)
+    )
+    assert on_the_day["report_context"]["submitted_response_count"] == 1
+    assert day_before["report_context"]["submitted_response_count"] == 0
+
+
 def test_no_rule_draft_future_retired_and_exact_elapsed_day_boundary(dpo):
     source = tracer()
     assert retention.discover_eligibility() == 0
@@ -271,10 +327,10 @@ def test_no_rule_draft_future_retired_and_exact_elapsed_day_boundary(dpo):
         context=AuditContext.user(dpo),
     )
     OperationalRetentionRule.objects.filter(pk=item.pk).update(
-        effective_on=timezone.localdate() + timedelta(days=1)
+        effective_on=institution_today() + timedelta(days=1)
     )
     assert retention.discover_eligibility() == 0
-    OperationalRetentionRule.objects.filter(pk=item.pk).update(effective_on=timezone.localdate())
+    OperationalRetentionRule.objects.filter(pk=item.pk).update(effective_on=institution_today())
     case = discovered_case(source)
     assert case.eligible_at == source.submitted_at + timedelta(days=30)
     assert case.state == "READY" and case.approved_at is None
@@ -358,7 +414,7 @@ def test_frozen_single_case_new_source_not_approved_and_dispatch_after_commit(
 def test_anonymization_map_children_aggregate_identity_and_personal_api(dpo):
     active_rule(dpo)
     source = tracer(
-        birth_date=timezone.localdate(),
+        birth_date=institution_today(),
         undergraduate_degree_reasons=["PEER_INFLUENCE"],
         advanced_study_reasons=["OTHER"],
         reasons_for_accepting_first_job=["OTHER"],

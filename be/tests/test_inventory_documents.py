@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+from datetime import UTC, date, datetime
 from io import BytesIO
 
 import pytest
 from django.core.management import call_command
-from django.test import Client
+from django.test import Client, override_settings
 from django.utils import timezone
 from pypdf import PdfReader
 
@@ -266,6 +267,27 @@ def test_individual_inventory_html_and_chromium_pdf_are_source_shaped_and_three_
         for record in caplog.records
     )
     assert "Very long school address" in read_confidential_content(school).school_attended_address
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_printed_submission_date_and_age_use_the_manila_day_under_a_utc_runtime():
+    call_command("sync_identity_policy", verbosity=0)
+    student = make_user("inventory-day-student@example.edu", "STUDENT")
+    actor = make_user("inventory-day-admin@example.edu", "IT_ADMIN")
+    item = make_submitted_inventory(student=student, actor=actor, code="INVDAY")
+    # Submitted at 00:30 on 9 October in Manila, still 8 October in UTC: the birthday.
+    StudentInventory.objects.filter(pk=item.pk).update(
+        submitted_at=datetime(2026, 10, 8, 16, 30, tzinfo=UTC),
+        date_of_birth=date(2006, 10, 9),
+    )
+    item.refresh_from_db()
+
+    form = build_inventory_render_context(item, private=read_inventory_private_projection(item))[
+        "inventory_form"
+    ]
+    assert form["submitted_date"] == "October 9, 2026"
+    assert form["age"] == 20
 
 
 @pytest.mark.django_db

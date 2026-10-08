@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from concurrent.futures import ThreadPoolExecutor
-from datetime import date, datetime, time, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from io import BytesIO
 from zoneinfo import ZoneInfo
 
@@ -39,6 +39,7 @@ from compass.referrals.services import (
     ReferralNotFound,
     ReferralNotPermitted,
     ReferralReferenceConflict,
+    build_referral_render_context,
     create_referral,
     get_referral,
     list_referrals,
@@ -246,15 +247,15 @@ def test_historical_source_dates_are_kept_while_compass_entry_times_stay_system_
 
 
 @pytest.mark.django_db
-@override_settings(TIME_ZONE="Asia/Manila", INSTITUTION_TIME_ZONE="Asia/Manila")
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
 def test_future_referred_on_is_rejected_against_the_institutional_date():
     sync_policy()
     head = make_head()
     student = make_user("student@example.edu", "STUDENT")
-    # 17:00 UTC on 8 October is already 01:00 on 9 October in Manila.
-    now = datetime(2026, 10, 8, 17, tzinfo=ZoneInfo("UTC"))
+    # The runtime stays UTC; 16:30 UTC on 8 October is already 00:30 on 9 October in Manila.
+    now = datetime(2026, 10, 8, 16, 30, tzinfo=UTC)
 
-    def create(referred_on, key):
+    def create(referred_on, key, received_at=None):
         return create_referral(
             actor=head,
             student_id=student.pk,
@@ -262,7 +263,7 @@ def test_future_referred_on_is_rejected_against_the_institutional_date():
             reason="Source reason",
             referrer_name="Referrer",
             referred_on=referred_on,
-            received_at=None,
+            received_at=received_at,
             idempotency_key=key,
             request_fingerprint="b" * 64,
             context=context(head),
@@ -272,6 +273,9 @@ def test_future_referred_on_is_rejected_against_the_institutional_date():
     assert create(date(2026, 10, 9), "institutional-today").referred_on == date(2026, 10, 9)
     with pytest.raises(InvalidReferralInput, match="referred_on cannot be in the future"):
         create(date(2026, 10, 10), "institutional-tomorrow")
+    # Received at this very instant is received on 9 October in Manila, not on the UTC date.
+    received = create(date(2026, 10, 9), "received-now", received_at=now)
+    assert received.received_at == now
 
     client = auth_client(head)
     response = client.post(
@@ -291,6 +295,45 @@ def test_future_referred_on_is_rejected_against_the_institutional_date():
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_referral_request"
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_reference_year_and_slip_dates_follow_the_manila_calendar_under_a_utc_runtime():
+    sync_policy()
+    head = make_head()
+    student = make_user("student@example.edu", "STUDENT")
+    # 16:30 UTC on 31 December is already 00:30 on 1 January 2027 in Manila.
+    new_year = datetime(2026, 12, 31, 16, 30, tzinfo=UTC)
+
+    item = create_referral(
+        actor=head,
+        student_id=student.pk,
+        course_year_block="BSIS 2B",
+        reason="Source reason",
+        referrer_name="Referrer",
+        referred_on=date(2026, 12, 30),
+        received_at=new_year,
+        idempotency_key="new-year",
+        request_fingerprint="c" * 64,
+        context=context(head),
+        now=new_year,
+    )
+    record_action(
+        actor=head,
+        referral_id=item.pk,
+        action_type="CALL_PARENT_GUARDIAN",
+        occurred_at=new_year + timedelta(minutes=15),
+        remarks="Called after midnight",
+        context=context(head),
+        now=new_year + timedelta(minutes=20),
+    )
+
+    assert item.reference_code == "REF-2027-000001"
+    slip = build_referral_render_context(get_referral(actor=head, referral_id=item.pk))["referral"]
+    assert (slip["received_date"], slip["received_time"]) == (date(2027, 1, 1), time(0, 30))
+    called = next(row for row in slip["actions"] if row["recorded"])
+    assert (called["date"], called["time"]) == (date(2027, 1, 1), time(0, 45))
 
 
 @pytest.mark.django_db

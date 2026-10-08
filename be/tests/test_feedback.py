@@ -26,6 +26,7 @@ from compass.common.idempotency import (
     IdempotencyUnavailable,
     RedisIdempotencyStore,
 )
+from compass.common.institutional_time import institution_zone
 from compass.feedback import api as feedback_api
 from compass.feedback.confidential_content import read_feedback_confidential_content
 from compass.feedback.models import (
@@ -716,7 +717,8 @@ def test_customer_feedback_review_filters_name_service_dates_and_pagination():
         beta_payload,
     ).json()["id"]
 
-    zone = timezone.get_current_timezone()
+    # Submission-date filters are institutional calendar days (ADR-096), not runtime-zone days.
+    zone = institution_zone()
     CustomerFeedbackResponse.objects.filter(pk=alpha_id).update(
         submitted_at=timezone.make_aware(datetime(2026, 9, 20, 23, 59), zone)
     )
@@ -790,7 +792,8 @@ def test_csm_review_filters_service_dates_and_preserves_client_type_contract():
     second["service_availed"] = "Document Certification"
     second_id = post_json(client, "/api/v1/feedback/csm", second).json()["id"]
 
-    zone = timezone.get_current_timezone()
+    # Submission-date filters are institutional calendar days (ADR-096), not runtime-zone days.
+    zone = institution_zone()
     ClientSatisfactionResponse.objects.filter(pk=first_id).update(
         submitted_at=timezone.make_aware(datetime(2026, 9, 20, 23, 59), zone)
     )

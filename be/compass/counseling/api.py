@@ -15,6 +15,7 @@ from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.common.institutional_time import to_institution_time
 from compass.service_catalog.api import DeliveryMode
 
 from .services import (
@@ -34,7 +35,6 @@ from .services import (
     CounselingRoutineInterviewAlreadyLinked,
     CounselingRoutineInterviewMismatch,
     InvalidCounselingInput,
-    _institution_zone,
     create_encounter,
     get_encounter_creation_options,
     get_encounter_for_actor,
@@ -286,7 +286,7 @@ def _raise(exc: CounselingError) -> NoReturn:
 
 
 def _institutional(value: datetime) -> datetime:
-    return value.astimezone(_institution_zone())
+    return to_institution_time(value)
 
 
 def _encounter(item) -> dict[str, object]:
