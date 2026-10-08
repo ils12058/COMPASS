@@ -2173,13 +2173,18 @@ PanelFooter: the one submit area
 Do not wrap every pair of inputs in its own card. Controlled institutional wording keeps its own
 approval; visual work adapts layout, not wording.
 
-Live session workspaces, such as E-Counseling, depart from detail-page anatomy. The session stage
-(the video or the way into it, whether it can be joined, and what is being captured) sits beside the
-working area and stays in view with CSS `sticky` while the work scrolls with the page. The two
-columns switch on at the workspace's own width (a container query), so an expanded dock stacks them
-instead of squeezing them. Keep one document scroll: no fixed overlays and no nested scroll panes.
-Keep the media frame mounted at one place in the tree, so layout changes only reflow it. On phones
-and tablets the stage scrolls with the page like any other region.
+Live session workspaces, such as E-Counseling, depart from detail-page anatomy (ADR-093). The call
+stage (the other participant, the self view, call state, what is being captured, and the call
+controls) is the most prominent object; it sits beside the working area and stays in view with CSS
+`sticky` while the work scrolls with the page. The two columns switch on at the workspace's own
+width (a container query), so an expanded dock stacks them instead of squeezing them. Wide Counselor
+workspaces offer named layout presets (Compact, Balanced, Focus), never a drag splitter; phones get
+one adaptive layout with the call edge to edge and one row of call controls. Secondary work and
+settled metadata collapse into disclosures with a visible one-line status; active capture, device
+and connection problems, pending decisions and Leave never do. Keep one document scroll: no fixed
+overlays and no nested scroll panes. Keep the call stage mounted at one place in the tree, so layout
+changes only reflow it. The call is a Daily Call Object rendered by COMPASS; recording and
+transcription start and stop only through the COMPASS backend.
 
 Overview is the portal's home, not a dashboard. It greets the reader by name and gives today's date,
 then puts what needs attention first, the reader's primary action (a `PageAction`) beside the greeting, and

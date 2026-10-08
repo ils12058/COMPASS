@@ -26,3 +26,10 @@ Help and named compact actions can be reused in future work, with a small Toolti
 The current E-Counseling change preserves Daily Prebuilt (`Daily.createFrame`), join/room security, media backend lifecycle, consent rules and reconciliation. A separate future PR will move to a Daily call object and COMPASS-owned call UI, reusing these primitives without preemptively duplicating call controls.
 
 Implementation guidance: [frontend UI guideline](../../../fe/docs/ui-guidelines.md). Evidence and page matrix: [density audit](../../../fe/docs/ui-density-audit.md).
+
+## Live session refinement (ADR-093)
+
+[ADR-093](ADR-093-native-ecounseling-call-and-compact-session-workspace.md) is that future PR: the
+E-Counseling session now uses a Daily Call Object with COMPASS-owned call controls (`CallControl`),
+shared `Disclosure`/`DisclosureSection` progressive disclosure and named layout presets. `IconAction`
+keeps its low-risk scope; recording and consent stay explicitly labelled and reviewed.

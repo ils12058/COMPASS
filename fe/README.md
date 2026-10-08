@@ -62,5 +62,8 @@ pnpm test:ui
 creates a production build.
 
 `pnpm test:ui` runs the synthetic browser regressions against a local Next server on
-port 3107; see the audit for browser setup and coverage. Complete API generation before
+port 3107 (`pnpm dev --port 3107`); see the audit for browser setup and coverage. The
+E-Counseling suite (`tests/ecounseling-call.browser.mjs`) installs a fake Daily Call Object
+through a development-only seam, so it needs the development server, never reaches Daily, and
+uses synthetic camera and microphone tracks. Complete API generation before
 running tests, since regeneration temporarily removes the generated client directory.
