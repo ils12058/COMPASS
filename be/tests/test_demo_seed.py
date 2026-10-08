@@ -1102,8 +1102,8 @@ def test_feedback_opportunities_reconcile_known_demo_sources_without_recreating_
         csm_submitted_at__isnull=False,
     )
     assert reconciled.count() == 6
-    assert report.existing["Customer Feedback"] == 4
-    assert report.existing["CSM responses"] == 4
+    assert report.existing["Customer Feedback"] == len(raw_customer_ids)
+    assert report.existing["CSM responses"] == len(raw_csm_ids)
 
 
 @pytest.mark.django_db
