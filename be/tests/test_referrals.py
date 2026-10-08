@@ -18,7 +18,7 @@ from compass.appointments.models import Appointment, AppointmentReferenceCounter
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
-from compass.common.institutional_time import institution_today
+from compass.common.institutional_time import institution_date, institution_today
 from compass.counseling.models import CounselingEncounter
 from compass.institutional_forms.canonical import supported_schema_versions
 from compass.institutional_forms.models import FormFamily, FormRevision
@@ -144,7 +144,7 @@ def create_for(
         course_year_block="BSIS 4A",
         reason=reason,
         referrer_name=referrer_name,
-        referred_on=(current - timedelta(days=3)).astimezone(ZoneInfo("UTC")).date(),
+        referred_on=institution_date(current - timedelta(days=3)),
         received_at=received_at,
         idempotency_key=key,
         request_fingerprint=fingerprint,
@@ -446,7 +446,8 @@ def test_received_at_is_optional_but_naive_or_invalid_chronology_is_rejected():
             course_year_block="BSIS 4A",
             reason="Reason",
             referrer_name="Referrer",
-            referred_on=(now - timedelta(days=1)).date(),
+            # Both sides of the chronology rule are institutional (Manila) dates.
+            referred_on=institution_date(now - timedelta(days=1)),
             received_at=now - timedelta(days=2),
             idempotency_key="bad-order",
             request_fingerprint="d" * 64,
