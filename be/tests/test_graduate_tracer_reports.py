@@ -92,7 +92,7 @@ def auth_client(user: User) -> Client:
 
 
 def at_local(year: int, month: int, day: int, hour: int = 12):
-    """A UCN civil time; report date filters are institutional days (ADR-096)."""
+    """A UCN civil time; report date filters are institutional days (ADR-097)."""
 
     return datetime(year, month, day, hour, 0, 0, tzinfo=institution_zone())
 
