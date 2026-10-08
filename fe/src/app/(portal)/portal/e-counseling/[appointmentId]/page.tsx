@@ -6,5 +6,6 @@ import { ECounselingWorkspace } from "@/features/ecounseling/ecounseling-workspa
 
 export default async function Page({ params }: { params: Promise<{ appointmentId: string }> }) {
   const { appointmentId } = await params;
-  return <ECounselingWorkspace appointmentId={appointmentId} />;
+  // Keyed so another Appointment never inherits this one's call or session state.
+  return <ECounselingWorkspace key={appointmentId} appointmentId={appointmentId} />;
 }

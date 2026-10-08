@@ -1,31 +1,36 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
-import { ECounselingHelp } from "@/features/ecounseling/session-help";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { DisclosureSection } from "@/components/ui/disclosure";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
-import { Panel, PanelBody, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { Skeleton } from "@/components/ui/skeleton";
 import { AppointmentStatusBadge, formatAppointmentDateTime } from "@/features/appointments/appointments-shared";
+import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { CounselingContextPanel } from "@/features/counseling/counseling-workspace";
 import { RecordEncounterDialog } from "@/features/counseling/record-encounter-dialog";
 import { type EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
-import { getCounselingAccess } from "@/features/counseling/counseling-access";
-import { CounselorMediaControls } from "@/features/ecounseling/counselor-media-controls";
-import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
-import { ecounselingErrorMessage, hasLiveOrTransitionalMedia, hasPreparingMediaFile } from "@/features/ecounseling/ecounseling-shared";
-import { SessionStage, useSessionJoin } from "@/features/ecounseling/session-stage";
+import { CallStage } from "@/features/ecounseling/call/call-stage";
+import { activeCallPhases } from "@/features/ecounseling/call/call-model";
+import { useDailyCall, type DailyCallControls } from "@/features/ecounseling/call/use-daily-call";
+import { CaptureStartDialogs, CounselorMediaStrip, GovernedCaptureControls, useCounselorMedia } from "@/features/ecounseling/counselor-media";
+import { getECounselingAccess, type ECounselingAccess } from "@/features/ecounseling/ecounseling-access";
+import { captureStatusLabel, ecounselingErrorMessage, hasLiveOrTransitionalMedia, hasPreparingMediaFile } from "@/features/ecounseling/ecounseling-shared";
+import { ECounselingHelp } from "@/features/ecounseling/session-help";
+import { SessionFiles } from "@/features/ecounseling/session-files";
+import { LayoutPresetControl, phoneBleed, sessionGrid, sessionStageClass, useWideWorkspace, type LayoutPreset } from "@/features/ecounseling/session-layout";
 import { StudentConsentPanel } from "@/features/ecounseling/student-consent-panel";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { routineEvaluationStatusLabel, routineIntakeStatusLabel } from "@/features/routine-interviews/routine-interviews-shared";
-import type { AppointmentWorkspaceSummary, CounselorWorkspaceResponse, ProviderReadiness } from "@/lib/api/generated/model";
-import { CounselingContextAnchorType, CounselingEntryMode, DeliveryMode, ECounselingJoinState } from "@/lib/api/generated/model";
+import type { AppointmentWorkspaceSummary, CounselorWorkspaceResponse, MediaWorkspaceState, ProviderReadiness, StudentWorkspaceResponse } from "@/lib/api/generated/model";
+import { CounselingContextAnchorType, CounselingEntryMode, DeliveryMode, ECounselingCaptureStatus, ECounselingJoinState } from "@/lib/api/generated/model";
 import {
   getCounselingContextGetOverviewQueryKey,
   getCounselingListMyEncountersQueryKey,
@@ -34,108 +39,94 @@ import {
 import { getRoutineInterviewsListEncounterCandidatesQueryKey } from "@/lib/api/generated/routine-interviews/routine-interviews";
 import {
   getECounselingGetAssignedWorkspaceQueryKey,
+  getECounselingGetMyWorkspaceQueryKey,
   useECounselingGetAssignedWorkspace,
   useECounselingGetMyWorkspace,
 } from "@/lib/api/generated/e-counseling/e-counseling";
+import { cn } from "@/lib/utils/cn";
 
-// The session workspace is a container: it becomes two columns, with the session stage kept in view,
-// only when the workspace itself (not the window) is wide enough for both the video and the work
-// beside it. The portal dock's width is already accounted for.
-// The Counselor's working area carries the Student context and the session's records, so it gets
-// the wider column; a Student's holds only media consent, so the video gets more room.
-const sessionLayout = {
-  counselor: "grid items-start gap-5 @5xl:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)]",
-  student: "grid items-start gap-5 @5xl:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]",
-};
-const stickyStage = "@5xl:sticky @5xl:top-4";
+// The session state refreshes while the call is joined or something is being captured or prepared,
+// so capture and file states stay current. Provider events in the call only ask for an extra refresh.
+const SESSION_REFRESH_MS = 7000;
 
-function RecordStatus({ workspace, canManage }: { workspace: CounselorWorkspaceResponse; canManage: boolean }) {
-  const queryClient = useQueryClient();
-  const [open, setOpen] = useState(false);
-  const [uncertain, setUncertain] = useState(false);
-  const preset: EncounterOriginPreset = {
-    entryMode: CounselingEntryMode.APPOINTMENT,
-    appointmentId: workspace.appointment.id,
-    appointmentReference: workspace.appointment.reference_code,
-    studentName: workspace.student.display_name,
-    deliveryMode: DeliveryMode.ONLINE,
-  };
-
-  async function handleCreated() {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: getECounselingGetAssignedWorkspaceQueryKey(workspace.appointment.id) }),
-      queryClient.invalidateQueries({ queryKey: getCounselingListMyEncountersQueryKey() }),
-      queryClient.invalidateQueries({ queryKey: getCounselingContextGetOverviewQueryKey(CounselingContextAnchorType.APPOINTMENT, workspace.appointment.id) }),
-      ...(workspace.routine_interview ? [queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(workspace.routine_interview.id) })] : []),
-    ]);
-    setOpen(false);
-  }
-
-  if (workspace.counseling_encounter?.recorded) {
-    return (
-      <Panel aria-labelledby="e-counseling-encounter-heading">
-        <PanelHeader title="Counseling Encounter" titleId="e-counseling-encounter-heading" />
-        <PanelMessage action={<Link className={buttonVariants({ variant: "secondary" })} href={`/portal/counseling/encounters/${workspace.counseling_encounter.id}`}>View encounter</Link>}>
-          Encounter recorded.
-        </PanelMessage>
-      </Panel>
-    );
-  }
-
-  return (
-    <Panel aria-labelledby="e-counseling-encounter-heading">
-      <PanelHeader title="Counseling Encounter" titleId="e-counseling-encounter-heading" />
-      <PanelBody>
-        <p className="text-sm leading-6 text-muted">Not recorded</p>
-        {canManage ? (
-          <Button className="mt-3" disabled={uncertain} onClick={() => setOpen(true)}>
-            {uncertain ? "Recording result unconfirmed" : "Record encounter"}
-          </Button>
-        ) : null}
-        {canManage ? <RecordEncounterDialog open={open} onOpenChange={setOpen} preset={preset} onUncertain={() => setUncertain(true)} onCreated={handleCreated} /> : null}
-      </PanelBody>
-    </Panel>
-  );
+function sessionRefreshInterval(inCall: boolean, media: MediaWorkspaceState | undefined): number | false {
+  return inCall || hasLiveOrTransitionalMedia(media) || hasPreparingMediaFile(media) ? SESSION_REFRESH_MS : false;
 }
 
-// Who the session is with, when it is, which Appointment it belongs to, and its linked Routine
-// Interview. Readiness to join sits with the session stage.
+// Who the session is with, its status and time. The Appointment reference and the Routine Interview
+// sit under Session details, lower on the page.
 function SessionHeader({
   appointmentId,
   participant,
   appointment,
-  routine,
   mediaPolicyVersion,
+  layoutControl,
 }: {
   appointmentId: string;
   participant: string;
   appointment: AppointmentWorkspaceSummary;
-  routine?: { id: string; status: string } | null;
-  mediaPolicyVersion: CounselorWorkspaceResponse["media"]["media_policy_version"];
+  mediaPolicyVersion: MediaWorkspaceState["media_policy_version"];
+  // Shown beside the title only where the workspace is wide enough for presets to change anything.
+  layoutControl?: ReactNode;
 }) {
   return (
     <PageHeader
       title={participant}
-      description={formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}
       meta={<AppointmentStatusBadge status={appointment.status} />}
-      help={<ECounselingHelp mediaPolicyVersion={mediaPolicyVersion} />}
+      actions={layoutControl}
       back={(
-        <GuardedPortalLink href={`/portal/appointments/${appointmentId}`} className={pageBackLinkClass}>
-          ← Back to appointment
-        </GuardedPortalLink>
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <GuardedPortalLink href={`/portal/appointments/${appointmentId}`} aria-label="Back to appointment" className={cn(pageBackLinkClass, "mb-0")}>
+            <span aria-hidden="true">←&nbsp;</span>Appointment
+          </GuardedPortalLink>
+          <ECounselingHelp mediaPolicyVersion={mediaPolicyVersion} />
+        </div>
       )}
-      actions={routine ? (
-        <Link className={buttonVariants({ variant: "secondary" })} href={`/portal/routine-interviews/${routine.id}`}>
-          Routine Interview
-        </Link>
-      ) : undefined}
     >
-      <p className="mt-0.5 text-sm text-muted">
-        E-Counseling <span aria-hidden="true"> · </span>
-        <span className="font-mono text-ink">{appointment.reference_code}</span>
+      <p className="mt-1 text-sm text-muted">
+        {formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}
+        <span aria-hidden="true"> · </span>
+        <span className="whitespace-nowrap">E-Counseling</span>
       </p>
-      {routine ? <p className="mt-0.5 text-sm text-muted">Routine Interview · {routine.status}</p> : null}
     </PageHeader>
+  );
+}
+
+function SessionDetails({ appointment, routine, media }: {
+  appointment: AppointmentWorkspaceSummary;
+  routine?: { id: string; status: string } | null;
+  // A Student sees what was captured here; the Counselor sees it under Session files.
+  media?: MediaWorkspaceState;
+}) {
+  const captured = media
+    ? ([
+        ["Recording", media.recording.capture_status, media.recording.artifact_disposed_at],
+        ["Transcription", media.transcription.capture_status, media.transcription.artifact_disposed_at],
+      ] as const).filter(([, status]) => status !== ECounselingCaptureStatus.NOT_STARTED)
+    : [];
+  return (
+    <DisclosureSection title="Session details" status={<span className="font-mono">{appointment.reference_code}</span>}>
+      <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-6 gap-y-2 px-1 text-sm">
+        <dt className="text-muted">Appointment</dt>
+        <dd className="font-mono text-ink">{appointment.reference_code}</dd>
+        {routine ? (
+          <>
+            <dt className="text-muted">Routine Interview</dt>
+            <dd className="text-ink">
+              {routine.status}
+              <span aria-hidden="true"> · </span>
+              <Link className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href={`/portal/routine-interviews/${routine.id}`}>Open Routine Interview</Link>
+            </dd>
+          </>
+        ) : null}
+        {captured.map(([label, status, disposedAt]) => (
+          <div key={label} className="contents">
+            <dt className="text-muted">{label}</dt>
+            <dd className="text-ink">{disposedAt ? "Deleted under an approved retention rule" : captureStatusLabel(status)}</dd>
+          </div>
+        ))}
+      </dl>
+    </DisclosureSection>
   );
 }
 
@@ -143,13 +134,14 @@ function WorkspaceSkeleton() {
   return (
     <div aria-busy="true" className="@container">
       <span className="sr-only">Loading E-Counseling session…</span>
-      <Skeleton className="h-9 w-1/2" />
+      <Skeleton className="h-5 w-32" />
+      <Skeleton className="mt-3 h-9 w-1/2" />
       <Skeleton className="mt-2 h-5 w-2/3" />
-      <div className={`mt-5 ${sessionLayout.counselor}`}>
+      <div className={cn("mt-5 grid items-start gap-5", sessionGrid.balanced)}>
         <Skeleton className="aspect-video w-full" />
-        <div className="space-y-4">
-          <Skeleton className="h-40 w-full" />
-          <Skeleton className="h-56 w-full" />
+        <div className="space-y-3">
+          <Skeleton className="h-12 w-full" />
+          <Skeleton className="h-12 w-full" />
         </div>
       </div>
     </div>
@@ -163,6 +155,8 @@ function WorkspaceLoadError({ error, retry }: { error: unknown; retry: () => voi
 const JOIN_BOUNDARY_REFRESH_BUFFER_MS = 500;
 const MAX_BROWSER_TIMEOUT_MS = 2_147_000_000;
 
+// Re-reads the session when the join window opens or closes, so Join appears or disappears on time.
+// The backend still decides every join.
 function useECounselingBoundaryRefresh(
   appointmentId: string,
   readiness: ProviderReadiness | undefined,
@@ -227,119 +221,257 @@ export function ECounselingWorkspace({ appointmentId }: { appointmentId: string 
     : <CounselorWorkspace appointmentId={appointmentId} access={access} />;
 }
 
-function StudentWorkspace({ appointmentId, access }: { appointmentId: string; access: ReturnType<typeof getECounselingAccess> }) {
-  const [localCallJoined, setLocalCallJoined] = useState(false);
+// The call belongs to the workspace, above its loading and error states: a session refresh that
+// fails keeps the last confirmed session on screen and never unmounts a live call.
+function useSessionCall(appointmentId: string, workspaceKey: readonly unknown[]) {
+  const queryClient = useQueryClient();
+  const refresh = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: workspaceKey });
+  }, [queryClient, workspaceKey]);
+  const call = useDailyCall({ appointmentId, onProviderMediaEvent: refresh, onJoinFailed: refresh });
+  return { call, inCall: activeCallPhases.has(call.phase) };
+}
+
+function StudentWorkspace({ appointmentId, access }: { appointmentId: string; access: ECounselingAccess }) {
+  const [workspaceKey] = useState(() => getECounselingGetMyWorkspaceQueryKey(appointmentId));
+  const { call, inCall } = useSessionCall(appointmentId, workspaceKey);
   const workspace = useECounselingGetMyWorkspace(appointmentId, { query: {
     retry: false,
-    refetchInterval: (query) => localCallJoined || (hasLiveOrTransitionalMedia(query.state.data?.data.media) || hasPreparingMediaFile(query.state.data?.data.media)) ? 7000 : false,
+    refetchInterval: (query) => sessionRefreshInterval(inCall, query.state.data?.data.media),
   } });
-  const join = useSessionJoin({ appointmentId, refetchWorkspace: workspace.refetch, onCallChange: setLocalCallJoined });
   const data = workspace.data?.data;
-  const media = data?.media;
-
   useECounselingBoundaryRefresh(appointmentId, data?.provider_readiness, workspace.refetch);
 
-  if (workspace.isPending) return <WorkspaceSkeleton />;
-  if (workspace.isError || !data || !media) return <WorkspaceLoadError error={workspace.error} retry={() => void workspace.refetch()} />;
+  if (!data) {
+    return workspace.isPending ? <WorkspaceSkeleton /> : <WorkspaceLoadError error={workspace.error} retry={() => void workspace.refetch()} />;
+  }
+  return <StudentSession appointmentId={appointmentId} access={access} data={data} call={call} inCall={inCall} />;
+}
 
+function StudentSession({ appointmentId, access, data, call, inCall }: {
+  appointmentId: string;
+  access: ECounselingAccess;
+  data: StudentWorkspaceResponse;
+  call: DailyCallControls;
+  inCall: boolean;
+}) {
+  const routine = data.routine_interview;
   return (
     <div className="@container">
       <SessionHeader
-        mediaPolicyVersion={media.media_policy_version}
         appointmentId={appointmentId}
-        participant={`With ${data.counselor.display_name}`}
+        participant={data.counselor.display_name}
         appointment={data.appointment}
-        routine={data.routine_interview ? { id: data.routine_interview.id, status: `${routineIntakeStatusLabel(data.routine_interview.intake_status)} Intake` } : null}
+        mediaPolicyVersion={data.media.media_policy_version}
       />
-      <div className={sessionLayout.student}>
-        <SessionStage
-          className={stickyStage}
+      {/* The video gets the larger column; a Student's work is the permission decisions. */}
+      <div className="grid items-start gap-4 @4xl:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] @4xl:gap-5">
+        <CallStage
+          className={cn(phoneBleed, sessionStageClass.balanced, "[--call-stage-max-height:max(14rem,calc(100dvh-18rem))]")}
+          call={call}
+          participantName={data.counselor.display_name}
           readiness={data.provider_readiness}
-          media={media}
           canJoin={access.canJoinSelf}
-          inCall={localCallJoined}
-          join={join}
+          media={data.media}
         />
-        <div className="min-w-0">
-          <StudentConsentPanel appointmentId={appointmentId} access={access} media={media} />
+        <div className="min-w-0 space-y-4">
+          <StudentConsentPanel appointmentId={appointmentId} access={access} media={data.media} inCall={inCall} />
+          <SessionDetails
+            appointment={data.appointment}
+            routine={routine ? { id: routine.id, status: `${routineIntakeStatusLabel(routine.intake_status)} Intake` } : null}
+            media={data.media}
+          />
         </div>
       </div>
     </div>
   );
 }
 
-function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; access: ReturnType<typeof getECounselingAccess> }) {
-  const { user } = usePortalSession();
-  const counselingAccess = getCounselingAccess(user);
-  const [localCallJoined, setLocalCallJoined] = useState(false);
-  const queryClient = useQueryClient();
+function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; access: ECounselingAccess }) {
+  const [workspaceKey] = useState(() => getECounselingGetAssignedWorkspaceQueryKey(appointmentId));
+  const { call, inCall } = useSessionCall(appointmentId, workspaceKey);
   const workspace = useECounselingGetAssignedWorkspace(appointmentId, { query: {
     retry: false,
-    refetchInterval: (query) => localCallJoined || (hasLiveOrTransitionalMedia(query.state.data?.data.media) || hasPreparingMediaFile(query.state.data?.data.media)) ? 7000 : false,
+    refetchInterval: (query) => sessionRefreshInterval(inCall, query.state.data?.data.media),
   } });
-  const join = useSessionJoin({ appointmentId, refetchWorkspace: workspace.refetch, onCallChange: setLocalCallJoined });
   const data = workspace.data?.data;
-  const media = data?.media;
-
   useECounselingBoundaryRefresh(appointmentId, data?.provider_readiness, workspace.refetch);
+
+  if (!data) {
+    return workspace.isPending ? <WorkspaceSkeleton /> : <WorkspaceLoadError error={workspace.error} retry={() => void workspace.refetch()} />;
+  }
+  return (
+    <CounselorSession
+      appointmentId={appointmentId}
+      access={access}
+      data={data}
+      call={call}
+      inCall={inCall}
+      sessionStateCurrent={!workspace.isRefetchError}
+    />
+  );
+}
+
+function EncounterSection({ workspace, canManage, defaultOpen }: { workspace: CounselorWorkspaceResponse; canManage: boolean; defaultOpen: boolean }) {
+  const queryClient = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [uncertain, setUncertain] = useState(false);
+  const recorded = Boolean(workspace.counseling_encounter?.recorded);
+  const preset: EncounterOriginPreset = {
+    entryMode: CounselingEntryMode.APPOINTMENT,
+    appointmentId: workspace.appointment.id,
+    appointmentReference: workspace.appointment.reference_code,
+    studentName: workspace.student.display_name,
+    deliveryMode: DeliveryMode.ONLINE,
+  };
+
+  async function handleCreated() {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getECounselingGetAssignedWorkspaceQueryKey(workspace.appointment.id) }),
+      queryClient.invalidateQueries({ queryKey: getCounselingListMyEncountersQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getCounselingContextGetOverviewQueryKey(CounselingContextAnchorType.APPOINTMENT, workspace.appointment.id) }),
+      ...(workspace.routine_interview ? [queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(workspace.routine_interview.id) })] : []),
+    ]);
+    setOpen(false);
+  }
+
+  // Documenting the encounter is separate from recording audio or video, and sits apart from the
+  // call controls.
+  return (
+    <DisclosureSection title="Counseling Encounter" status={recorded ? "Documented" : "Not documented yet"} defaultOpen={defaultOpen}>
+      <div className="flex flex-wrap items-center justify-between gap-3 px-1">
+        <p className="text-sm text-muted">{recorded ? "Encounter recorded." : "Document the encounter once the conversation has taken place."}</p>
+        {recorded && workspace.counseling_encounter ? (
+          <Link className={buttonVariants({ variant: "secondary" })} href={`/portal/counseling/encounters/${workspace.counseling_encounter.id}`}>View encounter</Link>
+        ) : canManage ? (
+          <Button variant="secondary" disabled={uncertain} onClick={() => setOpen(true)}>
+            {uncertain ? "Recording result unconfirmed" : "Record encounter"}
+          </Button>
+        ) : null}
+      </div>
+      {canManage && !recorded ? <RecordEncounterDialog open={open} onOpenChange={setOpen} preset={preset} onUncertain={() => setUncertain(true)} onCreated={handleCreated} /> : null}
+    </DisclosureSection>
+  );
+}
+
+function StudentInformation({ appointmentId, available, defaultOpen }: { appointmentId: string; available: boolean; defaultOpen: boolean }) {
+  const { user } = usePortalSession();
+  const queryClient = useQueryClient();
+  const counselingAccess = getCounselingAccess(user);
   const context = useCounselingContextGetOverview(CounselingContextAnchorType.APPOINTMENT, appointmentId, {
-    query: { enabled: Boolean(data?.counseling_context_available), retry: false },
+    query: { enabled: available, retry: false },
   });
+  if (!available) {
+    return (
+      <DisclosureSection title="Student information" status="Unavailable right now">
+        <p className="px-1 text-sm text-muted">Student information isn’t available for this session right now.</p>
+      </DisclosureSection>
+    );
+  }
+  const status = context.isPending ? "Loading…" : context.isError && !context.data ? "Couldn’t load" : null;
+  return (
+    <DisclosureSection title="Student information" status={status} defaultOpen={defaultOpen}>
+      {context.isPending ? (
+        <div aria-busy="true"><span className="sr-only">Loading Student information…</span><Skeleton className="h-10 w-full" /><Skeleton className="mt-3 h-40 w-full" /></div>
+      ) : !context.data?.data ? (
+        <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Student information couldn’t be loaded. Try again.</Notice>
+      ) : (
+        <CounselingContextPanel
+          anchorType={CounselingContextAnchorType.APPOINTMENT}
+          anchorId={appointmentId}
+          overview={context.data.data}
+          access={counselingAccess}
+          showHeading={false}
+          onPublished={() => void queryClient.invalidateQueries({ queryKey: getCounselingContextGetOverviewQueryKey(CounselingContextAnchorType.APPOINTMENT, appointmentId) })}
+        />
+      )}
+    </DisclosureSection>
+  );
+}
 
-  if (workspace.isPending) return <WorkspaceSkeleton />;
-  if (workspace.isError || !data || !media) return <WorkspaceLoadError error={workspace.error} retry={() => void workspace.refetch()} />;
+function leaveWarning(active: ReadonlyArray<"recording" | "transcription">) {
+  const both = active.length > 1;
+  const subject = both ? "Recording and transcription are" : active[0] === "recording" ? "Recording is" : "Transcription is";
+  return (
+    <>
+      <p>{subject} still active.</p>
+      <p>Leaving the call doesn’t confirm that {both ? "they have" : "it has"} stopped. Stop {both ? "them" : "it"} first if {both ? "they’re" : "it’s"} no longer needed.</p>
+    </>
+  );
+}
 
+function CounselorSession({ appointmentId, access, data, call, inCall, sessionStateCurrent }: {
+  appointmentId: string;
+  access: ECounselingAccess;
+  data: CounselorWorkspaceResponse;
+  call: DailyCallControls;
+  inCall: boolean;
+  sessionStateCurrent: boolean;
+}) {
+  const { user } = usePortalSession();
+  const counselingAccess = getCounselingAccess(user);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const wide = useWideWorkspace(rootRef);
+  const [preset, setPreset] = useState<LayoutPreset>("balanced");
+  const [leaveOpen, setLeaveOpen] = useState(false);
+  const media = useCounselorMedia({ appointmentId, access, workspace: data, inCall, sessionStateCurrent });
+  // Secondary work starts open beside the call; in Focus and on narrow screens it starts collapsed
+  // below it, each section keeping a one-line status.
+  const secondaryOpen = wide && preset !== "focus";
   const routine = data.routine_interview;
 
   return (
-    <div className="@container">
+    <div ref={rootRef} className="@container">
       <SessionHeader
-        mediaPolicyVersion={media.media_policy_version}
         appointmentId={appointmentId}
         participant={data.student.display_name}
         appointment={data.appointment}
-        routine={routine ? { id: routine.id, status: `${routineIntakeStatusLabel(routine.intake_status)} Intake · ${routineEvaluationStatusLabel(routine.evaluation_status)} Evaluation` } : null}
+        mediaPolicyVersion={data.media.media_policy_version}
+        layoutControl={wide ? <LayoutPresetControl value={preset} onChange={setPreset} /> : undefined}
       />
-      <div className={sessionLayout.counselor}>
-        <SessionStage
-          className={stickyStage}
+      <div data-layout={preset} className={cn("grid items-start gap-4 @4xl:gap-5", sessionGrid[preset])}>
+        <CallStage
+          className={cn(phoneBleed, sessionStageClass[preset], "[--call-stage-max-height:max(14rem,calc(100dvh-18rem))]")}
+          call={call}
+          participantName={data.student.display_name}
           readiness={data.provider_readiness}
-          media={media}
           canJoin={access.canJoinAssigned}
-          inCall={localCallJoined}
-          join={join}
+          media={data.media}
+          governedControls={<GovernedCaptureControls media={media} />}
+          devicesInTray="when-wide"
+          onLeaveRequest={() => {
+            if (media.captureActive.length) setLeaveOpen(true);
+            else void call.leave();
+          }}
+          footer={<CounselorMediaStrip media={media} />}
         />
-        {/* The working area scrolls with the page beside the stage. Media controls come first so
-            consent and capture, including stopping a capture, are always at the same place. */}
-        <div className="min-w-0 space-y-5">
-          <CounselorMediaControls appointmentId={appointmentId} access={access} workspace={data} />
-          {!data.counseling_context_available ? (
-            <Panel aria-labelledby="e-counseling-context-heading">
-              <PanelHeader title="Student information" titleId="e-counseling-context-heading" />
-              <PanelMessage role="status">Student information isn’t available right now.</PanelMessage>
-            </Panel>
-          ) : context.isPending ? (
-            <Panel aria-busy="true" aria-labelledby="e-counseling-context-heading">
-              <PanelHeader title="Student information" titleId="e-counseling-context-heading" />
-              <PanelBody>
-                <span className="sr-only">Loading Student context…</span>
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="mt-3 h-40 w-full" />
-              </PanelBody>
-            </Panel>
-          ) : context.isError || !context.data?.data ? (
-            <Panel aria-labelledby="e-counseling-context-heading">
-              <PanelHeader title="Student information" titleId="e-counseling-context-heading" />
-              <PanelMessage role="alert" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>
-                Student information couldn’t be loaded. Try again.
-              </PanelMessage>
-            </Panel>
-          ) : (
-            <CounselingContextPanel anchorType={CounselingContextAnchorType.APPOINTMENT} anchorId={appointmentId} overview={context.data.data} access={counselingAccess} onPublished={() => void queryClient.invalidateQueries({ queryKey: getCounselingContextGetOverviewQueryKey(CounselingContextAnchorType.APPOINTMENT, appointmentId) })} />
-          )}
-          <RecordStatus workspace={data} canManage={counselingAccess.canManageAssigned} />
+        <div className="min-w-0 space-y-2">
+          <StudentInformation appointmentId={appointmentId} available={data.counseling_context_available} defaultOpen={secondaryOpen} />
+          <EncounterSection workspace={data} canManage={counselingAccess.canManageAssigned} defaultOpen={secondaryOpen} />
+          <SessionFiles appointmentId={appointmentId} media={data.media} canAccess={access.canAccessMediaAssigned} defaultOpen={secondaryOpen} />
+          <SessionDetails
+            appointment={data.appointment}
+            routine={routine ? { id: routine.id, status: `${routineIntakeStatusLabel(routine.intake_status)} Intake · ${routineEvaluationStatusLabel(routine.evaluation_status)} Evaluation` } : null}
+          />
         </div>
       </div>
+      <CaptureStartDialogs media={media} />
+      <ConsequentialActionDialog
+        open={leaveOpen}
+        title="Leave this session?"
+        confirmLabel="Leave session"
+        pendingLabel="Leaving…"
+        pending={false}
+        error={null}
+        variant="danger"
+        onOpenChange={setLeaveOpen}
+        onConfirm={() => {
+          setLeaveOpen(false);
+          void call.leave();
+        }}
+      >
+        {leaveWarning(media.captureActive)}
+      </ConsequentialActionDialog>
     </div>
   );
 }

@@ -45,6 +45,8 @@ test("E-Counseling errors explain what happened without implementation terms", (
     "ecounseling_provider_disabled",
     "ecounseling_provider_unavailable",
     "ecounseling_invalid_provider_response",
+    "ecounseling_join_not_available",
+    "ecounseling_room_provisioning_failed",
   ];
   for (const code of codes) {
     const message = ecounselingErrorMessage(new CompassApiError({ status: 409, body: { error: { code, message: "raw" } }, headers: {}, method: "POST", url: "/api/v1/e-counseling" }), "fallback");
@@ -80,14 +82,15 @@ function renderConsent() {
 
 test("media consent still says it does not affect Counseling, where Students decide", () => {
   const html = renderConsent();
-  assert.match(html, /Your media-consent choice does not affect your ability to receive Counseling\./);
-  // Each scope keeps its meaning beside its status and the decisions available now.
+  assert.match(html, /Your choices don’t affect your access to Counseling\./);
+  // Each requested scope keeps its meaning beside its status and the decisions available now; a
+  // scope that was never requested is still listed, separately, as not requested.
   assert.match(html, /Allows audio and video from this Counseling session to be recorded\./);
   assert.match(html, /Allows speech from this session to be processed as text while transcription is active\./);
-  assert.match(html, /Allows the transcript of this session to be stored by the video service\./);
+  assert.match(html, /Transcript storage<\/h3><span[^>]*>Not requested/);
   assert.match(html, />Allow</);
   assert.match(html, />Decline</);
-  assert.match(html, />Withdraw consent</);
+  assert.match(html, />Withdraw permission</);
   assert.doesNotMatch(html, IMPLEMENTATION_TERMS);
   // Capture activity lives on the session stage, not repeated in the consent list.
   assert.doesNotMatch(html, /Session media activity/);

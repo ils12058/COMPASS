@@ -67,6 +67,7 @@ export function ConsequentialActionDialog({
   variant = "primary",
   cancelLabel = "Cancel",
   completed = null,
+  choices,
   onOpenChange,
   onConfirm,
   onCloseAutoFocus,
@@ -82,6 +83,9 @@ export function ConsequentialActionDialog({
   variant?: "primary" | "danger";
   cancelLabel?: string;
   completed?: ConsequentialActionCompletion | null;
+  // A choice that shapes the action, such as whether a transcript is saved. It sits after the
+  // description, so the description stays plain text for assistive technology.
+  choices?: ReactNode;
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   // For a completed action whose opener is gone, such as the Remove button of a removed row.
@@ -112,6 +116,7 @@ export function ConsequentialActionDialog({
                 {children}
               </div>
             </AlertDialogDescription>
+            {choices ? <div className="mt-4">{choices}</div> : null}
             {error ? (
               <p role="alert" className="mt-4 text-sm leading-6 text-danger">
                 {error}

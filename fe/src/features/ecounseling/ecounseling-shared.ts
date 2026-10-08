@@ -20,6 +20,8 @@ export function ecounselingErrorMessage(error: unknown, fallback: string): strin
     ecounseling_not_found: "This E-Counseling session is unavailable.",
     ecounseling_not_permitted: "You don’t have access to this action.",
     ecounseling_appointment_not_eligible: "E-Counseling is no longer available for this Appointment.",
+    ecounseling_join_not_available: "This session can’t be joined right now.",
+    ecounseling_room_provisioning_failed: "The video session couldn’t be prepared. Try again.",
     ecounseling_consent_not_found: "That consent is no longer available. Refresh the session.",
     ecounseling_consent_not_approved: "The student must approve this media permission before you can start.",
     ecounseling_consent_conflict: "The consent changed. The session has been refreshed.",

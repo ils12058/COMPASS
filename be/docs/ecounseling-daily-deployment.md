@@ -109,6 +109,13 @@ this foundation.
 Private room URLs are provider metadata, not authorization. The browser receives the room URL and a
 short-lived room-scoped meeting token separately. Tokens are not persisted or audited.
 
+The frontend joins with a Daily Call Object and renders the call itself (ADR-093); there is no Daily
+Prebuilt iframe. The page therefore loads Daily's call-machine bundle and connects to Daily's media
+servers directly, and uses the camera and microphone from the COMPASS origin. No Content-Security-
+Policy or Permissions-Policy currently restricts that; one added later must allow Daily's documented
+hosts and `camera`/`microphone` for the COMPASS origin. Verify a real two-person join on staging after
+deploying a frontend change to the call, because local and CI runs use a fake Call Object.
+
 Participant tokens keep chat, screen sharing, live captions UI, recording UI, automatic
 transcription, and automatic recording disabled. Student and Counselor remain non-owner and
 non-admin. Media capture is instead requested by COMPASS backend REST calls only after explicit

@@ -189,3 +189,11 @@ live caption display, media-derived Encounter/Shared Summary text, playback libr
 access, broad supervisory access, archive/version purger or new backup-retention subsystem is added.
 A future Call Object slice can consume the same independent capture/artifact projections and
 backend consent/access contracts without changing historical policy or institutional records.
+
+## Call UI (ADR-093)
+
+[ADR-093](ADR-093-native-ecounseling-call-and-compact-session-workspace.md) implements the next slice
+named above: `Daily.createCallObject()` with COMPASS-rendered call UI replaces Daily Prebuilt. It
+consumes this decision's consent, capture, custody, access and retention/disposition contracts
+unchanged; recording and transcription still start and stop only through the COMPASS backend, and no
+live caption or transcript text is displayed.

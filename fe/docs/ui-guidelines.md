@@ -17,3 +17,11 @@ Describe what happened, what is visible, what the person can do and what happens
 Never disclose consent, privacy, security, retention/disposition, data release, irreversible publication or destructive consequences only through Help or hover. Consequences belong at the decision. Keep active recording/transcription, requested/declined/withdrawn permission, failures and important record facts visible. Preserve controlled/user-authored form questions, Privacy Notices, maintenance messages and record content. Density comes from hierarchy, not smaller text or indiscriminate hiding.
 
 Verify keyboard and tap operation, Escape, focus return, named icon controls, tooltip focus/hover, persistent warnings, mobile wrapping and workflow consequences. Preserve existing authorization, wire contracts and ADR-090 sorting.
+
+## Live sessions
+
+See [ADR-093](../../be/docs/decisions/ADR-093-native-ecounseling-call-and-compact-session-workspace.md). Live-session workspaces prioritize the participant, connection state and immediate controls. Settled metadata and longer explanations use progressive disclosure (`Disclosure` for inline detail, `DisclosureSection` for a collapsible section whose one-line status stays visible). Consequential media actions remain visibly labeled and reviewed at the decision.
+
+Layout density may change through named presets, but critical call/media state is never hidden: active recording/transcription, camera/microphone state, connection problems, pending decisions, denial/withdrawal, Leave and confirmation-time consequences stay visible in every preset and on phones.
+
+Call controls use the feature `CallControl` tile (icon above a short visible label, at least 44px, label inside the accessible name), not `IconAction`. Local call controls act through the call client; recording, transcription, consent, downloads and retention act only through the COMPASS backend, and provider events only trigger a refresh of COMPASS state.
