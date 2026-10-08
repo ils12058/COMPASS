@@ -41,11 +41,6 @@ jobs:
         working-directory: fe
         run: pnpm api:generate
 
-      # Component, presentation, and contract tests (node:test); they import the generated client.
-      - name: Unit tests
-        working-directory: fe
-        run: pnpm test
-
       - name: Lint
         working-directory: fe
         run: pnpm lint
@@ -57,3 +52,39 @@ jobs:
       - name: Production build
         working-directory: fe
         run: pnpm build
+
+  # Component, presentation, and contract tests (node:test), which import the generated client.
+  # They run on the Node release they are maintained on: on 22.18 the TSX loader's synchronous
+  # module hooks cannot load Next's CommonJS entry points (node:internal/modules/esm/translators).
+  # The app itself is still linted, type-checked, and built on the pinned 22.18 runtime above.
+  frontend-tests:
+    runs-on: ubuntu-latest
+    env:
+      COMPASS_API_BASE_URL: http://127.0.0.1:8000
+      NEXT_TELEMETRY_DISABLED: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "26.7.0"
+          cache: pnpm
+          cache-dependency-path: fe/pnpm-lock.yaml
+
+      - name: Install locked dependencies
+        working-directory: fe
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate API client
+        working-directory: fe
+        run: pnpm api:generate
+
+      - name: Unit tests
+        working-directory: fe
+        run: pnpm test

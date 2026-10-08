@@ -124,8 +124,12 @@ once that branch contains this change.
 
 ### Frontend
 
-`Frontend targeted validation` now runs `pnpm test` (about 340 `node:test` tests, about 15 s). The
-step comes after API generation and before lint, typecheck, and the production build.
+`Frontend targeted validation` adds a parallel `frontend-tests` job that runs `pnpm test`: about
+340 `node:test` tests, around 15 s, after API generation.
+
+- The tests run on Node 26.7.0, the release they are maintained on. Node 22.18's synchronous
+  module hooks cannot load Next's CommonJS entry points through the TSX test loader.
+- Lint, typecheck, and the production build still run on the pinned 22.18 runtime.
 
 ## Consequences
 
