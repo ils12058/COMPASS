@@ -228,13 +228,17 @@ FEEDBACK_TIMES = {
 }
 
 
-def _feedback_time(session: SeedSession, persona_key: str, *, offset_minutes: int = 0):
+def _feedback_time(
+    session: SeedSession, persona_key: str, *, service_completed_at, offset_minutes: int = 0
+):
     spec = FEEDBACK_TIMES[persona_key]
     if spec[0] == "on":
         base = session.timeline.on(*spec[1])
     else:
         base = session.timeline.past(spec[1], spec[2], spec[3])
-    return base + timedelta(minutes=offset_minutes)
+    return max(base, service_completed_at + timedelta(minutes=30)) + timedelta(
+        minutes=offset_minutes
+    )
 
 
 def _demo_feedback_opportunity(
@@ -330,7 +334,14 @@ def seed_feedback(session: SeedSession) -> None:
                     values=dict(values),
                     context=session.as_user(persona_key),
                 )
-                align_timestamps(existing, submitted_at=_feedback_time(session, persona_key))
+                align_timestamps(
+                    existing,
+                    submitted_at=_feedback_time(
+                        session,
+                        persona_key,
+                        service_completed_at=opportunities[persona_key].service_completed_at,
+                    ),
+                )
             _stamp_demo_feedback_marker(
                 opportunities[persona_key],
                 customer_feedback_at=existing.submitted_at,
@@ -362,7 +373,12 @@ def seed_feedback(session: SeedSession) -> None:
                 )
                 align_timestamps(
                     existing,
-                    submitted_at=_feedback_time(session, persona_key, offset_minutes=6),
+                    submitted_at=_feedback_time(
+                        session,
+                        persona_key,
+                        service_completed_at=opportunities[persona_key].service_completed_at,
+                        offset_minutes=6,
+                    ),
                 )
             _stamp_demo_feedback_marker(
                 opportunities[persona_key],

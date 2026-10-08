@@ -16,9 +16,14 @@ from compass.appointments.models import Appointment
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
-from compass.availability.models import OfficeAvailabilityWindow, ProviderAvailabilityWindow
+from compass.availability.models import (
+    OfficeAvailabilityWindow,
+    OfficeUnavailability,
+    ProviderAvailabilityWindow,
+)
 from compass.availability.services import (
     compute_base_availability,
+    create_office_exception,
     replace_office_weekly,
     replace_provider_weekly,
 )
@@ -36,7 +41,11 @@ from compass.demo_seed.timeline import EARLIEST_ANCHOR, LATEST_ANCHOR, resolve_t
 from compass.exit_interviews.confidential_content import read_exit_interview_confidential_content
 from compass.exit_interviews.models import ExitInterview
 from compass.feedback.confidential_content import read_feedback_confidential_content
-from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
+from compass.feedback.models import (
+    ClientSatisfactionResponse,
+    CustomerFeedbackResponse,
+    FeedbackOpportunity,
+)
 from compass.graduate_tracer.confidential_content import read_confidential_content as read_tracer
 from compass.graduate_tracer.models import GraduateTracerResponse
 from compass.inventory.confidential_content import read_confidential_content as read_inventory
@@ -414,6 +423,17 @@ def test_compatible_institutional_availability_is_preserved(demo_env):
     replace_provider_weekly(
         provider_id=session.users["counselor_a"].pk, windows=windows, context=session.system()
     )
+    # Move the original adjustment session beyond its fixed follow-up/feedback dates.
+    # Slot selection must preserve both the exception and the downstream story chronology.
+    desired = session.timeline.past(10, 9)
+    exception = create_office_exception(
+        starts_at=desired.replace(hour=0),
+        ends_at=desired.replace(hour=0) + demo.timedelta(days=2),
+        mode_scope="ALL",
+        reason="Existing institutional closure",
+        context=session.system(),
+    )
+    exception_before = OfficeUnavailability.objects.filter(pk=exception.pk).values().get()
     office = list(OfficeAvailabilityWindow.objects.order_by("pk").values())
     provider = list(
         ProviderAvailabilityWindow.objects.filter(provider=session.users["counselor_a"])
@@ -421,6 +441,7 @@ def test_compatible_institutional_availability_is_preserved(demo_env):
         .values()
     )
     seed_demo_staging()
+    assert OfficeUnavailability.objects.filter(pk=exception.pk).values().get() == exception_before
     assert list(OfficeAvailabilityWindow.objects.order_by("pk").values()) == office
     assert (
         list(
@@ -440,6 +461,16 @@ def test_compatible_institutional_availability_is_preserved(demo_env):
             end_date=day + demo.timedelta(days=1),
         )
         assert any(w.starts_at <= item.starts_at < item.ends_at <= w.ends_at for w in base.windows)
+    for opportunity in FeedbackOpportunity.objects.filter(
+        customer_feedback_submitted_at__isnull=False
+    ):
+        assert opportunity.service_completed_at <= opportunity.customer_feedback_submitted_at
+        assert opportunity.service_completed_at <= opportunity.csm_submitted_at
+    student = demo.demo_user(PERSONAS_BY_KEY["second_year"])
+    completed = Appointment.objects.get(student=student, status="COMPLETED")
+    followup = Appointment.objects.get(student=student, status="SCHEDULED")
+    assert completed.starts_at.date() > desired.date()
+    assert followup.created_at > completed.ends_at
 
 
 @pytest.mark.django_db

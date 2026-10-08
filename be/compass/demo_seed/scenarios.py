@@ -555,7 +555,11 @@ def academic_adjustment(session: SeedSession) -> None:
         published=t.past(9, 11),
     )
     _book(
-        session, SECOND_YEAR, COUNSELOR_A.key, starts_at=t.future(4, 9), booked_at=t.past(9, 11, 5)
+        session,
+        SECOND_YEAR,
+        COUNSELOR_A.key,
+        starts_at=t.future(4, 9),
+        booked_at=max(t.past(9, 11, 5), encounter.created_at + timedelta(minutes=45)),
     )
 
     # Read and unread Notifications: the earlier ones were opened, the Shared Summary was not.
