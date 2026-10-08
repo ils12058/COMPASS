@@ -31,6 +31,7 @@ import {
 } from "@/lib/api/generated/good-moral/good-moral";
 import { getGoodMoralListMyRequestsQueryKey } from "@/lib/api/generated/good-moral/good-moral";
 import type { CurrentStudentRequestPayload, GraduateRequestPayload } from "@/lib/api/generated/model";
+import { institutionalDateInputValue } from "@/lib/institutional-time";
 
 type CreateIntent =
   | {
@@ -314,7 +315,7 @@ function GraduateRequestForm() {
           </div>
           <div>
             <Label htmlFor="good-moral-graduation-date">Graduation date <span aria-hidden="true">*</span></Label>
-            <Input id="good-moral-graduation-date" className="mt-2" type="date" required value={graduationDate} onChange={(event) => setGraduationDate(event.target.value)} />
+            <Input id="good-moral-graduation-date" className="mt-2" type="date" required max={institutionalDateInputValue()} value={graduationDate} onChange={(event) => setGraduationDate(event.target.value)} />
           </div>
         </fieldset>
         </PanelSection>

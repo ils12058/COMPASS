@@ -10,6 +10,7 @@ import {
   GeographicLocationKindValue,
 } from "@/lib/api/generated/model";
 import { FieldGroup } from "@/features/inventory/inventory-shared";
+import { institutionalDateInputValue } from "@/lib/institutional-time";
 
 export function PersonalSection({ draft, onChange, validationIssues = [] }: InventorySectionProps) {
   const errorFor = (targetId: string) =>
@@ -62,6 +63,7 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
             error={errorFor("inventory-date-of-birth")}
             label="Date of birth"
             type="date"
+            max={institutionalDateInputValue()}
             value={draft.date_of_birth}
             onChange={(value) => onChange({ date_of_birth: value || null })}
             required

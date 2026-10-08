@@ -51,7 +51,7 @@ import { getAppointmentAccess } from "@/features/appointments/appointments-acces
 import { isCounselingService } from "@/features/counseling/canonical-counseling-service";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { focusHeading } from "@/lib/focus-heading";
-import { INSTITUTION_TIME_ZONE, INSTITUTION_TIME_ZONE_LABEL } from "@/lib/institutional-time";
+import { INSTITUTION_TIME_ZONE, INSTITUTION_TIME_ZONE_LABEL, institutionalDateInputValue } from "@/lib/institutional-time";
 
 // Offers only the modes the Service currently supports. For canonical Counseling, ONLINE is
 // explained as E-Counseling; ordinary Services' ONLINE stays a plain delivery mode.
@@ -471,7 +471,7 @@ function BookingWorkspace() {
           <PanelSection title="4. Choose date and time" titleId="booking-time-heading">
             <div className="grid gap-2 sm:max-w-xs">
               <Label htmlFor="booking-date">Appointment date</Label>
-              <Input id="booking-date" type="date" value={date} onChange={(event) => changeDate(event.target.value)} />
+              <Input id="booking-date" type="date" min={institutionalDateInputValue()} value={date} onChange={(event) => changeDate(event.target.value)} />
             </div>
             {date ? (
               <div className="mt-5">

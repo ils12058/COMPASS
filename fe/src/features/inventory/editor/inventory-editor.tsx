@@ -19,7 +19,7 @@ import { OrganizationsSection } from "@/features/inventory/editor/organizations-
 import { PersonalSection } from "@/features/inventory/editor/personal-section";
 import { PlansSection } from "@/features/inventory/editor/plans-section";
 import { ReviewSection } from "@/features/inventory/editor/review-section";
-import { getInventorySubmissionIssues, normalizeInventoryPayload, toInventoryPayload, type InventorySubmissionIssue } from "@/features/inventory/inventory-payload";
+import { getInventoryDraftIssues, getInventorySubmissionIssues, normalizeInventoryPayload, toInventoryPayload, type InventorySubmissionIssue } from "@/features/inventory/inventory-payload";
 import { inventorySections, type InventorySectionId } from "@/features/inventory/inventory-presentation";
 import { formatInventoryDate, InventoryHeading, InventoryNotice, inventoryErrorMessage } from "@/features/inventory/inventory-shared";
 import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
@@ -133,6 +133,12 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
     }
     setSaveError(null);
     setNotice(null);
+    const draftIssues = getInventoryDraftIssues(draft);
+    if (draftIssues.length > 0) {
+      setValidationVisible(true);
+      setSaveError(draftIssues[0].message);
+      return false;
+    }
     try {
       const response = await save.mutateAsync({ data: normalizeInventoryPayload(draft) });
       const canonical = toInventoryPayload(response.data);

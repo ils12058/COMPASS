@@ -15,6 +15,7 @@ import {
   parentStatusOptions,
 } from "@/features/inventory/inventory-presentation";
 import { FieldGroup } from "@/features/inventory/inventory-shared";
+import { institutionalDateInputValue } from "@/lib/institutional-time";
 import {
   AnnualIncomeStatusValue,
   FamilyMemberKindValue,
@@ -236,6 +237,13 @@ function FamilyMemberFields({
         : "Spouse";
   const required = kind !== FamilyMemberKindValue.SPOUSE;
   const prefix = `inventory-family-${kind.toLowerCase()}`;
+  const birthDateError = errorFor(`${prefix}-date-of-birth`);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+
+  // The birth date sits in the collapsed details; reveal it when it needs attention.
+  useEffect(() => {
+    if (birthDateError && detailsRef.current) detailsRef.current.open = true;
+  }, [birthDateError]);
 
   function changeOccupationCategory(value: OccupationCategoryValue | null) {
     onChange({
@@ -313,12 +321,12 @@ function FamilyMemberFields({
         ) : null}
       </div>
 
-      <details className="mt-5 border-t border-border/70 pt-4">
+      <details ref={detailsRef} className="mt-5 border-t border-border/70 pt-4">
         <summary className="min-h-9 cursor-pointer text-sm font-semibold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
           Additional {label.toLowerCase()} information
         </summary>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
-          <TextField id={`${prefix}-date-of-birth`} label="Date of birth" type="date" value={member.date_of_birth} onChange={(value) => onChange({ date_of_birth: value || null })} />
+          <TextField id={`${prefix}-date-of-birth`} label="Date of birth" type="date" max={institutionalDateInputValue()} error={birthDateError} value={member.date_of_birth} onChange={(value) => onChange({ date_of_birth: value || null })} />
           <TextField id={`${prefix}-place-of-birth`} label="Place of birth" value={member.place_of_birth} onChange={(value) => onChange({ place_of_birth: value })} />
           <TextAreaField id={`${prefix}-current-address`} label="Current address" value={member.current_address} onChange={(value) => onChange({ current_address: value })} />
           <TextAreaField id={`${prefix}-permanent-address`} label="Permanent address" value={member.permanent_address} onChange={(value) => onChange({ permanent_address: value })} />

@@ -16,6 +16,7 @@ import {
   type InventoryResponse,
 } from "@/lib/api/generated/model";
 import type { InventorySectionId } from "@/features/inventory/inventory-presentation";
+import { isFutureInstitutionalDateInput } from "@/lib/institutional-time";
 
 export type InventorySubmissionIssue = {
   section: InventorySectionId;
@@ -99,6 +100,34 @@ export function normalizeInventoryPayload(payload: InventoryPayload): InventoryP
   return next;
 }
 
+const familyMemberLabels: Record<FamilyMemberKindValue, string> = {
+  [FamilyMemberKindValue.FATHER]: "Father",
+  [FamilyMemberKindValue.MOTHER]: "Mother",
+  [FamilyMemberKindValue.SPOUSE]: "Spouse",
+};
+
+// Birth dates are historical facts: any past date is accepted, a date after today never is.
+// COMPASS rejects these when saving, so they block a draft save as well as submission.
+export function getInventoryDraftIssues(
+  input: InventoryPayload,
+  now = new Date(),
+): InventorySubmissionIssue[] {
+  const issues: InventorySubmissionIssue[] = [];
+  if (input.date_of_birth && isFutureInstitutionalDateInput(input.date_of_birth, now)) {
+    issues.push({ section: "personal", targetId: "inventory-date-of-birth", message: "Date of birth cannot be in the future." });
+  }
+  for (const member of input.family_members ?? []) {
+    if (member.date_of_birth && isFutureInstitutionalDateInput(member.date_of_birth, now)) {
+      issues.push({
+        section: "family",
+        targetId: `inventory-family-${member.kind.toLowerCase()}-date-of-birth`,
+        message: `${familyMemberLabels[member.kind]}'s date of birth cannot be in the future.`,
+      });
+    }
+  }
+  return issues;
+}
+
 export function getInventorySubmissionIssues(
   input: InventoryPayload,
   activeProgramIds: ReadonlySet<string> | undefined,
@@ -107,9 +136,11 @@ export function getInventorySubmissionIssues(
   const issues: InventorySubmissionIssue[] = [];
   const add = (section: InventorySectionId, targetId: string, message: string) =>
     issues.push({ section, targetId, message });
+  const dateIssues = getInventoryDraftIssues(payload);
 
   if (!payload.sex) add("personal", "inventory-sex", "Choose a sex response.");
   if (!payload.date_of_birth) add("personal", "inventory-date-of-birth", "Enter a date of birth.");
+  issues.push(...dateIssues.filter((issue) => issue.section === "personal"));
   if (!payload.civil_status_category) add("personal", "inventory-civil-status", "Choose a civil-status response.");
   if (
     payload.civil_status_category === CivilStatusCategoryValue.OTHER &&
@@ -156,6 +187,8 @@ export function getInventorySubmissionIssues(
       add("family", `${prefix}-income-amount`, `Enter the reported previous-year income for ${label.toLowerCase()}.`);
     }
   }
+
+  issues.push(...dateIssues.filter((issue) => issue.section === "family"));
 
   if (!payload.living_arrangement) add("health", "inventory-living-arrangement", "Choose a living arrangement.");
   if (!payload.pwd_status) add("health", "inventory-pwd-status", "Choose a disability-status response.");

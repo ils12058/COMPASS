@@ -30,7 +30,7 @@ import {
   usePrivacyGovernanceUpdateRetentionRule,
 } from "@/lib/api/generated/privacy-governance/privacy-governance";
 import type { RetentionRuleResponse } from "@/lib/api/generated/model";
-import { formatDateOnly } from "@/lib/institutional-time";
+import { formatDateOnly, isPastInstitutionalDateInput } from "@/lib/institutional-time";
 import {
   ActionMessages,
   FormSection,
@@ -48,6 +48,11 @@ import {
   isRetentionConflict,
   useRetentionAccess,
 } from "./retention-shared";
+
+// A policy may predate its entry into COMPASS, so a past effective date is allowed; it only means
+// eligibility starts at activation rather than on a later date.
+const PAST_EFFECTIVE_DATE_WARNING =
+  "This effective date is in the past. When activated, this rule may immediately apply to records whose retention period has already elapsed.";
 
 type RuleFormValues = {
   code: string;
@@ -113,6 +118,7 @@ function RuleForm({
     (item) => item.category === values.category && String(item.contract_version) === values.contractVersion,
   );
   const pending = create.isPending || update.isPending;
+  const pastEffective = isPastInstitutionalDateInput(values.effective);
   function field(key: keyof RuleFormValues, value: string) {
     setValues((old) => ({ ...old, [key]: value }));
   }
@@ -263,8 +269,14 @@ function RuleForm({
                 type="date"
                 required
                 value={values.effective}
+                aria-describedby={pastEffective ? "rule-effective-warning" : undefined}
                 onChange={(event) => field("effective", event.target.value)}
               />
+              {pastEffective ? (
+                <p id="rule-effective-warning" className="text-xs leading-5 text-warning">
+                  {PAST_EFFECTIVE_DATE_WARNING}
+                </p>
+              ) : null}
             </div>
           </div>
           <div className="grid gap-2">
@@ -550,11 +562,16 @@ export function RetentionRuleEditor({
             : "Retire this retention rule?"
         }
         description={
-          <p>
-            {transition?.kind === "activate"
-              ? "Confirm that the duration and policy reference are institutionally approved. COMPASS will discover eligibility using these immutable terms. No record is disposed without a reviewed disposition approval."
-              : "This rule will stop authorizing pending disposition. Queued cases will need a new review and approval under an active rule."}
-          </p>
+          <>
+            <p>
+              {transition?.kind === "activate"
+                ? "Confirm that the duration and policy reference are institutionally approved. COMPASS will discover eligibility using these immutable terms. No record is disposed without a reviewed disposition approval."
+                : "This rule will stop authorizing pending disposition. Queued cases will need a new review and approval under an active rule."}
+            </p>
+            {transition?.kind === "activate" && item && isPastInstitutionalDateInput(item.effective_on) ? (
+              <p>{PAST_EFFECTIVE_DATE_WARNING}</p>
+            ) : null}
+          </>
         }
         confirmLabel={
           transition?.kind === "activate" ? "Activate rule" : "Retire rule"

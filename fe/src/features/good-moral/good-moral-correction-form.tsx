@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { GoodMoralSection, goodMoralErrorMessage, uncertainGoodMoralMutation } from "@/features/good-moral/good-moral-shared";
 import { goodMoralUpdateRequest, getGoodMoralGetRequestQueryKey, getGoodMoralListRequestsQueryKey } from "@/lib/api/generated/good-moral/good-moral";
 import type { GoodMoralCorrectionPayload, GoodMoralOperationalDetailResponse } from "@/lib/api/generated/model";
+import { institutionalDateInputValue } from "@/lib/institutional-time";
 
 type CorrectionDraft = {
   applicantName: string;
@@ -164,6 +165,7 @@ export function GoodMoralCorrectionForm({
   }
 
   if (!open) return null;
+  const today = institutionalDateInputValue();
 
   return (
     <>
@@ -192,7 +194,7 @@ export function GoodMoralCorrectionForm({
                   <>
                     {item.actions.correction_fields.includes("degree") ? <div>{correctionFieldLabel("degree", "Degree")}<Input id="good-moral-correction-degree" className="mt-2" maxLength={255} value={draft.degree} onChange={(event) => setField("degree", event.target.value)} /></div> : null}
                     <div>{correctionFieldLabel("major", "Major")}<Input id="good-moral-correction-major" className="mt-2" maxLength={180} value={draft.major} onChange={(event) => setField("major", event.target.value)} /></div>
-                    {item.actions.correction_fields.includes("graduation_date") ? <div>{correctionFieldLabel("graduation-date", "Graduation date")}<Input id="good-moral-correction-graduation-date" className="mt-2" type="date" value={draft.graduationDate} onChange={(event) => setField("graduationDate", event.target.value)} /></div> : null}
+                    {item.actions.correction_fields.includes("graduation_date") ? <div>{correctionFieldLabel("graduation-date", "Graduation date")}<Input id="good-moral-correction-graduation-date" className="mt-2" type="date" max={today} value={draft.graduationDate} onChange={(event) => setField("graduationDate", event.target.value)} /></div> : null}
                   </>
                 )}
               </div>
@@ -202,7 +204,7 @@ export function GoodMoralCorrectionForm({
               <h3 id="good-moral-correction-receipt-heading" className="text-sm font-semibold text-ink">Official Receipt <span className="font-normal text-muted">(optional)</span></h3>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>{correctionFieldLabel("receipt-number", "Receipt number")}<Input id="good-moral-correction-receipt-number" className="mt-2" maxLength={96} value={draft.receiptNumber} onChange={(event) => setField("receiptNumber", event.target.value)} /></div>
-                <div>{correctionFieldLabel("receipt-date", "Receipt date")}<Input id="good-moral-correction-receipt-date" className="mt-2" type="date" value={draft.receiptDate} onChange={(event) => setField("receiptDate", event.target.value)} /></div>
+                <div>{correctionFieldLabel("receipt-date", "Receipt date")}<Input id="good-moral-correction-receipt-date" className="mt-2" type="date" max={today} value={draft.receiptDate} onChange={(event) => setField("receiptDate", event.target.value)} /></div>
                 <div>
                   {correctionFieldLabel("receipt-amount", "Receipt amount")}
                   <Input id="good-moral-correction-receipt-amount" className="mt-2" type="number" min="0" max="9999999999.99" step="0.01" inputMode="decimal" value={draft.receiptAmount} onChange={(event) => setField("receiptAmount", event.target.value)} />
