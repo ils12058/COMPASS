@@ -16,6 +16,7 @@ from compass.reports.pdf import student_profiling_pdf_filename
 from compass.reports.services import (
     GLOBAL_REPORT_ACCESS_SCOPE,
     InvalidReportFilter,
+    ReportAccessScope,
     ReportConfigurationConflict,
     ReportNotFound,
 )
@@ -80,7 +81,7 @@ def workbook_from_report(monkeypatch, report):
         "build_student_profiling_report",
         lambda **kwargs: report,
     )
-    result = render_student_profiling_xlsx()
+    result = render_student_profiling_xlsx(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
     return load_workbook(BytesIO(result.xlsx_bytes), data_only=False, keep_links=False)
 
 
@@ -262,9 +263,10 @@ def test_render_service_calls_canonical_builder_once_and_forwards_exact_filters(
         return report
 
     monkeypatch.setattr(report_xlsx, "build_student_profiling_report", fake_builder)
-    result = render_student_profiling_xlsx(**filters)
+    scope = ReportAccessScope(is_global=False, college_ids=(uuid4(),))
+    result = render_student_profiling_xlsx(**filters, access_scope=scope)
 
-    assert calls == [{**filters, "access_scope": GLOBAL_REPORT_ACCESS_SCOPE}]
+    assert calls == [{**filters, "access_scope": scope}]
     assert result.filename == "student-profile-2026-2027.xlsx"
     workbook = load_workbook(BytesIO(result.xlsx_bytes), data_only=False, keep_links=False)
     assert workbook.sheetnames == EXPECTED_SHEETS
@@ -278,7 +280,7 @@ def test_canonical_report_errors_remain_outside_workbook_error_boundary(monkeypa
 
     monkeypatch.setattr(report_xlsx, "build_student_profiling_report", fail_builder)
     with pytest.raises(ReportNotFound) as raised:
-        render_student_profiling_xlsx()
+        render_student_profiling_xlsx(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
     assert raised.value is expected
 
 
@@ -297,7 +299,7 @@ def test_workbook_generation_failures_are_wrapped_without_internal_details(monke
         StudentProfilingWorkbookUnavailable,
         match="temporarily unavailable",
     ) as raised:
-        render_student_profiling_xlsx()
+        render_student_profiling_xlsx(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
     assert "/private/path" not in str(raised.value)
 
 

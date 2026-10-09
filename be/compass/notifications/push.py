@@ -308,7 +308,7 @@ def deliver_push_delivery(delivery_id: uuid.UUID) -> str:
         extra={
             "event": "push_delivery_processed",
             "delivery_id": str(delivery_id),
-            "status": status,
+            "delivery_status": status,
             "failure_code": failure_code,
         },
     )

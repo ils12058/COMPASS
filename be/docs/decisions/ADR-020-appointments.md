@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) makes booking use two-state booking capability and Service-specific Counselor qualification, keeps College responsibility out of explicit Counselor choice, and lets existing Appointments be fulfilled as booked after later Catalog changes; rescheduling and reassignment follow current rules.
+Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) makes booking use two-state booking capability and Service-specific Counselor qualification, keeps College responsibility out of explicit Counselor choice, and lets existing Appointments be fulfilled as booked after later Catalog changes; rescheduling and reassignment follow current rules. Where this decision interprets UCN civil time in `settings.TIME_ZONE`, [ADR-097](ADR-097-institutional-civil-time-independent-of-runtime-timezone.md) uses `INSTITUTION_TIME_ZONE`.
 
 ## Context
 

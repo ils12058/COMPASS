@@ -47,7 +47,7 @@ Prerequisites: Podman, `podman-compose` (or a compatible `podman compose` provid
 ```sh
 cd /Users/reynantlntno/Projects/COMPASS/be
 cp .env.example .env
-# Set all four independent content keyrings in .env before startup; see the encryption sections below.
+# Set all eight independent content keyrings in .env first; see "Confidential-content keyrings".
 uv python install 3.13
 uv sync
 podman compose --profile local build web
@@ -248,9 +248,10 @@ Use `AuditContext.system()` for management commands and internal processes, and
 `AuditContext.anonymous()` for meaningful unauthenticated security events. Metadata must be a
 small, explicit JSON object; never include passwords, hashes, tokens, credentials, request or
 response bodies, or confidential counseling content. Audit events cannot be edited or deleted
-through normal application ORM paths. Retention execution and tamper-proof external storage remain
-separate policy and deployment decisions; the Privacy Governance retention records do not execute
-deletion or archival.
+through normal application ORM paths. COMPASS has no AuditEvent retention, archival, or deletion
+schedule; that and tamper-proof external storage remain separate policy and deployment decisions.
+Operational retention (see Privacy Governance) appends AuditEvents but never alters or removes
+them.
 
 ## My Activity and Security Activity
 
@@ -307,11 +308,59 @@ overrides require a non-empty reason and optional future expiry.
 ## Privacy Governance
 
 Privacy Governance is intentionally limited to implemented COMPASS system controls: versioned
-Privacy Notices, exact-revision acknowledgment, privacy-sensitive release auditing, and curated
-Privacy & Security Activity. Processing Activity, Privacy Review/PIA, Privacy Incident, and
-Retention Policy workflows are not live COMPASS features. The removal migrations fail closed when
-obsolete tables contain rows; those rows require a separate institutional data-disposition
-decision before migration can proceed.
+Privacy Notices, exact-revision acknowledgment, privacy-sensitive release auditing, curated
+Privacy & Security Activity, and operational retention and disposition. Processing Activity,
+Privacy Review/PIA, Privacy Incident, and the descriptive Retention Policy registry are not live
+COMPASS features (ADR-065, ADR-069). The removal migrations fail closed when obsolete tables
+contain rows; those rows require a separate institutional data-disposition decision before
+migration can proceed.
+
+Operational retention ([ADR-072](docs/decisions/ADR-072-operational-retention-and-disposition.md),
+refined for E-Counseling media by
+[ADR-092](docs/decisions/ADR-092-ecounseling-media-governance-v2.md)) treats a record only through
+a reviewed, approved case under an active, effective rule. Holders of the retention capabilities
+(by default the DPO) activate rules and approve cases with recent MFA; COMPASS never seeds a period
+or approves its own cases, so nothing is treated until a rule is active. Holds block treatment.
+Rules exist for exactly three categories:
+
+- **Graduate Tracer:** a submitted response is anonymized. The identifiable live row and its
+  detailed children are removed; only the documented analytical contribution remains, under an
+  independent identifier.
+- **E-Counseling recordings and stored transcripts:** the governed artifact is deleted and minimized
+  evidence is kept. Version-1 media deletes the Daily provider artifact. Version-2 media deletes the
+  COMPASS-stored object and any remaining Daily copy, and completes only after every live copy is
+  verified absent.
+
+AuditEvents are never removed, and disposition does not reach backups, exports, or downloaded
+copies. Operator procedures are in the
+[retention and disposition runbook](docs/retention-disposition-runbook.md).
+
+## Confidential-content keyrings
+
+Eight confidential-content domains are encrypted under independent, ordered Fernet keyrings: the
+first key encrypts new content and every listed key decrypts. Each keyring is required in every
+environment, including local-staging, and startup rejects a keyring that reuses `SECRET_KEY`,
+`AUTH_TOTP_ENCRYPTION_KEY`, or another domain's key. All eight use the shared primitive from
+[ADR-079](docs/decisions/ADR-079-shared-confidential-data-cryptographic-primitive.md); payload
+schemas, bindings, and rotation stay with each domain.
+
+| Domain | Keyring setting | Decision | Rotation command |
+| --- | --- | --- | --- |
+| Routine Interview | `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` | ADR-066 | `rotate_routine_interview_encryption` |
+| Counseling Shared Summary | `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS` | ADR-080 | `rotate_counseling_shared_summary_encryption` |
+| Referral | `REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-081 | `rotate_referral_confidential_content` |
+| Exit Interview | `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-082 | `rotate_exit_interview_confidential_content` |
+| Individual Inventory | `INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-083 | `rotate_inventory_confidential_content` |
+| Graduate Tracer | `GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-084 | `rotate_graduate_tracer_confidential_content` |
+| Account Profile | `ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-085 | `rotate_account_profile_confidential_content` |
+| Feedback | `FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-086 | `rotate_feedback_confidential_content` |
+
+The keyrings are only part of the deployment's runtime secrets, which also include database,
+Redis, object storage, SMTP, provider, TOTP, and Web Push credentials. The canonical list of
+runtime secret sources is `SECRET_FILES` in
+[`deploy/runtime-secrets/runtime_secrets.py`](deploy/runtime-secrets/runtime_secrets.py);
+[runtime-secrets.md](docs/runtime-secrets.md) covers provisioning and the current cutover gates.
+Count secret sources from that inventory, not from the number of keyrings.
 
 ## Routine Interview content encryption
 
@@ -359,8 +408,8 @@ uv run python manage.py rotate_counseling_shared_summary_encryption --dry-run --
 The command verifies every selected body and refuses legacy plaintext schema. Real rotation uses
 the primary key in bounded transactions, preserving publication/timestamps/Audit/notifications,
 and can resume after interruption. Live deployment requires a separate coordinated cutover:
-provision every absent required domain keyring (current runtime inventory: 18) and stop/drain
-old web/worker/Beat through the destructive
+provision every absent required domain keyring from the current runtime-secret inventory (see
+"Confidential-content keyrings") and stop/drain old web/worker/Beat through the destructive
 migration and candidate activation. Follow [runtime-secrets.md](docs/runtime-secrets.md), including
 verified backups and controlled reverse migration; do not start the normal deployment prematurely.
 
@@ -409,9 +458,10 @@ configuration plus `_FILE` pointers in the deployment `.env`. In particular, set
 - `TURNSTILE_ENABLED=true`, the server-only Turnstile secret, and expected hostname/action values;
 - a valid `AUTH_TOTP_ENCRYPTION_KEY` in deployment secret storage, `AUTH_COOKIE_SECURE=true`,
   and explicit auth cookie/origin policy;
-- a dedicated `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` keyring, escrowed away from database backups;
-  follow the ADR-066 runbook, including a verified backup, before the first deployment that
-  includes `routine_interviews.0003`;
+- all eight dedicated confidential-content keyrings (see "Confidential-content keyrings"), each
+  escrowed away from database backups. The first deployment that adds a domain's encryption
+  migration follows that domain's runbook, including a verified backup (for example ADR-066 before
+  `routine_interviews.0003`);
 - `CADDY_ADDRESS` and `CADDY_HEALTH_HOST` to the staging hostname,
   `PROXY_BIND_ADDRESS=0.0.0.0`, and ports 80/443.
 
@@ -466,6 +516,15 @@ the Compose services when deployment automation is introduced.
   or conflict validation.
 - Storage and email calls go through app-facing adapters. Durable uploads are not written to the
   container filesystem.
+- Resource file replacement and removal delete the superseded object only after the database
+  change commits, outside row locks. If that delete fails, the change stands and a
+  `resource_file_cleanup_failed` warning records the Resource ID and cleanup kind (`replaced_file`,
+  `removed_file`, or `attach_rollback`). Any object under `resources/<resource_id>/` that is not
+  that Resource's current `storage_key` and predates the warning is an orphan an operator may
+  delete.
+- Structured logs keep only a reviewed allowlist of `extra` fields (`compass.common.json_logging`):
+  request/task context plus diagnostic identifiers, closed codes, counts, and exception class
+  names. Values that are not numbers, UUIDs, or short code-like strings are dropped.
 - Audit events are synchronous PostgreSQL writes through one explicit service. They carry the
   existing request ID, trusted client IP, bounded user-agent summary, actor, outcome, target, and
   small deliberate metadata; they do not replace operational logging.
@@ -502,6 +561,13 @@ an explicit `accounts.manage` boundary. The API contract ADR establishes stable 
 machine-friendly tags, shared error schemas, and the committed deterministic OpenAPI artifact used
 by the frontend generator.
 
+Accepted ADRs are not rewritten when later decisions refine them; follow the newer decision for
+current behavior. In particular, ADR-097 governs UCN civil time where ADR-019, ADR-020, and
+ADR-021 interpret it in `settings.TIME_ZONE`; ADR-089 governs Service booking and Counselor
+qualification over ADR-018 and the scheduling ADRs it lists; and ADR-072 with ADR-092 govern
+operational retention after ADR-061, ADR-065, and ADR-069. Two documents share the number ADR-057
+and there is no ADR-077, so cite those by title.
+
 ## Known verification gaps
 
 The Compose files are designed for Podman; image pulls, Caddy validation, and a full multi-container
@@ -535,24 +601,44 @@ audit recording. No ordinary user capability mutates institutional topology.
 ## Service Catalog
 
 The Service Catalog is the institution-wide configuration boundary for what the Guidance and
-Counseling Office offers. A Service is more fundamental than Appointment: each Service stores an
-appointment policy (`NONE`, `OPTIONAL`, or `REQUIRED`), one or more supported delivery modes
-(`IN_PERSON` and/or `ONLINE`), an optional default schedulable duration, and the operational
-roles that may potentially act as primary provider (`COUNSELOR` only). Guidance Services Staff
-can administer scoped Appointments but cannot act as Appointment providers. ONLINE Counseling is a
-delivery mode, not a separate E-Counseling Service.
+Counseling Office offers. A Service is more fundamental than Appointment
+([ADR-089](docs/decisions/ADR-089-service-catalog-consolidation-and-counselor-qualification.md)
+refines ADR-018). Each Service stores:
+
+- `appointment_booking_enabled`, whether the Service can be newly booked through Appointments. An
+  enabled Service does not require every workflow to start from an Appointment: canonical
+  Counseling is bookable and still records walk-in, called-in, and referred sessions.
+- One or more supported delivery modes (`IN_PERSON` and/or `ONLINE`).
+- Appointment-only settings: `default_appointment_duration_minutes` (1–480), an optional
+  `cancellation_cutoff_minutes`, and `requires_current_inventory`. They are unset while booking is
+  off, and turning booking off clears them.
+- `provider_coverage`: `ALL_COUNSELORS`, or `SELECTED_COUNSELORS` with explicit Counselor rows.
+
+Counselor is the only provider class. A Counselor qualifies for new work on a Service when the
+account is active, its primary role is COUNSELOR, and coverage is all Counselors or selects them;
+Head Guidance Counselors qualify through their Counselor role. Legacy provider-role rows remain as
+history and are never used for eligibility. Guidance Services Staff can administer scoped
+Appointments but cannot act as providers. ONLINE Counseling is a delivery mode, not a separate
+E-Counseling Service.
 
 New Services are created inactive and are enabled explicitly only after the active configuration
-invariant is satisfied. OPTIONAL/REQUIRED Services need a default duration; any configured
-duration is bounded to 1–480 minutes. Service codes are normalized stable identifiers and are not
-editable through the normal PATCH API. There is no delete endpoint.
+invariant is satisfied: an active bookable Service needs a duration, and an active
+`SELECTED_COUNSELORS` Service needs at least one active selected Counselor. Service codes are
+normalized stable identifiers and are not editable through the normal PATCH API. There is no
+delete endpoint.
+
+New work (booking, rescheduling, reassignment, and new direct Counseling or Routine Interviews)
+uses the current configuration. Existing Appointments keep their saved Service, delivery mode,
+duration, and cutoff, and stay fulfillable as booked. A change that would affect future SCHEDULED
+Appointments needs explicit acknowledgement (`service_scheduling_consequence_review_required`) and
+never modifies those Appointments.
 
 `services.catalog.view` permits authenticated active catalog reads. Inactive draft configuration additionally
 requires `services.manage`; all writes require `services.manage` plus recent MFA. IT Admin
 receives view/manage, Counselor/GSS/Student receive view, and the Head Guidance Counselor
 designation grants manage. Capability overrides remain authoritative.
 
-Provider-role eligibility is intentionally narrow: it does not imply organization scope,
+Provider qualification is intentionally narrow: it does not imply organization scope,
 availability, student preference, case/resource authorization, or record access. Head remains a
 COUNSELOR, while GSS organizational responsibility continues to come from the supervising
 Counselor.
@@ -560,7 +646,9 @@ Counselor.
 ```text
 GET   /api/v1/services
 POST  /api/v1/services
+GET   /api/v1/services/provider-candidates
 GET   /api/v1/services/{service_id}
+GET   /api/v1/services/{service_id}/providers
 PATCH /api/v1/services/{service_id}
 POST  /api/v1/services/{service_id}/enable
 POST  /api/v1/services/{service_id}/disable
@@ -575,8 +663,10 @@ now consume this configuration through their own domain rules.
 ## Availability
 
 Availability models recurring weekly GCO Office hours, recurring weekly Provider hours, and dated
-unavailability exceptions. Weekly rows are local wall-clock values interpreted with
-`settings.TIME_ZONE`; exceptions are timezone-aware absolute datetime ranges. All interval
+unavailability exceptions. Weekly rows are UCN wall-clock values interpreted in
+`INSTITUTION_TIME_ZONE`, never the runtime `TIME_ZONE` (see Institutional time and
+[ADR-097](docs/decisions/ADR-097-institutional-civil-time-independent-of-runtime-timezone.md),
+which refines ADR-019); exceptions are timezone-aware absolute datetime ranges. All interval
 calculation uses half-open `[start, end)` semantics. Empty schedules fail closed and semantic
 weekly overlaps are rejected for the same delivery-mode context.
 
@@ -590,9 +680,10 @@ mutations require recent MFA; routine Counselor self-service does not.
 
 Effective/base Availability is computed from Provider weekly Availability intersected with Office
 weekly Availability, minus applicable Office and Provider exceptions. Service Catalog remains the
-source of truth for active Service state, delivery-mode support, role-level provider eligibility,
-and normal default duration. Results shorter than the Service default duration are discarded, but
-longer intervals are returned whole; no slots are persisted. Effective queries are bounded to
+source of truth for active Service state, delivery-mode support, Counselor qualification, and the
+Appointment duration. Effective Availability is not applicable to a Counselor who is not qualified
+for the Service. While booking is on, results shorter than the Appointment duration are discarded,
+but longer intervals are returned whole; no slots are persisted. Effective queries are bounded to
 31 days. Appointment booking additionally checks reservations and exposes bookable slots.
 
 ```text
@@ -623,14 +714,16 @@ Service configuration and are enforced by Appointment booking and cancellation.
 
 Appointments are shared reservation records, not Counseling encounters. Student self-booking
 derives the Student from the authenticated account, resolves either an explicitly selected active
-Counselor or the canonical Organization default Counselor, derives duration from the active
-Service, validates the entire proposed interval through Availability, and prevents overlapping
-SCHEDULED reservations for both Student and Provider.
+Counselor or the canonical Organization default Counselor, requires that Counselor to be qualified
+for the Service (an unqualified default fails with `appointment_default_provider_not_qualified`
+rather than being substituted), derives duration from the active bookable Service, validates the
+entire proposed interval through Availability, and prevents overlapping SCHEDULED reservations for
+both Student and Provider.
 
 Booking locks Student and Provider accounts in deterministic UUID order and then locks the Service
-row. Human references use `APT-YYYY-NNNNNN`, where YYYY is the local booking year in
-`settings.TIME_ZONE`. Service cancellation cutoff is snapshotted into each Appointment so later
-catalog changes do not alter existing cancellation behavior.
+row. Human references use `APT-YYYY-NNNNNN`, where YYYY is the booking year in UCN civil time
+(`INSTITUTION_TIME_ZONE`; ADR-097 refines ADR-020). Service cancellation cutoff is snapshotted into
+each Appointment so later catalog changes do not alter existing cancellation behavior.
 
 ```text
 POST /api/v1/appointments
@@ -694,8 +787,9 @@ uv run python manage.py rotate_exit_interview_confidential_content --batch-size 
 
 Rotation verifies all three families, refuses legacy plaintext schema, and rewraps previous-key
 tokens in row-locked bounded transactions without changing business metadata. Counts/errors remain
-content-free, and interrupted work resumes safely. Live activation is deferred: follow the ADR-082
-section of [runtime-secrets.md](docs/runtime-secrets.md) for actual starting-state discovery, the
-18-secret manifest, each absent independent domain keyring, backup/recovery and maintenance with
-all old writers stopped/drained through destructive migrations and exact-SHA activation. Do not
-start ordinary deployment until that separately authorized cutover is ready.
+content-free, and interrupted work resumes safely. Live activation is deferred: follow the current
+ADR-085/086 combined cutover in [runtime-secrets.md](docs/runtime-secrets.md) (older numbered
+sections, including ADR-082's, are historical) for actual starting-state discovery, the current
+runtime-secret inventory, each absent independent domain keyring, backup/recovery and maintenance
+with all old writers stopped/drained through destructive migrations and exact-SHA activation. Do
+not start ordinary deployment until that separately authorized cutover is ready.

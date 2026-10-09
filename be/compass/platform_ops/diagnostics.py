@@ -77,7 +77,6 @@ def _log_probe_failure(*, code: str, exc: BaseException) -> None:
         extra={
             "event": "platform_diagnostic_probe_failed",
             "check_code": code,
-            "status": DiagnosticStatus.UNAVAILABLE.value,
             "exception_class": type(exc).__name__,
         },
     )

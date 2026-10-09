@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) separates NEW direct Counseling (current Service qualification and delivery modes) from Appointment-backed Encounters (the Appointment's saved provenance).
+Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) separates NEW direct Counseling (current Service qualification and delivery modes) from Appointment-backed Encounters (the Appointment's saved provenance). Where this decision interprets UCN civil time in `settings.TIME_ZONE`, [ADR-097](ADR-097-institutional-civil-time-independent-of-runtime-timezone.md) uses `INSTITUTION_TIME_ZONE`.
 
 ## Context
 

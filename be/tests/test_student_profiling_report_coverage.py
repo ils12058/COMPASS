@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import inspect
 import json
 from decimal import Decimal
 
@@ -14,11 +15,17 @@ from compass.inventory.models import (
     InventoryGeographicLocation,
 )
 from compass.organization.models import AcademicYear, StudentAffiliation
+from compass.reports import services as report_services
+from compass.reports.pdf import render_student_profiling_pdf
 from compass.reports.services import (
+    GLOBAL_REPORT_ACCESS_SCOPE,
     LEGACY_KEY,
+    ReportAccessDenied,
     ReportAccessScope,
     build_student_profiling_report,
+    resolve_report_filters,
 )
+from compass.reports.xlsx import render_student_profiling_xlsx
 from tests.inventory_encryption_helpers import create_inventory_row
 from tests.test_student_profiling_reports import (
     auth_client,
@@ -63,7 +70,9 @@ def test_geography_uses_city_psgc_identity_and_not_province_or_address_parsing()
         not_specified=True,
     )
 
-    section = build_student_profiling_report()["sections"]["city_municipality"]
+    section = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)["sections"][
+        "city_municipality"
+    ]
     naga = next(
         item for item in section["rows"] if item["city_municipality_psgc_code"] == "0517240000"
     )
@@ -122,7 +131,9 @@ def test_parent_income_reuses_normalized_status_and_excludes_spouse():
         annual_income_previous_year=None,
     )
 
-    section = build_student_profiling_report()["sections"]["parent_annual_income"]
+    section = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)["sections"][
+        "parent_annual_income"
+    ]
     assert report_row(section, "POOR")["total_count"] == 1
     assert report_row(section, "NOT_SPECIFIED")["total_count"] == 1
     assert report_row(section, LEGACY_KEY)["total_count"] == 1
@@ -160,7 +171,9 @@ def test_current_coverage_distinguishes_submitted_draft_missing_and_ignores_prog
     for student in (submitted_student, draft_student, missing_student):
         StudentAffiliation.objects.create(student=student, college=college)
 
-    report = build_student_profiling_report(program_id=program.pk, year_level=2)
+    report = build_student_profiling_report(
+        access_scope=GLOBAL_REPORT_ACCESS_SCOPE, program_id=program.pk, year_level=2
+    )
     coverage = report["inventory_coverage"]
     assert coverage["mode"] == "CURRENT"
     assert coverage["eligible_student_count"] == 3
@@ -214,7 +227,9 @@ def test_current_coverage_campus_college_scope_uses_guidance_affiliation_without
     StudentAffiliation.objects.create(student=first, college=college_a)
     StudentAffiliation.objects.create(student=second, college=college_b)
 
-    report = build_student_profiling_report(campus_id=campus_a.pk, college_id=college_a.pk)
+    report = build_student_profiling_report(
+        access_scope=GLOBAL_REPORT_ACCESS_SCOPE, campus_id=campus_a.pk, college_id=college_a.pk
+    )
     coverage = report["inventory_coverage"]
     assert coverage["eligible_student_count"] == 1
     assert coverage["missing_count"] == 1
@@ -235,7 +250,9 @@ def test_historical_coverage_never_uses_today_current_students_as_missing_denomi
     for index in range(5):
         make_user(f"current-only-{index}@example.edu")
 
-    coverage = build_student_profiling_report(academic_year_id=historical.pk)["inventory_coverage"]
+    coverage = build_student_profiling_report(
+        access_scope=GLOBAL_REPORT_ACCESS_SCOPE, academic_year_id=historical.pk
+    )["inventory_coverage"]
     assert coverage["mode"] == "HISTORICAL_LIMITED"
     assert coverage["eligible_student_count"] is None
     assert coverage["missing_count"] is None
@@ -283,7 +300,7 @@ def test_aggregate_api_excludes_student_identity_and_private_narratives():
 def test_methodology_is_explicit_and_no_report_persistence_models_exist():
     sync_policy()
     AcademicYear.objects.create(label="2026-2027", is_current=True)
-    report = build_student_profiling_report()
+    report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
     assert "submitted Individual Inventories" in report["methodology"]["profile_population_note"]
     assert "Without Individual Inventory" in report["methodology"]["profile_population_note"]
     assert "Program" in report["methodology"]["coverage_note"]
@@ -293,3 +310,58 @@ def test_methodology_is_explicit_and_no_report_persistence_models_exist():
     for name in ("Report", "ProfileReport", "ReportSnapshot", "ReportRow", "AnalyticsFact"):
         with pytest.raises(LookupError):
             apps.get_model("reports", name)
+
+
+SCOPED_REPORT_CALLABLES = (
+    build_student_profiling_report,
+    resolve_report_filters,
+    report_services._profile_queryset,
+    report_services._coverage,
+    render_student_profiling_pdf,
+    render_student_profiling_xlsx,
+)
+
+
+def test_report_builders_never_default_to_institution_wide_scope():
+    for function in SCOPED_REPORT_CALLABLES:
+        parameter = inspect.signature(function).parameters["access_scope"]
+        assert parameter.kind is inspect.Parameter.KEYWORD_ONLY, function.__name__
+        assert parameter.default is inspect.Parameter.empty, function.__name__
+
+    # Omission fails at the call boundary, before any query or rendering runs.
+    for function in (
+        build_student_profiling_report,
+        render_student_profiling_pdf,
+        render_student_profiling_xlsx,
+    ):
+        with pytest.raises(TypeError, match="access_scope"):
+            function()
+
+
+@pytest.mark.django_db
+def test_scoped_report_sees_assigned_colleges_and_only_explicit_global_sees_all():
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision("explicit-scope")
+    _, college_a, program_a = make_organization("EXPLICIT-A")
+    _, college_b, program_b = make_organization("EXPLICIT-B")
+    for index, program in enumerate((program_a, program_a, program_b)):
+        make_inventory(
+            student=make_user(f"explicit-scope-{index}@example.edu"),
+            academic_year=year,
+            revision=revision,
+            program=program,
+        )
+    college_a_scope = ReportAccessScope(is_global=False, college_ids=(college_a.pk,))
+
+    scoped = build_student_profiling_report(access_scope=college_a_scope)
+    institution_wide = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
+
+    assert scoped["report_context"]["submitted_inventory_count"] == 2
+    assert "Counselor-assigned Colleges" in scoped["methodology"]["profile_population_note"]
+    assert institution_wide["report_context"]["submitted_inventory_count"] == 3
+    assert "institution-wide" in institution_wide["methodology"]["profile_population_note"]
+    with pytest.raises(ReportAccessDenied):
+        build_student_profiling_report(access_scope=college_a_scope, college_id=college_b.pk)
+    with pytest.raises(ReportAccessDenied):
+        build_student_profiling_report(access_scope=ReportAccessScope(is_global=False))

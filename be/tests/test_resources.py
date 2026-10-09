@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from unittest.mock import patch
 
 import pytest
@@ -13,6 +14,7 @@ from compass.accounts.models import Designation, Role, User, UserDesignation
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.common.json_logging import JsonFormatter
 from compass.publications import PublicationAudience
 from compass.resources.models import ResourceCategory, ResourceKind
 from compass.resources.services import (
@@ -31,6 +33,7 @@ from compass.resources.services import (
     list_public_resources,
     list_visible_resources,
     publish_resource,
+    remove_draft_resource_file,
     update_resource,
 )
 
@@ -401,6 +404,83 @@ def test_file_resource_rejects_unsafe_uploads_and_cleans_new_object_on_db_failur
     cleanup_item.refresh_from_db()
     assert cleanup_item.storage_key == ""
     assert storage.deleted
+
+
+class FailingDeleteStorage(FakeStorage):
+    def delete(self, name: str) -> None:
+        self.deleted.append(name)
+        raise OSError(f"synthetic provider failure for https://private.example/{name}")
+
+
+@pytest.mark.django_db
+def test_failed_object_cleanup_is_logged_without_changing_the_database_outcome(caplog):
+    sync_policy()
+    counselor = make_user("resource-cleanup-visibility@example.edu", "COUNSELOR")
+    storage = FailingDeleteStorage()
+    item = create_draft(actor=counselor, kind=ResourceKind.FILE)
+
+    def attach(name: str):
+        return attach_resource_file(
+            actor=counselor,
+            resource_id=item.pk,
+            uploaded_file=SimpleUploadedFile(
+                f"{name}.pdf", b"%PDF-1.7\n" + name.encode(), content_type="application/pdf"
+            ),
+            context=context(counselor),
+            storage=storage,
+        )
+
+    first_key = attach("first").storage_key
+    caplog.set_level(logging.WARNING, logger="compass.resources")
+
+    # The replacement commits even though the replaced object cannot be deleted.
+    second_key = attach("second").storage_key
+    assert second_key != first_key
+    item.refresh_from_db()
+    assert item.storage_key == second_key
+
+    # A failed attachment still raises its own error after the orphan cleanup fails.
+    with patch(
+        "compass.resources.services.record_event",
+        side_effect=RuntimeError("synthetic audit failure"),
+    ):
+        with pytest.raises(RuntimeError, match="synthetic audit failure"):
+            attach("third")
+    item.refresh_from_db()
+    assert item.storage_key == second_key
+    rollback_key = storage.deleted[-1]
+
+    # Removal commits even though the detached object cannot be deleted.
+    assert (
+        remove_draft_resource_file(
+            actor=counselor, resource_id=item.pk, context=context(counselor), storage=storage
+        ).storage_key
+        == ""
+    )
+    item.refresh_from_db()
+    assert item.storage_key == ""
+    assert storage.deleted == [first_key, rollback_key, second_key]
+
+    records = [
+        record
+        for record in caplog.records
+        if getattr(record, "event", None) == "resource_file_cleanup_failed"
+    ]
+    assert [record.cleanup for record in records] == [
+        "replaced_file",
+        "attach_rollback",
+        "removed_file",
+    ]
+    formatted = [json.loads(JsonFormatter().format(record)) for record in records]
+    for line in formatted:
+        assert line["resource_id"] == str(item.pk)
+        assert line["exception_class"] == "OSError"
+        assert line["level"] == "WARNING"
+    serialized = json.dumps(formatted) + "\n".join(
+        json.dumps(record.__dict__, default=str) for record in records
+    )
+    for secret in (first_key, second_key, rollback_key, "private.example", "synthetic provider"):
+        assert secret not in serialized
 
 
 @pytest.mark.django_db

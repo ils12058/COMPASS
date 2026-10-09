@@ -559,6 +559,29 @@ def _safe_filename(value: str | None) -> str:
     return normalized
 
 
+def _delete_resource_object(
+    object_storage: ObjectStorage, key: str, *, resource_id: UUID, cleanup: str
+) -> None:
+    """Best-effort deletion of an object no Resource row references, outside any row lock.
+
+    A failure leaves an orphaned object under ``resources/<resource_id>/``. It never undoes the
+    database outcome; the warning lets an operator remove objects other than the current key.
+    """
+
+    try:
+        object_storage.delete(key)
+    except Exception as exc:
+        logger.warning(
+            "Resource object cleanup failed",
+            extra={
+                "event": "resource_file_cleanup_failed",
+                "resource_id": str(resource_id),
+                "cleanup": cleanup,
+                "exception_class": type(exc).__name__,
+            },
+        )
+
+
 def attach_resource_file(
     *,
     actor: User,
@@ -638,17 +661,15 @@ def attach_resource_file(
                 },
             )
     except Exception:
-        try:
-            object_storage.delete(saved_key)
-        except Exception:
-            pass
+        _delete_resource_object(
+            object_storage, saved_key, resource_id=resource_id, cleanup="attach_rollback"
+        )
         raise
 
     if old_key and old_key != saved_key:
-        try:
-            object_storage.delete(old_key)
-        except Exception:
-            pass
+        _delete_resource_object(
+            object_storage, old_key, resource_id=resource_id, cleanup="replaced_file"
+        )
     return get_managed_resource(resource_id=resource_id)
 
 
@@ -728,16 +749,9 @@ def remove_draft_resource_file(
         )
 
     if old_key:
-        try:
-            object_storage.delete(old_key)
-        except Exception:
-            logger.warning(
-                "detached Resource object cleanup failed",
-                extra={
-                    "event": "resource_file_cleanup_failed",
-                    "resource_id": str(resource_id),
-                },
-            )
+        _delete_resource_object(
+            object_storage, old_key, resource_id=resource_id, cleanup="removed_file"
+        )
     return get_managed_resource(resource_id=resource_id)
 
 
