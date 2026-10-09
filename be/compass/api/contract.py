@@ -41,10 +41,12 @@ CURRENT_API_TAGS = frozenset(
         "platform-operations",
         "privacy-governance",
         "realtime",
+        "guidance-messages",
     }
 )
 OPERATION_ID_PATTERN = re.compile(r"^[a-z][A-Za-z0-9]*$", re.ASCII)
 OPERATION_ID_PREFIXES = {
+    "guidance-messages": "guidanceMessages",
     "health": "health",
     "metadata": "system",
     "auth": "auth",

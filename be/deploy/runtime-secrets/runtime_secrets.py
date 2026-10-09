@@ -6,6 +6,7 @@ import stat
 from pathlib import Path
 
 SECRET_FILES = {
+    "GUIDANCE_MESSAGE_ENCRYPTION_KEYS": "guidance_message_encryption_keys",
     "SECRET_KEY": "django_secret_key",
     "POSTGRES_PASSWORD": "postgres_password",
     "REDIS_PASSWORD": "redis_password",

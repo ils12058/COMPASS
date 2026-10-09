@@ -127,3 +127,9 @@ realtime Redis), the `realtime` Compose profile (the service does not run), and
   There is no socket migration.
 - Not included: Notification hints, Guidance Messages, presence, typing, read receipts,
   cross-tab socket sharing, client subscriptions, an event bus, or an outbox.
+
+
+Phase 3 refinement (ADR-102): the closed registry additionally permits
+`messages.thread_changed` with exactly one UUID `thread_id`; Messages-domain authorization selects
+commit-time recipients and private read-state hints go only to the same user. Realtime never
+receives Message content or its encryption key.

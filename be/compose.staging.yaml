@@ -32,6 +32,30 @@ x-app: &app
 services:
   web:
     <<: *app
+    secrets:
+      - django_secret_key
+      - postgres_password
+      - redis_password
+      - s3_access_key_id
+      - s3_secret_access_key
+      - smtp_username
+      - smtp_password
+      - turnstile_secret_key
+      - daily_api_key
+      - daily_webhook_hmac
+      - psgc_api_token
+      - auth_totp_encryption_key
+      - routine_interview_encryption_keys
+      - counseling_shared_summary_encryption_keys
+      - referral_confidential_content_encryption_keys
+      - exit_interview_confidential_content_encryption_keys
+      - inventory_confidential_content_encryption_keys
+      - account_profile_confidential_content_encryption_keys
+      - feedback_confidential_content_encryption_keys
+      - graduate_tracer_confidential_content_encryption_keys
+      - web_push_private_key
+      - web_push_storage_key
+      - guidance_message_encryption_keys
     pull_policy: always
     command:
       [
@@ -69,6 +93,9 @@ services:
 
   worker:
     <<: *app
+    environment:
+      GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE: ""
+      GUIDANCE_MESSAGE_ENCRYPTION_KEYS: ""
     pull_policy: always
     command:
       [
@@ -87,6 +114,9 @@ services:
 
   beat:
     <<: *app
+    environment:
+      GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE: ""
+      GUIDANCE_MESSAGE_ENCRYPTION_KEYS: ""
     pull_policy: always
     command: ["celery", "--app", "config", "beat", "--loglevel=INFO", "--pidfile="]
     depends_on:
@@ -280,6 +310,9 @@ secrets:
     file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/web_push_private_key
   web_push_storage_key:
     file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/web_push_storage_key
+
+  guidance_message_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/guidance_message_encryption_keys
 
 volumes:
   postgres_data:

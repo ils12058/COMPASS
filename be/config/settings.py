@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     "compass.availability",
     "compass.appointments",
     "compass.counseling",
+    "compass.guidance_messages",
     "compass.institutional_forms",
     "compass.documents",
     "compass.inventory",
@@ -594,6 +595,32 @@ if keyring_reuses_secret(
     raise ValueError(
         "FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS must not reuse "
         "another encryption domain or SECRET_KEY"
+    )
+
+# Guidance Messages is not provisioned by this backend-only foundation. Missing keys
+# leave unrelated domains usable; confidential read/write fails closed (ADR-102).
+_guidance_keys = env("GUIDANCE_MESSAGE_ENCRYPTION_KEYS", "")
+GUIDANCE_MESSAGE_ENCRYPTION_KEYS = (
+    parse_fernet_keyring(_guidance_keys, setting="GUIDANCE_MESSAGE_ENCRYPTION_KEYS")
+    if _guidance_keys
+    else ()
+)
+if keyring_reuses_secret(
+    GUIDANCE_MESSAGE_ENCRYPTION_KEYS,
+    SECRET_KEY,
+    AUTH_TOTP_ENCRYPTION_KEY,
+    WEB_PUSH_STORAGE_KEY,
+    *ROUTINE_INTERVIEW_ENCRYPTION_KEYS,
+    *COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS,
+    *REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+):
+    raise ValueError(
+        "GUIDANCE_MESSAGE_ENCRYPTION_KEYS must not reuse another encryption domain or SECRET_KEY"
     )
 
 if not 1 <= NOTIFICATION_EMAIL_MAX_ATTEMPTS <= 20:
