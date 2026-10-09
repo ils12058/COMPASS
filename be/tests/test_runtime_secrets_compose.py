@@ -65,6 +65,8 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
             str(tmp_path / ".env"),
             "-f",
             str(tmp_path / manifest),
+            "--profile",
+            "realtime",
             "config",
             "--format",
             "json",
@@ -80,6 +82,7 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
         check=True,
     )
     config = json.loads(result.stdout)
+    _assert_realtime_receives_only_its_own_configuration(config, manifest)
     if manifest == "compose.yaml":
         assert not config.get("secrets")
         assert not config["services"]["web"].get("secrets")
@@ -150,3 +153,29 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
     assert any(mount.startswith("/run/redis-config:") for mount in redis["tmpfs"])
     assert not config["services"]["proxy"].get("secrets")
     assert "synthetic-file-value-never-in-config" not in result.stdout
+
+
+def _assert_realtime_receives_only_its_own_configuration(config, manifest):
+    """The realtime process (ADR-100) gets Redis and Origins only, never app or DB secrets."""
+
+    realtime = config["services"]["realtime"]
+    assert realtime["profiles"] == ["realtime"]
+    assert realtime["command"][:2] == ["uvicorn", "realtime_service.app:app"]
+    assert "gunicorn" not in realtime["command"]
+    assert "env_file" not in realtime
+    environment = realtime["environment"]
+    assert environment["DJANGO_SETTINGS_MODULE"] == ""
+    forbidden = ("POSTGRES", "SECRET_KEY", "ENCRYPTION_KEY", "S3_", "SMTP", "DAILY", "WEB_PUSH")
+    assert not [name for name in environment if any(marker in name for marker in forbidden)]
+    assert not [name for name in environment if name.endswith("_URL")]
+    assert set(realtime["depends_on"]) == {"redis"}
+    assert "realtime" not in config["services"]["web"].get("depends_on", {})
+    assert "realtime" not in config["services"]["proxy"].get("depends_on", {})
+    assert not realtime.get("ports"), "Only Caddy is published"
+    if manifest == "compose.staging.yaml":
+        assert [grant["source"] for grant in realtime["secrets"]] == ["redis_password"]
+        assert environment["REDIS_PASSWORD_FILE"] == "/run/secrets/redis_password"
+        assert "REDIS_PASSWORD" not in environment
+        assert environment["APP_ENV"] == "live-staging"
+    else:
+        assert not realtime.get("secrets")

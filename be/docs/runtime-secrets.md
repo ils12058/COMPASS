@@ -53,6 +53,7 @@ remain trusted. A compromised authorized process can read its own grants.
 | `web`, `worker`, `beat` | all 22, because Django loads settings eagerly |
 | `postgres` | `postgres_password` only |
 | `redis` | `redis_password` only |
+| `realtime` (optional `realtime` profile, ADR-100) | `redis_password` only; no `.env` file |
 | `proxy` | none |
 
 Keep all optional files present, even when empty. Django retains existing enabled-feature checks;

@@ -14,6 +14,8 @@ configuration is synchronized explicitly after migrations; ordinary requests do 
 - Celery 5.6.3 with Redis broker and one Beat service
 - S3-compatible object storage through `django-storages` and boto3
 - Gunicorn behind Caddy 2.11.4
+- An optional, separate Django-free Uvicorn service for content-free realtime hints (ADR-100), off
+  by default
 - MinIO and Mailpit only in the local Compose profile
 - Custom UUID-based account identity with email as its canonical identifier
 - Explicit roles, designations, capabilities, and account-level capability overrides
@@ -463,14 +465,18 @@ configuration plus `_FILE` pointers in the deployment `.env`. In particular, set
   migration follows that domain's runbook, including a verified backup (for example ADR-066 before
   `routine_interviews.0003`);
 - `CADDY_ADDRESS` and `CADDY_HEALTH_HOST` to the staging hostname,
-  `PROXY_BIND_ADDRESS=0.0.0.0`, and ports 80/443.
+  `PROXY_BIND_ADDRESS=0.0.0.0`, and ports 80/443;
+- optionally, realtime (`REALTIME_ENABLED`, `REALTIME_ALLOWED_ORIGINS`, and
+  `COMPOSE_PROFILES=realtime`), only after the prerequisites in
+  [`docs/realtime-deployment.md`](docs/realtime-deployment.md) are confirmed.
 
 Provision and compare exact existing values before the first file-backed deployment. Dispatch
 `Deploy staging backend` for the full current staging SHA; it runs host-secret metadata preflight,
 quiet Compose validation and the existing migration/synchronization checks before replacing the
 application containers. Repository correctness and live cutover are separate acceptance steps.
 
-The same backend image is used by `web`, `worker`, and `beat`; only the command differs. Keep
+The same backend image is used by `web`, `worker`, `beat`, and the optional `realtime` service;
+only the command differs. `realtime` receives only Redis settings and allowed Origins. Keep
 exactly one Beat service per environment. Expose only Caddy publicly, keep PostgreSQL/Redis
 private, and allowlist Cloudflare's published IP ranges at the droplet firewall/security layer
 before relying on forwarded client-IP headers. The current Caddyfile includes the Cloudflare
@@ -534,6 +540,13 @@ the Compose services when deployment automation is introduced.
 - Database integrity and data errors map by PostgreSQL SQLSTATE: unique, foreign-key, and exclusion
   violations return 409; check violations and data errors return 422; anything else is logged and
   returns the generic 500. Error codes come from exception types, never from message text.
+- Realtime (ADR-100) is a hint layer, not an API: `POST /api/v1/realtime/tickets` mints a
+  single-use, 30-second ticket (Redis keeps only its SHA-256 digest in database 4), and the
+  separate `realtime_service` accepts `/api/realtime/v1/socket` only from exact allowlisted
+  Origins, authenticated by that ticket in the first frame. It never imports Django or reads
+  PostgreSQL. Publish only registered, content-free events through `compass.realtime.publish`
+  after commit; every AuthSession revocation closes that session's socket. See
+  [`docs/realtime-deployment.md`](docs/realtime-deployment.md).
 - Eligibility projections such as Appointment `actions`, `counseling_context_available`, email
   `manual_retry_allowed`, and notice `publish_readiness` are advisory. Every mutation revalidates.
 
@@ -564,8 +577,9 @@ by the frontend generator.
 Accepted ADRs are not rewritten when later decisions refine them; follow the newer decision for
 current behavior. In particular, ADR-097 governs UCN civil time where ADR-019, ADR-020, and
 ADR-021 interpret it in `settings.TIME_ZONE`; ADR-089 governs Service booking and Counselor
-qualification over ADR-018 and the scheduling ADRs it lists; and ADR-072 with ADR-092 govern
-operational retention after ADR-061, ADR-065, and ADR-069. Two documents share the number ADR-057
+qualification over ADR-018 and the scheduling ADRs it lists; ADR-072 with ADR-092 govern
+operational retention after ADR-061, ADR-065, and ADR-069; and ADR-100 refines ADR-071's
+WebSocket remark with a separate realtime tier. Two documents share the number ADR-057
 and there is no ADR-077, so cite those by title.
 
 ## Known verification gaps

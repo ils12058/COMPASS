@@ -40,6 +40,7 @@ CURRENT_API_TAGS = frozenset(
         "e-counseling",
         "platform-operations",
         "privacy-governance",
+        "realtime",
     }
 )
 OPERATION_ID_PATTERN = re.compile(r"^[a-z][A-Za-z0-9]*$", re.ASCII)
@@ -75,6 +76,7 @@ OPERATION_ID_PREFIXES = {
     "e-counseling": "eCounseling",
     "platform-operations": "platformOperations",
     "privacy-governance": "privacyGovernance",
+    "realtime": "realtime",
 }
 HTTP_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch"})
 _OPERATION_ID_LOCATION_EXCEPTIONS = {

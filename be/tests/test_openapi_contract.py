@@ -352,6 +352,7 @@ EXPECTED_OPERATION_IDS = {
     "eCounselingAccessAssignedMedia",
     "eCounselingCreateJoinCredential",
     "eCounselingDailyWebhook",
+    "realtimeIssueTicket",
 }
 
 
@@ -756,6 +757,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "e-counseling",
         "platform-operations",
         "privacy-governance",
+        "realtime",
     ]
     assert all(
         isinstance(operation.get("tags"), list)

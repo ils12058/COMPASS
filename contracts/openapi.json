@@ -17295,6 +17295,30 @@
         "title": "PushStatusResponse",
         "type": "object"
       },
+      "RealtimeTicketResponse": {
+        "properties": {
+          "expires_in_seconds": {
+            "title": "Expires In Seconds",
+            "type": "integer"
+          },
+          "ticket": {
+            "title": "Ticket",
+            "type": "string"
+          },
+          "user_id": {
+            "format": "uuid",
+            "title": "User Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "ticket",
+          "expires_in_seconds",
+          "user_id"
+        ],
+        "title": "RealtimeTicketResponse",
+        "type": "object"
+      },
       "RecordingWorkspaceState": {
         "additionalProperties": false,
         "properties": {
@@ -46505,6 +46529,64 @@
         ]
       }
     },
+    "/api/v1/realtime/tickets": {
+      "post": {
+        "description": "Mints a single-use ticket for the current session. The client sends it as the first WebSocket frame to the realtime service and never places it in a URL. The ticket expires within seconds and authenticates at most one socket. `user_id` is the account the ticket belongs to. Returns 503 `realtime_disabled` when realtime is turned off and 503 `realtime_unavailable` when it is temporarily unavailable.",
+        "operationId": "realtimeIssueTicket",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RealtimeTicketResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Issue a one-time realtime connection ticket",
+        "tags": [
+          "realtime"
+        ]
+      }
+    },
     "/api/v1/reference-data/psgc/barangays": {
       "get": {
         "operationId": "referenceDataListPSGCBarangays",
@@ -51662,6 +51744,10 @@
     {
       "description": "COMPASS Privacy Notices, acknowledgment, and curated privacy/security oversight.",
       "name": "privacy-governance"
+    },
+    {
+      "description": "One-time tickets that authenticate the separate realtime hint socket.",
+      "name": "realtime"
     }
   ]
 }

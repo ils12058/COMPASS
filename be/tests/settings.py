@@ -23,6 +23,7 @@ _TEST_ENV = {
     "REDIS_CACHE_URL": "redis://127.0.0.1:6379/1",
     "REDIS_RATE_LIMIT_URL": "redis://127.0.0.1:6379/2",
     "REDIS_IDEMPOTENCY_URL": "redis://127.0.0.1:6379/3",
+    "REDIS_REALTIME_URL": "redis://127.0.0.1:6379/4",
     "S3_BUCKET_NAME": "compass-test",
     "S3_ACCESS_KEY_ID": "test-access",
     "S3_SECRET_ACCESS_KEY": "test-secret",
