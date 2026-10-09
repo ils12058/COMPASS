@@ -16041,7 +16041,7 @@
       },
       "OrganizationResponsibilityScope": {
         "enum": [
-          "INSTITUTION_WIDE",
+          "ASSIGNED_AND_FALLBACK_COLLEGES",
           "ASSIGNED_COLLEGES"
         ],
         "title": "OrganizationResponsibilityScope",

@@ -81,7 +81,7 @@ class ProgramListResponse(StrictSchema):
 
 
 class OrganizationResponsibilityScope(StrEnum):
-    INSTITUTION_WIDE = "INSTITUTION_WIDE"
+    ASSIGNED_AND_FALLBACK_COLLEGES = "ASSIGNED_AND_FALLBACK_COLLEGES"
     ASSIGNED_COLLEGES = "ASSIGNED_COLLEGES"
 
 
@@ -210,7 +210,7 @@ def _person(user) -> dict[str, object]:
     responsibility_scope = None
     if user.role.code == "COUNSELOR":
         responsibility_scope = (
-            OrganizationResponsibilityScope.INSTITUTION_WIDE
+            OrganizationResponsibilityScope.ASSIGNED_AND_FALLBACK_COLLEGES
             if any(
                 designation.code == "HEAD_GUIDANCE_COUNSELOR"
                 for designation in user.designations.all()

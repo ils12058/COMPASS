@@ -8,7 +8,10 @@ from uuid import UUID
 from compass.accounts.models import User
 from compass.inventory.models import CivilStatusCategory, PWDStatus, StudentInventory
 from compass.organization.academic_years import get_current_academic_year
-from compass.organization.access_scope import resolve_organizational_access_scope
+from compass.organization.access_scope import (
+    is_head_guidance,
+    resolve_operational_responsibility_scope,
+)
 from compass.organization.models import StudentAffiliation
 from compass.student_support.models import (
     FourPsStatus,
@@ -64,9 +67,9 @@ def _require_scoped_student(*, actor: User, student_id: UUID) -> User:
     if student is None:
         raise StudentSupportNotFound("The requested Student was not found.")
 
-    scope = resolve_organizational_access_scope(actor)
-    if scope.institution_wide:
+    if is_head_guidance(actor):
         return student
+    scope = resolve_operational_responsibility_scope(actor)
     if not scope.college_ids:
         raise StudentSupportNotFound("The requested Student was not found.")
     if not StudentAffiliation.objects.filter(

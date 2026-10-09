@@ -97,7 +97,8 @@ await check("responsibilities-help", "/portal/organization/responsibilities", {}
   const dialog = page.getByRole("dialog", { name: "About Responsibilities", exact: true });
   assert.match(await dialog.innerText(), /exactly one active Head Guidance Counselor/);
   assert.match(await dialog.innerText(), /does not automatically grant blanket access/);
-  assert.match(await dialog.innerText(), /Guidance Services Staff inherit/);
+  assert.match(await dialog.innerText(), /Guidance Services Staff handle/);
+  assert.match(await dialog.innerText(), /Staff do not inherit Head oversight authority/);
   await page.keyboard.press("Escape");
   await screenshot(page, "organization-responsibilities");
 });

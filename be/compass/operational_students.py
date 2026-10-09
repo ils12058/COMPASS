@@ -8,7 +8,6 @@ from uuid import UUID
 from django.db.models import Q
 
 from compass.accounts.models import StudentLifecycleStatus, User
-from compass.organization.access_scope import resolve_organizational_access_scope
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -75,14 +74,13 @@ def _college_option(student: User) -> OperationalCollegeOption | None:
 
 def list_scoped_operational_students(
     *,
-    actor: User,
+    college_ids: tuple[UUID, ...] | None,
     search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ) -> OperationalStudentPage:
     page, page_size = _pagination(page, page_size)
     term = _search_term(search)
-    scope = resolve_organizational_access_scope(actor)
     queryset = User.objects.filter(
         is_active=True,
         role__code="STUDENT",
@@ -92,12 +90,12 @@ def list_scoped_operational_students(
         "organization_student_affiliation__college",
         "organization_student_affiliation__college__campus",
     )
-    if not scope.institution_wide:
-        if not scope.college_ids:
+    if college_ids is not None:
+        if not college_ids:
             queryset = queryset.none()
         else:
             queryset = queryset.filter(
-                organization_student_affiliation__college_id__in=scope.college_ids,
+                organization_student_affiliation__college_id__in=college_ids,
                 organization_student_affiliation__college__is_active=True,
                 organization_student_affiliation__college__campus__is_active=True,
             )

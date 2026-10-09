@@ -947,3 +947,27 @@ def test_concurrent_head_creations_allocate_unique_referral_references():
 
     assert set(refs) == {f"REF-{now.year:04d}-000001", f"REF-{now.year:04d}-000002"}
     assert len(set(refs)) == 2
+
+
+@pytest.mark.django_db
+def test_head_referral_oversight_is_not_inherited_by_supervised_staff():
+    sync_policy()
+    _, _, _, student_a, student_b, _ = setup_scope()
+    head = make_head("scope-head@example.edu")
+    staff = make_user("scope-head-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    StaffSupervision.objects.create(staff=staff, supervisor=head)
+    a = create_for(head, student_a, key="head-a", fingerprint="a" * 64)
+    b = create_for(head, student_b, key="head-b", fingerprint="b" * 64)
+    fallback = College.objects.create(
+        campus=College.objects.get(code="A").campus, code="FALLBACK", name="Fallback"
+    )
+    student = make_user("scope-fallback@example.edu", "STUDENT")
+    StudentAffiliation.objects.create(student=student, college=fallback)
+    c = create_for(staff, student, key="staff-c", fingerprint="c" * 64)
+    assert {item.pk for item in list_referrals(actor=head).items} == {a.pk, b.pk, c.pk}
+    assert {item.pk for item in list_referrals(actor=staff).items} == {c.pk}
+    for item in (a, b):
+        with pytest.raises(ReferralNotFound):
+            get_referral(actor=staff, referral_id=item.pk)
+    with pytest.raises(ReferralNotPermitted):
+        create_for(staff, student_a, key="staff-denied", fingerprint="d" * 64)

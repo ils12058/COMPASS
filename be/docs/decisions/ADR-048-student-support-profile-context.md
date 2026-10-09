@@ -1,5 +1,10 @@
 # ADR-048: Student Support Profile and Context
 
+> **Scope refinement (2026-10-09):** [ADR-099](ADR-099-operational-responsibility-and-domain-head-oversight.md)
+> separates handled College workload from explicit domain-owned Head oversight. GSS inherits
+> only supervisor workload, including valid unique-Head fallback, never Head designation authority.
+
+
 - Status: Accepted
 - Date: 2026-09-19
 - Scope: backend-only Student Support Profile storage and privacy-minimized counselor context
