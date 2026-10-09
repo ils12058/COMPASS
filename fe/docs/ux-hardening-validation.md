@@ -17,7 +17,7 @@ The existing hierarchy browser suite reproduced its intermittent Call Slip toolt
 
 | Finding | Current staging classification | Evidence | Correction and principal files |
 | --- | --- | --- | --- |
-| UX-001 | STILL PRESENT | Inventory and Exit responses enlarge the document; non-sticky hidden sort descriptions use an outer containing block | `relative` on the existing sort button, `src/components/ui/sortable-column-header.tsx` |
+| UX-001 | STILL PRESENT | Inventory and Exit responses enlarge the document; non-sticky hidden sort descriptions use an outer containing block | `relative` on the existing sort button and a bounded native-control action row, `src/components/ui/sortable-column-header.tsx` / `panel.tsx` |
 | UX-002 | STILL PRESENT | Typing commits search, fetches and disconnects the focused input | Explicit Search/Enter, stable local draft, URL acknowledgement/history ownership, `src/features/accounts/list/accounts-list.tsx` |
 | UX-003 | STILL PRESENT | Services and Affiliations Clear is undone by the previous draft/debounce | Parent owns draft and Clear, cancels timers and distinguishes navigation acknowledgements; Services list/shared and Student Affiliations page |
 | UX-004 | STILL PRESENT | Hold a completed `Mar` navigation, type `Maria`, release: baseline finishes at `Mar` | Track issued searches and preserve newer draft; `src/features/availability/availability-pages.tsx` |
@@ -121,8 +121,12 @@ Call Slip `icon-tooltip-interaction` check in the hierarchy suite (**13/14**), m
 staging. The remaining existing suites were run separately: E-Counseling call **31/31** and
 runtime **17/17**. This is not a green full `test:ui` baseline.
 
-Targeted CI installs/runs both engines through `test:ui:regressions`; consult the PR checks for
-its remote execution result. Browser output includes per-engine result JSON, mobile screenshots
+The first targeted CI run passed units/build and Chromium 56/56 but found one Linux WebKit
+Resources failure at 320px: the native Sort select widened the document to 327px. A counterfactual
+reproduced 326px locally with the measured 256px select width; allowing PanelHeader's existing
+actions row to shrink restored 320px. This additional directly affected shared-component correction
+is covered by the Resources 320px case in both engines. Targeted CI installs/runs both engines
+through `test:ui:regressions`; consult the PR checks for its latest remote execution result. Browser output includes per-engine result JSON, mobile screenshots
 and clientWidth/table/sticky measurements under the configured artifact directory.
 
 ## Deferred backlog

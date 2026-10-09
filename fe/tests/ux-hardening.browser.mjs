@@ -23,6 +23,11 @@ for (const width of [320, 375, 390, 393, 430, 768, 1440]) {
   for (const [name, path] of [["inventory", "/portal/inventory"], ["exit-responses", "/portal/exit-interviews"], ["resources", "/portal/resources"], ["accounts-unaffected", "/portal/accounts"]]) {
     await check(`containment-${name}-${width}`, path, { viewport: viewport(width), overrides: worlds }, async (page) => {
       const table = page.locator("table:visible"); await shown(table);
+      if (name === "resources" && width === 320) {
+        // Linux WebKit gives this native select a 256px intrinsic width. Reproduce that
+        // measured width on other platforms to keep the containing action row bounded.
+        await page.getByLabel("Sort", { exact: true }).evaluate((element) => { element.style.width = "16rem"; });
+      }
       await measure(page, `${name}-${width}`);
       const scroller = table.locator("..");
       if (width <= 430) assert.equal(await scroller.evaluate((e) => e.scrollWidth > e.clientWidth), true, "Table retains local scrolling");

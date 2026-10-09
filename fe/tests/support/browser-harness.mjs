@@ -148,7 +148,11 @@ export async function createBrowserHarness(suite) {
     async hidden(locator) { await locator.waitFor({ state: "hidden" }); },
     async screenshot(page, name) { await page.screenshot({ path: join(artifacts, `${name}.png`), fullPage: true }); },
     async noHorizontalOverflow(page) {
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, "Page fits its viewport");
+      const { scroll, client } = await page.evaluate(() => ({
+        scroll: document.documentElement.scrollWidth,
+        client: document.documentElement.clientWidth,
+      }));
+      assert.ok(scroll <= client + 1, `Page scrollWidth ${scroll}px exceeds clientWidth ${client}px`);
     },
   };
 }
