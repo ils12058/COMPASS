@@ -24,6 +24,7 @@ from compass.exit_interviews.api import router as exit_interviews_router
 from compass.feedback.api import router as feedback_router
 from compass.good_moral.api import router as good_moral_router
 from compass.graduate_tracer.api import router as graduate_tracer_router
+from compass.guidance_messages.api import router as guidance_messages_router
 from compass.institutional_forms.api import router as institutional_forms_router
 from compass.inventory.api import router as inventory_router
 from compass.notifications.api import router as notifications_router
@@ -196,6 +197,10 @@ api = NinjaAPI(
                     "One-time tickets that authenticate the separate realtime hint socket."
                 ),
             },
+            {
+                "name": "guidance-messages",
+                "description": "Encrypted Guidance Office and Counseling communication.",
+            },
         ]
     },
     openapi_url="/openapi.json" if settings.API_DOCS_ENABLED else None,
@@ -246,4 +251,5 @@ api.add_router("/privacy", public_privacy_router)
 api.add_router("/e-counseling", ecounseling_router)
 api.add_router("/integrations/daily", daily_router)
 api.add_router("/realtime", realtime_router)
+api.add_router("/guidance-messages", guidance_messages_router)
 register_exception_handlers(api)

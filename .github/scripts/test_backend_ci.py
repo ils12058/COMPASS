@@ -16,6 +16,23 @@ def selected(*paths: str) -> backend_ci.Selection:
 
 
 class SelectionTests(unittest.TestCase):
+    def test_guidance_messages_reaches_all_boundaries(self):
+        for path in ("services.py", "policy.py", "content.py", "api.py", "models.py"):
+            result = selected("be/compass/guidance_messages/" + path)
+            self.assertFalse(result.full)
+            for name in (
+                "test_guidance_messages.py",
+                "test_guidance_messages_concurrency.py",
+                "test_guidance_messages_realtime.py",
+                "test_operational_students.py",
+                "test_appointments.py",
+                "test_counseling_context.py",
+                "test_realtime_service.py",
+                "test_runtime_secrets.py",
+            ):
+                self.assertIn(name, result.files)
+        self.assertTrue(selected("be/compass/guidance_messages/migrations/0001_initial.py").full)
+
     def test_safety_bundle_always_runs(self):
         result = selected("be/docs/decisions/ADR-001-example.md")
         self.assertFalse(result.full)

@@ -72,6 +72,26 @@ DESIGNATION_DEFINITIONS = (
 
 CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
+        code="guidance_messages.view_self",
+        name="View own Guidance Messages",
+        description="View own authorized Guidance threads.",
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.manage_self",
+        name="Manage own Guidance Messages",
+        description="Start, send and update private read state for own eligible threads.",
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.view",
+        name="View scoped Guidance Messages",
+        description="View operational Office workload or exact Counselor participant threads.",
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.manage",
+        name="Manage scoped Guidance Messages",
+        description="Send and manage authorized Guidance threads without broadening content scope.",
+    ),
+    CapabilityDefinition(
         code="activity.supervised_staff.view",
         name="View supervised staff activity",
         description="View selected operational activity within current direct StaffSupervision.",
@@ -502,6 +522,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     ),
     "COUNSELOR": frozenset(
         {
+            "guidance_messages.view",
+            "guidance_messages.manage",
             "activity.supervised_staff.view",
             "accounts.view",
             "organization.structure.view",
@@ -540,6 +562,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     ),
     "GUIDANCE_SERVICES_STAFF": frozenset(
         {
+            "guidance_messages.view",
+            "guidance_messages.manage",
             "accounts.view",
             "organization.structure.view",
             "academic_years.view",
@@ -561,6 +585,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     ),
     "STUDENT": frozenset(
         {
+            "guidance_messages.view_self",
+            "guidance_messages.manage_self",
             "accounts.view",
             "organization.structure.view",
             "services.catalog.view",
@@ -634,6 +660,8 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 # Dependencies constrain whether already-granted authority is effective. They never
 # create prerequisite authority or rewrite persisted grants/overrides.
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
+    "guidance_messages.manage_self": frozenset({"guidance_messages.view_self"}),
+    "guidance_messages.manage": frozenset({"guidance_messages.view"}),
     "privacy_governance.activity.export": frozenset({"privacy_governance.view"}),
     "privacy_governance.retention.manage": frozenset({"privacy_governance.retention.view"}),
     "privacy_governance.retention.approve": frozenset({"privacy_governance.retention.view"}),

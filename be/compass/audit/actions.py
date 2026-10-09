@@ -218,7 +218,19 @@ ECOUNSELING_MEDIA_ARTIFACT_STORED = "ecounseling.media_artifact.stored"
 ECOUNSELING_MEDIA_PROVIDER_CLEANED = "ecounseling.media_artifact.provider_cleaned"
 ECOUNSELING_MEDIA_ARTIFACT_ACCESS_AUTHORIZED = "ecounseling.media_artifact.access_authorized"
 
+# Guidance Messages structural provenance only (ADR-102).
+GUIDANCE_MESSAGES_THREAD_CREATED = "guidance_messages.thread.created"
+GUIDANCE_MESSAGES_MESSAGE_SENT = "guidance_messages.message.sent"
+GUIDANCE_MESSAGES_THREAD_ASSIGNED = "guidance_messages.thread.assigned"
+GUIDANCE_MESSAGES_THREAD_RESOLVED = "guidance_messages.thread.resolved"
+GUIDANCE_MESSAGES_THREAD_REOPENED = "guidance_messages.thread.reopened"
+
 __all__ = [
+    "GUIDANCE_MESSAGES_THREAD_CREATED",
+    "GUIDANCE_MESSAGES_MESSAGE_SENT",
+    "GUIDANCE_MESSAGES_THREAD_ASSIGNED",
+    "GUIDANCE_MESSAGES_THREAD_RESOLVED",
+    "GUIDANCE_MESSAGES_THREAD_REOPENED",
     "PRIVACY_ACTIVITY_EXPORTED",
     "ACCOUNT_CREATED",
     "ACCOUNT_CSV_IMPORTED",

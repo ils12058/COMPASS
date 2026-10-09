@@ -1,7 +1,8 @@
 # Host-managed live-staging runtime secrets
 
-Current repository target: **22** sources (ADR-085/086). All older numbered cutover sections
-are historical domain procedures; the final combined ADR-085/086 gates govern the current target.
+Current repository target: **23** sources (ADR-102). All older numbered cutover sections
+are historical domain procedures; ADR-085/086 gates continue for the original 22 sources,
+and ADR-102 below adds the web-only Messages secret with optional empty provisioning.
 No implementation merge establishes live readiness.
 
 
@@ -13,7 +14,7 @@ secret-management service.
 ## Host directory and service grants
 
 `/opt/compass/secrets` is persistent outside `/opt/compass/releases`, owned by `compass:compass`,
-mode `0700`. All 22 source files must be regular files, not symlinks, owned by `compass`, mode
+mode `0700`. All 23 source files must be regular files, not symlinks, owned by `compass`, mode
 `0444`. Never put this directory in Git, a checkout, an image, or a release symlink.
 
 The host parent directory is the confidentiality boundary: other unprivileged users cannot traverse
@@ -47,10 +48,12 @@ remain trusted. A compromised authorized process can read its own grants.
 | `FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `feedback_confidential_content_encryption_keys` | yes |
 | `WEB_PUSH_PRIVATE_KEY` | `web_push_private_key` | when enabled |
 | `WEB_PUSH_STORAGE_KEY` | `web_push_storage_key` | when enabled |
+| `GUIDANCE_MESSAGE_ENCRYPTION_KEYS` | `guidance_message_encryption_keys` | before Guidance Messages content API use; may be empty for this unprovisioned foundation |
 
 | Service | Explicit grants |
 | --- | --- |
-| `web`, `worker`, `beat` | all 22, because Django loads settings eagerly |
+| `web` | original 22 plus `guidance_message_encryption_keys` |
+| `worker`, `beat` | original 22; Messages key/path explicitly empty, no Messages grant |
 | `postgres` | `postgres_password` only |
 | `redis` | `redis_password` only |
 | `realtime` (optional `realtime` profile, ADR-100) | `redis_password` only; no `.env` file |
@@ -589,3 +592,33 @@ payloads and preserve plaintext bytes/Fernet timestamps. Batches lock real rows 
 resume after interruption, current-primary rows are no-ops, failures remain untouched and exit nonzero.
 Only token columns change; no User.updated_at/security/session/photo/Audit or Feedback metadata change.
 No scheduled rotation, automatic key deletion or live action is introduced here.
+
+
+## Guidance Messages backend foundation (ADR-102)
+
+`GUIDANCE_MESSAGE_ENCRYPTION_KEYS` is an independent ordered comma-separated Fernet keyring,
+`active_key,previous_key`. The first key encrypts new immutable Messages; every configured key
+can decrypt historical content. Never reuse another domain's key, TOTP/Web Push keys or
+`SECRET_KEY`. Maintain a separately protected recovery copy; keep old keys while historical rows
+still require them. New-key writes and old-key reads are covered by rotation compatibility tests.
+This foundation does not introduce a rotation job or rewrite Message content.
+
+Live file setting:
+`GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE=/run/secrets/guidance_message_encryption_keys`.
+The optional source file must exist with the same ownership/mode contract as the other sources;
+it can remain empty before provisioning. Missing/empty keyring makes confidential content reads
+and writes return `guidance_message_content_unavailable`; structural thread navigation needs no
+key. Malformed configured keys or domain reuse fail startup. This permits unrelated Django
+processes to run without receiving the new key. No plaintext fallback exists.
+
+Only the Django **web** process requires the key. `worker` and `beat` receive neither the mount
+nor a usable setting/path. The standalone **realtime** service receives only its Redis secret;
+it never receives `GUIDANCE_MESSAGE_ENCRYPTION_KEYS`, database credentials, or Message content.
+No frontend/public environment variable carries this secret. Local Django content tests use an
+ephemeral independently generated key, never a deployment key.
+
+Before any future live backend/API activation, provision a real independent keyring through the
+host secret procedure, validate mounts/configuration, migrate, synchronize identity policy, and
+verify authorized encrypted read/write with a synthetic record. Backend and future frontend must
+be reviewed before deployment. This PR does not provision a real key, deploy, seed Messages,
+enable navigation, or adopt a retention duration.

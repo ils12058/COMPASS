@@ -21,6 +21,19 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
+    "guidanceMessagesListThreads",
+    "guidanceMessagesRecipientOptions",
+    "guidanceMessagesEligibleStudents",
+    "guidanceMessagesOpenMyOfficeThread",
+    "guidanceMessagesOpenStudentOfficeThread",
+    "guidanceMessagesOpenCounselingThread",
+    "guidanceMessagesGetThread",
+    "guidanceMessagesListMessages",
+    "guidanceMessagesSendMessage",
+    "guidanceMessagesMarkRead",
+    "guidanceMessagesResolveThread",
+    "guidanceMessagesReopenThread",
+    "guidanceMessagesAssignHandler",
     "privacyGovernanceRetentionCategories",
     "privacyGovernanceListRetentionRules",
     "privacyGovernanceCreateRetentionRule",
@@ -758,6 +771,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "platform-operations",
         "privacy-governance",
         "realtime",
+        "guidance-messages",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -1800,6 +1814,10 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     assert schemas["DesignationCode"]["enum"] == ["DPO", "HEAD_GUIDANCE_COUNSELOR"]
     assert schemas["CapabilityCode"]["enum"] == sorted(
         [
+            "guidance_messages.view_self",
+            "guidance_messages.manage_self",
+            "guidance_messages.view",
+            "guidance_messages.manage",
             "accounts.manage",
             "accounts.view",
             "academic_years.manage",
@@ -2846,3 +2864,26 @@ def test_record_retrieval_contracts_are_narrow_and_historical_filters_are_domain
         assert "form_revision_id" not in {
             p["name"] for p in _operation(schema, path, "get").get("parameters", [])
         }
+
+
+def test_guidance_messages_contract_is_private_strict_and_persistent_idempotency():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    assert schemas["GuidanceSendRequest"]["additionalProperties"] is False
+    assert set(schemas["GuidanceSendRequest"]["required"]) == {"body", "client_message_id"}
+    assert schemas["GuidanceSendRequest"]["properties"]["body"]["maxLength"] == 4000
+    assert set(schemas["GuidanceReadRequest"]["properties"]) == {"sequence"}
+    assert set(schemas["GuidancePerson"]["properties"]) == {"id", "display_name"}
+    assert "body" not in schemas["GuidanceThreadResponse"]["properties"]
+    assert "read_states" not in schemas["GuidanceThreadResponse"]["properties"]
+    assert set(schemas["ThreadStatus"]["enum"]) == {"OPEN", "RESOLVED"}
+    for method, path, operation in iter_operations(schema):
+        if not path.startswith("/api/v1/guidance-messages"):
+            continue
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        assert operation["tags"] == ["guidance-messages"]
+        assert not any(
+            p["name"].lower() == "idempotency-key" for p in operation.get("parameters", [])
+        )
+        assert method not in {"delete", "put"}
+    assert "body_ciphertext" not in json.dumps(schema)

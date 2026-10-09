@@ -133,6 +133,14 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_cross_domain_lifecycle_reconciliation.py",
         ),
     ),
+    "guidance-messages": (
+        "Guidance Messages encryption, workload/relationship authorization and commit hints.",
+        (
+            "test_guidance_messages.py",
+            "test_guidance_messages_concurrency.py",
+            "test_guidance_messages_realtime.py",
+        ),
+    ),
     "counseling": (
         "Counseling encounters, context, shared summaries, and downstream lifecycle.",
         (
@@ -464,6 +472,18 @@ DOMAINS: dict[str, Area] = {
         "feedback",
         "Counseling and Good Moral open feedback opportunities.",
         ("feedback", "counseling", "good-moral", "cross-domain-lists"),
+    ),
+    "guidance_messages": domain(
+        "guidance_messages",
+        "Messages depends on workload, Counseling Appointment anchors, encryption and realtime.",
+        (
+            "guidance-messages",
+            "organization",
+            "counseling",
+            "scheduling",
+            "realtime",
+            "deployment-runtime",
+        ),
     ),
     "good_moral": domain(
         "good_moral",
