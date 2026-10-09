@@ -90,10 +90,11 @@ jobs:
         run: pnpm test
 
   # Browser regressions for account changes, failed refreshes and unsaved drafts (frontend audit
-  # FE-001 to FE-004). They run against a development server because the synthetic seams (fake
-  # Call Object, API interception) are development-only; every API call is answered in the
-  # browser, so no backend runs. The other browser suites stay local until the intermittent
-  # tooltip check in ui-information-hierarchy is characterized.
+  # FE-001 to FE-004), the realtime runtime, and the Guidance Messages workspace. They run against
+  # a development server because the synthetic seams (fake Call Object, API interception) are
+  # development-only; every API call is answered in the browser, so no backend runs. The other
+  # browser suites stay local until the intermittent tooltip check in ui-information-hierarchy is
+  # characterized.
   frontend-browser-regressions:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -147,7 +148,8 @@ jobs:
             /portal/services /portal/inventory/current /portal/exit-interviews/exit-draft-test \
             /portal/referrals/referral-draft-test /portal/availability/me /portal/availability/office /portal/accounts /portal/inventory /portal/exit-interviews \
             /portal/resources /portal/organization/student-affiliations /portal/availability/providers \
-            /portal/announcements/long /portal/referrals/long; do
+            /portal/announcements/long /portal/referrals/long \
+            /portal/messages /portal/messages/new /portal/messages/a0000000-0000-4000-8000-000000000001; do
             curl -sS -o /dev/null -w "%{http_code} $route\n" "http://localhost:3107$route"
           done
 

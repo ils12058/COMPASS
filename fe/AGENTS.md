@@ -369,6 +369,29 @@ only for the confirmed account.
   socket frame: never in a URL, storage, or logs.
 * No feature may require realtime. With realtime disabled, every page behaves as before.
 
+## Guidance Messages
+
+Guidance Messages (ADR-102) is a chat workspace at `/portal/messages`
+(`src/features/guidance-messages/`): the directory beside the conversation on wide workspaces, one
+at a time on narrow ones. It is not a records table and has no floating launcher on other pages.
+
+* Message bodies are confidential plain text: never in URLs, storage, logs, analytics or
+  Notifications, never from a realtime hint, and rendered without HTML or Markdown interpretation.
+  They live only in the QueryClient, so account ownership discards them.
+* Freshness: `messages.thread_changed` reconciles the directory, and the open thread only when the
+  hint names it; polling runs about every 8 seconds when the socket is not live and every 60 seconds
+  when it is; a new `generation` reconciles the workspace; hidden and offline tabs do not poll.
+* History refreshes read only the newest page and join it to what is loaded; older pages load on
+  request and keep the reader's place.
+* One intended Message has one `client_message_id`. An unconfirmed send keeps its ID and text for
+  Retry; editing it is an explicit new Message with a new ID. The draft clears only after the
+  canonical Message returns.
+* Read state is private. Mark read only while the conversation is open in a visible tab with its
+  newest loaded Message in view, never from the directory, and never show Seen or read receipts.
+* Frontend access pairs the identity with its capability (`guidance-messages-access.ts`); the backend
+  decides every thread. Staff start Office conversations only from `guidanceMessagesEligibleStudents`,
+  Students only from `guidanceMessagesRecipientOptions`, never from the Accounts directory.
+
 ---
 
 # 11. Global state

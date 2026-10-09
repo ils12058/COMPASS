@@ -13,6 +13,7 @@ import {
   GraduationCap,
   HeartHandshake,
   Megaphone,
+  MessageCircle,
   MessageCircleHeart,
   MessageSquareText,
   MessagesSquare,
@@ -30,6 +31,7 @@ import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
+import { getGuidanceMessagesAccess } from "@/features/guidance-messages/guidance-messages-access";
 import { getExitInterviewAccess } from "@/features/exit-interviews/exit-interviews-access";
 import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
 import { canAttemptReports } from "@/features/reports/reports-access";
@@ -70,6 +72,9 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
   const hasServices = hasServicesWorkspace(user);
   const hasAvailability = hasAvailabilityWorkspace(user);
   const hasAppointments = getAppointmentAccess(user).hasWorkspace;
+  // Students with their own Messages, and Guidance staff with Messages for their workload. No other
+  // role or designation (IT Admin, Institutional Officer, Head, DPO) adds it.
+  const hasMessages = getGuidanceMessagesAccess(user).hasWorkspace;
   const hasInventory = getInventoryAccess(user).hasWorkspace;
   const hasRoutineInterviews = getRoutineInterviewAccess(user).hasWorkspace;
   const hasCounseling = getCounselingAccess(user).hasWorkspace;
@@ -97,6 +102,10 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
         { href: "/portal/availability", label: "Availability", icon: Clock3, visible: hasAvailability },
         { href: "/portal/services", label: "Services", icon: HeartHandshake, visible: hasServices },
       ],
+    },
+    {
+      label: "Communication",
+      links: [{ href: "/portal/messages", label: "Messages", icon: MessageCircle, visible: hasMessages }],
     },
     {
       label: "Records",

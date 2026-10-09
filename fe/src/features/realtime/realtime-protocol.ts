@@ -40,6 +40,8 @@ export function parseServerFrame(data: unknown): ServerFrame | null {
   const fields = Object.entries(frame).filter(([name]) => name !== "v" && name !== "type");
   if (frame.type === "ready") return fields.length === 0 ? { kind: "ready" } : null;
   if (frame.type === "notifications.changed" && fields.length !== 0) return null;
+  // Mirrors the backend's closed registry (ADR-102): exactly one opaque thread ID.
+  if (frame.type === "messages.thread_changed" && (fields.length !== 1 || fields[0][0] !== "thread_id")) return null;
   if (!EVENT_TYPE.test(frame.type)) return null;
   if (!fields.every(([name, field]) => FIELD_NAME.test(name) && typeof field === "string" && OPAQUE_ID.test(field))) {
     return null;

@@ -66,5 +66,8 @@ port 3107 (`pnpm dev --port 3107`); see the audit for browser setup and coverage
 E-Counseling suites (`tests/ecounseling-call.browser.mjs` for the session page and
 `tests/ecounseling-runtime.browser.mjs` for the call across portal pages) install a fake Daily Call
 Object through a development-only seam, so they need the development server, never reach Daily,
-and use synthetic camera and microphone tracks. Complete API generation before
+and use synthetic camera and microphone tracks. The Guidance Messages suite
+(`tests/guidance-messages.browser.mjs`) answers every Messages request from an in-memory synthetic
+backend (`tests/support/guidance-messages-fixtures.mjs`) and routes the realtime socket in the
+browser, so it needs no backend, keyring or account. Complete API generation before
 running tests, since regeneration temporarily removes the generated client directory.

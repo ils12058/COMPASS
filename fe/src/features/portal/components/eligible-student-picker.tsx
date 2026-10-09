@@ -7,13 +7,15 @@ import { CanonicalPagination } from "@/features/portal/components/canonical-pagi
 import type {
   CallSlipStudentOptionResponse,
   ExitInterviewStudentOptionResponse,
+  GuidanceStudentOption,
   ReferralStudentOptionResponse,
 } from "@/lib/api/generated/model";
 
 export type EligibleStudentOption =
   | ExitInterviewStudentOptionResponse
   | CallSlipStudentOptionResponse
-  | ReferralStudentOptionResponse;
+  | ReferralStudentOptionResponse
+  | GuidanceStudentOption;
 
 export function EligibleStudentPicker({
   search,
