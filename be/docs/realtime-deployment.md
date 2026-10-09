@@ -29,9 +29,10 @@ implementation work.
 3. **Public socket URL** for Vercel: `wss://staging-api.compass-gco.com/api/realtime/v1/socket`.
 4. **Redis database 4** is unused on the live Redis (DB 0 broker, 1 cache/results, 2 rate limit,
    3 idempotency) and no other software uses `compass:realtime:*` keys or channels.
-5. **Memory headroom** on the Droplet for one more Python process (the realtime service idles at
-   tens of MB, plus one Redis connection per open socket) and Redis client capacity for up to
-   `REALTIME_MAX_CONNECTIONS` (default 1000) subscriber connections.
+5. **Memory headroom** on the Droplet for one more Python process (measured locally at about 29 MB
+   after a handful of connections, against about 350 MB for `web`; growth per open socket was not
+   load tested) and Redis client capacity for up to `REALTIME_MAX_CONNECTIONS` (default 1000)
+   subscriber connections, one per open socket.
 6. The deploy workflow's `pull` step lists services explicitly; `realtime` reuses the `web` image,
    which is already pulled.
 
