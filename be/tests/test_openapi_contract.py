@@ -27,6 +27,7 @@ EXPECTED_OPERATION_IDS = {
     "guidanceMessagesOpenMyOfficeThread",
     "guidanceMessagesOpenStudentOfficeThread",
     "guidanceMessagesOpenCounselingThread",
+    "guidanceMessagesGetAppointmentContext",
     "guidanceMessagesGetThread",
     "guidanceMessagesListMessages",
     "guidanceMessagesSendMessage",

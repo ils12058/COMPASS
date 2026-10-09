@@ -392,6 +392,22 @@ at a time on narrow ones. It is not a records table and has no floating launcher
   decides every thread. Staff start Office conversations only from `guidanceMessagesEligibleStudents`,
   Students only from `guidanceMessagesRecipientOptions`, never from the Accounts directory.
 
+Contextual Messages (ADR-103) opens the same Counseling thread beside an Appointment, its
+Appointment-anchored Counseling workspace and its E-Counseling session, through
+`GuidanceContextualMessages` and `GuidanceMessagesTrigger`
+(`guidance-contextual-messages.tsx`). It is not a second chat and never a floating launcher.
+
+* Ask `guidanceMessagesGetAppointmentContext` for the thread or whether it may start; show Messages
+  only when it offers one. Never search the directory for an Appointment's thread, and never offer
+  contextual Messages for a Routine Interview, Referral, Call Slip or walk-in context.
+* Reuse the shared pieces (`guidance-conversation-surface.tsx`, `useMessageComposer`,
+  `MessageComposerView`, `useMessagesFreshness`); do not add a panel-specific send, paging or read path.
+  The composer state lives above the panel, so closing it keeps the draft and any unconfirmed send.
+* Wide pages dock the panel beside the work (non-modal); narrow pages use a full-width `Dialog`
+  drawer. The page's own content keeps its place in the tree, so an E-Counseling call stage is never
+  remounted; Messages never touches the call runtime, Daily chat or transcripts.
+* A Counseling Context's expiry does not hide or end its Messages thread.
+
 ---
 
 # 11. Global state

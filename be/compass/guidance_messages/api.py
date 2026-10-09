@@ -115,6 +115,13 @@ class GuidanceRecipientOptions(StrictSchema):
     has_next: bool
 
 
+class GuidanceAppointmentContext(StrictSchema):
+    """Structural only: never a Message body, preview or participant directory."""
+
+    thread: GuidanceThreadResponse | None
+    can_start: bool
+
+
 class GuidanceStudentOption(GuidancePerson):
     institutional_id: str | None
     college: GuidanceCollege | None
@@ -333,6 +340,22 @@ def open_counseling(
             context=AuditContext.from_request(request, actor=request.auth_user),
         ),
         request.auth_user,
+    )
+
+
+@router.get(
+    "/appointments/{appointment_id}/context",
+    response=response_with_errors(GuidanceAppointmentContext, *ERRORS),
+    operation_id="guidanceMessagesGetAppointmentContext",
+)
+@_safe
+def appointment_context(request, response: HttpResponse, appointment_id: UUID):
+    thread, can_start = services.appointment_context(
+        actor=request.auth_user, appointment_id=appointment_id
+    )
+    return GuidanceAppointmentContext(
+        thread=_thread(thread, request.auth_user) if thread is not None else None,
+        can_start=can_start,
     )
 
 

@@ -63,6 +63,8 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
       { id: OTHER_STUDENT.id, display_name: OTHER_STUDENT.display_name, institutional_id: "2026-0002", college: COLLEGE },
     ],
     relationships: [{ appointment_id: appointmentId, counselor: COUNSELOR, starts_at: "2026-10-05T02:00:00Z" }],
+    // Appointments this viewer may start a Counseling thread for, by Appointment ID → its Student.
+    startable: new Map([[appointmentId, STUDENT]]),
     nextThread: 100,
   };
 
@@ -119,9 +121,12 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
     return [200, addMessage(thread.id, viewer(), payload.body, { clientMessageId: payload.client_message_id })];
   }
 
-  // Students see only their own threads; staff see every synthetic thread except the concealed one.
+  // Students see only their own threads. Staff see synthetic Office threads, and a Counseling thread
+  // only as its persisted Counselor (never by supervision or designation).
   function visible(thread) {
-    return Boolean(thread) && thread.id !== threadIds.hidden && (state.viewerRole !== "STUDENT" || thread.student.id === state.viewerId);
+    if (!thread || thread.id === threadIds.hidden) return false;
+    if (state.viewerRole === "STUDENT") return thread.student.id === state.viewerId;
+    return thread.kind === "OFFICE" || thread.counselor?.id === state.viewerId;
   }
 
   async function finishSend(route, reply, status, body) {
@@ -177,16 +182,33 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
       await reply(result, status);
       return true;
     }
+    // The Appointment's one Counseling thread (ADR-103): an existing thread for its participants,
+    // or whether this viewer may start it now. Anything else is concealed.
+    const existingFor = (id) => [...state.threads.values()].find((item) => item.relationship_appointment_id === id);
+    if (method === "GET" && rest[0] === "appointments" && rest[2] === "context") {
+      const existing = existingFor(rest[1]);
+      if (existing && visible(existing)) await reply({ thread: threadResponse(existing), can_start: false });
+      else if (!existing && state.startable.has(rest[1])) await reply({ thread: null, can_start: true });
+      else await reply(error("guidance_thread_not_found", "The requested Guidance thread was not found."), 404);
+      return true;
+    }
     if (method === "POST" && rest[0] === "appointments") {
-      if (rest[1] !== appointmentId) { await reply(error("guidance_thread_not_found", "Not found."), 404); return true; }
-      let thread = [...state.threads.values()].find((item) => item.relationship_appointment_id === rest[1]);
-      if (!thread) {
+      let thread = existingFor(rest[1]);
+      if (thread ? !visible(thread) : !state.startable.has(rest[1])) {
+        await reply(error("guidance_thread_not_found", "Not found."), 404);
+        return true;
+      }
+      if (!thread && !state.byClientId.has(`${state.viewerId}:${body.client_message_id}`)) {
         const id = `a0000000-0000-4000-8000-${String(state.nextThread++).padStart(12, "0")}`;
-        addThread({ id, kind: "COUNSELING", counselor: COUNSELOR, appointment: rest[1], created: 0 });
+        addThread({ id, kind: "COUNSELING", student: state.startable.get(rest[1]), counselor: COUNSELOR, appointment: rest[1], created: 0 });
         thread = state.threads.get(id);
       }
-      const [status, result] = open(thread, body);
-      await reply(result, status);
+      thread ??= state.threads.get(state.byClientId.get(`${state.viewerId}:${body.client_message_id}`).threadId);
+      const outcome = state.onSend?.(body, thread);
+      if (outcome === "network") { await route.abort("failed"); return true; }
+      const [status, result] = outcome && typeof outcome === "object" ? [outcome.status, outcome.body] : open(thread, body);
+      if (outcome === "commit-then-network") { await route.abort("failed"); return true; }
+      await finishSend(route, reply, status, result);
       return true;
     }
     if (rest[0] === "threads" && rest[1]) {
@@ -246,6 +268,8 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
     },
     requests: (predicate = () => true) => state.requests.filter(predicate),
     sends: () => state.requests.filter((request) => request.method === "POST" && /\/threads\/[^/]+\/messages$/.test(request.pathname)),
+    opens: () => state.requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/counseling-thread")),
+    contexts: () => state.requests.filter((request) => request.method === "GET" && request.pathname.endsWith("/context")),
     reads: () => state.requests.filter((request) => request.method === "PATCH"),
   };
 }

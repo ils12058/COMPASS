@@ -5,6 +5,7 @@ import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { CounselingHelp } from "@/features/counseling/counseling-help";
+import { GuidanceContextualMessages, GuidanceMessagesTrigger } from "@/features/guidance-messages/guidance-contextual-messages";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
@@ -173,13 +174,15 @@ export function CounselingWorkspace({
   };
 
   if (!allowed) return <CounselingUnavailable title="Counseling context unavailable" />;
+
+  let content: ReactNode;
   if (contextUnavailable || invalidBoundary || boundaryReached || shouldHideProtectedData(overview.error) || counselingErrorCode(overview.error) === "counseling_context_not_found") {
-    return <Notice role="alert" className="max-w-3xl px-5 py-6 sm:px-6" title={<h1 className="font-heading text-2xl font-semibold text-ink">Counseling information unavailable</h1>} action={<Button variant="secondary" onClick={() => void reauthorize()}>Check again</Button>}>We cannot show this information until your access is checked again.</Notice>;
-  }
-  if (overview.isPending) return <CounselingWorkspaceSkeleton />;
-  if ((overview.isError && !canShowLastKnownData(overview)) || !overview.data?.data) {
+    content = <Notice role="alert" className="max-w-3xl px-5 py-6 sm:px-6" title={<h1 className="font-heading text-2xl font-semibold text-ink">Counseling information unavailable</h1>} action={<Button variant="secondary" onClick={() => void reauthorize()}>Check again</Button>}>We cannot show this information until your access is checked again.</Notice>;
+  } else if (overview.isPending) {
+    content = <CounselingWorkspaceSkeleton />;
+  } else if ((overview.isError && !canShowLastKnownData(overview)) || !overview.data?.data) {
     const expired = counselingErrorCode(overview.error) === "counseling_context_not_found";
-    return (
+    content = (
       <Notice
         role="alert"
         className="max-w-3xl px-5 py-6 sm:px-6"
@@ -195,9 +198,22 @@ export function CounselingWorkspace({
         {expired ? <p className="mt-2">Return to your encounters to continue.</p> : null}
       </Notice>
     );
+  } else {
+    content = <><CounselingWorkspaceContent key={contextRevision} anchorType={anchorType} anchorId={anchorId} overview={overview.data.data} access={access} onRefreshOverview={() => overview.refetch()} onContextInvalidated={invalidateContext} />{overview.isError ? <RefreshFailureNotice onRetry={() => void overview.refetch()} /> : null}</>;
   }
 
-  return <><CounselingWorkspaceContent key={contextRevision} anchorType={anchorType} anchorId={anchorId} overview={overview.data.data} access={access} onRefreshOverview={() => overview.refetch()} onContextInvalidated={invalidateContext} />{overview.isError ? <RefreshFailureNotice onRetry={() => void overview.refetch()} /> : null}</>;
+  // Messages belongs to the Appointment, not to this time-bounded context (ADR-103): the panel and
+  // its draft stay while the context below expires, and the thread stays in /portal/messages. A
+  // Routine Interview context has no Counseling thread anchor, so it offers no Messages.
+  return (
+    <GuidanceContextualMessages
+      appointmentId={anchorId}
+      counterpartName={overview.data?.data.student.display_name ?? "the Student"}
+      enabled={anchorType === CounselingContextAnchorType.APPOINTMENT}
+    >
+      {content}
+    </GuidanceContextualMessages>
+  );
 }
 
 function CounselingWorkspaceContent({
@@ -285,11 +301,17 @@ function CounselingWorkspaceContent({
 
   return (
     <div>
-      <CounselingPageHeading title="Counseling workspace" help={<CounselingHelp />} back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>} />
+      <CounselingPageHeading
+        title="Counseling workspace"
+        help={<CounselingHelp />}
+        back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>}
+        action={anchorType === CounselingContextAnchorType.APPOINTMENT ? <GuidanceMessagesTrigger /> : undefined}
+      />
       {contextExpired ? (
         <Notice role="alert" tone="warning" title={<h2 className="font-heading text-xl font-semibold text-ink">Counseling workspace is no longer available</h2>}><p className="text-muted">These interaction details can no longer be reviewed here.</p>{expiredEncounterMessage ? <p className="mt-2 text-muted">{expiredEncounterMessage}</p> : null}</Notice>
       ) : (
-        <div className="grid items-start gap-5 xl:grid-cols-[minmax(15rem,0.8fr)_minmax(0,2fr)]">
+        // Columns follow this workspace's own width, so an open Messages panel stacks them.
+        <div className="@container/counseling"><div className="grid items-start gap-5 @[58rem]/counseling:grid-cols-[minmax(15rem,0.8fr)_minmax(0,2fr)]">
           <Panel aria-labelledby="counseling-interaction-heading">
             <PanelHeader title="Interaction" titleId="counseling-interaction-heading" />
             <dl className="divide-y divide-border px-4 sm:px-5">
@@ -318,7 +340,7 @@ function CounselingWorkspaceContent({
             onPublished={handlePublished}
             onContextExpiredChange={setContextExpired}
           />
-        </div>
+        </div></div>
       )}
     </div>
   );

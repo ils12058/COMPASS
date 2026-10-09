@@ -138,6 +138,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         (
             "test_guidance_messages.py",
             "test_guidance_messages_concurrency.py",
+            "test_guidance_messages_context.py",
             "test_guidance_messages_realtime.py",
         ),
     ),
@@ -401,13 +402,15 @@ DOMAINS: dict[str, Area] = {
     ),
     "appointments": domain(
         "appointments",
-        "Counseling, Routine Interviews, E-Counseling, services, and accounts build on bookings.",
+        "Counseling, Routine Interviews, E-Counseling, Messages, services and accounts build on "
+        "bookings.",
         (
             "scheduling",
             "service-catalog",
             "counseling",
             "routine-interviews",
             "ecounseling",
+            "guidance-messages",
             "cross-domain-api",
             "cross-domain-lists",
         ),
@@ -599,8 +602,16 @@ DOMAINS: dict[str, Area] = {
     ),
     "service_catalog": domain(
         "service_catalog",
-        "Services gate booking, Counseling, Routine Interviews, and E-Counseling.",
-        ("service-catalog", "scheduling", "counseling", "routine-interviews", "ecounseling", "inventory"),
+        "Services gate booking, Counseling, Routine Interviews, E-Counseling, and Messages.",
+        (
+            "service-catalog",
+            "scheduling",
+            "counseling",
+            "routine-interviews",
+            "ecounseling",
+            "guidance-messages",
+            "inventory",
+        ),
         ("test_account_management.py", "test_exit_interviews.py", "test_overview.py"),
     ),
     "student_support": domain(

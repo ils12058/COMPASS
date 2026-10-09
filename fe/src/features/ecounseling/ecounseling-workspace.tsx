@@ -25,6 +25,7 @@ import { SessionFiles } from "@/features/ecounseling/session-files";
 import { LayoutPresetControl, phoneBleed, sessionGrid, sessionStageClass, useWideWorkspace, type LayoutPreset } from "@/features/ecounseling/session-layout";
 import { StudentConsentPanel } from "@/features/ecounseling/student-consent-panel";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
+import { GuidanceContextualMessages, GuidanceMessagesTrigger } from "@/features/guidance-messages/guidance-contextual-messages";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { routineEvaluationStatusLabel, routineIntakeStatusLabel } from "@/features/routine-interviews/routine-interviews-shared";
@@ -64,7 +65,8 @@ function SessionHeader({
     <PageHeader
       title={participant}
       meta={<AppointmentStatusBadge status={appointment.status} />}
-      actions={layoutControl}
+      // Guidance Messages is the session's durable text channel (ADR-103); there is no call chat.
+      actions={<div className="flex flex-wrap items-start gap-2"><GuidanceMessagesTrigger />{layoutControl}</div>}
       back={(
         <div className="mb-1 flex items-center justify-between gap-3">
           <GuardedPortalLink href={`/portal/appointments/${appointmentId}`} aria-label="Back to appointment" className={cn(pageBackLinkClass, "mb-0")}>
@@ -245,6 +247,7 @@ function StudentSession({ appointmentId, access, data }: {
   const view = useSessionCallView({ appointmentId, participantName: data.counselor.display_name });
   const routine = data.routine_interview;
   return (
+    <GuidanceContextualMessages appointmentId={appointmentId} counterpartName={data.counselor.display_name} enabled>
     <div className="@container">
       <SessionHeader
         appointmentId={appointmentId}
@@ -276,6 +279,7 @@ function StudentSession({ appointmentId, access, data }: {
         </div>
       </div>
     </div>
+    </GuidanceContextualMessages>
   );
 }
 
@@ -398,6 +402,9 @@ function CounselorSession({ appointmentId, access, data, sessionStateCurrent }: 
   const routine = data.routine_interview;
 
   return (
+    // Opening Messages narrows this workspace, so its own container queries fall back to one column;
+    // the call stage stays where it is in the tree and the call runtime never notices (ADR-094).
+    <GuidanceContextualMessages appointmentId={appointmentId} counterpartName={data.student.display_name} enabled>
     <div ref={rootRef} className="@container">
       <SessionHeader
         appointmentId={appointmentId}
@@ -434,5 +441,6 @@ function CounselorSession({ appointmentId, access, data, sessionStateCurrent }: 
       </div>
       <CaptureStartDialogs media={media} />
     </div>
+    </GuidanceContextualMessages>
   );
 }

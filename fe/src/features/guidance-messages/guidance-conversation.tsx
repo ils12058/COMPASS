@@ -1,51 +1,31 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft } from "lucide-react";
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, type ReactNode } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
-import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { PanelMessage } from "@/components/ui/panel";
-import { canShowLastKnownData } from "@/features/freshness/query-freshness";
-import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
+import { useSendThreadMessage } from "@/features/guidance-messages/guidance-conversation-data";
 import {
-  cacheThread,
-  useConversationHistory,
-  useMarkThreadRead,
-  useSendThreadMessage,
-} from "@/features/guidance-messages/guidance-conversation-data";
+  ComposerNote,
+  ConversationHistoryRegion,
+  ResolvedBadge,
+  ResolvedNote,
+  ThreadStatusControl,
+  useThreadConversation,
+} from "@/features/guidance-messages/guidance-conversation-surface";
 import { GuidanceMessageComposer } from "@/features/guidance-messages/guidance-message-composer";
-import { GuidanceMessageList } from "@/features/guidance-messages/guidance-message-list";
-import { guidanceDirectoryQueryFamily } from "@/features/guidance-messages/guidance-messages-cache";
+import { describeSendError } from "@/features/guidance-messages/guidance-messages-errors";
 import {
-  describeOlderError,
-  describeSendError,
-  describeStatusChangeError,
-} from "@/features/guidance-messages/guidance-messages-errors";
-import {
-  personName,
   threadRoutingFacts,
-  threadStatusLabel,
   threadSubtitle,
   threadTitle,
   type GuidanceViewer,
 } from "@/features/guidance-messages/guidance-messages-presentation";
-import {
-  CONVERSATION_HEADING_ID,
-  ConversationSkeleton,
-  isConcealingError,
-  isContentUnavailable,
-  isThreadId,
-} from "@/features/guidance-messages/guidance-messages-shared";
+import { CONVERSATION_HEADING_ID, ConversationSkeleton } from "@/features/guidance-messages/guidance-messages-shared";
 import { useGuidanceWorkspace } from "@/features/guidance-messages/guidance-messages-workspace";
-import {
-  guidanceMessagesReopenThread,
-  guidanceMessagesResolveThread,
-  useGuidanceMessagesGetThread,
-} from "@/lib/api/generated/guidance-messages/guidance-messages";
 import type { GuidanceThreadResponse } from "@/lib/api/generated/model";
 import { focusHeading } from "@/lib/focus-heading";
 import { cn } from "@/lib/utils/cn";
@@ -56,12 +36,8 @@ const STUDENT_OFFICE_CONTEXT = "Guidance and Counseling Office";
 export function GuidanceConversation({ threadId }: { threadId: string }) {
   const workspace = useGuidanceWorkspace();
   const { access, viewer, currentUserId } = workspace;
-  const valid = isThreadId(threadId);
-  const threadQuery = useGuidanceMessagesGetThread(threadId, { query: { enabled: valid } });
-  const { history, older } = useConversationHistory(threadId, valid);
-  const latestPinRef = useRef<number | null>(null);
-  const send = useSendThreadMessage(threadId, latestPinRef);
-  const [atLatest, setAtLatest] = useState(true);
+  const state = useThreadConversation({ threadId, active: true, canWrite: access.canWrite });
+  const send = useSendThreadMessage(threadId, state.latestPinRef);
 
   // On a narrow screen the conversation replaced the directory, so focus moves to its heading. Side
   // by side, focus stays on the conversation the reader chose.
@@ -72,32 +48,14 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
     if (!workspace.isSplit()) focusHeading(CONVERSATION_HEADING_ID);
   }, [workspace]);
 
-  // Access loss, concealment and a signed-out session close the conversation; only a transient
-  // failure may keep the last confirmed details on screen.
-  const concealed = !valid || isConcealingError(threadQuery.error) || isConcealingError(history.error);
-  const thread = !concealed && (!threadQuery.isError || canShowLastKnownData(threadQuery))
-    ? threadQuery.data?.data
-    : undefined;
-  const conversation = !concealed && (!history.isError || canShowLastKnownData(history)) ? history.data : undefined;
-  const latestSequence = conversation?.messages.at(-1)?.sequence ?? 0;
-
-  useMarkThreadRead({
-    threadId,
-    thread,
-    threadUpdatedAt: threadQuery.dataUpdatedAt,
-    latestSequence,
-    atLatest,
-    enabled: access.canWrite && !concealed && conversation !== undefined,
-  });
-
-  const loadOlder = useCallback((anchor: number) => older.mutate(anchor), [older]);
   const sendIntent = useCallback(
     (intent: Parameters<typeof send.mutateAsync>[0]) => send.mutateAsync(intent),
     [send],
   );
   const describe = useCallback((error: unknown) => describeSendError(error, "thread"), []);
+  const { thread, threadQuery } = state;
 
-  if (concealed) {
+  if (state.concealed) {
     return (
       <ConversationFrame title="Conversation unavailable">
         <PanelMessage
@@ -139,71 +97,13 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
   const resolved = thread.status === "RESOLVED";
   const staffCanChangeStatus = viewer === "staff" && access.canManageStaff;
 
-  let historyRegion: ReactNode;
-  if (conversation) {
-    historyRegion = (
-      <GuidanceMessageList
-        threadId={threadId}
-        messages={conversation.messages}
-        hasOlder={conversation.hasOlder}
-        currentUserId={currentUserId}
-        loadingOlder={older.isPending}
-        olderError={older.isError ? describeOlderError(older.error) : null}
-        onLoadOlder={loadOlder}
-        onAtLatestChange={setAtLatest}
-        latestPinRef={latestPinRef}
-      />
-    );
-  } else if (history.isError) {
-    historyRegion = (
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <PanelMessage
-          role="alert"
-          tone="danger"
-          action={
-            <Button variant="secondary" disabled={history.isFetching} onClick={() => void history.refetch()}>
-              {history.isFetching ? "Retrying…" : "Retry"}
-            </Button>
-          }
-        >
-          {isContentUnavailable(history.error)
-            ? "Messages in this conversation cannot be shown right now because confidential message content is temporarily unavailable."
-            : "Messages could not be loaded."}
-        </PanelMessage>
-      </div>
-    );
-  } else {
-    historyRegion = (
-      <div className="min-h-0 flex-1 overflow-hidden">
-        <ConversationSkeleton />
-      </div>
-    );
-  }
-
   return (
     <ConversationFrame
       title={threadTitle(thread, viewer)}
       details={<ThreadDetails thread={thread} viewer={viewer} currentUserId={currentUserId} />}
-      actions={staffCanChangeStatus ? <ThreadStatusControl thread={thread} /> : null}
+      actions={staffCanChangeStatus ? <ThreadStatusControl thread={thread} onChanged={workspace.showStatus} /> : null}
     >
-      {history.isError && conversation ? (
-        <div className="px-3 sm:px-4">
-          <RefreshFailureNotice
-            message={
-              isContentUnavailable(history.error)
-                ? "New messages cannot be shown right now because confidential message content is temporarily unavailable. Showing the messages already loaded."
-                : "Messages could not be refreshed. Showing the messages already loaded."
-            }
-            retrying={history.isFetching}
-            onRetry={() => void history.refetch()}
-          />
-        </div>
-      ) : threadQuery.isError ? (
-        <div className="px-3 sm:px-4">
-          <RefreshFailureNotice retrying={threadQuery.isFetching} onRetry={() => void threadQuery.refetch()} />
-        </div>
-      ) : null}
-      {historyRegion}
+      <ConversationHistoryRegion state={state} currentUserId={currentUserId} />
       {!access.canWrite ? (
         <ComposerNote>You can read this conversation, but your account cannot send messages.</ComposerNote>
       ) : (
@@ -217,33 +117,6 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
         />
       )}
     </ConversationFrame>
-  );
-}
-
-function ResolvedNote({ thread, viewer }: { thread: GuidanceThreadResponse; viewer: GuidanceViewer }) {
-  return (
-    <p>
-      <span className="font-semibold text-ink">This conversation is resolved.</span>{" "}
-      {viewer === "student" && thread.kind === "OFFICE" ? (
-        <>
-          To contact the Guidance Office again,{" "}
-          <GuardedPortalLink href="/portal/messages/new" className="font-semibold text-brand underline underline-offset-4">
-            start a new message
-          </GuardedPortalLink>
-          .
-        </>
-      ) : viewer === "staff" ? (
-        "Reopen it to send more messages."
-      ) : null}
-    </p>
-  );
-}
-
-function ComposerNote({ children }: { children: ReactNode }) {
-  return (
-    <div className="border-t border-brand-line bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] text-sm text-muted">
-      {children}
-    </div>
   );
 }
 
@@ -308,96 +181,13 @@ function ThreadDetails({
     <div className="mt-0.5 space-y-0.5 text-sm text-muted">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="break-words">{[subtitle, college].filter(Boolean).join(" · ")}</span>
-        {resolved ? (
-          <span className="inline-flex rounded-full border border-border bg-surface-muted px-2 py-0.5 text-xs font-semibold text-muted">
-            {threadStatusLabel(thread.status)}
-          </span>
-        ) : null}
+        {resolved ? <ResolvedBadge /> : null}
       </p>
       {assignedTo ? (
         <p className="break-words text-xs">
           {thread.assigned_to?.id === currentUserId ? "Assigned to you" : `Assigned to ${assignedTo}`}
         </p>
       ) : null}
-    </div>
-  );
-}
-
-/**
- * Resolve and Reopen for Guidance staff. One button changes between the two, so focus stays put
- * after either. Resolving asks first; reopening is direct. The backend still decides both.
- */
-function ThreadStatusControl({ thread }: { thread: GuidanceThreadResponse }) {
-  const queryClient = useQueryClient();
-  const { showStatus } = useGuidanceWorkspace();
-  const [confirming, setConfirming] = useState(false);
-  const [reopenError, setReopenError] = useState<string | null>(null);
-  const settle = (response: { data: GuidanceThreadResponse }) => {
-    cacheThread(queryClient, response.data);
-    void queryClient.invalidateQueries({ queryKey: guidanceDirectoryQueryFamily() });
-  };
-  const resolve = useMutation({
-    mutationFn: () => guidanceMessagesResolveThread(thread.id),
-    onSuccess: settle,
-  });
-  const reopen = useMutation({
-    mutationFn: () => guidanceMessagesReopenThread(thread.id),
-    onSuccess: settle,
-  });
-  const resolved = thread.status === "RESOLVED";
-  const student = personName(thread.student, "The Student");
-
-  return (
-    <div className="flex flex-col items-end gap-1">
-      <Button
-        variant="secondary"
-        className="min-h-10"
-        disabled={reopen.isPending}
-        onClick={() => {
-          if (!resolved) {
-            resolve.reset();
-            setConfirming(true);
-            return;
-          }
-          setReopenError(null);
-          reopen.mutate(undefined, {
-            onSuccess: () => showStatus("Conversation reopened."),
-            onError: (error) => setReopenError(describeStatusChangeError(error, "reopen")),
-          });
-        }}
-      >
-        {resolved ? (reopen.isPending ? "Reopening…" : "Reopen conversation") : "Resolve conversation"}
-      </Button>
-      {reopenError && resolved ? (
-        <p role="alert" className="max-w-xs text-right text-sm text-danger">
-          {reopenError}
-        </p>
-      ) : null}
-      <ConsequentialActionDialog
-        open={confirming}
-        title="Resolve this conversation?"
-        confirmLabel="Resolve conversation"
-        pendingLabel="Resolving…"
-        pending={resolve.isPending}
-        error={resolve.isError ? describeStatusChangeError(resolve.error, "resolve") : null}
-        onOpenChange={setConfirming}
-        onConfirm={() =>
-          resolve.mutate(undefined, {
-            onSuccess: () => {
-              setConfirming(false);
-              showStatus("Conversation resolved.");
-            },
-          })
-        }
-      >
-        <p>
-          {student} will not be able to send messages here until the conversation is reopened. Its
-          messages stay readable.
-        </p>
-        {thread.kind === "OFFICE" ? (
-          <p>If they write to the Guidance Office again, a new conversation starts.</p>
-        ) : null}
-      </ConsequentialActionDialog>
     </div>
   );
 }

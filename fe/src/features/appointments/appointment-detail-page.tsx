@@ -43,6 +43,7 @@ import {
 } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
+import { GuidanceContextualMessages, GuidanceMessagesTrigger } from "@/features/guidance-messages/guidance-contextual-messages";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CompassApiError } from "@/lib/api/errors";
 import { formatInstitutionalDateTime, institutionalDateInputValue } from "@/lib/institutional-time";
@@ -562,13 +563,19 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
     ((ecounselingAccess.isStudent && ecounselingAccess.canViewSelf && appointment.student.id === user.id) ||
       (ecounselingAccess.isCounselor && ecounselingAccess.canViewAssigned && appointment.provider.id === user.id));
 
+  // Messages opens the Appointment's one Counseling thread beside this page (ADR-103). Only
+  // canonical Counseling Appointments ask; the backend decides whether it is offered.
+  const counseling = isCounselingService(appointment.service);
+  const counterpartName = appointment.student.id === user.id ? appointment.provider.display_name : appointment.student.display_name;
+
   return (
+    <GuidanceContextualMessages appointmentId={appointment.id} counterpartName={counterpartName} enabled={counseling}>
     <section aria-labelledby="appointment-detail-heading">
       <AppointmentsLocalNavigation />
       <AppointmentsPageHeading
         headingId="appointment-detail-heading"
         title="Appointment"
-        action={showCounselingLink || showEcounselingLink ? (
+        action={
           <>
             {showCounselingLink ? (
               <Link href={`/portal/counseling/workspace/appointment/${appointment.id}`} className={buttonVariants({ variant: "secondary" })}>
@@ -580,8 +587,9 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
                 Open E-Counseling
               </Link>
             ) : null}
+            {counseling ? <GuidanceMessagesTrigger /> : null}
           </>
-        ) : undefined}
+        }
       />
 
       {notice ? <Notice role="status" tone="success" className="mb-4">{notice}</Notice> : null}
@@ -850,6 +858,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         onConfirm={() => void confirmMutation()}
       />
     </section>
+    </GuidanceContextualMessages>
   );
 }
 

@@ -69,5 +69,7 @@ Object through a development-only seam, so they need the development server, nev
 and use synthetic camera and microphone tracks. The Guidance Messages suite
 (`tests/guidance-messages.browser.mjs`) answers every Messages request from an in-memory synthetic
 backend (`tests/support/guidance-messages-fixtures.mjs`) and routes the realtime socket in the
-browser, so it needs no backend, keyring or account. Complete API generation before
+browser, so it needs no backend, keyring or account. The contextual Messages suite
+(`tests/guidance-messages-contextual.browser.mjs`) adds synthetic Appointment, Counseling and
+E-Counseling records (`tests/support/guidance-contextual-fixtures.mjs`) and the fake Call Object. Complete API generation before
 running tests, since regeneration temporarily removes the generated client directory.

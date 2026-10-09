@@ -27,7 +27,7 @@ from compass.realtime.publish import publish_to_user_on_commit
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 
 from . import content, policy
-from .errors import InvalidMessageInput, MessagesConflict, ThreadNotFound
+from .errors import InvalidMessageInput, MessagesConflict, MessagesPermissionDenied, ThreadNotFound
 from .models import (
     GuidanceMessage,
     GuidanceThread,
@@ -284,9 +284,8 @@ def open_counseling_thread(*, actor, appointment_id, client_message_id, body, co
     if thread is not None:
         policy.require_thread(actor, thread, manage=True)
     else:
-        if not policy.eligible_relationship(appointment) or not (
-            (actor.role.code == "STUDENT" and actor.pk == appointment.student_id)
-            or (actor.role.code == "COUNSELOR" and actor.pk == appointment.provider_id)
+        if not policy.eligible_relationship(appointment) or not policy.relationship_participant(
+            actor, appointment
         ):
             raise ThreadNotFound()
         thread = GuidanceThread.objects.create(
@@ -307,6 +306,41 @@ def open_counseling_thread(*, actor, appointment_id, client_message_id, body, co
         actor=actor, thread=thread, client_message_id=client_message_id, body=body, context=context
     )
     return thread, message
+
+
+def appointment_context(*, actor, appointment_id):
+    """Resolve an Appointment's Counseling thread for a contextual surface (ADR-103).
+
+    An existing thread is authorized only by its persisted participants, never by the
+    Appointment's current state, so cancellation keeps and reassignment never transfers it.
+    Without one, the actor must be able to start it now under the same rules as
+    `open_counseling_thread`, which revalidates at the first send. Anything else is concealed.
+    Returns `(thread, can_start)`; no Message content is read.
+    """
+    actor = policy.current_actor(actor)
+    existing = (
+        GuidanceThread.objects.filter(relationship_appointment_id=appointment_id)
+        .values_list("pk", flat=True)
+        .first()
+    )
+    if existing is not None:
+        return get_thread(actor=actor, thread_id=existing), False
+    try:
+        policy.require_actor(actor, manage=True)
+    except MessagesPermissionDenied:
+        raise ThreadNotFound() from None
+    appointment = (
+        Appointment.objects.select_related("student__role", "provider__role", "service")
+        .filter(pk=appointment_id)
+        .first()
+    )
+    if (
+        appointment is None
+        or not policy.eligible_relationship(appointment)
+        or not policy.relationship_participant(actor, appointment)
+    ):
+        raise ThreadNotFound()
+    return None, True
 
 
 @transaction.atomic
