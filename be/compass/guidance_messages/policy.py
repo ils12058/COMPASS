@@ -78,6 +78,13 @@ def eligible_relationship(appointment):
     )
 
 
+def relationship_participant(actor, appointment):
+    """The exact Student or provider Counselor of the Appointment, as creation requires."""
+    return (actor.role.code == "STUDENT" and actor.pk == appointment.student_id) or (
+        actor.role.code == "COUNSELOR" and actor.pk == appointment.provider_id
+    )
+
+
 def current_student(student):
     return (
         student.is_active

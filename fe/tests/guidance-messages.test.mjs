@@ -431,3 +431,84 @@ test("Messages code renders plain text and never persists, logs or opens a socke
   const routes = new URL("../src/app/(portal)/portal/messages/", import.meta.url).pathname;
   assert.ok(!/searchParams/.test(readFileSync(join(routes, "page.tsx"), "utf8")), "No Message content travels in the URL");
 });
+
+// ── Contextual Messages (ADR-103) ─────────────────────────────────────────────────────────────
+
+import {
+  appointmentContextQueryKey,
+  cacheOpenedCounselingThread,
+  contextualHintScope,
+  reconcileAppointmentMessages,
+} from "../src/features/guidance-messages/guidance-appointment-context.ts";
+
+const APPOINTMENT = "b0000000-0000-4000-8000-000000000001";
+const counselingThread = (overrides = {}) => thread({
+  kind: "COUNSELING", counselor: person("counselor", "Ana Cruz"), routing_college: null, assigned_to: null,
+  relationship_appointment_id: APPOINTMENT, ...overrides,
+});
+
+test("an open panel asks again on any hint until its thread exists, then only for that thread", () => {
+  assert.deepEqual(contextualHintScope(null, THREAD), { activeThread: true });
+  assert.deepEqual(contextualHintScope(THREAD, THREAD), { activeThread: true });
+  assert.equal(contextualHintScope(THREAD, "a0000000-0000-4000-8000-000000000009"), null);
+});
+
+test("contextual reconciliation reads the context, then the thread and its newest page once known", async () => {
+  const keys = [];
+  const client = { invalidateQueries: ({ queryKey, exact }) => { keys.push([queryKey[0], Boolean(exact)]); return Promise.resolve(); } };
+  await reconcileAppointmentMessages(client, APPOINTMENT, null);
+  assert.deepEqual(keys, [[appointmentContextQueryKey(APPOINTMENT)[0], true]]);
+  keys.length = 0;
+  await reconcileAppointmentMessages(client, APPOINTMENT, THREAD);
+  assert.deepEqual(keys.map(([key]) => key), [
+    appointmentContextQueryKey(APPOINTMENT)[0],
+    guidanceThreadQueryKey(THREAD)[0],
+    guidanceConversationQueryKey(THREAD)[0],
+  ]);
+  assert.ok(keys.every(([, exact]) => exact), "Exact keys only; no directory scan");
+});
+
+test("a confirmed first Message switches the context to its thread and seeds only a new history", () => {
+  const client = createQueryClient();
+  client.setQueryData(appointmentContextQueryKey(APPOINTMENT), { data: { thread: null, can_start: true }, status: 200, headers: {} });
+  const first = message(1, person("student", "Maria Santos"));
+  cacheOpenedCounselingThread(client, APPOINTMENT, { thread: counselingThread({ last_sequence: 1 }), message: first });
+  assert.deepEqual(client.getQueryData(appointmentContextQueryKey(APPOINTMENT)).data, { thread: counselingThread({ last_sequence: 1 }), can_start: false });
+  assert.deepEqual(sequences(client.getQueryData(guidanceConversationQueryKey(THREAD))), [1]);
+  assert.equal(client.getQueryData(guidanceThreadQueryKey(THREAD)).data.id, THREAD);
+
+  const later = createQueryClient();
+  cacheOpenedCounselingThread(later, APPOINTMENT, { thread: counselingThread(), message: message(7) });
+  assert.equal(later.getQueryData(guidanceConversationQueryKey(THREAD)), undefined, "A later Message never invents a history");
+  assert.equal(later.getQueryData(appointmentContextQueryKey(APPOINTMENT)), undefined, "No context is invented either");
+});
+
+test("a contextual send Account A started cannot reach Account B's panel", async () => {
+  const client = createQueryClient();
+  client.setQueryData(getAuthGetSessionQueryKey(), session("account-a"));
+  let release;
+  let started = false;
+  const observer = new MutationObserver(client, {
+    mutationFn: () => { started = true; return new Promise((resolve) => { release = resolve; }); },
+    onSuccess: (response) => cacheOpenedCounselingThread(client, APPOINTMENT, response.data),
+  });
+  const outcome = observer.mutate({}).then(() => null, (error) => error);
+  while (!started) await settle();
+  client.setQueryData(getAuthGetSessionQueryKey(), session("account-b"));
+  release({ data: { thread: counselingThread({ last_sequence: 1 }), message: message(1) }, status: 200, headers: {} });
+  assert.ok((await outcome) instanceof AccountChangedError);
+  assert.equal(client.getQueryData(guidanceConversationQueryKey(THREAD)), undefined);
+  assert.equal(client.getQueryData(guidanceThreadQueryKey(THREAD)), undefined);
+});
+
+test("contextual Messages never uses call chat, transcripts or a second socket", () => {
+  const sources = ["guidance-contextual-messages.tsx", "guidance-appointment-context.ts", "guidance-conversation-surface.tsx"]
+    .map((name) => [name, readFileSync(new URL(`../src/features/guidance-messages/${name}`, import.meta.url), "utf8")]);
+  for (const [name, source] of sources) {
+    for (const forbidden of [/sendAppMessage|app-message|transcription-message/, /features\/ecounseling\/(?:call|runtime)/, /daily-js|DailyIframe/, /new\s+WebSocket/]) {
+      assert.ok(!forbidden.test(source), `${name} must not use ${forbidden}`);
+    }
+  }
+  const ecounseling = readFileSync(new URL("../src/features/ecounseling/ecounseling-workspace.tsx", import.meta.url), "utf8");
+  assert.ok(!/useMessageComposer|guidanceMessages[A-Z]/.test(ecounseling), "E-Counseling only mounts the shared contextual surface");
+});

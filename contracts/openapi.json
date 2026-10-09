@@ -12656,6 +12656,32 @@
         "title": "GraduateTracerTrainingPayload",
         "type": "object"
       },
+      "GuidanceAppointmentContext": {
+        "additionalProperties": false,
+        "description": "Structural only: never a Message body, preview or participant directory.",
+        "properties": {
+          "can_start": {
+            "title": "Can Start",
+            "type": "boolean"
+          },
+          "thread": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceThreadResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "thread",
+          "can_start"
+        ],
+        "title": "GuidanceAppointmentContext",
+        "type": "object"
+      },
       "GuidanceAssignRequest": {
         "additionalProperties": false,
         "properties": {
@@ -39105,6 +39131,104 @@
         "summary": "Graduate Tracer Get Response",
         "tags": [
           "graduate-tracer"
+        ]
+      }
+    },
+    "/api/v1/guidance-messages/appointments/{appointment_id}/context": {
+      "get": {
+        "operationId": "guidanceMessagesGetAppointmentContext",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceAppointmentContext"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointment Context",
+        "tags": [
+          "guidance-messages"
         ]
       }
     },

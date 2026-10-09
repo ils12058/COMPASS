@@ -56,7 +56,9 @@ export function PageHeader({
           ) : null}
           {children}
         </div>
-        {actions || help ? <div className="flex shrink-0 flex-wrap items-start gap-2">{actions}{help}</div> : null}
+        {/* Actions wrap within their share of the row, so a narrowed page (such as one beside an open
+            Messages panel) never breaks its title mid-word. */}
+        {actions || help ? <div className="flex min-w-0 flex-wrap items-start gap-2 sm:max-w-[65%] sm:justify-end">{actions}{help}</div> : null}
       </div>
     </header>
   );

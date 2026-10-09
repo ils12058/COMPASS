@@ -127,20 +127,31 @@ export function changedThreadId(event: RealtimeEvent): string | null {
   return event.type === "messages.thread_changed" && typeof event.thread_id === "string" ? event.thread_id : null;
 }
 
-export function useGuidanceMessagesFreshness(activeThreadId: string | null) {
-  const queryClient = useQueryClient();
+/**
+ * Runs one freshness scheduler while the calling surface is mounted. `reconcile` re-reads what the
+ * surface shows; `hintScope` turns a `messages.thread_changed` hint into a refresh request, or null
+ * when the hint does not concern the surface. The full workspace and a contextual panel never mount
+ * together, so a page has at most one scheduler.
+ */
+export function useMessagesFreshness({
+  reconcile,
+  hintScope,
+}: {
+  reconcile: (scope: MessagesRefreshScope) => Promise<unknown>;
+  hintScope: (threadId: string) => MessagesRefreshScope | null;
+}) {
   const { state, generation } = useRealtimeStatus();
-  const active = useRef(activeThreadId);
+  const latest = useRef({ reconcile, hintScope });
   const openedAt = useRef(generation);
   const freshness = useRef<ReturnType<typeof startGuidanceMessagesFreshness> | null>(null);
 
   useEffect(() => {
-    active.current = activeThreadId;
-  }, [activeThreadId]);
+    latest.current = { reconcile, hintScope };
+  });
 
   useEffect(() => {
     const consumer = startGuidanceMessagesFreshness(
-      (scope) => reconcileGuidanceMessages(queryClient, active.current, scope),
+      (scope) => latest.current.reconcile(scope),
       { document, window, navigator },
       openedAt.current,
     );
@@ -149,17 +160,33 @@ export function useGuidanceMessagesFreshness(activeThreadId: string | null) {
       consumer.stop();
       freshness.current = null;
     };
-  }, [queryClient]);
+  }, []);
 
   useEffect(() => {
     freshness.current?.setRealtimeStatus({ state, generation });
   }, [state, generation]);
 
-  // Ordering, unread counts, status and assignment can change for any thread, so the directory is
-  // always reconciled. The open thread is re-read only when the hint names it.
   useRealtimeEvent("messages.thread_changed", (event) => {
     const threadId = changedThreadId(event);
     if (!threadId) return;
-    freshness.current?.requestRefresh({ activeThread: threadId === active.current });
+    const scope = latest.current.hintScope(threadId);
+    if (scope) freshness.current?.requestRefresh(scope);
+  });
+}
+
+/** The full workspace: the directory always, the open thread when a hint names it. */
+export function useGuidanceMessagesFreshness(activeThreadId: string | null) {
+  const queryClient = useQueryClient();
+  const active = useRef(activeThreadId);
+
+  useEffect(() => {
+    active.current = activeThreadId;
+  }, [activeThreadId]);
+
+  useMessagesFreshness({
+    reconcile: (scope) => reconcileGuidanceMessages(queryClient, active.current, scope),
+    // Ordering, unread counts, status and assignment can change for any thread, so the directory
+    // is always reconciled. The open thread is re-read only when the hint names it.
+    hintScope: (threadId) => ({ activeThread: threadId === active.current }),
   });
 }
