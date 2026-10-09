@@ -45,6 +45,9 @@ export async function createBrowserHarness(suite) {
     decision = "APPROVED",
     disabledVideo = false,
     overrides = {},
+    // Answers routes that exact overrides cannot name, such as record paths with IDs. Returns true
+    // when it replied.
+    handler = null,
     fakeDaily = null,
     initScripts = [],
     // Runs with the new context before the first navigation, e.g. to route WebSockets.
@@ -68,6 +71,7 @@ export async function createBrowserHarness(suite) {
       const method = request.method();
       requests.push({ pathname, method, search: url.search, body: request.postData() });
       const reply = (body, status = 200) => route.fulfill({ status, contentType: "application/json", headers: { date: new Date().toUTCString() }, body: JSON.stringify(body) });
+      if (handler && await handler({ route, reply, request, url, pathname, method })) return;
       const override = overrides[`${method} ${pathname}`] ?? overrides[pathname];
       if (override) {
         if (typeof override === "function") return override({ route, reply, request, url });

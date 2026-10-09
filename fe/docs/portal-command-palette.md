@@ -36,8 +36,8 @@ second root capability matrix or new role/designation policy.
 
 ## Complete indexed inventory
 
-The audited portal contains 96 route pages: 66 static and 30 dynamic. The index has 61 possible
-commands across 59 distinct static routes; each session receives only its authorized subset.
+The audited portal contains 100 route pages: 68 static and 32 dynamic. The index has 63 possible
+commands across 61 distinct static routes; each session receives only its authorized subset.
 Organization/Structure and Platform Operations/Health deliberately share their canonical href:
 the dock label and the local page label are both searchable. No particular session is assumed
 to have every command.
@@ -61,6 +61,8 @@ to have every command.
 | Scheduling | Availability › Office | `/portal/availability/office` |
 | Scheduling | Availability › Counselors | `/portal/availability/providers` |
 | Scheduling | Services › Create Service | `/portal/services/new` |
+| Communication | Messages | `/portal/messages` |
+| Communication | Messages › New message | `/portal/messages/new` |
 | Records | Routine Interviews | `/portal/routine-interviews` |
 | Records | Counseling | `/portal/counseling` |
 | Records | Call Slips | `/portal/call-slips` |
@@ -116,6 +118,7 @@ All rules below additionally require the visible parent from `portalWorkspaceGro
 | My availability | `canUseSelfAvailability` |
 | Office / Counselors | `canManageAvailability` |
 | Create Service | Services workspace/layout gate (`hasServicesWorkspace`) |
+| New message | `getGuidanceMessagesAccess()`: `canManageSelf` or `canManageStaff` |
 | Record referral | `getReferralAccess().canManage` |
 | Issue Call Slip | `getCallSlipAccess().canManageOperational` |
 | Current Individual Inventory | `getInventoryAccess().canViewSelf` |

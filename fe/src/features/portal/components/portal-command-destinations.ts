@@ -5,6 +5,7 @@ import { canManageAvailability, canUseSelfAvailability } from "@/features/availa
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
+import { getGuidanceMessagesAccess } from "@/features/guidance-messages/guidance-messages-access";
 import { canViewOrganizationStructure } from "@/features/institution-configuration/institution-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { canManagePrivacyGovernance, canManageRetention, canViewPrivacyGovernance, canViewRetention } from "@/features/privacy-governance/privacy-governance-access";
@@ -26,6 +27,7 @@ const workspaceKeywords: Readonly<Record<string, readonly string[]>> = {
   Availability: ["calendar", "schedule"],
   "Individual Inventory": ["student information", "inventory"],
   "Institutional Forms": ["form", "forms", "form revision", "controlled form"],
+  Messages: ["chat", "conversation", "guidance office", "inbox"],
 };
 
 // Code-owned destinations only. Root visibility comes directly from the dock's registry. Deep
@@ -60,6 +62,8 @@ export function portalCommandDestinations(user: UserSummary): PortalCommandDesti
   deep("/portal/appointments", "/my", "My appointments", appointments.canViewSelf, ["calendar", "schedule"]);
   deep("/portal/appointments", "/book", "Book appointment", appointments.canBook, ["booking"]);
   deep("/portal/appointments", "/manage", "Manage appointments", appointments.canManage, ["calendar", "schedule"]);
+  const messages = getGuidanceMessagesAccess(user);
+  deep("/portal/messages", "/new", "New message", messages.canManageSelf || messages.canManageStaff, ["chat", "write"]);
   deep("/portal/availability", "/me", "My availability", canUseSelfAvailability(user), ["schedule"]);
   deep("/portal/availability", "/office", "Office", canManageAvailability(user), ["office availability", "schedule"]);
   deep("/portal/availability", "/providers", "Counselors", canManageAvailability(user), ["counselor availability", "schedule"]);
