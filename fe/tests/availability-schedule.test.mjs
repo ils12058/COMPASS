@@ -7,6 +7,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { withNextRouter } from "./support/next-router.mjs";
+import { UnsavedChangesProvider } from "../src/features/form-safety/unsaved-changes-provider.tsx";
 import { MyAvailabilityPage } from "../src/features/availability/availability-pages.tsx";
 import { formatUnavailabilityRange } from "../src/features/availability/availability-shared.tsx";
 import { UnavailabilitySection } from "../src/features/availability/unavailability-section.tsx";
@@ -15,6 +16,7 @@ import {
   draftFromWindows,
   formatClockRange,
   requestFromDraft,
+  sameWeeklySchedule,
   validateDraft,
   weekdayOrder,
 } from "../src/features/availability/weekly-schedule.ts";
@@ -41,6 +43,15 @@ test("a draft keeps every weekday and saving replaces the whole schedule with ex
   assert.deepEqual(requestFromDraft([]), []);
 });
 
+test("unsaved hours are judged against the saved schedule, in any order", () => {
+  const saved = requestFromDraft(draftFromWindows(mondayTwice));
+  assert.equal(sameWeeklySchedule([...saved].reverse(), saved), true, "Order does not make hours unsaved");
+  const added = [...saved, { weekday: "TUESDAY", start_time: "08:00", end_time: "17:00", mode_scope: "ALL" }];
+  assert.equal(sameWeeklySchedule(added, saved), false);
+  assert.equal(sameWeeklySchedule(added.slice(0, -1), saved), true, "Adding and removing the same hours is not a change");
+  assert.equal(sameWeeklySchedule(saved.map((item, index) => (index === 0 ? { ...item, mode_scope: "ONLINE" } : item)), saved), false);
+});
+
 test("overlap and time order are checked per day and delivery mode, and name the day to fix", () => {
   const draft = (rows) => draftFromWindows(rows);
   assert.deepEqual(validateDraft(draft([window("MONDAY", "08:00", "12:00"), window("MONDAY", "11:00", "13:00", "ALL", "b")])), {
@@ -63,7 +74,9 @@ test("hours read as clock times", () => {
 // --- The weekly board ---------------------------------------------------------------------------
 
 function board(props) {
-  return renderToStaticMarkup(createElement(WeeklyScheduleEditor, { windows: mondayTwice, canMutate: true, pending: false, error: null, onSave: noop, ...props }));
+  // The editor registers unsaved hours with the portal's navigation guard.
+  return renderToStaticMarkup(withNextRouter(createElement(UnsavedChangesProvider, null,
+    createElement(WeeklyScheduleEditor, { windows: mondayTwice, canMutate: true, pending: false, error: null, onSave: noop, ...props }))));
 }
 
 test("the board keeps seven compact weekday rows, with several windows on one day", () => {
@@ -168,7 +181,7 @@ function myAvailability() {
   client.setQueryData(getAvailabilityListMyExceptionsQueryKey(), ok({ provider_id: "p", items: [] }));
   const user = { id: "p", role: "COUNSELOR", capabilities: ["availability.view", "availability.manage_self"] };
   return renderToStaticMarkup(withNextRouter(createElement(QueryClientProvider, { client },
-    createElement(PortalSessionProvider, { value: { user } }, createElement(MyAvailabilityPage)))));
+    createElement(PortalSessionProvider, { value: { user } }, createElement(UnsavedChangesProvider, null, createElement(MyAvailabilityPage))))));
 }
 
 test("the schedule leads, its exceptions sit beside it on wide pages, and the preview spans below", () => {

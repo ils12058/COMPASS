@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -34,7 +34,14 @@ import {
 import { useOrganizationListPrograms } from "@/lib/api/generated/organization/organization";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 
-export function InventoryEditor({ inventory }: { inventory: InventoryResponse }) {
+export function InventoryEditor({
+  inventory,
+  refreshNotice,
+}: {
+  inventory: InventoryResponse;
+  // Shown when the page could not refresh the record; the editor keeps its draft.
+  refreshNotice?: ReactNode;
+}) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { user } = usePortalSession();
@@ -217,6 +224,7 @@ export function InventoryEditor({ inventory }: { inventory: InventoryResponse })
         title="Individual Inventory"
         description={`${inventory.academic_year.label} · ${inventory.form_revision.official_code} · Revision ${inventory.form_revision.official_revision}`}
       />
+      {refreshNotice}
 
       <div className="mt-5">
         <InventoryNotice>

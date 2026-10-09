@@ -4,6 +4,7 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { withNextRouter } from "./support/next-router.mjs";
+import { UnsavedChangesProvider } from "../src/features/form-safety/unsaved-changes-provider.tsx";
 import * as model from "../src/lib/api/generated/model/index.ts";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
 import { CreateServicePage } from "../src/features/services/service-editor-page.tsx";
@@ -54,7 +55,7 @@ function render(element, { seed = () => {}, params = {} } = {}) {
   seed(client);
   const html = renderToStaticMarkup(
     withNextRouter(
-      h(QueryClientProvider, { client }, h(PortalSessionProvider, { value: { user: manager } }, element)),
+      h(QueryClientProvider, { client }, h(PortalSessionProvider, { value: { user: manager } }, h(UnsavedChangesProvider, null, element))),
       { params },
     ),
   );

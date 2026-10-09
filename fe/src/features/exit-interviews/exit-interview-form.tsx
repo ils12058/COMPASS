@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -59,9 +59,14 @@ function isValidExtraTerms(value: string): boolean {
 export function ExitInterviewForm({
   detail,
   onRefreshRecord,
+  writesUnavailable = false,
+  refreshNotice,
 }: {
   detail: ExitInterviewDetailResponse;
   onRefreshRecord: () => Promise<ExitInterviewDetailResponse | undefined>;
+  // Set while the record's status could not be confirmed; answers stay editable.
+  writesUnavailable?: boolean;
+  refreshNotice?: ReactNode;
 }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(() => exitInterviewFormFromDetail(detail));
@@ -246,7 +251,7 @@ export function ExitInterviewForm({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (isDirty || submissionUncertain || !allRatingsComplete) return;
+    if (isDirty || submissionUncertain || writesUnavailable || !allRatingsComplete) return;
     setSubmitError(undefined);
     setConfirmSubmit(true);
   }
@@ -298,6 +303,8 @@ export function ExitInterviewForm({
         description={`${detail.academic_year.label} · Draft response`}
       />
       </div>
+
+      {refreshNotice}
 
       <ExitInterviewCorrectionHistory events={detail.reopen_events} emphasizeLatest />
 
@@ -375,10 +382,10 @@ export function ExitInterviewForm({
             </div>
           ) : null}
           <div className="mt-5 flex flex-wrap gap-3">
-            <Button type="button" variant="secondary" onClick={() => void saveDraft()} disabled={pending || submissionUncertain}>
+            <Button type="button" variant="secondary" onClick={() => void saveDraft()} disabled={pending || submissionUncertain || writesUnavailable}>
               {save.isPending ? "Saving…" : "Save draft"}
             </Button>
-            <Button type="submit" disabled={!allRatingsComplete || isDirty || pending || submissionUncertain}>
+            <Button type="submit" disabled={!allRatingsComplete || isDirty || pending || submissionUncertain || writesUnavailable}>
               Submit Exit Interview
             </Button>
           </div>

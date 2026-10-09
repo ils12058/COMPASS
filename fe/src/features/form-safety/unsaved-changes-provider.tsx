@@ -43,6 +43,7 @@ type NavigationEntryLike = {
 
 type NavigationDestinationLike = {
   index: number;
+  url: string | null;
 };
 
 type NavigationEventLike = Event & {
@@ -123,6 +124,8 @@ export function UnsavedChangesProvider({
   const currentHistoryIndexRef = useRef(0);
   const pendingTraversalDeltaRef = useRef<number | null>(null);
   const restoringHistoryRef = useRef<number | null>(null);
+  // A traversal already confirmed before its popstate, so popstate does not ask again.
+  const confirmedTraversalRef = useRef(false);
   const [dirtyCount, setDirtyCount] = useState(0);
   const hasUnsavedChanges = dirtyCount > 0;
 
@@ -238,10 +241,29 @@ export function UnsavedChangesProvider({
       ) {
         return;
       }
+      confirmedTraversalRef.current = false;
       const currentIndex = navigation.currentEntry?.index;
       if (typeof currentIndex !== "number") return;
       pendingTraversalDeltaRef.current =
         event.destination.index - currentIndex;
+
+      // Next.js handles Back and Forward in its own popstate listener, registered before this
+      // provider's, so the popstate question below can come after the editor has already gone.
+      // Where the browser lets this traversal be cancelled, ask now, before popstate.
+      const registrations = registrationsRef.current;
+      if (registrations.size === 0 || !event.cancelable) return;
+      const destination = event.destination.url
+        ? new URL(event.destination.url).pathname
+        : null;
+      if (
+        destinationKeepsAllEditors(registrations, destination) ||
+        window.confirm(firstDirtyMessage(registrations))
+      ) {
+        confirmedTraversalRef.current = true;
+        return;
+      }
+      pendingTraversalDeltaRef.current = null;
+      event.preventDefault();
     };
 
     navigation.addEventListener("navigate", noteTraversal);
@@ -282,8 +304,11 @@ export function UnsavedChangesProvider({
           ? targetMarker.index - previousIndex
           : pendingTraversalDeltaRef.current;
       pendingTraversalDeltaRef.current = null;
+      const alreadyConfirmed = confirmedTraversalRef.current;
+      confirmedTraversalRef.current = false;
 
       if (
+        alreadyConfirmed ||
         destinationKeepsAllEditors(
           registrationsRef.current,
           window.location.pathname,

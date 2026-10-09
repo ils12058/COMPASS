@@ -1,12 +1,12 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import {
@@ -141,13 +141,13 @@ function NavLink({
   const current = pathname === href;
 
   return (
-    <Link
+    <GuardedPortalLink
       href={href}
       aria-current={current ? "page" : undefined}
       className={workspaceTabClass(current)}
     >
       {children}
-    </Link>
+    </GuardedPortalLink>
   );
 }
 

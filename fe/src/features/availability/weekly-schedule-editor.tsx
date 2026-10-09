@@ -10,11 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Panel, PanelFooter, PanelHeader } from "@/components/ui/panel";
 import { modeScopeLabel } from "@/features/availability/availability-shared";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { focusHeading } from "@/lib/focus-heading";
 import {
   draftFromWindows,
   formatClockRange,
   requestFromDraft,
+  sameWeeklySchedule,
   validateDraft,
   weekdayLabels,
   weekdayOrder,
@@ -160,7 +162,7 @@ function EditableHours({
 // The recurring weekly hours. Editing changes a local draft; Save replaces the whole schedule.
 // A problem that stops saving is shown on the day it concerns; a failed save stays beside Save.
 // Success is announced by the page (ActionStatus), and the page remounts the editor with the
-// saved windows.
+// saved windows. Unsaved hours, compared with the saved schedule, ask before navigation.
 export function WeeklyScheduleEditor({
   windows,
   canMutate,
@@ -175,12 +177,16 @@ export function WeeklyScheduleEditor({
   onSave: (windows: WeeklyWindowRequest[]) => Promise<boolean>;
 }) {
   const [draft, setDraft] = useState<DraftWindow[]>(() => draftFromWindows(windows));
-  const [dirty, setDirty] = useState(false);
+  const [saved, setSaved] = useState(() => requestFromDraft(draftFromWindows(windows)));
   const [problem, setProblem] = useState<DraftProblem | null>(null);
+  const dirty = !sameWeeklySchedule(requestFromDraft(draft), saved);
+  useUnsavedChangesGuard({
+    dirty: canMutate && dirty,
+    message: "Discard your unsaved weekly schedule changes?",
+  });
 
   function edit(change: (current: DraftWindow[]) => DraftWindow[]) {
     setProblem(null);
-    setDirty(true);
     setDraft(change);
   }
 
@@ -197,9 +203,9 @@ export function WeeklyScheduleEditor({
       setProblem(found);
       return;
     }
-    const saved = await onSave(requestFromDraft(draft));
-    if (saved) {
-      setDirty(false);
+    const request = requestFromDraft(draft);
+    if (await onSave(request)) {
+      setSaved(request);
       setProblem(null);
     }
   }

@@ -16,6 +16,8 @@ import {
   shouldHideExitInterviewCachedData,
 } from "@/features/exit-interviews/exit-interview-shared";
 import { getExitInterviewAccess } from "@/features/exit-interviews/exit-interviews-access";
+import { isTransientRefreshError } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import {
   useExitInterviewsGet,
   useExitInterviewsGetMine,
@@ -67,12 +69,35 @@ function StudentExitInterviewDetail({
   }
 
   const record = detail.data.data;
-  if (record.status === "DRAFT" && canManageSelf && record.can_edit && !detail.isError) {
+  // A refresh that fails for a transient reason keeps the editor and its unsaved answers; saving and
+  // submitting wait until the status is confirmed again. Any other failure shows the last confirmed
+  // response read-only.
+  const refreshFailed = detail.isError;
+  if (
+    record.status === "DRAFT" &&
+    canManageSelf &&
+    record.can_edit &&
+    (!refreshFailed || isTransientRefreshError(detail.error))
+  ) {
     async function refreshRecord() {
       const result = await detail.refetch();
       return result.isError ? undefined : result.data?.data;
     }
-    return <ExitInterviewForm key={record.id} detail={record} onRefreshRecord={refreshRecord} />;
+    return (
+      <ExitInterviewForm
+        key={record.id}
+        detail={record}
+        onRefreshRecord={refreshRecord}
+        writesUnavailable={refreshFailed}
+        refreshNotice={refreshFailed ? (
+          <RefreshFailureNotice
+            message="The latest Exit Interview status could not be confirmed. Your unsaved answers are kept here, and you can save or submit once it refreshes."
+            retrying={detail.isFetching}
+            onRetry={() => void detail.refetch()}
+          />
+        ) : null}
+      />
+    );
   }
 
   return (

@@ -5,6 +5,8 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { canShowLastKnownData, safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { InventoryEditor } from "@/features/inventory/editor/inventory-editor";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
 import { InventoryPdfDownload } from "@/features/inventory/inventory-pdf-download";
@@ -78,7 +80,9 @@ function StudentCurrentInventory() {
     );
   }
 
-  if (status.isError) {
+  // A refresh that fails for a transient reason keeps the last confirmed status and record, so an open
+  // editor keeps its unsaved answers. A refusal, a missing record, or a first load that fails does not.
+  if (status.isError && !canShowLastKnownData(status)) {
     return (
       <section className="space-y-5">
         <InventoryHeading title="Individual Inventory" />
@@ -91,6 +95,7 @@ function StudentCurrentInventory() {
     return (
       <section className="space-y-5">
         <InventoryHeading title="Individual Inventory" description={value.academic_year.label} />
+        {status.isError ? <RefreshFailureNotice retrying={status.isFetching} onRetry={() => void status.refetch()} /> : null}
         <InventoryNotice title="No Individual Inventory for this Academic Year yet" tone="neutral">
           {access.canManageSelf
             ? "Start your Individual Inventory when you are ready. It will use the official form for this academic year."
@@ -128,7 +133,8 @@ function StudentCurrentInventory() {
     );
   }
 
-  if (record.isError) {
+  const recordData = safeQueryData(record);
+  if (!recordData) {
     return (
       <section className="space-y-5">
         <InventoryHeading title="Individual Inventory" />
@@ -137,9 +143,19 @@ function StudentCurrentInventory() {
     );
   }
 
-  const inventory = record.data.data;
+  const inventory = recordData.data;
+  const refreshFailure = status.isError || record.isError ? (
+    <RefreshFailureNotice
+      message="The latest Individual Inventory could not be refreshed. Showing the last confirmed record; your unsaved answers are kept."
+      retrying={status.isFetching || record.isFetching}
+      onRetry={() => {
+        if (status.isError) void status.refetch();
+        if (record.isError) void record.refetch();
+      }}
+    />
+  ) : null;
   if (inventory.status === InventoryStatusValue.DRAFT && access.canManageSelf) {
-    return <InventoryEditor key={inventory.id} inventory={inventory} />;
+    return <InventoryEditor key={inventory.id} inventory={inventory} refreshNotice={refreshFailure} />;
   }
 
   return (
@@ -148,6 +164,7 @@ function StudentCurrentInventory() {
         title="Individual Inventory"
         description={`${inventory.academic_year.label} · ${inventory.form_revision.official_code} · Revision ${inventory.form_revision.official_revision}`}
       />
+      {refreshFailure}
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <InventoryStatus status={inventory.status} correctionPending={inventory.correction_pending} />
         {inventory.submitted_at ? <span className="text-sm text-muted">Submitted {formatInventoryDate(inventory.submitted_at)}</span> : null}

@@ -5,6 +5,7 @@ import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { getAuthGetSessionQueryKey } from "@/lib/api/generated/auth/auth";
 import { getPlatformPublicStatusQueryKey } from "@/lib/api/generated/platform-operations/platform-operations";
 import { requestSessionRevalidation } from "@/lib/auth/session-revalidation";
+import { createAccountOwnership } from "@/lib/query/account-ownership";
 
 const NON_RETRYABLE_STATUSES = new Set([400, 401, 403, 404, 409, 422]);
 
@@ -12,7 +13,12 @@ function isMaintenanceRefusal(error: unknown): boolean {
   return error instanceof CompassApiError && readApiErrorCode(error.body) === "maintenance_mode";
 }
 
+function isSessionQuery(query: { queryKey: readonly unknown[] }): boolean {
+  return query.queryKey[0] === getAuthGetSessionQueryKey()[0];
+}
+
 export function createQueryClient() {
+  const ownership = createAccountOwnership({ isSessionQuery });
   // A request refused for Maintenance Mode means the public status may have changed: ask it again
   // now rather than at the next poll. The status endpoint, not the refusal, decides what is shown.
   const refreshMaintenanceStatus = () => {
@@ -24,13 +30,19 @@ export function createQueryClient() {
   const client: QueryClient = new QueryClient({
     queryCache: new QueryCache({
       onError(error, query) {
-        if (query.queryKey[0] === getAuthGetSessionQueryKey()[0]) return;
+        if (isSessionQuery(query)) return;
         if (isMaintenanceRefusal(error)) refreshMaintenanceStatus();
         else if (isSessionEndedError(error)) requestSessionRevalidation("session");
         else if (isAuthorityError(error)) requestSessionRevalidation("authority");
       },
     }),
     mutationCache: new MutationCache({
+      onMutate(_variables, mutation) {
+        ownership.mutationStarted(mutation);
+      },
+      onSuccess(_data, _variables, _onMutateResult, mutation) {
+        ownership.assertMutationOwner(mutation);
+      },
       onError(error) {
         if (isMaintenanceRefusal(error)) refreshMaintenanceStatus();
         else if (isSessionEndedError(error)) requestSessionRevalidation("session");
@@ -57,5 +69,6 @@ export function createQueryClient() {
       },
     },
   });
+  ownership.attach(client);
   return client;
 }
