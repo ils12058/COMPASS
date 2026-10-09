@@ -4,6 +4,7 @@
 - Date: 2026-09-29
 - Scope: Live Privacy Governance product boundary
 - Refines: ADR-061 and ADR-065
+- Refined by: [ADR-072](ADR-072-operational-retention-and-disposition.md) (operational retention and disposition for supported categories)
 
 ## Context
 

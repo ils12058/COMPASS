@@ -92,6 +92,8 @@ class ReportAccessScope:
     college_ids: tuple[UUID, ...] = ()
 
 
+# Report builders require an explicit scope and never default to this one. Pass the scope resolved
+# for the actor, or this constant deliberately for a trusted institution-wide purpose.
 GLOBAL_REPORT_ACCESS_SCOPE = ReportAccessScope(is_global=True)
 
 
@@ -265,7 +267,7 @@ def resolve_report_filters(
     college_id: UUID | None,
     program_id: UUID | None,
     year_level: int | None,
-    access_scope: ReportAccessScope = GLOBAL_REPORT_ACCESS_SCOPE,
+    access_scope: ReportAccessScope,
 ) -> ResolvedReportFilters:
     if academic_year_id is None:
         try:
@@ -321,7 +323,7 @@ def resolve_report_filters(
 def _profile_queryset(
     filters: ResolvedReportFilters,
     *,
-    access_scope: ReportAccessScope = GLOBAL_REPORT_ACCESS_SCOPE,
+    access_scope: ReportAccessScope,
 ):
     queryset = StudentInventory.objects.filter(
         academic_year_id=filters.academic_year.pk,
@@ -883,7 +885,7 @@ def _income_section(
 def _coverage(
     filters: ResolvedReportFilters,
     *,
-    access_scope: ReportAccessScope = GLOBAL_REPORT_ACCESS_SCOPE,
+    access_scope: ReportAccessScope,
 ) -> dict[str, object]:
     ignored = []
     if filters.program is not None:
@@ -1016,7 +1018,7 @@ def build_student_profiling_report(
     college_id: UUID | None = None,
     program_id: UUID | None = None,
     year_level: int | None = None,
-    access_scope: ReportAccessScope = GLOBAL_REPORT_ACCESS_SCOPE,
+    access_scope: ReportAccessScope,
 ) -> dict[str, object]:
     filters = resolve_report_filters(
         academic_year_id=academic_year_id,

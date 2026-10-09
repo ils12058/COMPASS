@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) makes effective Service Availability depend on current Counselor qualification and applies the Appointment duration only to bookable Services. Raw Availability stays provider-centric.
+Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) makes effective Service Availability depend on current Counselor qualification and applies the Appointment duration only to bookable Services. Raw Availability stays provider-centric. Where this decision interprets UCN civil time in `settings.TIME_ZONE`, [ADR-097](ADR-097-institutional-civil-time-independent-of-runtime-timezone.md) uses `INSTITUTION_TIME_ZONE`.
 
 ## Context
 

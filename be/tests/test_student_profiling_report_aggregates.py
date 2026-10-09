@@ -18,6 +18,7 @@ from compass.inventory.models import (
 )
 from compass.organization.models import AcademicYear
 from compass.reports.services import (
+    GLOBAL_REPORT_ACCESS_SCOPE,
     LEGACY_KEY,
     LEGACY_LABEL,
     InvalidReportFilter,
@@ -74,7 +75,9 @@ def test_profile_report_population_is_frozen_before_program_and_section_queries(
         "compass.reports.services._program_columns",
         side_effect=insert_after_population_snapshot,
     ):
-        report = build_student_profiling_report(academic_year_id=year.pk)
+        report = build_student_profiling_report(
+            access_scope=GLOBAL_REPORT_ACCESS_SCOPE, academic_year_id=year.pk
+        )
 
     assert report["report_context"]["submitted_inventory_count"] == 1
     assert captured_program_total == 1
@@ -94,8 +97,10 @@ def test_current_and_historical_academic_year_selection():
     student = make_user("ay-profile@example.edu")
     make_inventory(student=student, academic_year=historical, revision=revision, program=program)
 
-    current_report = build_student_profiling_report()
-    historical_report = build_student_profiling_report(academic_year_id=historical.pk)
+    current_report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
+    historical_report = build_student_profiling_report(
+        access_scope=GLOBAL_REPORT_ACCESS_SCOPE, academic_year_id=historical.pk
+    )
 
     assert current_report["report_context"]["academic_year"]["id"] == current.pk
     assert current_report["report_context"]["submitted_inventory_count"] == 0
@@ -123,34 +128,44 @@ def test_filters_use_inventory_program_hierarchy_and_reject_contradictions():
     )
 
     assert (
-        build_student_profiling_report(campus_id=campus_a.pk)["report_context"][
-            "submitted_inventory_count"
-        ]
+        build_student_profiling_report(
+            access_scope=GLOBAL_REPORT_ACCESS_SCOPE, campus_id=campus_a.pk
+        )["report_context"]["submitted_inventory_count"]
         == 1
     )
     assert (
-        build_student_profiling_report(college_id=college_b.pk)["report_context"][
-            "submitted_inventory_count"
-        ]
+        build_student_profiling_report(
+            access_scope=GLOBAL_REPORT_ACCESS_SCOPE, college_id=college_b.pk
+        )["report_context"]["submitted_inventory_count"]
         == 1
     )
     assert (
-        build_student_profiling_report(program_id=program_b.pk)["report_context"][
-            "submitted_inventory_count"
-        ]
+        build_student_profiling_report(
+            access_scope=GLOBAL_REPORT_ACCESS_SCOPE, program_id=program_b.pk
+        )["report_context"]["submitted_inventory_count"]
         == 1
     )
     assert (
-        build_student_profiling_report(year_level=2)["report_context"]["submitted_inventory_count"]
+        build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE, year_level=2)[
+            "report_context"
+        ]["submitted_inventory_count"]
         == 1
     )
 
     with pytest.raises(InvalidReportFilter, match="College"):
-        build_student_profiling_report(campus_id=campus_a.pk, college_id=college_b.pk)
+        build_student_profiling_report(
+            access_scope=GLOBAL_REPORT_ACCESS_SCOPE, campus_id=campus_a.pk, college_id=college_b.pk
+        )
     with pytest.raises(InvalidReportFilter, match="Program"):
-        build_student_profiling_report(college_id=college_a.pk, program_id=program_b.pk)
+        build_student_profiling_report(
+            access_scope=GLOBAL_REPORT_ACCESS_SCOPE,
+            college_id=college_a.pk,
+            program_id=program_b.pk,
+        )
     with pytest.raises(InvalidReportFilter, match="Program"):
-        build_student_profiling_report(campus_id=campus_a.pk, program_id=program_b.pk)
+        build_student_profiling_report(
+            access_scope=GLOBAL_REPORT_ACCESS_SCOPE, campus_id=campus_a.pk, program_id=program_b.pk
+        )
 
 
 @pytest.mark.django_db
@@ -164,11 +179,14 @@ def test_inactive_historical_program_remains_reportable_and_empty_filter_is_vali
     program.is_active = False
     program.save(update_fields=["is_active", "updated_at"])
 
-    report = build_student_profiling_report(academic_year_id=year.pk, program_id=program.pk)
+    report = build_student_profiling_report(
+        access_scope=GLOBAL_REPORT_ACCESS_SCOPE, academic_year_id=year.pk, program_id=program.pk
+    )
     assert report["report_context"]["submitted_inventory_count"] == 1
 
     _, _, empty_program = make_organization("EMPTY")
     empty = build_student_profiling_report(
+        access_scope=GLOBAL_REPORT_ACCESS_SCOPE,
         academic_year_id=year.pk,
         program_id=empty_program.pk,
     )
@@ -201,7 +219,9 @@ def test_profile_population_is_submitted_snapshot_not_current_lifecycle():
     former.student_lifecycle_status = StudentLifecycleStatus.FORMER
     former.save(update_fields=["student_lifecycle_status", "updated_at"])
 
-    report = build_student_profiling_report(academic_year_id=historical.pk)
+    report = build_student_profiling_report(
+        access_scope=GLOBAL_REPORT_ACCESS_SCOPE, academic_year_id=historical.pk
+    )
     assert report["report_context"]["submitted_inventory_count"] == 2
     assert report_row(report["sections"]["sex"], Sex.MALE)["total_count"] == 2
     assert report["inventory_coverage"]["submitted_count"] == 2
@@ -237,7 +257,7 @@ def test_dynamic_program_columns_include_legacy_and_no_hardcoded_sample_programs
         year_level=None,
     )
 
-    report = build_student_profiling_report()
+    report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
     assert [column["name"] for column in report["program_columns"]] == [
         alpha.name,
         beta.name,
@@ -282,7 +302,9 @@ def test_exact_age_uses_submission_date_and_no_twenty_plus_bucket():
         date_of_birth=None,
     )
 
-    age_rows = build_student_profiling_report()["sections"]["age"]["rows"]
+    age_rows = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)["sections"][
+        "age"
+    ]["rows"]
     assert [(item["key"], item["total_count"]) for item in age_rows] == [
         ("20", 1),
         ("21", 1),
@@ -320,7 +342,7 @@ def test_not_specified_and_not_recorded_legacy_are_distinct():
         with_location=False,
     )
 
-    report = build_student_profiling_report()
+    report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
     for section_name in (
         "civil_status",
         "current_religion",
@@ -356,7 +378,7 @@ def test_parent_life_sections_have_independent_student_denominators():
     items[2].support_profile.father_life_status = ParentLifeStatus.NOT_SPECIFIED
     items[2].support_profile.save(update_fields=["father_life_status", "updated_at"])
 
-    report = build_student_profiling_report()
+    report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
     mother = report["sections"]["mother_life_status"]
     father = report["sections"]["father_life_status"]
     assert mother["denominator"] == father["denominator"] == 3
@@ -383,7 +405,7 @@ def test_small_student_profile_population_warns_without_suppressing_rows():
             sex=sex,
         )
 
-    report = build_student_profiling_report()
+    report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
     sex_section = report["sections"]["sex"]
 
     assert report["disclosure_warnings"] == [
@@ -418,7 +440,7 @@ def test_student_profile_small_cell_warns_once_and_keeps_exact_count():
             sex=sex,
         )
 
-    report = build_student_profiling_report()
+    report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
     female = report_row(report["sections"]["sex"], Sex.FEMALE)
 
     assert [warning["code"] for warning in report["disclosure_warnings"]] == ["SMALL_CELL"]
@@ -431,7 +453,7 @@ def test_empty_student_profile_has_no_disclosure_warning_and_null_percentages():
     sync_policy()
     AcademicYear.objects.create(label="2026-2027", is_current=True)
 
-    report = build_student_profiling_report()
+    report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
 
     assert report["report_context"]["submitted_inventory_count"] == 0
     assert report["disclosure_warnings"] == []

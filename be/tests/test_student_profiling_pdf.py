@@ -32,6 +32,7 @@ from compass.reports.pdf import (
 from compass.reports.services import (
     GLOBAL_REPORT_ACCESS_SCOPE,
     InvalidReportFilter,
+    ReportAccessScope,
     ReportConfigurationConflict,
     ReportNotFound,
 )
@@ -603,8 +604,9 @@ def test_render_service_calls_canonical_builder_once_and_preserves_filter_argume
     monkeypatch.setattr(report_pdf, "build_student_profiling_report", fake_builder)
     monkeypatch.setattr(report_pdf, "render_document_pdf", fake_renderer)
 
-    result = render_student_profiling_pdf(**ids)
-    assert calls == [{**ids, "access_scope": GLOBAL_REPORT_ACCESS_SCOPE}]
+    scope = ReportAccessScope(is_global=False, college_ids=(uuid4(),))
+    result = render_student_profiling_pdf(**ids, access_scope=scope)
+    assert calls == [{**ids, "access_scope": scope}]
     assert result.pdf_bytes.startswith(b"%PDF-")
     assert result.filename == "student-profile-2026-2027.pdf"
 
@@ -624,7 +626,7 @@ def test_render_service_wraps_document_errors_without_exposing_renderer_detail(m
         StudentProfilingDocumentUnavailable,
         match="temporarily unavailable",
     ) as raised:
-        render_student_profiling_pdf()
+        render_student_profiling_pdf(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
     assert "/private/path" not in str(raised.value)
 
 
@@ -637,7 +639,7 @@ def test_real_chromium_renders_portrait_multi_chunk_student_profile_pdf(monkeypa
         lambda **kwargs: report,
     )
 
-    result = render_student_profiling_pdf()
+    result = render_student_profiling_pdf(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
     assert result.pdf_bytes.startswith(b"%PDF-")
     assert len(result.pdf_bytes) > 10_000
     assert result.filename == "student-profile-2026-2027.pdf"
