@@ -31,6 +31,7 @@ from compass.call_slips.services import (
     build_call_slip_render_context,
     create_call_slip,
     create_call_slip_from_referral,
+    get_call_slip,
     list_call_slips,
     record_interview_ended,
     render_call_slip_pdf,
@@ -354,18 +355,41 @@ def test_counselor_gss_and_head_issuer_and_scope_rules():
 
     head_staff = make_user("head.staff@example.edu", "GUIDANCE_SERVICES_STAFF")
     StaffSupervision.objects.create(staff=head_staff, supervisor=head)
+    with pytest.raises(CallSlipNotPermitted):
+        create_for(head_staff, student_a, key="denied-head-staff", fingerprint="f" * 64)
+    fallback_college = College.objects.create(
+        campus=College.objects.get(code="A").campus, code="FALLBACK", name="Fallback"
+    )
+    fallback_student = make_user("fallback.student@example.edu", "STUDENT")
+    StudentAffiliation.objects.create(student=fallback_student, college=fallback_college)
+    referral = create_referral_for(
+        head_staff, fallback_student, key="head-staff-ref", fingerprint="9" * 64
+    )
+    record_action(
+        actor=head_staff,
+        referral_id=referral.pk,
+        action_type=ReferralActionType.SEND_CALL_SLIP_INTERVIEW_PERMIT,
+        occurred_at=timezone.now(),
+        remarks="",
+        context=audit_context(head_staff),
+    )
     inherited = create_for(
         head_staff,
-        student_a,
+        fallback_student,
         key="head-staff",
         fingerprint="e" * 64,
+        referral_id=referral.pk,
     )
     assert inherited.issued_by_id == head.pk
+    assert inherited.recorded_by_id == head_staff.pk
+    assert inherited.referral_id == referral.pk
+    assert {item.pk for item in list_call_slips(actor=head_staff).items} == {inherited.pk}
+    with pytest.raises(CallSlipNotFound):
+        get_call_slip(actor=head_staff, call_slip_id=head_item.pk)
 
     assert {item.pk for item in list_call_slips(actor=counselor_a).items} == {
         own.pk,
         encoded.pk,
-        inherited.pk,
     }
     assert {item.pk for item in list_call_slips(actor=counselor_b).items} == {
         head_item.pk,

@@ -27,6 +27,10 @@ from compass.operational_students import (
     InvalidOperationalStudentQuery,
     list_scoped_operational_students,
 )
+from compass.organization.access_scope import (
+    is_head_guidance,
+    resolve_operational_responsibility_scope,
+)
 from compass.organization.models import AcademicYear
 
 from .confidential_content import read_opportunity_note, write_opportunity_note
@@ -288,7 +292,14 @@ def list_eligible_students(*, actor: User, search: str | None, page: int, page_s
     _validate_operator(actor)
     try:
         return list_scoped_operational_students(
-            actor=actor, search=search, page=page, page_size=page_size
+            college_ids=(
+                None
+                if is_head_guidance(actor)
+                else resolve_operational_responsibility_scope(actor).college_ids
+            ),
+            search=search,
+            page=page,
+            page_size=page_size,
         )
     except InvalidOperationalStudentQuery as exc:
         raise InvalidExitInterviewInput(str(exc)) from exc

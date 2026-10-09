@@ -284,7 +284,7 @@ def test_gss_scope_fails_closed_for_broken_or_inactive_supervision_chain():
 
 
 @pytest.mark.django_db
-def test_head_and_gss_supervised_by_head_are_institution_wide_for_ordinary_appointments():
+def test_head_oversight_and_gss_under_head_handled_workload_for_ordinary_appointments():
     sync_policy()
     admin = make_user("headscope-admin@example.edu", "IT_ADMIN")
     provider = make_user("headscope-provider@example.edu", "COUNSELOR")
@@ -299,6 +299,7 @@ def test_head_and_gss_supervised_by_head_are_institution_wide_for_ordinary_appoi
     assigned_college = make_college("HEAD-ASSIGNED")
     other_college = make_college("HEAD-OTHER")
     CounselorResponsibility.objects.create(college=assigned_college, counselor=head)
+    CounselorResponsibility.objects.create(college=other_college, counselor=provider)
     assigned_student = make_user("head-assigned-student@example.edu", "STUDENT")
     other_student = make_user("head-other-student@example.edu", "STUDENT")
     affiliate(assigned_student, assigned_college)
@@ -321,12 +322,10 @@ def test_head_and_gss_supervised_by_head_are_institution_wide_for_ordinary_appoi
         inside.pk,
         outside.pk,
     }
-    assert {row.pk for row in list_managed_appointments(actor=gss).items} == {
-        inside.pk,
-        outside.pk,
-    }
+    assert {row.pk for row in list_managed_appointments(actor=gss).items} == {inside.pk}
     assert get_appointment_for_actor(appointment_id=outside.pk, actor=head).pk == outside.pk
-    assert get_appointment_for_actor(appointment_id=outside.pk, actor=gss).pk == outside.pk
+    with pytest.raises(AppointmentNotFound):
+        get_appointment_for_actor(appointment_id=outside.pk, actor=gss)
 
 
 @pytest.mark.django_db

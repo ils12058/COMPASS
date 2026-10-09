@@ -37,8 +37,8 @@ import {
 import type { OrganizationPersonSummary } from "@/lib/api/generated/model";
 
 function supervisionScopeConsequence(supervisor: OrganizationPersonSummary): string {
-  return supervisor.responsibility_scope === "INSTITUTION_WIDE"
-    ? "This staff member will share the counselor's institution-wide responsibilities in COMPASS."
+  return supervisor.responsibility_scope === "ASSIGNED_AND_FALLBACK_COLLEGES"
+    ? "This staff member will handle the counselor's assigned colleges and colleges routed to them as the unique active Head."
     : "This staff member will share the counselor's assigned-college responsibilities in COMPASS.";
 }
 
@@ -764,7 +764,7 @@ export function ResponsibilitiesPage() {
       >
         <p>
           {staffRemoval
-            ? `${staffRemoval.staff.full_name} will no longer share ${staffRemoval.supervisor.full_name}'s College or institution-wide responsibilities.`
+            ? `${staffRemoval.staff.full_name} will no longer share ${staffRemoval.supervisor.full_name}'s handled College responsibilities.`
             : "The Staff supervision relationship will be removed."}
         </p>
       </ConsequentialActionDialog>

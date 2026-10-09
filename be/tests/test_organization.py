@@ -18,7 +18,7 @@ from compass.accounts.models import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
-from compass.organization.access_scope import resolve_organizational_access_scope
+from compass.organization.access_scope import resolve_operational_responsibility_scope
 from compass.organization.models import (
     Campus,
     College,
@@ -178,7 +178,7 @@ def test_effective_scope_head_and_gss_inheritance_are_dynamic_not_capability_inh
 
 
 @pytest.mark.django_db
-def test_authorization_organizational_scope_resolver_is_canonical_and_fail_closed():
+def test_operational_scope_is_canonical_and_fail_closed():
     sync_policy()
     campus = Campus.objects.create(code="AUTH-MAIN", name="Authorization Main")
     inactive_campus = Campus.objects.create(
@@ -228,23 +228,20 @@ def test_authorization_organizational_scope_resolver_is_canonical_and_fail_close
     )
     StaffSupervision.objects.create(staff=head_staff, supervisor=head)
 
-    counselor_scope = resolve_organizational_access_scope(counselor)
-    assert counselor_scope.institution_wide is False
+    counselor_scope = resolve_operational_responsibility_scope(counselor)
     assert counselor_scope.college_ids == (college.pk,)
 
-    staff_scope = resolve_organizational_access_scope(staff)
+    staff_scope = resolve_operational_responsibility_scope(staff)
     assert staff_scope == counselor_scope
 
-    head_scope = resolve_organizational_access_scope(head)
-    assert head_scope.institution_wide is True
+    head_scope = resolve_operational_responsibility_scope(head)
     assert head_scope.college_ids == ()
 
-    head_staff_scope = resolve_organizational_access_scope(head_staff)
-    assert head_staff_scope.institution_wide is True
+    head_staff_scope = resolve_operational_responsibility_scope(head_staff)
+    assert head_staff_scope == head_scope
 
     for actor in (unsupervised, inactive_staff, unsupported):
-        scope = resolve_organizational_access_scope(actor)
-        assert scope.institution_wide is False
+        scope = resolve_operational_responsibility_scope(actor)
         assert scope.college_ids == ()
 
 
@@ -497,7 +494,7 @@ def test_eligible_people_projection_is_complete_and_excludes_inactive_users():
             "email": head.email,
             "role": "COUNSELOR",
             "is_active": True,
-            "responsibility_scope": "INSTITUTION_WIDE",
+            "responsibility_scope": "ASSIGNED_AND_FALLBACK_COLLEGES",
         },
     ]
     assert str(inactive.pk) not in {item["id"] for item in payload["items"]}
@@ -597,3 +594,108 @@ def test_student_affiliation_collection_is_paginated_searchable_and_filterable()
         ).status_code
         == 422
     )
+
+
+@pytest.mark.django_db
+def test_head_workload_matches_routing_and_gss_inherits_only_handled_colleges():
+    sync_policy()
+    campus = Campus.objects.create(code="WORK", name="Workload")
+    colleges = {
+        code: College.objects.create(campus=campus, code=code, name=code) for code in "ABCDEFX"
+    }
+    head = make_user("work-head@example.edu", "COUNSELOR")
+    other = make_user("work-other@example.edu", "COUNSELOR")
+    inactive = make_user("work-inactive@example.edu", "COUNSELOR", active=False)
+    unsupported = make_user("work-admin@example.edu", "IT_ADMIN")
+    staff = make_user("work-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    UserDesignation.objects.create(
+        user=head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    )
+    StaffSupervision.objects.create(staff=staff, supervisor=head)
+    for code, counselor in [
+        ("A", other),
+        ("B", other),
+        ("D", inactive),
+        ("E", head),
+        ("F", unsupported),
+    ]:
+        CounselorResponsibility.objects.create(college=colleges[code], counselor=counselor)
+    colleges["X"].is_active = False
+    colleges["X"].save(update_fields=["is_active"])
+    off_campus = Campus.objects.create(code="OFF-WORK", name="Off", is_active=False)
+    off_college = College.objects.create(campus=off_campus, code="OFF", name="Off")
+    CounselorResponsibility.objects.create(college=off_college, counselor=head)
+    expected = {colleges[code].pk for code in "CDEF"}
+    assert set(resolve_operational_responsibility_scope(head).college_ids) == expected
+    assert resolve_operational_responsibility_scope(
+        staff
+    ) == resolve_operational_responsibility_scope(head)
+    assert {c.pk for c in effective_responsibility_colleges(head)} == expected
+    for code, college in colleges.items():
+        student = make_user(f"work-{code}@example.edu", "STUDENT")
+        StudentAffiliation.objects.create(student=student, college=college)
+        resolution = resolve_default_counselor_for_student(student)
+        if code in "AB":
+            assert resolution.counselor == other
+            assert resolution.source == "COLLEGE_RESPONSIBILITY"
+        elif code == "X":
+            assert resolution.source == "UNRESOLVED"
+        else:
+            assert resolution.counselor == head
+            assert resolution.source == (
+                "COLLEGE_RESPONSIBILITY" if code == "E" else "HEAD_GUIDANCE_FALLBACK"
+            )
+    assert not staff.designations.exists()
+    for capability in (
+        "organization.manage",
+        "reports.view",
+        "inventory.view",
+        "student_support.view",
+        "counseling.manage_assigned",
+        "ecounseling.view_assigned",
+    ):
+        assert not staff.has_capability(capability)
+    # Overrides enable actions, never manufacture workload for unsupported roles.
+    UserCapabilityOverride.objects.create(
+        user=unsupported,
+        capability=Capability.objects.get(code="appointments.manage"),
+        effect="GRANT",
+        reason="synthetic scope regression",
+    )
+    assert unsupported.has_capability("appointments.manage")
+    assert resolve_operational_responsibility_scope(unsupported).college_ids == ()
+    # An invalid supervision role also fails closed, even with responsibility rows.
+    StaffSupervision.objects.filter(staff=staff).update(supervisor=unsupported)
+    assert resolve_operational_responsibility_scope(staff).college_ids == ()
+
+
+@pytest.mark.django_db
+def test_ambiguous_or_inactive_heads_never_receive_implicit_fallback_workload():
+    sync_policy()
+    campus = Campus.objects.create(code="MULTI", name="Multiple Heads")
+    explicit = College.objects.create(campus=campus, code="EX", name="Explicit")
+    fallback = College.objects.create(campus=campus, code="FB", name="Fallback")
+    student = make_user("multi-student@example.edu", "STUDENT")
+    StudentAffiliation.objects.create(student=student, college=fallback)
+    heads = [make_user(f"multi-h{i}@example.edu", "COUNSELOR") for i in range(2)]
+    staff = [make_user(f"multi-g{i}@example.edu", "GUIDANCE_SERVICES_STAFF") for i in range(2)]
+    for head, gss in zip(heads, staff, strict=True):
+        UserDesignation.objects.create(
+            user=head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+        )
+        StaffSupervision.objects.create(staff=gss, supervisor=head)
+    CounselorResponsibility.objects.create(college=explicit, counselor=heads[0])
+    assert resolve_default_counselor_for_student(student).reason == "AMBIGUOUS_HEAD_CONFIGURATION"
+    for index in range(2):
+        expected = (explicit.pk,) if index == 0 else ()
+        assert resolve_operational_responsibility_scope(heads[index]).college_ids == expected
+        assert resolve_operational_responsibility_scope(staff[index]).college_ids == expected
+    # Explicit assignment wins even when Head fallback is ambiguous.
+    StudentAffiliation.objects.filter(student=student).update(college=explicit)
+    assert resolve_default_counselor_for_student(student).counselor == heads[0]
+    for head in heads:
+        head.is_active = False
+        head.save(update_fields=["is_active"])
+    assert resolve_default_counselor_for_student(student).reason == "NO_HEAD_FALLBACK"
+    for actor in heads + staff:
+        assert resolve_operational_responsibility_scope(actor).college_ids == ()

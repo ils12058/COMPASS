@@ -81,7 +81,9 @@ test("Responsibilities Help includes safe fallback, confidential access and GSS 
   const html = help(responsibilitiesHelpSections);
   assert.match(html, /exactly one active Head Guidance Counselor/);
   assert.match(html, /does not automatically grant blanket access/);
-  assert.match(html, /Guidance Services Staff inherit/);
+  assert.match(html, /Guidance Services Staff handle/);
+  assert.match(html, /unique active Head when no valid Counselor is assigned/);
+  assert.match(html, /Staff do not inherit Head oversight authority/);
 });
 
 test("operator Help retains diagnostic limitations and approval semantics", () => {

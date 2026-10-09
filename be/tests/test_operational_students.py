@@ -7,9 +7,23 @@ from django.core.management import call_command
 
 from compass.accounts.models import Designation, Role, StudentLifecycleStatus, User, UserDesignation
 from compass.call_slips.services import list_eligible_students as list_call_slip_students
+from compass.exit_interviews.opportunities import list_eligible_students as list_exit_students
 from compass.operational_students import list_scoped_operational_students
-from compass.organization.models import Campus, College, CounselorResponsibility, StudentAffiliation
+from compass.organization.access_scope import resolve_operational_responsibility_scope
+from compass.organization.models import (
+    Campus,
+    College,
+    CounselorResponsibility,
+    StaffSupervision,
+    StudentAffiliation,
+)
 from compass.referrals.services import list_eligible_students as list_referral_students
+
+
+def list_handled_students(*, actor, **kwargs):
+    return list_scoped_operational_students(
+        college_ids=resolve_operational_responsibility_scope(actor).college_ids, **kwargs
+    )
 
 
 def _user(email: str, role: str = "STUDENT") -> User:
@@ -31,7 +45,7 @@ def _lifecycle(user: User, status: StudentLifecycleStatus) -> User:
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "list_students",
-    [list_scoped_operational_students, list_referral_students, list_call_slip_students],
+    [list_referral_students, list_call_slip_students],
 )
 def test_institution_wide_picker_requires_active_current_lifecycle(list_students):
     call_command("sync_identity_policy", verbosity=0)
@@ -65,7 +79,7 @@ def test_institution_wide_picker_requires_active_current_lifecycle(list_students
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "list_students",
-    [list_scoped_operational_students, list_referral_students, list_call_slip_students],
+    [list_handled_students, list_referral_students, list_call_slip_students],
 )
 def test_college_picker_preserves_scope_and_projection_after_lifecycle_filter(list_students):
     call_command("sync_identity_policy", verbosity=0)
@@ -93,3 +107,42 @@ def test_college_picker_preserves_scope_and_projection_after_lifecycle_filter(li
     assert [item.id for item in list_students(actor=counselor, search="current").items] == [
         current.pk
     ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "list_students", [list_referral_students, list_call_slip_students, list_exit_students]
+)
+def test_gss_head_picker_uses_only_explicit_and_valid_fallback_colleges(list_students):
+    call_command("sync_identity_policy", verbosity=0)
+    head = _user("picker-head@example.edu", "COUNSELOR")
+    other = _user("picker-other@example.edu", "COUNSELOR")
+    gss = _user("picker-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    UserDesignation.objects.create(
+        user=head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    )
+    StaffSupervision.objects.create(staff=gss, supervisor=head)
+    campus = Campus.objects.create(code="PICK", name="Picker")
+    colleges = [
+        College.objects.create(campus=campus, code=code, name=code) for code in ("EX", "FB", "OUT")
+    ]
+    CounselorResponsibility.objects.create(college=colleges[0], counselor=head)
+    CounselorResponsibility.objects.create(college=colleges[2], counselor=other)
+    students = [_user(f"picker-{i}@example.edu") for i in range(3)]
+    for student, college in zip(students, colleges, strict=True):
+        StudentAffiliation.objects.create(student=student, college=college)
+
+    def listed(actor):
+        return {
+            item.id for item in list_students(actor=actor, search=None, page=1, page_size=50).items
+        }
+
+    assert listed(head) == {student.pk for student in students}
+    assert listed(gss) == {students[0].pk, students[1].pk}
+    UserDesignation.objects.create(
+        user=other, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    )
+    assert listed(gss) == {students[0].pk}
+    head.is_active = False
+    head.save(update_fields=["is_active"])
+    assert listed(gss) == set()

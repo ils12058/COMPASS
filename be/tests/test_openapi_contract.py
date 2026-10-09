@@ -668,7 +668,7 @@ def test_organization_person_projection_schema_is_dedicated_and_complete() -> No
         {"type": "null"},
     ]
     assert components["OrganizationResponsibilityScope"]["enum"] == [
-        "INSTITUTION_WIDE",
+        "ASSIGNED_AND_FALLBACK_COLLEGES",
         "ASSIGNED_COLLEGES",
     ]
 

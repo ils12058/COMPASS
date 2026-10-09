@@ -7,7 +7,10 @@ from enum import StrEnum
 from django.db.models import Q
 
 from compass.accounts.models import User
-from compass.organization.access_scope import resolve_organizational_access_scope
+from compass.organization.access_scope import (
+    is_head_guidance,
+    resolve_operational_responsibility_scope,
+)
 from compass.organization.models import StudentAffiliation
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import Service
@@ -34,9 +37,9 @@ def _is_provider_relationship(actor: User, appointment) -> bool:
 
 
 def _student_in_organizational_scope(actor: User, student_id) -> bool:
-    scope = resolve_organizational_access_scope(actor)
-    if scope.institution_wide:
+    if is_head_guidance(actor):
         return True
+    scope = resolve_operational_responsibility_scope(actor)
     if not scope.college_ids:
         return False
     return StudentAffiliation.objects.filter(
@@ -83,9 +86,9 @@ def scope_managed_appointments(queryset, actor: User):
     if actor.role.code == "COUNSELOR":
         allowed |= Q(provider_id=actor.pk)
 
-    scope = resolve_organizational_access_scope(actor)
+    scope = resolve_operational_responsibility_scope(actor)
     organizational = ~Q(service__code=COUNSELING_SERVICE_CODE)
-    if scope.institution_wide:
+    if is_head_guidance(actor):
         allowed |= organizational
     elif scope.college_ids:
         allowed |= (

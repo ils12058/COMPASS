@@ -41,7 +41,10 @@ from compass.operational_students import (
     OperationalStudentPage,
     list_scoped_operational_students,
 )
-from compass.organization.access_scope import resolve_organizational_access_scope
+from compass.organization.access_scope import (
+    is_head_guidance,
+    resolve_operational_responsibility_scope,
+)
 from compass.organization.models import StudentAffiliation
 
 from .confidential_content import (
@@ -208,8 +211,10 @@ def _validate_student(student: User | None) -> User:
 
 
 def _scope_college_ids(actor: User) -> tuple[UUID, ...] | None:
-    scope = resolve_organizational_access_scope(actor)
-    return None if scope.institution_wide else scope.college_ids
+    # This domain explicitly grants oversight to the actor who holds Head designation.
+    if is_head_guidance(actor):
+        return None
+    return resolve_operational_responsibility_scope(actor).college_ids
 
 
 def _student_in_scope(actor: User, student_id: UUID) -> bool:
@@ -534,7 +539,7 @@ def list_eligible_students(
     _validate_operational_actor(actor)
     try:
         return list_scoped_operational_students(
-            actor=actor,
+            college_ids=_scope_college_ids(actor),
             search=search,
             page=page,
             page_size=page_size,

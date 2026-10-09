@@ -33,7 +33,10 @@ from compass.inventory.services import (
     derive_age_on,
 )
 from compass.organization.academic_years import AcademicYearConflict, require_current_academic_year
-from compass.organization.access_scope import resolve_organizational_access_scope
+from compass.organization.access_scope import (
+    is_head_guidance,
+    resolve_operational_responsibility_scope,
+)
 from compass.organization.models import AcademicYear, Campus, College, Program
 from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
 
@@ -140,9 +143,9 @@ def resolve_report_access_scope(actor: User) -> ReportAccessScope:
     if actor.role.code != "COUNSELOR":
         raise ReportAccessDenied("The authenticated actor has no supported report resource scope.")
 
-    scope = resolve_organizational_access_scope(actor)
-    if scope.institution_wide:
+    if is_head_guidance(actor):
         return GLOBAL_REPORT_ACCESS_SCOPE
+    scope = resolve_operational_responsibility_scope(actor)
     if not scope.college_ids:
         raise ReportAccessDenied("No active Counselor report scope is assigned.")
     return ReportAccessScope(is_global=False, college_ids=scope.college_ids)

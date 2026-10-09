@@ -44,7 +44,10 @@ from compass.integrations.psgc import (
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.academic_years import get_current_academic_year
-from compass.organization.access_scope import resolve_organizational_access_scope
+from compass.organization.access_scope import (
+    is_head_guidance,
+    resolve_operational_responsibility_scope,
+)
 from compass.organization.models import AcademicYear, College, Program
 from compass.student_support.models import (
     FourPsStatus,
@@ -393,8 +396,10 @@ def _validate_counselor(actor: User, capability: str) -> None:
 
 
 def _counselor_college_ids(actor: User) -> tuple[UUID, ...] | None:
-    scope = resolve_organizational_access_scope(actor)
-    return None if scope.institution_wide else scope.college_ids
+    # This domain explicitly grants oversight to the actor who holds Head designation.
+    if is_head_guidance(actor):
+        return None
+    return resolve_operational_responsibility_scope(actor).college_ids
 
 
 def _scoped_students(actor: User):

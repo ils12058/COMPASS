@@ -1,28 +1,29 @@
-"""Canonical authorization-oriented organizational access scope."""
+"""Current handled College workload, separate from domain-owned Head oversight."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from uuid import UUID
 
+from django.db.models import Q
+
 from compass.accounts.models import User
 
-from .models import CounselorResponsibility, StaffSupervision
+from .models import College, CounselorResponsibility, StaffSupervision
 
 HEAD_GUIDANCE_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
 
 
 @dataclass(frozen=True, slots=True)
-class OrganizationalAccessScope:
-    institution_wide: bool
+class OperationalResponsibilityScope:
     college_ids: tuple[UUID, ...] = ()
 
 
-EMPTY_ORGANIZATIONAL_ACCESS_SCOPE = OrganizationalAccessScope(institution_wide=False)
-INSTITUTION_WIDE_ORGANIZATIONAL_ACCESS_SCOPE = OrganizationalAccessScope(institution_wide=True)
+EMPTY_OPERATIONAL_RESPONSIBILITY_SCOPE = OperationalResponsibilityScope()
 
 
-def _is_head_guidance(actor: User) -> bool:
+def is_head_guidance(actor: User) -> bool:
+    """Check the actor's own designation; never resolve it through supervision."""
     return (
         bool(getattr(actor, "pk", None))
         and actor.is_active
@@ -31,33 +32,23 @@ def _is_head_guidance(actor: User) -> bool:
     )
 
 
-def _active_counselor_college_ids(counselor_id: UUID) -> tuple[UUID, ...]:
-    return tuple(
-        CounselorResponsibility.objects.filter(
-            counselor_id=counselor_id,
-            counselor__is_active=True,
-            counselor__role__code="COUNSELOR",
-            college__is_active=True,
-            college__campus__is_active=True,
+def active_head_guidance_counselors():
+    """The same valid Head candidates for default routing and derived workload."""
+    return (
+        User.objects.filter(
+            is_active=True,
+            role__code="COUNSELOR",
+            designation_assignments__designation__code=HEAD_GUIDANCE_DESIGNATION,
         )
-        .order_by("college_id")
-        .values_list("college_id", flat=True)
+        .select_related("role")
+        .distinct()
     )
 
 
-def resolve_organizational_access_scope(actor: User) -> OrganizationalAccessScope:
-    """Resolve organizational operational scope only, without domain capability checks."""
-
+def resolve_operational_responsibility_scope(actor: User) -> OperationalResponsibilityScope:
+    """Resolve handled Colleges only. No capabilities, relationships or oversight are inherited."""
     if not getattr(actor, "pk", None) or not actor.is_active:
-        return EMPTY_ORGANIZATIONAL_ACCESS_SCOPE
-
-    if actor.role.code == "COUNSELOR":
-        if _is_head_guidance(actor):
-            return INSTITUTION_WIDE_ORGANIZATIONAL_ACCESS_SCOPE
-        return OrganizationalAccessScope(
-            institution_wide=False,
-            college_ids=_active_counselor_college_ids(actor.pk),
-        )
+        return EMPTY_OPERATIONAL_RESPONSIBILITY_SCOPE
 
     if actor.role.code == "GUIDANCE_SERVICES_STAFF":
         supervision = (
@@ -70,7 +61,24 @@ def resolve_organizational_access_scope(actor: User) -> OrganizationalAccessScop
             or not supervision.supervisor.is_active
             or supervision.supervisor.role.code != "COUNSELOR"
         ):
-            return EMPTY_ORGANIZATIONAL_ACCESS_SCOPE
-        return resolve_organizational_access_scope(supervision.supervisor)
+            return EMPTY_OPERATIONAL_RESPONSIBILITY_SCOPE
+        return resolve_operational_responsibility_scope(supervision.supervisor)
 
-    return EMPTY_ORGANIZATIONAL_ACCESS_SCOPE
+    if actor.role.code != "COUNSELOR":
+        return EMPTY_OPERATIONAL_RESPONSIBILITY_SCOPE
+
+    valid_responsibilities = CounselorResponsibility.objects.filter(
+        counselor__is_active=True, counselor__role__code="COUNSELOR"
+    )
+    handled = Q(pk__in=valid_responsibilities.filter(counselor_id=actor.pk).values("college_id"))
+    heads = list(active_head_guidance_counselors().values_list("pk", flat=True)[:2])
+    if heads == [actor.pk]:
+        # A missing, inactive or non-Counselor assignment falls back only to the unique Head.
+        handled |= ~Q(pk__in=valid_responsibilities.values("college_id"))
+    return OperationalResponsibilityScope(
+        college_ids=tuple(
+            College.objects.filter(handled, is_active=True, campus__is_active=True)
+            .order_by("pk")
+            .values_list("pk", flat=True)
+        )
+    )

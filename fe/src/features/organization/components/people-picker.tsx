@@ -69,8 +69,8 @@ export function PeoplePicker({
           </p>
           <p className="mt-1 text-xs text-muted">
             {visibleSelected.is_active ? "Active" : "Inactive"}
-            {visibleSelected.responsibility_scope === "INSTITUTION_WIDE"
-              ? " · Institution-wide responsibilities"
+            {visibleSelected.responsibility_scope === "ASSIGNED_AND_FALLBACK_COLLEGES"
+              ? " · Assigned and fallback colleges"
               : visibleSelected.responsibility_scope === "ASSIGNED_COLLEGES"
                 ? " · Assigned-college responsibilities"
                 : ""}

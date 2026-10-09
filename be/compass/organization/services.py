@@ -23,6 +23,10 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.organization.access_scope import (
+    active_head_guidance_counselors,
+    resolve_operational_responsibility_scope,
+)
 from compass.organization.models import (
     Campus,
     College,
@@ -34,7 +38,6 @@ from compass.organization.models import (
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
-HEAD_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
 
 
 class OrganizationError(RuntimeError):
@@ -90,29 +93,11 @@ def _active_colleges():
 
 
 def effective_responsibility_colleges(user: User) -> tuple[College, ...]:
-    """Resolve default responsibility only; this is not a resource-access decision."""
-    if not getattr(user, "pk", None) or not user.is_active:
-        return ()
-    if user.role.code == "COUNSELOR":
-        if user.designations.filter(code=HEAD_DESIGNATION).exists():
-            return tuple(_active_colleges().order_by("campus__code", "code"))
-        return tuple(
-            _active_colleges()
-            .filter(counselor_responsibility__counselor_id=user.pk)
-            .order_by("campus__code", "code")
-        )
-    if user.role.code == "GUIDANCE_SERVICES_STAFF":
-        supervision = (
-            StaffSupervision.objects.select_related("supervisor__role")
-            .filter(staff_id=user.pk)
-            .first()
-        )
-        if supervision is None or not supervision.supervisor.is_active:
-            return ()
-        if supervision.supervisor.role.code != "COUNSELOR":
-            return ()
-        return effective_responsibility_colleges(supervision.supervisor)
-    return ()
+    """Project current handled workload; domain authorization remains a separate decision."""
+    scope = resolve_operational_responsibility_scope(user)
+    return tuple(
+        _active_colleges().filter(pk__in=scope.college_ids).order_by("campus__code", "code")
+    )
 
 
 def resolve_default_counselor_for_student(student: User) -> DefaultCounselorResolution:
@@ -139,15 +124,7 @@ def resolve_default_counselor_for_student(student: User) -> DefaultCounselorReso
         and responsibility.counselor.role.code == "COUNSELOR"
     ):
         return DefaultCounselorResolution(responsibility.counselor, "COLLEGE_RESPONSIBILITY")
-    heads = list(
-        User.objects.filter(
-            is_active=True,
-            role__code="COUNSELOR",
-            designation_assignments__designation__code=HEAD_DESIGNATION,
-        )
-        .select_related("role")
-        .distinct()[:2]
-    )
+    heads = list(active_head_guidance_counselors()[:2])
     if len(heads) == 1:
         return DefaultCounselorResolution(heads[0], "HEAD_GUIDANCE_FALLBACK")
     if not heads:

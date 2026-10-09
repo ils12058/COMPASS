@@ -1,5 +1,10 @@
 # ADR-050: Final Operational Gap Closure
 
+> **Scope refinement (2026-10-09):** [ADR-099](ADR-099-operational-responsibility-and-domain-head-oversight.md)
+> separates handled College workload from explicit domain-owned Head oversight. GSS inherits
+> only supervisor workload, including valid unique-Head fallback, never Head designation authority.
+
+
 - **Status:** Accepted
 - **Refined by:** [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) — Counselor remains the only provider class; Services now choose all or selected Counselors instead of a provider-role checkbox.
 - **Date:** 2026-09-20
