@@ -14,6 +14,10 @@ PostgreSQL `Notification` is the durable self-service record. `EmailDelivery` is
 
 Use an 8-second, foreground-only short poll of the existing self-only canonical unread-count and Notification list queries. An open portal refreshes both on visible intervals and immediately on focus, visibility restoration and network reconnection. Background/offline tabs stop issuing requests. TanStack Query invalidation refetches only active queries; an inactive list is marked stale until opened. Logout/session loss unmounts the portal shell, stops the timer, and clears current query state through the existing auth boundary. Auth and maintenance behavior remain on the canonical API.
 
+> Refined by [ADR-100](ADR-100-realtime-transport-foundation.md): a separate Django-free ASGI
+> realtime tier now exists for content-free hints, while Gunicorn stays WSGI. This 8-second poll
+> is unchanged until a later decision moves Notifications onto realtime hints.
+
 This is bounded near-realtime polling, not a server stream. SSE would pin one of the two synchronous Gunicorn request workers per open client, making the current service unavailable with only a few tabs. WebSocket would require an ASGI deployment and new connection infrastructure. Redis is already used for tasks and caching, but no generic event bus is added. If the backend later adopts an appropriately sized ASGI/streaming tier, replace the poll with a **content-free freshness signal** and preserve canonical refetch/reconnection behavior. The 8-second interval and foreground rule must be capacity tested before a large rollout.
 
 ### Durable source and push outbox

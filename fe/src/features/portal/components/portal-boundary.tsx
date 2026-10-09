@@ -16,6 +16,8 @@ import { PortalUserMenu } from "@/features/portal/components/portal-user-menu";
 import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
 import { ActiveECounselingRuntimeProvider, type PortalAuthState } from "@/features/ecounseling/runtime/active-call-runtime";
 import { PortalMaintenanceGate } from "@/features/platform/maintenance-presentation";
+import { RealtimeProvider } from "@/features/realtime/realtime-provider";
+import { realtimeAccount } from "@/features/realtime/realtime-runtime";
 import { hasPlatformView } from "@/features/platform/platform-gate";
 import { CompassApiError } from "@/lib/api/errors";
 import { useAuthGetSession } from "@/lib/api/generated/auth/auth";
@@ -122,12 +124,16 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
 
   // The unsaved-changes guard and the call runtime sit above the session, maintenance and loading
   // presentations, so swapping those never unmounts a live call. Keyed by user: another account
-  // never inherits a call.
+  // never inherits a call. The realtime runtime (ADR-100) connects only for a confirmed account:
+  // a session being checked again, signed out, or replaced by another account closes its socket
+  // first. It is not keyed, so a session check never remounts the page.
   return (
     <UnsavedChangesProvider>
-      <ActiveECounselingRuntimeProvider key={callUser?.id ?? "anonymous"} user={callUser} authState={authState}>
-        {content}
-      </ActiveECounselingRuntimeProvider>
+      <RealtimeProvider account={realtimeAccount(authState, confirmedUser?.id)}>
+        <ActiveECounselingRuntimeProvider key={callUser?.id ?? "anonymous"} user={callUser} authState={authState}>
+          {content}
+        </ActiveECounselingRuntimeProvider>
+      </RealtimeProvider>
     </UnsavedChangesProvider>
   );
 }

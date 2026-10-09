@@ -143,7 +143,7 @@ jobs:
       # The first request to a route compiles it; compile the tested routes before timing checks.
       - name: Compile tested routes
         run: |
-          for route in /portal/services/service-density-test /portal/services/service-density-test/edit \
+          for route in / /portal/services/service-density-test /portal/services/service-density-test/edit \
             /portal/services /portal/inventory/current /portal/exit-interviews/exit-draft-test \
             /portal/referrals/referral-draft-test /portal/availability/me /portal/availability/office /portal/accounts /portal/inventory /portal/exit-interviews \
             /portal/resources /portal/organization/student-affiliations /portal/availability/providers \

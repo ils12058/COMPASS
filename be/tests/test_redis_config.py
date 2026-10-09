@@ -35,6 +35,11 @@ def test_one_password_routes_all_databases_and_celery(tmp_path, monkeypatch, fil
         assert password not in urls[name]
     assert urls["CELERY_BROKER_URL"] == urls["REDIS_URL"]
     assert urls["CELERY_RESULT_BACKEND"] == urls["REDIS_CACHE_URL"]
+    realtime = urlsplit(urls["REDIS_REALTIME_URL"])
+    assert realtime.path == "/4"
+    assert unquote(realtime.password) == password
+    assert len(set(urls) - {"CELERY_BROKER_URL", "CELERY_RESULT_BACKEND"}) == 5
+    assert len({urlsplit(urls[name]).path for name in LEGACY_URL_SETTINGS[:5]}) == 5
 
 
 @pytest.mark.parametrize(
@@ -87,6 +92,11 @@ def test_local_legacy_urls_do_not_require_a_new_password(monkeypatch):
     monkeypatch.setenv("CELERY_RESULT_BACKEND", "cache+memory://")
     urls = redis_urls(live_staging=False)
     assert urls["REDIS_IDEMPOTENCY_URL"].endswith("/3")
+    # Overrides that predate the realtime database put realtime state in database 4 of the
+    # primary Redis server rather than requiring a new setting.
+    assert urls["REDIS_REALTIME_URL"] == "redis://localhost:6379/4"
+    monkeypatch.setenv("REDIS_REALTIME_URL", "redis://localhost:6380/9")
+    assert redis_urls(live_staging=False)["REDIS_REALTIME_URL"] == "redis://localhost:6380/9"
     assert urls["CELERY_BROKER_URL"] == "memory://"
     assert urls["CELERY_RESULT_BACKEND"] == "cache+memory://"
 

@@ -19,6 +19,8 @@ dependencies = [
     "pypdf>=6.19.0",
     "pywebpush>=2,<3",
     "py-vapid>=1.9,<2",
+    "uvicorn==0.54.0",
+    "websockets==17.1",
 ]
 
 [dependency-groups]

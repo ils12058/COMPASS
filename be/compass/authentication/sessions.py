@@ -23,6 +23,7 @@ from compass.authentication.actions import (
 from compass.authentication.models import AuthSession, LoginChallenge, TrustedSession
 from compass.common.correlation import normalize_request_id
 from compass.common.rate_limit import client_ip
+from compass.realtime.publish import close_session_sockets_on_commit
 
 OPAQUE_TOKEN_BYTES = 32
 MAX_COOKIE_TOKEN_LENGTH = 512
@@ -360,6 +361,10 @@ def _revoke_auth_session_locked(
         target_id=session.pk,
         metadata={"reason": reason},
     )
+    # Every AuthSession revocation (logout, user/admin revocation, password and email changes,
+    # authority changes, account disablement) passes through here. Once it commits, realtime
+    # sockets for this session close and tickets minted for it stop working (ADR-100).
+    close_session_sockets_on_commit(session.pk)
     return True
 
 

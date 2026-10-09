@@ -47,6 +47,8 @@ export async function createBrowserHarness(suite) {
     overrides = {},
     fakeDaily = null,
     initScripts = [],
+    // Runs with the new context before the first navigation, e.g. to route WebSockets.
+    beforeNavigate = null,
   } = {}) {
     const contextOptions = device ? viewports[device] : mobile ? viewports.phone : tablet ? viewports.tablet : viewports.desktop;
     const context = // Service-worker fetches bypass Playwright routing. These synthetic suites must never
@@ -109,6 +111,7 @@ export async function createBrowserHarness(suite) {
       if (method !== "GET") return reply({ error: { code: "synthetic_failure", message: "Synthetic mutation rejected" } }, 500);
       return reply({ error: { code: "synthetic_unavailable", message: "No fixture for this optional read" } }, 404);
     });
+    if (beforeNavigate) await beforeNavigate({ context, page });
     await page.goto(`${baseURL}${path}`, { waitUntil: "domcontentloaded" });
     return { page, context, errors, requests };
   }

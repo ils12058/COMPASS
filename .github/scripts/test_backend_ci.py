@@ -160,6 +160,16 @@ class SelectionTests(unittest.TestCase):
         result = selected("be/compose.staging.yaml")
         self.assertIn("test_runtime_secrets_compose.py", result.files)
 
+    def test_realtime_service_selects_realtime_tests_without_the_complete_suite(self):
+        result = selected("be/realtime_service/app.py")
+        self.assertFalse(result.full)
+        self.assertIn("test_realtime_service.py", result.files)
+        self.assertIn("test_realtime_isolation.py", result.files)
+        ticket_api = selected("be/compass/realtime/api.py")
+        self.assertFalse(ticket_api.full)
+        self.assertIn("test_realtime_tickets.py", ticket_api.files)
+        self.assertIn("test_authentication.py", ticket_api.files)
+
 
 class ShardingTests(unittest.TestCase):
     def test_full_regression_covers_every_test_file_exactly_once(self):

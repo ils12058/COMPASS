@@ -19,6 +19,12 @@
 		-Server
 		X-Robots-Tag "noindex, nofollow, noarchive, nosnippet"
 	}
+	# Realtime WebSocket hints go to the separate realtime service (ADR-100); Caddy proxies the
+	# upgrade natively. Only this prefix matches: the ticket endpoint /api/v1/realtime/tickets is
+	# an ordinary Django route and stays with web below.
+	handle /api/realtime/* {
+		reverse_proxy realtime:8001
+	}
 	respond /robots.txt <<ROBOTS
 		User-agent: *
 		Disallow: /

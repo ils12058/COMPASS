@@ -327,6 +327,16 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_build_metadata.py",
             "test_health.py",
             "test_common_config.py",
+            "test_realtime_isolation.py",
+        ),
+    ),
+    "realtime": (
+        "Realtime tickets, session-revocation hooks, and the standalone WebSocket service.",
+        (
+            "test_realtime_tickets.py",
+            "test_realtime_service.py",
+            "test_realtime_isolation.py",
+            "test_redis_config.py",
         ),
     ),
 }
@@ -522,6 +532,11 @@ DOMAINS: dict[str, Area] = {
         ),
         ("test_step_up_policy.py",),
     ),
+    "realtime": domain(
+        "realtime",
+        "Ticket issuance and the revocation hook every AuthSession revocation calls.",
+        ("realtime", "identity-access"),
+    ),
     "reference_data": domain(
         "reference_data",
         "PSGC reference data used by Inventory locations.",
@@ -596,6 +611,13 @@ INTEGRATIONS: dict[str, Area] = {
     "turnstile.py": domain("integrations:turnstile", "Turnstile bot challenge.", ("identity-access",)),
 }
 
+# The standalone realtime service shares only its wire protocol with Django (ADR-100).
+REALTIME_SERVICE = domain(
+    "realtime_service",
+    "The Django-free realtime WebSocket service and its shared wire protocol.",
+    ("realtime", "deployment-runtime"),
+)
+
 TOP_LEVEL_MODULES: dict[str, Area] = {
     "be/compass/publications.py": domain(
         "publications", "Publication audiences for Announcements and Resources.", ("content",)
@@ -662,6 +684,8 @@ def classify(path: str) -> Area | None:
         return domain("docs", "Documentation only.", ())
     if path in TOP_LEVEL_MODULES:
         return TOP_LEVEL_MODULES[path]
+    if path.startswith("be/realtime_service/"):
+        return REALTIME_SERVICE
     if path.startswith("be/tests/"):
         return classify_test_path(path)
     parts = path.split("/")

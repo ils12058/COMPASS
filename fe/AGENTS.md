@@ -353,6 +353,22 @@ refresh what COMPASS has already reloaded; keep Retry or Refresh only when the r
 COMPASS did not reload. Do not key an editor on a server timestamp: a background reload would
 replace what the person typed.
 
+## Realtime hints
+
+Realtime (ADR-100) is an optional acceleration layer, not a data source. One portal runtime
+(`src/features/realtime/`, mounted by `PortalBoundary`) owns the tab's only WebSocket and connects
+only for the confirmed account.
+
+* Never construct a `WebSocket` in feature code; a test fails if one appears outside the runtime.
+* Subscribe with `useRealtimeEvent(type, handler)` and respond by invalidating or refetching the
+  affected TanStack queries. A hint carries no content; never render or store it as data.
+* Read `useRealtimeStatus()`. Keep the existing polling whenever the state is not `live`, and
+  reconcile (refetch) when `generation` changes, because hints sent while disconnected are lost.
+* The socket URL comes only from `NEXT_PUBLIC_REALTIME_URL` through `realtime-config.ts`, the one
+  allowed absolute backend URL. Tickets come from the generated client and travel only in the first
+  socket frame: never in a URL, storage, or logs.
+* No feature may require realtime. With realtime disabled, every page behaves as before.
+
 ---
 
 # 11. Global state

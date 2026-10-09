@@ -95,6 +95,72 @@ services:
       redis:
         condition: service_healthy
 
+  # Django-free realtime WebSocket hints (ADR-100). A separate process from Gunicorn that reuses
+  # the image. It is opt-in (COMPOSE_PROFILES=realtime) and receives only Redis settings, the
+  # Redis password file, and the exact browser Origins: no env_file, database credentials,
+  # SECRET_KEY, or content keyrings.
+  realtime:
+    image: ${COMPASS_IMAGE:?COMPASS_IMAGE must be set}
+    pull_policy: always
+    profiles: ["realtime"]
+    restart: unless-stopped
+    command:
+      [
+        "uvicorn",
+        "realtime_service.app:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8001",
+        "--ws",
+        "websockets-sansio",
+        "--ws-max-size",
+        "4096",
+        "--ws-ping-interval",
+        "20",
+        "--ws-ping-timeout",
+        "20",
+        "--lifespan",
+        "on",
+        "--log-level",
+        "warning",
+        "--no-access-log",
+        "--no-server-header",
+        "--timeout-graceful-shutdown",
+        "5",
+      ]
+    environment:
+      APP_ENV: "${APP_ENV:-live-staging}"
+      # Blank on purpose: the service never configures Django.
+      DJANGO_SETTINGS_MODULE: ""
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+      REDIS_HOST: "${REDIS_HOST:-redis}"
+      REDIS_PORT: "${REDIS_PORT:-6379}"
+      REALTIME_ALLOWED_ORIGINS: "${REALTIME_ALLOWED_ORIGINS:-}"
+      REDIS_SOCKET_TIMEOUT: "${REDIS_SOCKET_TIMEOUT:-2}"
+      REALTIME_CONNECTION_MAX_SECONDS: "${REALTIME_CONNECTION_MAX_SECONDS:-900}"
+      REALTIME_AUTH_TIMEOUT_SECONDS: "${REALTIME_AUTH_TIMEOUT_SECONDS:-5}"
+      REALTIME_MAX_CONNECTIONS: "${REALTIME_MAX_CONNECTIONS:-1000}"
+    secrets:
+      - redis_password
+    expose:
+      - "8001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/api/realtime/v1/health/ready', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+
   proxy:
     image: docker.io/library/caddy:2.11.4-alpine
     restart: unless-stopped
