@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from compass.accounts.models import User
 from compass.common.correlation import get_current_request_id
+from compass.realtime.publish import publish_to_user_on_commit
 
 from .models import EmailDelivery, Notification, NotificationPreference
 from .policy import (
@@ -114,6 +115,7 @@ def create_notification_for_event(
     )
 
     if created:
+        publish_to_user_on_commit(notification.recipient_id, "notifications.changed")
         try:
             # Optional transport setup is isolated from the authoritative transaction.
             with transaction.atomic():
@@ -188,15 +190,20 @@ def mark_my_notification_read(
         if notification.read_at is None:
             notification.read_at = timezone.now()
             notification.save(update_fields=["read_at"])
+            publish_to_user_on_commit(notification.recipient_id, "notifications.changed")
         return notification
 
 
 def mark_all_my_notifications_read(*, actor: User) -> int:
-    marked_at = timezone.now()
-    return Notification.objects.filter(
-        recipient=actor,
-        read_at__isnull=True,
-    ).update(read_at=marked_at)
+    with transaction.atomic():
+        marked_at = timezone.now()
+        updated_count = Notification.objects.filter(
+            recipient=actor,
+            read_at__isnull=True,
+        ).update(read_at=marked_at)
+        if updated_count:
+            publish_to_user_on_commit(actor.pk, "notifications.changed")
+        return updated_count
 
 
 def update_my_notification_preference(

@@ -56,3 +56,9 @@ Browser permission is requested only after the user selects Enable in Account Pr
 No maintenance bypass is added. During active maintenance, normal Notification APIs can be blocked; once operation resumes, foreground canonical queries recover missed durable records. Push attempts for already committed records may occur during maintenance, but clicking still passes through normal maintenance and auth gates. Push does not confer target authorization.
 
 Real iPhone/iPad Home Screen Web Push, Android install behavior, browser permission UX, cross-origin Vercel rewrite behavior, and production push-service delivery require staging/device validation with deployment keys. This implementation does not claim offline protected workflows, guaranteed push delivery, or sub-second streaming.
+
+## Phase 2 refinement
+
+[ADR-101](ADR-101-realtime-notification-freshness.md) adds a fieldless, best-effort foreground
+invalidation hint on the ADR-100 transport. HTTP remains authoritative; polling stays at 8 seconds
+when not live and 60 seconds while live. Web Push and email remain independent delivery systems.

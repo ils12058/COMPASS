@@ -454,7 +454,7 @@ def test_publish_helper_is_content_free_best_effort_and_after_commit(
 ):
     user = make_user("publish@example.edu")
     with pytest.raises(ValueError, match="not registered"):
-        publish.publish_to_user(user.pk, "notifications.changed")
+        publish.publish_to_user(user.pk, "unregistered.changed")
 
     monkeypatch.setattr(
         protocol,

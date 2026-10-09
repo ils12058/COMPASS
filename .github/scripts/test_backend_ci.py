@@ -165,6 +165,8 @@ class SelectionTests(unittest.TestCase):
         self.assertFalse(result.full)
         self.assertIn("test_realtime_service.py", result.files)
         self.assertIn("test_realtime_isolation.py", result.files)
+        protocol = selected("be/realtime_service/protocol.py")
+        self.assertIn("test_notification_realtime.py", protocol.files)
         ticket_api = selected("be/compass/realtime/api.py")
         self.assertFalse(ticket_api.full)
         self.assertIn("test_realtime_tickets.py", ticket_api.files)
