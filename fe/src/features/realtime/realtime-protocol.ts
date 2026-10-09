@@ -39,6 +39,7 @@ export function parseServerFrame(data: unknown): ServerFrame | null {
   if (frame.v !== 1 || typeof frame.type !== "string") return null;
   const fields = Object.entries(frame).filter(([name]) => name !== "v" && name !== "type");
   if (frame.type === "ready") return fields.length === 0 ? { kind: "ready" } : null;
+  if (frame.type === "notifications.changed" && fields.length !== 0) return null;
   if (!EVENT_TYPE.test(frame.type)) return null;
   if (!fields.every(([name, field]) => FIELD_NAME.test(name) && typeof field === "string" && OPAQUE_ID.test(field))) {
     return null;

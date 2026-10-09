@@ -5,7 +5,7 @@ import vm from "node:vm";
 
 import { initialPushState } from "../src/features/notifications/browser-push-capability.ts";
 import { disableBrowserPush, enableBrowserPush } from "../src/features/notifications/browser-push-actions.ts";
-import { NOTIFICATION_REFRESH_MS, startNotificationFreshness } from "../src/features/notifications/notification-freshness.tsx";
+import { NOTIFICATION_FALLBACK_REFRESH_MS, startNotificationFreshness } from "../src/features/notifications/notification-freshness.tsx";
 import manifest from "../src/app/manifest.ts";
 
 test("foreground notification state refreshes promptly and recovers after focus/network changes", async () => {
@@ -14,12 +14,12 @@ test("foreground notification state refreshes promptly and recovers after focus/
   const window = new EventTarget();
   let tick;
   let cleared = false;
-  window.setInterval = (callback, delay) => { assert.equal(delay, NOTIFICATION_REFRESH_MS); tick = callback; return 1; };
+  window.setInterval = (callback, delay) => { assert.equal(delay, NOTIFICATION_FALLBACK_REFRESH_MS); tick = callback; return 1; };
   window.clearInterval = () => { cleared = true; };
   const navigator = { onLine: true };
   const keys = [];
   const queryClient = { invalidateQueries: ({ queryKey }) => { keys.push(queryKey[0]); return Promise.resolve(); } };
-  const stop = startNotificationFreshness(queryClient, { document, window, navigator });
+  const { stop } = startNotificationFreshness(queryClient, { document, window, navigator });
 
   tick();
   await new Promise((resolve) => setImmediate(resolve));

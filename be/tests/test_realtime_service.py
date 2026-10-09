@@ -346,7 +346,7 @@ def test_unregistered_or_content_bearing_payloads_are_never_forwarded(test_event
         channel = protocol.user_channel(me.user_id)
         for payload in (
             "plain text",
-            json.dumps({"v": 1, "type": "notifications.changed"}),
+            json.dumps({"v": 1, "type": "unregistered.changed"}),
             json.dumps({"v": 1, "type": "test.changed", "body": "Counseling notes"}),
             json.dumps({"v": 1, "type": "test.thread_changed", "thread_id": "Message body"}),
             json.dumps({"v": 2, "type": "test.changed"}),
@@ -611,7 +611,7 @@ def test_public_events_are_registered_and_carry_only_opaque_identifiers(test_eve
         "thread_id": thread,
     }
     for event_type, fields in (
-        ("notifications.changed", {}),
+        ("unregistered.changed", {}),
         ("test.changed", {"title": str(uuid.uuid4())}),
         ("test.thread_changed", {}),
         ("test.thread_changed", {"thread_id": "Message body"}),
@@ -622,6 +622,69 @@ def test_public_events_are_registered_and_carry_only_opaque_identifiers(test_eve
             protocol.encode_event(event_type, fields)
 
 
-def test_phase_one_defines_no_public_events_beyond_ready():
-    assert dict(protocol.PUBLIC_EVENT_FIELDS) == {}
+def test_phase_two_registers_only_the_fieldless_notification_hint():
+    assert dict(protocol.PUBLIC_EVENT_FIELDS) == {"notifications.changed": frozenset()}
     assert json.loads(protocol.READY_FRAME) == {"v": 1, "type": "ready"}
+
+
+def test_notification_hint_encodes_decodes_and_rejects_every_extra_field():
+    frame = '{"v":1,"type":"notifications.changed"}'
+    assert protocol.encode_event("notifications.changed") == frame
+    assert protocol.decode_channel_message(frame) == protocol.ChannelMessage(frame=frame)
+    for name in (
+        "notification_id",
+        "unread_count",
+        "title",
+        "message",
+        "content",
+        "event_code",
+        "target_id",
+        "target_type",
+        "recipient_id",
+        "source_id",
+        "names",
+        "timestamps",
+        "status",
+        "arbitrary",
+    ):
+        # Even a valid opaque UUID is forbidden: this event has exactly zero fields.
+        fields = {name: str(uuid.uuid4())}
+        with pytest.raises(ValueError, match="fields do not match"):
+            protocol.encode_event("notifications.changed", fields)
+        assert (
+            protocol.decode_channel_message(
+                json.dumps({"v": 1, "type": "notifications.changed", **fields})
+            )
+            is None
+        )
+
+
+def test_notification_hint_reaches_all_recipient_sessions_and_no_other_user():
+    async def test(app, client):
+        me = identity()
+        second_session = identity(user_id=me.user_id)
+        other = identity()
+        sockets = [Socket(app) for _ in range(3)]
+        try:
+            for socket, who in zip(sockets, (me, second_session, other), strict=True):
+                await socket.ready(await mint(client, who))
+            channel = protocol.user_channel(me.user_id)
+            await client.publish(
+                channel,
+                json.dumps(
+                    {"v": 1, "type": "notifications.changed", "notification_id": str(uuid.uuid4())}
+                ),
+            )
+            await sockets[0].nothing()
+            await client.publish(channel, protocol.encode_event("notifications.changed"))
+            for socket in sockets[:2]:
+                assert await socket.next() == {
+                    "type": "websocket.send",
+                    "text": '{"v":1,"type":"notifications.changed"}',
+                }
+            await sockets[2].nothing()
+        finally:
+            for socket in sockets:
+                await socket.disconnect()
+
+    run(test)

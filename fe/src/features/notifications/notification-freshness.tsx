@@ -1,16 +1,18 @@
 "use client";
 
 import { useQueryClient, type QueryClient } from "@tanstack/react-query";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
+import { useRealtimeEvent, useRealtimeStatus } from "@/features/realtime/realtime-provider";
+import type { RealtimeSnapshot } from "@/features/realtime/realtime-runtime";
 import {
   getNotificationsGetUnreadCountQueryKey,
   getNotificationsListMineQueryKey,
 } from "@/lib/api/generated/notifications/notifications";
 
-// The staging API uses two synchronous WSGI workers. Short, bounded requests
-// give foreground clients near-realtime freshness without pinning workers.
-export const NOTIFICATION_REFRESH_MS = 8_000;
+// Hints are lossy. Polling and foreground reconciliation remain healing paths (ADR-101).
+export const NOTIFICATION_FALLBACK_REFRESH_MS = 8_000;
+export const NOTIFICATION_LIVE_SAFETY_REFRESH_MS = 60_000;
 
 type FreshnessEnvironment = {
   document: Pick<Document, "visibilityState" | "addEventListener" | "removeEventListener">;
@@ -23,10 +25,19 @@ export function startNotificationFreshness(
   environment: FreshnessEnvironment,
 ) {
   let refreshing = false;
+  let refreshRequestedAgain = false;
   let stopped = false;
+  let generation = 0;
+  let interval = NOTIFICATION_FALLBACK_REFRESH_MS;
+
+  function canRefresh() {
+    return !stopped && environment.document.visibilityState === "visible" && environment.navigator.onLine;
+  }
+
   async function refresh() {
-    if (stopped || refreshing || environment.document.visibilityState !== "visible" || !environment.navigator.onLine) return;
+    if (!canRefresh() || refreshing) return;
     refreshing = true;
+    refreshRequestedAgain = false;
     try {
       await Promise.allSettled([
         queryClient.invalidateQueries({ queryKey: getNotificationsGetUnreadCountQueryKey() }),
@@ -34,26 +45,67 @@ export function startNotificationFreshness(
       ]);
     } finally {
       refreshing = false;
+      // All requests during this fetch collapse into one trailing reconciliation. If hidden or
+      // offline, retain the request until a foreground/online refresh can obtain canonical state.
+      if (refreshRequestedAgain && canRefresh()) void refresh();
     }
   }
-  const timer = environment.window.setInterval(() => void refresh(), NOTIFICATION_REFRESH_MS);
-  const onVisible = () => { if (environment.document.visibilityState === "visible") void refresh(); };
-  const onOnline = () => void refresh();
+
+  function requestRefresh() {
+    if (stopped) return;
+    refreshRequestedAgain = true;
+    void refresh();
+  }
+
+  let timer = environment.window.setInterval(requestRefresh, interval);
+  function setRealtimeStatus(snapshot: RealtimeSnapshot) {
+    if (stopped) return;
+    const nextInterval = snapshot.state === "live"
+      ? NOTIFICATION_LIVE_SAFETY_REFRESH_MS
+      : NOTIFICATION_FALLBACK_REFRESH_MS;
+    if (nextInterval !== interval) {
+      environment.window.clearInterval(timer);
+      interval = nextInterval;
+      timer = environment.window.setInterval(requestRefresh, interval);
+    }
+    if (snapshot.generation > generation) {
+      generation = snapshot.generation;
+      requestRefresh();
+    }
+  }
+
+  const onVisible = () => { if (environment.document.visibilityState === "visible") requestRefresh(); };
   environment.document.addEventListener("visibilitychange", onVisible);
   environment.window.addEventListener("focus", onVisible);
-  environment.window.addEventListener("online", onOnline);
-  return () => {
+  environment.window.addEventListener("online", requestRefresh);
+  function stop() {
     stopped = true;
+    refreshRequestedAgain = false;
     environment.window.clearInterval(timer);
     environment.document.removeEventListener("visibilitychange", onVisible);
     environment.window.removeEventListener("focus", onVisible);
-    environment.window.removeEventListener("online", onOnline);
-  };
+    environment.window.removeEventListener("online", requestRefresh);
+  }
+  return { requestRefresh, setRealtimeStatus, stop };
 }
 
 export function useNotificationFreshness() {
   const queryClient = useQueryClient();
-  useEffect(() => startNotificationFreshness(queryClient, { document, window, navigator }), [queryClient]);
+  const { state, generation } = useRealtimeStatus();
+  const freshness = useRef<ReturnType<typeof startNotificationFreshness> | null>(null);
+
+  useEffect(() => {
+    const consumer = startNotificationFreshness(queryClient, { document, window, navigator });
+    freshness.current = consumer;
+    return () => {
+      consumer.stop();
+      freshness.current = null;
+    };
+  }, [queryClient]);
+  useEffect(() => {
+    freshness.current?.setRealtimeStatus({ state, generation });
+  }, [queryClient, state, generation]);
+  useRealtimeEvent("notifications.changed", () => freshness.current?.requestRefresh());
 }
 
 export function NotificationFreshness() {

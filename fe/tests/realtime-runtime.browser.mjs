@@ -44,7 +44,7 @@ function realtimeWorld(initial) {
   };
   world.beforeNavigate = async ({ context }) => {
     await context.routeWebSocket(/\/api\/realtime\/v1\/socket/, (route) => {
-      const socket = { index: world.sockets.length, url: route.url(), frames: [], closed: null, route };
+      const socket = { index: world.sockets.length, url: route.url(), frames: [], serverFrames: [], closed: null, route };
       world.sockets.push(socket);
       world.events.push(`open:${socket.index}`);
       route.onMessage((message) => {
@@ -52,7 +52,7 @@ function realtimeWorld(initial) {
         const frame = JSON.parse(String(message));
         if (frame.type === "authenticate") {
           world.events.push(`auth:${socket.index}:${frame.ticket}`);
-          route.send('{"v":1,"type":"ready"}');
+          world.send(socket, { v: 1, type: "ready" });
         }
       });
       route.onClose((code) => {
@@ -60,6 +60,10 @@ function realtimeWorld(initial) {
         world.events.push(`close:${socket.index}`);
       });
     });
+  };
+  world.send = (socket, frame) => {
+    socket.serverFrames.push(frame);
+    socket.route.send(JSON.stringify(frame));
   };
   world.open = () => world.sockets.filter((socket) => socket.closed === null);
   // Replays the event log and returns the most sockets that were ever open at once.
@@ -191,6 +195,123 @@ const ticketRequests = (requests) => requests.filter((request) => request.pathna
       assert.equal(world.tickets.length, 1, "No ticket outside the portal");
     },
   );
+}
+
+const notification = (id, title, read = false) => ({
+  id, event_code: "call_slip.issued", policy: "MANDATORY_OPERATIONAL", title,
+  message: `Canonical HTTP body for ${title}`, source_type: "call_slip",
+  source_id: id, target_type: "", target_id: null,
+  created_at: "2026-10-09T00:00:00Z", read_at: read ? "2026-10-09T01:00:00Z" : null,
+  is_read: read,
+});
+const firstId = "10000000-0000-4000-8000-000000000001";
+const nextId = "10000000-0000-4000-8000-000000000002";
+const changed = { v: 1, type: "notifications.changed" };
+const notificationRequests = (requests, path) => requests.filter((r) => r.method === "GET" && r.pathname === path).length;
+function notificationWorld() {
+  const world = realtimeWorld(accountUser("A"));
+  world.notifications = [notification(firstId, "Initial HTTP notification")];
+  world.overrides["/api/v1/notifications/unread-count"] = ({ reply }) => reply({ unread_count: world.notifications.filter((n) => !n.is_read).length });
+  world.overrides["/api/v1/notifications"] = ({ reply }) => reply({ items: world.notifications, page: 1, page_size: 20, has_next: false });
+  world.changed = () => world.open().forEach((socket) => world.send(socket, changed));
+  world.overrides[`PATCH /api/v1/notifications/${firstId}/read`] = ({ reply }) => {
+    world.notifications = world.notifications.map((n) => n.id === firstId ? notification(n.id, n.title, true) : n);
+    world.changed();
+    return reply(world.notifications.find((n) => n.id === firstId));
+  };
+  return world;
+}
+
+{
+  const world = notificationWorld();
+  await check("Notification hint reconciles the Bell and mounted/cached Center on the one portal socket", "/portal/notifications", {
+    initScripts: [enableRealtime], overrides: world.overrides, beforeNavigate: world.beforeNavigate,
+  }, async (page, { requests }) => {
+    await shown(page.getByRole("link", { name: "Notifications, 1 unread", exact: true }));
+    await shown(page.getByRole("heading", { name: "Initial HTTP notification", exact: true }));
+    await eventually(() => world.sockets.length === 1 && world.sockets[0].serverFrames.length > 0, "ready received");
+    await page.waitForTimeout(300);
+    const beforeUnread = notificationRequests(requests, "/api/v1/notifications/unread-count");
+    const beforeList = notificationRequests(requests, "/api/v1/notifications");
+    world.notifications.push(notification(nextId, "New HTTP notification"));
+    world.changed();
+    await shown(page.getByRole("link", { name: "Notifications, 2 unread", exact: true }));
+    await shown(page.getByRole("heading", { name: "New HTTP notification", exact: true }));
+    assert.ok(notificationRequests(requests, "/api/v1/notifications/unread-count") > beforeUnread);
+    assert.ok(notificationRequests(requests, "/api/v1/notifications") > beforeList);
+    assert.deepEqual(world.sockets[0].serverFrames.filter((f) => f.type !== "ready"), [changed], "No Notification content on the wire");
+    assert.equal(world.sockets.length, 1, "Consumer never opens another socket");
+
+    await page.evaluate(() => window.next.router.push("/portal/services"));
+    await page.waitForURL(/\/portal\/services$/);
+    await shown(page.getByRole("heading", { level: 1 }).first());
+    world.notifications[1] = notification(nextId, "Updated HTTP notification");
+    world.changed();
+    await page.waitForTimeout(300);
+    await page.evaluate(() => window.next.router.push("/portal/notifications"));
+    await shown(page.getByRole("heading", { name: "Updated HTTP notification", exact: true }));
+    assert.equal(world.sockets.length, 1, "Navigation and cached Center reuse the portal socket");
+  });
+}
+
+{
+  const world = notificationWorld();
+  await check("reconnect ready heals a missed Notification hint using HTTP", "/portal/notifications", {
+    initScripts: [enableRealtime], overrides: world.overrides, beforeNavigate: world.beforeNavigate,
+  }, async (page, { requests }) => {
+    await shown(page.getByRole("link", { name: "Notifications, 1 unread", exact: true }));
+    await eventually(() => world.sockets.length === 1 && world.sockets[0].serverFrames.length > 0, "ready received");
+    await page.waitForTimeout(300);
+    const before = notificationRequests(requests, "/api/v1/notifications");
+    world.notifications.push(notification(nextId, "Missed hint HTTP notification"));
+    await world.sockets[0].route.close({ code: 4000, reason: "lifetime_expired" });
+    await eventually(() => world.sockets.length === 2, "fresh socket reconnects");
+    await shown(page.getByRole("heading", { name: "Missed hint HTTP notification", exact: true }));
+    await shown(page.getByRole("link", { name: "Notifications, 2 unread", exact: true }));
+    assert.ok(notificationRequests(requests, "/api/v1/notifications") > before);
+    assert.ok(world.sockets.every((s) => s.serverFrames.every((f) => f.type === "ready")), "No hint was sent: ready healed it");
+    assert.equal(world.maxOpen(), 1);
+  });
+}
+
+{
+  const world = notificationWorld();
+  await check("a read in one tab reconciles another tab for the same user", "/portal/notifications", {
+    initScripts: [enableRealtime], overrides: world.overrides, beforeNavigate: world.beforeNavigate,
+  }, async (page, { context }) => {
+    await shown(page.getByRole("link", { name: "Notifications, 1 unread", exact: true }));
+    const second = await context.newPage();
+    await second.addInitScript({ content: enableRealtime });
+    await second.goto(`${baseURL}/portal/notifications`);
+    await shown(second.getByRole("link", { name: "Notifications, 1 unread", exact: true }));
+    await eventually(() => world.sockets.length === 2 && world.sockets.every((s) => s.serverFrames.length > 0), "one socket per tab is ready");
+    await page.getByRole("button", { name: "Mark as read", exact: true }).click();
+    await eventually(() => second.getByText("Unread", { exact: true }).count().then((n) => n === 0), "other tab reconciles the read");
+    assert.equal(await second.getByRole("link", { name: "Notifications, 1 unread", exact: true }).count(), 0);
+    assert.equal(world.sockets.length, 2, "Exactly one socket per tab");
+  });
+}
+
+for (const unavailable of ["runtime disabled", "server disabled", "Redis unavailable"]) {
+  const world = notificationWorld();
+  const enabled = unavailable !== "runtime disabled";
+  world.overrides["POST /api/v1/realtime/tickets"] = ({ reply }) => reply({ error: {
+    code: unavailable === "server disabled" ? "realtime_disabled" : "realtime_unavailable",
+    message: "Synthetic transport unavailable",
+  } }, 503);
+  await check(`${unavailable}: Notification polling heals without a visible realtime error`, "/portal/notifications", {
+    initScripts: enabled ? [enableRealtime] : [], overrides: world.overrides, beforeNavigate: world.beforeNavigate,
+  }, async (page) => {
+    await shown(page.getByRole("link", { name: "Notifications, 1 unread", exact: true }));
+    await shown(page.getByRole("heading", { name: "Initial HTTP notification", exact: true }));
+    await page.clock.install();
+    world.notifications.push(notification(nextId, "Polled HTTP notification"));
+    await page.clock.fastForward(8_100);
+    await shown(page.getByRole("link", { name: "Notifications, 2 unread", exact: true }));
+    await shown(page.getByRole("heading", { name: "Polled HTTP notification", exact: true }));
+    assert.equal(await page.locator("#main-content [role=alert]").count(), 0, "No visible transport error");
+    assert.equal(world.sockets.length, 0);
+  });
 }
 
 await finish();

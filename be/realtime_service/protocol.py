@@ -41,10 +41,11 @@ _CONTROLS = frozenset({CONTROL_SESSION_REVOKED})
 _EVENT_TYPE = re.compile(r"[a-z][a-z_]*(?:\.[a-z][a-z_]*)+")
 _FIELD_NAME = re.compile(r"[a-z][a-z_]*")
 
-# Public server-to-client hint types and the opaque identifier fields each one carries. Phase 1
-# defines none: the only public frame is ``ready``. Adding a hint (for example
-# ``notifications.changed``) is a reviewed change to this registry, never a caller's choice.
-PUBLIC_EVENT_FIELDS: Mapping[str, frozenset[str]] = MappingProxyType({})
+# Public server-to-client hints form a closed registry. Notification freshness (ADR-101)
+# carries no fields: the server-derived user channel already identifies the recipient.
+PUBLIC_EVENT_FIELDS: Mapping[str, frozenset[str]] = MappingProxyType(
+    {"notifications.changed": frozenset()}
+)
 
 
 class CloseCode(IntEnum):

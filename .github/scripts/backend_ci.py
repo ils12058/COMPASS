@@ -270,6 +270,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "In-app, email, and push notifications and their delivery workers.",
         (
             "test_notifications.py",
+            "test_notification_realtime.py",
             "test_notification_delivery.py",
             "test_notification_push.py",
             "test_transactional_email.py",
@@ -334,6 +335,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Realtime tickets, session-revocation hooks, and the standalone WebSocket service.",
         (
             "test_realtime_tickets.py",
+            "test_notification_realtime.py",
             "test_realtime_service.py",
             "test_realtime_isolation.py",
             "test_redis_config.py",
