@@ -102,8 +102,10 @@ from compass.inventory.models import StudentInventory
 from compass.inventory.services import list_inventory_students
 from compass.notifications.models import EmailDelivery, Notification
 from compass.operational_students import list_scoped_operational_students
+from compass.organization.access_scope import resolve_operational_responsibility_scope
 from compass.organization.models import (
     AcademicYear,
+    College,
     CounselorResponsibility,
     StaffSupervision,
     StudentAffiliation,
@@ -496,17 +498,44 @@ class SeededDemoDatasetTests(TestCase):
                 )
                 assert affiliation.college.code == persona.college_code
 
-        # Operational pickers require CURRENT lifecycle even for the institution-wide Head.
+        # Operational Student selection requires CURRENT lifecycle within the actor's handled
+        # College scope (ADR-099): explicit responsibilities, the supervisor's for Guidance
+        # Services Staff, and the unique Head's fallback Colleges.
+        current_by_college: dict[str, set[UUID]] = {}
+        for persona in STUDENTS:
+            if persona.lifecycle == "CURRENT":
+                current_by_college.setdefault(persona.college_code, set()).add(
+                    demo_user(persona).pk
+                )
+        handled_rosters = {}
         for actor in (HEAD_GUIDANCE, COUNSELOR_A, COUNSELOR_B, GUIDANCE_STAFF):
+            scope = resolve_operational_responsibility_scope(demo_user(actor))
+            codes = College.objects.filter(pk__in=scope.college_ids).values_list("code", flat=True)
             visible = {
                 item.id
                 for item in list_scoped_operational_students(
-                    actor=demo_user(actor), page_size=50
+                    college_ids=scope.college_ids, page_size=50
                 ).items
             }
-            assert visible
+            assert visible == set().union(*(current_by_college.get(code, set()) for code in codes))
             for persona in (RECENT_GRADUATE, ALUMNI, FORMER):
                 assert demo_user(persona).pk not in visible
+            handled_rosters[actor] = visible
+        # Counselors and their staff handle every seeded Student's College. The Head handles only
+        # the unassigned fallback Colleges, which hold no seeded Student, so the Head's handled
+        # roster is empty: Head operational workload is not institution-wide.
+        assert all(handled_rosters[actor] for actor in (COUNSELOR_A, COUNSELOR_B, GUIDANCE_STAFF))
+        assert resolve_operational_responsibility_scope(demo_user(HEAD_GUIDANCE)).college_ids
+        assert handled_rosters[HEAD_GUIDANCE] == set()
+        # Without a College scope, which only domains granting explicit Head oversight request,
+        # the lifecycle filter alone keeps these unaffiliated former Students out.
+        unscoped = {
+            item.id
+            for item in list_scoped_operational_students(college_ids=None, page_size=50).items
+        }
+        assert unscoped == set().union(*current_by_college.values())
+        for persona in (RECENT_GRADUATE, ALUMNI, FORMER):
+            assert demo_user(persona).pk not in unscoped
         head_roster = {
             row.student.pk
             for row in list_inventory_students(actor=demo_user(HEAD_GUIDANCE), page_size=50).items
