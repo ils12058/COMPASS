@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import { mkdir, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { chromium } from "playwright";
+import { chromium, webkit } from "playwright";
 
 import { fakeDailyInitScript } from "./fake-daily.mjs";
 import { appointmentId, serviceId, appointment, service, workspace, consents, user, slip } from "./ui-hierarchy-fixtures.mjs";
@@ -21,12 +21,14 @@ export const viewports = {
 export async function createBrowserHarness(suite) {
   const baseURL = process.env.COMPASS_UI_BASE_URL ?? "http://localhost:3107";
   assert.ok(["localhost", "127.0.0.1", "[::1]"].includes(new URL(baseURL).hostname), "Use a local Next server");
-  const artifacts = process.env.COMPASS_UI_ARTIFACTS ?? join(tmpdir(), `compass-${suite}`);
+  const artifacts = process.env.COMPASS_UI_ARTIFACTS ? join(process.env.COMPASS_UI_ARTIFACTS, suite) : join(tmpdir(), `compass-${suite}`);
   await mkdir(artifacts, { recursive: true });
-  const browser = await chromium.launch({
+  const engine = process.env.COMPASS_UI_BROWSER ?? "chromium";
+  assert.ok(["chromium", "webkit"].includes(engine), "Use a supported browser engine");
+  const browser = await (engine === "webkit" ? webkit : chromium).launch({
     headless: true,
-    args: ["--autoplay-policy=no-user-gesture-required"],
-    ...(process.env.COMPASS_UI_BROWSER_CHANNEL ? { channel: process.env.COMPASS_UI_BROWSER_CHANNEL } : {}),
+    ...(engine === "chromium" ? { args: ["--autoplay-policy=no-user-gesture-required"] } : {}),
+    ...(engine === "chromium" && process.env.COMPASS_UI_BROWSER_CHANNEL ? { channel: process.env.COMPASS_UI_BROWSER_CHANNEL } : {}),
   });
   const emptyPage = { items: [], page: 1, page_size: 20, has_next: false };
   const failures = [];
@@ -37,6 +39,7 @@ export async function createBrowserHarness(suite) {
     mobile = false,
     tablet = false,
     device,
+    viewport,
     studentContext = false,
     mediaStatus = "NOT_STARTED",
     decision = "APPROVED",
@@ -46,7 +49,9 @@ export async function createBrowserHarness(suite) {
     initScripts = [],
   } = {}) {
     const contextOptions = device ? viewports[device] : mobile ? viewports.phone : tablet ? viewports.tablet : viewports.desktop;
-    const context = await browser.newContext(contextOptions);
+    const context = // Service-worker fetches bypass Playwright routing. These synthetic suites must never
+    // let the PWA worker send an unmocked API request (especially in WebKit).
+    await browser.newContext({ serviceWorkers: "block", ...contextOptions, ...(viewport ? { viewport } : {}) });
     const page = await context.newPage();
     page.setDefaultTimeout(12_000);
     const errors = [];
@@ -119,7 +124,7 @@ export async function createBrowserHarness(suite) {
       console.log(`PASS ${name}`);
     } catch (error) {
       failures.push(name);
-      results.push({ name, passed: false, message: error.message });
+      results.push({ name, passed: false, message: error.message, errors: fixture?.errors, requests: fixture?.requests });
       console.error(`FAIL ${name}: ${error.message}`);
       await fixture?.page.screenshot({ path: join(artifacts, `${name}-failure.png`), fullPage: true }).catch(() => {});
     } finally {
@@ -129,7 +134,7 @@ export async function createBrowserHarness(suite) {
 
   async function finish() {
     await browser.close();
-    await writeFile(join(artifacts, "results.json"), `${JSON.stringify({ baseURL, results }, null, 2)}\n`);
+    await writeFile(join(artifacts, "results.json"), `${JSON.stringify({ baseURL, engine, results }, null, 2)}\n`);
     console.log(`${results.length - failures.length}/${results.length} browser checks passed; artifacts: ${artifacts}`);
     if (failures.length) process.exitCode = 1;
   }
@@ -143,7 +148,7 @@ export async function createBrowserHarness(suite) {
     async hidden(locator) { await locator.waitFor({ state: "hidden" }); },
     async screenshot(page, name) { await page.screenshot({ path: join(artifacts, `${name}.png`), fullPage: true }); },
     async noHorizontalOverflow(page) {
-      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1), true, "Page fits its viewport");
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth + 1), true, "Page fits its viewport");
     },
   };
 }

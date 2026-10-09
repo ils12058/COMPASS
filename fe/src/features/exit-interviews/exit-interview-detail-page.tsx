@@ -159,7 +159,7 @@ function HeadExitInterviewDetail({
     if (code === "exit_interview_not_submitted") {
       return (
         <section className="max-w-3xl space-y-5">
-          <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview queue</Link>
+          <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview responses</Link>
           <Notice role="status" title={<h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview is not available for review</h1>}>
             This Exit Interview is currently a draft and is not available for Head Guidance review until the Student submits it.
           </Notice>
@@ -169,14 +169,14 @@ function HeadExitInterviewDetail({
     if (code === "permission_denied") {
       return (
         <section className="space-y-5">
-          <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview queue</Link>
+          <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview responses</Link>
           <ExitInterviewUnavailable title="Exit Interview unavailable" message="You cannot review this Exit Interview with this account." />
         </section>
       );
     }
     return (
       <section className="max-w-3xl space-y-5">
-        <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview queue</Link>
+        <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview responses</Link>
         <ExitInterviewError error={detail.error} fallback="The submitted Exit Interview could not be loaded." onRetry={() => void detail.refetch()} />
       </section>
     );
@@ -193,7 +193,7 @@ function HeadExitInterviewDetail({
             onRetry={() => void detail.refetch()}
           />
         ) : null}
-        <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview queue</Link>
+        <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview responses</Link>
         <Notice role="status" title={<h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview is not available for review</h1>}>
           This Exit Interview is currently a draft and is not available for Head Guidance review until the Student submits it.
         </Notice>

@@ -534,10 +534,59 @@ export function ProviderAvailabilityPage() {
   const requestedPage = Number.parseInt(searchParams.get("page") ?? "1", 10);
   const page =
     Number.isFinite(requestedPage) && requestedPage > 0 ? requestedPage : 1;
-  const [searchDraft, setSearchDraft] = useState({ applied: search, value: search });
-  if (searchDraft.applied !== search) setSearchDraft({ applied: search, value: search });
-  const searchValue = searchDraft.applied === search ? searchDraft.value : search;
+  // URL search owns the applied query. A self-issued acknowledgement must leave newer
+  // typing alone; an external search change adopts the URL. Popstate explicitly restores
+  // history, even when its term also occurred among our pending navigations.
+  const [searchDraft, setSearchDraft] = useState({
+    applied: search,
+    value: search,
+    issued: [] as string[],
+  });
+  if (searchDraft.applied !== search) {
+    const acknowledgement = searchDraft.issued.indexOf(search);
+    setSearchDraft({
+      applied: search,
+      value: acknowledgement >= 0 ? searchDraft.value : search,
+      issued: acknowledgement >= 0 ? searchDraft.issued.slice(acknowledgement + 1) : [],
+    });
+  }
+  const searchValue = searchDraft.value;
   const searchTimer = useRef<number | null>(null);
+
+  function cancelPendingSearch() {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+  }
+
+  useEffect(() => {
+    const restore = () => {
+      if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+      const value = (new URLSearchParams(window.location.search).get("search") ?? "").slice(0, 254).trim();
+      setSearchDraft({ applied: value, value, issued: [] });
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
+
+  useEffect(() => {
+    const trimmed = searchValue.trim();
+    if (trimmed === search) return;
+    searchTimer.current = window.setTimeout(() => {
+      searchTimer.current = null;
+      const next = new URLSearchParams(searchParams.toString());
+      if (trimmed) next.set("search", trimmed);
+      else next.delete("search");
+      next.delete("page");
+      setSearchDraft((draft) => ({ ...draft, issued: [...draft.issued, trimmed] }));
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    }, 350);
+    return () => {
+      if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+    };
+  }, [pathname, router, search, searchParams, searchValue]);
   const providers = useAvailabilityListProviders(
     {
       ...(search ? { search } : {}),
@@ -548,32 +597,7 @@ export function ProviderAvailabilityPage() {
   );
   const providersData = safeQueryData(providers);
 
-  useEffect(() => {
-    if (searchValue === search) return;
-    searchTimer.current = window.setTimeout(() => {
-      searchTimer.current = null;
-      const next = new URLSearchParams(searchParams.toString());
-      const trimmed = searchValue.trim();
-      if (trimmed) next.set("search", trimmed);
-      else next.delete("search");
-      next.delete("page");
-      const query = next.toString();
-      router.replace(query ? pathname + "?" + query : pathname, {
-        scroll: false,
-      });
-    }, 350);
-    return () => {
-      if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
-      searchTimer.current = null;
-    };
-  }, [pathname, router, search, searchParams, searchValue]);
-
   if (!allowed) return <AvailabilityRouteUnavailable management />;
-
-  function cancelPendingSearch() {
-    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
-    searchTimer.current = null;
-  }
 
   function movePage(nextPage: number) {
     cancelPendingSearch();
@@ -596,7 +620,7 @@ export function ProviderAvailabilityPage() {
           value={searchValue}
           placeholder="Search Counselors by name or email"
           maxLength={254}
-          onChange={(event) => setSearchDraft({ applied: search, value: event.target.value })}
+          onChange={(event) => setSearchDraft((draft) => ({ ...draft, value: event.target.value }))}
         />
       </FloatingListTools>
 

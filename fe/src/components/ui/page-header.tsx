@@ -52,7 +52,7 @@ export function PageHeader({
             {meta}
           </div>
           {description ? (
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">{description}</p>
+            <p className="mt-1 max-w-3xl [overflow-wrap:anywhere] text-sm leading-6 text-muted">{description}</p>
           ) : null}
           {children}
         </div>

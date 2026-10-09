@@ -125,9 +125,9 @@ jobs:
         working-directory: fe
         run: pnpm api:generate
 
-      - name: Install Chromium for the locked Playwright
+      - name: Install Chromium and WebKit for the locked Playwright
         working-directory: fe
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: Start development server
         working-directory: fe
@@ -145,7 +145,9 @@ jobs:
         run: |
           for route in /portal/services/service-density-test /portal/services/service-density-test/edit \
             /portal/services /portal/inventory/current /portal/exit-interviews/exit-draft-test \
-            /portal/referrals/referral-draft-test /portal/availability/me /portal/availability/office; do
+            /portal/referrals/referral-draft-test /portal/availability/me /portal/availability/office /portal/accounts /portal/inventory /portal/exit-interviews \
+            /portal/resources /portal/organization/student-affiliations /portal/availability/providers \
+            /portal/announcements/long /portal/referrals/long; do
             curl -sS -o /dev/null -w "%{http_code} $route\n" "http://localhost:3107$route"
           done
 

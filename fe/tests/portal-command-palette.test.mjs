@@ -49,6 +49,13 @@ for (const [name, account] of Object.entries({ student, staff, counselor, head, 
   });
 }
 
+test("Exit Interviews uses access wording for staff without changing workspace visibility", () => {
+  const root = (account) => portalWorkspaceGroups(account).flatMap((group) => group.links).find((link) => link.href === "/portal/exit-interviews");
+  assert.equal(root(staff)?.label, "Exit Interview access");
+  assert.equal(root(head)?.label, "Exit Interviews");
+  assert.equal(root({ ...staff, capabilities: [] }), undefined);
+});
+
 test("Students get self destinations and never staff/admin/DPO destinations", () => {
   const paths = hrefs(student);
   for (const path of ["/portal/appointments/my", "/portal/appointments/book", "/portal/inventory/current", "/portal/good-moral/request", "/portal/feedback"]) assert.ok(paths.includes(path));

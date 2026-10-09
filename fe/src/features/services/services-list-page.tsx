@@ -3,13 +3,14 @@
 import { Plus } from "lucide-react";
 
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { PageActionLink } from "@/components/ui/page-action";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { FilterField } from "@/components/ui/filter-toolbar";
-import { FloatingListTools } from "@/components/ui/floating-list-tools";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { SortField } from "@/components/ui/sort-field";
 import { useListOrdering } from "@/features/portal/components/list-ordering";
@@ -24,7 +25,6 @@ import {
   ServicesListSkeleton,
   ServicesPageHeading,
   servicesErrorMessage,
-  ServicesSearchField,
   ServicesStatusBadge,
   ServicesSystemRequiredBadge,
 } from "@/features/services/services-shared";
@@ -51,6 +51,60 @@ export function ServicesListPage() {
   const searchParams = useSearchParams();
 
   const search = (searchParams.get("search") ?? "").slice(0, 160).trim();
+  // URL search owns the applied query. A self-issued acknowledgement must leave newer
+  // typing alone; an external search change adopts the URL. Popstate explicitly restores
+  // history, even when its term also occurred among our pending navigations.
+  const [searchDraft, setSearchDraft] = useState({
+    applied: search,
+    value: search,
+    issued: [] as string[],
+  });
+  if (searchDraft.applied !== search) {
+    const acknowledgement = searchDraft.issued.indexOf(search);
+    setSearchDraft({
+      applied: search,
+      value: acknowledgement >= 0 ? searchDraft.value : search,
+      issued: acknowledgement >= 0 ? searchDraft.issued.slice(acknowledgement + 1) : [],
+    });
+  }
+  const searchValue = searchDraft.value;
+  const searchTimer = useRef<number | null>(null);
+
+  function cancelPendingSearch() {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+  }
+
+  useEffect(() => {
+    const restore = () => {
+      if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+      const value = (new URLSearchParams(window.location.search).get("search") ?? "").slice(0, 160).trim();
+      setSearchDraft({ applied: value, value, issued: [] });
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
+
+  useEffect(() => {
+    const trimmed = searchValue.trim();
+    if (trimmed === search) return;
+    searchTimer.current = window.setTimeout(() => {
+      searchTimer.current = null;
+      const next = new URLSearchParams(searchParams.toString());
+      if (trimmed) next.set("search", trimmed);
+      else next.delete("search");
+      next.delete("page");
+      setSearchDraft((draft) => ({ ...draft, issued: [...draft.issued, trimmed] }));
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    }, 350);
+    return () => {
+      if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+    };
+  }, [pathname, router, search, searchParams, searchValue]);
+
   const booking = bookingFilter(searchParams.get("appointment_booking"));
   const requestedPage = Number.parseInt(searchParams.get("page") ?? "1", 10);
   const page = Number.isFinite(requestedPage) && requestedPage > 0
@@ -108,6 +162,12 @@ export function ServicesListPage() {
     );
   }
 
+  function clearFilters() {
+    cancelPendingSearch();
+    setSearchDraft((draft) => ({ ...draft, value: "", issued: [...draft.issued, ""] }));
+    router.replace(requestedOrdering ? `${pathname}?ordering=${requestedOrdering}` : pathname, { scroll: false });
+  }
+
   const hasFilters = Boolean(search || booking);
 
   return (
@@ -132,11 +192,7 @@ export function ServicesListPage() {
           <Button
             variant="quiet"
             // Clearing the filters keeps the chosen order; sorting is not a filter.
-            onClick={() =>
-              router.replace(requestedOrdering ? `${pathname}?ordering=${requestedOrdering}` : pathname, {
-                scroll: false,
-              })
-            }
+            onClick={clearFilters}
           >
             Clear filters
           </Button>
@@ -166,7 +222,9 @@ export function ServicesListPage() {
         ) : null}
         </>}
       >
-        <ServicesSearchField />
+        <ListSearchField id="services-search" label="Search Services" maxLength={160}
+          placeholder="Search by Service name or code" value={searchValue}
+          onChange={(event) => setSearchDraft((draft) => ({ ...draft, value: event.target.value }))} />
       </FloatingListTools>
 
       <Panel aria-labelledby="services-results-heading">
@@ -206,13 +264,13 @@ export function ServicesListPage() {
             {list.data.data.items.map((service) => (
               <li
                 key={service.id}
-                className="grid gap-4 px-4 py-4 sm:px-5 md:grid-cols-[minmax(0,1fr)_15rem] md:items-start"
+                className="grid grid-cols-[minmax(0,1fr)] gap-4 px-4 py-4 sm:px-5 md:grid-cols-[minmax(0,1fr)_15rem] md:items-start"
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
                     <Link
                       href={"/portal/services/" + service.id}
-                      className="font-heading text-lg font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                      className="min-w-0 [overflow-wrap:anywhere] font-heading text-lg font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                     >
                       {service.name}
                     </Link>
@@ -223,7 +281,7 @@ export function ServicesListPage() {
                       <ServicesSystemRequiredBadge />
                     ) : null}
                   </div>
-                  <p className="mt-1 font-mono text-xs text-muted">
+                  <p className="mt-1 [overflow-wrap:anywhere] font-mono text-xs text-muted">
                     {service.code}
                   </p>
                   {service.description.trim() ? (

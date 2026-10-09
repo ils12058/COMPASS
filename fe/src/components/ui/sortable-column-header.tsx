@@ -65,7 +65,7 @@ export function SortableColumnHeader<T extends string>({
         onClick={() => onSort(next)}
         // The negative margins keep the label on the same line as plain headers while the padding
         // keeps a 24px target.
-        className="-mx-1 -my-1 inline-flex items-center gap-1.5 rounded-sm px-1 py-1 text-left font-semibold uppercase tracking-wide text-inherit hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default disabled:hover:text-inherit"
+        className="relative -mx-1 -my-1 inline-flex items-center gap-1.5 rounded-sm px-1 py-1 text-left font-semibold uppercase tracking-wide text-inherit hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-default disabled:hover:text-inherit"
       >
         <span>{label}</span>
         <Icon
