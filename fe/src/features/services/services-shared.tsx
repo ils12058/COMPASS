@@ -1,14 +1,11 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
-  useEffect,
   useState,
   type ReactNode,
 } from "react";
 
 import { Button } from "@/components/ui/button";
-import { ListSearchField } from "@/components/ui/floating-list-tools";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
@@ -359,41 +356,6 @@ export function ServicesSystemRequiredBadge() {
     <span className="inline-flex rounded-full border border-info/30 bg-info/10 px-2 py-0.5 text-xs font-semibold text-info">
       System-required
     </span>
-  );
-}
-
-export function ServicesSearchField() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const current = (searchParams.get("search") ?? "").slice(0, 160);
-  const [value, setValue] = useState(current);
-
-  useEffect(() => {
-    if (value === current) return;
-    const timer = window.setTimeout(() => {
-      const next = new URLSearchParams(searchParams.toString());
-      const trimmed = value.trim();
-      if (trimmed) next.set("search", trimmed);
-      else next.delete("search");
-      next.delete("page");
-      const query = next.toString();
-      router.replace(query ? pathname + "?" + query : pathname, {
-        scroll: false,
-      });
-    }, 350);
-    return () => window.clearTimeout(timer);
-  }, [current, pathname, router, searchParams, value]);
-
-  return (
-    <ListSearchField
-      id="services-search"
-      label="Search Services"
-      maxLength={160}
-      placeholder="Search by Service name or code"
-      value={value}
-      onChange={(event) => setValue(event.target.value)}
-    />
   );
 }
 

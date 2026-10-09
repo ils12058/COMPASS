@@ -261,7 +261,7 @@ export function ServiceDetailPage() {
         }
       >
         <div className="mt-2 flex flex-wrap items-center gap-3">
-          <p className="font-mono text-xs text-muted">{service.code}</p>
+          <p className="min-w-0 [overflow-wrap:anywhere] font-mono text-xs text-muted">{service.code}</p>
           {canManage ? <ServicesStatusBadge active={service.is_active} /> : null}
           {systemRequired ? <ServicesSystemRequiredBadge /> : null}
         </div>

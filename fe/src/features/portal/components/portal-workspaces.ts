@@ -112,7 +112,7 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
       label: "Requests and surveys",
       links: [
         { href: "/portal/good-moral", label: "Good Moral", icon: Award, visible: hasGoodMoral },
-        { href: "/portal/exit-interviews", label: user.role === "GUIDANCE_SERVICES_STAFF" ? "Exit Interview opportunities" : "Exit Interviews", icon: DoorOpen, visible: hasExitInterviews },
+        { href: "/portal/exit-interviews", label: user.role === "GUIDANCE_SERVICES_STAFF" ? "Exit Interview access" : "Exit Interviews", icon: DoorOpen, visible: hasExitInterviews },
         { href: "/portal/graduate-tracer", label: "Graduate Tracer", icon: GraduationCap, visible: hasGraduateTracer },
         { href: "/portal/feedback", label: "Feedback", icon: MessageSquareText, visible: hasFeedback },
       ],

@@ -81,7 +81,7 @@ export function PanelHeader({
         {description ? <p className="mt-0.5 text-sm leading-6 text-muted">{description}</p> : null}
       </div>
       {context !== undefined || actions ? (
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+        <div className="flex min-w-0 max-w-full flex-wrap items-center gap-x-4 gap-y-1">
           {context !== undefined ? (
             <p aria-live="polite" aria-atomic="true" className="text-sm text-muted">
               {context}

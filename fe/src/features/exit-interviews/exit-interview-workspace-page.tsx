@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs";
 import { ExitInterviewOpportunitiesPage } from "@/features/exit-interviews/exit-interview-opportunities-page";
 import type { ExitInterviewsListOpportunitiesParams } from "@/lib/api/generated/model";
 
@@ -35,10 +36,10 @@ export function ExitInterviewWorkspacePage({
   if (access.hasOperationalWorkspace) {
     const showingOpportunities = access.canManageOpportunities && (opportunities !== undefined || !access.canViewOperational);
     return <>
-      {access.canViewOperational && access.canManageOpportunities ? <nav aria-label="Exit Interview navigation" className="mb-5 flex gap-5 text-sm font-semibold">
-        <Link href="/portal/exit-interviews" aria-current={!showingOpportunities ? "page" : undefined} className="flex min-h-11 items-center text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Responses</Link>
-        <Link href="/portal/exit-interviews?workspace=opportunities" aria-current={showingOpportunities ? "page" : undefined} className="flex min-h-11 items-center text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Student access</Link>
-      </nav> : null}
+      {access.canViewOperational && access.canManageOpportunities ? <WorkspaceTabs label="Exit Interview navigation">
+        <Link href="/portal/exit-interviews" aria-current={!showingOpportunities ? "page" : undefined} className={workspaceTabClass(!showingOpportunities)}>Responses</Link>
+        <Link href="/portal/exit-interviews?workspace=opportunities" aria-current={showingOpportunities ? "page" : undefined} className={workspaceTabClass(showingOpportunities)}>Student access</Link>
+      </WorkspaceTabs> : null}
       {showingOpportunities ? <ExitInterviewOpportunitiesPage filters={opportunities ?? {}} /> : <ExitInterviewOperationalList filters={filters} notice={notice} />}
     </>;
   }

@@ -42,33 +42,6 @@ function parsePage(value: string | null): number {
   return value && Number.isSafeInteger(page) && page > 0 ? page : 1;
 }
 
-function SearchField({
-  initial,
-  onSearch,
-}: {
-  initial: string;
-  onSearch: (value: string) => void;
-}) {
-  const [value, setValue] = useState(initial);
-  useEffect(() => {
-    if (value.trim() === initial) return;
-    const timer = window.setTimeout(() => onSearch(value.trim()), 350);
-    return () => window.clearTimeout(timer);
-  }, [initial, onSearch, value]);
-
-  return (
-    <ListSearchField
-      id="accounts-search"
-      name="search"
-      label="Search accounts"
-      value={value}
-      maxLength={254}
-      placeholder="Search by name, Institutional ID, or email"
-      onChange={(event) => setValue(event.target.value)}
-    />
-  );
-}
-
 export function AccountsListSkeleton() {
   return (
     <RowsSkeleton label="Loading accounts…" rows={6} framed />
@@ -85,6 +58,30 @@ export function AccountsList() {
   const status = searchParams.get("is_active") ?? "";
   const verified = searchParams.get("email_verified") ?? "";
   const search = (searchParams.get("search") ?? "").slice(0, 254).trim();
+  // URL search owns the applied query. A self-issued acknowledgement must leave newer
+  // typing alone; an external search change adopts the URL. Popstate explicitly restores
+  // history, even when its term also occurred among our pending navigations.
+  const [searchDraft, setSearchDraft] = useState({
+    applied: search,
+    value: search,
+    issued: [] as string[],
+  });
+  if (searchDraft.applied !== search) {
+    const acknowledgement = searchDraft.issued.indexOf(search);
+    setSearchDraft({
+      applied: search,
+      value: acknowledgement >= 0 ? searchDraft.value : search,
+      issued: acknowledgement >= 0 ? searchDraft.issued.slice(acknowledgement + 1) : [],
+    });
+  }
+  useEffect(() => {
+    const restore = () => {
+      const value = (new URLSearchParams(window.location.search).get("search") ?? "").slice(0, 254).trim();
+      setSearchDraft({ applied: value, value, issued: [] });
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
   const { requested: requestedOrdering, setOrdering } = useListOrdering(AccountOrdering);
   const filters: AccountsListParams = {
     page,
@@ -128,6 +125,15 @@ export function AccountsList() {
     router.replace(hrefWith(key, value), { scroll: false });
   }
 
+  function applySearch(value: string, href: string) {
+    setSearchDraft((draft) => ({ ...draft, value, issued: [...draft.issued, value] }));
+    router.push(href, { scroll: false });
+  }
+
+  function clearFilters() {
+    applySearch("", clearedHref);
+  }
+
   const paramsText = searchParams.toString();
   const detailSuffix = paramsText
     ? `?return=${encodeURIComponent(paramsText)}`
@@ -146,15 +152,14 @@ export function AccountsList() {
         }
       />
 
-      {/* A directory search: the text search applies as you type (or on Enter), and each choice
-          applies on change. */}
+      {/* Accounts commits text only on Search/Enter. Structured filters keep their applied URL state. */}
       <form
         role="search"
         aria-label="Accounts"
         onSubmit={(event) => {
           event.preventDefault();
-          const value = new FormData(event.currentTarget).get("search");
-          update("search", typeof value === "string" ? value.trim().slice(0, 254) : "");
+          const value = searchDraft.value.trim().slice(0, 254);
+          applySearch(value, hrefWith("search", value));
         }}
       >
         <FloatingListTools
@@ -163,7 +168,7 @@ export function AccountsList() {
           }
           clear={
             filtered ? (
-              <Button variant="quiet" onClick={() => router.replace(clearedHref, { scroll: false })}>
+              <Button variant="quiet" onClick={clearFilters}>
                 Clear filters
               </Button>
             ) : undefined
@@ -233,11 +238,16 @@ export function AccountsList() {
             </>
           }
         >
-          <SearchField
-            key={search}
-            initial={search}
-            onSearch={(value) => update("search", value)}
+          <ListSearchField
+            id="accounts-search"
+            name="search"
+            label="Search accounts"
+            value={searchDraft.value}
+            maxLength={254}
+            placeholder="Search by name, Institutional ID, or email"
+            onChange={(event) => setSearchDraft((draft) => ({ ...draft, value: event.target.value }))}
           />
+          <Button type="submit" className="shrink-0">Search</Button>
         </FloatingListTools>
       </form>
 
@@ -288,7 +298,7 @@ export function AccountsList() {
               <PanelMessage
                 action={
                   filtered ? (
-                    <Button variant="secondary" onClick={() => router.replace(clearedHref, { scroll: false })}>
+                    <Button variant="secondary" onClick={clearFilters}>
                       Clear filters
                     </Button>
                   ) : undefined
@@ -337,16 +347,18 @@ export function AccountsList() {
                       scope="row"
                       className={`${dataTable.cell} ${dataTable.stickyCell} text-left font-normal`}
                     >
-                      <Link
-                        href={`/portal/accounts/${encodeURIComponent(account.id)}${detailSuffix}`}
-                        className="font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                      >
-                        {accountName(account)}
-                      </Link>
-                      <span className="mt-1 block text-xs text-muted">
-                        {account.institutional_id || "No Institutional ID"} ·{" "}
-                        {account.email}
-                      </span>
+                      <div className="w-48 max-w-48 [overflow-wrap:anywhere] sm:w-64 sm:max-w-64">
+                        <Link
+                          href={`/portal/accounts/${encodeURIComponent(account.id)}${detailSuffix}`}
+                          className="font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                        >
+                          {accountName(account)}
+                        </Link>
+                        <span className="mt-1 block text-xs text-muted">
+                          {account.institutional_id || "No Institutional ID"} ·{" "}
+                          {account.email}
+                        </span>
+                      </div>
                     </th>
                     <td className={dataTable.cell}>{roleLabels[account.role]}</td>
                     <td className={dataTable.cell}>

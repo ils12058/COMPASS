@@ -98,7 +98,7 @@ export function ExitInterviewResponse({
     <section className="space-y-5">
       <div>
       <Link href={backHref} className={pageBackLinkClass}>
-        {studentFacing ? "Back to Exit Interviews" : "Back to Exit Interview queue"}
+        {studentFacing ? "Back to Exit Interviews" : "Back to Exit Interview responses"}
       </Link>
       <ExitInterviewHeading
         title={studentFacing ? "Exit Interview" : detail.student_name || detail.student.display_name}

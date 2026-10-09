@@ -176,7 +176,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         </div>
         <div className="sm:col-span-2">
           <dt className="text-xs font-semibold text-muted">Reason for referral</dt>
-          <dd className="mt-1 whitespace-pre-wrap break-words text-sm leading-6 text-ink">{item.reason}</dd>
+          <dd className="mt-1 whitespace-pre-wrap [overflow-wrap:anywhere] text-sm leading-6 text-ink">{item.reason}</dd>
         </div>
       </RecordSection>
 
@@ -251,7 +251,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
 function RecordSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <PanelSection title={title} titleId={"referral-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-")}>
-      <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2">{children}</dl>
+      <dl className="grid grid-cols-[minmax(0,1fr)] gap-x-8 gap-y-4 sm:grid-cols-2">{children}</dl>
     </PanelSection>
   );
 }

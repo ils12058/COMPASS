@@ -172,14 +172,14 @@ export function ExitInterviewOperationalList({
       {queue.isError && page && !hideStaleQueue ? (
         <ExitInterviewError
           error={queue.error}
-          fallback="The Exit Interview queue could not be refreshed. Showing the last confirmed results."
+          fallback="The Exit Interview responses could not be refreshed. Showing the last confirmed results."
           onRetry={() => void queue.refetch()}
         />
       ) : null}
 
       <Panel aria-labelledby="exit-interview-queue-heading">
         <PanelHeader
-          title="Exit Interview queue"
+          title="Responses"
           titleId="exit-interview-queue-heading"
           actions={
             <SortField
@@ -202,10 +202,10 @@ export function ExitInterviewOperationalList({
               : null}
         />
         {queue.isPending ? (
-          <ExitInterviewListSkeleton label="Loading Exit Interview queue…" framed={false} />
+          <ExitInterviewListSkeleton label="Loading Exit Interview responses…" framed={false} />
         ) : queue.isError && (!page || hideStaleQueue) ? (
           <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void queue.refetch()}>Retry</Button>}>
-            {exitInterviewErrorMessage(queue.error, "The Exit Interview queue could not be loaded.")}
+            {exitInterviewErrorMessage(queue.error, "The Exit Interview responses could not be loaded.")}
           </PanelMessage>
         ) : !page ? null : page.items.length === 0 && page.page > 1 ? (
           <PanelMessage
@@ -230,7 +230,7 @@ export function ExitInterviewOperationalList({
           <>
             <div className={dataTable.scroll}>
               <table className={`${dataTable.table} min-w-[700px]`}>
-                <caption className="sr-only">Head Guidance Exit Interview review queue</caption>
+                <caption className="sr-only">Exit Interview responses</caption>
                 <thead className={dataTable.head}>
                   <tr>
                     <SortableColumnHeader
@@ -302,7 +302,7 @@ export function ExitInterviewOperationalList({
               className="border-brand-line px-4 py-3 sm:px-5"
               page={page.page}
               hasNext={page.has_next}
-              label="Exit Interview queue pages"
+              label="Exit Interview responses pages"
               onPageChange={(nextPage) => router.push(pageHref({ ...filters, pageSize: page.page_size }, nextPage))}
             />
           </>

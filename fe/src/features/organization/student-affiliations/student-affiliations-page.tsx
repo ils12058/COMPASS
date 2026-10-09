@@ -4,7 +4,7 @@ import { Link2 } from "lucide-react";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { PageAction } from "@/components/ui/page-action";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import {
 import { Select } from "@/components/ui/select";
 import { dataTable } from "@/components/ui/data-table";
 import { FilterField } from "@/components/ui/filter-toolbar";
-import { FloatingListTools } from "@/components/ui/floating-list-tools";
+import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -29,7 +29,6 @@ import { PeoplePicker } from "@/features/organization/components/people-picker";
 import {
   PageHeading,
   PanelQueryError,
-  SearchField,
   StatusBadge,
   TableSkeleton,
   replaceQueryParam,
@@ -60,6 +59,60 @@ export function StudentAffiliationsPage() {
 
   const page = parsePage(searchParams.get("page"));
   const search = (searchParams.get("search") ?? "").slice(0, 200).trim();
+  // URL search owns the applied query. A self-issued acknowledgement must leave newer
+  // typing alone; an external search change adopts the URL. Popstate explicitly restores
+  // history, even when its term also occurred among our pending navigations.
+  const [searchDraft, setSearchDraft] = useState({
+    applied: search,
+    value: search,
+    issued: [] as string[],
+  });
+  if (searchDraft.applied !== search) {
+    const acknowledgement = searchDraft.issued.indexOf(search);
+    setSearchDraft({
+      applied: search,
+      value: acknowledgement >= 0 ? searchDraft.value : search,
+      issued: acknowledgement >= 0 ? searchDraft.issued.slice(acknowledgement + 1) : [],
+    });
+  }
+  const searchValue = searchDraft.value;
+  const searchTimer = useRef<number | null>(null);
+
+  function cancelPendingSearch() {
+    if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+    searchTimer.current = null;
+  }
+
+  useEffect(() => {
+    const restore = () => {
+      if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+      const value = (new URLSearchParams(window.location.search).get("search") ?? "").slice(0, 200).trim();
+      setSearchDraft({ applied: value, value, issued: [] });
+    };
+    window.addEventListener("popstate", restore);
+    return () => window.removeEventListener("popstate", restore);
+  }, []);
+
+  useEffect(() => {
+    const trimmed = searchValue.trim();
+    if (trimmed === search) return;
+    searchTimer.current = window.setTimeout(() => {
+      searchTimer.current = null;
+      const next = new URLSearchParams(searchParams.toString());
+      if (trimmed) next.set("search", trimmed);
+      else next.delete("search");
+      next.delete("page");
+      setSearchDraft((draft) => ({ ...draft, issued: [...draft.issued, trimmed] }));
+      const query = next.toString();
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    }, 350);
+    return () => {
+      if (searchTimer.current !== null) window.clearTimeout(searchTimer.current);
+      searchTimer.current = null;
+    };
+  }, [pathname, router, search, searchParams, searchValue]);
+
   const campusId = searchParams.get("campus_id") ?? "";
   const collegeId = searchParams.get("college_id") ?? "";
 
@@ -244,7 +297,11 @@ export function StudentAffiliationsPage() {
         label="Student affiliation search and filters"
         filterCount={[campusId, collegeId].filter(Boolean).length}
         clear={hasFilters ? (
-          <Button variant="quiet" onClick={() => router.replace(pathname, { scroll: false })}>
+          <Button variant="quiet" onClick={() => {
+            cancelPendingSearch();
+            setSearchDraft((draft) => ({ ...draft, value: "", issued: [...draft.issued, ""] }));
+            router.replace(pathname, { scroll: false });
+          }}>
             Clear filters
           </Button>
         ) : undefined}
@@ -285,7 +342,9 @@ export function StudentAffiliationsPage() {
         </FilterField>
         </>}
       >
-        <SearchField
+        <ListSearchField
+          id="organization-search" maxLength={200} value={searchValue}
+          onChange={(event) => setSearchDraft((draft) => ({ ...draft, value: event.target.value }))}
           label="Search student affiliations"
           placeholder="Search by student name or institutional ID"
         />
