@@ -11,6 +11,9 @@ import {
 } from "react";
 
 import { ServiceHelp } from "@/features/services/service-help";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { safeQueryData } from "@/features/freshness/query-freshness";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -90,6 +93,28 @@ function selectedIds(values: ServiceFormState): string[] {
   return values.providerCoverage === ServiceProviderCoverage.SELECTED_COUNSELORS
     ? values.selectedCounselors.map((item) => item.id)
     : [];
+}
+
+// What saving would send: Appointment-only settings count only while booking is on, and the
+// selected Counselors only with selected coverage. The draft is unsaved when this differs from the
+// saved Service.
+function savedShape(values: ServiceFormState) {
+  return {
+    code: values.code,
+    name: values.name,
+    description: values.description,
+    bookingEnabled: values.bookingEnabled,
+    defaultDuration: values.bookingEnabled ? values.defaultDuration.trim() : "",
+    cancellationCutoff: values.bookingEnabled ? values.cancellationCutoff.trim() : "",
+    requiresCurrentInventory: values.bookingEnabled && values.requiresCurrentInventory,
+    deliveryModes: configuredDeliveryModes(values),
+    providerCoverage: values.providerCoverage,
+    selectedCounselorIds: [...selectedIds(values)].sort(),
+  };
+}
+
+function serviceFormChanged(values: ServiceFormState, saved: ServiceFormState): boolean {
+  return JSON.stringify(savedShape(values)) !== JSON.stringify(savedShape(saved));
 }
 
 function initialFromService(
@@ -225,8 +250,10 @@ function ServiceForm({
   pendingLabel,
   messages,
   codeReadOnly = false,
+  saveUnavailable = false,
   onSubmit,
 }: {
+  // The saved Service. The form keeps its own draft and compares it with this.
   initial: ServiceFormState;
   active: boolean;
   systemRequired?: boolean;
@@ -235,13 +262,20 @@ function ServiceForm({
   pendingLabel: string;
   messages: ReactNode;
   codeReadOnly?: boolean;
+  // Set while the saved Service could not be confirmed; the draft stays editable.
+  saveUnavailable?: boolean;
   onSubmit: (values: ServiceFormState) => Promise<void>;
 }) {
   const [values, setValues] = useState(initial);
   const bookingClearsSavedSettings = initial.bookingEnabled && !values.bookingEnabled;
+  useUnsavedChangesGuard({
+    dirty: serviceFormChanged(values, initial),
+    message: "Discard your unsaved Service changes?",
+  });
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saveUnavailable) return;
     await onSubmit(values);
   }
 
@@ -507,7 +541,7 @@ function ServiceForm({
       <div className="px-4 empty:hidden sm:px-5 [&>p:last-child]:mb-4">{messages}</div>
 
       <PanelFooter className="justify-end">
-        <Button type="submit" disabled={submitting}>
+        <Button type="submit" disabled={submitting || saveUnavailable}>
           {submitting ? pendingLabel : submitLabel}
         </Button>
       </PanelFooter>
@@ -626,12 +660,16 @@ export function EditServicePage() {
     useState<PendingServiceConsequenceReview | null>(null);
   const [reviewError, setReviewError] = useState<string | null>(null);
 
+  // A refresh that fails for a transient reason keeps the editor, and the unsaved draft, on the last
+  // confirmed Service. A refusal, a missing Service, or a first load that fails replaces it.
+  const detailData = safeQueryData(detail);
+  const providersData = safeQueryData(providers);
   if (detail.isPending || providers.isPending) return <ServicesDetailSkeleton />;
 
-  if (detail.isError || providers.isError) {
+  if (!detailData || !providersData) {
     return (
       <ServicesQueryError
-        error={detail.error ?? providers.error}
+        error={detailData ? providers.error : detail.error}
         fallback="The Service could not be loaded."
         onRetry={() => {
           void detail.refetch();
@@ -641,8 +679,9 @@ export function EditServicePage() {
     );
   }
 
-  const service = detail.data.data;
-  const savedProviders = providers.data.data;
+  const refreshFailed = detail.isError || providers.isError;
+  const service = detailData.data;
+  const savedProviders = providersData.data;
   const initial = initialFromService(service, savedProviders);
 
   async function submit(values: ServiceFormState) {
@@ -778,6 +817,16 @@ export function EditServicePage() {
       >
         <p className="mt-1.5 font-mono text-xs text-muted">{service.code}</p>
       </ServicesPageHeading>
+      {refreshFailed ? (
+        <RefreshFailureNotice
+          message="The latest Service details could not be refreshed. Your changes are kept here, and you can save them once the details refresh."
+          retrying={detail.isFetching || providers.isFetching}
+          onRetry={() => {
+            if (detail.isError) void detail.refetch();
+            if (providers.isError) void providers.refetch();
+          }}
+        />
+      ) : null}
       <ServiceForm
         initial={initial}
         active={service.is_active}
@@ -787,6 +836,7 @@ export function EditServicePage() {
         pendingLabel="Saving…"
         messages={action.messages}
         codeReadOnly
+        saveUnavailable={refreshFailed}
         onSubmit={submit}
       />
       <ConsequentialActionDialog

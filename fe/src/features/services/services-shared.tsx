@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import {
   useEffect,
@@ -13,6 +12,7 @@ import { ListSearchField } from "@/components/ui/floating-list-tools";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
+import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import {
   stepUpNotice,
   stepUpRequirement,
@@ -329,9 +329,9 @@ export function ServicesPageHeading({
       description={description}
       actions={action} help={help}
       back={backHref ? (
-        <Link href={backHref} className={pageBackLinkClass}>
+        <GuardedPortalLink href={backHref} className={pageBackLinkClass}>
           ← {backLabel ?? "Services"}
-        </Link>
+        </GuardedPortalLink>
       ) : undefined}
     >
       {children}

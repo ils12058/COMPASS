@@ -13,10 +13,18 @@ import { Notice } from "@/components/ui/notice";
 import { Panel, PanelBody, PanelHeader, PanelSection } from "@/components/ui/panel";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { callSlipErrorMessage } from "@/features/call-slips/call-slips-shared";
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { ReferralActionsSection } from "@/features/referrals/referral-action-section";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { ReferralCallSlipSection } from "@/features/referrals/referral-call-slip-section";
+import {
+  keepStatusNoteText,
+  reconcileStatusNote,
+  startStatusNoteDraft,
+  statusNoteConflict,
+} from "@/features/referrals/referral-status-note";
 import { canViewStudentSupportContext } from "@/features/student-support/student-support-access";
 import { StudentSupportContextSection } from "@/features/student-support/student-support-context-section";
 import {
@@ -55,10 +63,17 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
     { query: { enabled: referralAccess.canView && callSlipAccess.canViewOperational, retry: false } },
   );
 
+  // A refresh that fails for a transient reason keeps the last confirmed Referral on the page, with
+  // its open editors. A refusal, a missing Referral, or a first load that fails replaces it.
+  const referralData = safeQueryData(referral);
+
   if (!referralAccess.canView) {
     return <ReferralAccessUnavailable title="Referral unavailable" message="Referral review is unavailable to this account." />;
   }
-  if (referral.isError) {
+  if (referral.isPending) {
+    return <ReferralDetailSkeleton />;
+  }
+  if (!referralData) {
     if (referralErrorCode(referral.error) === "referral_not_found") {
       return <ReferralAccessUnavailable title="Referral not found" message="This referral could not be found or is unavailable to you." />;
     }
@@ -69,11 +84,9 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
       </div>
     );
   }
-  if (referral.isPending) {
-    return <ReferralDetailSkeleton />;
-  }
 
-  const item = referral.data.data;
+  const item = referralData.data;
+  const refreshFailed = referral.isError;
   const isVoided = Boolean(item.voided_at);
   const currentCallSlip = linkedCurrent.data?.data.items[0];
   const canCheckCallSlips = callSlipAccess.canViewOperational;
@@ -94,6 +107,14 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         backHref="/portal/referrals"
         action={<ReferralPdfDownload referral={item} />}
       />
+
+      {refreshFailed ? (
+        <RefreshFailureNotice
+          message="The latest Referral details could not be refreshed. Showing the last confirmed record. Saving the status note and voiding wait until it refreshes."
+          retrying={referral.isFetching}
+          onRetry={() => void referral.refetch()}
+        />
+      ) : null}
 
       {isVoided ? (
         <Notice role="status" tone="warning" title={<span className="text-warning">Voided</span>}>
@@ -162,7 +183,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
       <PanelSection title="Status note" titleId="referral-status-note-heading">
         <p className="whitespace-pre-wrap break-words text-sm leading-6 text-ink">{item.status_note || "No status note recorded."}</p>
         {referralAccess.canManage && !isVoided ? (
-          <StatusNoteEditor key={`${item.id}-${item.updated_at}`} referralId={item.id} statusNote={item.status_note} />
+          <StatusNoteEditor key={item.id} referralId={item.id} statusNote={item.status_note} saveUnavailable={refreshFailed} />
         ) : null}
       </PanelSection>
       </Panel>
@@ -195,7 +216,9 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         <PanelHeader title="Operational actions" titleId="referral-operational-actions-heading" />
         <PanelBody className="*:first:mt-0">
         {!isVoided ? (
-          canCheckCallSlips && linkedCurrent.isPending ? (
+          refreshFailed ? (
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">Voiding is unavailable until the Referral refreshes.</p>
+          ) : canCheckCallSlips && linkedCurrent.isPending ? (
             <p role="status" className="mt-3 text-sm text-muted">Checking linked Call Slip state before enabling Referral void.</p>
           ) : canCheckCallSlips && linkedCurrent.isError ? (
             <div className="mt-3 max-w-2xl">
@@ -261,29 +284,44 @@ function ReferralPdfDownload({ referral }: { referral: ReferralDetailResponse })
   );
 }
 
-function StatusNoteEditor({ referralId, statusNote }: { referralId: string; statusNote: string }) {
+function StatusNoteEditor({
+  referralId,
+  statusNote,
+  saveUnavailable,
+}: {
+  referralId: string;
+  // The saved note. A reload never replaces text the person changed (referral-status-note.ts).
+  statusNote: string;
+  saveUnavailable: boolean;
+}) {
   const queryClient = useQueryClient();
-  const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(statusNote);
+  const [draft, setDraft] = useState(() => startStatusNoteDraft(statusNote));
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const update = useMutation({
-    mutationFn: () => referralsUpdateStatus(referralId, { status_note: value }),
+    mutationFn: (statusNoteValue: string) => referralsUpdateStatus(referralId, { status_note: statusNoteValue }),
     retry: false,
   });
+  // A newer saved note replaces unchanged text while rendering, before it can be shown or saved.
+  const reconciled = reconcileStatusNote(draft, statusNote);
+  if (reconciled !== draft) setDraft(reconciled);
+  const conflict = statusNoteConflict(reconciled, statusNote);
+  const { editing, value } = reconciled;
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (conflict || saveUnavailable) return;
     setError(null);
     setNotice(null);
     try {
-      await update.mutateAsync();
+      const response = await update.mutateAsync(value);
+      // The saved note is the new baseline before the Referral reloads, so the reload is not a change.
+      setDraft(startStatusNoteDraft(response.data.status_note));
+      setNotice("Status note updated.");
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getReferralsGetQueryKey(referralId) }),
         queryClient.invalidateQueries({ queryKey: getReferralsListQueryKey() }),
       ]);
-      setEditing(false);
-      setNotice("Status note updated.");
     } catch (caught) {
       setError(referralErrorMessage(caught, "The status note could not be updated."));
     }
@@ -292,20 +330,29 @@ function StatusNoteEditor({ referralId, statusNote }: { referralId: string; stat
   return (
     <div className="mt-3">
       {!editing ? (
-        <Button variant="secondary" onClick={() => { setEditing(true); setError(null); setNotice(null); }}>
+        <Button variant="secondary" onClick={() => { setDraft({ ...reconciled, editing: true }); setError(null); setNotice(null); }}>
           Update status note
         </Button>
       ) : (
         <form className="max-w-2xl space-y-3 rounded-sm bg-surface-subtle px-4 py-4" onSubmit={submit} aria-busy={update.isPending}>
+          {conflict ? (
+            <Notice
+              role="status"
+              tone="warning"
+              action={<Button variant="secondary" onClick={() => setDraft(keepStatusNoteText(reconciled, statusNote))}>Keep my text</Button>}
+            >
+              The saved status note changed while you were editing. Review it above. Your text is kept here; keep it to save it in place of the saved note.
+            </Notice>
+          ) : null}
           <div className="grid gap-2">
             <Label htmlFor="referral-status-note-editor">Status note</Label>
-            <Textarea id="referral-status-note-editor" rows={4} maxLength={1_000} value={value} disabled={update.isPending} onChange={(event) => setValue(event.target.value)} />
+            <Textarea id="referral-status-note-editor" rows={4} maxLength={1_000} value={value} disabled={update.isPending} onChange={(event) => setDraft({ ...reconciled, value: event.target.value })} />
             <p className="text-xs text-muted">{value.length} / 1,000 characters. Leave blank to clear the note.</p>
           </div>
           {error ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
           <div className="flex flex-wrap gap-2">
-            <Button type="submit" disabled={update.isPending}>{update.isPending ? "Saving…" : "Save status note"}</Button>
-            <Button type="button" variant="secondary" disabled={update.isPending} onClick={() => { setEditing(false); setValue(statusNote); setError(null); }}>Cancel</Button>
+            <Button type="submit" disabled={update.isPending || conflict || saveUnavailable}>{update.isPending ? "Saving…" : "Save status note"}</Button>
+            <Button type="button" variant="secondary" disabled={update.isPending} onClick={() => { setDraft(startStatusNoteDraft(statusNote)); setError(null); }}>Cancel</Button>
           </div>
         </form>
       )}

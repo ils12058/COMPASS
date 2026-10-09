@@ -102,6 +102,16 @@ export function requestFromDraft(draft: DraftWindow[]): WeeklyWindowRequest[] {
   }));
 }
 
+// Whether two schedules hold the same hours, in any order. A draft is unsaved only when it differs
+// from the saved schedule, so changing hours and changing them back is not an unsaved change.
+export function sameWeeklySchedule(left: WeeklyWindowRequest[], right: WeeklyWindowRequest[]): boolean {
+  const comparable = (windows: WeeklyWindowRequest[]) =>
+    windows
+      .map((window) => [weekdayOrder.indexOf(window.weekday), window.start_time, window.end_time, window.mode_scope].join("|"))
+      .sort();
+  return JSON.stringify(comparable(left)) === JSON.stringify(comparable(right));
+}
+
 export function windowsForDay<T extends { weekday: Weekday }>(windows: T[], weekday: Weekday): T[] {
   return windows.filter((window) => window.weekday === weekday);
 }

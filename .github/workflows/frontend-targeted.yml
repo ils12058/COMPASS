@@ -88,3 +88,79 @@ jobs:
       - name: Unit tests
         working-directory: fe
         run: pnpm test
+
+  # Browser regressions for account changes, failed refreshes and unsaved drafts (frontend audit
+  # FE-001 to FE-004). They run against a development server because the synthetic seams (fake
+  # Call Object, API interception) are development-only; every API call is answered in the
+  # browser, so no backend runs. The other browser suites stay local until the intermittent
+  # tooltip check in ui-information-hierarchy is characterized.
+  frontend-browser-regressions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      COMPASS_API_BASE_URL: http://127.0.0.1:8000
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Next blocks development resources for other origins, so the browser uses localhost.
+      COMPASS_UI_BASE_URL: http://localhost:3107
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.19.0
+          run_install: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22.18.0"
+          cache: pnpm
+          cache-dependency-path: fe/pnpm-lock.yaml
+
+      - name: Install locked dependencies
+        working-directory: fe
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate API client
+        working-directory: fe
+        run: pnpm api:generate
+
+      - name: Install Chromium for the locked Playwright
+        working-directory: fe
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Start development server
+        working-directory: fe
+        run: |
+          nohup pnpm dev --port 3107 > "$RUNNER_TEMP/next-dev.log" 2>&1 &
+          for attempt in $(seq 1 90); do
+            if curl -fsS -o /dev/null http://localhost:3107/login; then exit 0; fi
+            sleep 2
+          done
+          cat "$RUNNER_TEMP/next-dev.log"
+          exit 1
+
+      # The first request to a route compiles it; compile the tested routes before timing checks.
+      - name: Compile tested routes
+        run: |
+          for route in /portal/services/service-density-test /portal/services/service-density-test/edit \
+            /portal/services /portal/inventory/current /portal/exit-interviews/exit-draft-test \
+            /portal/referrals/referral-draft-test /portal/availability/me /portal/availability/office; do
+            curl -sS -o /dev/null -w "%{http_code} $route\n" "http://localhost:3107$route"
+          done
+
+      - name: Browser regressions
+        working-directory: fe
+        env:
+          COMPASS_UI_ARTIFACTS: ${{ runner.temp }}/browser-regressions
+        run: pnpm test:ui:regressions
+
+      - name: Upload browser evidence
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-browser-regressions
+          path: |
+            ${{ runner.temp }}/browser-regressions
+            ${{ runner.temp }}/next-dev.log
+          if-no-files-found: ignore
