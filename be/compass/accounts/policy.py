@@ -92,6 +92,11 @@ CAPABILITY_DEFINITIONS = (
         description="Send and manage authorized Guidance threads without broadening content scope.",
     ),
     CapabilityDefinition(
+        code="guidance_messages.templates.manage",
+        name="Manage Guidance Message templates",
+        description="Create, edit, archive and restore shared generic Message templates.",
+    ),
+    CapabilityDefinition(
         code="activity.supervised_staff.view",
         name="View supervised staff activity",
         description="View selected operational activity within current direct StaffSupervision.",
@@ -524,6 +529,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
         {
             "guidance_messages.view",
             "guidance_messages.manage",
+            "guidance_messages.templates.manage",
             "activity.supervised_staff.view",
             "accounts.view",
             "organization.structure.view",
@@ -564,6 +570,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
         {
             "guidance_messages.view",
             "guidance_messages.manage",
+            "guidance_messages.templates.manage",
             "accounts.view",
             "organization.structure.view",
             "academic_years.view",
@@ -662,6 +669,7 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "guidance_messages.manage_self": frozenset({"guidance_messages.view_self"}),
     "guidance_messages.manage": frozenset({"guidance_messages.view"}),
+    "guidance_messages.templates.manage": frozenset({"guidance_messages.manage"}),
     "privacy_governance.activity.export": frozenset({"privacy_governance.view"}),
     "privacy_governance.retention.manage": frozenset({"privacy_governance.retention.view"}),
     "privacy_governance.retention.approve": frozenset({"privacy_governance.retention.view"}),

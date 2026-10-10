@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
-import { MessageComposerView } from "@/features/guidance-messages/guidance-message-composer-view";
+import { MessageComposerView, type MessageTemplatesOption } from "@/features/guidance-messages/guidance-message-composer-view";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import {
   createClientMessageId,
@@ -15,6 +15,11 @@ import {
   type SendState,
   type SendTarget,
 } from "@/features/guidance-messages/guidance-message-send";
+import {
+  insertTemplateText,
+  templateInsertProblem,
+  type TemplateInsertResult,
+} from "@/features/guidance-messages/guidance-message-templates";
 
 export type MessageComposerOptions<TResult> = {
   /** Where this intended Message goes; null while no recipient is chosen. */
@@ -40,6 +45,14 @@ export type MessageComposerController = {
   setAside: () => void;
   /** Submits through the form, as Ctrl/⌘+Enter does. */
   requestSubmit: () => void;
+  /**
+   * Inserts a Message template's text into the draft (ADR-104). It never sends and never creates a
+   * client_message_id. Refused, with the draft unchanged, while a send is in flight or unconfirmed
+   * (that text belongs to its retry) or when the result would be too long.
+   */
+  insertTemplate: (body: string) => TemplateInsertResult;
+  /** Moves focus to the end of the draft, such as after a template was inserted. */
+  focusDraft: () => void;
   /** Callback refs for the view that currently shows this composer, if any. */
   attachTextarea: (element: HTMLTextAreaElement | null) => void;
   attachForm: (element: HTMLFormElement | null) => void;
@@ -144,6 +157,23 @@ export function useMessageComposer<TResult>({
     formRef.current = element;
   }, []);
 
+  function insertTemplate(body: string): TemplateInsertResult {
+    if (current.current.kind !== "idle" || blocked) return "unavailable";
+    if (templateInsertProblem(draft, body)) return "too_long";
+    setDraft(insertTemplateText(draft, body));
+    setError(null);
+    return "inserted";
+  }
+
+  function focusDraft() {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    textarea.focus();
+    const end = textarea.value.length;
+    textarea.setSelectionRange(end, end);
+    textarea.scrollTop = textarea.scrollHeight;
+  }
+
   function setAside() {
     // The reader chose to change the text: the unconfirmed attempt keeps its ID and the edited text
     // becomes a new intended Message with a new one.
@@ -166,6 +196,8 @@ export function useMessageComposer<TResult>({
     submit,
     setAside,
     requestSubmit: () => formRef.current?.requestSubmit(),
+    insertTemplate,
+    focusDraft,
     attachTextarea,
     attachForm,
   };
@@ -176,8 +208,11 @@ export function GuidanceMessageComposer<TResult>({
   label,
   unavailable = null,
   onPendingChange,
+  templates,
   ...options
 }: Omit<MessageComposerOptions<TResult>, "blocked"> & {
+  /** Offers Message templates; staff only. */
+  templates?: MessageTemplatesOption;
   /** The textarea's accessible name, such as "Message to Guidance Office". */
   label: string;
   /**
@@ -193,5 +228,5 @@ export function GuidanceMessageComposer<TResult>({
   useEffect(() => {
     onPendingChange?.(pending);
   }, [onPendingChange, pending]);
-  return <MessageComposerView controller={controller} label={label} unavailable={unavailable} />;
+  return <MessageComposerView controller={controller} label={label} unavailable={unavailable} templates={templates} />;
 }

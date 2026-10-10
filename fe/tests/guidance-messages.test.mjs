@@ -77,7 +77,10 @@ const apiError = (status, code = "synthetic") => new CompassApiError({ status, b
 test("Messages access pairs each identity with its own capability", () => {
   assert.deepEqual(
     { ...getGuidanceMessagesAccess(student) },
-    { isStudent: true, isStaff: false, canViewSelf: true, canManageSelf: true, canViewStaff: false, canManageStaff: false, hasWorkspace: true, canWrite: true },
+    {
+      isStudent: true, isStaff: false, canViewSelf: true, canManageSelf: true, canViewStaff: false, canManageStaff: false,
+      hasWorkspace: true, canWrite: true, canUseTemplates: false, canManageTemplates: false,
+    },
   );
   assert.equal(getGuidanceMessagesAccess(counselor).canManageStaff, true);
   assert.equal(getGuidanceMessagesAccess(account("GUIDANCE_SERVICES_STAFF", ["guidance_messages.view"])).canWrite, false, "View without manage reads only");
@@ -429,7 +432,9 @@ test("Messages code renders plain text and never persists, logs or opens a socke
     }
   }
   const routes = new URL("../src/app/(portal)/portal/messages/", import.meta.url).pathname;
-  assert.ok(!/searchParams/.test(readFileSync(join(routes, "page.tsx"), "utf8")), "No Message content travels in the URL");
+  for (const page of ["(conversations)/page.tsx", "templates/page.tsx"]) {
+    assert.ok(!/searchParams/.test(readFileSync(join(routes, page), "utf8")), "No Message or template text travels in the URL");
+  }
 });
 
 // ── Contextual Messages (ADR-103) ─────────────────────────────────────────────────────────────
@@ -511,4 +516,108 @@ test("contextual Messages never uses call chat, transcripts or a second socket",
   }
   const ecounseling = readFileSync(new URL("../src/features/ecounseling/ecounseling-workspace.tsx", import.meta.url), "utf8");
   assert.ok(!/useMessageComposer|guidanceMessages[A-Z]/.test(ecounseling), "E-Counseling only mounts the shared contextual surface");
+});
+
+// ── Staff operations: handler assignment and Message templates (ADR-104) ─────────────────────
+
+import { messageTemplatesFor } from "../src/features/guidance-messages/guidance-messages-access.ts";
+import { describeAssignError } from "../src/features/guidance-messages/guidance-messages-errors.ts";
+import { handlerRoleLabel } from "../src/features/guidance-messages/guidance-messages-presentation.ts";
+import {
+  insertTemplateText,
+  TEMPLATE_TOO_LONG,
+  templateInsertProblem,
+  templatePreview,
+  templatesQueryFamily,
+} from "../src/features/guidance-messages/guidance-message-templates.ts";
+import {
+  templateBodyProblem,
+  templateNameProblem,
+} from "../src/features/guidance-messages/guidance-message-template-editor.tsx";
+import { getGuidanceMessagesListTemplatesQueryKey } from "../src/lib/api/generated/guidance-messages/guidance-messages.ts";
+
+const TEMPLATE = "Good day.\nPlease visit the Guidance Office.";
+
+test("a template fills a blank draft and is appended after one blank line otherwise", () => {
+  assert.equal(insertTemplateText("", TEMPLATE), TEMPLATE);
+  assert.equal(insertTemplateText("  \n ", TEMPLATE), TEMPLATE, "A whitespace-only draft counts as blank");
+  assert.equal(insertTemplateText("Hello Maria,", TEMPLATE), `Hello Maria,\n\n${TEMPLATE}`);
+  assert.equal(insertTemplateText("Kept exactly  \n", TEMPLATE), `Kept exactly  \n\n\n${TEMPLATE}`, "Existing text is never normalized");
+});
+
+test("a template that would pass 4,000 characters is refused without truncating", () => {
+  assert.equal(templateInsertProblem("", "a".repeat(4000)), null);
+  assert.equal(templateInsertProblem("", "a".repeat(4001)), "too_long");
+  assert.equal(templateInsertProblem("b".repeat(1998), "a".repeat(2000)), null, "Two line breaks join them");
+  assert.equal(templateInsertProblem("b".repeat(1999), "a".repeat(2000)), "too_long");
+  assert.equal(templateInsertProblem("", "🙂".repeat(4000)), null, "Characters, not UTF-16 units");
+  assert.equal(TEMPLATE_TOO_LONG, "This template would make the message longer than 4,000 characters.");
+});
+
+test("template previews are one line and every template query shares one family", () => {
+  assert.equal(templatePreview("  Line one\n\nLine   two "), "Line one Line two");
+  const family = templatesQueryFamily();
+  const picker = getGuidanceMessagesListTemplatesQueryKey({ status: "ACTIVE", page_size: 20 });
+  const archived = getGuidanceMessagesListTemplatesQueryKey({ status: "ARCHIVED", page: 2, page_size: 20 });
+  assert.deepEqual([picker[0], archived[0]], [family[0], family[0]]);
+});
+
+test("templates belong to staff who write operational Messages; managing them needs its own capability", () => {
+  assert.equal(messageTemplatesFor(getGuidanceMessagesAccess(student)), null);
+  assert.deepEqual(messageTemplatesFor(getGuidanceMessagesAccess(counselor)), { canManage: false });
+  const manager = account("GUIDANCE_SERVICES_STAFF", ["guidance_messages.view", "guidance_messages.manage", "guidance_messages.templates.manage"]);
+  assert.deepEqual(messageTemplatesFor(getGuidanceMessagesAccess(manager)), { canManage: true });
+  const viewOnly = account("COUNSELOR", ["guidance_messages.view", "guidance_messages.templates.manage"]);
+  assert.equal(messageTemplatesFor(getGuidanceMessagesAccess(viewOnly)), null, "Template management never replaces Messages manage");
+  const admin = account("IT_ADMIN", ["guidance_messages.view", "guidance_messages.manage", "guidance_messages.templates.manage"]);
+  assert.equal(messageTemplatesFor(getGuidanceMessagesAccess(admin)), null);
+  assert.equal(getGuidanceMessagesAccess(admin).canManageTemplates, false);
+});
+
+test("handler roles have human labels and a stale assignment asks for a new choice", () => {
+  assert.equal(handlerRoleLabel("COUNSELOR"), "Counselor");
+  assert.equal(handlerRoleLabel("GUIDANCE_SERVICES_STAFF"), "Guidance Services Staff");
+  assert.match(describeAssignError(apiError(422)), /no longer be assigned.*refreshed/);
+  assert.match(describeAssignError(apiError(404)), /no longer available/);
+  assert.match(describeAssignError(new TypeError("offline")), /Try again/);
+});
+
+test("template names and text follow the backend's limits", () => {
+  assert.equal(templateNameProblem("  Office follow-up "), null);
+  assert.ok(templateNameProblem("   "));
+  assert.ok(templateNameProblem("x".repeat(121)));
+  assert.equal(templateNameProblem("x".repeat(120)), null);
+  assert.ok(templateNameProblem("Two\nlines"));
+  assert.ok(templateNameProblem("NUL\u0000"));
+  assert.equal(templateBodyProblem("Line one\n\nLine two  "), null);
+  assert.ok(templateBodyProblem(" \n "));
+  assert.ok(templateBodyProblem("a".repeat(4001)));
+  assert.ok(templateBodyProblem("a\u0000"));
+  assert.ok(templateBodyProblem("a\ud800"));
+});
+
+test("an account change removes template queries with the rest of the account's records", () => {
+  const client = createQueryClient();
+  client.setQueryData(getAuthGetSessionQueryKey(), session("account-a"));
+  const key = [...getGuidanceMessagesListTemplatesQueryKey({ status: "ACTIVE", page_size: 20 }), "picker"];
+  client.setQueryData(key, { pages: [{ data: { items: [{ id: "t", name: "Office", body: TEMPLATE }] } }], pageParams: [1] });
+  client.setQueryData(getAuthGetSessionQueryKey(), session("account-b"));
+  assert.equal(client.getQueryData(key), undefined);
+});
+
+test("templates only prepare text: no ID, no template link, no storage", () => {
+  const directory = new URL("../src/features/guidance-messages/", import.meta.url).pathname;
+  for (const name of readdirSync(directory)) {
+    const source = readFileSync(join(directory, name), "utf8");
+    assert.ok(!/template_id|templateId/.test(source), `${name} must never link a Message to a template`);
+  }
+  const templates = readFileSync(join(directory, "guidance-message-templates.ts"), "utf8");
+  const picker = readFileSync(join(directory, "guidance-message-template-picker.tsx"), "utf8");
+  for (const source of [templates, picker]) {
+    assert.ok(!/createClientMessageId|randomUUID|mutateAsync|guidanceMessagesSend|OpenCounselingThread/.test(source), "Choosing a template sends nothing");
+  }
+  const composer = readFileSync(join(directory, "guidance-message-composer.tsx"), "utf8");
+  const insert = composer.slice(composer.indexOf("function insertTemplate"), composer.indexOf("function focusDraft"));
+  assert.match(insert, /current\.current\.kind !== "idle"/, "Refused while a send is in flight or unconfirmed");
+  assert.ok(!/createClientMessageId|update\(/.test(insert), "Inserting never creates or changes a send intent");
 });

@@ -18,6 +18,10 @@ export type GuidanceMessagesAccess = {
   hasWorkspace: boolean;
   /** Writing a Message, and marking a conversation read, need manage authority. */
   canWrite: boolean;
+  /** Staff who write operational Messages may insert shared Message templates (ADR-104). */
+  canUseTemplates: boolean;
+  /** Creates, edits, archives and restores the shared templates. */
+  canManageTemplates: boolean;
 };
 
 export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAccess {
@@ -27,6 +31,7 @@ export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAc
   const canManageSelf = canViewSelf && user.capabilities.includes("guidance_messages.manage_self");
   const canViewStaff = isStaff && user.capabilities.includes("guidance_messages.view");
   const canManageStaff = canViewStaff && user.capabilities.includes("guidance_messages.manage");
+  const canManageTemplates = canManageStaff && user.capabilities.includes("guidance_messages.templates.manage");
 
   return {
     isStudent,
@@ -37,5 +42,12 @@ export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAc
     canManageStaff,
     hasWorkspace: canViewSelf || canViewStaff,
     canWrite: canManageSelf || canManageStaff,
+    canUseTemplates: canManageStaff,
+    canManageTemplates,
   };
+}
+
+/** The composer's template option: staff who write operational Messages; never Students. */
+export function messageTemplatesFor(access: GuidanceMessagesAccess): { canManage: boolean } | null {
+  return access.canUseTemplates ? { canManage: access.canManageTemplates } : null;
 }

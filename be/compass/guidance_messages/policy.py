@@ -4,7 +4,10 @@ from django.db.models import Q
 
 from compass.accounts.models import StudentLifecycleStatus, User
 from compass.appointments.models import AppointmentStatus
-from compass.organization.access_scope import resolve_operational_responsibility_scope
+from compass.organization.access_scope import (
+    HEAD_GUIDANCE_DESIGNATION,
+    resolve_operational_responsibility_scope,
+)
 from compass.organization.models import CounselorResponsibility, StaffSupervision
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 
@@ -93,27 +96,62 @@ def current_student(student):
     )
 
 
+def office_staff_candidates(thread):
+    """A finite superset of staff who could handle an Office thread's College right now.
+
+    Explicit College Counselors, every Head (for the unique-Head fallback) and the staff they
+    supervise. Callers must still apply the canonical workload check to each candidate.
+    """
+    counselors = (
+        User.objects.filter(is_active=True, role__code="COUNSELOR")
+        .filter(
+            Q(
+                pk__in=CounselorResponsibility.objects.filter(
+                    college_id=thread.routing_college_id
+                ).values("counselor_id")
+            )
+            | Q(designation_assignments__designation__code=HEAD_GUIDANCE_DESIGNATION)
+        )
+        .values("pk")
+    )
+    return Q(pk__in=counselors) | Q(
+        pk__in=StaffSupervision.objects.filter(supervisor_id__in=counselors).values("staff_id")
+    )
+
+
+def eligible_handler(user, thread):
+    """Whether `user` may be assigned an Office thread: they can manage it under current workload.
+
+    Assignment is workflow ownership only. It never grants access; this check only keeps it from
+    pointing at someone who could not act on the thread.
+    """
+    if thread.kind != ThreadKind.OFFICE or not user.is_active or user.role.code not in STAFF_ROLES:
+        return False
+    try:
+        require_thread(user, thread, manage=True, staff_only=True)
+    except ThreadNotFound:
+        return False
+    return True
+
+
+def eligible_handlers(thread):
+    users = (
+        User.objects.filter(
+            office_staff_candidates(thread), is_active=True, role__code__in=STAFF_ROLES
+        )
+        .select_related("role")
+        .distinct()
+    )
+    return [user for user in users if eligible_handler(user, thread)]
+
+
 def recipient_ids(thread):
     """Finite routing candidates, then the same current content authorization as HTTP."""
     candidates = Q(pk=thread.student_id)
     if thread.kind == ThreadKind.COUNSELING:
         candidates |= Q(pk=thread.counselor_id)
     else:
-        counselors = (
-            User.objects.filter(is_active=True, role__code="COUNSELOR")
-            .filter(
-                Q(
-                    pk__in=CounselorResponsibility.objects.filter(
-                        college_id=thread.routing_college_id
-                    ).values("counselor_id")
-                )
-                | Q(designation_assignments__designation__code="HEAD_GUIDANCE_COUNSELOR")
-            )
-            .values("pk")
-        )
-        candidates |= Q(pk__in=counselors) | Q(
-            pk__in=StaffSupervision.objects.filter(supervisor_id__in=counselors).values("staff_id")
-        )
+        candidates |= office_staff_candidates(thread)
     recipients = []
     for user in (
         User.objects.filter(candidates, is_active=True).select_related("role").distinct().iterator()

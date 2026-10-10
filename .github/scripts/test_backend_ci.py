@@ -17,13 +17,17 @@ def selected(*paths: str) -> backend_ci.Selection:
 
 class SelectionTests(unittest.TestCase):
     def test_guidance_messages_reaches_all_boundaries(self):
-        for path in ("services.py", "policy.py", "content.py", "api.py", "models.py"):
+        for path in ("services.py", "policy.py", "content.py", "api.py", "models.py", "templates.py"):
             result = selected("be/compass/guidance_messages/" + path)
             self.assertFalse(result.full)
             for name in (
                 "test_guidance_messages.py",
                 "test_guidance_messages_concurrency.py",
+                "test_guidance_messages_handlers.py",
                 "test_guidance_messages_realtime.py",
+                "test_guidance_messages_templates.py",
+                "test_capability_dependencies.py",
+                "test_openapi_contract.py",
                 "test_operational_students.py",
                 "test_appointments.py",
                 "test_counseling_context.py",
@@ -32,6 +36,20 @@ class SelectionTests(unittest.TestCase):
             ):
                 self.assertIn(name, result.files)
         self.assertTrue(selected("be/compass/guidance_messages/migrations/0001_initial.py").full)
+        self.assertTrue(
+            selected("be/compass/guidance_messages/migrations/0002_guidance_message_template.py").full
+        )
+
+    def test_staff_operations_policy_and_audit_changes_select_the_full_suite(self):
+        # The template capability lives in identity policy; template audit actions in audit.
+        self.assertTrue(selected("be/compass/accounts/policy.py").full)
+        self.assertTrue(selected("be/compass/audit/actions.py").full)
+
+    def test_new_messages_test_files_run_when_changed(self):
+        for name in ("test_guidance_messages_handlers.py", "test_guidance_messages_templates.py"):
+            result = selected("be/tests/" + name)
+            self.assertFalse(result.full)
+            self.assertIn(name, result.files)
 
     def test_safety_bundle_always_runs(self):
         result = selected("be/docs/decisions/ADR-001-example.md")

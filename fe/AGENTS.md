@@ -408,6 +408,20 @@ Appointment-anchored Counseling workspace and its E-Counseling session, through
   remounted; Messages never touches the call runtime, Daily chat or transcripts.
 * A Counseling Context's expiry does not hide or end its Messages thread.
 
+Staff operations (ADR-104): Office handler assignment and Message templates.
+
+* `assigned_to` is workflow ownership, never access. Offer assignment only for Office threads to staff
+  with Messages manage, list candidates only from `guidanceMessagesListEligibleHandlers` (never the
+  Accounts directory), assign only after an explicit Assign, and refresh the list when the mutation
+  refuses a stale candidate. Never retry an assignment automatically.
+* A template only prepares text. Insert it through `useMessageComposer.insertTemplate` (blank draft:
+  the template; otherwise after one blank line; never truncate or replace). It is unavailable while a
+  send is in flight or unconfirmed, never creates a `client_message_id`, and the send stays an
+  ordinary Message with no template ID. Students never see templates or call template APIs.
+* `/portal/messages/templates` sits outside the chat layout and needs
+  `guidance_messages.templates.manage`. No merge fields, auto-send, seeds or template persistence
+  outside the QueryClient.
+
 ---
 
 # 11. Global state

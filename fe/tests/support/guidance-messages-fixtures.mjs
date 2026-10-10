@@ -9,6 +9,10 @@ export const STUDENT = { id: "student", display_name: "Maria Santos" };
 export const OTHER_STUDENT = { id: "student-2", display_name: "John Reyes" };
 export const COUNSELOR = { id: "counselor", display_name: "Ana Cruz" };
 export const OTHER_STAFF = { id: "staff-2", display_name: "Lea Ramos" };
+export const LONG_STAFF = {
+  id: "staff-3",
+  display_name: "Maria Consuelo Fernandez-Villanueva de los Santos Bartolome-Ignacio",
+};
 
 export const threadIds = {
   office: "a0000000-0000-4000-8000-000000000001",
@@ -20,7 +24,8 @@ export const threadIds = {
 export const appointmentId = "b0000000-0000-4000-8000-000000000001";
 
 const STUDENT_CAPABILITIES = ["guidance_messages.view_self", "guidance_messages.manage_self"];
-const STAFF_CAPABILITIES = ["guidance_messages.view", "guidance_messages.manage"];
+// The staff baseline: both staff roles may also manage the shared Message templates (ADR-104).
+const STAFF_CAPABILITIES = ["guidance_messages.view", "guidance_messages.manage", "guidance_messages.templates.manage"];
 
 /** A session user with the Messages capabilities its role receives, unless `capabilities` replaces them. */
 export function messagesAccount(role, { capabilities, ...fields } = {}) {
@@ -63,6 +68,18 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
       { id: OTHER_STUDENT.id, display_name: OTHER_STUDENT.display_name, institutional_id: "2026-0002", college: COLLEGE },
     ],
     relationships: [{ appointment_id: appointmentId, counselor: COUNSELOR, starts_at: "2026-10-05T02:00:00Z" }],
+    // Current eligible Office handlers (ADR-104), as the backend's workload check would list them.
+    handlers: [
+      { ...COUNSELOR, role: "COUNSELOR" },
+      { ...OTHER_STAFF, role: "GUIDANCE_SERVICES_STAFF" },
+      { ...LONG_STAFF, role: "GUIDANCE_SERVICES_STAFF" },
+    ],
+    // (payload, thread) => undefined to proceed or { status, body } to refuse an assignment.
+    onAssign: null,
+    // Shared Message templates; `templateAccess` is "manage", "use" (no management) or "none".
+    templates: [],
+    templateAccess: viewerRole === "STUDENT" ? "none" : "manage",
+    nextTemplate: 1,
     // Appointments this viewer may start a Counseling thread for, by Appointment ID → its Student.
     startable: new Map([[appointmentId, STUDENT]]),
     nextThread: 100,
@@ -138,6 +155,69 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
     return reply(body, status);
   }
 
+  // Message templates (ADR-104): plain text, ACTIVE or ARCHIVED, never linked to a Message.
+  async function templates({ reply, url, method, rest, body }) {
+    const forbidden = () => reply(error("permission_denied", "You do not have permission to perform this action."), 403);
+    if (state.templateAccess === "none") return forbidden();
+    const [, id, action] = rest;
+    const found = id ? state.templates.find((item) => item.id === id) : null;
+    const taken = (name, except) => state.templates.some((item) => item.id !== except && item.name.toLowerCase() === name.toLowerCase());
+    const stamp = () => new Date(Date.now() + state.nextTemplate++ * 1000).toISOString();
+    if (method === "GET" && !id) {
+      const status = url.searchParams.get("status") ?? "ACTIVE";
+      if (status === "ARCHIVED" && state.templateAccess !== "manage") return forbidden();
+      const search = (url.searchParams.get("search") ?? "").trim().toLowerCase();
+      const page = Number(url.searchParams.get("page") ?? 1);
+      const size = Number(url.searchParams.get("page_size") ?? 20);
+      const rows = state.templates.filter((item) => item.status === status && (!search || item.name.toLowerCase().includes(search)))
+        .sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase()) || a.id.localeCompare(b.id));
+      return reply({ items: rows.slice((page - 1) * size, page * size), page, page_size: size, has_next: rows.length > page * size });
+    }
+    if (state.templateAccess !== "manage") return forbidden();
+    if (id && !found) return reply(error("guidance_message_template_not_found", "The requested Message template was not found."), 404);
+    if (method === "POST" && !id) {
+      const name = body.name.trim();
+      if (taken(name)) return reply(error("guidance_message_template_name_taken", "A Message template with this name already exists."), 409);
+      const now = stamp();
+      const template = { id: `t0000000-0000-4000-8000-${String(state.nextTemplate).padStart(12, "0")}`, name, body: body.body, status: "ACTIVE", created_at: now, updated_at: now, archived_at: null };
+      state.templates.push(template);
+      return reply(template, 201);
+    }
+    if (method === "PATCH") {
+      if (body.expected_updated_at && body.expected_updated_at !== found.updated_at) {
+        return reply(error("guidance_messages_conflict", "This Message template changed after it was opened."), 409);
+      }
+      if (found.status !== "ACTIVE") return reply(error("guidance_messages_conflict", "Restore this Message template before editing it."), 409);
+      if (body.name && taken(body.name.trim(), found.id)) {
+        return reply(error("guidance_message_template_name_taken", "A Message template with this name already exists."), 409);
+      }
+      if (body.name) found.name = body.name.trim();
+      if (body.body) found.body = body.body;
+      found.updated_at = stamp();
+      return reply(found);
+    }
+    if (method === "POST" && (action === "archive" || action === "restore")) {
+      const archived = action === "archive";
+      if ((found.status === "ARCHIVED") !== archived) {
+        found.status = archived ? "ARCHIVED" : "ACTIVE";
+        found.archived_at = archived ? stamp() : null;
+        found.updated_at = stamp();
+      }
+      return reply(found);
+    }
+    return reply(error("synthetic_unavailable", "No synthetic template route"), 404);
+  }
+
+  function addTemplate({ name, body, status = "ACTIVE" }) {
+    const at = minutesAgo(60 * 24 - state.nextTemplate);
+    const template = {
+      id: `t0000000-0000-4000-8000-${String(state.nextTemplate++).padStart(12, "0")}`,
+      name, body, status, created_at: at, updated_at: at, archived_at: status === "ARCHIVED" ? at : null,
+    };
+    state.templates.push(template);
+    return template;
+  }
+
   async function handler({ route, reply, request, url, pathname, method }) {
     if (!pathname.startsWith("/api/v1/guidance-messages/")) return false;
     const body = request.postData() ? JSON.parse(request.postData()) : null;
@@ -211,10 +291,36 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
       await finishSend(route, reply, status, result);
       return true;
     }
+    if (rest[0] === "templates") {
+      await templates({ reply, url, method, rest, body });
+      return true;
+    }
     if (rest[0] === "threads" && rest[1]) {
       const thread = state.threads.get(rest[1]);
       if (!visible(thread)) { await reply(error("guidance_thread_not_found", "The requested Guidance thread was not found."), 404); return true; }
       const action = rest[2];
+      if (action === "eligible-handlers" || action === "handler") {
+        if (state.viewerRole === "STUDENT" || thread.kind !== "OFFICE") {
+          await reply(error("guidance_thread_not_found", "The requested Guidance thread was not found."), 404);
+          return true;
+        }
+        if (method === "GET") {
+          const search = (url.searchParams.get("search") ?? "").trim().toLowerCase();
+          const page = Number(url.searchParams.get("page") ?? 1);
+          const size = Number(url.searchParams.get("page_size") ?? 20);
+          const rows = state.handlers.filter((item) => !search || item.display_name.toLowerCase().includes(search))
+            .sort((a, b) => a.display_name.toLowerCase().localeCompare(b.display_name.toLowerCase()));
+          await reply({ items: rows.slice((page - 1) * size, page * size), page, page_size: size, has_next: rows.length > page * size });
+          return true;
+        }
+        const outcome = state.onAssign?.(body, thread);
+        if (outcome) { await reply(outcome.body, outcome.status); return true; }
+        const handler = state.handlers.find((item) => item.id === body.handler_id);
+        if (!handler) { await reply(error("invalid_guidance_message_input", "Choose an eligible Guidance handler."), 422); return true; }
+        thread.assigned_to = { id: handler.id, display_name: handler.display_name };
+        await reply(threadResponse(thread));
+        return true;
+      }
       if (method === "GET" && !action) { await reply(threadResponse(thread)); return true; }
       if (method === "GET" && action === "messages") {
         const before = url.searchParams.get("before_sequence");
@@ -270,7 +376,11 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
     sends: () => state.requests.filter((request) => request.method === "POST" && /\/threads\/[^/]+\/messages$/.test(request.pathname)),
     opens: () => state.requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/counseling-thread")),
     contexts: () => state.requests.filter((request) => request.method === "GET" && request.pathname.endsWith("/context")),
-    reads: () => state.requests.filter((request) => request.method === "PATCH"),
+    reads: () => state.requests.filter((request) => request.method === "PATCH" && request.pathname.endsWith("/read")),
+    addTemplate,
+    handlerLists: () => state.requests.filter((request) => request.method === "GET" && request.pathname.endsWith("/eligible-handlers")),
+    assigns: () => state.requests.filter((request) => request.method === "PATCH" && request.pathname.endsWith("/handler")),
+    templateRequests: () => state.requests.filter((request) => request.pathname.includes("/guidance-messages/templates")),
   };
 }
 

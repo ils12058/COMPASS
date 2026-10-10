@@ -1,9 +1,11 @@
-"""Encrypted immutable messages, institutional threads, and private read cursors."""
+"""Encrypted immutable messages, institutional threads, private read cursors, plain templates."""
 
 import uuid
 
 from django.conf import settings
 from django.db import models
+from django.db.models.functions import Length, Lower
+from django.db.models.lookups import LessThanOrEqual
 
 
 class ThreadKind(models.TextChoices):
@@ -156,5 +158,70 @@ class GuidanceThreadReadState(models.Model):
             models.UniqueConstraint(fields=("thread", "user"), name="gm_read_thread_user_unique"),
             models.CheckConstraint(
                 condition=models.Q(last_read_sequence__gte=0), name="gm_read_sequence_nonnegative"
+            ),
+        ]
+
+
+class TemplateStatus(models.TextChoices):
+    ACTIVE = "ACTIVE", "Active"
+    ARCHIVED = "ARCHIVED", "Archived"
+
+
+class GuidanceMessageTemplate(models.Model):
+    """Reusable generic staff wording (ADR-104). It only prepares editable composer text.
+
+    Not a Message and not a Student record: it is never encrypted with the Message keyring, never
+    linked from a GuidanceMessage and never sent by itself. Wording must stay generic.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=120)
+    body = models.TextField()
+    status = models.CharField(
+        max_length=16, choices=TemplateStatus.choices, default=TemplateStatus.ACTIVE
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_guidance_message_templates",
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="updated_guidance_message_templates",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    archived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="archived_guidance_message_templates",
+    )
+    archived_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        default_permissions = ()
+        ordering = (Lower("name"), "id")
+        constraints = [
+            models.UniqueConstraint(Lower("name"), name="gm_template_name_unique_ci"),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(status="ACTIVE", archived_by__isnull=True, archived_at__isnull=True)
+                    | models.Q(
+                        status="ARCHIVED", archived_by__isnull=False, archived_at__isnull=False
+                    )
+                ),
+                name="gm_template_archive_shape",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(name__regex=r"^\s*$"), name="gm_template_name_nonblank"
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(body__regex=r"^\s*$"), name="gm_template_body_nonblank"
+            ),
+            models.CheckConstraint(
+                condition=LessThanOrEqual(Length("body"), 4000), name="gm_template_body_length"
             ),
         ]

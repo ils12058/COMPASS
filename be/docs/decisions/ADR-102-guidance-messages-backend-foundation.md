@@ -1,6 +1,7 @@
 # ADR-102: Guidance Messages backend foundation
 
-Status: Accepted for backend foundation; deployment and frontend are separate reviews.
+Status: Accepted for backend foundation; deployment and frontend are separate reviews. Refined by
+[ADR-104](ADR-104-guidance-messages-staff-operations.md) (eligible handlers, Message templates).
 
 ## Context
 
