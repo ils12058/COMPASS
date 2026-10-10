@@ -46,6 +46,13 @@ def create(world, *, actor=None, name="Office follow-up", body=TEXT):
 
 
 def patch(client, path, payload):
+    # Existing mutation scenarios carry a version; omission is tested with raw PATCH below.
+    if "expected_updated_at" not in payload:
+        row = GuidanceMessageTemplate.objects.filter(pk=path.rsplit("/", 1)[-1]).first()
+        payload = {
+            **payload,
+            "expected_updated_at": (row.updated_at if row else timezone.now()).isoformat(),
+        }
     return client.patch(BASE + path, data=json.dumps(payload), content_type="application/json")
 
 
@@ -70,7 +77,11 @@ def test_baseline_staff_create_edit_archive_and_restore(world, manager):
     actor = getattr(world, manager)
     template = create(world, actor=actor)
     template = templates.update_template(
-        actor=actor, template_id=template.pk, name="Office reply", body="Edited text."
+        expected_updated_at=template.updated_at,
+        actor=actor,
+        template_id=template.pk,
+        name="Office reply",
+        body="Edited text.",
     )
     assert (template.name, template.body, template.updated_by_id) == (
         "Office reply",
@@ -235,10 +246,16 @@ def test_database_constraints_guard_shape_names_and_length(world):
 # Editing, archive and restore.
 def test_update_audits_changed_fields_only_and_skips_no_op(world):
     template = create(world)
-    templates.update_template(actor=world.gss, template_id=template.pk, body=TEXT)
+    templates.update_template(
+        expected_updated_at=template.updated_at, actor=world.gss, template_id=template.pk, body=TEXT
+    )
     assert not AuditEvent.objects.filter(action="guidance_messages.template.updated").exists()
     templates.update_template(
-        actor=world.gss, template_id=template.pk, name="Office reply", body="New text"
+        expected_updated_at=template.updated_at,
+        actor=world.gss,
+        template_id=template.pk,
+        name="Office reply",
+        body="New text",
     )
     event = AuditEvent.objects.get(action="guidance_messages.template.updated")
     assert event.metadata == {
@@ -248,15 +265,24 @@ def test_update_audits_changed_fields_only_and_skips_no_op(world):
     }
     assert "New text" not in json.dumps(event.metadata)
     with pytest.raises(InvalidMessageInput):
-        templates.update_template(actor=world.gss, template_id=template.pk)
+        templates.update_template(
+            expected_updated_at=template.updated_at, actor=world.gss, template_id=template.pk
+        )
     with pytest.raises(TemplateNotFound):
-        templates.update_template(actor=world.gss, template_id=uuid4(), body="x")
+        templates.update_template(
+            expected_updated_at=template.updated_at, actor=world.gss, template_id=uuid4(), body="x"
+        )
 
 
 def test_stale_editor_and_archived_template_cannot_be_overwritten(world):
     template = create(world)
     opened = template.updated_at
-    templates.update_template(actor=world.gss, template_id=template.pk, body="First save")
+    templates.update_template(
+        expected_updated_at=template.updated_at,
+        actor=world.gss,
+        template_id=template.pk,
+        body="First save",
+    )
     client = auth_client(world.counselor)
     stale = patch(
         client,
@@ -274,7 +300,12 @@ def test_stale_editor_and_archived_template_cannot_be_overwritten(world):
     assert current.status_code == 200
     templates.set_template_status(actor=world.counselor, template_id=template.pk, archived=True)
     with pytest.raises(MessagesConflict):
-        templates.update_template(actor=world.counselor, template_id=template.pk, body="Hidden")
+        templates.update_template(
+            expected_updated_at=template.updated_at,
+            actor=world.counselor,
+            template_id=template.pk,
+            body="Hidden",
+        )
     assert patch(client, f"/templates/{uuid4()}", {"body": "x"}).status_code == 404
 
 
@@ -368,15 +399,47 @@ def test_message_written_from_a_template_is_an_ordinary_message(world):
     assert set(latest) == {"id", "sequence", "sender", "body", "created_at"}
     assert latest["body"] == edited
     # Archiving or editing the template never touches what was sent.
-    templates.update_template(actor=world.counselor, template_id=template.pk, body="Changed")
+    templates.update_template(
+        expected_updated_at=template.updated_at,
+        actor=world.counselor,
+        template_id=template.pk,
+        body="Changed",
+    )
     templates.set_template_status(actor=world.counselor, template_id=template.pk, archived=True)
     assert content.read_body(GuidanceMessage.objects.get(pk=message.pk)) == edited
 
 
-def test_naive_expected_timestamp_is_treated_as_stale(world):
+def test_naive_expected_timestamp_is_rejected(world):
     template = create(world)
     naive = (template.updated_at + timedelta(0)).replace(tzinfo=None)
-    with pytest.raises(MessagesConflict):
+    with pytest.raises(InvalidMessageInput):
         templates.update_template(
             actor=world.counselor, template_id=template.pk, body="x", expected_updated_at=naive
+        )
+
+
+@pytest.mark.parametrize("version", [None, "invalid", "2026-10-10T01:00:00"])
+def test_patch_requires_valid_aware_opened_version(world, version):
+    template = create(world)
+    client = auth_client(world.counselor)
+    payload = {"body": "Must not overwrite"}
+    if version is not None:
+        payload["expected_updated_at"] = version
+    response = client.patch(
+        BASE + f"/templates/{template.pk}",
+        data=json.dumps(payload),
+        content_type="application/json",
+    )
+    assert response.status_code == 422
+    template.refresh_from_db()
+    assert template.body == TEXT
+
+
+def test_service_version_cannot_be_omitted_or_null(world):
+    template = create(world)
+    with pytest.raises(TypeError):
+        templates.update_template(actor=world.counselor, template_id=template.pk, body="x")
+    with pytest.raises(InvalidMessageInput):
+        templates.update_template(
+            actor=world.counselor, template_id=template.pk, body="x", expected_updated_at=None
         )

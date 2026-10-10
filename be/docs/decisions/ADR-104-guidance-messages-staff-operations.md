@@ -109,3 +109,10 @@ reminder, rule, AI choice, merge variable or template DSL, and no Task, Case, Fo
 approval workflow. Templates are not added to retention executors (ADR-072) and get no retention
 category. No Notification is sent per Message or template. One migration adds the template table;
 `GuidanceThread`, `GuidanceMessage` and existing Message data are unchanged.
+
+## Subsequent decision
+
+[ADR-105](ADR-105-guidance-work-queue-and-messages-operations.md) adds the read-only Guidance
+staff Work Queue and Messages operational hardening. This decision remains the historical
+foundation; ADR-105 defines the current host-key gate, template version requirement and shared
+Guidance actionable projection.

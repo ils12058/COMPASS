@@ -27,6 +27,7 @@ CURRENT_API_TAGS = frozenset(
         "student-support",
         "reports",
         "overview",
+        "work",
         "good-moral",
         "feedback",
         "graduate-tracer",
@@ -46,6 +47,7 @@ CURRENT_API_TAGS = frozenset(
 )
 OPERATION_ID_PATTERN = re.compile(r"^[a-z][A-Za-z0-9]*$", re.ASCII)
 OPERATION_ID_PREFIXES = {
+    "work": "workQueue",
     "guidance-messages": "guidanceMessages",
     "health": "health",
     "metadata": "system",

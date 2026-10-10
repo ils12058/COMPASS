@@ -21,6 +21,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
+    "workQueueList",
     "guidanceMessagesListThreads",
     "guidanceMessagesRecipientOptions",
     "guidanceMessagesEligibleStudents",
@@ -779,6 +780,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "privacy-governance",
         "realtime",
         "guidance-messages",
+        "work",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -2895,3 +2897,38 @@ def test_guidance_messages_contract_is_private_strict_and_persistent_idempotency
         )
         assert method not in {"delete", "put"}
     assert "body_ciphertext" not in json.dumps(schema)
+
+
+def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
+    schema = _generated_schema()
+    operation = schema["paths"]["/api/v1/work"]["get"]
+    assert operation["operationId"] == "workQueueList"
+    assert set(schema["paths"]["/api/v1/work"]) == {"get"}
+    schemas = schema["components"]["schemas"]
+    assert schemas["WorkKind"]["enum"] == [
+        "GUIDANCE_MESSAGE_REPLY",
+        "ROUTINE_EVALUATION",
+        "GOOD_MORAL_PREPARATION",
+        "GOOD_MORAL_ISSUANCE",
+        "CALL_SLIP_DUE",
+    ]
+    assert schemas["WorkPriority"]["enum"] == ["TIME_SENSITIVE", "ACTION_REQUIRED"]
+    assert schemas["WorkItem"]["additionalProperties"] is False
+    assert set(schemas["WorkItem"]["properties"]) == {
+        "id",
+        "kind",
+        "priority",
+        "source_id",
+        "student",
+        "conversation_kind",
+        "due_at",
+        "waiting_since",
+    }
+    assert schemas["WorkStudent"]["additionalProperties"] is False
+    assert set(schemas["WorkStudent"]["properties"]) == {"id", "display_name"}
+    assert "total" not in schemas["WorkQueueResponse"]["properties"]
+    assert "expected_updated_at" in schemas["GuidanceTemplateUpdateRequest"]["required"]
+    assert (
+        schemas["GuidanceTemplateUpdateRequest"]["properties"]["expected_updated_at"]["type"]
+        == "string"
+    )

@@ -13197,16 +13197,9 @@
             "title": "Body"
           },
           "expected_updated_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Expected Updated At"
+            "format": "date-time",
+            "title": "Expected Updated At",
+            "type": "string"
           },
           "name": {
             "anyOf": [
@@ -13222,6 +13215,9 @@
             "title": "Name"
           }
         },
+        "required": [
+          "expected_updated_at"
+        ],
         "title": "GuidanceTemplateUpdateRequest",
         "type": "object"
       },
@@ -23229,6 +23225,173 @@
         ],
         "title": "WorkCareerChoiceValue",
         "type": "string"
+      },
+      "WorkItem": {
+        "additionalProperties": false,
+        "properties": {
+          "conversation_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThreadKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/WorkKind"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/WorkPriority"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "student": {
+            "$ref": "#/components/schemas/WorkStudent"
+          },
+          "waiting_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting Since"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "priority",
+          "source_id",
+          "student",
+          "conversation_kind",
+          "due_at",
+          "waiting_since"
+        ],
+        "title": "WorkItem",
+        "type": "object"
+      },
+      "WorkKind": {
+        "enum": [
+          "GUIDANCE_MESSAGE_REPLY",
+          "ROUTINE_EVALUATION",
+          "GOOD_MORAL_PREPARATION",
+          "GOOD_MORAL_ISSUANCE",
+          "CALL_SLIP_DUE"
+        ],
+        "title": "WorkKind",
+        "type": "string"
+      },
+      "WorkPriority": {
+        "enum": [
+          "TIME_SENSITIVE",
+          "ACTION_REQUIRED"
+        ],
+        "title": "WorkPriority",
+        "type": "string"
+      },
+      "WorkQueueQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "default": 1,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "default": 20,
+            "maximum": 50,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "title": "WorkQueueQuery",
+        "type": "object"
+      },
+      "WorkQueueResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/WorkItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next",
+          "generated_at"
+        ],
+        "title": "WorkQueueResponse",
+        "type": "object"
+      },
+      "WorkStudent": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "WorkStudent",
+        "type": "object"
       }
     },
     "securitySchemes": {
@@ -54389,6 +54552,88 @@
           "student-support"
         ]
       }
+    },
+    "/api/v1/work": {
+      "get": {
+        "operationId": "workQueueList",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkQueueResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Work Queue List",
+        "tags": [
+          "work"
+        ]
+      }
     }
   },
   "servers": [],
@@ -54524,6 +54769,10 @@
     {
       "description": "Encrypted Guidance Office and Counseling communication.",
       "name": "guidance-messages"
+    },
+    {
+      "description": "Read-only Guidance staff actionable work projection.",
+      "name": "work"
     }
   ]
 }

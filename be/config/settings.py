@@ -597,8 +597,8 @@ if keyring_reuses_secret(
         "another encryption domain or SECRET_KEY"
     )
 
-# Guidance Messages is not provisioned by this backend-only foundation. Missing keys
-# leave unrelated domains usable; confidential read/write fails closed (ADR-102).
+# Worker/beat intentionally remain keyless; confidential read/write fails closed (ADR-102).
+# Live host preflight requires a provisioned Messages key for web deployment (ADR-105).
 _guidance_keys = env("GUIDANCE_MESSAGE_ENCRYPTION_KEYS", "")
 GUIDANCE_MESSAGE_ENCRYPTION_KEYS = (
     parse_fernet_keyring(_guidance_keys, setting="GUIDANCE_MESSAGE_ENCRYPTION_KEYS")

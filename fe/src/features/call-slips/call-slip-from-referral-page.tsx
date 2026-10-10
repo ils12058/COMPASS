@@ -1,5 +1,7 @@
 "use client";
 
+import { workQueueQueryFamily } from "@/features/work-queue/work-queue-data";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -188,6 +190,7 @@ function LinkedCallSlipCreateForm({ referral, onRefresh }: { referral: ReferralD
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getReferralsGetQueryKey(referral.id) }),
         queryClient.invalidateQueries({ queryKey: getCallSlipsListQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: workQueueQueryFamily() }),
       ]);
       router.push(`/portal/call-slips/${slip.id}`);
     } catch (caught) {

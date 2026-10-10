@@ -2,7 +2,7 @@
 
 Current repository target: **23** sources (ADR-102). All older numbered cutover sections
 are historical domain procedures; ADR-085/086 gates continue for the original 22 sources,
-and ADR-102 below adds the web-only Messages secret with optional empty provisioning.
+and ADR-105 requires the web-only Messages host secret before live deployment.
 No implementation merge establishes live readiness.
 
 
@@ -48,7 +48,7 @@ remain trusted. A compromised authorized process can read its own grants.
 | `FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `feedback_confidential_content_encryption_keys` | yes |
 | `WEB_PUSH_PRIVATE_KEY` | `web_push_private_key` | when enabled |
 | `WEB_PUSH_STORAGE_KEY` | `web_push_storage_key` | when enabled |
-| `GUIDANCE_MESSAGE_ENCRYPTION_KEYS` | `guidance_message_encryption_keys` | before Guidance Messages content API use; may be empty for this unprovisioned foundation |
+| `GUIDANCE_MESSAGE_ENCRYPTION_KEYS` | `guidance_message_encryption_keys` | required non-empty by live deployment preflight; web only |
 
 | Service | Explicit grants |
 | --- | --- |
@@ -601,12 +601,13 @@ No scheduled rotation, automatic key deletion or live action is introduced here.
 can decrypt historical content. Never reuse another domain's key, TOTP/Web Push keys or
 `SECRET_KEY`. Maintain a separately protected recovery copy; keep old keys while historical rows
 still require them. New-key writes and old-key reads are covered by rotation compatibility tests.
-This foundation does not introduce a rotation job or rewrite Message content.
+ADR-105 adds explicit ciphertext-only rotation tooling; no scheduled rotation job is introduced.
 
 Live file setting:
 `GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE=/run/secrets/guidance_message_encryption_keys`.
-The optional source file must exist with the same ownership/mode contract as the other sources;
-it can remain empty before provisioning. Missing/empty keyring makes confidential content reads
+The source file must exist, be non-empty, and meet the same ownership/mode contract as the other
+sources before live deployment preflight succeeds. The generic Django setting may remain empty
+in intentionally keyless worker/beat processes. Missing/empty keyring makes confidential content reads
 and writes return `guidance_message_content_unavailable`; structural thread navigation needs no
 key. Malformed configured keys or domain reuse fail startup. This permits unrelated Django
 processes to run without receiving the new key. No plaintext fallback exists.
@@ -617,8 +618,29 @@ it never receives `GUIDANCE_MESSAGE_ENCRYPTION_KEYS`, database credentials, or M
 No frontend/public environment variable carries this secret. Local Django content tests use an
 ephemeral independently generated key, never a deployment key.
 
-Before any future live backend/API activation, provision a real independent keyring through the
-host secret procedure, validate mounts/configuration, migrate, synchronize identity policy, and
-verify authorized encrypted read/write with a synthetic record. Backend and future frontend must
-be reviewed before deployment. This PR does not provision a real key, deploy, seed Messages,
-enable navigation, or adopt a retention duration.
+Before deploying the Messages-enabled web service, an operator must provision
+`/opt/compass/secrets/guidance_message_encryption_keys` through the established protected host
+secret procedure. Keep the secrets directory at `0700` and the regular, non-symlink source at
+`0444` with the deployment's configured ownership. Preflight reports only the known filename and
+safe reason if it is empty. It never prints values, hashes, decoded bytes or content-derived counts.
+Deployment does not generate or provision the key. This phase performs no deployment.
+
+For initial provision, use an independent Fernet key, never `SECRET_KEY` or another domain key.
+Keep the first key primary. During operator-managed rotation, provision `[new, old...]` through
+that same procedure and retain a protected recovery copy. Run:
+
+```sh
+python manage.py rotate_guidance_message_encryption --dry-run --batch-size 100
+python manage.py rotate_guidance_message_encryption --batch-size 100
+python manage.py rotate_guidance_message_encryption --dry-run --batch-size 100
+```
+
+The command verifies schema, thread/Message UUIDs, sequence, sender, payload shape and valid body
+before rotating with the shared MultiFernet mechanics. The real run locks each bounded batch and
+changes only `GuidanceMessage.body_ciphertext`; dry-run writes nothing. Any unreadable row stays
+unchanged, safe failures are capped at twenty, and the command exits nonzero. It creates no Audit,
+Notification or realtime event and preserves all business timestamps and read states. Repeat runs
+are idempotent. Verify zero payloads needing rotation and zero unreadable payloads before removing
+an old key; test historical reads with the new keyring and keep recovery material under the adopted
+operator procedure. Key retirement is deliberate, never automated. Retention remains governed
+separately by ADR-072/102.

@@ -33,6 +33,7 @@ import { getRoutineInterviewsListAssignedQueryKey } from "../src/lib/api/generat
 import { getAppointmentsListMyQueryKey } from "../src/lib/api/generated/appointments/appointments.ts";
 import { getAnnouncementsListPublicQueryKey } from "../src/lib/api/generated/announcements/announcements.ts";
 import { getResourcesListManagedQueryKey, getResourcesListPublicQueryKey } from "../src/lib/api/generated/resources/resources.ts";
+import { getWorkQueueListQueryKey } from "../src/lib/api/generated/work/work.ts";
 import { getAuthGetSessionQueryKey } from "../src/lib/api/generated/auth/auth.ts";
 
 const ok = (data) => ({ data, status: 200, headers: {} });
@@ -441,35 +442,15 @@ function Attention({ user, summary }) {
   return h("ol", null, data.items.map((item) => h("li", { key: item.id }, `${item.title}: ${item.subject ?? ""}`)));
 }
 
-test("Overview previews use each queue's oldest-waiting order and rank across domains by waiting time", () => {
-  const summary = {
-    generated_at: "2026-10-07T00:00:00Z",
-    student: null,
-    platform: null,
-    guidance: {
-      routine_evaluation_pending_count: 1,
-      good_moral_requested_count: 1,
-      good_moral_ready_count: 0,
-      active_call_slip_count: 0,
-      upcoming_managed_appointments_count: 0,
-      upcoming_self_appointments_count: 0,
-    },
-  };
-  const html = render(h(Attention, { user: headCounselor, summary }), {
+test("Guidance Overview preserves the shared Work Queue backend order", () => {
+  const rows = [
+    { id: "good-moral-preparation:g1", kind: "GOOD_MORAL_PREPARATION", priority: "ACTION_REQUIRED", source_id: "g1", student: { id: "s1", display_name: "Waiting Applicant" }, waiting_since: "2026-09-20T00:00:00Z", due_at: null, conversation_kind: null },
+    { id: "routine-evaluation:r1", kind: "ROUTINE_EVALUATION", priority: "ACTION_REQUIRED", source_id: "r1", student: { id: "s2", display_name: "Routine Student" }, waiting_since: "2026-10-05T00:00:00Z", due_at: null, conversation_kind: null },
+  ];
+  const html = render(h(Attention, { user: headCounselor, summary: undefined }), {
     user: headCounselor,
-    seed: (client) => {
-      // Seeded only under the queue orderings: a preview that asked newest-first would find nothing.
-      client.setQueryData(
-        getRoutineInterviewsListAssignedQueryKey({ intake_status: "SUBMITTED", evaluation_status: "DRAFT", ordering: "OLDEST_WAITING", page: 1, page_size: 3 }),
-        page([routineRow("r1", "Routine Student", "2026-10-05T00:00:00Z")], { page_size: 3, ordering: "OLDEST_WAITING" }),
-      );
-      client.setQueryData(
-        getGoodMoralListRequestsQueryKey({ status: "REQUESTED", ordering: "OLDEST_FIRST", page: 1, page_size: 3 }),
-        page([goodMoralRow("g1", "Waiting Applicant", "2026-09-20T00:00:00Z")], { page_size: 3, ordering: "OLDEST_FIRST", filter_options: { form_revisions: [] } }),
-      );
-    },
+    seed: (client) => client.setQueryData(getWorkQueueListQueryKey({ page: 1, page_size: 5 }), page(rows, { page_size: 5, generated_at: "2026-10-10T00:00:00Z" })),
   });
   const order = [...html.matchAll(/<li>([^<]*)<\/li>/g)].map((match) => match[1]);
-  // Routine work is assembled first in code, but the Good Moral request has waited longer.
-  assert.deepEqual(order, ["Good Moral request: Waiting Applicant", "Routine Interview: Routine Student"]);
+  assert.deepEqual(order, ["Prepare Good Moral request: Waiting Applicant", "Review Routine Interview: Routine Student"]);
 });

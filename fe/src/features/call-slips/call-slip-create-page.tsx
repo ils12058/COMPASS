@@ -1,5 +1,7 @@
 "use client";
 
+import { workQueueQueryFamily } from "@/features/work-queue/work-queue-data";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -88,7 +90,8 @@ export function DirectCallSlipCreatePage() {
       const callSlip = response.data;
       intent.current = null;
       setConfirmOpen(false);
-      await queryClient.invalidateQueries({ queryKey: getCallSlipsListQueryKey() });
+      await Promise.all([queryClient.invalidateQueries({ queryKey: getCallSlipsListQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: workQueueQueryFamily() })]);
       router.push(`/portal/call-slips/${callSlip.id}`);
     } catch (caught) {
       if (callSlipErrorCode(caught) === "idempotency_key_conflict") {

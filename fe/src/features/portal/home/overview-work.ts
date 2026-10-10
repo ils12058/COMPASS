@@ -3,21 +3,14 @@
 import { useInventoryGetMyStatus } from "@/lib/api/generated/inventory/inventory";
 import { useExitInterviewsGetMyCurrent } from "@/lib/api/generated/exit-interviews/exit-interviews";
 import { useGraduateTracerGetMyResponse } from "@/lib/api/generated/graduate-tracer/graduate-tracer";
-import { useGoodMoralListRequests } from "@/lib/api/generated/good-moral/good-moral";
 import {
-  GoodMoralOrdering,
-  GoodMoralStatusValue,
   InventoryStatusValue,
-  RoutineEvaluationStatus,
   RoutineIntakeStatus,
-  RoutineInterviewOrdering,
   type OverviewSummaryResponse,
   type UserSummary,
 } from "@/lib/api/generated/model";
-import { useRoutineInterviewsListAssigned, useRoutineInterviewsListMine } from "@/lib/api/generated/routine-interviews/routine-interviews";
+import { useRoutineInterviewsListMine } from "@/lib/api/generated/routine-interviews/routine-interviews";
 import { CompassApiError } from "@/lib/api/errors";
-import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
-import { goodMoralErrorMessage, goodMoralVariantLabel } from "@/features/good-moral/good-moral-shared";
 import { getExitInterviewAccess } from "@/features/exit-interviews/exit-interviews-access";
 import { exitInterviewErrorCode, exitInterviewErrorMessage } from "@/features/exit-interviews/exit-interview-shared";
 import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
@@ -26,13 +19,17 @@ import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { inventoryErrorMessage } from "@/features/inventory/inventory-shared";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { routineErrorMessage } from "@/features/routine-interviews/routine-interviews-shared";
-import { PENDING_ROUTINE_EVALUATIONS, REQUESTED_GOOD_MORAL } from "@/features/portal/home/overview-presentation";
 import {
   AttentionPriority,
   attentionKey,
   rankAttention,
   type AttentionRank,
 } from "@/features/portal/home/overview-attention-ranking";
+
+import { safeQueryData } from "@/features/freshness/query-freshness";
+import { hasWorkQueue } from "@/features/work-queue/work-queue-access";
+import { useWorkQueue } from "@/features/work-queue/work-queue-data";
+import { presentWork } from "@/features/work-queue/work-queue-presentation";
 
 export type OverviewAttentionItem = {
   id: string;
@@ -52,6 +49,8 @@ export type OverviewAttentionData = {
   isPending: boolean;
   isVisible: boolean;
   staleNotices: string[];
+  viewAllWork?: boolean;
+  isCaughtUp?: boolean;
 };
 
 export function shouldShowOverviewAttention(
@@ -98,12 +97,13 @@ export function useOverviewAttention(
   summary: OverviewSummaryResponse | undefined,
 ): OverviewAttentionData {
   const isStudent = user.role === "STUDENT";
-  const isCounselor = user.role === "COUNSELOR";
+  const workEnabled = hasWorkQueue(user);
+  const work = useWorkQueue(user, 1, 5);
+  const workData = safeQueryData(work)?.data;
   const inventoryAccess = getInventoryAccess(user);
   const routineAccess = getRoutineInterviewAccess(user);
   const exitAccess = getExitInterviewAccess(user);
   const graduateAccess = getGraduateTracerAccess(user);
-  const goodMoralAccess = getGoodMoralAccess(user);
 
   const inventoryEnabled = isStudent && inventoryAccess.canManageSelf;
   const studentRoutineCount = summary?.student?.routine_intake_draft_count;
@@ -114,18 +114,6 @@ export function useOverviewAttention(
     studentRoutineCount > 0;
   const exitEnabled = isStudent && exitAccess.canManageSelf && exitAccess.hasStudentWorkspace;
   const graduateEnabled = isStudent && graduateAccess.canManageSelf;
-  const counselorRoutineCount = summary?.guidance?.routine_evaluation_pending_count;
-  const counselorRoutineEnabled =
-    isCounselor &&
-    routineAccess.canViewAssigned &&
-    hasCount(counselorRoutineCount) &&
-    counselorRoutineCount > 0;
-  const goodMoralCount = summary?.guidance?.good_moral_requested_count;
-  const goodMoralEnabled =
-    goodMoralAccess.canViewOperational &&
-    hasCount(goodMoralCount) &&
-    goodMoralCount > 0;
-
   const inventory = useInventoryGetMyStatus({
     query: { enabled: inventoryEnabled, retry: false },
   });
@@ -138,27 +126,6 @@ export function useOverviewAttention(
   const graduateResponse = useGraduateTracerGetMyResponse({
     query: { enabled: graduateEnabled, retry: false },
   });
-  const counselorRoutines = useRoutineInterviewsListAssigned(
-    {
-      intake_status: RoutineIntakeStatus.SUBMITTED,
-      evaluation_status: RoutineEvaluationStatus.DRAFT,
-      // The queue's own order: the evaluations that have waited longest.
-      ordering: RoutineInterviewOrdering.OLDEST_WAITING,
-      page: 1,
-      page_size: 3,
-    },
-    { query: { enabled: counselorRoutineEnabled, retry: false } },
-  );
-  const goodMoralRequests = useGoodMoralListRequests(
-    {
-      status: GoodMoralStatusValue.REQUESTED,
-      // The queue's own order: the requests that have waited longest.
-      ordering: GoodMoralOrdering.OLDEST_FIRST,
-      page: 1,
-      page_size: 3,
-    },
-    { query: { enabled: goodMoralEnabled, retry: false } },
-  );
 
   const items: OverviewAttentionItem[] = [];
   const staleNotices: string[] = [];
@@ -345,99 +312,21 @@ export function useOverviewAttention(
     }
   }
 
-  if (counselorRoutineEnabled) {
-    const records = isAuthorizationFailure(counselorRoutines.error)
-      ? []
-      : counselorRoutines.data?.data.items ?? [];
-    records.slice(0, 3).forEach((routine, position) => {
+  if (workEnabled) {
+    for (const item of workData?.items ?? []) {
       items.push({
-        id: "counselor-routine-" + routine.id,
-        title: "Routine Interview",
-        subject: routine.student.display_name,
-        detail: "Student intake submitted; evaluation not finalized.",
-        href: "/portal/routine-interviews/" + routine.id,
-        actionLabel: "Review Routine Interview",
-        // The evaluation has waited since the Student submitted the intake.
+        id: item.id, ...presentWork(item), subject: item.student.display_name,
         rank: {
-          priority: AttentionPriority.ACTION_REQUIRED,
-          waitingSince: routine.intake_submitted_at,
-          stableKey: attentionKey("counselor-routine", position, routine.id),
+          priority: item.priority === "TIME_SENSITIVE" ? AttentionPriority.TIME_SENSITIVE : AttentionPriority.ACTION_REQUIRED,
+          dueAt: item.due_at, waitingSince: item.waiting_since, stableKey: item.id,
         },
-      });
-    });
-    if (
-      counselorRoutines.isError &&
-      (!counselorRoutines.data || isAuthorizationFailure(counselorRoutines.error))
-    ) {
-      addErrorRow(
-        items,
-        "counselor-routine-unavailable",
-        "Routine evaluation preview",
-        routineErrorMessage(counselorRoutines.error, "Routine evaluation previews could not be loaded."),
-        PENDING_ROUTINE_EVALUATIONS,
-        "Open Routine Interviews",
-        () => void counselorRoutines.refetch(),
-        AttentionPriority.ACTION_REQUIRED,
-      );
-    } else if (counselorRoutines.isError && counselorRoutines.data && !isAuthorizationFailure(counselorRoutines.error)) {
-      staleNotices.push("Routine evaluation previews could not be refreshed. Showing the last confirmed items.");
-    } else if (counselorRoutines.isSuccess && records.length === 0) {
-      items.push({
-        id: "counselor-routine-summary",
-        title: "Routine evaluations pending",
-        detail: "Evaluations may still need review. Open Routine Interviews to check them.",
-        href: PENDING_ROUTINE_EVALUATIONS,
-        actionLabel: "Open Routine Interviews",
-        rank: { priority: AttentionPriority.ACTION_REQUIRED, stableKey: "counselor-routine:999" },
       });
     }
-  }
-
-  if (goodMoralEnabled) {
-    const records = isAuthorizationFailure(goodMoralRequests.error)
-      ? []
-      : goodMoralRequests.data?.data.items ?? [];
-    records.slice(0, 3).forEach((request, position) => {
-      items.push({
-        id: "good-moral-" + request.id,
-        title: "Good Moral request",
-        subject: request.applicant_name,
-        detail: goodMoralVariantLabel(request.variant) + " request",
-        href: "/portal/good-moral/" + request.id,
-        actionLabel: "Review Good Moral request",
-        // A requested certificate has waited since the request.
-        rank: {
-          priority: AttentionPriority.ACTION_REQUIRED,
-          waitingSince: request.created_at,
-          stableKey: attentionKey("good-moral", position, request.id),
-        },
-      });
-    });
-    if (
-      goodMoralRequests.isError &&
-      (!goodMoralRequests.data || isAuthorizationFailure(goodMoralRequests.error))
-    ) {
-      addErrorRow(
-        items,
-        "good-moral-unavailable",
-        "Good Moral request preview",
-        goodMoralErrorMessage(goodMoralRequests.error, "Good Moral request previews could not be loaded."),
-        REQUESTED_GOOD_MORAL,
-        "Open Good Moral",
-        () => void goodMoralRequests.refetch(),
-        AttentionPriority.ACTION_REQUIRED,
-      );
-    } else if (goodMoralRequests.isError && goodMoralRequests.data && !isAuthorizationFailure(goodMoralRequests.error)) {
-      staleNotices.push("Good Moral previews could not be refreshed. Showing the last confirmed items.");
-    } else if (goodMoralRequests.isSuccess && records.length === 0) {
-      items.push({
-        id: "good-moral-summary",
-        title: "Good Moral requests",
-        detail: "Requests may still be awaiting issuance. Open Good Moral to review them.",
-        href: REQUESTED_GOOD_MORAL,
-        actionLabel: "Open Good Moral",
-        rank: { priority: AttentionPriority.ACTION_REQUIRED, stableKey: "good-moral:999" },
-      });
+    if (work.isError && !workData) {
+      addErrorRow(items, "work-unavailable", "My work could not be loaded",
+        "Open My work to retry.", "/portal/work", "Open My work", () => void work.refetch(), AttentionPriority.ACTION_REQUIRED);
+    } else if (work.isError && workData) {
+      staleNotices.push("My work could not be refreshed. Showing the last confirmed items.");
     }
   }
 
@@ -505,14 +394,15 @@ export function useOverviewAttention(
     (studentRoutineEnabled && studentRoutines.isPending) ||
     (exitEnabled && currentExitInterview.isPending) ||
     (graduateEnabled && graduateResponse.isPending) ||
-    (counselorRoutineEnabled && counselorRoutines.isPending) ||
-    (goodMoralEnabled && goodMoralRequests.isPending);
+    (workEnabled && work.isPending);
   const isVisible = shouldShowOverviewAttention(items.length, isPending, staleNotices.length);
 
   return {
-    items: rankAttention(items),
+    items: workEnabled ? items : rankAttention(items),
     isPending,
-    isVisible,
+    isVisible: workEnabled || isVisible,
+    viewAllWork: workEnabled,
+    isCaughtUp: workEnabled && work.isSuccess && workData?.items.length === 0,
     staleNotices: Array.from(new Set(staleNotices)),
   };
 }

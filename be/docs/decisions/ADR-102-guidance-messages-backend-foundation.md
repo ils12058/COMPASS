@@ -120,3 +120,10 @@ PostgreSQL concurrency tests include 20/32 duplicate attempts and distinct concu
 global ordering across threads is claimed. Local real DB/Redis/ASGI socket + authenticated HTTP
 proof complements policy/constraint/encryption/API regression tests. This does not prove a live
 secret/deployment configuration, guarantee realtime delivery, or authorize raw content oversight.
+
+## Subsequent decision
+
+[ADR-105](ADR-105-guidance-work-queue-and-messages-operations.md) adds the read-only Guidance
+staff Work Queue and Messages operational hardening. This decision remains the historical
+foundation; ADR-105 defines the current host-key gate, template version requirement and shared
+Guidance actionable projection.

@@ -226,3 +226,10 @@ The following are out of scope:
   - the applied ordering in the response;
   - a `SortField`, plus headers only where a column is a real reading order;
   - pagination-stability tests.
+
+## Subsequent decision
+
+[ADR-105](ADR-105-guidance-work-queue-and-messages-operations.md) adds the read-only Guidance
+staff Work Queue and Messages operational hardening. This decision remains the historical
+foundation; ADR-105 defines the current host-key gate, template version requirement and shared
+Guidance actionable projection.

@@ -14,6 +14,7 @@ import { templatesQueryFamily } from "@/features/guidance-messages/guidance-mess
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import {
   guidanceMessagesCreateTemplate,
+  guidanceMessagesListTemplates,
   guidanceMessagesUpdateTemplate,
 } from "@/lib/api/generated/guidance-messages/guidance-messages";
 import type { GuidanceTemplateResponse } from "@/lib/api/generated/model";
@@ -49,7 +50,7 @@ function describeSaveError(error: unknown): SaveError {
     return { field: "name", text: "Another template already uses this name. Choose a different name." };
   }
   if (status === 409) {
-    return { field: null, text: "This template changed after you opened it. Close it and open it again to see the current version." };
+    return { field: null, text: "This template changed after you opened it. Review the current version before saving again. Your unsaved text is kept." };
   }
   if (status === 404) return { field: null, text: "This template no longer exists." };
   if (status === 403) return { field: null, text: "Your account can no longer manage Message templates." };
@@ -99,8 +100,8 @@ export function TemplateEditorDialog({
         className="flex max-h-[calc(100dvh-2rem)] max-w-2xl flex-col overflow-hidden p-0"
       >
         <EditorForm
-          // A new key per opened template restarts the form from the saved version.
-          key={template ? `${template.id}:${template.updated_at}` : "new"}
+          // Canonical refreshes keep this opened editor and its unsaved draft intact.
+          key={template?.id ?? "new"}
           template={template}
           confirmingDiscard={confirmingDiscard}
           onDirtyChange={setDirty}
@@ -141,6 +142,10 @@ function EditorForm({
   onCancel: () => void;
   onSaved: (template: GuidanceTemplateResponse) => void;
 }) {
+  const [baseline, setBaseline] = useState(template);
+  const [conflicted, setConflicted] = useState(false);
+  const [latestVersion, setLatestVersion] = useState<GuidanceTemplateResponse | null>(null);
+  const [checkingLatest, setCheckingLatest] = useState(false);
   const queryClient = useQueryClient();
   const nameId = useId();
   const bodyId = useId();
@@ -148,21 +153,21 @@ function EditorForm({
   const bodyErrorId = useId();
   const counterId = useId();
   const privacyId = useId();
-  const [name, setName] = useState(template?.name ?? "");
-  const [body, setBody] = useState(template?.body ?? "");
+  const [name, setName] = useState(baseline?.name ?? "");
+  const [body, setBody] = useState(baseline?.body ?? "");
   const [nameError, setNameError] = useState<string | null>(null);
   const [bodyError, setBodyError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const save = useMutation({
     mutationFn: async (): Promise<GuidanceTemplateResponse> => {
-      if (!template) return (await guidanceMessagesCreateTemplate({ name: name.trim(), body })).data;
+      if (!baseline) return (await guidanceMessagesCreateTemplate({ name: name.trim(), body })).data;
       const changes = {
-        ...(name.trim() !== template.name ? { name: name.trim() } : {}),
-        ...(body !== template.body ? { body } : {}),
-        expected_updated_at: template.updated_at,
+        ...(name.trim() !== baseline.name ? { name: name.trim() } : {}),
+        ...(body !== baseline.body ? { body } : {}),
+        expected_updated_at: baseline.updated_at,
       };
-      return (await guidanceMessagesUpdateTemplate(template.id, changes)).data;
+      return (await guidanceMessagesUpdateTemplate(baseline.id, changes)).data;
     },
     onMutate: () => onPendingChange(true),
     onSettled: () => {
@@ -172,11 +177,12 @@ function EditorForm({
   });
 
   function changed(nextName: string, nextBody: string) {
-    onDirtyChange(template ? nextName.trim() !== template.name || nextBody !== template.body : nextName.trim() !== "" || nextBody.trim() !== "");
+    onDirtyChange(baseline ? nextName.trim() !== baseline.name || nextBody !== baseline.body : nextName.trim() !== "" || nextBody.trim() !== "");
   }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (conflicted) return;
     const problems = { name: templateNameProblem(name), body: templateBodyProblem(body) };
     setNameError(problems.name);
     setBodyError(problems.body);
@@ -185,14 +191,29 @@ function EditorForm({
       document.getElementById(problems.name ? nameId : bodyId)?.focus();
       return;
     }
-    if (template && name.trim() === template.name && body === template.body) {
-      onSaved(template);
+    if (baseline && name.trim() === baseline.name && body === baseline.body) {
+      onSaved(baseline);
       return;
     }
     save.mutate(undefined, {
       onSuccess: onSaved,
       onError: (error) => {
         const described = describeSaveError(error);
+        if (baseline && error instanceof CompassApiError && error.status === 409 && readApiErrorCode(error.body) !== "guidance_message_template_name_taken") {
+          setConflicted(true);
+          setLatestVersion(null);
+          setCheckingLatest(true);
+          void (async () => {
+            // Read the canonical directory separately; never replay the refused mutation.
+            for (let page = 1; page <= 100; page++) {
+              const response = await guidanceMessagesListTemplates({ page, page_size: 50 });
+              const current = response.data.items.find((item) => item.id === baseline.id);
+              if (current) { setLatestVersion(current); return; }
+              if (!response.data.has_next) return;
+            }
+          })().catch(() => setFormError("The current template could not be loaded. Your unsaved text is still here. Close and reopen the editor when you’re ready."))
+            .finally(() => setCheckingLatest(false));
+        }
         if (described.field === "name") {
           setNameError(described.text);
           document.getElementById(nameId)?.focus();
@@ -208,8 +229,20 @@ function EditorForm({
   const showCounter = length >= COUNTER_FROM;
   return (
     <form noValidate onSubmit={submit} className="flex min-h-0 flex-1 flex-col" aria-busy={save.isPending}>
+      {conflicted ? <div role="status" className="max-h-64 shrink-0 space-y-3 overflow-y-auto border-b border-border px-5 py-4 text-sm">
+        <p>This template changed. Your unsaved text is kept below. Review the current version before saving again.</p>
+        {checkingLatest ? <p>Loading the current version…</p> : null}
+        {latestVersion ? <>
+          <p className="font-semibold [overflow-wrap:anywhere]">Current name: {latestVersion.name}</p>
+          <p className="whitespace-pre-wrap [overflow-wrap:anywhere]">{latestVersion.body}</p>
+          <Button type="button" variant="secondary" onClick={() => {
+            setBaseline(latestVersion); setConflicted(false); setFormError(null);
+            onDirtyChange(name.trim() !== latestVersion.name || body !== latestVersion.body);
+          }}>I reviewed it; continue editing my draft</Button>
+        </> : !checkingLatest ? <p>The current active template is unavailable. Close and reopen it to check its status.</p> : null}
+      </div> : null}
       <div className="border-b border-brand-line px-5 pt-5 pb-4">
-        <DialogTitle className="text-lg">{template ? "Edit template" : "Create template"}</DialogTitle>
+        <DialogTitle className="text-lg">{baseline ? "Edit template" : "Create template"}</DialogTitle>
         <p id={privacyId} className="mt-1 text-sm text-muted">
           Templates are shared with Guidance staff. Use general wording only, never a Student&rsquo;s name or details.
         </p>
@@ -292,8 +325,8 @@ function EditorForm({
           <Button variant="secondary" onClick={onCancel} disabled={save.isPending}>
             Cancel
           </Button>
-          <Button type="submit" disabled={save.isPending}>
-            {save.isPending ? "Saving…" : template ? "Save changes" : "Create template"}
+          <Button type="submit" disabled={save.isPending || conflicted}>
+            {save.isPending ? "Saving…" : baseline ? "Save changes" : "Create template"}
           </Button>
         </div>
       )}
