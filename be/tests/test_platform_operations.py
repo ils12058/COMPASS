@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from io import StringIO
 from http.client import HTTPException
+from io import StringIO
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -27,8 +27,8 @@ from compass.platform_ops.diagnostics import (
     derive_overall_status,
     probe_database,
     probe_object_storage,
-    probe_smtp,
     probe_realtime_service,
+    probe_smtp,
 )
 
 
