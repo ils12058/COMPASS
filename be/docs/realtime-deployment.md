@@ -64,6 +64,39 @@ implementation work.
    `POST /api/v1/realtime/tickets` (200), one socket to the API host (101) whose first client
    frame is the `authenticate` frame, a `ready` frame, and no ticket in any URL.
 
+## Platform Operations diagnostics
+
+Authorized operators with the effective `platform_operations.view` capability can inspect
+realtime in the existing **Platform Operations → Environment** and **Health** pages.
+
+- **Environment → Realtime communication** reports the resolved Django
+  `REALTIME_ENABLED` setting and whether a `REDIS_REALTIME_URL` is configured.
+  These are safe configuration booleans, **not** proof of service reachability.
+  Redis connection strings and credentials are never returned.
+- **Health → Realtime communication** performs two short, read-only internal GETs:
+  `http://realtime:8001/api/realtime/v1/health/live` and
+  `http://realtime:8001/api/realtime/v1/health/ready`. The Compose service name
+  resolves on the common internal project network used by `web` and `realtime`.
+  The readiness route checks whether Uvicorn can reach its Redis dependency.
+  Only exact expected JSON responses count as successful health evidence.
+  Each request has a one-second timeout and a 256-byte response-body limit.
+  The HTTP client does not follow redirects, consult proxy environment variables,
+  send credentials, or accept a user-supplied destination.
+- **Disabled** means Django realtime was intentionally switched off and performs
+  no internal HTTP requests; it does not degrade aggregate health.
+  **Healthy** means the internal service and Redis readiness routes responded.
+  **Degraded** means the service answered liveness but explicitly reported
+  Redis readiness unavailable. **Unavailable** means the service could not be
+  contacted or gave an invalid/unexpected response. Enabled realtime degradation
+  marks the aggregated Platform Health result degraded without breaking the HTTP
+  diagnostics endpoint or ordinary application liveness/readiness.
+
+A Healthy service check **does not** establish that Cloudflare forwards WebSocket
+upgrades, that browsers have authenticated active sockets, or that individual
+Notifications/Guidance Messages hints arrived. The frontend build flag is also
+separate from the Django feature flag. Existing HTTP messaging works independently
+of WebSocket hint delivery.
+
 ## Observe
 
 The service logs JSON lines on stdout with only closed codes and counts: `realtime_started`,
