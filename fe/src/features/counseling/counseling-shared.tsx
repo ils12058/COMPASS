@@ -33,9 +33,9 @@ export function counselingErrorCode(error: unknown): string | undefined {
 }
 
 const counselingErrors: Record<string, string> = {
-  permission_denied: "You do not have permission to use this Counseling action.",
-  counseling_resource_not_found: "This counseling record is unavailable to this account.",
-  counseling_invalid_request: "The Counseling request was not valid. Review the information and try again.",
+  permission_denied: "You can't perform this counseling action.",
+  counseling_resource_not_found: "This counseling record is unavailable.",
+  counseling_invalid_request: "Some counseling details need attention. Review them and try again.",
   counseling_invalid_time: "The recorded start and end times are not valid. Review the actual interaction times.",
   counseling_appointment_already_used: "A Counseling Encounter has already been recorded for this Appointment. Refresh the candidates and your encounter list.",
   counseling_appointment_invalid: "This Appointment is no longer eligible for this Counseling action. Refresh the candidates and try again.",
@@ -46,11 +46,11 @@ const counselingErrors: Record<string, string> = {
   counseling_feedback_chronology_conflict: "This completion time cannot be saved because Feedback for this encounter was already made available before the corrected end time.",
   counseling_feedback_provenance_conflict: "This correction cannot be saved because the encounter's Feedback record is inconsistent. The record needs administrative review.",
   counseling_service_not_configured: "Counseling cannot be recorded until the service is set up.",
-  counseling_not_permitted: "You cannot complete this counseling action with this account.",
+  counseling_not_permitted: "You can't perform this counseling action.",
   counseling_context_not_found: "This counseling view is no longer available.",
   current_academic_year_not_configured: "Counseling cannot be recorded until the current academic year is set up.",
   shared_summary_not_found: "No Shared Summary has been drafted yet.",
-  shared_summary_already_published: "This Shared Summary has already been published and is locked from ordinary editing.",
+  shared_summary_already_published: "This shared summary has already been published and can no longer be edited.",
   shared_summary_empty: "Add content before publishing this Shared Summary.",
 };
 
@@ -144,7 +144,7 @@ export function CounselingListSkeleton({ label, framed = true }: { label: string
 
 export function CounselingWorkspaceSkeleton() {
   return (
-    <LoadingRegion label="Loading Counseling context…">
+    <LoadingRegion label="Loading counseling details…">
       <Skeleton className="h-10 w-2/3" />
       <Skeleton className="mt-5 h-32 w-full" />
       <Skeleton className="mt-5 h-72 w-full" />

@@ -28,7 +28,7 @@ export function graduateTracerErrorMessage(error: unknown, fallback: string): st
     case "invalid_graduate_tracer_request":
       return "Review the survey answers and correct the invalid values.";
     case "permission_denied":
-      return "You cannot complete this Graduate Tracer action with this account.";
+      return "You can't perform this Graduate Tracer action.";
     default:
       return fallback;
   }

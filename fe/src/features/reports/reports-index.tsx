@@ -21,7 +21,7 @@ export function ReportsIndex() {
   if (!canAttemptReports(user)) {
     return (
       <WorkspaceUnavailable title="Reports unavailable">
-        Reports are unavailable to this account.
+        You don’t have access to reports.
       </WorkspaceUnavailable>
     );
   }

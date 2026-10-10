@@ -237,7 +237,7 @@ export function EffectiveAvailabilityPreview({
 
       {services.isError && serviceData ? <RefreshFailureNotice onRetry={() => void services.refetch()} retrying={services.isFetching} /> : null}
       {services.isPending && !appliedSearch && !selectedService ? (
-        <AvailabilitySectionSkeleton label="Loading Services…" />
+        <AvailabilitySectionSkeleton label="Loading services…" />
       ) : !serviceData && !services.isPending ? (
         <div className="mt-5">
           <AvailabilityQueryError

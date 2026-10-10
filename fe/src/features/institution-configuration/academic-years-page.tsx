@@ -179,7 +179,7 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
             ) : (
               <>
                 <p className="mt-2 font-semibold text-ink">
-                  No current Academic Year is configured.
+                  The current academic year has not been set.
                 </p>
                 {!canManage ? null : (
                   <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
@@ -191,10 +191,10 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
           </section>
 
             {years.isPending ? (
-              <RowsSkeleton label="Loading Academic Years…" rows={2} />
+              <RowsSkeleton label="Loading academic years…" rows={2} />
             ) : items.length === 0 ? (
               <PanelMessage>
-                No Academic Years have been configured yet.
+                No academic years have been added yet.
               </PanelMessage>
             ) : (
               <ul className="divide-y divide-border">

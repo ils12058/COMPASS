@@ -36,7 +36,7 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
 
   if (!access.isCounselor || !access.canViewAssigned) return <CounselingUnavailable title="Encounter unavailable" />;
   if (query.isPending) return <EncounterDetailSkeleton />;
-  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "This counseling encounter is unavailable to this account.")} onRetry={() => void query.refetch()} /></>;
+  if (query.isError || !encounter) return <><CounselingPageHeading title="Counseling Encounter" back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>} /><CounselingQueryError message={counselingErrorMessage(query.error, "This counseling encounter is unavailable.")} onRetry={() => void query.refetch()} /></>;
 
   return (
     <article>

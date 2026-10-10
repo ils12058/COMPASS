@@ -21,7 +21,7 @@ export function PlatformGate({ children }: { children: ReactNode }) {
 
   return (
     <WorkspaceUnavailable title="Platform Operations unavailable">
-      Platform Operations is unavailable to this account.
+      You don’t have access to Platform Operations.
     </WorkspaceUnavailable>
   );
 }

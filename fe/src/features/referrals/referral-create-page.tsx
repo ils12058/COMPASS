@@ -64,7 +64,7 @@ export function ReferralCreatePage() {
   });
 
   if (!access.canManage) {
-    return <ReferralAccessUnavailable title="Referral recording unavailable" message="Referral management is unavailable to this account." />;
+    return <ReferralAccessUnavailable title="Referral recording unavailable" message="You don’t have access to record referrals." />;
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {

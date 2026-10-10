@@ -205,7 +205,7 @@ export function ECounselingWorkspace({ appointmentId }: { appointmentId: string 
   const { user } = usePortalSession();
   const access = getECounselingAccess(user);
   if (!access.hasWorkspace) {
-    return <WorkspaceUnavailable title="E-Counseling unavailable">This session is unavailable to this account.</WorkspaceUnavailable>;
+    return <WorkspaceUnavailable title="E-Counseling unavailable">This session is unavailable.</WorkspaceUnavailable>;
   }
   return access.isStudent
     ? <StudentWorkspace appointmentId={appointmentId} access={access} />
@@ -363,7 +363,7 @@ function StudentInformation({ appointmentId, available, defaultOpen }: { appoint
   return (
     <DisclosureSection title="Student information" status={status} defaultOpen={defaultOpen}>
       {context.isPending ? (
-        <div aria-busy="true"><span className="sr-only">Loading Student information…</span><Skeleton className="h-10 w-full" /><Skeleton className="mt-3 h-40 w-full" /></div>
+        <div aria-busy="true"><span className="sr-only">Loading student information…</span><Skeleton className="h-10 w-full" /><Skeleton className="mt-3 h-40 w-full" /></div>
       ) : !context.data?.data ? (
         <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Student information couldn’t be loaded. Try again.</Notice>
       ) : (

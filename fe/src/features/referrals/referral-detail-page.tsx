@@ -69,7 +69,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
   const referralData = safeQueryData(referral);
 
   if (!referralAccess.canView) {
-    return <ReferralAccessUnavailable title="Referral unavailable" message="Referral review is unavailable to this account." />;
+    return <ReferralAccessUnavailable title="Referral unavailable" message="You don’t have access to review referrals." />;
   }
   if (referral.isPending) {
     return <ReferralDetailSkeleton />;

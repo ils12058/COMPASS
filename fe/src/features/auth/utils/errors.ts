@@ -2,12 +2,12 @@ import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 
 const ERROR_MESSAGES: Record<string, string> = {
   authentication_failed: "Invalid email or password.",
-  csrf_failed: "Your security token expired. Please submit the form again.",
+  csrf_failed: "The security check expired. Submit the form again.",
   mfa_enrollment_challenge_invalid: "Authenticator setup is no longer available. Restart sign in.",
   mfa_failed: "The verification code could not be verified.",
   password_challenge_invalid: "The security code could not be verified or is no longer valid.",
-  rate_limited: "Too many authentication attempts. Please try again later.",
-  security_unavailable: "Authentication is temporarily unavailable. Please try again.",
+  rate_limited: "Too many attempts. Try again later.",
+  security_unavailable: "Account verification is temporarily unavailable. Try again.",
   security_verification_failed: "The security verification could not be completed.",
 };
 

@@ -120,15 +120,15 @@ export function routineErrorCode(error: unknown): string | undefined {
 }
 
 const routineErrors: Record<string, string> = {
-  permission_denied: "You do not have permission to use this Routine Interview action.",
+  permission_denied: "You can't perform this Routine Interview action.",
   current_academic_year_not_configured:
-    "The current Academic Year is not configured, so a new Routine Interview cannot be started yet.",
+    "A new Routine Interview cannot be started until the current academic year is set up. Contact the Guidance Office administrator.",
   current_student_required:
-    "Only a current Student can start or update a Routine Interview.",
+    "Only current students can start or update a Routine Interview.",
   routine_interview_not_found:
-    "This Routine Interview is unavailable to this account.",
+    "This Routine Interview is unavailable.",
   routine_interview_not_permitted:
-    "This Routine Interview is unavailable to this account.",
+    "This Routine Interview is unavailable.",
   routine_interview_appointment_invalid:
     "This Appointment no longer has a Routine Interview to complete, for example because it was cancelled.",
   routine_interview_closed_by_appointment:
@@ -146,11 +146,11 @@ const routineErrors: Record<string, string> = {
   routine_interview_encounter_conflict:
     "A different Counseling Encounter is already linked to this Routine Interview. The latest details are now shown.",
   routine_interview_form_revision_unsupported:
-    "The configured Routine Interview form revision is not supported for new records.",
+    "The current Routine Interview form can't be used to start a new interview. Contact the Guidance Office administrator.",
   idempotency_key_conflict:
-    "This create attempt no longer matches its original Student, visit type, and delivery mode. Review the choices and submit again.",
+    "This attempt no longer matches the original student, visit type, and delivery mode. Review the choices and submit again.",
   routine_interview_invalid:
-    "The Routine Interview request was not valid. Review the information and try again.",
+    "Some Routine Interview details need attention. Review them and try again.",
 };
 
 export function routineErrorMessage(
@@ -381,7 +381,7 @@ export function RoutineInterviewDetailSkeleton() {
 }
 
 export function RoutineUnavailable({
-  message = "Routine Interviews are unavailable to this account.",
+  message = "You don't have access to Routine Interviews.",
 }: {
   message?: string;
 }) {

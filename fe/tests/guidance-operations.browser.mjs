@@ -6,7 +6,7 @@ import { sessionFor, threadIds, staffWorld, COUNSELOR, STUDENT } from "./support
 
 const { baseURL, check, shown, hidden, finish, noHorizontalOverflow, screenshot } = await createBrowserHarness("guidance-operations");
 const labels = ["Messages awaiting reply", "Routine evaluations pending", "Good Moral needs preparation", "Good Moral ready for issuance", "Call Slips due"];
-const emptyCopy = "No actionable backlog is currently waiting in the workflows available to you.";
+const emptyCopy = "No work is currently waiting for your action.";
 
 function world(role = "COUNSELOR") {
   const state = { account: operationsAccount(role), data: operationsData(role), status: 200, reads: 0, sockets: [] };
@@ -113,7 +113,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN
     assert.equal(await row(page, labels[0]).locator("dd").textContent(), "7");
     state.status = 403;
     await page.getByRole("button", { name: "Retry", exact: true }).click();
-    await shown(page.getByText("Your account can no longer open Guidance operations."));
+    await shown(page.getByText("You don't have access to Guidance Operations."));
     await hidden(page.getByText(labels[0], { exact: true }));
   });
 }
@@ -135,7 +135,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN
     await shown(page.getByText(emptyCopy, { exact: true }));
     state.status = 500;
     await page.evaluate(() => window.dispatchEvent(new Event("focus")));
-    await shown(page.getByText("The last confirmed result showed no actionable backlog in the workflows available to you."));
+    await shown(page.getByText("The last confirmed result showed no work waiting for your action."));
     await hidden(page.getByText(emptyCopy, { exact: true }));
   });
 }

@@ -45,20 +45,20 @@ function OperationsSummary({ user }: { user: UserSummary }) {
   const metrics = data ? presentOperations(data, user) : null;
   const empty = metrics && metrics.backlog.length > 0 && metrics.backlog.every((metric) => metric.count === 0);
   return <section aria-labelledby="guidance-operations-heading" className={`${pageSheetWidth} min-w-0`}>
-    <PageHeader title="Guidance operations" headingId="guidance-operations-heading" description="Current operational workload and schedule within your authorized scope." />
+    <PageHeader title="Guidance operations" headingId="guidance-operations-heading" description="View the work you can act on and the current schedule." />
     {query.isError && data ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
     {query.isPending || !data ? <Panel>
       {query.isPending ? <PanelMessage role="status">Loading Guidance operations…</PanelMessage> : null}
       {query.isError ? <Notice role="alert" tone="warning" action={<Button variant="secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>Retry</Button>}>
-        {forbidden ? "Your account can no longer open Guidance operations." : "Guidance operations could not be loaded. Try again."}
+        {forbidden ? "You don't have access to Guidance Operations." : "Guidance operations could not be loaded. Try again."}
       </Notice> : null}
     </Panel> : null}
     {metrics && data ? <>
       <div className="grid min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
         <Panel aria-labelledby="operations-backlog-heading">
           <PanelHeader title="Actionable backlog" titleId="operations-backlog-heading" />
-          {metrics.backlog.length > 0 ? <MetricList metrics={metrics.backlog} label="Actionable backlog metrics" /> : <PanelMessage>No actionable workflows are available for your account.</PanelMessage>}
-          {empty ? <PanelMessage>{query.isError ? "The last confirmed result showed no actionable backlog in the workflows available to you." : "No actionable backlog is currently waiting in the workflows available to you."}</PanelMessage> : null}
+          {metrics.backlog.length > 0 ? <MetricList metrics={metrics.backlog} label="Actionable backlog metrics" /> : <PanelMessage>No work is available for you to act on.</PanelMessage>}
+          {empty ? <PanelMessage>{query.isError ? "The last confirmed result showed no work waiting for your action." : "No work is currently waiting for your action."}</PanelMessage> : null}
         </Panel>
         {metrics.schedule.length > 0 ? <Panel aria-labelledby="operations-schedule-heading">
           <PanelHeader title="Schedule" titleId="operations-schedule-heading" />

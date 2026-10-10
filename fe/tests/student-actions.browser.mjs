@@ -107,7 +107,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN
     await shown(page.getByText(titles[7], { exact: true }));
     state.status = 403;
     await page.getByRole("button", { name: "Retry", exact: true }).click();
-    await shown(page.getByText("Your account can no longer open My actions."));
+    await shown(page.getByText("You don't have access to My actions."));
     await hidden(page.getByText(titles[7], { exact: true }));
     assert.equal(await page.getByText("You're all caught up.", { exact: true }).count(), 0);
   });

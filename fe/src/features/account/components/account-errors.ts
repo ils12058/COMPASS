@@ -1,7 +1,7 @@
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 
 const messages: Record<string, string> = {
-  csrf_failed: "Your security token expired. Please try again.",
+  csrf_failed: "The security check expired. Try again.",
   email_change_conflict: "That sign-in email is already in use or the pending request changed.",
   email_change_not_found: "The email change request is no longer available. Start again.",
   invalid_email_change_request: "The verification details could not be confirmed. Check the code or start again.",
@@ -10,13 +10,13 @@ const messages: Record<string, string> = {
   mfa_failed: "The authenticator code could not be verified.",
   mfa_not_configured: "Set up an authenticator before continuing.",
   mfa_setup_required: "Set up an authenticator before continuing.",
-  recent_mfa_required: "Recent authenticator verification is required. Verify and try again.",
+  recent_mfa_required: "Verify with your authenticator, then try again.",
   password_change_authentication_failed: "The current password could not be verified.",
   profile_photo_storage_unavailable: "The profile photo could not be updated right now. Your other profile information is still available.",
-  profile_unavailable: "Your profile is temporarily unavailable. Please try again.",
-  rate_limited: "Too many attempts. Please try again later.",
-  security_unavailable: "This security action is temporarily unavailable. Please try again.",
-  security_verification_failed: "Security verification could not be completed. Please try again.",
+  profile_unavailable: "Your profile is temporarily unavailable. Try again.",
+  rate_limited: "Too many attempts. Try again later.",
+  security_unavailable: "This security action is temporarily unavailable. Try again.",
+  security_verification_failed: "Security verification could not be completed. Try again.",
   totp_step_up_required: "An authenticator is required for this action. Manage it from Security.",
 };
 

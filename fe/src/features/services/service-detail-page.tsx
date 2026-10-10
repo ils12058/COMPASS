@@ -297,7 +297,7 @@ export function ServiceDetailPage() {
           <PanelSection title="Service delivery" titleId="service-delivery-heading">
             <p className="mt-3 text-sm text-ink">
               {service.delivery_modes.length === 0
-                ? "No delivery mode configured."
+                ? "No delivery mode has been selected."
                 : serviceDeliveryLabel(service.delivery_modes)}
             </p>
           </PanelSection>

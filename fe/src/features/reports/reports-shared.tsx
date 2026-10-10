@@ -21,8 +21,8 @@ const REPORT_ERROR_COPY: Record<string, string> = {
   report_filter_not_found:
     "A selected report filter could not be found. Review the filters and try again.",
   report_configuration_conflict:
-    "The report cannot be generated because Academic Year configuration is unavailable or conflicting.",
-  invalid_report_filter: "One or more report filters are invalid.",
+    "The report cannot be generated with the current academic-year setup. Contact the institutional administrator.",
+  invalid_report_filter: "Check the report filters and try again.",
   report_document_unavailable: "The Student Profiling PDF is temporarily unavailable.",
   report_workbook_unavailable: "The report XLSX is temporarily unavailable.",
   release_audit_unavailable:

@@ -31,7 +31,7 @@ export function GraduateTracerWorkspacePage({ filters }: { filters: GraduateTrac
 
   return (
     <WorkspaceUnavailable title="Graduate Tracer unavailable">
-      Graduate Tracer is unavailable to this account.
+      You don’t have access to Graduate Tracer.
     </WorkspaceUnavailable>
   );
 }

@@ -377,7 +377,7 @@ export function StudentAffiliationsPage() {
           }
         />
         {list.isPending ? (
-          <TableSkeleton label="Loading Student affiliations…" />
+          <TableSkeleton label="Loading student affiliations…" />
         ) : list.isError ? (
           <PanelQueryError
             error={list.error}
@@ -387,8 +387,8 @@ export function StudentAffiliationsPage() {
         ) : list.data.data.items.length === 0 ? (
           <PanelMessage>
             {hasFilters
-              ? "No Student affiliations match the current filters."
-              : "No Student affiliations are recorded."}
+              ? "No student affiliations match the current filters."
+              : "No student affiliations have been recorded."}
           </PanelMessage>
         ) : (
           <div className={dataTable.scroll}>

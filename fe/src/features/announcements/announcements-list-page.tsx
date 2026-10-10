@@ -164,7 +164,7 @@ export function AnnouncementsListPage() {
               : null}
         />
       {list.isPending ? (
-        <ContentListSkeleton label="Loading Announcements…" />
+        <ContentListSkeleton label="Loading announcements…" />
       ) : !result ? (
         <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>
           {announcementErrorMessage(list.error, "Announcements could not be loaded.")}
@@ -186,10 +186,10 @@ export function AnnouncementsListPage() {
             : hasFilters
               ? search
                 ? status || audience
-                  ? "No Announcements match this search and the selected filters."
-                  : "No Announcements match this search."
-                : "No Announcements match the selected filters."
-              : "No Announcements have been created yet."}
+                  ? "No announcements match this search and the selected filters."
+                  : "No announcements match this search."
+                : "No announcements match the selected filters."
+              : "No announcements have been created yet."}
         </PanelMessage>
       ) : result ? (
           <ul className="divide-y divide-border">

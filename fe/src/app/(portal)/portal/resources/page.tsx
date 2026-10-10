@@ -5,7 +5,7 @@ import { ResourcesListPage } from "@/features/resources/resources-list-page";
 
 export default function Page() {
   return (
-    <Suspense fallback={<ContentListSkeleton label="Loading Resources…" />}>
+    <Suspense fallback={<ContentListSkeleton label="Loading resources…" />}>
       <ResourcesListPage />
     </Suspense>
   );

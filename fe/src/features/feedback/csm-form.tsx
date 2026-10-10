@@ -14,7 +14,7 @@ import { Notice } from "@/components/ui/notice";
 import { Panel, PanelFooter } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
-import { FeedbackFormSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
+import { FeedbackFormSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackSubmissionErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
 import { feedbackSubmitCsm, useFeedbackGetMyOpportunity } from "@/lib/api/generated/feedback/feedback";
 import { CSMCC1Value, CSMCC2Value, CSMCC3Value, CSMClientTypeValue, CSMRatingValue, CSMSexValue, type CSMSubmitRequest } from "@/lib/api/generated/model";
 
@@ -256,7 +256,7 @@ export function CsmForm() {
       } else {
         intentRef.current = null;
         setUncertainIntent(null);
-        setError(feedbackErrorMessage(caught, "Client Satisfaction Measurement could not be submitted."));
+        setError(feedbackSubmissionErrorMessage(caught, "Client Satisfaction Measurement could not be submitted."));
       }
     }
   }

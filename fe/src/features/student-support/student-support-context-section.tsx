@@ -45,7 +45,7 @@ export function StudentSupportContextSection({ studentId }: { studentId: string 
         <div aria-busy="true" className="mt-4 space-y-2">
           <Skeleton className="h-4 w-56" />
           <Skeleton className="h-10 w-full max-w-md" />
-          <p className="sr-only">Loading Student support context…</p>
+          <p className="sr-only">Loading student support information…</p>
         </div>
       ) : context.isError ? (
         <ContextUnavailable error={context.error} onRetry={() => void context.refetch()} />

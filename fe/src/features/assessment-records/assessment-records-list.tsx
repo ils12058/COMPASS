@@ -131,16 +131,16 @@ export function AssessmentListPage() {
               <PageActionLink
                 href="/portal/assessment-records/new"
                 icon={FilePlus2}
-                label="Record result"
-                labelDetail="assessment"
+                label="Record"
+                labelDetail="assessment result"
               />
             ) : null}
             {access.canManageTypes ? (
               <PageActionLink
                 href="/portal/assessment-records/types"
                 icon={Settings2}
-                label="Manage types"
-                labelDetail="assessment"
+                label="Manage"
+                labelDetail="assessment types"
                 variant="secondary"
               />
             ) : null}
@@ -236,7 +236,7 @@ export function AssessmentListPage() {
         ) : data ? (
           <PanelMessage>
             {filtered
-              ? "No Assessment Records match these filters."
+              ? "No assessment records match these filters."
               : "No assessment results have been recorded."}
           </PanelMessage>
         ) : null}

@@ -67,7 +67,7 @@ for (const width of [320, 393, 1440]) {
     if (width === 393 && ["call-detail", "referral-detail", "service-detail", "graduate-detail", "announcement-detail"].includes(name)) await screenshot(page, `${name}-${width}`);
   });
   const assessment = assessmentWorld();
-  for (const [name, route, labels] of [["assessment-list", "/portal/assessment-records", ["Record result assessment", "Manage types assessment"]], ["assessment-detail", `/portal/assessment-records/${recordId}`, ["Edit record assessment"]]]) {
+  for (const [name, route, labels] of [["assessment-list", "/portal/assessment-records", ["Record assessment result", "Manage assessment types"]], ["assessment-detail", `/portal/assessment-records/${recordId}`, ["Edit assessment record"]]]) {
     await check(`${name}-${width}`, route, assessment.options({ viewport }), async (page) => {
       await shown(page.locator("table").or(page.getByText("CONFIDENTIAL-SCORE-88/100", { exact: true })));
       await commands(page, labels);

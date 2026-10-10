@@ -73,7 +73,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
     searchParams.get("notice") === "created" ? "Draft saved." : null,
   );
 
-  if (detail.isPending) return <ContentDetailSkeleton label="Loading Resource…" />;
+  if (detail.isPending) return <ContentDetailSkeleton label="Loading resource…" />;
   if (!detail.data || (detail.isError && !canShowLastKnownData(detail))) {
     return <ResourceUnavailable error={detail.error} onRetry={() => void detail.refetch()} backHref={backHref} />;
   }

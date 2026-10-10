@@ -55,7 +55,7 @@ export function resourceErrorMessage(error: unknown, fallback: string): string {
     case "authentication_required":
       return "Your COMPASS session has ended. Sign in again, then retry.";
     case "permission_denied":
-      return "Resource management is unavailable to this account.";
+      return "You don’t have access to manage resources.";
     case "resource_not_found":
       return "This Resource no longer exists.";
     case "publication_consequence_review_required":

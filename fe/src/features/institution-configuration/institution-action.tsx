@@ -13,13 +13,13 @@ import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 const knownErrors: Record<string, string> = {
   academic_year_not_found: "The selected Academic Year is no longer available.",
   academic_year_conflict:
-    "This Academic Year change conflicts with the current configuration.",
+    "This change conflicts with the current academic-year setup. Review the label and current year before trying again.",
   invalid_academic_year_request:
     "Check the Academic Year label and try again.",
   institutional_form_not_found:
     "The selected Form Family or Form Revision is no longer available.",
   permission_denied:
-    "You cannot make this institutional change with this account.",
+    "You can't make this institutional change.",
 };
 
 export function institutionConfigurationErrorMessage(

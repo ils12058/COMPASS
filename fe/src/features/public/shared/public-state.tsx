@@ -42,7 +42,7 @@ export function PublicSectionError({ message, onRetry }: { message: string; onRe
       role="alert"
       action={
         <Button variant="secondary" onClick={onRetry}>
-          Try again
+          Retry
         </Button>
       }
     >
@@ -58,7 +58,7 @@ export function PublicPageError({ message, onRetry }: { message: string; onRetry
       role="alert"
       action={
         <Button variant="secondary" onClick={onRetry}>
-          Try again
+          Retry
         </Button>
       }
     >

@@ -146,7 +146,7 @@ export function ExitInterviewOperationalList({
                 <option value="">All Academic Years</option>
                 {academicYearId && !selectedYearKnown ? (
                   <option value={academicYearId}>
-                    {academicYears.isPending ? "Loading Academic Year…" : "Selected Academic Year"}
+                    {academicYears.isPending ? "Loading academic year…" : "Selected Academic Year"}
                   </option>
                 ) : null}
                 {years.map((year) => (

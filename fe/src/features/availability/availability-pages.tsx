@@ -288,7 +288,7 @@ export function OfficeAvailabilityPage() {
           <>
             {weekly.isError && canShowLastKnownData(weekly) ? <RefreshFailureNotice onRetry={() => void weekly.refetch()} retrying={weekly.isFetching} /> : null}
             {weekly.isPending ? (
-              <AvailabilitySectionSkeleton label="Loading Office weekly Availability…" />
+              <AvailabilitySectionSkeleton label="Loading office weekly hours…" />
             ) : !weeklyData ? (
               <AvailabilityQueryError
                 error={weekly.error}
@@ -311,7 +311,7 @@ export function OfficeAvailabilityPage() {
           <>
             {exceptions.isError && canShowLastKnownData(exceptions) ? <RefreshFailureNotice onRetry={() => void exceptions.refetch()} retrying={exceptions.isFetching} /> : null}
             {exceptions.isPending ? (
-              <AvailabilitySectionSkeleton label="Loading Office unavailability…" />
+              <AvailabilitySectionSkeleton label="Loading office unavailability…" />
             ) : !exceptionData ? (
               <AvailabilityQueryError
                 error={exceptions.error}
@@ -636,7 +636,7 @@ export function ProviderAvailabilityPage() {
               : null}
         />
         {providers.isPending ? (
-          <RowsSkeleton label="Loading Counselors…" />
+          <RowsSkeleton label="Loading counselors…" />
         ) : !providersData ? (
           <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void providers.refetch()}>Retry</Button>}>
             {availabilityErrorMessage(providers.error, "Counselors could not be loaded.")}
@@ -711,7 +711,7 @@ export function ProviderAvailabilityDetailPage({ providerId }: { providerId: str
   });
   // An unconfirmed eligibility summary cannot enable configuration mutations.
   if (!allowed) return <AvailabilityRouteUnavailable management />;
-  if (summary.isPending) return <AvailabilitySectionSkeleton label="Loading Counselor Availability…" />;
+  if (summary.isPending) return <AvailabilitySectionSkeleton label="Loading counselor availability…" />;
   if (summary.isError || !summary.data) return (
     <section>
       <AvailabilityPageHeading title="Counselor availability" />

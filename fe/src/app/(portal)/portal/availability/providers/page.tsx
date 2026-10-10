@@ -9,7 +9,7 @@ import { ProviderAvailabilityPage } from "@/features/availability/availability-p
 
 export default function Page() {
   return (
-    <Suspense fallback={<AvailabilitySectionSkeleton label="Loading Counselors…" />}>
+    <Suspense fallback={<AvailabilitySectionSkeleton label="Loading counselors…" />}>
       <ProviderAvailabilityPage />
     </Suspense>
   );

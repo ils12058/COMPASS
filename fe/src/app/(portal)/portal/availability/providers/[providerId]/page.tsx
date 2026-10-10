@@ -11,7 +11,7 @@ export default async function Page({ params }: { params: Promise<{ providerId: s
   const { providerId } = await params;
   return (
     <div className={pageSheetWidth}>
-      <Suspense fallback={<AvailabilitySectionSkeleton label="Loading Counselor Availability…" />}>
+      <Suspense fallback={<AvailabilitySectionSkeleton label="Loading counselor availability…" />}>
         <ProviderAvailabilityDetailPage providerId={providerId} />
       </Suspense>
     </div>

@@ -1,5 +1,7 @@
 # UI information hierarchy and product voice
 
+Use the [user-copy guide](user-copy-guide.md) for language conventions and semantic safety.
+
 See [ADR-091](../../be/docs/decisions/ADR-091-ui-information-hierarchy-progressive-disclosure-product-voice.md) and the [page audit](ui-density-audit.md).
 
 Show identity, current state, record content and the next useful action first. Keep warnings and required next steps visible. Classify explanation as state, next action, warning/blocker, consequence, conceptual explanation or input constraint before changing it.

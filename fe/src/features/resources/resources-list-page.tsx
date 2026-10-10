@@ -211,7 +211,7 @@ export function ResourcesListPage() {
               : null}
         />
       {list.isPending ? (
-        <ContentListSkeleton label="Loading Resources…" />
+        <ContentListSkeleton label="Loading resources…" />
       ) : !result ? (
         <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void list.refetch()}>Retry</Button>}>
           {resourceErrorMessage(list.error, "Resources could not be loaded.")}
@@ -233,10 +233,10 @@ export function ResourcesListPage() {
             : hasFilters
               ? search
                 ? advancedCount > 0
-                  ? "No Resources match this search and the selected filters."
-                  : "No Resources match this search."
-                : "No Resources match the selected filters."
-              : "No Resources have been created yet."}
+                  ? "No resources match this search and the selected filters."
+                  : "No resources match this search."
+                : "No resources match the selected filters."
+              : "No resources have been created yet."}
         </PanelMessage>
       ) : result ? (
           <div className={dataTable.scroll}>

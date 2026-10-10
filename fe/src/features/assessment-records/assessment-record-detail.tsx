@@ -41,8 +41,8 @@ export function AssessmentRecordDetailPage({ recordId }: { recordId: string }) {
             <PageActionLink
               href={`/portal/assessment-records/${record.id}/edit`}
               icon={Pencil}
-              label="Edit record"
-              labelDetail="assessment"
+              label="Edit"
+              labelDetail="assessment record"
             />
           ) : undefined
         }

@@ -31,7 +31,7 @@ export function GraduateTracerReportPage() {
   if (!canAttemptReports(user)) {
     return (
       <WorkspaceUnavailable title="Graduate Tracer unavailable">
-        Reports are unavailable to this account.
+        You don’t have access to reports.
       </WorkspaceUnavailable>
     );
   }

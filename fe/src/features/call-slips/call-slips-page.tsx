@@ -164,10 +164,10 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
             {callSlipErrorMessage(slips.error, "Your Call Slips could not be loaded.")}
           </PanelMessage>
         ) : slips.isPending ? (
-          <CallSlipListSkeleton label="Loading My Call Slips…" framed={false} />
+          <CallSlipListSkeleton label="Loading your call slips…" framed={false} />
         ) : items.length === 0 ? (
           <PanelMessage action={hasFilters ? <Link href="/portal/call-slips" className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>
-            {hasFilters ? "No Call Slips match these filters." : "You do not have any Call Slips yet."}
+            {hasFilters ? "No call slips match these filters." : "You do not have any call slips yet."}
           </PanelMessage>
         ) : (
           <ul className="divide-y divide-border">
@@ -313,7 +313,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
           <CallSlipListSkeleton framed={false} />
         ) : items.length === 0 ? (
           <PanelMessage action={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "secondary" })}>Clear filters</Link> : undefined}>
-            {hasFilters ? "No Call Slips match these filters." : "No Call Slips have been recorded."}
+            {hasFilters ? "No call slips match these filters." : "No call slips have been recorded."}
           </PanelMessage>
         ) : (
           <>

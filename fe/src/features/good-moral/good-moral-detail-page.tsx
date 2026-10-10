@@ -12,7 +12,7 @@ export function GoodMoralDetailPage({ requestId }: { requestId: string }) {
 
   if (access.isStudent) {
     if (!access.canViewSelf) {
-      return <GoodMoralUnavailable title="Request unavailable" message="Good Moral request details are unavailable to this account." />;
+      return <GoodMoralUnavailable title="Request unavailable" message="This Good Moral request is unavailable." />;
     }
     return <GoodMoralStudentDetail requestId={requestId} canCancel={access.canRequestSelf} />;
   }
@@ -24,5 +24,5 @@ export function GoodMoralDetailPage({ requestId }: { requestId: string }) {
     return <GoodMoralCounselorDetail requestId={requestId} canManage={access.canManageOperational} canIssue={access.canIssue} canPrepare={access.canPrepare} />;
   }
 
-  return <GoodMoralUnavailable title="Request unavailable" message="Good Moral request details are unavailable to this account." />;
+  return <GoodMoralUnavailable title="Request unavailable" message="This Good Moral request is unavailable." />;
 }

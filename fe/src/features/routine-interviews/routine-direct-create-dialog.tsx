@@ -207,7 +207,7 @@ function DirectCreateForm({ onClose }: { onClose: () => void }) {
             <fieldset className="min-w-0">
             <legend className="mb-2 text-sm font-medium text-ink">Students</legend>
             {candidates.isPending ? (
-              <LoadingRegion label="Loading Students…" className="space-y-2">
+              <LoadingRegion label="Loading students…" className="space-y-2">
                 <Skeleton className="h-16 w-full" />
                 <Skeleton className="h-16 w-full" />
               </LoadingRegion>

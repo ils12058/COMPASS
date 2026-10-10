@@ -83,12 +83,13 @@ export function privacyErrorMessage(
   if (isPrivacyConflictCode(code)) return conflictCopy[code];
   switch (code) {
     case "retention_state_changed":
-      return message || "The retention record changed. Review its current state again.";
+      return "This retention action can't be completed with the current details. Review the rule or case status before trying again.";
     case "invalid_retention_rule":
+      return "Check the rule category, trigger, disposition action, duration, code, label, and policy reference, then try again.";
     case "invalid_disposition_hold":
-      return message || "Review the retention values and try again.";
+      return "Enter an administrative reason of 240 characters or fewer. Do not include sensitive information.";
     case "permission_denied":
-      return "You cannot complete this privacy action with this account.";
+      return "You can't perform this privacy action.";
     case "privacy_record_not_found":
       return "This privacy record is no longer available. Refresh and try again.";
     case "privacy_governance_conflict":

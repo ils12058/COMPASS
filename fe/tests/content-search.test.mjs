@@ -312,7 +312,7 @@ test("managed Announcement search with no matches says so", () => {
     search: "search=zzz&status=DRAFT",
   });
 
-  assert.match(html, /No Announcements match this search and the selected filters\./);
+  assert.match(html, /No announcements match this search and the selected filters\./);
 });
 
 test("managed Resource search composes with every structured filter, including folded ones", () => {

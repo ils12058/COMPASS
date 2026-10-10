@@ -9,7 +9,7 @@ import { StudentAffiliationsPage } from "@/features/organization/student-affilia
 
 export default function Page() {
   return (
-    <Suspense fallback={<TableSkeleton label="Loading Student affiliations…" framed />}>
+    <Suspense fallback={<TableSkeleton label="Loading student affiliations…" framed />}>
       <StudentAffiliationsPage />
     </Suspense>
   );

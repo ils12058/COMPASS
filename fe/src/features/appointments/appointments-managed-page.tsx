@@ -135,7 +135,7 @@ function ManagedAppointmentFilters({
               <option value="">All Services</option>
               {applied.service && !appliedServiceKnown ? (
                 <option value={applied.service}>
-                  {servicesPending ? "Loading Service…" : "Selected Service"}
+                  {servicesPending ? "Loading service…" : "Selected Service"}
                 </option>
               ) : null}
               {serviceOptions.map((service) => (

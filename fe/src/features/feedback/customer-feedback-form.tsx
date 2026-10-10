@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelFooter } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
-import { FeedbackFormSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
+import { FeedbackFormSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackSubmissionErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { feedbackSubmitCustomerFeedback, useFeedbackGetMyOpportunity } from "@/lib/api/generated/feedback/feedback";
 import { CustomerFeedbackAccommodatedByValue, CustomerFeedbackRatingValue, CustomerFeedbackServiceValue, type CustomerFeedbackSubmitRequest } from "@/lib/api/generated/model";
@@ -276,7 +276,7 @@ export function CustomerFeedbackForm() {
       } else {
         intentRef.current = null;
         setUncertainIntent(null);
-        setError(feedbackErrorMessage(caught, "Customer Feedback could not be submitted."));
+        setError(feedbackSubmissionErrorMessage(caught, "Customer Feedback could not be submitted."));
       }
     }
   }

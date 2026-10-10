@@ -73,7 +73,7 @@ export function RoutineInterviewDetailPage({
   if (access.isCounselor && access.canViewAssigned) {
     return <CounselorRoutineDetail routineInterviewId={routineInterviewId} canManage={access.canManageAssigned} />;
   }
-  return <RoutineUnavailable message="This Routine Interview is unavailable to this account." />;
+  return <RoutineUnavailable message="This Routine Interview is unavailable." />;
 }
 
 function StudentRoutineDetail({
