@@ -553,6 +553,22 @@ def _lock_current_student(student: User) -> User:
     return locked
 
 
+def admitted_draft_filter():
+    """Canonical admission predicate for bounded read-only Student draft projections."""
+    from django.db.models import F, Q
+
+    return Q(opportunity__isnull=True) | (
+        Q(
+            opportunity__student_id=F("student_id"),
+            opportunity__academic_year_id=F("academic_year_id"),
+        )
+        & (
+            Q(first_submitted_at__isnull=False)
+            | Q(opportunity__status=ExitInterviewOpportunityStatus.OPEN)
+        )
+    )
+
+
 def _require_draft_admission(item: ExitInterview) -> None:
     # Legacy drafts have no opportunity. Reopened responses use the controlled
     # record lifecycle even though their original opportunity is COMPLETED.

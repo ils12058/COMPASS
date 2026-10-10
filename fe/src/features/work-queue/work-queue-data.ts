@@ -6,7 +6,10 @@ import { useEffect, useRef } from "react";
 import { useRealtimeEvent, useRealtimeStatus } from "@/features/realtime/realtime-provider";
 import { getWorkQueueListQueryKey, useWorkQueueList } from "@/lib/api/generated/work/work";
 import { hasWorkQueue } from "@/features/work-queue/work-queue-access";
+import { useProjectionFocus } from "@/features/freshness/use-projection-focus";
 import type { UserSummary } from "@/lib/api/generated/model";
+
+const workQueryFamily = getWorkQueueListQueryKey();
 
 export const workQueueQueryFamily = () => getWorkQueueListQueryKey();
 
@@ -26,16 +29,7 @@ export function useWorkQueue(user: UserSummary, page = 1, pageSize = 20) {
       refetchOnReconnect: "always",
     },
   });
-  useEffect(() => {
-    if (!enabled) return;
-    const refresh = () => {
-      if (document.visibilityState === "visible" && navigator.onLine) {
-        void client.invalidateQueries({ queryKey: workQueueQueryFamily() });
-      }
-    };
-    window.addEventListener("focus", refresh);
-    return () => window.removeEventListener("focus", refresh);
-  }, [client, enabled]);
+  useProjectionFocus(workQueryFamily, enabled);
   useEffect(() => {
     if (generation > seenGeneration.current && enabled) {
       void client.invalidateQueries({ queryKey: workQueueQueryFamily() });

@@ -324,13 +324,25 @@ def has_student_workspace(student: User) -> bool:
     )
 
 
-def get_my_status(student: User) -> dict[str, object]:
+def get_my_status(student: User, *, structural: bool = False) -> dict[str, object]:
     _validate_student(student)
     year = AcademicYear.objects.filter(is_current=True).first()
-    record = (
-        _summary_queryset().filter(student=student, academic_year=year).first() if year else None
+    records = (
+        ExitInterview.objects.only(
+            "id", "status", "opportunity_id", "first_submitted_at", "last_submitted_at"
+        )
+        if structural
+        else _summary_queryset()
     )
-    opportunity = _queryset().filter(student=student, academic_year=year).first() if year else None
+    opportunities = (
+        ExitInterviewOpportunity.objects.only("id", "status", "source", "opened_at")
+        if structural
+        else _queryset()
+    )
+    record = records.filter(student=student, academic_year=year).first() if year else None
+    opportunity = (
+        opportunities.filter(student=student, academic_year=year).first() if year else None
+    )
     inventory_submitted = bool(
         year
         and StudentInventory.objects.filter(

@@ -1,5 +1,7 @@
 "use client";
 
+import { studentActionsQueryFamily } from "@/features/student-actions/student-actions-data";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -45,6 +47,7 @@ export function ExitInterviewStudentHome({ access }: { access: ExitInterviewAcce
       const result = await start.mutateAsync();
       queryClient.setQueryData(getExitInterviewsGetMineQueryKey(result.data.id), result);
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() }),
         queryClient.invalidateQueries({ queryKey: getExitInterviewsGetMyStatusQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getExitInterviewsListMineQueryKey() }),
       ]);

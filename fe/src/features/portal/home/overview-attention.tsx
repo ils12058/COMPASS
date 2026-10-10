@@ -12,7 +12,8 @@ export function OverviewAttention({ data }: { data: OverviewAttentionData }) {
     <Panel aria-labelledby="overview-attention-heading">
       <PanelHeader title="Needs your attention" titleId="overview-attention-heading" />
       {data.viewAllWork ? <div className="border-b border-border px-4 sm:px-5"><Link href="/portal/work" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">View all work</Link></div> : null}
-      {data.isCaughtUp ? <p className="px-4 py-4 text-sm text-muted sm:px-5">You’re caught up.</p> : null}
+      {data.viewAllActions ? <div className="border-b border-border px-4 sm:px-5"><Link href="/portal/actions" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">View all actions</Link></div> : null}
+      {data.isCaughtUp ? <p className="px-4 py-4 text-sm text-muted sm:px-5">{data.viewAllActions ? "You're all caught up." : "You’re caught up."}</p> : null}
 
       {data.staleNotices.map((notice) => (
         <p key={notice} role="status" className="border-b border-border px-4 py-3 text-sm text-muted sm:px-5">

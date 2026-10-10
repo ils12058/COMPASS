@@ -1,5 +1,7 @@
 "use client";
 
+import { studentActionsQueryFamily } from "@/features/student-actions/student-actions-data";
+
 import { useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -203,6 +205,7 @@ export function ExitInterviewForm({
       setSavedForm(canonical);
       setSaveMessage("Draft saved.");
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() }),
         queryClient.invalidateQueries({ queryKey: getExitInterviewsGetMyCurrentQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getExitInterviewsGetMyStatusQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getExitInterviewsListMineQueryKey() }),
@@ -219,6 +222,7 @@ export function ExitInterviewForm({
       queryClient.setQueryData(getExitInterviewsGetMineQueryKey(detail.id), result);
       setConfirmSubmit(false);
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() }),
         queryClient.invalidateQueries({ queryKey: getExitInterviewsGetMyCurrentQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getExitInterviewsGetMyStatusQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getExitInterviewsListMineQueryKey() }),
@@ -239,6 +243,7 @@ export function ExitInterviewForm({
       return;
     }
     const nextForm = exitInterviewFormFromDetail(canonical);
+    void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
     setForm(nextForm);
     setSavedForm(nextForm);
     setSubmissionUncertain(false);

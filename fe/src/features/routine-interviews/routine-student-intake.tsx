@@ -1,5 +1,7 @@
 "use client";
 
+import { studentActionsQueryFamily } from "@/features/student-actions/student-actions-data";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
@@ -386,6 +388,7 @@ export function RoutineStudentIntakeEditor({
       );
       setConfirmSubmit(false);
       setNotice("Intake submitted. Your responses are now read-only.");
+      void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
       await Promise.all([
         queryClient.invalidateQueries({
           queryKey: getRoutineInterviewsGetMineQueryKey(routineInterviewId),

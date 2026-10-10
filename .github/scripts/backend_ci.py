@@ -133,6 +133,10 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_cross_domain_lifecycle_reconciliation.py",
         ),
     ),
+    "student-actions": (
+        "Read-only Student projection, canonical actionability, privacy and bounded paging.",
+        ("test_student_actions.py", "test_overview.py"),
+    ),
     "work-queue": (
         "Read-only Guidance projection and source authorization/transition regressions.",
         ("test_work_queue.py", "test_overview.py"),
@@ -542,6 +546,15 @@ DOMAINS: dict[str, Area] = {
         ),
         ("test_appointments.py", "test_profiles.py"),
     ),
+    "student_actions": domain(
+        "student_actions",
+        "Projection depends on all eight Student source predicates.",
+        (
+            "student-actions", "inventory", "routine-interviews", "exit-interviews",
+            "graduate-tracer", "referrals-call-slips", "ecounseling", "guidance-messages",
+            "notifications", "identity-access",
+        ),
+    ),
     "work_queue": domain(
         "work_queue",
         "Composition depends on all five domain-owned actionable sources.",
@@ -639,6 +652,15 @@ DOMAINS: dict[str, Area] = {
         ("test_counseling_context.py",),
     ),
 }
+
+# Source policy changes must exercise the sibling Student projection as well.
+for source in (
+    "inventory", "routine_interviews", "exit_interviews", "graduate_tracer",
+    "call_slips", "ecounseling", "guidance_messages", "overview", "appointments",
+    "service_catalog", "counseling",
+):
+    area = DOMAINS[source]
+    DOMAINS[source] = domain(area.name, area.reason, (*area.bundles, "student-actions"), area.tests)
 
 # compass/integrations is split by client: each client is used by different domains.
 INTEGRATIONS: dict[str, Area] = {

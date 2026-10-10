@@ -21719,6 +21719,169 @@
         "title": "StaffSupervisorRequest",
         "type": "object"
       },
+      "StudentActionItem": {
+        "additionalProperties": false,
+        "properties": {
+          "conversation_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ThreadKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due At"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/StudentActionKind"
+          },
+          "pending_count": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pending Count"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/StudentActionPriority"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "waiting_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Waiting Since"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "priority",
+          "source_id",
+          "due_at",
+          "waiting_since",
+          "conversation_kind",
+          "pending_count"
+        ],
+        "title": "StudentActionItem",
+        "type": "object"
+      },
+      "StudentActionKind": {
+        "enum": [
+          "INVENTORY_START",
+          "INVENTORY_CONTINUE",
+          "ROUTINE_INTAKE",
+          "EXIT_INTERVIEW_START",
+          "EXIT_INTERVIEW_CONTINUE",
+          "EXIT_INTERVIEW_CORRECTION",
+          "GRADUATE_TRACER_CONTINUE",
+          "CALL_SLIP_ACTIVE",
+          "ECOUNSELING_CONSENT",
+          "ECOUNSELING_JOIN",
+          "GUIDANCE_MESSAGE_UNREAD"
+        ],
+        "title": "StudentActionKind",
+        "type": "string"
+      },
+      "StudentActionPriority": {
+        "enum": [
+          "TIME_SENSITIVE",
+          "ACTION_REQUIRED",
+          "INCOMPLETE_SELF_SERVICE"
+        ],
+        "title": "StudentActionPriority",
+        "type": "string"
+      },
+      "StudentActionsQuery": {
+        "additionalProperties": false,
+        "properties": {
+          "page": {
+            "default": 1,
+            "maximum": 100,
+            "minimum": 1,
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "default": 20,
+            "maximum": 50,
+            "minimum": 1,
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "title": "StudentActionsQuery",
+        "type": "object"
+      },
+      "StudentActionsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StudentActionItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next",
+          "generated_at"
+        ],
+        "title": "StudentActionsResponse",
+        "type": "object"
+      },
       "StudentAffiliationListResponse": {
         "additionalProperties": false,
         "properties": {
@@ -54475,6 +54638,88 @@
         ]
       }
     },
+    "/api/v1/student-actions": {
+      "get": {
+        "operationId": "studentActionsList",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentActionsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Student Actions List",
+        "tags": [
+          "student-actions"
+        ]
+      }
+    },
     "/api/v1/student-support/students/{student_id}/context": {
       "get": {
         "operationId": "studentSupportGetContext",
@@ -54773,6 +55018,10 @@
     {
       "description": "Read-only Guidance staff actionable work projection.",
       "name": "work"
+    },
+    {
+      "description": "Read-only Student next actions from domain state.",
+      "name": "student-actions"
     }
   ]
 }
