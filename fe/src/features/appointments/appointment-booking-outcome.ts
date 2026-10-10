@@ -39,6 +39,11 @@ export function classifyBookingFailure(caught: unknown): BookingFailure {
     };
   }
   if (caught instanceof CompassApiError) {
+    // A server error or timeout doesn't confirm whether booking completed. The existing
+    // keepIntent recovery is unchanged; only the displayed outcome and Retry label differ.
+    if (caught.status >= 500 || caught.status === 408) {
+      return { step: "review", message: appointmentErrorMessage(caught, BOOKING_UNCONFIRMED), uncertain: true, keepIntent: true };
+    }
     return {
       step: "review",
       message: appointmentErrorMessage(caught, "The Appointment could not be booked."),

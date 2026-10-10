@@ -489,7 +489,7 @@ async function choose(page, name) {
     const initial = await counts();
     await page.getByRole("button", { name: /^Messages/ }).click();
     const surface = page.getByRole("complementary", { name: "Messages" });
-    await shown(surface.getByText("No Messages conversation has started for this Counseling appointment yet."));
+    await shown(surface.getByText("No conversation has started for this counseling appointment yet."));
     await templatesButton(surface).click();
     await picker(page).getByRole("button", { name: "Appointment reminder" }).click();
     await hidden(picker(page));

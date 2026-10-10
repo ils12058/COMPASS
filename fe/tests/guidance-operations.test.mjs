@@ -88,7 +88,7 @@ test("empty wording is constrained to available workflows and leaves schedule co
     else metric.oldest_waiting_since = null;
   }
   const html = render(data);
-  assert.match(html, /No actionable backlog is currently waiting in the workflows available to you\./);
+  assert.match(html, /No work is currently waiting for your action\./);
   assert.doesNotMatch(html, /Office has no|caught up|Oldest waiting|Oldest due/);
   assert.match(html, /Active Call Slips/);
   assert.match(html, /Open My work/);
@@ -98,8 +98,8 @@ test("all-null backlog is not an authorized zero assertion", () => {
   const data = operationsData();
   for (const name of Object.keys(data.backlog)) data.backlog[name] = null;
   const html = render(data);
-  assert.match(html, /No actionable workflows are available for your account/);
-  assert.doesNotMatch(html, /No actionable backlog is currently waiting/);
+  assert.match(html, /No work is available for you to act on/);
+  assert.doesNotMatch(html, /No work is currently waiting for your action/);
 });
 
 test("shared confirmed-mutation invalidation targets just the two staff projections", async () => {

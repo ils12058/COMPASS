@@ -50,7 +50,7 @@ function StudentExitInterviewDetail({
       return (
         <div className="space-y-5">
           <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interviews</Link>
-          <ExitInterviewUnavailable title="Exit Interview unavailable" message="This Exit Interview is unavailable to this account." />
+          <ExitInterviewUnavailable title="Exit Interview unavailable" message="This Exit Interview is unavailable." />
         </div>
       );
     }
@@ -249,5 +249,5 @@ export function ExitInterviewDetailPage({
     return <HeadExitInterviewDetail exitInterviewId={exitInterviewId} canReopen={access.canReopen} />;
   }
 
-  return <ExitInterviewUnavailable title="Exit Interview unavailable" message="Exit Interview review is unavailable to this account." />;
+  return <ExitInterviewUnavailable title="Exit Interview unavailable" message="You don’t have access to review Exit Interviews." />;
 }

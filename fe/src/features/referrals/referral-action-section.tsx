@@ -202,7 +202,7 @@ export function ReferralActionEntry({
           setError("The action was not found after refreshing the Referral. Review the source details and submit again only if the action is still unrecorded.");
         }
       } else {
-        setError(referralErrorMessage(caught, "The Referral source action could not be recorded."));
+        setError(referralErrorMessage(caught, "The referral action could not be recorded."));
       }
     } finally {
       setRecording(false);
@@ -210,7 +210,7 @@ export function ReferralActionEntry({
   }
 
   const actionLabel =
-    actionRows.find((row) => row.type === actionType)?.label ?? "Referral source action";
+    actionRows.find((row) => row.type === actionType)?.label ?? "Referral action";
 
   return (
     <div className="mt-3">
@@ -266,7 +266,7 @@ export function ReferralActionEntry({
       {notice ? <p role="status" className="mt-3 text-sm text-muted">{notice}</p> : null}
       <ConsequentialActionDialog
         open={review !== null}
-        title={review ? `${buttonLabel}?` : "Review source action"}
+        title={review ? `${buttonLabel}?` : "Review referral action"}
         confirmLabel={buttonLabel}
         pendingLabel="Recording…"
         pending={recordPending}
@@ -298,10 +298,10 @@ export function ReferralActionEntry({
               </div>
             </dl>
             <p className="font-semibold text-ink">
-              This source action cannot be edited or deleted after it is recorded.
+              This action cannot be edited or deleted after it is recorded.
             </p>
             {reconcileRequired ? (
-              <p>Refresh the Referral detail before deliberately retrying this source action.</p>
+              <p>Refresh the referral details before deliberately retrying this action.</p>
             ) : null}
           </>
         ) : null}

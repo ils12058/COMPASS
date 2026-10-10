@@ -24,14 +24,14 @@ const knownErrors: Record<string, string> = {
   invalid_maintenance_window:
     "The maintenance window must start in the future and end after it starts.",
   invalid_maintenance_request:
-    "The maintenance request contains a value that is not accepted.",
+    "Some maintenance details need attention. Review them and try again.",
   maintenance_already_enabled: "Maintenance Mode is already active.",
   maintenance_not_enabled: "Manual Maintenance Mode is not active.",
   maintenance_schedule_conflict:
-    "The requested change conflicts with the configured maintenance schedule. Review the current state and try again.",
+    "This change conflicts with the current maintenance schedule. Review the schedule and try again.",
   maintenance_schedule_not_found:
     "The maintenance schedule is no longer available. Refresh the page and try again.",
-  permission_denied: "You do not have permission to perform this Platform action.",
+  permission_denied: "You can't perform this Platform Operations action.",
 };
 
 export function platformErrorMessage(error: unknown, fallback: string): string {

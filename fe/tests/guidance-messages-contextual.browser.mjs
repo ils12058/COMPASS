@@ -141,7 +141,7 @@ for (const [label, role] of [["concealed context", "STUDENT"], ["GSS", "GUIDANCE
   const world = contextualWorld("STUDENT", backend);
   await check("first Message: no thread until the first send, then the same panel shows it", appointmentPath, world.options(), async (page) => {
     await trigger(page).click();
-    await shown(panel(page).getByText("No Messages conversation has started for this Counseling appointment yet."));
+    await shown(panel(page).getByText("No conversation has started for this counseling appointment yet."));
     assert.equal(await history(panel(page)).count(), 0, "No fake bubbles");
     assert.equal(await panel(page).getByRole("link", { name: "Open full conversation" }).count(), 0);
     assert.equal(backend.state.threads.size, 0, "Opening creates nothing");
@@ -427,7 +427,7 @@ for (const role of ["STUDENT", "COUNSELOR"]) {
   const world = contextualWorld("STUDENT", backend);
   await check("an open panel without a thread discovers one another tab started", appointmentPath, world.options({ initScripts: [enableRealtime] }), async (page) => {
     await trigger(page).click();
-    await shown(panel(page).getByText("No Messages conversation has started for this Counseling appointment yet."));
+    await shown(panel(page).getByText("No conversation has started for this counseling appointment yet."));
     await world.ready();
     backend.addThread({ id: THREAD, kind: "COUNSELING", counselor: COUNSELOR, appointment: appointmentId });
     backend.addMessage(THREAD, STUDENT, "Started in another tab");

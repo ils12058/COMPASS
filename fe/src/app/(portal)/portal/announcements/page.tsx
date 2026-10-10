@@ -5,7 +5,7 @@ import { AnnouncementsListPage } from "@/features/announcements/announcements-li
 
 export default function Page() {
   return (
-    <Suspense fallback={<ContentListSkeleton label="Loading Announcements…" />}>
+    <Suspense fallback={<ContentListSkeleton label="Loading announcements…" />}>
       <AnnouncementsListPage />
     </Suspense>
   );

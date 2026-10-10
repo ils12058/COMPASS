@@ -69,7 +69,7 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
       : null,
   );
 
-  if (detail.isPending) return <ContentDetailSkeleton label="Loading Announcement…" />;
+  if (detail.isPending) return <ContentDetailSkeleton label="Loading announcement…" />;
   if (!detail.data || (detail.isError && !canShowLastKnownData(detail))) {
     return <AnnouncementUnavailable error={detail.error} onRetry={() => void detail.refetch()} backHref={backHref} />;
   }

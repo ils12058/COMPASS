@@ -18,7 +18,7 @@ export function ResourceEditPage({ resourceId }: { resourceId: string }) {
   const detail = useResourcesGetManaged(resourceId, { query: { retry: false } });
   const backHref = `/portal/resources/${resourceId}`;
 
-  if (detail.isPending) return <ContentDetailSkeleton label="Loading Resource…" />;
+  if (detail.isPending) return <ContentDetailSkeleton label="Loading resource…" />;
   // A failed refresh keeps the form; its unsaved text stays in place.
   if (!detail.data || (detail.isError && shouldHideResourceData(detail.error))) {
     return <ResourceUnavailable error={detail.error} onRetry={() => void detail.refetch()} />;

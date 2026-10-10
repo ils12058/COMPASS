@@ -29,15 +29,15 @@ import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs
 
 const knownErrors: Record<string, string> = {
   availability_resource_not_found:
-    "The requested Availability record is no longer available.",
+    "This availability record is unavailable.",
   invalid_availability_request:
-    "The Availability request contains a value that is not accepted.",
+    "Some schedule details need attention. Review them and try again.",
   availability_not_applicable:
     "Availability cannot be set for the selected Counselor or Service.",
   availability_conflict:
-    "The Availability change conflicts with the current configuration.",
+    "The schedule is unavailable right now. Try again or contact the institutional administrator.",
   permission_denied:
-    "You do not have permission to use this Availability action.",
+    "You can't perform this availability action.",
 };
 
 export function canUseSelfAvailability(user: {
@@ -108,8 +108,8 @@ function AvailabilityUnavailable({
   return (
     <WorkspaceUnavailable title="Availability unavailable">
       {management
-        ? "Availability administration is unavailable to this account."
-        : "Availability is unavailable to this account."}
+        ? "You don’t have access to manage availability."
+        : "You don’t have access to availability."}
     </WorkspaceUnavailable>
   );
 }
@@ -249,7 +249,7 @@ export function AvailabilityQueryError({
 }
 
 export function AvailabilitySectionSkeleton({
-  label = "Loading Availability…",
+  label = "Loading availability…",
 }: {
   label?: string;
 }) {

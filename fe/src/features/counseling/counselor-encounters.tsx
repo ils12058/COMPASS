@@ -155,7 +155,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
             }) : null}
           />
           {encounters.isPending ? (
-            <CounselingListSkeleton label="Loading My Counseling Encounters…" framed={false} />
+            <CounselingListSkeleton label="Loading your counseling encounters…" framed={false} />
           ) : encounters.isError ? (
             <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void encounters.refetch()}>Retry</Button>}>
               {counselingErrorMessage(encounters.error, "My Counseling Encounters could not be loaded.")}

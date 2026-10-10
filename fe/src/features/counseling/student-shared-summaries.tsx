@@ -50,7 +50,7 @@ export function StudentSharedSummaries({ access }: { access: CounselingAccess })
     <div>
       <CounselingPageHeading title="Counseling summaries" description="View summaries that your Counselor has explicitly shared with you." />
       <Panel aria-label="Published Counseling summaries">
-      {summaries.isPending ? <RowsSkeleton label="Loading published Counseling summaries…" rows={2} /> : summaries.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void summaries.refetch()}>Retry</Button>}>{counselingErrorMessage(summaries.error, "Published Counseling summaries could not be loaded.")}</PanelMessage> : items.length === 0 ? <PanelMessage>No Counseling summaries have been shared with you yet.</PanelMessage> : (
+      {summaries.isPending ? <RowsSkeleton label="Loading shared counseling summaries…" rows={2} /> : summaries.isError ? <PanelMessage role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void summaries.refetch()}>Retry</Button>}>{counselingErrorMessage(summaries.error, "Published Counseling summaries could not be loaded.")}</PanelMessage> : items.length === 0 ? <PanelMessage>No counseling summaries have been shared with you yet.</PanelMessage> : (
         <>
           <ul className="divide-y divide-border" aria-label="Published Counseling summaries">
             {items.map((summary) => (
@@ -83,9 +83,9 @@ export function StudentSharedSummaryDetail({ summaryId }: { summaryId: string })
   const access = getCounselingAccess(user);
   const query = useCounselingGetMySharedSummary(summaryId, { query: { enabled: access.canViewOwnSummaries, retry: false } });
   const summary = query.data?.data;
-  if (!access.canViewOwnSummaries) return <CounselingUnavailable title="Counseling summary unavailable">This shared summary is unavailable to this account.</CounselingUnavailable>;
+  if (!access.canViewOwnSummaries) return <CounselingUnavailable title="Counseling summary unavailable">This shared summary is unavailable.</CounselingUnavailable>;
   if (query.isPending) return <SharedSummaryDetailSkeleton />;
-  if (query.isError || !summary) return <div><CounselingPageHeading title="Counseling summary" back={summariesBackLink} /><CounselingQueryError message={counselingErrorMessage(query.error, "This shared summary is unavailable to this account.")} onRetry={() => void query.refetch()} /></div>;
+  if (query.isError || !summary) return <div><CounselingPageHeading title="Counseling summary" back={summariesBackLink} /><CounselingQueryError message={counselingErrorMessage(query.error, "This shared summary is unavailable.")} onRetry={() => void query.refetch()} /></div>;
 
   return (
     <article className="max-w-4xl">

@@ -114,7 +114,7 @@ function RosterFilters({
               <option value="">Current Academic Year</option>
               {applied.academicYearId && !appliedYearKnown ? (
                 <option value={applied.academicYearId}>
-                  {yearsFailed ? "Selected Academic Year" : "Loading Academic Year…"}
+                  {yearsFailed ? "Selected Academic Year" : "Loading academic year…"}
                 </option>
               ) : null}
               {years.map((year) => (

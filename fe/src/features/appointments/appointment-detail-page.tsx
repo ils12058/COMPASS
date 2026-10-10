@@ -540,7 +540,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           action={<Button variant="secondary" onClick={() => void appointmentQuery.refetch()}>Retry</Button>}
         >
           {notFound
-            ? "This appointment is unavailable to this account."
+            ? "This appointment is unavailable."
             : appointmentErrorMessage(appointmentQuery.error, "Appointment details could not be loaded.")}
         </Notice>
       </section>
@@ -816,7 +816,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       <Panel aria-labelledby="appointment-history-heading">
         <PanelHeader title="Appointment history" titleId="appointment-history-heading" />
         {historyQuery.isPending ? (
-          <RowsSkeleton label="Loading Appointment history…" rows={2} />
+          <RowsSkeleton label="Loading appointment history…" rows={2} />
         ) : historyQuery.isError ? (
           <PanelMessage
             role="alert"

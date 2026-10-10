@@ -103,7 +103,7 @@ function InstitutionalFormsWorkspace({
         </Notice>
       ) : families.isPending && !families.data ? (
         <div className="grid gap-5 lg:grid-cols-[16rem_minmax(0,1fr)]">
-          <RowsSkeleton label="Loading Institutional Form Families…" rows={3} framed />
+          <RowsSkeleton label="Loading institutional form families…" rows={3} framed />
           <div className="rounded-sm border border-brand-line bg-surface-raised px-4 py-4 sm:px-5" aria-hidden="true">
             <Skeleton className="h-6 w-64" />
             <Skeleton className="mt-4 h-16 w-full" />
@@ -177,7 +177,7 @@ function InstitutionalFormsWorkspace({
                 )}
               </PanelMessage>
             ) : revisions.isPending && !revisions.data ? (
-              <RowsSkeleton label="Loading Form Revisions…" rows={2} className="border-t border-border" />
+              <RowsSkeleton label="Loading form revisions…" rows={2} className="border-t border-border" />
             ) : revisionItems.length === 0 ? (
               <PanelMessage className="pt-0">
                 {selectedFamily.configuration_state === FormFamilyConfigurationState.REVISION_NOT_REQUIRED

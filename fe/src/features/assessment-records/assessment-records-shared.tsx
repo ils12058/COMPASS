@@ -23,7 +23,7 @@ export const assessmentContentFields = [
 export function AssessmentUnavailable() {
   return (
     <WorkspaceUnavailable title="Assessment Records unavailable">
-      Your account does not have Assessment Records access.
+      You don’t have access to assessment records.
     </WorkspaceUnavailable>
   );
 }
@@ -45,7 +45,7 @@ export function assessmentErrorMessage(error: unknown): string {
     if (code === "assessment_record_content_unavailable")
       return "The confidential assessment content is unavailable. Contact the Guidance Office administrator.";
     if (error.status === 403)
-      return "Your account no longer has access to these Assessment Records.";
+      return "You don't have access to these assessment records.";
     if (error.status === 404)
       return "The requested Assessment Record is not available.";
     if (error.status === 409)
@@ -86,7 +86,7 @@ export function AssessmentError({
 }
 
 export function AssessmentLoading({ framed = true }: { framed?: boolean }) {
-  return <RowsSkeleton label="Loading Assessment Records" framed={framed} />;
+  return <RowsSkeleton label="Loading assessment records…" framed={framed} />;
 }
 
 export function safeAssessmentDetail<T>(query: {

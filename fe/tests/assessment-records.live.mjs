@@ -18,7 +18,7 @@ try {
   await page.getByRole("button", { name: "Create type", exact: true }).click();
   await page.getByRole("button", { name: "Deactivate Browser Career Aptitude Test", exact: true }).waitFor();
   await page.getByRole("link", { name: "Back to Assessment Records", exact: true }).click();
-  await page.getByRole("link", { name: /Record result/ }).click();
+  await page.getByRole("link", { name: /Record assessment result/ }).click();
   await page.getByRole("radio", { name: new RegExp(fixture.studentName) }).check();
   await page.getByLabel("Assessment Type", { exact: true }).selectOption({ label: "Browser Career Aptitude Test" });
   await page.getByLabel("Administered on", { exact: true }).fill(fixture.today);
@@ -26,7 +26,7 @@ try {
   await page.getByRole("button", { name: "Save record", exact: true }).click();
   await page.waitForURL(/\/assessment-records\/[0-9a-f-]{36}$/);
   await page.getByText("BROWSER-SCORE", { exact: true }).waitFor();
-  await page.getByRole("link", { name: /Edit record/ }).click();
+  await page.getByRole("link", { name: /Edit assessment record/ }).click();
   await page.getByLabel("Score / rating", { exact: true }).fill("BROWSER-CORRECTED");
   await page.getByRole("button", { name: "Save corrections", exact: true }).click();
   await page.waitForURL(/\/assessment-records\/[0-9a-f-]{36}$/);
@@ -35,7 +35,7 @@ try {
   await page.getByRole("link", { name: "Back to Assessment Records", exact: true }).click();
   await page.getByRole("heading", { name: "Assessment Records", exact: true, level: 1 }).waitFor();
   const list = await page.locator("main").innerText(); assert.ok(!list.includes("BROWSER-CORRECTED"));
-  await page.getByRole("link", { name: /Manage types/ }).click();
+  await page.getByRole("link", { name: /Manage assessment types/ }).click();
   await page.getByRole("button", { name: "Deactivate Browser Career Aptitude Test", exact: true }).click();
   await page.getByRole("button", { name: "Deactivate type", exact: true }).click();
   await page.getByRole("button", { name: "Reactivate Browser Career Aptitude Test", exact: true }).waitFor();

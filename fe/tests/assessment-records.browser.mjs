@@ -36,15 +36,15 @@ for (const width of [320, 375, 390, 430, 768, 1440]) {
     world.records[0].interpretation = "LONG-CONFIDENTIAL-".repeat(150);
     await page.reload(); await shown(page.getByText(world.records[0].interpretation, { exact: true }));
     await noHorizontalOverflow(page);
-    await page.getByRole("link", { name: /Edit record/ }).click();
+    await page.getByRole("link", { name: /Edit assessment record/ }).click();
     await shown(page.getByRole("button", { name: "Save corrections" }));
     await noHorizontalOverflow(page);
     await page.getByRole("link", { name: "Back to Assessment Record", exact: true }).click();
     await page.getByRole("link", { name: "Back to Assessment Records", exact: true }).click();
-    await page.getByRole("link", { name: /Record result/ }).click();
+    await page.getByRole("link", { name: /Record assessment result/ }).click();
     await shown(page.getByRole("radio", { name: /Maria Assessment/ })); await noHorizontalOverflow(page);
     await page.getByRole("link", { name: "Back to Assessment Records", exact: true }).click();
-    await page.getByRole("link", { name: /Manage types/ }).click();
+    await page.getByRole("link", { name: /Manage assessment types/ }).click();
     await shown(page.getByRole("button", { name: "Deactivate Career Aptitude Test", exact: true }));
     await noHorizontalOverflow(page);
     await page.getByRole("button", { name: "Deactivate Career Aptitude Test", exact: true }).click();
@@ -74,10 +74,10 @@ for (const path of [root, root + "/new", root + "/types", detail]) {
   const world = assessmentWorld({ account: { ...head(), capabilities: ["assessment_records.view"], designations: [] } });
   await check("View-only Counselor has Records without correction or catalog actions", root, world.options(), async (page) => {
     await shown(page.getByRole("link", { name: "Maria Assessment Student" }));
-    await hidden(page.getByRole("link", { name: /Record result|Manage types/ }));
+    await hidden(page.getByRole("link", { name: /Record assessment result|Manage assessment types/ }));
     await page.getByRole("link", { name: "Maria Assessment Student" }).click();
     await shown(page.getByText(content.result, { exact: true }));
-    await hidden(page.getByRole("link", { name: /Edit record/ }));
+    await hidden(page.getByRole("link", { name: /Edit assessment record/ }));
   });
 }
 {
@@ -91,7 +91,7 @@ for (const path of [root, root + "/new", root + "/types", detail]) {
   const world = assessmentWorld({ records: [] });
   await check("Empty catalog and empty record list remain usable", root, world.options(), async (page) => {
     await shown(page.getByText("No assessment results have been recorded."));
-    world.types = []; await page.reload(); await shown(page.getByText("No assessment results have been recorded.")); await page.getByRole("link", { name: /Record result/ }).click();
+    world.types = []; await page.reload(); await shown(page.getByText("No assessment results have been recorded.")); await page.getByRole("link", { name: /Record assessment result/ }).click();
     await shown(page.getByText(/No active Assessment Types/));
     await page.getByLabel("Score / rating", { exact: true }).fill("draft source");
     assert.equal(await page.getByLabel("Score / rating", { exact: true }).getAttribute("type"), null);
@@ -125,7 +125,7 @@ for (const status of [403, 404, 500]) {
     const search = page.getByRole("searchbox", { name: "Search Students or Assessment Types" });
     await search.fill("No match"); await page.waitForTimeout(300);
     assert.equal(requests.filter((item) => item.pathname === "/api/v1/assessment-records").length, before);
-    await search.press("Enter"); await shown(page.getByText("No Assessment Records match these filters."));
+    await search.press("Enter"); await shown(page.getByText("No assessment records match these filters."));
     assert.equal(await search.inputValue(), "No match");
     await page.getByRole("button", { name: /Filters/ }).click();
     await page.getByLabel("Administered from").fill("2020-02-02");

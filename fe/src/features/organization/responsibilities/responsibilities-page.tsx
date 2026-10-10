@@ -305,7 +305,7 @@ export function ResponsibilitiesPage() {
           />
         ) : collegeRows.length === 0 ? (
           <PanelMessage>
-            No College Counselor responsibilities are configured.
+            No college counselor responsibilities have been assigned.
           </PanelMessage>
         ) : (
           <div className={dataTable.scroll}>
@@ -412,7 +412,7 @@ export function ResponsibilitiesPage() {
           />
         ) : supervisions.data.data.items.length === 0 ? (
           <PanelMessage>
-            No Staff supervision relationships are configured.
+            No staff supervision relationships have been assigned.
           </PanelMessage>
         ) : (
           <div className={dataTable.scroll}>

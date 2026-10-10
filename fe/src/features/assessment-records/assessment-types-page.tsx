@@ -238,7 +238,7 @@ function AssessmentTypeCatalog({
             </div>
           ) : (
             <PanelMessage>
-              No Assessment Types have been configured.
+              No assessment types have been added yet.
             </PanelMessage>
           )}
         </Panel>

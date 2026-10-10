@@ -17,7 +17,7 @@ export function OrganizationGate({ children }: { children: ReactNode }) {
     children
   ) : (
     <WorkspaceUnavailable title="Organization unavailable">
-      Organization management is unavailable to this account.
+      You don’t have access to manage organization records.
     </WorkspaceUnavailable>
   );
 }
@@ -28,7 +28,7 @@ export function OrganizationStructureGate({ children }: { children: ReactNode })
     children
   ) : (
     <WorkspaceUnavailable title="Organization structure unavailable">
-      Campus, college, and program information is unavailable to this account.
+      You don’t have access to campus, college, and program information.
     </WorkspaceUnavailable>
   );
 }

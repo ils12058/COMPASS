@@ -152,6 +152,6 @@ test("refresh failure retains confirmed data but authority failure hides it", ()
 
 test("typed export failure reports the backend bound and audit failure without raw errors", () => {
   assert.match(activityErrorMessage(apiError(422, "privacy_activity_export_too_large", "More than 10,000 events match. Narrow the filters."), "fallback"), /10,000/);
-  assert.match(activityErrorMessage(apiError(503, "release_audit_unavailable", "The required export audit could not be recorded."), "fallback"), /export audit/);
+  assert.match(activityErrorMessage(apiError(503, "release_audit_unavailable", "The required export audit could not be recorded."), "fallback"), /required privacy audit/);
   assert.equal(activityErrorMessage(apiError(500, "unknown", "PRIVATE TRACE"), "CSV could not be exported."), "CSV could not be exported.");
 });

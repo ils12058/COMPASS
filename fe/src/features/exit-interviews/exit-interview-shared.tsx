@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { ExitInterviewOrdering, type ExitInterviewStatusValue } from "@/lib/api/generated/model";
 import type { SortOption } from "@/components/ui/sort-field";
 
@@ -49,17 +49,19 @@ export function exitInterviewErrorMessage(
     case "current_student_required":
       return "Only current students can start, edit, or submit an Exit Interview.";
     case "current_academic_year_not_configured":
-      return "A current Academic Year is not configured. Contact the institutional administrator.";
+      return "The current academic year has not been set up. Contact the institutional administrator.";
     case "exit_interview_not_submitted":
       return "This Exit Interview is currently a draft and is not available for Head Guidance review until the Student submits it.";
     case "exit_interview_opportunity_required":
+      return "The Guidance and Counseling Office needs to open an Exit Interview for you first.";
     case "exit_interview_opportunity_not_open":
+      return "Your Exit Interview access is no longer open. Contact the Guidance and Counseling Office.";
     case "exit_interview_opportunity_conflict":
-      return readApiErrorMessage(error.body) ?? fallback;
+      return "This Exit Interview access action can't be completed with the current details. Review the access record or contact the Guidance and Counseling Office.";
     case "exit_interview_conflict":
       return "The Exit Interview changed before this action completed. Refresh the record and review its current status.";
     case "permission_denied":
-      return "You cannot complete this Exit Interview action with this account.";
+      return "You can't perform this Exit Interview action.";
     default:
       return fallback;
   }
@@ -155,7 +157,7 @@ export function ExitInterviewField({
 
 export function ExitInterviewUnavailable({
   title = "Exit Interview unavailable",
-  message = "This Exit Interview is unavailable to this account.",
+  message = "This Exit Interview is unavailable.",
 }: {
   title?: string;
   message?: string;

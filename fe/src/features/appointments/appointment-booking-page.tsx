@@ -370,7 +370,7 @@ function BookingWorkspace() {
             <div aria-busy="true" className="mt-4 space-y-3">
               <Skeleton className="h-16 w-full" />
               <Skeleton className="h-16 w-full" />
-              <p className="sr-only">Loading Appointment Services…</p>
+              <p className="sr-only">Loading appointment services…</p>
             </div>
           ) : bookingServices.isError ? (
             <div role="alert" className="mt-4">
@@ -440,7 +440,7 @@ function BookingWorkspace() {
         {service && deliveryMode ? (
           <PanelSection title="3. Choose a Counselor" titleId="booking-counselor-heading">
             {counselors.isPending ? (
-              <LoadingRegion label="Loading Counselors…">
+              <LoadingRegion label="Loading counselors…">
                 <Skeleton className="h-10 w-full max-w-xl" />
               </LoadingRegion>
             ) : counselors.isError ? (

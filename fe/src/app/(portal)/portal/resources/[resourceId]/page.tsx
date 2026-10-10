@@ -15,7 +15,7 @@ export default async function Page({
   const { resourceId } = await params;
   return (
     <div className={pageSheetWidth}>
-      <Suspense fallback={<ContentDetailSkeleton label="Loading Resource…" />}>
+      <Suspense fallback={<ContentDetailSkeleton label="Loading resource…" />}>
         <ResourceDetailPage key={resourceId} resourceId={resourceId} />
       </Suspense>
     </div>

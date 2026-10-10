@@ -811,6 +811,9 @@ children), not in a separate row after it.
 
 # 23. Product copy
 
+Follow [the user-copy guide](docs/user-copy-guide.md) for canonical writing, accessible action
+names, code-based errors, uncertain outcomes, and controlled institutional wording boundaries.
+
 COMPASS is university operational software, not SaaS marketing copy.
 
 Write for the actual user and task.

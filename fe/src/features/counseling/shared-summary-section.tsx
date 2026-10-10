@@ -84,7 +84,7 @@ export function SharedSummarySection({
     <Panel aria-labelledby="shared-summary-heading">
       <PanelHeader title="Shared Summary" titleId="shared-summary-heading" />
       <div className="px-4 py-4 *:first:mt-0 sm:px-5">
-      {summaryQuery.isPending ? <p aria-busy="true" className="mt-3 text-sm text-muted">Loading Shared Summary…</p> : summaryQuery.isError && !absent ? <p role="alert" className="mt-3 text-sm text-danger">{counselingErrorMessage(summaryQuery.error, "Shared Summary could not be loaded.")}</p> : summary?.published_at ? (
+      {summaryQuery.isPending ? <p aria-busy="true" className="mt-3 text-sm text-muted">Loading shared summary…</p> : summaryQuery.isError && !absent ? <p role="alert" className="mt-3 text-sm text-danger">{counselingErrorMessage(summaryQuery.error, "Shared Summary could not be loaded.")}</p> : summary?.published_at ? (
         <div className="mt-4">
           <p className="text-sm font-semibold text-success">Published to Student · {formatCounselingDateTime(summary.published_at)}</p>
           <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-7 text-ink">{summary.content}</div>

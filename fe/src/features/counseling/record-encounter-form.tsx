@@ -292,7 +292,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
               <Button type="submit" variant="secondary">Search</Button>
             </div>
           </form>
-          {appointmentCandidates.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Counseling Appointment candidates…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : appointmentCandidates.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(appointmentCandidates.error, "Counseling Appointments could not be loaded.")}</p> : appointments.length === 0 ? <p className="text-sm text-muted">No eligible Counseling Appointments match this search.</p> : (
+          {appointmentCandidates.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading counseling appointments…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : appointmentCandidates.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(appointmentCandidates.error, "Counseling Appointments could not be loaded.")}</p> : appointments.length === 0 ? <p className="text-sm text-muted">No eligible counseling appointments match this search.</p> : (
             <>
               <ul className="divide-y divide-border rounded-sm border border-border" aria-label="Counseling Appointment candidates">
                 {appointments.map((candidate) => (
@@ -316,7 +316,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
       {!preset && source === "direct" ? (
         <div className="space-y-5 px-4 py-4 sm:px-5">
           {creationOptions.isPending ? <div aria-busy="true"><Skeleton className="h-12 w-full" /></div> : creationOptions.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(creationOptions.error, "Counseling recording options could not be loaded.")}</p> : options ? (
-            <div><p className="text-sm text-muted">Service: <span className="font-medium text-ink">{options.service.name}</span></p>{options.delivery_modes.length === 0 ? <p role="status" className="mt-2 text-sm text-warning">No delivery mode is currently configured for this Counseling Service.</p> : null}</div>
+            <div><p className="text-sm text-muted">Service: <span className="font-medium text-ink">{options.service.name}</span></p>{options.delivery_modes.length === 0 ? <p role="status" className="mt-2 text-sm text-warning">No delivery mode is available for this counseling service.</p> : null}</div>
           ) : null}
           <form className="grid gap-2 sm:max-w-xl" onSubmit={(event) => { event.preventDefault(); setStudentQuery(studentSearch.trim()); setPage(1); setSelectedStudentId(""); setSelectedStudentRecord(null); setStartedAt(""); setEndedAt(""); setError(null); }}>
             <Label htmlFor="counseling-student-search">Search for a Student</Label>
@@ -325,7 +325,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
               <Button type="submit" variant="secondary">Search</Button>
             </div>
           </form>
-          {students.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading Student candidates…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : students.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(students.error, "Student candidates could not be loaded.")}</p> : studentItems.length === 0 ? <p className="text-sm text-muted">No students match this search.</p> : (
+          {students.isPending ? <div aria-busy="true" className="space-y-2"><span className="sr-only">Loading students…</span><Skeleton className="h-16 w-full" /><Skeleton className="h-16 w-full" /></div> : students.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(students.error, "Student candidates could not be loaded.")}</p> : studentItems.length === 0 ? <p className="text-sm text-muted">No students match this search.</p> : (
             <>
               <ul className="divide-y divide-border rounded-sm border border-border" aria-label="Student candidates">
                 {studentItems.map((student) => (
@@ -351,7 +351,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
               <div className="grid gap-2">
                 <Label htmlFor="counseling-delivery-mode">Delivery mode</Label>
                 <Select id="counseling-delivery-mode" value={selectedDeliveryMode} onChange={(event) => setDeliveryMode(event.target.value as DeliveryMode)} disabled={submitting || options.delivery_modes.length === 1}>
-                  {options.delivery_modes.length === 0 ? <option value="">No delivery mode configured</option> : null}
+                  {options.delivery_modes.length === 0 ? <option value="">No delivery mode available</option> : null}
                   {options.delivery_modes.map((mode) => <option key={mode} value={mode}>{counselingDeliveryModeLabel(mode)}</option>)}
                 </Select>
               </div>

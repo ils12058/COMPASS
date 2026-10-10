@@ -95,14 +95,14 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
     case "graduated_student_required":
       return "This request is available only to graduates.";
     case "good_moral_configuration_conflict":
-      return "This certificate cannot be issued because its approved document configuration is not currently available.";
+      return "This certificate cannot be issued because its approved setup is unavailable. Contact the Guidance Office administrator.";
     case "good_moral_document_unavailable":
     case "release_audit_unavailable":
       return "The certificate could not be released right now. Try again later.";
     case "idempotency_key_conflict":
       return "This request attempt no longer matches its original details.";
     case "permission_denied":
-      return "You cannot complete this Good Moral action with this account.";
+      return "You can't perform this Good Moral action.";
     default:
       return fallback;
   }
@@ -168,7 +168,7 @@ export function GoodMoralHeading({
 
 export function GoodMoralUnavailable({
   title = "Good Moral unavailable",
-  message = "Good Moral is unavailable to this account.",
+  message = "You don’t have access to Good Moral.",
 }: {
   title?: string;
   message?: string;

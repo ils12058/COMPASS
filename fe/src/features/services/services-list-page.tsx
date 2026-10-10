@@ -256,8 +256,8 @@ export function ServicesListPage() {
           {hasFilters
             ? "No services match the current search or filters."
             : canManage && includeInactive
-              ? "No Services are configured yet."
-              : "No active Services are currently available."}
+              ? "No services have been added yet."
+              : "No active services are currently available."}
         </PanelMessage>
       ) : (
           <ul className="divide-y divide-border">

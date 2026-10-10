@@ -104,7 +104,7 @@ export function InventoryQueryError({
         <p>{inventoryErrorMessage(error, fallback)}</p>
         {onRetry ? (
           <Button variant="secondary" onClick={onRetry}>
-            Try again
+            Retry
           </Button>
         ) : null}
       </div>
@@ -119,13 +119,13 @@ export function inventoryErrorMessage(error: unknown, fallback: string): string 
 
   switch (code) {
     case "current_academic_year_not_configured":
-      return "The current Academic Year has not been configured yet. Your Individual Inventory cannot be started or submitted until the Guidance and Counseling Office completes this setup.";
+      return "Your Individual Inventory cannot be started or submitted until the current academic year is set up. Contact the Guidance and Counseling Office.";
     case "inventory_form_revision_not_configured":
-      return "The official Individual Inventory Form Revision has not been configured for this COMPASS version. Please contact the Guidance and Counseling Office.";
+      return "The current Individual Inventory form is unavailable. Contact the Guidance and Counseling Office.";
     case "current_student_required":
       return "Only current students can start, edit, or submit this year’s Individual Inventory. Your saved history remains available.";
     case "inventory_conflict":
-      return "This Individual Inventory changed before your action completed.";
+      return "This action cannot be completed with the current inventory details. Review your answers and inventory status before trying again.";
     case "inventory_invalid":
       return "Some required Individual Inventory details need attention. Review the form and try submitting again.";
     case "psgc_reference_unavailable":

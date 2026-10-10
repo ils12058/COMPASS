@@ -242,7 +242,7 @@ export function StudentProfileFilters({
           </Select>
           <p id="report-academic-year-state" className="text-xs text-muted">
             {academicYearsLoading
-              ? "Loading Academic Years…"
+              ? "Loading academic years…"
               : academicYearsError
                 ? "Academic Year choices could not be loaded."
                 : "Leaving this blank resolves the current Academic Year."}
@@ -289,7 +289,7 @@ export function StudentProfileFilters({
             </div>
           ) : scope.is_global && campusesLoading ? (
             <p id="report-campus-state" role="status" className="text-xs text-muted">
-              Loading Campuses…
+              Loading campuses…
             </p>
           ) : null}
         </div>
@@ -330,7 +330,7 @@ export function StudentProfileFilters({
             </div>
           ) : scope.is_global && collegesLoading ? (
             <p id="report-college-state" role="status" className="text-xs text-muted">
-              Loading Colleges…
+              Loading colleges…
             </p>
           ) : null}
         </div>
@@ -360,7 +360,7 @@ export function StudentProfileFilters({
             {!draft.college_id
               ? "Select a College first."
               : programs.isPending
-                ? "Loading Programs…"
+                ? "Loading programs…"
                 : programs.isError
                   ? "Program choices could not be refreshed."
                   : "Inactive Programs remain available for historical reports."}

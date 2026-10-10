@@ -55,7 +55,7 @@ export function DirectCallSlipCreatePage() {
   });
 
   if (!access.canManageOperational) {
-    return <CallSlipAccessUnavailable title="Call Slip issuance unavailable" message="Call Slip management is unavailable to this account." />;
+    return <CallSlipAccessUnavailable title="Call Slip issuance unavailable" message="You don’t have access to issue call slips." />;
   }
 
   function prepare(event: FormEvent<HTMLFormElement>) {

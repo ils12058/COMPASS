@@ -37,12 +37,12 @@ const knownErrors: Record<string, string> = {
     "Booking is unavailable until the current academic year is set up for this service.",
   current_inventory_required:
     "Submit your Individual Inventory for the current academic year before booking this service.",
-  appointment_not_found: "This appointment is unavailable to this account.",
-  invalid_appointment_request: "The Appointment request contains a value that is not accepted.",
+  appointment_not_found: "This appointment is unavailable.",
+  invalid_appointment_request: "Some appointment details need attention. Review them and try again.",
   appointment_default_provider_unresolved:
-    "A Counselor could not be resolved. Choose an eligible Counselor and try again.",
+    "A counselor could not be selected. Choose an eligible counselor and try again.",
   appointment_default_provider_not_qualified:
-    "Your default Counselor does not provide this Service. Choose one of the listed Counselors.",
+    "Your default counselor does not provide this service. Choose one of the listed counselors.",
   appointment_time_unavailable: "That time was just taken. Choose another available time.",
   appointment_time_conflict: "That time was just taken. Choose another available time.",
   appointment_lifecycle_conflict:
@@ -62,8 +62,8 @@ const knownErrors: Record<string, string> = {
   idempotency_unavailable:
     "Booking could not be safely verified. Keep the same booking details and try again.",
   idempotency_key_conflict:
-    "This booking attempt no longer matches its original request. Review the details and submit again.",
-  permission_denied: "You do not have permission to use this Appointment action.",
+    "This booking attempt no longer matches its original details. Review them and submit again.",
+  permission_denied: "You can't perform this appointment action.",
 };
 
 export function appointmentErrorCode(error: unknown): string | undefined {
@@ -233,14 +233,14 @@ export function AppointmentsLocalNavigation() {
 }
 
 export function AppointmentListSkeleton({ framed = true }: { framed?: boolean }) {
-  return <RowsSkeleton label="Loading Appointments…" framed={framed} />;
+  return <RowsSkeleton label="Loading appointments…" framed={framed} />;
 }
 
 export function AppointmentDetailSkeleton() {
   return (
     <>
       <AppointmentsLocalNavigation />
-      <LoadingRegion label="Loading Appointment details…">
+      <LoadingRegion label="Loading appointment details…">
         <Skeleton className="h-9 w-2/5" />
         <Skeleton className="mt-5 h-24 w-full" />
         <Skeleton className="mt-5 h-48 w-full" />

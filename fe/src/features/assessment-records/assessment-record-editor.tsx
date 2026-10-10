@@ -279,7 +279,7 @@ function AssessmentRecordForm({ record }: { record?: AssessmentRecordDetail }) {
                   </Select>
                   {types.isPending ? (
                     <p role="status" className="mt-2 text-sm text-muted">
-                      Loading Assessment Types…
+                      Loading assessment types…
                     </p>
                   ) : types.isError ? (
                     <p role="alert" className="mt-2 text-sm text-danger">

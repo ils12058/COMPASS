@@ -43,12 +43,12 @@ import { Notice } from "@/components/ui/notice";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 
 const knownErrors: Record<string, string> = {
-  permission_denied: "You do not have permission to use this Services action.",
-  service_not_found: "The requested Service is no longer available.",
+  permission_denied: "You can't perform this service action.",
+  service_not_found: "This service is unavailable.",
   service_catalog_conflict:
-    "The Service configuration conflicts with the current Service Catalog rules.",
+    "These service settings conflict with the current catalog. Review them and try again.",
   invalid_service_catalog_request:
-    "The Service request contains a value that is not accepted by the Service Catalog.",
+    "Some service details need attention. Review them and try again.",
   canonical_service_reserved:
     "The COUNSELING code is reserved for the Counseling Service that COMPASS provides. Use a different Service code.",
   canonical_service_required:
@@ -218,7 +218,7 @@ export function ServicesGate({ children }: { children: ReactNode }) {
     children
   ) : (
     <WorkspaceUnavailable title="Services unavailable">
-      Service management is unavailable to this account.
+      You don’t have access to manage services.
     </WorkspaceUnavailable>
   );
 }
@@ -367,12 +367,12 @@ export function ServicesQueryError({
 }
 
 export function ServicesListSkeleton({ framed = true }: { framed?: boolean }) {
-  return <RowsSkeleton label="Loading Services…" rows={5} framed={framed} />;
+  return <RowsSkeleton label="Loading services…" rows={5} framed={framed} />;
 }
 
 export function ServicesDetailSkeleton() {
   return (
-    <LoadingRegion label="Loading Service…" className="space-y-7">
+    <LoadingRegion label="Loading service…" className="space-y-7">
       <Skeleton className="h-12 w-72 max-w-full" />
       <Skeleton className="h-20 w-full" />
       <Skeleton className="h-36 w-full" />

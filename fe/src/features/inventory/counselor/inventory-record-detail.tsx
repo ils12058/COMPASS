@@ -83,7 +83,7 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
     return (
       <section className="space-y-5">
         <InventoryHeading title="Submitted Individual Inventory" back={<Link href="/portal/inventory" className={pageBackLinkClass}>Back to roster</Link>} />
-        <InventoryQueryError error={record.error} fallback="This Individual Inventory could not be found or is not available within your authorized scope." />
+        <InventoryQueryError error={record.error} fallback="This Individual Inventory is unavailable." />
       </section>
     );
   }

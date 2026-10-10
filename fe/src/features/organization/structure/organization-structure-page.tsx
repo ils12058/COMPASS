@@ -70,7 +70,7 @@ export function OrganizationStructurePage() {
 
       {campusItems.length === 0 ? (
         <Notice>
-          No Organization structure is available.
+          No organization structure is available.
         </Notice>
       ) : (
         <ol className="space-y-5">

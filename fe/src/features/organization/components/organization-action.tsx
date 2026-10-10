@@ -14,12 +14,12 @@ import {
 } from "@/lib/api/errors";
 
 const knownErrors: Record<string, string> = {
-  permission_denied: "You do not have permission to manage Organization.",
-  organization_not_found: "The selected Organization record is no longer available.",
+  permission_denied: "You can't manage organization records.",
+  organization_not_found: "This organization record is unavailable.",
   organization_conflict:
-    "This change conflicts with an existing Organization relationship or active structure.",
+    "This change conflicts with an existing assignment or active organization structure. Review the details and try again.",
   invalid_organization_request:
-    "The selected Organization value is no longer eligible for this action.",
+    "The selected organization record cannot be used for this action. Review your selection and try again.",
 };
 
 export function organizationErrorMessage(

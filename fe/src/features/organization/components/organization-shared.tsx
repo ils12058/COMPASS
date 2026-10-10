@@ -123,7 +123,7 @@ export function PanelQueryError({
 }
 
 export function TableSkeleton({
-  label = "Loading Organization records…",
+  label = "Loading organization records…",
   framed = false,
 }: {
   label?: string;

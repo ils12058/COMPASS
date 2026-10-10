@@ -384,7 +384,7 @@ function ContextualPanel({
       ) : (
         // No thread exists until the first Message is confirmed; nothing here pretends otherwise.
         <div className="flex min-h-0 flex-1 items-end px-4 py-4">
-          <p className="text-sm text-muted">No Messages conversation has started for this Counseling appointment yet.</p>
+          <p className="text-sm text-muted">No conversation has started for this counseling appointment yet.</p>
         </div>
       )}
       {!access.canWrite ? (

@@ -116,7 +116,9 @@ function useCreateGoodMoralRequest() {
         setUncertainIntent(null);
         setNotice("Review the request details, then submit again to start a new request.");
       }
-      setError(goodMoralErrorMessage(caught, "The Good Moral request could not be created."));
+      setError(goodMoralErrorMessage(caught, uncertainGoodMoralMutation(caught)
+        ? "The request result could not be confirmed. Retry the same request to check whether it was received."
+        : "The Good Moral request could not be created."));
       if (uncertainGoodMoralMutation(caught)) {
         setUncertainIntent(intent);
       } else {

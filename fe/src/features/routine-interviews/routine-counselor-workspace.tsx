@@ -164,7 +164,7 @@ function RoutineQueueFilters({
               <option value="">All Academic Years</option>
               {applied.academicYearId && !appliedYearKnown ? (
                 <option value={applied.academicYearId}>
-                  {yearsPending ? "Loading Academic Year…" : "Selected Academic Year"}
+                  {yearsPending ? "Loading academic year…" : "Selected Academic Year"}
                 </option>
               ) : null}
               {years.map((year) => (
