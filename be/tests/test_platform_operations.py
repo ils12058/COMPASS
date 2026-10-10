@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-from io import StringIO
 from http.client import HTTPException
+from io import StringIO
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -27,8 +27,8 @@ from compass.platform_ops.diagnostics import (
     derive_overall_status,
     probe_database,
     probe_object_storage,
-    probe_smtp,
     probe_realtime_service,
+    probe_smtp,
 )
 
 
@@ -356,9 +356,7 @@ def test_environment_endpoint_is_safe_resolved_projection_with_no_secret_values(
     notification_values = {
         value["code"]: value["value"] for value in categories["notification_delivery"]["values"]
     }
-    realtime_values = {
-        value["code"]: value["value"] for value in categories["realtime"]["values"]
-    }
+    realtime_values = {value["code"]: value["value"] for value in categories["realtime"]["values"]}
     assert realtime_values == {"enabled": True, "redis_configured": True}
     assert authentication_values["turnstile_enabled"] is settings.TURNSTILE_ENABLED
     assert authentication_values["turnstile_configured"] is True
@@ -628,7 +626,9 @@ def test_compass_doctor_realtime_configuration_only_never_probes():
     with (
         override_settings(REALTIME_ENABLED=True, REDIS_REALTIME_URL="redis://secret@localhost/4"),
         patch("compass.platform_ops.diagnostics.HTTPConnection") as factory,
-        patch("compass.platform_ops.management.commands.compass_doctor.collect_platform_health") as health,
+        patch(
+            "compass.platform_ops.management.commands.compass_doctor.collect_platform_health"
+        ) as health,
     ):
         call_command("compass_doctor", "--configuration-only", stdout=output)
     factory.assert_not_called()
@@ -642,23 +642,32 @@ def test_compass_doctor_realtime_disabled_and_enabled_failure():
 
     base = healthy_platform_health().checks
     disabled = DiagnosticCheck(
-        "realtime_service", "Realtime communication", DiagnosticStatus.DISABLED,
-        "Realtime communication is disabled for this deployment.", required=False,
+        "realtime_service",
+        "Realtime communication",
+        DiagnosticStatus.DISABLED,
+        "Realtime communication is disabled for this deployment.",
+        required=False,
     )
     failed = DiagnosticCheck(
-        "realtime_service", "Realtime communication", DiagnosticStatus.UNAVAILABLE,
+        "realtime_service",
+        "Realtime communication",
+        DiagnosticStatus.UNAVAILABLE,
         "The dependency did not respond successfully to the safe diagnostic probe.",
     )
     with patch(
         "compass.platform_ops.management.commands.compass_doctor.collect_platform_health",
-        return_value=PlatformHealth(DiagnosticStatus.HEALTHY, timezone.now(), "Ready", base + (disabled,)),
+        return_value=PlatformHealth(
+            DiagnosticStatus.HEALTHY, timezone.now(), "Ready", base + (disabled,)
+        ),
     ):
         output = StringIO()
         call_command("compass_doctor", stdout=output)
         assert "[INFO] Realtime communication" in output.getvalue()
     with patch(
         "compass.platform_ops.management.commands.compass_doctor.collect_platform_health",
-        return_value=PlatformHealth(DiagnosticStatus.DEGRADED, timezone.now(), "Degraded", base + (failed,)),
+        return_value=PlatformHealth(
+            DiagnosticStatus.DEGRADED, timezone.now(), "Degraded", base + (failed,)
+        ),
     ):
         with pytest.raises(CommandError, match="required COMPASS runtime diagnostics failed"):
             call_command("compass_doctor", stdout=StringIO())
