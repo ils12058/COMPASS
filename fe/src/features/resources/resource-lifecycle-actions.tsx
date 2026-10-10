@@ -3,7 +3,8 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 
-import { Button } from "@/components/ui/button";
+import { Archive, Send } from "lucide-react";
+import { PageAction } from "@/components/ui/page-action";
 import { displayTitle, publicationAudienceReaders } from "@/features/content/content-presentation";
 import { ContentConfirmDialog } from "@/features/content/content-shared";
 import { refreshResourceQueries, storeManagedResource } from "@/features/resources/resource-cache";
@@ -72,14 +73,10 @@ export function ResourceLifecycleActions({
   return (
     <>
       {isDraft ? (
-        <Button disabled={publishBlocked} onClick={() => openDialog("publish")}>
-          Publish Resource
-        </Button>
+        <PageAction icon={Send} label="Publish Resource" disabled={publishBlocked} onClick={() => openDialog("publish")} />
       ) : null}
       {!isArchived ? (
-        <Button variant="secondary" onClick={() => openDialog("archive")}>
-          Archive Resource
-        </Button>
+        <PageAction icon={Archive} variant="secondary" label="Archive Resource" onClick={() => openDialog("archive")} />
       ) : null}
 
       <ContentConfirmDialog

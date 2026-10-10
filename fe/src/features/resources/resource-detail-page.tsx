@@ -1,5 +1,7 @@
 "use client";
 
+import { Pencil } from "lucide-react";
+import { PageActionLink } from "@/components/ui/page-action";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -16,7 +18,6 @@ import {
   ContentPageHeading,
   ContentQueryError,
   PublicationStatusBadge,
-  contentSecondaryLinkClass,
 } from "@/features/content/content-shared";
 import { PublicMarkdown } from "@/features/public/shared/public-markdown";
 import {
@@ -92,9 +93,7 @@ export function ResourceDetailPage({ resourceId }: { resourceId: string }) {
         action={!detail.isError ?
           <>
             {item.status !== ResourceStatusValue.ARCHIVED ? (
-              <Link href={`/portal/resources/${item.id}/edit`} className={contentSecondaryLinkClass}>
-                Edit Resource
-              </Link>
+              <PageActionLink href={`/portal/resources/${item.id}/edit`} icon={Pencil} variant="secondary" label="Edit Resource" />
             ) : null}
             <ResourceLifecycleActions resource={item} publishBlocked={missing.length > 0} onCompleted={setNotice} />
           </>

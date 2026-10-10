@@ -327,7 +327,7 @@ export function ServicesPageHeading({
       actions={action} help={help}
       back={backHref ? (
         <GuardedPortalLink href={backHref} className={pageBackLinkClass}>
-          ← {backLabel ?? "Services"}
+          Back to {backLabel ?? "Services"}
         </GuardedPortalLink>
       ) : undefined}
     >
@@ -336,20 +336,7 @@ export function ServicesPageHeading({
   );
 }
 
-export function ServicesStatusBadge({ active }: { active: boolean }) {
-  return (
-    <span
-      className={
-        "inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold " +
-        (active
-          ? "border-success/30 bg-success/10 text-success"
-          : "border-border bg-surface-muted text-muted")
-      }
-    >
-      {active ? "Active" : "Inactive"}
-    </span>
-  );
-}
+export { ActiveStatusBadge as ServicesStatusBadge } from "@/components/ui/active-status-badge";
 
 export function ServicesSystemRequiredBadge() {
   return (

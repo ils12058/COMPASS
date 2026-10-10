@@ -89,7 +89,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
           id="graduate-tracer-student-heading"
           title="Graduate Tracer Survey"
 
-          action={<GraduateTracerStatus submitted={submitted} />}
+          meta={<GraduateTracerStatus submitted={submitted} />}
         />
         {response.isError ? <Notice role="alert" tone="warning"><span className="text-ink">The latest status could not be refreshed. Showing the last confirmed response.</span></Notice> : response.isFetching ? <p role="status" className="text-xs text-muted">Refreshing response status…</p> : null}
         {submitted ? (

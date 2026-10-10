@@ -86,7 +86,7 @@ await check("service-editor-help", `/portal/services/${serviceId}/edit`, {}, asy
 });
 
 await check("service-detail-help", `/portal/services/${serviceId}`, {}, async (page) => {
-  await shown(page.getByRole("link", { name: "Edit", exact: true }));
+  await shown(page.getByRole("link", { name: "Edit Service", exact: true }));
   await shown(page.getByText("Available for scheduling", { exact: true }));
   await shown(page.getByRole("button", { name: "Help: About Service configuration", exact: true }));
   await screenshot(page, "service-detail");
@@ -119,7 +119,7 @@ await check("student-call-slip-instruction", `/portal/call-slips/${slip.id}`, { 
   await screenshot(page, "call-slip-student");
 });
 
-await check("icon-tooltip-interaction", `/portal/call-slips/${slip.id}`, {}, async (page) => {
+await check("page-action-label-and-confirmation-focus", `/portal/call-slips/${slip.id}`, {}, async (page) => {
   await page.getByLabel("Interview ended", { exact: true }).fill("2026-01-06T10:00");
   await page.getByRole("button", { name: "Review interview end", exact: true }).click();
   const dialog = page.getByRole("alertdialog", { name: "Record interview end?", exact: true });
@@ -130,14 +130,10 @@ await check("icon-tooltip-interaction", `/portal/call-slips/${slip.id}`, {}, asy
   await page.waitForFunction((element) => element === document.activeElement, await review.elementHandle());
   const download = page.getByRole("button", { name: "Download Call Slip", exact: true });
   await shown(download);
-  assert.equal(await download.locator("span").isVisible(), false, "Desktop action has an independent accessible name");
+  await shown(download.locator("[data-page-action-label]"));
+  assert.equal(await download.locator("[data-page-action-label]").innerText(), "Download Call Slip", "Desktop command keeps its visible name");
   await download.focus();
-  await shown(page.getByRole("tooltip", { name: "Download Call Slip", exact: true }));
-  await page.keyboard.press("Escape");
-  await hidden(page.getByRole("tooltip"));
-  await page.getByRole("heading", { name: "Call Slip / Interview Permit", exact: true }).click();
-  await download.hover();
-  await shown(page.getByRole("tooltip", { name: "Download Call Slip", exact: true }));
+  assert.equal(await download.evaluate((element) => element === document.activeElement), true);
   await screenshot(page, "call-slip-detail");
 });
 
@@ -178,7 +174,7 @@ await check("mobile-sort-and-dialog", "/portal/appointments/manage", { mobile: t
 await check("mobile-icon-action-label", `/portal/call-slips/${slip.id}`, { mobile: true, role: "STUDENT" }, async (page) => {
   const download = page.getByRole("button", { name: "Download Call Slip", exact: true });
   await shown(download);
-  assert.equal(await download.locator("span").isVisible(), true, "Touch control has a visible name without hover");
+  assert.equal(await download.locator("[data-page-action-label]").isVisible(), true, "Touch control has a visible name without hover");
   const box = await download.boundingBox();
   assert.ok(box.height >= 44 && box.width >= 44);
   await noHorizontalOverflow(page);

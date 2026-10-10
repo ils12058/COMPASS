@@ -1,5 +1,7 @@
 "use client";
 
+import { Pencil, Send } from "lucide-react";
+import { PageAction } from "@/components/ui/page-action";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -341,24 +343,25 @@ export function NoticeRevisionPage() {
         action={
           editable && !editing && !detail.isError ? (
             <>
-              <Button
+              <PageAction
+                icon={Pencil}
+                label="Edit draft"
                 variant="secondary"
                 onClick={() => {
                   action.reset();
                   setEditing(true);
                 }}
-              >
-                Edit draft
-              </Button>
+              />
               {publishReady ? (
-                <Button
+                <PageAction
+                  icon={Send}
+                  label="Publish"
+                  variant="primary"
                   onClick={() => {
                     action.reset();
                     setPublishOpen(true);
                   }}
-                >
-                  Publish
-                </Button>
+                />
               ) : null}
             </>
           ) : null

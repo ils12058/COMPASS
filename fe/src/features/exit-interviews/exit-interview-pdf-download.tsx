@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Download } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { PageAction } from "@/components/ui/page-action";
 import {
   exitInterviewsDownloadMyPdf,
   exitInterviewsDownloadPdf,
@@ -38,10 +38,7 @@ export function ExitInterviewPdfDownload({
 
   return (
     <div className="flex flex-col items-start gap-2">
-      <Button variant="secondary" onClick={() => void download()} disabled={pending}>
-        <Download aria-hidden="true" size={16} />
-        {pending ? "Preparing PDF…" : "Download PDF"}
-      </Button>
+      <PageAction icon={Download} variant="secondary" onClick={() => void download()} disabled={pending} aria-busy={pending} label={pending ? "Preparing PDF…" : "Download PDF"} />
       {error ? <p role="alert" className="max-w-lg text-sm text-danger">{error}</p> : null}
     </div>
   );

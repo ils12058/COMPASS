@@ -8,7 +8,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ActionStatus, useActionStatus } from "@/components/ui/action-status";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
-import { PageHeader } from "@/components/ui/page-header";
+import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { dataTable } from "@/components/ui/data-table";
 import { focusHeading } from "@/lib/focus-heading";
 import { cn } from "@/lib/utils/cn";
@@ -439,8 +439,8 @@ function ProviderWorkspace({
         headingId="provider-availability-heading"
         meta={<AvailabilityStatusBadge active={provider.is_active} legacy={legacy} />}
         back={
-          <GuardedPortalLink href="/portal/availability/providers" className="text-sm text-brand hover:underline">
-            ← Counselors
+          <GuardedPortalLink href="/portal/availability/providers" className={pageBackLinkClass}>
+            Back to Counselors
           </GuardedPortalLink>
         }
       >

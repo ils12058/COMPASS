@@ -148,7 +148,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
 
       <Panel aria-labelledby="referrals-results-heading">
         <PanelHeader
-          title="Referrals"
+          title="Results"
           titleId="referrals-results-heading"
           actions={
             <SortField

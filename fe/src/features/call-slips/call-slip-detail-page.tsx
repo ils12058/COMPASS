@@ -1,5 +1,7 @@
 "use client";
 
+import { Download } from "lucide-react";
+import { PageAction } from "@/components/ui/page-action";
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
@@ -190,7 +192,7 @@ function CallSlipPdfDownload({ callSlipId, studentFacing = false }: { callSlipId
     }
   }
 
-  return <div className="flex flex-col items-start gap-2 sm:items-end"><IconAction action="download" label={pending ? "Preparing Call Slip…" : "Download Call Slip"} onClick={() => void download()} disabled={pending} aria-busy={pending} />{error ? <p role="alert" className="max-w-sm text-sm text-danger">{error}</p> : null}</div>;
+  return <div className="flex flex-col items-start gap-2 sm:items-end"><PageAction icon={Download} variant="secondary" label={pending ? "Preparing Call Slip…" : "Download Call Slip"} onClick={() => void download()} disabled={pending} aria-busy={pending} />{error ? <p role="alert" className="max-w-sm text-sm text-danger">{error}</p> : null}</div>;
 }
 
 function CallSlipLifecycleActions({ slip, onRefresh }: { slip: CallSlipOperationalResponse; onRefresh: () => Promise<CallSlipOperationalResponse | undefined> }) {

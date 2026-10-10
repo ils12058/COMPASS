@@ -156,7 +156,7 @@ export function ConversationFrame({
           className={cn(pageBackLinkClass, "mb-1 gap-1.5 @[42rem]/messages:hidden")}
         >
           <ArrowLeft size={16} aria-hidden="true" />
-          Messages
+          Back to Messages
         </GuardedPortalLink>
         <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
           <div className="min-w-0">

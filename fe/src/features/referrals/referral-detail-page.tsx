@@ -1,5 +1,6 @@
 "use client";
 
+import { PageAction } from "@/components/ui/page-action";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -275,10 +276,7 @@ function ReferralPdfDownload({ referral }: { referral: ReferralDetailResponse })
 
   return (
     <div className="flex flex-col items-start gap-2 sm:items-end">
-      <Button variant="secondary" onClick={() => void download()} disabled={pending}>
-        <Download aria-hidden="true" size={16} />
-        {pending ? "Preparing…" : "Download Referral Slip"}
-      </Button>
+      <PageAction icon={Download} variant="secondary" onClick={() => void download()} disabled={pending} aria-busy={pending} label={pending ? "Preparing…" : "Download Referral Slip"} />
       {error ? <p role="alert" className="max-w-sm text-sm text-danger">{error}</p> : null}
     </div>
   );

@@ -1,5 +1,7 @@
 "use client";
 
+import { RotateCcw } from "lucide-react";
+import { PageAction } from "@/components/ui/page-action";
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -80,9 +82,7 @@ export function ExitInterviewReopenAction({
 
   return (
     <>
-      <Button type="button" onClick={() => setOpen(true)}>
-        Reopen for correction
-      </Button>
+      <PageAction icon={RotateCcw} label="Reopen for correction" onClick={() => setOpen(true)} />
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent
           aria-describedby="exit-interview-reopen-description"

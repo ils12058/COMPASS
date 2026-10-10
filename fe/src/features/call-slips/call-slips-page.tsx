@@ -155,7 +155,7 @@ function StudentCallSlipsPage({ filters }: { filters: CallSlipStudentListFilters
 
       <Panel aria-labelledby="my-call-slips-results">
         <PanelHeader
-          title="Call Slips"
+          title="Results"
           titleId="my-call-slips-results"
           context={data && items.length > 0 ? `Showing ${items.length} ${items.length === 1 ? "Call Slip" : "Call Slips"} on page ${data.page}.` : null}
         />
@@ -293,7 +293,7 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
 
       <Panel aria-labelledby="call-slips-results">
         <PanelHeader
-          title="Call Slips"
+          title="Results"
           titleId="call-slips-results"
           actions={
             <SortField

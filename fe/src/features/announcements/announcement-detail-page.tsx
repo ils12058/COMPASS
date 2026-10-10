@@ -1,5 +1,7 @@
 "use client";
 
+import { Pencil } from "lucide-react";
+import { PageActionLink } from "@/components/ui/page-action";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -19,7 +21,6 @@ import {
   ContentPageHeading,
   ContentQueryError,
   PublicationStatusBadge,
-  contentSecondaryLinkClass,
 } from "@/features/content/content-shared";
 import { PublicMarkdown } from "@/features/public/shared/public-markdown";
 import { useAnnouncementsGetManaged } from "@/lib/api/generated/announcements/announcements";
@@ -92,9 +93,7 @@ export function AnnouncementDetailPage({ announcementId }: { announcementId: str
         action={!detail.isError ?
           <>
             {item.status !== AnnouncementStatusValue.ARCHIVED ? (
-              <Link href={`/portal/announcements/${item.id}/edit`} className={contentSecondaryLinkClass}>
-                Edit Announcement
-              </Link>
+              <PageActionLink href={`/portal/announcements/${item.id}/edit`} icon={Pencil} variant="secondary" label="Edit Announcement" />
             ) : null}
             <AnnouncementLifecycleActions
               announcement={item}

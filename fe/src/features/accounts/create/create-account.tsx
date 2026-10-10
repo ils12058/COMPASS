@@ -86,7 +86,7 @@ export function CreateAccount() {
         headingId="create-account-heading"
         back={
           <Link href="/portal/accounts" className={pageBackLinkClass}>
-            ← Accounts
+            Back to Accounts
           </Link>
         }
         description="The account holder can set up a COMPASS password using the registered email address."

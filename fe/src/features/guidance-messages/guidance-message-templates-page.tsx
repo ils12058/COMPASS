@@ -1,7 +1,8 @@
 "use client";
 
+import { PageAction } from "@/components/ui/page-action";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 
 import { ActionStatus, useActionStatus } from "@/components/ui/action-status";
@@ -101,15 +102,11 @@ function TemplatesWorkspace() {
         headingId={HEADING_ID}
         back={
           <GuardedPortalLink href="/portal/messages" className={cn(pageBackLinkClass, "gap-1.5")}>
-            <ArrowLeft size={16} aria-hidden="true" />
-            Messages
+            Back to Messages
           </GuardedPortalLink>
         }
         actions={
-          <Button onClick={openCreate}>
-            <Plus size={16} aria-hidden="true" />
-            Create template
-          </Button>
+          <PageAction icon={Plus} label="Create template" onClick={openCreate} />
         }
       />
       <Panel as="div">

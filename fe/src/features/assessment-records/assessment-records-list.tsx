@@ -155,7 +155,7 @@ export function AssessmentListPage() {
       ) : null}
       <Panel aria-labelledby="assessment-results">
         <PanelHeader
-          title="Assessment Records"
+          title="Results"
           titleId="assessment-results"
           context={
             data

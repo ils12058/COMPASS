@@ -162,7 +162,7 @@ export function ImportAccounts() {
         headingId="import-accounts-heading"
         back={
           <Link href="/portal/accounts" className={pageBackLinkClass}>
-            ← Accounts
+            Back to Accounts
           </Link>
         }
         description="CSV import provisions new accounts. It does not update existing account identity, roles, or status. Exact matching active accounts are skipped; conflicting records are reported."

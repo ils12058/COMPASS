@@ -158,7 +158,7 @@ export function PrivacyPageHeader({
       actions={action} help={help}
       back={backHref ? (
         <GuardedPortalLink href={backHref} className={pageBackLinkClass}>
-          ← {backLabel}
+          Back to {backLabel}
         </GuardedPortalLink>
       ) : undefined}
     >

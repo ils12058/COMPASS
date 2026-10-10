@@ -146,7 +146,7 @@ test("refresh failure retains confirmed data but authority failure hides it", ()
     const { html } = render(createElement(PrivacyActivityPage), { capabilities: [browse, exportCapability], pathname: "/portal/privacy/activity", records: [[key, ok(page([privacyEvent]))]], errors: [[key, apiError(status)]] });
     if (status === 503) assert.match(html, /Disposition completed|Retry/);
     else assert.doesNotMatch(html, /Disposition completed/);
-    assert.match(html, /<button[^>]*disabled=""[^>]*>Export CSV/);
+    assert.match(html, /<button[^>]*disabled=""[^>]*>(?:(?!<\/button>)[\s\S])*data-page-action-label[^>]*>Export CSV/);
   }
 });
 

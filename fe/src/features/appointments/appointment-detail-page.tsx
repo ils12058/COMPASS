@@ -1,15 +1,16 @@
 "use client";
 
+import { NotebookPen, Video } from "lucide-react";
+import { PageActionLink } from "@/components/ui/page-action";
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 
 import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useState, type FormEvent } from "react";
 
 import { MoreHorizontal } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -581,14 +582,10 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         action={
           <>
             {showCounselingLink ? (
-              <Link href={`/portal/counseling/workspace/appointment/${appointment.id}`} className={buttonVariants({ variant: "secondary" })}>
-                Open Counseling workspace
-              </Link>
+              <PageActionLink href={`/portal/counseling/workspace/appointment/${appointment.id}`} icon={NotebookPen} variant="secondary" label="Open Counseling workspace" />
             ) : null}
             {showEcounselingLink ? (
-              <Link href={`/portal/e-counseling/${appointment.id}`} className={buttonVariants({ variant: "secondary" })}>
-                Open E-Counseling
-              </Link>
+              <PageActionLink href={`/portal/e-counseling/${appointment.id}`} icon={Video} variant="secondary" label="Open E-Counseling" />
             ) : null}
             {counseling ? <GuidanceMessagesTrigger /> : null}
           </>
