@@ -13,14 +13,17 @@ import { portalWorkspaceGroups } from "../src/features/portal/components/portal-
 import { portalCommandDestinations } from "../src/features/portal/components/portal-command-destinations.ts";
 import { getExitInterviewsGetMyCurrentQueryKey, getExitInterviewsGetMyStatusQueryKey, getExitInterviewsListMineQueryKey } from "../src/lib/api/generated/exit-interviews/exit-interviews.ts";
 
+import { getStudentActionsListQueryKey } from "../src/lib/api/generated/student-actions/student-actions.ts";
+
 const student = { id: "student", role: "STUDENT", student_lifecycle_status: "CURRENT", designations: [], first_name: "Student", last_name: "Example", email: "student@example.test", capabilities: ["exit_interviews.view_self", "exit_interviews.manage_self", "good_moral.view_self", "good_moral.request_self"], exit_interview_workspace_available: false };
 const year = { id: "year", label: "2026-2027" };
 const empty = { academic_year: year, opportunity: null, current_record: null, has_records: false, inventory_submitted: true, can_start: false, can_edit_current: false, graduation_good_moral_blocked: false };
 const opportunity = { id: "opportunity", academic_year: year, source: "GRADUATION", status: "OPEN", opened_at: "2026-10-05T00:00:00Z", completed_at: null, revoked_at: null };
 const record = { id: "interview", student: { id: "student", display_name: "Student Example", institutional_id: "2026-1" }, student_name: "Student Example", academic_year: year, status: "SUBMITTED", first_submitted_at: "2026-10-05T01:00:00Z", last_submitted_at: "2026-10-05T01:00:00Z", created_at: "2026-10-05T00:00:00Z", updated_at: "2026-10-05T01:00:00Z" };
 const ok = (data) => ({ data, status: 200, headers: {} });
-function render(element, state = empty, user = student, history = []) {
+function render(element, state = empty, user = student, history = [], actions = []) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } } });
+  client.setQueryData(getStudentActionsListQueryKey({ page: 1, page_size: 5 }), ok({ items: actions, page: 1, page_size: 5, has_next: false, generated_at: "2026-10-10T00:00:00Z" }));
   client.setQueryData(getExitInterviewsGetMyStatusQueryKey(), ok(state));
   if (state.current_record) client.setQueryData(getExitInterviewsGetMyCurrentQueryKey(), ok({ ...state.current_record, can_edit: state.can_edit_current }));
   client.setQueryData(getExitInterviewsListMineQueryKey(), ok({ items: history }));
@@ -80,9 +83,10 @@ function Attention({ user }) {
 test("Overview has no Exit Interview action without a relevant workspace", () => {
   assert.doesNotMatch(render(h(Attention, { user: student })), /Exit Interview/);
 });
-test("Overview offers Continue only for a server-editable current draft", () => {
+test("Overview uses canonical Student Actions rather than reinterpreting the current Exit draft", () => {
   const user = { ...student, exit_interview_workspace_available: true };
-  const state = { ...empty, current_record: { ...record, status: "DRAFT" } };
+  const state = { ...empty, current_record: { ...record, status: "DRAFT" }, can_edit_current: true };
   assert.doesNotMatch(render(h(Attention, { user }), state, user), /Continue Exit Interview/);
-  assert.match(render(h(Attention, { user }), { ...state, can_edit_current: true }, user), /Continue Exit Interview/);
+  const action = { id: "exit-interview-continue:interview", kind: "EXIT_INTERVIEW_CONTINUE", priority: "ACTION_REQUIRED", source_id: "interview", due_at: null, waiting_since: record.created_at };
+  assert.match(render(h(Attention, { user }), empty, user, [], [action]), /Continue Exit Interview/);
 });

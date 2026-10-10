@@ -279,16 +279,23 @@ def _queryset():
     )
 
 
+CLOSED_PARENT_STATES = {
+    AppointmentStatus.CANCELLED: RoutineWorkflowState.CLOSED_APPOINTMENT_CANCELLED,
+    AppointmentStatus.NO_SHOW: RoutineWorkflowState.CLOSED_APPOINTMENT_NO_SHOW,
+}
+
+
+def actionable_parent_filter():
+    """SQL equivalent of the canonical Routine parent actionability."""
+    return ~Q(appointment__status__in=tuple(CLOSED_PARENT_STATES))
+
+
 def routine_workflow_state(item: RoutineInterview) -> RoutineWorkflowState:
     """Derive Routine actionability from its authoritative parent Appointment outcome."""
 
     if item.appointment_id is None:
         return RoutineWorkflowState.ACTIVE
-    if item.appointment.status == AppointmentStatus.CANCELLED:
-        return RoutineWorkflowState.CLOSED_APPOINTMENT_CANCELLED
-    if item.appointment.status == AppointmentStatus.NO_SHOW:
-        return RoutineWorkflowState.CLOSED_APPOINTMENT_NO_SHOW
-    return RoutineWorkflowState.ACTIVE
+    return CLOSED_PARENT_STATES.get(item.appointment.status, RoutineWorkflowState.ACTIVE)
 
 
 def _require_actionable_parent(
@@ -304,11 +311,11 @@ def _require_actionable_parent(
     if lock_parent:
         queryset = queryset.select_for_update(of=("self",))
     status = queryset.values_list("status", flat=True).get(pk=item.appointment_id)
-    if status == AppointmentStatus.CANCELLED:
+    if CLOSED_PARENT_STATES.get(status) == RoutineWorkflowState.CLOSED_APPOINTMENT_CANCELLED:
         raise RoutineInterviewParentClosed(
             "This Routine Interview is no longer active because the Appointment was cancelled."
         )
-    if status == AppointmentStatus.NO_SHOW:
+    if CLOSED_PARENT_STATES.get(status) == RoutineWorkflowState.CLOSED_APPOINTMENT_NO_SHOW:
         raise RoutineInterviewParentClosed(
             "This Routine Interview is no longer active because the Appointment "
             "was marked as no-show."

@@ -44,6 +44,7 @@ from compass.resources.api import public_router as public_resources_router
 from compass.resources.api import router as resources_router
 from compass.routine_interviews.api import router as routine_interviews_router
 from compass.service_catalog.api import router as service_catalog_router
+from compass.student_actions.api import router as student_actions_router
 from compass.student_support.api import router as student_support_router
 from compass.work_queue.api import router as work_queue_router
 
@@ -203,6 +204,10 @@ api = NinjaAPI(
                 "description": "Encrypted Guidance Office and Counseling communication.",
             },
             {"name": "work", "description": "Read-only Guidance staff actionable work projection."},
+            {
+                "name": "student-actions",
+                "description": "Read-only Student next actions from domain state.",
+            },
         ]
     },
     openapi_url="/openapi.json" if settings.API_DOCS_ENABLED else None,
@@ -234,6 +239,7 @@ api.add_router("/student-support", student_support_router)
 api.add_router("/reports", reports_router)
 api.add_router("/overview", overview_router)
 api.add_router("/work", work_queue_router)
+api.add_router("/student-actions", student_actions_router)
 api.add_router("/good-moral", good_moral_router)
 api.add_router("/feedback", feedback_router)
 api.add_router("/graduate-tracer", graduate_tracer_router)

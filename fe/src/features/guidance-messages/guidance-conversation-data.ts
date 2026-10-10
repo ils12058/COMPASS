@@ -1,5 +1,7 @@
 "use client";
 
+import { studentActionsQueryFamily } from "@/features/student-actions/student-actions-data";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useSyncExternalStore, type RefObject } from "react";
 
@@ -123,6 +125,7 @@ export function useMarkThreadRead({
     mutationFn: (sequence: number) => guidanceMessagesMarkRead(threadId, { sequence }),
     onSuccess: (response) => {
       cacheConfirmedRead(queryClient, threadId, response.data.own_last_read_sequence);
+      void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
       void queryClient.invalidateQueries({ queryKey: guidanceDirectoryQueryFamily() });
     },
     onError: (error) => {

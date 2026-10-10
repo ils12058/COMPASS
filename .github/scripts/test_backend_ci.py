@@ -40,6 +40,23 @@ class SelectionTests(unittest.TestCase):
             selected("be/compass/guidance_messages/migrations/0002_guidance_message_template.py").full
         )
 
+    def test_student_actions_and_domain_sources_select_projection_regressions(self):
+        for source in (
+            "student_actions", "inventory", "routine_interviews", "exit_interviews",
+            "graduate_tracer", "call_slips", "ecounseling", "guidance_messages", "overview",
+            "appointments", "service_catalog", "counseling",
+        ):
+            result = selected(f"be/compass/{source}/student_actions.py")
+            self.assertFalse(result.full)
+            self.assertIn("test_student_actions.py", result.files)
+            self.assertNotIn("test_demo_seed.py", result.files)
+        composition = selected("be/compass/student_actions/services.py")
+        for name in ("test_inventory.py", "test_routine_interviews.py", "test_exit_interviews.py",
+                     "test_graduate_tracer.py", "test_call_slips.py", "test_ecounseling.py",
+                     "test_guidance_messages.py", "test_notifications.py", "test_accounts.py",
+                     "test_capability_dependencies.py"):
+            self.assertIn(name, composition.files)
+
     def test_work_queue_and_source_changes_select_projection_regressions(self):
         for path in (
             "be/compass/work_queue/services.py",

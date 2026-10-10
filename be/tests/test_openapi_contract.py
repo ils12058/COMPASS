@@ -22,6 +22,7 @@ CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
     "workQueueList",
+    "studentActionsList",
     "guidanceMessagesListThreads",
     "guidanceMessagesRecipientOptions",
     "guidanceMessagesEligibleStudents",
@@ -781,6 +782,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "realtime",
         "guidance-messages",
         "work",
+        "student-actions",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -2932,3 +2934,31 @@ def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
         schemas["GuidanceTemplateUpdateRequest"]["properties"]["expected_updated_at"]["type"]
         == "string"
     )
+
+
+def test_student_actions_contract_is_closed_read_only_and_structural():
+    from compass.api.v1.router import api
+
+    schema = api.get_openapi_schema()
+    path = schema["paths"]["/api/v1/student-actions"]
+    assert set(path) == {"get"}
+    assert path["get"]["operationId"] == "studentActionsList"
+    item = schema["components"]["schemas"]["StudentActionItem"]
+    assert item["additionalProperties"] is False
+    assert set(item["properties"]) == {
+        "id",
+        "kind",
+        "priority",
+        "source_id",
+        "due_at",
+        "waiting_since",
+        "conversation_kind",
+        "pending_count",
+    }
+    assert len(schema["components"]["schemas"]["StudentActionKind"]["enum"]) == 11
+    assert schema["components"]["schemas"]["StudentActionPriority"]["enum"] == [
+        "TIME_SENSITIVE",
+        "ACTION_REQUIRED",
+        "INCOMPLETE_SELF_SERVICE",
+    ]
+    assert "total" not in schema["components"]["schemas"]["StudentActionsResponse"]["properties"]

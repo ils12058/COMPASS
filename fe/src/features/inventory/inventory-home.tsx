@@ -1,5 +1,7 @@
 "use client";
 
+import { studentActionsQueryFamily } from "@/features/student-actions/student-actions-data";
+
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
@@ -83,6 +85,7 @@ function StudentInventoryHome() {
       const response = await ensure.mutateAsync();
       queryClient.setQueryData(getInventoryGetMyCurrentQueryKey(), response);
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() }),
         queryClient.invalidateQueries({ queryKey: getInventoryGetMyStatusQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getInventoryListMyHistoryQueryKey() }),
       ]);

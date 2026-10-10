@@ -1,5 +1,7 @@
 "use client";
 
+import { studentActionsQueryFamily } from "@/features/student-actions/student-actions-data";
+
 import { useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -109,6 +111,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
     try {
       const result = await save.mutateAsync({ data: graduateTracerPayloadFromDraft(draft) });
       queryClient.setQueryData(getGraduateTracerGetMyResponseQueryKey(), result);
+      void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
       setEditedDraft(null);
       setLocalIssue(undefined);
       setDraftValidationVisible(false);
@@ -155,6 +158,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
         staleTime: 0,
       });
       queryClient.setQueryData(getGraduateTracerGetMyResponseQueryKey(), canonical);
+      void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
       if (canonical.data.status === "SUBMITTED") {
         setConfirmSubmit(false);
         setSubmitError(undefined);
@@ -172,6 +176,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
     try {
       const result = await submit.mutateAsync();
       queryClient.setQueryData(getGraduateTracerGetMyResponseQueryKey(), result);
+      void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
       setConfirmSubmit(false);
     } catch (error) {
       if (isUncertainGraduateTracerMutation(error)) {
@@ -182,6 +187,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
             staleTime: 0,
           });
           queryClient.setQueryData(getGraduateTracerGetMyResponseQueryKey(), canonical);
+          void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
           if (canonical.data.status === "SUBMITTED") {
             setConfirmSubmit(false);
             return;

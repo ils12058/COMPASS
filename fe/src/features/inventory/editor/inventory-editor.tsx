@@ -1,5 +1,7 @@
 "use client";
 
+import { studentActionsQueryFamily } from "@/features/student-actions/student-actions-data";
+
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
@@ -116,12 +118,14 @@ export function InventoryEditor({
     const message = inventoryErrorMessage(error, fallback);
     if (code === "current_student_required") {
       setWriteBlocked(true);
+      void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
       void queryClient.invalidateQueries({ queryKey: getInventoryGetMyStatusQueryKey() });
     }
     if (code === "inventory_conflict") {
       // Reload the annual status and history, but not the record this editor started from: a
       // reload could replace the editor and lose answers that were not saved. The reason comes
       // from COMPASS, such as an Inventory that was already submitted elsewhere.
+      void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
       void queryClient.invalidateQueries({ queryKey: getInventoryGetMyStatusQueryKey() });
       void queryClient.invalidateQueries({ queryKey: getInventoryListMyHistoryQueryKey() });
       const reason = error instanceof CompassApiError ? readApiErrorMessage(error.body) : undefined;
@@ -152,6 +156,7 @@ export function InventoryEditor({
       setDraft(canonical);
       setSaved(canonical);
       queryClient.setQueryData(getInventoryGetMyCurrentQueryKey(), response);
+      void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
       await queryClient.invalidateQueries({ queryKey: getInventoryGetMyStatusQueryKey() });
       setNotice("Progress saved.");
       if (continueToNext && currentSectionIndex < inventorySections.length - 1) {
@@ -176,6 +181,7 @@ export function InventoryEditor({
       setSaved(canonical);
       queryClient.setQueryData(getInventoryGetMyCurrentQueryKey(), response);
       await Promise.all([
+        queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() }),
         queryClient.invalidateQueries({ queryKey: getInventoryGetMyStatusQueryKey() }),
         queryClient.invalidateQueries({ queryKey: getInventoryListMyHistoryQueryKey() }),
       ]);

@@ -13,6 +13,7 @@ import { GraduateTracerResponse } from "@/features/graduate-tracer/graduate-trac
 import { GraduateTracerError, GraduateTracerHeading, GraduateTracerStatus, graduateTracerErrorCode, graduateTracerErrorMessage, isUncertainGraduateTracerMutation } from "@/features/graduate-tracer/graduate-tracer-shared";
 import { formatGraduateTracerDateTime } from "@/features/graduate-tracer/graduate-tracer-presentation";
 import { getGraduateTracerGetMyResponseQueryKey, useGraduateTracerEnsureMyResponse, useGraduateTracerGetMyResponse } from "@/lib/api/generated/graduate-tracer/graduate-tracer";
+import { studentActionsQueryFamily } from "@/features/student-actions/student-actions-data";
 import { CompassApiError } from "@/lib/api/errors";
 
 export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTracerAccess }) {
@@ -31,12 +32,14 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
     try {
       const result = await start.mutateAsync();
       queryClient.setQueryData(getGraduateTracerGetMyResponseQueryKey(), result);
+      void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
     } catch (error) {
       setStartError(graduateTracerErrorMessage(error, "The Graduate Tracer response could not be started."));
       if (isUncertainGraduateTracerMutation(error)) {
         const check = await response.refetch();
         if (check.data?.data) {
           queryClient.setQueryData(getGraduateTracerGetMyResponseQueryKey(), check.data);
+          void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
           setStartError(undefined);
           return;
         }

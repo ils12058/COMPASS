@@ -1,5 +1,7 @@
 "use client";
 
+import { studentActionsQueryFamily } from "@/features/student-actions/student-actions-data";
+
 import { useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -153,6 +155,7 @@ export function StudentConsentPanel({
 
   async function refreshCanonicalState() {
     await Promise.all([
+      queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() }),
       queryClient.invalidateQueries({ queryKey: getECounselingListMyConsentsQueryKey(appointmentId) }),
       queryClient.invalidateQueries({ queryKey: getECounselingGetMyWorkspaceQueryKey(appointmentId) }),
     ]);

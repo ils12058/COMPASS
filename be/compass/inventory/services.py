@@ -786,9 +786,16 @@ def _active_inventory_revision():
         ) from exc
 
 
-def get_current_inventory_status(student: User) -> CurrentInventoryStatus:
+def get_current_inventory_status(
+    student: User, *, structural: bool = False
+) -> CurrentInventoryStatus:
     current = _current_year()
-    item = _inventory_queryset().filter(student_id=student.pk, academic_year_id=current.pk).first()
+    query = (
+        StudentInventory.objects.only("id", "created_at", "submitted_at")
+        if structural
+        else _inventory_queryset()
+    )
+    item = query.filter(student_id=student.pk, academic_year_id=current.pk).first()
     if item is None:
         return CurrentInventoryStatus(current, InventoryStatus.MISSING, None)
     status = InventoryStatus.SUBMITTED if item.submitted_at is not None else InventoryStatus.DRAFT
