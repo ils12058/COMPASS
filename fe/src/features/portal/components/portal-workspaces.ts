@@ -25,6 +25,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
+import { getAssessmentRecordsAccess } from "@/features/assessment-records/assessment-records-access";
 import { canManageAnnouncements } from "@/features/announcements/announcements-access";
 import { hasAvailabilityWorkspace } from "@/features/availability/availability-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
@@ -79,6 +80,7 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
   // Students with their own Messages, and Guidance staff with Messages for their workload. No other
   // role or designation (IT Admin, Institutional Officer, Head, DPO) adds it.
   const hasMessages = getGuidanceMessagesAccess(user).hasWorkspace;
+  const hasAssessmentRecords = getAssessmentRecordsAccess(user).canView;
   const hasInventory = getInventoryAccess(user).hasWorkspace;
   const hasRoutineInterviews = getRoutineInterviewAccess(user).hasWorkspace;
   const hasCounseling = getCounselingAccess(user).hasWorkspace;
@@ -122,6 +124,7 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
     {
       label: "Records",
       links: [
+        { href: "/portal/assessment-records", label: "Assessment Records", icon: ClipboardList, visible: hasAssessmentRecords },
         { href: "/portal/routine-interviews", label: "Routine Interviews", icon: MessagesSquare, visible: hasRoutineInterviews },
         { href: "/portal/counseling", label: "Counseling", icon: MessageCircleHeart, visible: hasCounseling },
         { href: "/portal/referrals", label: "Referrals", icon: Forward, visible: hasReferrals },

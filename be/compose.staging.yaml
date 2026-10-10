@@ -56,6 +56,7 @@ services:
       - web_push_private_key
       - web_push_storage_key
       - guidance_message_encryption_keys
+      - assessment_record_confidential_content_encryption_keys
     pull_policy: always
     command:
       [
@@ -96,6 +97,8 @@ services:
     environment:
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE: ""
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS: ""
+      ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE: ""
+      ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS: ""
     pull_policy: always
     command:
       [
@@ -117,6 +120,8 @@ services:
     environment:
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE: ""
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS: ""
+      ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE: ""
+      ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS: ""
     pull_policy: always
     command: ["celery", "--app", "config", "beat", "--loglevel=INFO", "--pidfile="]
     depends_on:
@@ -310,6 +315,9 @@ secrets:
     file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/web_push_private_key
   web_push_storage_key:
     file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/web_push_storage_key
+
+  assessment_record_confidential_content_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/assessment_record_confidential_content_encryption_keys
 
   guidance_message_encryption_keys:
     file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/guidance_message_encryption_keys

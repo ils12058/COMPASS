@@ -1,0 +1,46 @@
+// Explicit local backend proof. Credentials arrive on stdin, are synthetic, and are never logged.
+import assert from "node:assert/strict";
+import { chromium, webkit } from "playwright";
+let input = "";
+for await (const chunk of process.stdin) input += chunk;
+const fixture = JSON.parse(input);
+const baseURL = process.env.COMPASS_UI_BASE_URL ?? "http://localhost:3107";
+assert.ok(["localhost", "127.0.0.1"].includes(new URL(baseURL).hostname));
+const engine = process.env.COMPASS_UI_BROWSER === "webkit" ? webkit : chromium;
+const browser = await engine.launch();
+try {
+  const context = await browser.newContext({ serviceWorkers: "block", viewport: { width: 1440, height: 1000 } });
+  await context.addCookies([{ name: "compass_session", value: fixture.session, url: baseURL, httpOnly: true, sameSite: "Lax" }]);
+  const page = await context.newPage(); page.setDefaultTimeout(20_000);
+  const errors = []; page.on("pageerror", (error) => errors.push(error.message));
+  await page.goto(baseURL + "/portal/assessment-records/types");
+  await page.getByLabel("Name", { exact: true }).fill("Browser Career Aptitude Test");
+  await page.getByRole("button", { name: "Create type", exact: true }).click();
+  await page.getByRole("button", { name: "Deactivate Browser Career Aptitude Test", exact: true }).waitFor();
+  await page.getByRole("link", { name: "Back to Assessment Records", exact: true }).click();
+  await page.getByRole("link", { name: /Record result/ }).click();
+  await page.getByRole("radio", { name: new RegExp(fixture.studentName) }).check();
+  await page.getByLabel("Assessment Type", { exact: true }).selectOption({ label: "Browser Career Aptitude Test" });
+  await page.getByLabel("Administered on", { exact: true }).fill(fixture.today);
+  for (const [label, value] of [["Score / rating", "BROWSER-SCORE"], ["Result", "BROWSER-RESULT"], ["Interpretation", "BROWSER-INTERPRETATION"], ["Remarks", "BROWSER-REMARKS"]]) await page.getByLabel(label, { exact: true }).fill(value);
+  await page.getByRole("button", { name: "Save record", exact: true }).click();
+  await page.waitForURL(/\/assessment-records\/[0-9a-f-]{36}$/);
+  await page.getByText("BROWSER-SCORE", { exact: true }).waitFor();
+  await page.getByRole("link", { name: /Edit record/ }).click();
+  await page.getByLabel("Score / rating", { exact: true }).fill("BROWSER-CORRECTED");
+  await page.getByRole("button", { name: "Save corrections", exact: true }).click();
+  await page.waitForURL(/\/assessment-records\/[0-9a-f-]{36}$/);
+  await page.getByText("BROWSER-CORRECTED", { exact: true }).waitFor();
+  const detail = page.url();
+  await page.getByRole("link", { name: "Back to Assessment Records", exact: true }).click();
+  await page.getByRole("heading", { name: "Assessment Records", exact: true, level: 1 }).waitFor();
+  const list = await page.locator("main").innerText(); assert.ok(!list.includes("BROWSER-CORRECTED"));
+  await page.getByRole("link", { name: /Manage types/ }).click();
+  await page.getByRole("button", { name: "Deactivate Browser Career Aptitude Test", exact: true }).click();
+  await page.getByRole("button", { name: "Deactivate type", exact: true }).click();
+  await page.getByRole("button", { name: "Reactivate Browser Career Aptitude Test", exact: true }).waitFor();
+  await page.goto(detail); await page.getByText("BROWSER-CORRECTED", { exact: true }).waitFor();
+  await page.getByText("Inactive type · historical record", { exact: true }).waitFor();
+  assert.deepEqual(errors, []);
+  console.log("PASS real HTTP browser catalog/create/correction/historical read; no API interception");
+} finally { await browser.close(); }

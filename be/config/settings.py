@@ -74,6 +74,7 @@ INSTALLED_APPS = [
     "compass.documents",
     "compass.inventory",
     "compass.student_support",
+    "compass.assessment_records",
     "compass.reports",
     "compass.good_moral",
     "compass.feedback",
@@ -621,6 +622,36 @@ if keyring_reuses_secret(
 ):
     raise ValueError(
         "GUIDANCE_MESSAGE_ENCRYPTION_KEYS must not reuse another encryption domain or SECRET_KEY"
+    )
+
+# Worker/beat intentionally remain keyless; confidential read/write fails closed (ADR-108).
+# Live host preflight requires a provisioned Assessment Record key for web deployment (ADR-108).
+_assessment_keys = env("ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS", "")
+ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS = (
+    parse_fernet_keyring(
+        _assessment_keys, setting="ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"
+    )
+    if _assessment_keys
+    else ()
+)
+if keyring_reuses_secret(
+    ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    SECRET_KEY,
+    AUTH_TOTP_ENCRYPTION_KEY,
+    WEB_PUSH_STORAGE_KEY,
+    *ROUTINE_INTERVIEW_ENCRYPTION_KEYS,
+    *COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS,
+    *REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *GUIDANCE_MESSAGE_ENCRYPTION_KEYS,
+):
+    raise ValueError(
+        "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS must not reuse "
+        "another encryption domain or SECRET_KEY"
     )
 
 if not 1 <= NOTIFICATION_EMAIL_MAX_ATTEMPTS <= 20:

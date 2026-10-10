@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import type {
+  AssessmentStudentOption,
   CallSlipStudentOptionResponse,
   ExitInterviewStudentOptionResponse,
   GuidanceStudentOption,
@@ -12,6 +13,7 @@ import type {
 } from "@/lib/api/generated/model";
 
 export type EligibleStudentOption =
+  | AssessmentStudentOption
   | ExitInterviewStudentOptionResponse
   | CallSlipStudentOptionResponse
   | ReferralStudentOptionResponse

@@ -158,6 +158,14 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_guidance_messages_rotation.py",
         ),
     ),
+    "assessment-records": (
+        "Institutional Assessment catalog, encrypted results, bounded scope and corrections.",
+        (
+            "test_assessment_records.py",
+            "test_assessment_records_configuration.py",
+            "test_assessment_records_http.py",
+        ),
+    ),
     "counseling": (
         "Counseling encounters, context, shared summaries, and downstream lifecycle.",
         (
@@ -399,6 +407,11 @@ INFRASTRUCTURE = {
 # Domain apps. Bundles come from the domain's own tests plus the domains that import it
 # (``compass.<app>`` reverse imports) and the cross-domain test files that exercise it.
 DOMAINS: dict[str, Area] = {
+    "assessment_records": domain(
+        "assessment_records",
+        "Assessment Records depends on identity, operational Student scope, crypto and audit.",
+        ("assessment-records", "organization", "crypto", "deployment-runtime"),
+    ),
     "account_management": domain(
         "account_management",
         "Account administration also blocks role changes on scheduled work.",

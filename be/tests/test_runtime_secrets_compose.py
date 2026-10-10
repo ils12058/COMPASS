@@ -13,6 +13,7 @@ import pytest
 BACKEND = Path(__file__).parents[1]
 SECRET_NAMES = {
     "guidance_message_encryption_keys",
+    "assessment_record_confidential_content_encryption_keys",
     "django_secret_key",
     "postgres_password",
     "redis_password",
@@ -91,7 +92,7 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
             config["services"]["web"]["environment"]["REDIS_PASSWORD"] == "dev-only-redis-password"
         )
         return
-    assert len(SECRET_NAMES) == 23
+    assert len(SECRET_NAMES) == 24
     assert set(config["secrets"]) == SECRET_NAMES
     for name, source in config["secrets"].items():
         assert source["file"] == str(secrets / name)
@@ -100,7 +101,11 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
         expected_grants = (
             SECRET_NAMES
             if service == "web"
-            else SECRET_NAMES - {"guidance_message_encryption_keys"}
+            else SECRET_NAMES
+            - {
+                "guidance_message_encryption_keys",
+                "assessment_record_confidential_content_encryption_keys",
+            }
         )
         assert {grant["source"] for grant in app["secrets"]} == expected_grants
         if service == "web":
@@ -111,6 +116,16 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
         else:
             assert not app["environment"]["GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE"]
             assert not app["environment"]["GUIDANCE_MESSAGE_ENCRYPTION_KEYS"]
+        if service == "web":
+            assert (
+                app["environment"]["ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE"]
+                == "/run/secrets/assessment_record_confidential_content_encryption_keys"
+            )
+        else:
+            assert not app["environment"][
+                "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE"
+            ]
+            assert not app["environment"]["ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"]
         # Compose v2 reports the short target; v5 normalizes it to the absolute path.
         assert all(
             grant["target"] in {grant["source"], f"/run/secrets/{grant['source']}"}

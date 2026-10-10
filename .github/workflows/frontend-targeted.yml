@@ -90,7 +90,7 @@ jobs:
         run: pnpm test
 
   # Browser regressions for account changes, failed refreshes and unsaved drafts (frontend audit
-  # FE-001 to FE-004), the realtime runtime, Guidance operations, and the full, contextual and staff-operations (handler
+  # FE-001 to FE-004), the realtime runtime, encrypted Assessment Records, Guidance operations, and the full, contextual and staff-operations (handler
   # assignment, Message templates) Guidance Messages. They
   # run against a development server because the synthetic seams (fake Call Object, API
   # interception) are development-only; every API call is answered in the browser, so no backend
@@ -145,7 +145,10 @@ jobs:
       # The first request to a route compiles it; compile the tested routes before timing checks.
       - name: Compile tested routes
         run: |
-          for route in / /portal/actions /portal/work /portal/operations /portal /portal/services/service-density-test /portal/services/service-density-test/edit \
+          for route in /portal/assessment-records /portal/assessment-records/new /portal/assessment-records/types \
+            /portal/assessment-records/d0000000-0000-4000-8000-000000000001 \
+            /portal/assessment-records/d0000000-0000-4000-8000-000000000001/edit \
+            / /portal/actions /portal/work /portal/operations /portal /portal/services/service-density-test /portal/services/service-density-test/edit \
             /portal/services /portal/inventory/current /portal/exit-interviews/exit-draft-test \
             /portal/referrals/referral-draft-test /portal/availability/me /portal/availability/office /portal/accounts /portal/inventory /portal/exit-interviews \
             /portal/resources /portal/organization/student-affiliations /portal/availability/providers \

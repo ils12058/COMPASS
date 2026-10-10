@@ -382,3 +382,10 @@ __all__ = [
     "ECOUNSELING_MEDIA_PROVIDER_CLEANED",
     "ECOUNSELING_MEDIA_ARTIFACT_ACCESS_AUTHORIZED",
 ]
+
+ASSESSMENT_RECORD_CREATED = "assessment_record.created"
+ASSESSMENT_RECORD_UPDATED = "assessment_record.updated"
+ASSESSMENT_TYPE_CREATED = "assessment_type.created"
+ASSESSMENT_TYPE_UPDATED = "assessment_type.updated"
+ASSESSMENT_TYPE_DEACTIVATED = "assessment_type.deactivated"
+ASSESSMENT_TYPE_REACTIVATED = "assessment_type.reactivated"
