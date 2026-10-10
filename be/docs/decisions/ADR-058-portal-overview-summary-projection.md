@@ -76,3 +76,10 @@ totals.
 staff Work Queue and Messages operational hardening. This decision remains the historical
 foundation; ADR-105 defines the current host-key gate, template version requirement and shared
 Guidance actionable projection.
+
+## Subsequent decision
+
+[ADR-107](ADR-107-guidance-operations-dashboard.md) adds the separate Guidance operations surface.
+Overview keeps its landing sections and contextual Good Moral counts. Its pending Routine
+Evaluation helper now shares My work's actionable population, excluding cancelled/no-show
+Appointment parents. This refines count consistency without changing this ADR's historical decision.

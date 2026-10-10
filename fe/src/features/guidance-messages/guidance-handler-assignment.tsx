@@ -1,5 +1,7 @@
 "use client";
 
+import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useId, useRef, useState, type FormEvent } from "react";
 
@@ -114,6 +116,7 @@ function AssignmentBody({
   const assign = useMutation({
     mutationFn: (handler: GuidanceHandlerOption) => guidanceMessagesAssignHandler(thread.id, { handler_id: handler.id }),
     onSuccess: (response) => {
+      void invalidateGuidanceWork(queryClient);
       cacheThread(queryClient, response.data);
       void queryClient.invalidateQueries({ queryKey: guidanceDirectoryQueryFamily() });
     },

@@ -1,5 +1,7 @@
 "use client";
 
+import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useRef, useState, type ReactNode, type RefObject } from "react";
 
@@ -198,6 +200,7 @@ export function ThreadStatusControl({
   const [confirming, setConfirming] = useState(false);
   const [reopenError, setReopenError] = useState<string | null>(null);
   const settle = (response: { data: GuidanceThreadResponse }) => {
+    void invalidateGuidanceWork(queryClient);
     cacheThread(queryClient, response.data);
     void queryClient.invalidateQueries({ queryKey: guidanceDirectoryQueryFamily() });
   };

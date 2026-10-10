@@ -1,5 +1,7 @@
 "use client";
 
+import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
+
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -36,6 +38,7 @@ export function GoodMoralPreparationSection({ item, onRefresh }: {
       await prepare.mutateAsync(reviewedAt);
       setCompleted(true);
       await Promise.all([
+        invalidateGuidanceWork(client),
         client.invalidateQueries({ queryKey: getGoodMoralGetRequestQueryKey(item.id) }),
         client.invalidateQueries({ queryKey: getGoodMoralListRequestsQueryKey() }),
       ]);

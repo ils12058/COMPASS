@@ -146,12 +146,16 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
     return thread.kind === "OFFICE" || thread.counselor?.id === state.viewerId;
   }
 
-  async function finishSend(route, reply, status, body) {
+  async function waitForHeldSend() {
     if (state.holdSend) {
       const hold = state.holdSend;
       state.holdSend = null;
       await hold.promise;
     }
+  }
+
+  async function finishSend(route, reply, status, body) {
+    await waitForHeldSend();
     return reply(body, status);
   }
 
@@ -285,9 +289,9 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
       }
       thread ??= state.threads.get(state.byClientId.get(`${state.viewerId}:${body.client_message_id}`).threadId);
       const outcome = state.onSend?.(body, thread);
-      if (outcome === "network") { await route.abort("failed"); return true; }
+      if (outcome === "network") { await waitForHeldSend(); await route.abort("failed"); return true; }
       const [status, result] = outcome && typeof outcome === "object" ? [outcome.status, outcome.body] : open(thread, body);
-      if (outcome === "commit-then-network") { await route.abort("failed"); return true; }
+      if (outcome === "commit-then-network") { await waitForHeldSend(); await route.abort("failed"); return true; }
       await finishSend(route, reply, status, result);
       return true;
     }
@@ -332,9 +336,9 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
       }
       if (method === "POST" && action === "messages") {
         const outcome = state.onSend?.(body, thread);
-        if (outcome === "network") { await route.abort("failed"); return true; }
+        if (outcome === "network") { await waitForHeldSend(); await route.abort("failed"); return true; }
         const [status, result] = outcome && typeof outcome === "object" ? [outcome.status, outcome.body] : send(thread, body);
-        if (outcome === "commit-then-network") { await route.abort("failed"); return true; }
+        if (outcome === "commit-then-network") { await waitForHeldSend(); await route.abort("failed"); return true; }
         await finishSend(route, reply, status, result);
         return true;
       }

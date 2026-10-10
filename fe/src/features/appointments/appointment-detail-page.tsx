@@ -1,5 +1,7 @@
 "use client";
 
+import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
+
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState, type FormEvent } from "react";
@@ -328,6 +330,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
 
   async function refreshAppointmentQueries(includeSchedulingSlots = false) {
     const invalidations = [
+      invalidateGuidanceWork(queryClient),
       queryClient.invalidateQueries({ queryKey: getAppointmentsGetQueryKey(appointmentId) }),
       queryClient.invalidateQueries({ queryKey: getAppointmentsGetHistoryQueryKey(appointmentId) }),
       queryClient.invalidateQueries({ queryKey: getAppointmentsListMyQueryKey() }),

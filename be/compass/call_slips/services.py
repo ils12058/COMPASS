@@ -790,7 +790,8 @@ def count_my_active_call_slips(actor: User) -> int | None:
     ).count()
 
 
-def count_active_call_slips(actor: User) -> int | None:
+def _active_operational_queryset(actor: User):
+    """Canonical scoped active population, also used by the due work projection."""
     if (
         not getattr(actor, "pk", None)
         or not actor.is_active
@@ -801,7 +802,12 @@ def count_active_call_slips(actor: User) -> int | None:
     return _apply_state_filter(
         _scope_queryset(CallSlip.objects.all(), actor),
         CallSlipLifecycleState.ACTIVE,
-    ).count()
+    )
+
+
+def count_active_call_slips(actor: User) -> int | None:
+    rows = _active_operational_queryset(actor)
+    return None if rows is None else rows.count()
 
 
 def list_call_slips(

@@ -12,6 +12,7 @@ import {
   Forward,
   GraduationCap,
   HeartHandshake,
+  ListChecks,
   Megaphone,
   MessageCircle,
   MessageCircleHeart,
@@ -50,6 +51,7 @@ import {
 import type { UserSummary } from "@/lib/api/generated/model";
 import { hasStudentActions } from "@/features/student-actions/student-actions-access";
 import { hasWorkQueue } from "@/features/work-queue/work-queue-access";
+import { hasGuidanceOperations } from "@/features/guidance-operations/guidance-operations-access";
 
 export type PortalWorkspaceLink = {
   href: string;
@@ -102,6 +104,7 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
       links: [
         { href: "/portal/actions", label: "My actions", icon: ClipboardList, visible: hasStudentActions(user) },
         { href: "/portal/work", label: "My work", icon: ClipboardList, visible: hasWorkQueue(user) },
+        { href: "/portal/operations", label: "Guidance operations", icon: ListChecks, visible: hasGuidanceOperations(user) },
       ],
     },
     {

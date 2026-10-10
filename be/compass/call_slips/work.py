@@ -1,20 +1,37 @@
 """Due active permits under this domain's existing operational/Head scope."""
 
-from .models import CallSlip
-from .services import CallSlipNotPermitted, _scope_queryset, _validate_operational_actor
+from dataclasses import dataclass
+from datetime import datetime
+
+from django.db.models import Count, Min
+
+from .services import _active_operational_queryset
+
+
+@dataclass(frozen=True, slots=True)
+class DueCallSlipSummary:
+    count: int
+    oldest_due_at: datetime | None
+
+
+def _due_queryset(*, actor, now):
+    rows = _active_operational_queryset(actor)
+    return None if rows is None else rows.filter(report_at__lte=now)
+
+
+def due_call_slip_summary(*, actor, now) -> DueCallSlipSummary | None:
+    rows = _due_queryset(actor=actor, now=now)
+    if rows is None:
+        return None
+    return DueCallSlipSummary(**rows.aggregate(count=Count("pk"), oldest_due_at=Min("report_at")))
 
 
 def due_call_slips(*, actor, now, limit):
-    try:
-        _validate_operational_actor(actor)
-    except CallSlipNotPermitted:
-        return ()
-    if not actor.has_capability("call_slips.view"):
+    rows = _due_queryset(actor=actor, now=now)
+    if rows is None:
         return ()
     return tuple(
-        _scope_queryset(CallSlip.objects.all(), actor)
-        .filter(voided_at__isnull=True, interview_ended_at__isnull=True, report_at__lte=now)
-        .select_related("student")
+        rows.select_related("student")
         .only(
             "id",
             "report_at",

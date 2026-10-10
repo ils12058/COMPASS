@@ -7544,6 +7544,34 @@
         "title": "DistributionSection",
         "type": "object"
       },
+      "DueMetric": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "oldest_due_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Due At"
+          }
+        },
+        "required": [
+          "count",
+          "oldest_due_at"
+        ],
+        "title": "DueMetric",
+        "type": "object"
+      },
       "ECounselingCaptureStatus": {
         "enum": [
           "NOT_STARTED",
@@ -12860,6 +12888,141 @@
           "message"
         ],
         "title": "GuidanceOpenResponse",
+        "type": "object"
+      },
+      "GuidanceOperationsBacklog": {
+        "additionalProperties": false,
+        "properties": {
+          "call_slips_due": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DueMetric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "good_moral_issuance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WaitingMetric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "good_moral_preparation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WaitingMetric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "guidance_messages": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WaitingMetric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "routine_evaluations": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/WaitingMetric"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "guidance_messages",
+          "routine_evaluations",
+          "good_moral_preparation",
+          "good_moral_issuance",
+          "call_slips_due"
+        ],
+        "title": "GuidanceOperationsBacklog",
+        "type": "object"
+      },
+      "GuidanceOperationsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "backlog": {
+            "$ref": "#/components/schemas/GuidanceOperationsBacklog"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "schedule": {
+            "$ref": "#/components/schemas/GuidanceOperationsSchedule"
+          }
+        },
+        "required": [
+          "generated_at",
+          "backlog",
+          "schedule"
+        ],
+        "title": "GuidanceOperationsResponse",
+        "type": "object"
+      },
+      "GuidanceOperationsSchedule": {
+        "additionalProperties": false,
+        "properties": {
+          "active_call_slips_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Call Slips Count"
+          },
+          "upcoming_managed_appointments_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upcoming Managed Appointments Count"
+          },
+          "upcoming_self_appointments_count": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Upcoming Self Appointments Count"
+          }
+        },
+        "required": [
+          "upcoming_self_appointments_count",
+          "upcoming_managed_appointments_count",
+          "active_call_slips_count"
+        ],
+        "title": "GuidanceOperationsSchedule",
         "type": "object"
       },
       "GuidancePerson": {
@@ -23265,6 +23428,34 @@
           "type"
         ],
         "title": "ValidationIssue",
+        "type": "object"
+      },
+      "WaitingMetric": {
+        "additionalProperties": false,
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "title": "Count",
+            "type": "integer"
+          },
+          "oldest_waiting_since": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Oldest Waiting Since"
+          }
+        },
+        "required": [
+          "count",
+          "oldest_waiting_since"
+        ],
+        "title": "WaitingMetric",
         "type": "object"
       },
       "WebhookAckResponse": {
@@ -41717,6 +41908,53 @@
         ]
       }
     },
+    "/api/v1/guidance-operations": {
+      "get": {
+        "operationId": "guidanceOperationsGet",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceOperationsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Guidance Operations Get",
+        "tags": [
+          "guidance-operations"
+        ]
+      }
+    },
     "/api/v1/health/live": {
       "get": {
         "operationId": "healthLive",
@@ -55022,6 +55260,10 @@
     {
       "description": "Read-only Student next actions from domain state.",
       "name": "student-actions"
+    },
+    {
+      "description": "Current authorized Guidance workload and schedule aggregates.",
+      "name": "guidance-operations"
     }
   ]
 }

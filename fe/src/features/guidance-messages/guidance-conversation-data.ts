@@ -1,5 +1,7 @@
 "use client";
 
+import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
+
 import { studentActionsQueryFamily } from "@/features/student-actions/student-actions-data";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -61,6 +63,7 @@ export function useSendThreadMessage(threadId: string, latestPinRef: RefObject<n
     mutationFn: (intent: SendIntent) =>
       guidanceMessagesSendMessage(threadId, { client_message_id: intent.clientMessageId, body: intent.body }),
     onSuccess: (response) => {
+      void invalidateGuidanceWork(queryClient);
       latestPinRef.current = response.data.sequence;
       queryClient.setQueryData<ConversationHistory>(guidanceConversationQueryKey(threadId), (current) =>
         appendConfirmedMessage(current, response.data),
