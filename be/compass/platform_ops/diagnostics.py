@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
+from http.client import HTTPConnection
 
 import redis
 from django.conf import settings
@@ -17,12 +19,15 @@ from compass.common.build_metadata import get_build_metadata
 from compass.integrations.mail import Mailer
 from compass.integrations.storage import ObjectStorage
 from compass.tasks import infrastructure_noop
+from realtime_service.protocol import HEALTH_LIVE_PATH, HEALTH_READY_PATH
 
 logger = logging.getLogger("compass.platform_ops")
 
 _STORAGE_DIAGNOSTIC_KEY = "__compass_diagnostics__/reserved-read-only-probe"
 WORKER_SMOKE_DEFAULT_TIMEOUT_SECONDS = 5.0
 WORKER_SMOKE_MAX_TIMEOUT_SECONDS = 10.0
+_REALTIME_PROBE_TIMEOUT_SECONDS = 1.0
+_REALTIME_MAX_RESPONSE_BYTES = 256
 
 
 class DiagnosticStatus(StrEnum):
@@ -168,6 +173,74 @@ def probe_celery_broker() -> DiagnosticCheck:
     )
 
 
+def _realtime_health_state(path: str) -> bool | None:
+    """Read one fixed internal health route; None means an invalid/unexpected response.
+
+    http.client uses a direct TCP connection (no proxy discovery or redirect handling).
+    Only the two protocol-defined paths are passed by probe_realtime_service.
+    """
+    connection = HTTPConnection("realtime", 8001, timeout=_REALTIME_PROBE_TIMEOUT_SECONDS)
+    try:
+        connection.request("GET", path, headers={"Accept": "application/json"})
+        response = connection.getresponse()
+        content_type = response.getheader("Content-Type", "")
+        if (
+            response.status not in (200, 503)
+            or content_type.split(";", 1)[0].strip().lower() != "application/json"
+        ):
+            return None
+        raw = response.read(_REALTIME_MAX_RESPONSE_BYTES + 1)
+        if len(raw) > _REALTIME_MAX_RESPONSE_BYTES:
+            return None
+        payload = json.loads(raw)
+        if response.status == 200 and payload == {"status": "ok"}:
+            return True
+        if response.status == 503 and payload == {"status": "unavailable"}:
+            return False
+        return None
+    finally:
+        connection.close()
+
+
+def probe_realtime_service() -> DiagnosticCheck:
+    code = "realtime_service"
+    label = "Realtime communication"
+    if not settings.REALTIME_ENABLED:
+        return DiagnosticCheck(
+            code=code,
+            label=label,
+            status=DiagnosticStatus.DISABLED,
+            summary="Realtime communication is disabled for this deployment.",
+            required=False,
+        )
+
+    try:
+        # Read liveness first: a valid response establishes the service is running.
+        # Only a canonical 503 readiness response means the live service is degraded.
+        if _realtime_health_state(HEALTH_LIVE_PATH) is not True:
+            return _unavailable(code, label)
+        ready = _realtime_health_state(HEALTH_READY_PATH)
+    except Exception as exc:
+        _log_probe_failure(code=code, exc=exc)
+        return _unavailable(code, label)
+
+    if ready is True:
+        return DiagnosticCheck(
+            code=code,
+            label=label,
+            status=DiagnosticStatus.HEALTHY,
+            summary="The realtime service and its Redis dependency are responding.",
+        )
+    if ready is False:
+        return DiagnosticCheck(
+            code=code,
+            label=label,
+            status=DiagnosticStatus.DEGRADED,
+            summary="The realtime service is responding, but its Redis dependency is not ready.",
+        )
+    return _unavailable(code, label)
+
+
 def probe_object_storage() -> DiagnosticCheck:
     code = "object_storage"
     label = "Object storage"
@@ -253,6 +326,7 @@ def collect_platform_health() -> PlatformHealth:
         ("celery_broker", "Celery broker", probe_celery_broker),
         ("object_storage", "Object storage", probe_object_storage),
         ("smtp", "SMTP", probe_smtp),
+        ("realtime_service", "Realtime communication", probe_realtime_service),
     )
     checks = tuple(_safe_probe(probe, code=code, label=label) for code, label, probe in probes)
     status = derive_overall_status(checks)
@@ -342,6 +416,18 @@ def collect_environment_diagnostics() -> EnvironmentDiagnostics:
                     "celery_broker_configured",
                     "Celery broker configured",
                     bool(settings.CELERY_BROKER_URL),
+                ),
+            ),
+        ),
+        ConfigurationCategory(
+            code="realtime",
+            label="Realtime communication",
+            values=(
+                ConfigurationValue("enabled", "Realtime enabled", bool(settings.REALTIME_ENABLED)),
+                ConfigurationValue(
+                    "redis_configured",
+                    "Realtime Redis configured",
+                    bool(settings.REDIS_REALTIME_URL),
                 ),
             ),
         ),
@@ -485,6 +571,7 @@ __all__ = [
     "probe_redis_cache",
     "probe_redis_idempotency",
     "probe_redis_rate_limit",
+    "probe_realtime_service",
     "probe_smtp",
     "run_worker_smoke",
     "WORKER_SMOKE_DEFAULT_TIMEOUT_SECONDS",
