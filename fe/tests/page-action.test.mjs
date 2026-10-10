@@ -69,7 +69,7 @@ function sources(dir) {
   });
 }
 
-test("page commands stay few per page and out of activity pages and panel headers", () => {
+test("page commands stay few per page and out of panel headers", () => {
   const users = sources(featuresRoot)
     .map((file) => ({ file, source: readFileSync(file, "utf8") }))
     .filter(({ source }) => /<PageAction(Link)?\b/.test(source));
@@ -78,9 +78,6 @@ test("page commands stay few per page and out of activity pages and panel header
     const count = source.match(/<PageAction(Link)?\b/g).length;
     assert.ok(count <= 3, `${path.relative(featuresRoot, file)} has at most three page commands`);
     assert.doesNotMatch(source, /<PanelHeader[^>]*actions=\{\s*<PageAction/, `${file} keeps panel actions as ordinary buttons`);
-  }
-  for (const { file } of users) {
-    assert.doesNotMatch(path.relative(featuresRoot, file), /activity/, "Activity pages are not redesigned here");
   }
 });
 
@@ -146,4 +143,20 @@ test("Notifications and Retention use page commands for their header commands", 
   const retention = read("privacy-governance/retention/retention-page.tsx");
   assert.match(retention, /action=\{\s*<PageActionLink\s+href="\/portal\/privacy\/retention\/rules"/);
   assert.doesNotMatch(retention, /secondaryLinkClass/);
+});
+
+
+test("a guarded page action keeps the feature's link renderer and destination", () => {
+  const Guarded = ({ children, ...props }) => createElement("a", { ...props, "data-guarded": "" }, children);
+  const html = render(createElement(PageActionLink, { as: Guarded, href: "/portal/counseling", icon: Plus, label: "Open workspace" }));
+  assert.match(html, /^<a [^>]*href="\/portal\/counseling"/);
+  assert.match(html, /data-guarded=""/);
+  assert.equal(visibleText(html), "Open workspace");
+});
+
+test("danger commands retain a distinct surface and a visible explicit label", () => {
+  const html = render(createElement(PageAction, { icon: Plus, label: "Retire", variant: "danger" }));
+  assert.match(html, /data-page-action-surface="danger"/);
+  assert.match(html, /border-danger bg-danger text-on-brand/);
+  assert.equal(visibleText(html), "Retire");
 });

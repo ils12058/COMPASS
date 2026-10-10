@@ -112,7 +112,7 @@ export function AccountDetailFrame({
           headingId="account-detail-heading"
           back={
             <Link href={listHref} className={pageBackLinkClass}>
-              ← Accounts
+              Back to Accounts
             </Link>
           }
           meta={

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { Notice } from "@/components/ui/notice";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelSection, RecordSummary, type RecordFact } from "@/components/ui/panel";
 import { safeQueryData } from "@/features/freshness/query-freshness";
@@ -43,7 +44,7 @@ export function GoodMoralStudentDetail({
     return (
       <section className="max-w-2xl space-y-5">
         <Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>
-        {notFound ? <div role="alert" className="rounded-sm border border-brand-line bg-surface-raised px-4 py-5 sm:px-5"><h1 className="font-heading text-2xl font-semibold text-ink">Good Moral request not found</h1></div> : <GoodMoralError error={detail.error} fallback="Your Good Moral request could not be loaded." onRetry={() => void detail.refetch()} />}
+        {notFound ? <Notice role="alert" title={<h1 className="font-heading text-2xl font-semibold text-ink">Good Moral request not found</h1>} /> : <GoodMoralError error={detail.error} fallback="Your Good Moral request could not be loaded." onRetry={() => void detail.refetch()} />}
       </section>
     );
   }

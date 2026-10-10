@@ -1,5 +1,7 @@
 "use client";
 
+import { FileDown } from "lucide-react";
+import { PageAction } from "@/components/ui/page-action";
 import { keepPreviousData, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -129,7 +131,7 @@ export function PrivacyActivityPage() {
       <PrivacyPageHeader
         title="Privacy & Security Activity"
         description="Privacy and security events."
-        action={canExport ? <Button variant="secondary" disabled={exportCsv.isPending || query.isFetching || query.isError || query.isPlaceholderData || !result} onClick={() => exportCsv.mutate(criteria)}>{exportCsv.isPending ? "Exporting CSV…" : "Export CSV"}</Button> : undefined}
+        action={canExport ? <PageAction icon={FileDown} variant="secondary" disabled={exportCsv.isPending || query.isFetching || query.isError || query.isPlaceholderData || !result} aria-busy={exportCsv.isPending} onClick={() => exportCsv.mutate(criteria)} label={exportCsv.isPending ? "Exporting CSV…" : "Export CSV"} /> : undefined}
       />
 
       {exportCsv.isError ? <PanelMessage tone="danger" role="alert">{activityErrorMessage(exportCsv.error, "Activity CSV could not be exported.")}</PanelMessage> : null}

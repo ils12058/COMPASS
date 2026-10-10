@@ -221,7 +221,7 @@ test("a saved Online Counseling Appointment opens E-Counseling from its own prov
 
   const counseling = page({ id: SERVICE, code: "COUNSELING", name: "Counseling" });
   assert.match(counseling, />Delivery<\/dt><dd[^>]*>Online</);
-  assert.match(counseling, /<a[^>]*href="\/portal\/e-counseling\/appointment-1"[^>]*>Open E-Counseling<\/a>/);
+  assert.match(counseling, /<a[^>]*href="\/portal\/e-counseling\/appointment-1"[^>]*>(?:(?!<\/a>)[\s\S])*data-page-action-label[^>]*>Open E-Counseling<\/span><\/a>/);
 
   const ordinary = page({ id: "other", code: "CAREER_GUIDANCE", name: "Career Guidance" });
   assert.match(ordinary, />Delivery<\/dt><dd[^>]*>Online</);

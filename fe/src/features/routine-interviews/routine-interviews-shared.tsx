@@ -1,3 +1,4 @@
+import { Notice } from "@/components/ui/notice";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -349,16 +350,10 @@ export function RoutineQueryError({
   children?: ReactNode;
 }) {
   return (
-    <section role="alert" className="rounded-sm border border-danger/30 bg-surface-raised px-4 py-5 sm:px-5">
-      <h2 className="font-semibold text-ink">{title}</h2>
-      <p className="mt-2 max-w-2xl text-sm leading-6 text-muted">{message}</p>
+    <Notice role="alert" tone="danger" title={<h2>{title}</h2>} action={onRetry ? <Button variant="secondary" onClick={onRetry}>Retry</Button> : undefined}>
+      <p>{message}</p>
       {children}
-      {onRetry ? (
-        <Button className="mt-4" variant="secondary" onClick={onRetry}>
-          Retry
-        </Button>
-      ) : null}
-    </section>
+    </Notice>
   );
 }
 

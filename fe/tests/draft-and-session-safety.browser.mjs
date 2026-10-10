@@ -532,7 +532,7 @@ async function refreshReferral(page, state) {
   const { overrides } = serviceWorld();
   await check("service-draft-asks-before-back-and-unload", servicePath, { overrides }, async (page) => {
     const dialogs = answerDialogs(page);
-    await page.getByRole("link", { name: "Edit", exact: true }).click();
+    await page.getByRole("link", { name: "Edit Service", exact: true }).click();
     await page.waitForURL(`**${servicePath}/edit`);
     await page.getByLabel("Name", { exact: true }).fill(MARKER);
     // The browser's own Back; a cancelled Back never finishes navigating.

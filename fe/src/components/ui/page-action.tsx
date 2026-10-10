@@ -1,6 +1,6 @@
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { forwardRef, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ComponentProps, type ComponentType, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils/cn";
 
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils/cn";
 // object obvious to a sighted reader ("Create" + "account" is announced as "Create account").
 // A command that navigates is a real link (PageActionLink); one that changes data or opens a
 // dialog is a real button (PageAction).
-type PageActionVariant = "primary" | "secondary";
+type PageActionVariant = "primary" | "secondary" | "danger";
 
 type PageActionContent = {
   icon: LucideIcon;
@@ -29,12 +29,14 @@ const root =
 const surface: Record<PageActionVariant, string> = {
   primary: "border-brand bg-brand text-on-brand",
   secondary: "border-border-strong bg-surface-raised text-brand",
+  danger: "border-danger bg-danger text-on-brand",
 };
 
 // Hover feedback; a disabled button keeps its resting look.
 const hover: Record<PageActionVariant, string> = {
   primary: "group-hover:border-brand-strong group-hover:bg-brand-strong",
   secondary: "group-hover:bg-surface-muted",
+  danger: "group-hover:bg-danger/90",
 };
 
 function PageActionFace({
@@ -57,7 +59,7 @@ function PageActionFace({
       >
         <Icon size={21} />
       </span>
-      <span className="text-sm font-semibold leading-5 text-ink">
+      <span data-page-action-label="" className="[overflow-wrap:anywhere] text-sm font-semibold leading-5 text-ink">
         {label}
         {labelDetail ? <span className="sr-only"> {labelDetail}</span> : null}
       </span>
@@ -66,14 +68,15 @@ function PageActionFace({
 }
 
 export function PageActionLink({
+  as: LinkComponent = Link,
   href,
   className,
   ...content
-}: PageActionContent & { href: string; className?: string }) {
+}: PageActionContent & { href: string; className?: string; as?: ComponentType<ComponentProps<typeof Link>> }) {
   return (
-    <Link href={href} className={cn(root, className)}>
+    <LinkComponent href={href} className={cn(root, className)}>
       <PageActionFace {...content} interactive />
-    </Link>
+    </LinkComponent>
   );
 }
 

@@ -65,7 +65,7 @@ export function ContentPageHeading({
       actions={action}
       back={backHref ? (
         <Link href={backHref} className={pageBackLinkClass}>
-          ← {backLabel}
+          {backLabel?.startsWith("Back to ") ? backLabel : `Back to ${backLabel}`}
         </Link>
       ) : undefined}
     >

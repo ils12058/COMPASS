@@ -1,6 +1,7 @@
 "use client";
 
-import { buttonVariants } from "@/components/ui/button";
+import { NotebookPen } from "lucide-react";
+import { PageActionLink } from "@/components/ui/page-action";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -189,7 +190,7 @@ function CounselorRoutineDetail({
       <RoutinePageHeading
         title="Routine Interview"
         back={<RoutineBackLink />}
-        action={workspaceHref ? <GuardedPortalLink href={workspaceHref} className={buttonVariants({ variant: "secondary" })}>Open Counseling workspace</GuardedPortalLink> : undefined}
+        action={workspaceHref ? <PageActionLink as={GuardedPortalLink} href={workspaceHref} icon={NotebookPen} variant="secondary" label="Open Counseling workspace" /> : undefined}
       />
       <RoutineContextSummary
         personName={detail.inventory_context?.full_name ?? detail.student.display_name}

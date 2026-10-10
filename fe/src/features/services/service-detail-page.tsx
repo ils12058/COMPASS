@@ -1,13 +1,13 @@
 "use client";
 
+import { PageActionLink } from "@/components/ui/page-action";
 import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 import { Pencil } from "lucide-react";
 import { ServiceHelp } from "@/features/services/service-help";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelSection } from "@/components/ui/panel";
@@ -251,12 +251,7 @@ export function ServiceDetailPage() {
         backLabel="Services"
         action={
           canManage ? (
-            <Link
-              href={"/portal/services/" + service.id + "/edit"}
-              className={buttonVariants({ variant: "secondary" })}
-            >
-              <Pencil aria-hidden="true" size={16} /> Edit
-            </Link>
+            <PageActionLink href={"/portal/services/" + service.id + "/edit"} icon={Pencil} variant="secondary" label="Edit" labelDetail="Service" />
           ) : null
         }
       >

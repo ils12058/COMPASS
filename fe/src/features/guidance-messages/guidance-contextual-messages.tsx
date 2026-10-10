@@ -1,5 +1,6 @@
 "use client";
 
+import { PageAction } from "@/components/ui/page-action";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowRight, MessageCircle, X } from "lucide-react";
 import {
@@ -15,7 +16,6 @@ import {
   type RefObject,
 } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import {
@@ -272,20 +272,16 @@ function MessagesTriggerButton({
   if (!available) return null;
   const unreadText = unreadLabel(unread);
   return (
-    <Button
+    <PageAction
       ref={triggerRef}
+      icon={MessageCircle}
       variant="secondary"
+      label={unreadText ? `Messages ${unreadText}` : "Messages"}
       className={className}
       aria-expanded={open}
       aria-controls={open ? panelId : undefined}
       onClick={toggle}
-    >
-      <MessageCircle size={16} aria-hidden="true" />
-      Messages
-      {unreadText ? (
-        <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-semibold text-on-brand">{unreadText}</span>
-      ) : null}
-    </Button>
+    />
   );
 }
 

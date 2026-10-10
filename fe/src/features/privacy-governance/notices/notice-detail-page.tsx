@@ -1,5 +1,7 @@
 "use client";
 
+import { Pencil, Archive } from "lucide-react";
+import { PageAction } from "@/components/ui/page-action";
 import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
@@ -342,24 +344,24 @@ export function NoticeDetailPage() {
         action={
           manageable && !renaming ? (
             <>
-              <Button
+              <PageAction
+                icon={Pencil}
+                label="Rename"
                 variant="secondary"
                 onClick={() => {
                   action.reset();
                   setRenaming(true);
                 }}
-              >
-                Rename
-              </Button>
-              <Button
+              />
+              <PageAction
+                icon={Archive}
+                label="Retire"
                 variant="danger"
                 onClick={() => {
                   action.reset();
                   setRetireOpen(true);
                 }}
-              >
-                Retire
-              </Button>
+              />
             </>
           ) : null
         }

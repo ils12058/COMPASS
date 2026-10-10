@@ -67,13 +67,11 @@ function SessionHeader({
       meta={<AppointmentStatusBadge status={appointment.status} />}
       // Guidance Messages is the session's durable text channel (ADR-103); there is no call chat.
       actions={<div className="flex flex-wrap items-start gap-2"><GuidanceMessagesTrigger />{layoutControl}</div>}
+      help={<ECounselingHelp mediaPolicyVersion={mediaPolicyVersion} />}
       back={(
-        <div className="mb-1 flex items-center justify-between gap-3">
-          <GuardedPortalLink href={`/portal/appointments/${appointmentId}`} aria-label="Back to appointment" className={cn(pageBackLinkClass, "mb-0")}>
-            <span aria-hidden="true">←&nbsp;</span>Appointment
-          </GuardedPortalLink>
-          <ECounselingHelp mediaPolicyVersion={mediaPolicyVersion} />
-        </div>
+        <GuardedPortalLink href={`/portal/appointments/${appointmentId}`} className={pageBackLinkClass}>
+          Back to appointment
+        </GuardedPortalLink>
       )}
     >
       <p className="mt-1 text-sm text-muted">

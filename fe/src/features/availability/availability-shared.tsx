@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { ActiveStatusBadge } from "@/components/ui/active-status-badge";
 import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -212,17 +213,14 @@ export function AvailabilityStatusBadge({
   active: boolean;
   legacy?: boolean;
 }) {
-  const label = legacy ? "Legacy Availability" : active ? "Active" : "Inactive";
+  if (!legacy) return <ActiveStatusBadge active={active} />;
+  const label = "Legacy Availability";
 
   return (
     <span
       className={
         "inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold " +
-        (legacy
-          ? "border-warning/30 bg-warning/10 text-warning"
-          : active
-            ? "border-success/30 bg-success/10 text-success"
-            : "border-border bg-surface-muted text-muted")
+        "border-warning/30 bg-warning/10 text-warning"
       }
     >
       {label}

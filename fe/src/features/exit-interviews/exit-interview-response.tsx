@@ -97,18 +97,14 @@ export function ExitInterviewResponse({
   return (
     <section className="space-y-5">
       <div>
-      <Link href={backHref} className={pageBackLinkClass}>
-        {studentFacing ? "Back to Exit Interviews" : "Back to Exit Interview responses"}
-      </Link>
       <ExitInterviewHeading
+        back={<Link href={backHref} className={pageBackLinkClass}>
+          {studentFacing ? "Back to Exit Interviews" : "Back to Exit Interview responses"}
+        </Link>}
         title={studentFacing ? "Exit Interview" : detail.student_name || detail.student.display_name}
         description={studentFacing ? detail.academic_year.label : `${detail.academic_year.label}${detail.student.institutional_id ? ` · ${detail.student.institutional_id}` : ""}`}
-        action={
-          <div className="flex flex-wrap items-center gap-3">
-            <ExitInterviewStatus status={detail.status} />
-            {headerAction}
-          </div>
-        }
+        meta={<ExitInterviewStatus status={detail.status} />}
+        action={headerAction}
       />
 
       </div>

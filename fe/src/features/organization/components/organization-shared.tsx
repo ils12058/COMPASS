@@ -15,19 +15,7 @@ import { PageHeader } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { PanelMessage } from "@/components/ui/panel";
 
-export function StatusBadge({ active }: { active: boolean }) {
-  return (
-    <span
-      className={`inline-flex rounded-full border px-2 py-0.5 text-xs font-semibold ${
-        active
-          ? "border-success/30 bg-success/10 text-success"
-          : "border-border bg-surface-muted text-muted"
-      }`}
-    >
-      {active ? "Active" : "Inactive"}
-    </span>
-  );
-}
+export { ActiveStatusBadge as StatusBadge } from "@/components/ui/active-status-badge";
 
 export function PageHeading({
   title,

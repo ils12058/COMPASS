@@ -39,13 +39,17 @@ export function GraduateTracerHeading({
   title,
   description,
   action,
+  meta,
+  back,
 }: {
   id?: string;
   title: string;
   description?: string;
   action?: ReactNode;
+  meta?: ReactNode;
+  back?: ReactNode;
 }) {
-  return <PageHeader title={title} headingId={id} description={description} actions={action} />;
+  return <PageHeader title={title} headingId={id} description={description} actions={action} meta={meta} back={back} />;
 }
 
 export function GraduateTracerError({

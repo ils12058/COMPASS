@@ -172,7 +172,7 @@ function AssessmentTypeCatalog({
       <div className="space-y-5">
         <Panel aria-labelledby="assessment-type-catalog">
           <PanelHeader
-            title="Assessment Types"
+            title="Results"
             titleId="assessment-type-catalog"
             context={`${types.length} ${types.length === 1 ? "type" : "types"}`}
           />

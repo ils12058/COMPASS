@@ -2150,8 +2150,11 @@ Commands wrap on narrow screens; they never collapse into unlabelled icons or a 
 
 Ordinary `Button`s remain for Save, Cancel, Submit, Retry, Apply filters, dialog confirmations,
 row actions, form navigation, destructive actions, and actions that belong to one region (Add
-unavailability, Check worker). Back stays a text link. Record pages' own actions (Edit, PDF,
-lifecycle actions) and Activity pages keep their current buttons.
+unavailability, Check worker). Back stays a text link.
+Record and Activity page-header commands use the same labeled page-action contract (Edit, PDF,
+Export and lifecycle dialog triggers). Consequential header triggers keep explicit action labels,
+danger treatment where applicable, and their existing review dialogs; confirmations and lifecycle
+actions in their own contextual regions remain ordinary Buttons.
 
 ## Maroon as structure
 
