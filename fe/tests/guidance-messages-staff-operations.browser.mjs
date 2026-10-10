@@ -430,6 +430,37 @@ async function choose(page, name) {
   });
 }
 
+{
+  const backend = withTemplates(staffWorld());
+  const value = world(backend, messagesAccount("COUNSELOR"));
+  await check("stale template preserves draft, reads latest separately and requires review", TEMPLATES_PAGE, value.options(), async (page) => {
+    await page.getByRole("main").getByRole("button", { name: "Edit Office follow-up" }).click();
+    const editor = page.getByRole("dialog", { name: "Edit template" });
+    await shown(editor);
+    const opened = backend.state.templates.find((item) => item.name === "Office follow-up");
+    const original = opened.updated_at;
+    const draft = "My unsaved generic draft.";
+    await editor.getByRole("textbox", { name: "Text" }).fill(draft);
+    opened.body = "Latest canonical generic wording.";
+    opened.updated_at = new Date(Date.now() + 60_000).toISOString();
+    const latest = opened.updated_at;
+    await editor.getByRole("button", { name: "Save changes" }).click();
+    await shown(editor.getByText(opened.body, { exact: true }));
+    assert.equal(await editor.getByRole("textbox", { name: "Text" }).inputValue(), draft);
+    assert.equal(await editor.getByRole("button", { name: "Save changes" }).isDisabled(), true);
+    const patches = () => backend.templateRequests().filter((request) => request.method === "PATCH");
+    assert.equal(patches().length, 1, "No replay while latest version loads");
+    assert.equal(patches()[0].body.expected_updated_at, original);
+    await editor.getByRole("button", { name: "I reviewed it; continue editing my draft" }).click();
+    assert.equal(await editor.getByRole("textbox", { name: "Text" }).inputValue(), draft);
+    await editor.getByRole("button", { name: "Save changes" }).click();
+    await hidden(editor);
+    assert.equal(patches().length, 2);
+    assert.equal(patches()[1].body.expected_updated_at, latest);
+    assert.equal(opened.body, draft);
+  });
+}
+
 // ── Contextual Counselor composer ─────────────────────────────────────────────────────────────
 
 {

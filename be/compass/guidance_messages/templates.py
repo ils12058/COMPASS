@@ -168,7 +168,7 @@ def _same_version(saved: datetime, expected: datetime) -> bool:
 
 @transaction.atomic
 def update_template(
-    *, actor, template_id, name=None, body=None, expected_updated_at=None, context=None
+    *, actor, template_id, expected_updated_at: datetime, name=None, body=None, context=None
 ):
     """Edit an active template. Only future insertions change; sent Messages never do."""
     actor = _manager(actor, lock=True)
@@ -180,9 +180,9 @@ def update_template(
     if body is not None:
         changes["body"] = validate_body(body)
     template = _locked(template_id)
-    if expected_updated_at is not None and not _same_version(
-        template.updated_at, expected_updated_at
-    ):
+    if not isinstance(expected_updated_at, datetime) or timezone.is_naive(expected_updated_at):
+        raise InvalidMessageInput("expected_updated_at must be a timezone-aware timestamp.")
+    if not _same_version(template.updated_at, expected_updated_at):
         raise MessagesConflict("This Message template changed after it was opened.")
     if template.status != TemplateStatus.ACTIVE:
         raise MessagesConflict("Restore this Message template before editing it.")

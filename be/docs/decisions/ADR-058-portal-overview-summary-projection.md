@@ -69,3 +69,10 @@ The Overview is non-persistent: no models, migrations, cache, or new capability 
 The frontend receives one generated timestamp and strictly typed role/designation-aware sections,
 while domain authorization remains authoritative and paginated list lengths are never treated as
 totals.
+
+## Subsequent decision
+
+[ADR-105](ADR-105-guidance-work-queue-and-messages-operations.md) adds the read-only Guidance
+staff Work Queue and Messages operational hardening. This decision remains the historical
+foundation; ADR-105 defines the current host-key gate, template version requirement and shared
+Guidance actionable projection.

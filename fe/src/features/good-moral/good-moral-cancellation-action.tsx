@@ -1,5 +1,6 @@
 "use client";
 
+import { workQueueQueryFamily } from "@/features/work-queue/work-queue-data";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -40,6 +41,7 @@ export function GoodMoralCancelAction({
       queryClient.invalidateQueries({ queryKey: getGoodMoralGetRequestQueryKey(requestId) }),
       queryClient.invalidateQueries({ queryKey: getGoodMoralListMyRequestsQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getGoodMoralListRequestsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: workQueueQueryFamily() }),
     ]);
   }
 

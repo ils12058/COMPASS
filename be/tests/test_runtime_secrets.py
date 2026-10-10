@@ -519,7 +519,7 @@ def test_export_cannot_generate_absent_new_feedback_key(migration, monkeypatch):
     assert not list(directory.iterdir())
 
 
-def test_guidance_message_secret_optional_until_content_provisioning_and_pointer_only(runtime):
+def test_guidance_message_secret_required_before_deployment_and_pointer_only(runtime):
     checker, directory, env_file = runtime
     setting = "GUIDANCE_MESSAGE_ENCRYPTION_KEYS"
     filename = "guidance_message_encryption_keys"
@@ -527,6 +527,11 @@ def test_guidance_message_secret_optional_until_content_provisioning_and_pointer
     path = directory / filename
     path.chmod(0o600)
     path.write_text("")
+    path.chmod(0o444)
+    with pytest.raises(ValueError, match="guidance_message_encryption_keys: must not be empty"):
+        verify(runtime)
+    path.chmod(0o600)
+    path.write_text("synthetic-provisioned-value")
     path.chmod(0o444)
     verify(runtime)
     env_file.write_text(

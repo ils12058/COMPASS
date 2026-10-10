@@ -40,6 +40,28 @@ class SelectionTests(unittest.TestCase):
             selected("be/compass/guidance_messages/migrations/0002_guidance_message_template.py").full
         )
 
+    def test_work_queue_and_source_changes_select_projection_regressions(self):
+        for path in (
+            "be/compass/work_queue/services.py",
+            "be/compass/guidance_messages/work.py",
+            "be/compass/guidance_messages/management/commands/rotate_guidance_message_encryption.py",
+            "be/compass/routine_interviews/work.py",
+            "be/compass/good_moral/work.py",
+            "be/compass/call_slips/work.py",
+            "be/compass/overview/services.py",
+        ):
+            result = selected(path)
+            self.assertFalse(result.full)
+            self.assertIn("test_work_queue.py", result.files)
+        self.assertIn(
+            "test_guidance_messages_rotation.py", selected("be/compass/work_queue/api.py").files
+        )
+        self.assertNotIn("test_demo_seed.py", selected("be/compass/work_queue/services.py").files)
+        self.assertIn(
+            "test_runtime_secrets.py",
+            selected("be/deploy/runtime-secrets/runtime_secrets.py").files,
+        )
+
     def test_staff_operations_policy_and_audit_changes_select_the_full_suite(self):
         # The template capability lives in identity policy; template audit actions in audit.
         self.assertTrue(selected("be/compass/accounts/policy.py").full)

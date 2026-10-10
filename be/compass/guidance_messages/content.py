@@ -28,7 +28,7 @@ def validate_body(body: object) -> str:
     return validate_text(body, label="Message body")
 
 
-def _keyring():
+def encryption_keyring():
     try:
         return crypto.parse_fernet_keyring(
             settings.GUIDANCE_MESSAGE_ENCRYPTION_KEYS, setting="GUIDANCE_MESSAGE_ENCRYPTION_KEYS"
@@ -49,7 +49,7 @@ def _binding(message):
 def encrypt_body(message, body: str) -> str:
     try:
         return crypto.encrypt_bound_json(
-            keyring=_keyring(),
+            keyring=encryption_keyring(),
             schema_version=SCHEMA_VERSION,
             binding=_binding(message),
             payload={"body": validate_body(body)},
@@ -65,7 +65,7 @@ def read_body(message) -> str:
             raise GuidanceMessageContentUnavailable()
         payload = crypto.decrypt_bound_json(
             message.body_ciphertext,
-            keyring=_keyring(),
+            keyring=encryption_keyring(),
             schema_version=SCHEMA_VERSION,
             binding=_binding(message),
         )

@@ -133,6 +133,10 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_cross_domain_lifecycle_reconciliation.py",
         ),
     ),
+    "work-queue": (
+        "Read-only Guidance projection and source authorization/transition regressions.",
+        ("test_work_queue.py", "test_overview.py"),
+    ),
     "guidance-messages": (
         "Guidance Messages encryption, workload/relationship authorization, commit hints, "
         "Office handler eligibility and Message templates.",
@@ -143,6 +147,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_guidance_messages_handlers.py",
             "test_guidance_messages_realtime.py",
             "test_guidance_messages_templates.py",
+            "test_guidance_messages_rotation.py",
         ),
     ),
     "counseling": (
@@ -428,7 +433,7 @@ DOMAINS: dict[str, Area] = {
     "call_slips": domain(
         "call_slips",
         "Call Slips are issued from Referrals and read by Counseling context and lists.",
-        ("referrals-call-slips", "counseling", "documents", "cross-domain-api", "cross-domain-lists"),
+        ("work-queue", "referrals-call-slips", "counseling", "documents", "cross-domain-api", "cross-domain-lists"),
         ("test_exit_interviews.py", "test_institutional_forms.py", "test_profiles.py"),
     ),
     "counseling": domain(
@@ -483,6 +488,7 @@ DOMAINS: dict[str, Area] = {
         "guidance_messages",
         "Messages depends on workload, Counseling Appointment anchors, encryption and realtime.",
         (
+            "work-queue",
             "guidance-messages",
             "organization",
             "counseling",
@@ -494,7 +500,7 @@ DOMAINS: dict[str, Area] = {
     "good_moral": domain(
         "good_moral",
         "Good Moral depends on Inventory and Exit Interviews and feeds the Overview.",
-        ("good-moral", "exit-interviews", "feedback", "documents", "cross-domain-lists"),
+        ("work-queue", "good-moral", "exit-interviews", "feedback", "documents", "cross-domain-lists"),
         ("test_final_api_lifecycle_completion.py",),
     ),
     "graduate_tracer": domain(
@@ -536,10 +542,18 @@ DOMAINS: dict[str, Area] = {
         ),
         ("test_appointments.py", "test_profiles.py"),
     ),
+    "work_queue": domain(
+        "work_queue",
+        "Composition depends on all five domain-owned actionable sources.",
+        (
+            "work-queue", "guidance-messages", "routine-interviews", "good-moral",
+            "referrals-call-slips", "cross-domain-lists",
+        ),
+    ),
     "overview": domain(
         "overview",
         "The Overview reads appointments, cases, Good Moral, and platform state.",
-        ("cross-domain-lists",),
+        ("work-queue", "cross-domain-lists",),
         ("test_platform_operations.py",),
     ),
     "platform_ops": domain(
@@ -593,6 +607,7 @@ DOMAINS: dict[str, Area] = {
         "routine_interviews",
         "Routine Interviews link Appointments, Encounters, and the Inventory.",
         (
+            "work-queue",
             "routine-interviews",
             "counseling",
             "scheduling",

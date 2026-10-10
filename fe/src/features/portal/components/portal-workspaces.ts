@@ -48,6 +48,7 @@ import {
   hasInstitutionWorkspace,
 } from "@/features/institution-configuration/institution-access";
 import type { UserSummary } from "@/lib/api/generated/model";
+import { hasWorkQueue } from "@/features/work-queue/work-queue-access";
 
 export type PortalWorkspaceLink = {
   href: string;
@@ -95,6 +96,10 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
 
   // Daily work comes first; institution setup and administration sit at the end.
   const groups: { label: string; links: CandidateLink[] }[] = [
+    {
+      label: "Daily work",
+      links: [{ href: "/portal/work", label: "My work", icon: ClipboardList, visible: hasWorkQueue(user) }],
+    },
     {
       label: "Scheduling",
       links: [

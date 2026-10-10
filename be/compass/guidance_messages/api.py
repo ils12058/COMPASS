@@ -171,7 +171,7 @@ class GuidanceTemplateUpdateRequest(StrictSchema):
     name: StrictStr | None = Field(default=None, min_length=1, max_length=templates.NAME_LIMIT)
     body: StrictStr | None = Field(default=None, min_length=1, max_length=content.BODY_LIMIT)
     # The updated_at the editor opened; a newer saved version is refused rather than overwritten.
-    expected_updated_at: datetime | None = None
+    expected_updated_at: datetime
 
 
 class GuidanceStudentOption(GuidancePerson):
