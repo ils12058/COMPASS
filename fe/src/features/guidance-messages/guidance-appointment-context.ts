@@ -1,5 +1,7 @@
 "use client";
 
+import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
+
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import type { RefObject } from "react";
 
@@ -77,6 +79,7 @@ export function reconcileAppointmentMessages(
 /** Records a confirmed open-or-send: the thread, its Message and the Appointment's context. */
 export function cacheOpenedCounselingThread(queryClient: QueryClient, appointmentId: string, opened: GuidanceOpenResponse) {
   const { thread, message } = opened;
+  void invalidateGuidanceWork(queryClient);
   cacheThread(queryClient, thread);
   queryClient.setQueryData<ConversationHistory>(guidanceConversationQueryKey(thread.id), (current) =>
     current

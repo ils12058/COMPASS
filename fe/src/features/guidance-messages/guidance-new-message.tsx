@@ -1,5 +1,7 @@
 "use client";
 
+import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -49,6 +51,7 @@ function useOpenedThread() {
   const queryClient = useQueryClient();
   return useCallback(
     (opened: GuidanceOpenResponse) => {
+      void invalidateGuidanceWork(queryClient);
       cacheThread(queryClient, opened.thread);
       if (opened.message.sequence === 1) {
         queryClient.setQueryData<ConversationHistory>(guidanceConversationQueryKey(opened.thread.id), {

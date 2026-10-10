@@ -867,7 +867,8 @@ def count_my_draft_intakes(student: User) -> int | None:
     ).count()
 
 
-def count_pending_assigned_evaluations(counselor: User) -> int | None:
+def _pending_evaluation_queryset(counselor: User):
+    """One canonical actionable population for My Work, Overview and operations."""
     if (
         not getattr(counselor, "pk", None)
         or not counselor.is_active
@@ -880,7 +881,12 @@ def count_pending_assigned_evaluations(counselor: User) -> int | None:
         counselor_id=counselor.pk,
         intake_submitted_at__isnull=False,
         evaluation_finalized_at__isnull=True,
-    ).count()
+    ).filter(actionable_parent_filter())
+
+
+def count_pending_assigned_evaluations(counselor: User) -> int | None:
+    rows = _pending_evaluation_queryset(counselor)
+    return None if rows is None else rows.count()
 
 
 def list_mine(student: User) -> tuple[RoutineInterview, ...]:

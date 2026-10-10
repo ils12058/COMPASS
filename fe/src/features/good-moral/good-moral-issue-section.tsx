@@ -1,6 +1,6 @@
 "use client";
 
-import { workQueueQueryFamily } from "@/features/work-queue/work-queue-data";
+import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -32,7 +32,7 @@ export function GoodMoralIssueSection({
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: getGoodMoralGetRequestQueryKey(item.id) }),
       queryClient.invalidateQueries({ queryKey: getGoodMoralListRequestsQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: workQueueQueryFamily() }),
+        invalidateGuidanceWork(queryClient),
     ]);
   }
 

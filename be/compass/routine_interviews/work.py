@@ -1,29 +1,34 @@
 """The assigned Counselor's actionable evaluation prefix, without confidential content."""
 
-from compass.appointments.models import AppointmentStatus
+from dataclasses import dataclass
+from datetime import datetime
 
-from .models import RoutineInterview
-from .services import RoutineInterviewNotPermitted, _validate_counselor
+from django.db.models import Count, Min
+
+from .services import _pending_evaluation_queryset
+
+
+@dataclass(frozen=True, slots=True)
+class PendingEvaluationSummary:
+    count: int
+    oldest_waiting_since: datetime | None
+
+
+def pending_evaluation_summary(*, actor) -> PendingEvaluationSummary | None:
+    rows = _pending_evaluation_queryset(actor)
+    if rows is None:
+        return None
+    return PendingEvaluationSummary(
+        **rows.aggregate(count=Count("pk"), oldest_waiting_since=Min("intake_submitted_at"))
+    )
 
 
 def pending_evaluations(*, actor, limit):
-    try:
-        _validate_counselor(actor)
-    except RoutineInterviewNotPermitted:
-        return ()
-    if not all(
-        actor.has_capability(code)
-        for code in ("routine_interviews.view_assigned", "routine_interviews.manage_assigned")
-    ):
+    rows = _pending_evaluation_queryset(actor)
+    if rows is None:
         return ()
     return tuple(
-        RoutineInterview.objects.filter(
-            counselor_id=actor.pk,
-            intake_submitted_at__isnull=False,
-            evaluation_finalized_at__isnull=True,
-        )
-        .exclude(appointment__status__in=[AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW])
-        .select_related("student")
+        rows.select_related("student")
         .only(
             "id",
             "intake_submitted_at",

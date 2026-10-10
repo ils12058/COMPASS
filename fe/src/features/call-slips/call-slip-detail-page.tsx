@@ -1,6 +1,6 @@
 "use client";
 
-import { workQueueQueryFamily } from "@/features/work-queue/work-queue-data";
+import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState, type FormEvent, type ReactNode } from "react";
@@ -221,7 +221,7 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
       queryClient.invalidateQueries({ queryKey: getCallSlipsGetQueryKey(slip.id) }),
       queryClient.invalidateQueries({ queryKey: getCallSlipsGetMyQueryKey(slip.id) }),
       queryClient.invalidateQueries({ queryKey: getCallSlipsListQueryKey() }),
-      queryClient.invalidateQueries({ queryKey: workQueueQueryFamily() }),
+      invalidateGuidanceWork(queryClient),
       ...(slip.referral ? [queryClient.invalidateQueries({ queryKey: getCallSlipsListQueryKey({ referral_id: slip.referral.id }) })] : []),
     ]);
   }
@@ -327,7 +327,7 @@ function VoidCallSlip({ slip, onRefresh }: { slip: CallSlipOperationalResponse; 
       queryClient.invalidateQueries({ queryKey: getCallSlipsGetQueryKey(slip.id) }),
       queryClient.invalidateQueries({ queryKey: getCallSlipsGetMyQueryKey(slip.id) }),
       queryClient.invalidateQueries({ queryKey: getCallSlipsListQueryKey() }),
-      queryClient.invalidateQueries({ queryKey: workQueueQueryFamily() }),
+      invalidateGuidanceWork(queryClient),
       queryClient.invalidateQueries({ queryKey: getCallSlipsListMyQueryKey() }),
       ...(slip.referral ? [queryClient.invalidateQueries({ queryKey: getCallSlipsListQueryKey({ referral_id: slip.referral.id }) })] : []),
     ]);

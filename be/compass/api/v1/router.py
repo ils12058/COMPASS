@@ -25,6 +25,7 @@ from compass.feedback.api import router as feedback_router
 from compass.good_moral.api import router as good_moral_router
 from compass.graduate_tracer.api import router as graduate_tracer_router
 from compass.guidance_messages.api import router as guidance_messages_router
+from compass.guidance_operations.api import router as guidance_operations_router
 from compass.institutional_forms.api import router as institutional_forms_router
 from compass.inventory.api import router as inventory_router
 from compass.notifications.api import router as notifications_router
@@ -208,6 +209,10 @@ api = NinjaAPI(
                 "name": "student-actions",
                 "description": "Read-only Student next actions from domain state.",
             },
+            {
+                "name": "guidance-operations",
+                "description": "Current authorized Guidance workload and schedule aggregates.",
+            },
         ]
     },
     openapi_url="/openapi.json" if settings.API_DOCS_ENABLED else None,
@@ -240,6 +245,7 @@ api.add_router("/reports", reports_router)
 api.add_router("/overview", overview_router)
 api.add_router("/work", work_queue_router)
 api.add_router("/student-actions", student_actions_router)
+api.add_router("/guidance-operations", guidance_operations_router)
 api.add_router("/good-moral", good_moral_router)
 api.add_router("/feedback", feedback_router)
 api.add_router("/graduate-tracer", graduate_tracer_router)

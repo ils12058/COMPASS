@@ -23,6 +23,7 @@ CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 EXPECTED_OPERATION_IDS = {
     "workQueueList",
     "studentActionsList",
+    "guidanceOperationsGet",
     "guidanceMessagesListThreads",
     "guidanceMessagesRecipientOptions",
     "guidanceMessagesEligibleStudents",
@@ -783,6 +784,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "guidance-messages",
         "work",
         "student-actions",
+        "guidance-operations",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -2962,3 +2964,36 @@ def test_student_actions_contract_is_closed_read_only_and_structural():
         "INCOMPLETE_SELF_SERVICE",
     ]
     assert "total" not in schema["components"]["schemas"]["StudentActionsResponse"]["properties"]
+
+
+def test_guidance_operations_contract_is_closed_read_only_and_aggregate_only():
+    schema = _generated_schema()
+    path = schema["paths"]["/api/v1/guidance-operations"]
+    assert set(path) == {"get"}
+    assert path["get"]["operationId"] == "guidanceOperationsGet"
+    assert path["get"].get("parameters", []) == []
+    schemas = schema["components"]["schemas"]
+    expected = {
+        "GuidanceOperationsResponse": {"generated_at", "backlog", "schedule"},
+        "GuidanceOperationsBacklog": {
+            "guidance_messages",
+            "routine_evaluations",
+            "good_moral_preparation",
+            "good_moral_issuance",
+            "call_slips_due",
+        },
+        "GuidanceOperationsSchedule": {
+            "upcoming_self_appointments_count",
+            "upcoming_managed_appointments_count",
+            "active_call_slips_count",
+        },
+        "WaitingMetric": {"count", "oldest_waiting_since"},
+        "DueMetric": {"count", "oldest_due_at"},
+    }
+    for name, fields in expected.items():
+        assert schemas[name]["additionalProperties"] is False
+        assert set(schemas[name]["properties"]) == fields
+        assert set(schemas[name]["required"]) == fields
+    assert schemas["WaitingMetric"]["properties"]["count"]["minimum"] == 0
+    assert schemas["DueMetric"]["properties"]["count"]["minimum"] == 0
+    assert not any(code.startswith("guidance_operations.") for code in CAPABILITY_CODES)

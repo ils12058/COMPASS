@@ -1,5 +1,7 @@
 "use client";
 
+import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import { useRef, useState } from "react";
@@ -291,6 +293,7 @@ function BookingWorkspace() {
       }));
       // The booked time leaves the slot list on the next check; it is no longer a pending choice.
       slotChoice.clear();
+      await invalidateGuidanceWork(queryClient);
       await queryClient.invalidateQueries({
         queryKey: getAppointmentsListMyQueryKey(),
       });

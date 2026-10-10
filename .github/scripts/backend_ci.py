@@ -141,6 +141,10 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Read-only Guidance projection and source authorization/transition regressions.",
         ("test_work_queue.py", "test_overview.py"),
     ),
+    "guidance-operations": (
+        "Current aggregate authority and shared actionable source populations.",
+        ("test_guidance_operations.py",),
+    ),
     "guidance-messages": (
         "Guidance Messages encryption, workload/relationship authorization, commit hints, "
         "Office handler eligibility and Message templates.",
@@ -563,6 +567,12 @@ DOMAINS: dict[str, Area] = {
             "referrals-call-slips", "cross-domain-lists",
         ),
     ),
+    "guidance_operations": domain(
+        "guidance_operations",
+        "Aggregate projection depends on five actionable sources and canonical schedule scope.",
+        ("guidance-operations", "work-queue", "guidance-messages", "routine-interviews",
+         "good-moral", "referrals-call-slips", "scheduling", "identity-access"),
+    ),
     "overview": domain(
         "overview",
         "The Overview reads appointments, cases, Good Moral, and platform state.",
@@ -663,6 +673,13 @@ for source in (
     DOMAINS[source] = domain(area.name, area.reason, (*area.bundles, "student-actions"), area.tests)
 
 # compass/integrations is split by client: each client is used by different domains.
+for source in (
+    "guidance_messages", "routine_interviews", "good_moral", "call_slips", "appointments",
+    "overview", "work_queue", "service_catalog",
+):
+    area = DOMAINS[source]
+    DOMAINS[source] = domain(area.name, area.reason, (*area.bundles, "guidance-operations"), area.tests)
+
 INTEGRATIONS: dict[str, Area] = {
     "daily.py": domain("integrations:daily", "Daily.co client for E-Counseling.", ("ecounseling",)),
     "mail.py": domain("integrations:mail", "Outbound email transport.", ("notifications", "platform-ops")),

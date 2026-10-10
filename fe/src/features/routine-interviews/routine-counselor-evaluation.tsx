@@ -1,6 +1,6 @@
 "use client";
 
-import { workQueueQueryFamily } from "@/features/work-queue/work-queue-data";
+import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 import Link from "next/link";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -366,7 +366,7 @@ function RoutineEncounterFinalization({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetAssignedQueryKey(routineInterviewId) }),
         queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListAssignedQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: workQueueQueryFamily() }),
+        invalidateGuidanceWork(queryClient),
         queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(routineInterviewId) }),
       ]);
     } catch (caught) {

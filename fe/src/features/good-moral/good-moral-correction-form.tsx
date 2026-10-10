@@ -1,6 +1,6 @@
 "use client";
 
-import { workQueueQueryFamily } from "@/features/work-queue/work-queue-data";
+import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 import { useMemo, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
@@ -132,7 +132,7 @@ export function GoodMoralCorrectionForm({
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getGoodMoralGetRequestQueryKey(item.id) }),
         queryClient.invalidateQueries({ queryKey: getGoodMoralListRequestsQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: workQueueQueryFamily() }),
+        invalidateGuidanceWork(queryClient),
       ]);
       setNotice("Certificate details saved.");
       const refreshed = await refreshCanonical();

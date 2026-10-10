@@ -16,6 +16,28 @@ def selected(*paths: str) -> backend_ci.Selection:
 
 
 class SelectionTests(unittest.TestCase):
+    def test_guidance_operations_and_sources_select_aggregate_regressions(self):
+        for source in ("guidance_operations", "guidance_messages", "routine_interviews",
+                       "good_moral", "call_slips", "appointments",
+                       "overview", "work_queue", "service_catalog"):
+            result = selected(f"be/compass/{source}/services.py")
+            self.assertFalse(result.full)
+            self.assertIn("test_guidance_operations.py", result.files)
+        # Organization and identity policy are shared scope infrastructure and keep the full gate.
+        self.assertTrue(selected("be/compass/organization/access_scope.py").full)
+        result = selected("be/compass/guidance_operations/api.py")
+        for name in ("test_work_queue.py", "test_overview.py", "test_guidance_messages.py",
+                     "test_routine_interviews.py", "test_good_moral.py", "test_call_slips.py",
+                     "test_appointment_management_scope.py", "test_accounts.py",
+                     "test_openapi_contract.py"):
+            self.assertIn(name, result.files)
+        self.assertNotIn("test_demo_seed.py", result.files)
+
+    def test_operations_frontend_presentation_does_not_select_backend_domains(self):
+        result = selected("fe/src/features/guidance-operations/guidance-operations-page.tsx")
+        self.assertFalse(result.full)
+        self.assertNotIn("test_guidance_operations.py", result.files)
+
     def test_guidance_messages_reaches_all_boundaries(self):
         for path in ("services.py", "policy.py", "content.py", "api.py", "models.py", "templates.py"):
             result = selected("be/compass/guidance_messages/" + path)
