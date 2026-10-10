@@ -10,6 +10,7 @@ import { cacheThread } from "@/features/guidance-messages/guidance-conversation-
 import { ConversationFrame } from "@/features/guidance-messages/guidance-conversation";
 import { GuidanceMessageComposer } from "@/features/guidance-messages/guidance-message-composer";
 import type { SendIntent } from "@/features/guidance-messages/guidance-message-send";
+import { messageTemplatesFor } from "@/features/guidance-messages/guidance-messages-access";
 import { guidanceDateTime } from "@/features/guidance-messages/guidance-message-time";
 import {
   guidanceConversationQueryKey,
@@ -194,6 +195,7 @@ function StudentNewMessage() {
 }
 
 function StaffNewMessage() {
+  const { access } = useGuidanceWorkspace();
   const opened = useOpenedThread();
   const navigate = useNavigateToThread();
   const [search, setSearch] = useState("");
@@ -261,6 +263,7 @@ function StaffNewMessage() {
         onSent={navigate}
         onPendingChange={setLocked}
         unavailable={student ? null : "Choose a Student to write to."}
+        templates={messageTemplatesFor(access)}
       />
     </ConversationFrame>
   );

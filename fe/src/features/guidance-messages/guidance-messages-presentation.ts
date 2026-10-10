@@ -1,4 +1,10 @@
-import type { GuidancePerson, GuidanceThreadResponse, ThreadKind, ThreadStatus } from "@/lib/api/generated/model";
+import type {
+  GuidanceHandlerRole,
+  GuidancePerson,
+  GuidanceThreadResponse,
+  ThreadKind,
+  ThreadStatus,
+} from "@/lib/api/generated/model";
 
 // Human wording for Guidance Messages. Backend enums, IDs and sequence cursors never reach the
 // screen; a Student addresses the Guidance Office as an office, while staff see the Student.
@@ -16,6 +22,15 @@ const STATUS_LABELS: Record<ThreadStatus, string> = {
   OPEN: "Open",
   RESOLVED: "Resolved",
 };
+
+const HANDLER_ROLE_LABELS: Record<GuidanceHandlerRole, string> = {
+  COUNSELOR: "Counselor",
+  GUIDANCE_SERVICES_STAFF: "Guidance Services Staff",
+};
+
+export function handlerRoleLabel(role: GuidanceHandlerRole): string {
+  return HANDLER_ROLE_LABELS[role];
+}
 
 export function threadKindLabel(kind: ThreadKind): string {
   return KIND_LABELS[kind];

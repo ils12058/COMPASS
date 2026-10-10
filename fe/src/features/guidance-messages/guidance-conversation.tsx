@@ -16,7 +16,9 @@ import {
   ThreadStatusControl,
   useThreadConversation,
 } from "@/features/guidance-messages/guidance-conversation-surface";
+import { ThreadAssignment } from "@/features/guidance-messages/guidance-handler-assignment";
 import { GuidanceMessageComposer } from "@/features/guidance-messages/guidance-message-composer";
+import { messageTemplatesFor } from "@/features/guidance-messages/guidance-messages-access";
 import { describeSendError } from "@/features/guidance-messages/guidance-messages-errors";
 import {
   threadRoutingFacts,
@@ -100,7 +102,16 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
   return (
     <ConversationFrame
       title={threadTitle(thread, viewer)}
-      details={<ThreadDetails thread={thread} viewer={viewer} currentUserId={currentUserId} />}
+      details={
+        <ThreadDetails
+          thread={thread}
+          viewer={viewer}
+          currentUserId={currentUserId}
+          // Office handler assignment is workflow ownership for staff who manage the conversation.
+          canAssign={staffCanChangeStatus && thread.kind === "OFFICE"}
+          onAssigned={workspace.showStatus}
+        />
+      }
       actions={staffCanChangeStatus ? <ThreadStatusControl thread={thread} onChanged={workspace.showStatus} /> : null}
     >
       <ConversationHistoryRegion state={state} currentUserId={currentUserId} />
@@ -114,6 +125,7 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
           send={sendIntent}
           describeError={describe}
           unavailable={resolved ? <ResolvedNote thread={thread} viewer={viewer} /> : null}
+          templates={messageTemplatesFor(access)}
         />
       )}
     </ConversationFrame>
@@ -169,10 +181,14 @@ function ThreadDetails({
   thread,
   viewer,
   currentUserId,
+  canAssign,
+  onAssigned,
 }: {
   thread: GuidanceThreadResponse;
   viewer: GuidanceViewer;
   currentUserId: string;
+  canAssign: boolean;
+  onAssigned: (text: string) => void;
 }) {
   const subtitle = viewer === "student" && thread.kind === "OFFICE" ? STUDENT_OFFICE_CONTEXT : threadSubtitle(thread, viewer);
   const { college, assignedTo } = threadRoutingFacts(thread, viewer);
@@ -183,10 +199,8 @@ function ThreadDetails({
         <span className="break-words">{[subtitle, college].filter(Boolean).join(" · ")}</span>
         {resolved ? <ResolvedBadge /> : null}
       </p>
-      {assignedTo ? (
-        <p className="break-words text-xs">
-          {thread.assigned_to?.id === currentUserId ? "Assigned to you" : `Assigned to ${assignedTo}`}
-        </p>
+      {assignedTo || canAssign ? (
+        <ThreadAssignment thread={thread} currentUserId={currentUserId} canChange={canAssign} onAssigned={onAssigned} />
       ) : null}
     </div>
   );

@@ -395,13 +395,10 @@ def assign_handler(*, actor, thread_id, handler_id, context=None):
     thread = _lock_thread(actor, thread_id, staff_only=True)
     if thread.kind != ThreadKind.OFFICE:
         raise ThreadNotFound()
+    # The final authority: an earlier eligible-handler list may be stale by now.
     handler = User.objects.select_related("role").filter(pk=handler_id, is_active=True).first()
-    if handler is None or handler.role.code not in policy.STAFF_ROLES:
+    if handler is None or not policy.eligible_handler(handler, thread):
         raise InvalidMessageInput("Choose an eligible Guidance handler.")
-    try:
-        policy.require_thread(handler, thread, manage=True, staff_only=True)
-    except ThreadNotFound:
-        raise InvalidMessageInput("Choose an eligible Guidance handler.") from None
     previous = thread.assigned_to_id
     if previous != handler.pk:
         thread.assigned_to = handler
@@ -416,6 +413,40 @@ def assign_handler(*, actor, thread_id, handler_id, context=None):
         )
         _changed(thread)
     return thread
+
+
+MAX_HANDLER_SEARCH_LENGTH = 160
+
+
+def eligible_handlers(*, actor, thread_id, search=None, page=1, page_size=DEFAULT_PAGE_SIZE):
+    """Current eligible handlers for one Office thread the actor manages (ADR-104).
+
+    Advisory discovery only: `assign_handler` revalidates. Search matches the staff display name
+    only. The candidate set is finite (the thread College's Counselors, Heads and their staff).
+    """
+    _pagination(page, page_size)
+    if search is not None and not isinstance(search, str):
+        raise InvalidMessageInput("search must be text.")
+    term = (search or "").strip().casefold()
+    if len(term) > MAX_HANDLER_SEARCH_LENGTH:
+        raise InvalidMessageInput(f"search must be at most {MAX_HANDLER_SEARCH_LENGTH} characters.")
+    actor = policy.current_actor(actor)
+    thread = GuidanceThread.objects.filter(pk=thread_id).first()
+    if thread is None:
+        raise ThreadNotFound()
+    policy.require_thread(actor, thread, manage=True, staff_only=True)
+    if thread.kind != ThreadKind.OFFICE:
+        raise ThreadNotFound()
+    handlers = sorted(
+        (
+            user
+            for user in policy.eligible_handlers(thread)
+            if term in user.get_full_name().casefold()
+        ),
+        key=lambda user: (user.get_full_name().casefold(), str(user.pk)),
+    )
+    offset = (page - 1) * page_size
+    return handlers[offset : offset + page_size], len(handlers) > offset + page_size
 
 
 def eligible_students(*, actor, **query):

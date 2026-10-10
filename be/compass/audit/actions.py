@@ -224,6 +224,11 @@ GUIDANCE_MESSAGES_MESSAGE_SENT = "guidance_messages.message.sent"
 GUIDANCE_MESSAGES_THREAD_ASSIGNED = "guidance_messages.thread.assigned"
 GUIDANCE_MESSAGES_THREAD_RESOLVED = "guidance_messages.thread.resolved"
 GUIDANCE_MESSAGES_THREAD_REOPENED = "guidance_messages.thread.reopened"
+# Message template configuration (ADR-104): identifiers and status only, never template text.
+GUIDANCE_MESSAGES_TEMPLATE_CREATED = "guidance_messages.template.created"
+GUIDANCE_MESSAGES_TEMPLATE_UPDATED = "guidance_messages.template.updated"
+GUIDANCE_MESSAGES_TEMPLATE_ARCHIVED = "guidance_messages.template.archived"
+GUIDANCE_MESSAGES_TEMPLATE_RESTORED = "guidance_messages.template.restored"
 
 __all__ = [
     "GUIDANCE_MESSAGES_THREAD_CREATED",
@@ -231,6 +236,10 @@ __all__ = [
     "GUIDANCE_MESSAGES_THREAD_ASSIGNED",
     "GUIDANCE_MESSAGES_THREAD_RESOLVED",
     "GUIDANCE_MESSAGES_THREAD_REOPENED",
+    "GUIDANCE_MESSAGES_TEMPLATE_CREATED",
+    "GUIDANCE_MESSAGES_TEMPLATE_UPDATED",
+    "GUIDANCE_MESSAGES_TEMPLATE_ARCHIVED",
+    "GUIDANCE_MESSAGES_TEMPLATE_RESTORED",
     "PRIVACY_ACTIVITY_EXPORTED",
     "ACCOUNT_CREATED",
     "ACCOUNT_CSV_IMPORTED",

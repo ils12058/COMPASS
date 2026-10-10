@@ -134,12 +134,15 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         ),
     ),
     "guidance-messages": (
-        "Guidance Messages encryption, workload/relationship authorization and commit hints.",
+        "Guidance Messages encryption, workload/relationship authorization, commit hints, "
+        "Office handler eligibility and Message templates.",
         (
             "test_guidance_messages.py",
             "test_guidance_messages_concurrency.py",
             "test_guidance_messages_context.py",
+            "test_guidance_messages_handlers.py",
             "test_guidance_messages_realtime.py",
+            "test_guidance_messages_templates.py",
         ),
     ),
     "counseling": (

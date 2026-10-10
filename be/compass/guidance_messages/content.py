@@ -11,18 +11,21 @@ BODY_LIMIT = 4000
 SCHEMA_VERSION = 1
 
 
-def validate_body(body: object) -> str:
-    if not isinstance(body, str) or not body.strip() or len(body) > BODY_LIMIT:
-        raise InvalidMessageInput(
-            "Message body must contain 1 to 4000 characters of nonblank text."
-        )
-    if "\x00" in body:
-        raise InvalidMessageInput("Message body contains an unsupported character.")
+def validate_text(value: object, *, label: str) -> str:
+    """Plain UTF-8 text kept exactly as written: line breaks and spacing are never normalized."""
+    if not isinstance(value, str) or not value.strip() or len(value) > BODY_LIMIT:
+        raise InvalidMessageInput(f"{label} must contain 1 to 4000 characters of nonblank text.")
+    if "\x00" in value:
+        raise InvalidMessageInput(f"{label} contains an unsupported character.")
     try:
-        body.encode("utf-8")
+        value.encode("utf-8")
     except UnicodeEncodeError:
-        raise InvalidMessageInput("Message body contains an unsupported character.") from None
-    return body
+        raise InvalidMessageInput(f"{label} contains an unsupported character.") from None
+    return value
+
+
+def validate_body(body: object) -> str:
+    return validate_text(body, label="Message body")
 
 
 def _keyring():

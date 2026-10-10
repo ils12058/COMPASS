@@ -1,11 +1,12 @@
 """Small explicit HTTP API. No Redis request/response replay and no socket commands."""
 
 from datetime import datetime
+from enum import StrEnum
 from functools import wraps
 from uuid import UUID
 
 from django.http import HttpResponse
-from ninja import Router, Schema
+from ninja import Router, Schema, Status
 from pydantic import ConfigDict, Field, StrictInt, StrictStr
 
 from compass.audit.context import AuditContext
@@ -14,16 +15,18 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.operational_students import InvalidOperationalStudentQuery
 
-from . import content, services
+from . import content, services, templates
 from .errors import (
     GuidanceMessageContentUnavailable,
     GuidanceMessagesError,
     InvalidMessageInput,
     MessagesConflict,
     MessagesPermissionDenied,
+    TemplateNameTaken,
+    TemplateNotFound,
     ThreadNotFound,
 )
-from .models import ThreadKind, ThreadStatus
+from .models import TemplateStatus, ThreadKind, ThreadStatus
 
 router = Router(tags=["guidance-messages"], auth=session_auth)
 
@@ -122,6 +125,55 @@ class GuidanceAppointmentContext(StrictSchema):
     can_start: bool
 
 
+class GuidanceHandlerRole(StrEnum):
+    COUNSELOR = "COUNSELOR"
+    GUIDANCE_SERVICES_STAFF = "GUIDANCE_SERVICES_STAFF"
+
+
+class GuidanceHandlerOption(GuidancePerson):
+    """A safe staff label for assignment: no email, capability, designation or supervision."""
+
+    role: GuidanceHandlerRole
+
+
+class GuidanceHandlerPage(StrictSchema):
+    items: list[GuidanceHandlerOption]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class GuidanceTemplateResponse(StrictSchema):
+    """Generic reusable wording. It never names who wrote it or links to any Message."""
+
+    id: UUID
+    name: str
+    body: str
+    status: TemplateStatus
+    created_at: datetime
+    updated_at: datetime
+    archived_at: datetime | None
+
+
+class GuidanceTemplatePage(StrictSchema):
+    items: list[GuidanceTemplateResponse]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class GuidanceTemplateCreateRequest(StrictSchema):
+    name: StrictStr = Field(min_length=1, max_length=templates.NAME_LIMIT)
+    body: StrictStr = Field(min_length=1, max_length=content.BODY_LIMIT)
+
+
+class GuidanceTemplateUpdateRequest(StrictSchema):
+    name: StrictStr | None = Field(default=None, min_length=1, max_length=templates.NAME_LIMIT)
+    body: StrictStr | None = Field(default=None, min_length=1, max_length=content.BODY_LIMIT)
+    # The updated_at the editor opened; a newer saved version is refused rather than overwritten.
+    expected_updated_at: datetime | None = None
+
+
 class GuidanceStudentOption(GuidancePerson):
     institutional_id: str | None
     college: GuidanceCollege | None
@@ -145,8 +197,12 @@ def _safe(function):
         except (GuidanceMessagesError, InvalidOperationalStudentQuery) as exc:
             if isinstance(exc, ThreadNotFound):
                 status, code = 404, "guidance_thread_not_found"
+            elif isinstance(exc, TemplateNotFound):
+                status, code = 404, "guidance_message_template_not_found"
             elif isinstance(exc, MessagesPermissionDenied):
                 status, code = 403, "permission_denied"
+            elif isinstance(exc, TemplateNameTaken):
+                status, code = 409, "guidance_message_template_name_taken"
             elif isinstance(exc, MessagesConflict):
                 status, code = 409, "guidance_messages_conflict"
             elif isinstance(exc, (InvalidMessageInput, InvalidOperationalStudentQuery)):
@@ -192,6 +248,18 @@ def _thread(thread, actor):
     )
 
 
+def _template(template):
+    return GuidanceTemplateResponse(
+        id=template.pk,
+        name=template.name,
+        body=template.body,
+        status=template.status,
+        created_at=template.created_at,
+        updated_at=template.updated_at,
+        archived_at=template.archived_at,
+    )
+
+
 def _message(message):
     return GuidanceMessageResponse(
         id=message.pk,
@@ -226,6 +294,96 @@ def list_threads(request, response: HttpResponse, page: int = 1, page_size: int 
         page=page,
         page_size=page_size,
         has_next=has_next,
+    )
+
+
+@router.get(
+    "/templates",
+    response=response_with_errors(GuidanceTemplatePage, 401, 403, 422),
+    operation_id="guidanceMessagesListTemplates",
+)
+@_safe
+def list_templates(
+    request,
+    response: HttpResponse,
+    status: TemplateStatus = TemplateStatus.ACTIVE,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+):
+    rows, has_next = templates.list_templates(
+        actor=request.auth_user, status=status, search=search, page=page, page_size=page_size
+    )
+    return GuidanceTemplatePage(
+        items=[_template(row) for row in rows], page=page, page_size=page_size, has_next=has_next
+    )
+
+
+@router.post(
+    "/templates",
+    response=response_with_errors(GuidanceTemplateResponse, 401, 403, 409, 422, success_status=201),
+    operation_id="guidanceMessagesCreateTemplate",
+)
+@_safe
+def create_template(request, response: HttpResponse, payload: GuidanceTemplateCreateRequest):
+    template = templates.create_template(
+        actor=request.auth_user,
+        **payload.model_dump(),
+        context=AuditContext.from_request(request, actor=request.auth_user),
+    )
+    return Status(201, _template(template))
+
+
+@router.patch(
+    "/templates/{template_id}",
+    response=response_with_errors(GuidanceTemplateResponse, 401, 403, 404, 409, 422),
+    operation_id="guidanceMessagesUpdateTemplate",
+)
+@_safe
+def update_template(
+    request, response: HttpResponse, template_id: UUID, payload: GuidanceTemplateUpdateRequest
+):
+    return _template(
+        templates.update_template(
+            actor=request.auth_user,
+            template_id=template_id,
+            **payload.model_dump(),
+            context=AuditContext.from_request(request, actor=request.auth_user),
+        )
+    )
+
+
+@router.post(
+    "/templates/{template_id}/archive",
+    response=response_with_errors(GuidanceTemplateResponse, 401, 403, 404),
+    operation_id="guidanceMessagesArchiveTemplate",
+)
+@_safe
+def archive_template(request, response: HttpResponse, template_id: UUID):
+    return _template(
+        templates.set_template_status(
+            actor=request.auth_user,
+            template_id=template_id,
+            archived=True,
+            context=AuditContext.from_request(request, actor=request.auth_user),
+        )
+    )
+
+
+@router.post(
+    "/templates/{template_id}/restore",
+    response=response_with_errors(GuidanceTemplateResponse, 401, 403, 404),
+    operation_id="guidanceMessagesRestoreTemplate",
+)
+@_safe
+def restore_template(request, response: HttpResponse, template_id: UUID):
+    return _template(
+        templates.set_template_status(
+            actor=request.auth_user,
+            template_id=template_id,
+            archived=False,
+            context=AuditContext.from_request(request, actor=request.auth_user),
+        )
     )
 
 
@@ -456,6 +614,36 @@ def reopen(request, response: HttpResponse, thread_id: UUID):
     )
     return _thread(
         services.get_thread(actor=request.auth_user, thread_id=thread_id), request.auth_user
+    )
+
+
+@router.get(
+    "/threads/{thread_id}/eligible-handlers",
+    response=response_with_errors(GuidanceHandlerPage, 401, 403, 404, 422),
+    operation_id="guidanceMessagesListEligibleHandlers",
+)
+@_safe
+def eligible_handlers(
+    request,
+    response: HttpResponse,
+    thread_id: UUID,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = 20,
+):
+    rows, has_next = services.eligible_handlers(
+        actor=request.auth_user, thread_id=thread_id, search=search, page=page, page_size=page_size
+    )
+    return GuidanceHandlerPage(
+        items=[
+            GuidanceHandlerOption(
+                id=row.pk, display_name=row.get_full_name(), role=GuidanceHandlerRole(row.role.code)
+            )
+            for row in rows
+        ],
+        page=page,
+        page_size=page_size,
+        has_next=has_next,
     )
 
 

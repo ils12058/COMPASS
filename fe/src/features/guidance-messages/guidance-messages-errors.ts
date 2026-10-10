@@ -64,3 +64,14 @@ export function describeOlderError(error: unknown): string {
     ? "Older messages are temporarily unavailable."
     : "Older messages could not be loaded. Try again.";
 }
+
+export function describeAssignError(error: unknown): string {
+  if (error instanceof AccountChangedError) return "The signed-in account changed, so this conversation was not assigned here.";
+  const code = status(error);
+  if (code === 422) {
+    return "The person you chose can no longer be assigned this conversation. The list was refreshed; choose someone else.";
+  }
+  if (code === 404 || code === 403) return "This conversation is no longer available to your account.";
+  if (code === 401) return "Your session needs to be checked again before this conversation can be assigned.";
+  return "The conversation could not be assigned. Try again.";
+}

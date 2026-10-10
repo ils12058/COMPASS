@@ -34,7 +34,11 @@ import {
 } from "@/features/guidance-messages/guidance-conversation-surface";
 import { useMessageComposer, type MessageComposerController } from "@/features/guidance-messages/guidance-message-composer";
 import { MessageComposerView } from "@/features/guidance-messages/guidance-message-composer-view";
-import { getGuidanceMessagesAccess, type GuidanceMessagesAccess } from "@/features/guidance-messages/guidance-messages-access";
+import {
+  getGuidanceMessagesAccess,
+  messageTemplatesFor,
+  type GuidanceMessagesAccess,
+} from "@/features/guidance-messages/guidance-messages-access";
 import { describeSendError } from "@/features/guidance-messages/guidance-messages-errors";
 import { changedThreadId, useMessagesFreshness } from "@/features/guidance-messages/guidance-messages-freshness";
 import { threadTitle, unreadLabel, type GuidanceViewer } from "@/features/guidance-messages/guidance-messages-presentation";
@@ -394,6 +398,7 @@ function ContextualPanel({
           controller={composer}
           label={`Message to ${counterpartName}`}
           unavailable={resolved && shown ? <ResolvedNote thread={shown} viewer={viewer} /> : null}
+          templates={messageTemplatesFor(access)}
           className="sm:px-3"
         />
       )}

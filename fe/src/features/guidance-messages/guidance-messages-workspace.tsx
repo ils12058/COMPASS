@@ -1,6 +1,6 @@
 "use client";
 
-import { SquarePen } from "lucide-react";
+import { FileText, SquarePen } from "lucide-react";
 import { useSelectedLayoutSegment } from "next/navigation";
 import {
   createContext,
@@ -148,16 +148,27 @@ function MessagesFrame({
               <h1 id={MESSAGES_HEADING_ID} className="font-heading text-xl font-bold leading-tight text-ink">
                 Messages
               </h1>
-              {canStart ? (
-                <GuardedPortalLink
-                  href="/portal/messages/new"
-                  aria-current={segment === "new" ? "page" : undefined}
-                  className={buttonVariants({ className: "min-h-10 px-3" })}
-                >
-                  <SquarePen size={16} aria-hidden="true" />
-                  New message
-                </GuardedPortalLink>
-              ) : null}
+              <div className="flex flex-wrap gap-2">
+                {access.canManageTemplates ? (
+                  <GuardedPortalLink
+                    href="/portal/messages/templates"
+                    className={buttonVariants({ variant: "secondary", className: "min-h-10 px-3" })}
+                  >
+                    <FileText size={16} aria-hidden="true" />
+                    Templates
+                  </GuardedPortalLink>
+                ) : null}
+                {canStart ? (
+                  <GuardedPortalLink
+                    href="/portal/messages/new"
+                    aria-current={segment === "new" ? "page" : undefined}
+                    className={buttonVariants({ className: "min-h-10 px-3" })}
+                  >
+                    <SquarePen size={16} aria-hidden="true" />
+                    New message
+                  </GuardedPortalLink>
+                ) : null}
+              </div>
             </div>
             <GuidanceThreadDirectory
               access={access}
