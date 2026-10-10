@@ -12,6 +12,7 @@ from compass.api.v1.constants import API_VERSION
 from compass.api.v1.health import router as health_router
 from compass.api.v1.metadata import SystemMetadataResponse, system_metadata
 from compass.appointments.api import router as appointments_router
+from compass.assessment_records.api import router as assessment_records_router
 from compass.authentication.api import router as authentication_router
 from compass.availability.api import router as availability_router
 from compass.call_slips.api import router as call_slips_router
@@ -204,6 +205,10 @@ api = NinjaAPI(
                 "name": "guidance-messages",
                 "description": "Encrypted Guidance Office and Counseling communication.",
             },
+            {
+                "name": "assessment-records",
+                "description": "Authorized institutional assessment result records.",
+            },
             {"name": "work", "description": "Read-only Guidance staff actionable work projection."},
             {
                 "name": "student-actions",
@@ -241,6 +246,7 @@ api.add_router("/institutional-forms", institutional_forms_router)
 api.add_router("/inventory", inventory_router)
 api.add_router("/reference-data/psgc", reference_data_router)
 api.add_router("/student-support", student_support_router)
+api.add_router("/assessment-records", assessment_records_router)
 api.add_router("/reports", reports_router)
 api.add_router("/overview", overview_router)
 api.add_router("/work", work_queue_router)

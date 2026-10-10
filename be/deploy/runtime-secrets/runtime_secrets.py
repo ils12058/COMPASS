@@ -6,6 +6,9 @@ import stat
 from pathlib import Path
 
 SECRET_FILES = {
+    "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
+        "assessment_record_confidential_content_encryption_keys"
+    ),
     "GUIDANCE_MESSAGE_ENCRYPTION_KEYS": "guidance_message_encryption_keys",
     "SECRET_KEY": "django_secret_key",
     "POSTGRES_PASSWORD": "postgres_password",
@@ -43,6 +46,7 @@ SECRET_FILES = {
     "WEB_PUSH_STORAGE_KEY": "web_push_storage_key",
 }
 REQUIRED_SECRETS = {
+    "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
     "GUIDANCE_MESSAGE_ENCRYPTION_KEYS",
     "FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
     "ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",

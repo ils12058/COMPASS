@@ -1,5 +1,6 @@
 import { Bell, LayoutDashboard, UserRound, type LucideIcon } from "lucide-react";
 
+import { getAssessmentRecordsAccess } from "@/features/assessment-records/assessment-records-access";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { canManageAvailability, canUseSelfAvailability } from "@/features/availability/availability-shared";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
@@ -23,6 +24,7 @@ export type PortalCommandDestination = {
 };
 
 const workspaceKeywords: Readonly<Record<string, readonly string[]>> = {
+  "Assessment Records": ["assessment result", "assessment type"],
   Appointments: ["calendar", "schedule", "booking"],
   Availability: ["calendar", "schedule"],
   "Individual Inventory": ["student information", "inventory"],
@@ -58,6 +60,9 @@ export function portalCommandDestinations(user: UserSummary): PortalCommandDesti
     if (!parent || !allowed) return;
     destinations.push({ href: parentHref + path, label, breadcrumb: `${parent.label} › ${label}`, group: parent.group, icon: parent.icon, keywords });
   }
+  const assessment = getAssessmentRecordsAccess(user);
+  deep("/portal/assessment-records", "/new", "Record assessment result", assessment.canManage);
+  deep("/portal/assessment-records", "/types", "Manage Assessment Types", assessment.canManageTypes);
   const appointments = getAppointmentAccess(user);
   deep("/portal/appointments", "/my", "My appointments", appointments.canViewSelf, ["calendar", "schedule"]);
   deep("/portal/appointments", "/book", "Book appointment", appointments.canBook, ["booking"]);

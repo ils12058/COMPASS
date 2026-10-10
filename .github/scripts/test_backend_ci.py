@@ -38,6 +38,30 @@ class SelectionTests(unittest.TestCase):
         self.assertFalse(result.full)
         self.assertNotIn("test_guidance_operations.py", result.files)
 
+    def test_assessment_records_selects_its_actual_boundaries(self):
+        for path in ("services.py", "api.py", "confidential_content.py", "models.py",
+                     "management/commands/rotate_assessment_record_confidential_content.py"):
+            result = selected("be/compass/assessment_records/" + path)
+            self.assertFalse(result.full)
+            for name in ("test_assessment_records.py", "test_assessment_records_configuration.py",
+                         "test_capability_dependencies.py", "test_operational_students.py",
+                         "test_confidential_data_crypto.py", "test_audit.py",
+                         "test_runtime_secrets.py", "test_runtime_secrets_compose.py",
+                         "test_openapi_contract.py"):
+                self.assertIn(name, result.files)
+            self.assertNotIn("test_student_support.py", result.files)
+        self.assertTrue(selected("be/compass/assessment_records/migrations/0001_initial.py").full)
+
+    def test_assessment_shared_changes_remain_conservative(self):
+        for path in ("be/compass/accounts/policy.py", "be/compass/audit/actions.py"):
+            self.assertTrue(selected(path).full)
+        self.assertIn("test_runtime_secrets.py", selected("be/compose.staging.yaml").files)
+        self.assertIn("test_openapi_contract.py", selected("contracts/openapi.json").files)
+        for path in ("fe/src/features/assessment-records/assessment-records-list.tsx",
+                     "fe/src/features/portal/components/portal-workspaces.ts"):
+            self.assertFalse(selected(path).full)
+            self.assertNotIn("test_assessment_records.py", selected(path).files)
+
     def test_guidance_messages_reaches_all_boundaries(self):
         for path in ("services.py", "policy.py", "content.py", "api.py", "models.py", "templates.py"):
             result = selected("be/compass/guidance_messages/" + path)

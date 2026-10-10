@@ -288,6 +288,16 @@ CAPABILITY_DEFINITIONS = (
         description=("Reopen an eligible submitted Individual Inventory for Student correction."),
     ),
     CapabilityDefinition(
+        code="assessment_records.view",
+        name="View Assessment Records",
+        description="View authorized structural and confidential institutional assessment records.",
+    ),
+    CapabilityDefinition(
+        code="assessment_records.manage",
+        name="Manage Assessment Records",
+        description="Record and correct authorized institutional assessment facts.",
+    ),
+    CapabilityDefinition(
         code="student_support.view",
         name="View Student Support context",
         description=(
@@ -627,6 +637,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
 DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     "HEAD_GUIDANCE_COUNSELOR": frozenset(
         {
+            "assessment_records.view",
+            "assessment_records.manage",
             "organization.manage",
             "services.manage",
             "availability.manage",
@@ -667,6 +679,7 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 # Dependencies constrain whether already-granted authority is effective. They never
 # create prerequisite authority or rewrite persisted grants/overrides.
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
+    "assessment_records.manage": frozenset({"assessment_records.view"}),
     "guidance_messages.manage_self": frozenset({"guidance_messages.view_self"}),
     "guidance_messages.manage": frozenset({"guidance_messages.view"}),
     "guidance_messages.templates.manage": frozenset({"guidance_messages.manage"}),

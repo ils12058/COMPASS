@@ -21,6 +21,14 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
+    "assessmentRecordsList",
+    "assessmentRecordsCreate",
+    "assessmentRecordsGet",
+    "assessmentRecordsUpdate",
+    "assessmentRecordsListTypes",
+    "assessmentRecordsCreateType",
+    "assessmentRecordsUpdateType",
+    "assessmentRecordsEligibleStudents",
     "workQueueList",
     "studentActionsList",
     "guidanceOperationsGet",
@@ -400,6 +408,7 @@ def _response_schema(schema: dict, operation: dict) -> str:
 
 # Every user-sortable collection and its closed ordering enum (ADR-090).
 SORTABLE_COLLECTIONS = {
+    "assessmentRecordsList": "AssessmentRecordOrdering",
     "accountsList": "AccountOrdering",
     "announcementsListManaged": "AnnouncementManagementOrdering",
     "announcementsListPublic": "AnnouncementOrdering",
@@ -782,6 +791,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "privacy-governance",
         "realtime",
         "guidance-messages",
+        "assessment-records",
         "work",
         "student-actions",
         "guidance-operations",
@@ -1832,6 +1842,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "guidance_messages.view",
             "guidance_messages.manage",
             "guidance_messages.templates.manage",
+            "assessment_records.view",
+            "assessment_records.manage",
             "accounts.manage",
             "accounts.view",
             "academic_years.manage",

@@ -1,8 +1,9 @@
 # Host-managed live-staging runtime secrets
 
-Current repository target: **23** sources (ADR-102). All older numbered cutover sections
+Current repository target: **24** sources (ADR-108). All older numbered cutover sections
 are historical domain procedures; ADR-085/086 gates continue for the original 22 sources,
 and ADR-105 requires the web-only Messages host secret before live deployment.
+ADR-108 also requires a separate web-only Assessment key before live deployment.
 No implementation merge establishes live readiness.
 
 
@@ -14,7 +15,7 @@ secret-management service.
 ## Host directory and service grants
 
 `/opt/compass/secrets` is persistent outside `/opt/compass/releases`, owned by `compass:compass`,
-mode `0700`. All 23 source files must be regular files, not symlinks, owned by `compass`, mode
+mode `0700`. All 24 source files must be regular files, not symlinks, owned by `compass`, mode
 `0444`. Never put this directory in Git, a checkout, an image, or a release symlink.
 
 The host parent directory is the confidentiality boundary: other unprivileged users cannot traverse
@@ -49,11 +50,12 @@ remain trusted. A compromised authorized process can read its own grants.
 | `WEB_PUSH_PRIVATE_KEY` | `web_push_private_key` | when enabled |
 | `WEB_PUSH_STORAGE_KEY` | `web_push_storage_key` | when enabled |
 | `GUIDANCE_MESSAGE_ENCRYPTION_KEYS` | `guidance_message_encryption_keys` | required non-empty by live deployment preflight; web only |
+| `ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `assessment_record_confidential_content_encryption_keys` | required non-empty by live deployment preflight; web only |
 
 | Service | Explicit grants |
 | --- | --- |
-| `web` | original 22 plus `guidance_message_encryption_keys` |
-| `worker`, `beat` | original 22; Messages key/path explicitly empty, no Messages grant |
+| `web` | original 22 plus Messages and Assessment keys (24 total) |
+| `worker`, `beat` | original 22; Messages and Assessment key/path explicitly empty, neither grant |
 | `postgres` | `postgres_password` only |
 | `redis` | `redis_password` only |
 | `realtime` (optional `realtime` profile, ADR-100) | `redis_password` only; no `.env` file |
@@ -644,3 +646,29 @@ are idempotent. Verify zero payloads needing rotation and zero unreadable payloa
 an old key; test historical reads with the new keyring and keep recovery material under the adopted
 operator procedure. Key retirement is deliberate, never automated. Retention remains governed
 separately by ADR-072/102.
+
+## Assessment Records (ADR-108): deferred live provisioning and rotation
+
+The greenfield Assessment domain requires its own ordered Fernet keyring, delivered only to web
+as `/run/secrets/assessment_record_confidential_content_encryption_keys`. The current checker
+requires all 24 files and rejects an absent/empty Assessment file, a wrong `_FILE` pointer or a
+direct value. Worker and beat explicitly clear both the key and pointer and boot without it.
+An empty local/non-web setting is allowed; confidential reads/writes fail closed. Non-empty
+malformed/duplicate keys or reuse of any existing domain/security secret fail safely at startup.
+
+Provisioning is a later separately authorized operator phase. Generate an independent key in the
+approved secret workflow and preserve a protected off-host recovery copy before first live writes.
+Do not copy another domain key, use the sample environment as a value source, or expect the
+exporter to generate the missing key. Verify file metadata, web grants, pointer-only environment
+and non-web isolation before deploying; this implementation does not establish those live facts.
+
+After an authorized operator adds a new independent primary key while retaining old keys, run
+`python manage.py rotate_assessment_record_confidential_content --dry-run --batch-size 100`,
+then the same command without `--dry-run`. The command verifies every schema-1 payload and its
+record/Student/type binding, including rows already using the primary key. Real runs lock bounded
+batches, rotate only older valid tokens and update only ciphertext. Dry-run changes nothing. Safe
+UUID/reason failures are capped at twenty and cause a nonzero exit; unreadable rows stay unchanged.
+A failed/interrupted batch rolls back, committed batches can be resumed, and repeat runs are
+idempotent. Business timestamps, provenance and audits remain unchanged. Resolve all failures,
+confirm zero old-key rows and test historical reads before deliberate key retirement. This phase
+adds no retention or disposition executor and no live key, migration or deployment.
