@@ -5,10 +5,15 @@ from __future__ import annotations
 import logging
 from collections.abc import Iterable
 
+from django.db import DataError, IntegrityError
 from django.http import Http404, HttpRequest, JsonResponse
 from ninja.errors import AuthenticationError, AuthorizationError, HttpError, ValidationError
 
 logger = logging.getLogger("compass.errors")
+
+# PostgreSQL SQLSTATE classes that reflect request data or concurrent state, not server defects.
+_STATE_CONFLICT_SQLSTATES = frozenset({"23505", "23503", "23P01"})
+_INVALID_VALUE_SQLSTATES = frozenset({"23514"})
 
 
 class APIError(Exception):
@@ -162,12 +167,7 @@ def register_exception_handlers(api) -> None:
             status=404,
         )
 
-    @api.exception_handler(Exception)
-    def unhandled_error(request, exc):
-        logger.exception(
-            "unhandled api exception",
-            extra={"event": "unhandled_api_exception", "request_id": _request_id(request)},
-        )
+    def _internal_error(request):
         return api.create_response(
             request,
             {
@@ -179,6 +179,64 @@ def register_exception_handlers(api) -> None:
             },
             status=500,
         )
+
+    def _database_rejection(request, *, status: int, code: str, message: str, sqlstate):
+        logger.warning(
+            "database rejected api request",
+            extra={
+                "event": "api_database_rejection",
+                "request_id": _request_id(request),
+                "sqlstate": sqlstate,
+            },
+        )
+        return api.create_response(
+            request,
+            {"error": {"code": code, "message": message, "request_id": _request_id(request)}},
+            status=status,
+        )
+
+    @api.exception_handler(DataError)
+    def data_error(request, exc):
+        # Over-long text, out-of-range numbers, and NUL bytes are client input, not server faults.
+        return _database_rejection(
+            request,
+            status=422,
+            code="invalid_request_value",
+            message="A submitted value is too long, out of range, or contains unsupported "
+            "characters.",
+            sqlstate=getattr(exc.__cause__, "sqlstate", None),
+        )
+
+    @api.exception_handler(IntegrityError)
+    def integrity_error(request, exc):
+        sqlstate = getattr(exc.__cause__, "sqlstate", None)
+        if sqlstate in _STATE_CONFLICT_SQLSTATES:
+            return _database_rejection(
+                request,
+                status=409,
+                code="request_conflict",
+                message="The request conflicts with the current state of related records. "
+                "Refresh and try again.",
+                sqlstate=sqlstate,
+            )
+        if sqlstate in _INVALID_VALUE_SQLSTATES:
+            return _database_rejection(
+                request,
+                status=422,
+                code="invalid_request_value",
+                message="The submitted values are not a valid combination.",
+                sqlstate=sqlstate,
+            )
+        return unhandled_error(request, exc)
+
+    @api.exception_handler(Exception)
+    def unhandled_error(request, exc):
+        logger.error(
+            "unhandled api exception",
+            exc_info=exc,
+            extra={"event": "unhandled_api_exception", "request_id": _request_id(request)},
+        )
+        return _internal_error(request)
 
 
 def django_bad_request(request, exception=None):

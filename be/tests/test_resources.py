@@ -1,0 +1,1109 @@
+from __future__ import annotations
+
+import json
+import logging
+from unittest.mock import patch
+
+import pytest
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
+from django.test import Client
+from django.utils import timezone
+
+from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.audit.context import AuditContext
+from compass.audit.models import AuditEvent
+from compass.authentication.sessions import create_auth_session
+from compass.common.json_logging import JsonFormatter
+from compass.publications import PublicationAudience
+from compass.resources.models import ResourceCategory, ResourceKind
+from compass.resources.services import (
+    MAX_FILE_BYTES,
+    InvalidResourceInput,
+    ResourceConflict,
+    ResourceNotFound,
+    ResourcePublicationConsequenceReviewRequired,
+    archive_resource,
+    attach_resource_file,
+    create_public_resource_download,
+    create_resource,
+    create_resource_download,
+    get_public_resource,
+    get_visible_resource,
+    list_public_resources,
+    list_visible_resources,
+    publish_resource,
+    remove_draft_resource_file,
+    update_resource,
+)
+
+
+class FakeStorage:
+    def __init__(self) -> None:
+        self.saved: dict[str, bytes] = {}
+        self.deleted: list[str] = []
+        self.private_url_calls: list[tuple[str, int]] = []
+
+    def save(self, name: str, content) -> str:
+        self.saved[name] = content.read()
+        return name
+
+    def delete(self, name: str) -> None:
+        self.deleted.append(name)
+        self.saved.pop(name, None)
+
+    def private_url(self, name: str, *, expires_seconds: int) -> str:
+        self.private_url_calls.append((name, expires_seconds))
+        return f"https://private.example/{name}?signature=synthetic"
+
+
+def sync_policy() -> None:
+    call_command("sync_identity_policy", verbosity=0)
+
+
+def make_user(email: str, role: str) -> User:
+    return User.objects.create_user(
+        email=email,
+        password="a-test-password",
+        role=Role.objects.get(code=role),
+        first_name="Resource",
+        last_name="Tester",
+    )
+
+
+def context(actor: User) -> AuditContext:
+    return AuditContext.user(actor)
+
+
+def auth_client(user: User) -> Client:
+    issued = create_auth_session(user, now=timezone.now())
+    client = Client()
+    client.cookies["compass_session"] = issued.token
+    return client
+
+
+def csrf(client: Client) -> dict[str, str]:
+    response = client.get("/api/v1/auth/csrf")
+    assert response.status_code == 200
+    return {"HTTP_X_CSRFTOKEN": response.json()["csrf_token"]}
+
+
+def create_draft(
+    *,
+    actor: User,
+    kind: str,
+    audience: str = PublicationAudience.ALL_AUTHENTICATED,
+    category: str = ResourceCategory.GENERAL,
+    title: str = "Synthetic resource",
+    body: str = "Curated **Markdown** description.",
+    external_url: str | None = None,
+    display_order: int = 0,
+):
+    return create_resource(
+        actor=actor,
+        title=title,
+        body_markdown=body,
+        category=category,
+        kind=kind,
+        audience=audience,
+        external_url=external_url,
+        display_order=display_order,
+        context=context(actor),
+    )
+
+
+@pytest.mark.django_db
+def test_resource_management_capability_baseline_and_head_compatibility():
+    sync_policy()
+    counselor = make_user("resource-counselor@example.edu", "COUNSELOR")
+    staff = make_user("resource-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    head = make_user("resource-head@example.edu", "COUNSELOR")
+    UserDesignation.objects.create(
+        user=head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+    student = make_user("resource-student@example.edu", "STUDENT")
+    admin = make_user("resource-admin@example.edu", "IT_ADMIN")
+    officer = make_user("resource-officer@example.edu", "INSTITUTIONAL_OFFICER")
+
+    assert counselor.has_capability("resources.manage")
+    assert staff.has_capability("resources.manage")
+    assert head.has_capability("resources.manage")
+    for user in (student, admin, officer):
+        assert not user.has_capability("resources.manage")
+
+
+@pytest.mark.django_db
+def test_resource_kind_validation_visibility_filtering_ordering_archive_and_audit():
+    sync_policy()
+    counselor = make_user("resource-publisher@example.edu", "COUNSELOR")
+    student = make_user("resource-reader@example.edu", "STUDENT")
+
+    article = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.STUDENTS,
+        title="Article",
+        display_order=20,
+    )
+    link = create_draft(
+        actor=counselor,
+        kind=ResourceKind.EXTERNAL_LINK,
+        audience=PublicationAudience.STUDENTS,
+        title="Trusted link",
+        external_url="https://example.edu/guidance",
+        display_order=10,
+    )
+    gco_only = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.GCO_PERSONNEL,
+        title="GCO guide",
+        display_order=0,
+    )
+
+    article = publish_resource(
+        actor=counselor,
+        resource_id=article.pk,
+        context=context(counselor),
+    )
+    link = publish_resource(
+        actor=counselor,
+        resource_id=link.pk,
+        context=context(counselor),
+    )
+    publish_resource(
+        actor=counselor,
+        resource_id=gco_only.pk,
+        context=context(counselor),
+    )
+
+    rows = list_visible_resources(actor=student).items
+    assert [item.pk for item in rows] == [link.pk, article.pk]
+    assert [
+        item.pk
+        for item in list_visible_resources(
+            actor=student,
+            kind=ResourceKind.ARTICLE,
+        ).items
+    ] == [article.pk]
+
+    with pytest.raises(ResourceNotFound):
+        get_visible_resource(actor=student, resource_id=gco_only.pk)
+
+    with pytest.raises(InvalidResourceInput):
+        create_draft(
+            actor=counselor,
+            kind=ResourceKind.EXTERNAL_LINK,
+            external_url="javascript:alert(1)",
+        )
+    with pytest.raises(InvalidResourceInput):
+        create_draft(
+            actor=counselor,
+            kind=ResourceKind.ARTICLE,
+            external_url="https://example.edu/not-article",
+        )
+
+    incomplete_link = create_draft(
+        actor=counselor,
+        kind=ResourceKind.EXTERNAL_LINK,
+        external_url=None,
+    )
+    with pytest.raises(InvalidResourceInput):
+        publish_resource(
+            actor=counselor,
+            resource_id=incomplete_link.pk,
+            context=context(counselor),
+        )
+
+    archived = archive_resource(
+        actor=counselor,
+        resource_id=article.pk,
+        context=context(counselor),
+    )
+    with pytest.raises(ResourceNotFound):
+        get_visible_resource(actor=student, resource_id=archived.pk)
+    with pytest.raises(ResourceConflict):
+        publish_resource(
+            actor=counselor,
+            resource_id=archived.pk,
+            context=context(counselor),
+        )
+
+    events = AuditEvent.objects.filter(
+        target_type="resources.resource",
+        target_id=str(link.pk),
+    ).order_by("occurred_at", "id")
+    assert [event.action for event in events] == [
+        "resource.created",
+        "resource.published",
+    ]
+    serialized = json.dumps([event.metadata for event in events])
+    assert "Curated **Markdown** description." not in serialized
+    assert "https://example.edu/guidance" not in serialized
+
+
+@pytest.mark.django_db
+def test_file_resource_private_storage_security_replacement_and_download_authorization():
+    sync_policy()
+    counselor = make_user("resource-file-publisher@example.edu", "COUNSELOR")
+    student = make_user("resource-file-reader@example.edu", "STUDENT")
+    storage = FakeStorage()
+
+    item = create_draft(
+        actor=counselor,
+        kind=ResourceKind.FILE,
+        audience=PublicationAudience.STUDENTS,
+        title="Student PDF",
+    )
+    first_upload = SimpleUploadedFile(
+        "../../unsafe-name.pdf",
+        b"%PDF-1.7\nsynthetic first",
+        content_type="application/pdf",
+    )
+    item = attach_resource_file(
+        actor=counselor,
+        resource_id=item.pk,
+        uploaded_file=first_upload,
+        context=context(counselor),
+        storage=storage,
+    )
+    first_key = item.storage_key
+    assert first_key.startswith(f"resources/{item.pk}/")
+    assert first_key.endswith(".pdf")
+    assert ".." not in first_key
+    assert "unsafe-name" not in first_key
+    assert item.original_filename == "unsafe-name.pdf"
+
+    second_upload = SimpleUploadedFile(
+        "replacement.pdf",
+        b"%PDF-1.7\nsynthetic replacement",
+        content_type="application/pdf",
+    )
+    item = attach_resource_file(
+        actor=counselor,
+        resource_id=item.pk,
+        uploaded_file=second_upload,
+        context=context(counselor),
+        storage=storage,
+    )
+    assert item.storage_key != first_key
+    assert first_key in storage.deleted
+
+    item = publish_resource(
+        actor=counselor,
+        resource_id=item.pk,
+        context=context(counselor),
+    )
+    download = create_resource_download(
+        actor=student,
+        resource_id=item.pk,
+        storage=storage,
+    )
+    assert download.url.startswith("https://private.example/")
+    assert "signature=synthetic" in download.url
+    assert storage.private_url_calls == [(item.storage_key, download.expires_in_seconds)]
+
+    before_saves = set(storage.saved)
+    with pytest.raises(ResourceConflict):
+        attach_resource_file(
+            actor=counselor,
+            resource_id=item.pk,
+            uploaded_file=SimpleUploadedFile(
+                "published-replacement.pdf",
+                b"%PDF-1.7\nno replacement",
+                content_type="application/pdf",
+            ),
+            context=context(counselor),
+            storage=storage,
+        )
+    assert set(storage.saved) == before_saves
+
+    with pytest.raises(ResourceNotFound):
+        create_resource_download(
+            actor=counselor,
+            resource_id=item.pk,
+            storage=storage,
+        )
+    assert len(storage.private_url_calls) == 1
+
+    archive_resource(
+        actor=counselor,
+        resource_id=item.pk,
+        context=context(counselor),
+    )
+    with pytest.raises(ResourceNotFound):
+        create_resource_download(
+            actor=student,
+            resource_id=item.pk,
+            storage=storage,
+        )
+
+
+@pytest.mark.django_db
+def test_file_resource_rejects_unsafe_uploads_and_cleans_new_object_on_db_failure():
+    sync_policy()
+    counselor = make_user("resource-file-errors@example.edu", "COUNSELOR")
+    storage = FakeStorage()
+    item = create_draft(actor=counselor, kind=ResourceKind.FILE)
+
+    with pytest.raises(InvalidResourceInput):
+        attach_resource_file(
+            actor=counselor,
+            resource_id=item.pk,
+            uploaded_file=SimpleUploadedFile(
+                "not-pdf.txt",
+                b"%PDF-1.7\ncontent",
+                content_type="text/plain",
+            ),
+            context=context(counselor),
+            storage=storage,
+        )
+    with pytest.raises(InvalidResourceInput):
+        attach_resource_file(
+            actor=counselor,
+            resource_id=item.pk,
+            uploaded_file=SimpleUploadedFile(
+                "fake.pdf",
+                b"not a pdf",
+                content_type="application/pdf",
+            ),
+            context=context(counselor),
+            storage=storage,
+        )
+    with pytest.raises(InvalidResourceInput):
+        attach_resource_file(
+            actor=counselor,
+            resource_id=item.pk,
+            uploaded_file=SimpleUploadedFile(
+                "too-large.pdf",
+                b"%PDF-" + (b"x" * MAX_FILE_BYTES),
+                content_type="application/pdf",
+            ),
+            context=context(counselor),
+            storage=storage,
+        )
+
+    cleanup_item = create_draft(actor=counselor, kind=ResourceKind.FILE, title="Cleanup")
+    with patch(
+        "compass.resources.services.record_event",
+        side_effect=RuntimeError("synthetic audit failure"),
+    ):
+        with pytest.raises(RuntimeError, match="synthetic audit failure"):
+            attach_resource_file(
+                actor=counselor,
+                resource_id=cleanup_item.pk,
+                uploaded_file=SimpleUploadedFile(
+                    "cleanup.pdf",
+                    b"%PDF-1.7\ncleanup",
+                    content_type="application/pdf",
+                ),
+                context=context(counselor),
+                storage=storage,
+            )
+    cleanup_item.refresh_from_db()
+    assert cleanup_item.storage_key == ""
+    assert storage.deleted
+
+
+class FailingDeleteStorage(FakeStorage):
+    def delete(self, name: str) -> None:
+        self.deleted.append(name)
+        raise OSError(f"synthetic provider failure for https://private.example/{name}")
+
+
+@pytest.mark.django_db
+def test_failed_object_cleanup_is_logged_without_changing_the_database_outcome(caplog):
+    sync_policy()
+    counselor = make_user("resource-cleanup-visibility@example.edu", "COUNSELOR")
+    storage = FailingDeleteStorage()
+    item = create_draft(actor=counselor, kind=ResourceKind.FILE)
+
+    def attach(name: str):
+        return attach_resource_file(
+            actor=counselor,
+            resource_id=item.pk,
+            uploaded_file=SimpleUploadedFile(
+                f"{name}.pdf", b"%PDF-1.7\n" + name.encode(), content_type="application/pdf"
+            ),
+            context=context(counselor),
+            storage=storage,
+        )
+
+    first_key = attach("first").storage_key
+    caplog.set_level(logging.WARNING, logger="compass.resources")
+
+    # The replacement commits even though the replaced object cannot be deleted.
+    second_key = attach("second").storage_key
+    assert second_key != first_key
+    item.refresh_from_db()
+    assert item.storage_key == second_key
+
+    # A failed attachment still raises its own error after the orphan cleanup fails.
+    with patch(
+        "compass.resources.services.record_event",
+        side_effect=RuntimeError("synthetic audit failure"),
+    ):
+        with pytest.raises(RuntimeError, match="synthetic audit failure"):
+            attach("third")
+    item.refresh_from_db()
+    assert item.storage_key == second_key
+    rollback_key = storage.deleted[-1]
+
+    # Removal commits even though the detached object cannot be deleted.
+    assert (
+        remove_draft_resource_file(
+            actor=counselor, resource_id=item.pk, context=context(counselor), storage=storage
+        ).storage_key
+        == ""
+    )
+    item.refresh_from_db()
+    assert item.storage_key == ""
+    assert storage.deleted == [first_key, rollback_key, second_key]
+
+    records = [
+        record
+        for record in caplog.records
+        if getattr(record, "event", None) == "resource_file_cleanup_failed"
+    ]
+    assert [record.cleanup for record in records] == [
+        "replaced_file",
+        "attach_rollback",
+        "removed_file",
+    ]
+    formatted = [json.loads(JsonFormatter().format(record)) for record in records]
+    for line in formatted:
+        assert line["resource_id"] == str(item.pk)
+        assert line["exception_class"] == "OSError"
+        assert line["level"] == "WARNING"
+    serialized = json.dumps(formatted) + "\n".join(
+        json.dumps(record.__dict__, default=str) for record in records
+    )
+    for secret in (first_key, second_key, rollback_key, "private.example", "synthetic provider"):
+        assert secret not in serialized
+
+
+@pytest.mark.django_db
+def test_resource_api_hides_storage_key_and_gss_can_publish_without_head_approval():
+    sync_policy()
+    staff = make_user("resource-api-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    student = make_user("resource-api-student@example.edu", "STUDENT")
+    client = auth_client(staff)
+
+    response = client.post(
+        "/api/v1/resources/management",
+        data=json.dumps(
+            {
+                "title": "Staff article",
+                "body_markdown": "<script>raw source only</script>",
+                "category": "GENERAL",
+                "kind": "ARTICLE",
+                "audience": "ALL_AUTHENTICATED",
+                "display_order": 1,
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert response.status_code == 201
+    resource_id = response.json()["id"]
+    assert "storage_key" not in response.json()
+
+    published = client.post(
+        f"/api/v1/resources/management/{resource_id}/publish",
+        **csrf(client),
+    )
+    assert published.status_code == 200
+
+    reader = auth_client(student).get(f"/api/v1/resources/{resource_id}")
+    assert reader.status_code == 200
+    assert reader.json()["body_markdown"] == "<script>raw source only</script>"
+    assert "storage_key" not in reader.json()
+    assert "body_html" not in reader.json()
+
+
+@pytest.mark.django_db
+def test_public_resource_readers_only_receive_public_published_content():
+    sync_policy()
+    counselor = make_user("resource-public-publisher@example.edu", "COUNSELOR")
+    student = make_user("resource-public-student@example.edu", "STUDENT")
+    staff = make_user("resource-public-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+
+    public_article = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        title="Public article",
+        display_order=20,
+    )
+    public_link = create_draft(
+        actor=counselor,
+        kind=ResourceKind.EXTERNAL_LINK,
+        audience=PublicationAudience.PUBLIC,
+        title="Public link",
+        external_url="https://example.edu/public-guidance",
+        display_order=10,
+    )
+    authenticated = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.ALL_AUTHENTICATED,
+        title="Authenticated resource",
+    )
+    student_only = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.STUDENTS,
+        title="Student resource",
+    )
+    gco_only = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.GCO_PERSONNEL,
+        title="GCO resource",
+    )
+    draft_public = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        title="Draft public resource",
+    )
+
+    for item in (public_article, public_link, authenticated, student_only, gco_only):
+        publish_resource(actor=counselor, resource_id=item.pk, context=context(counselor))
+
+    public_rows = list_public_resources().items
+    assert [item.pk for item in public_rows] == [public_link.pk, public_article.pk]
+    assert get_public_resource(resource_id=public_article.pk).pk == public_article.pk
+    for hidden in (authenticated, student_only, gco_only, draft_public):
+        with pytest.raises(ResourceNotFound):
+            get_public_resource(resource_id=hidden.pk)
+
+    assert {item.pk for item in list_visible_resources(actor=student).items} == {
+        public_article.pk,
+        public_link.pk,
+        authenticated.pk,
+        student_only.pk,
+    }
+    assert {item.pk for item in list_visible_resources(actor=staff).items} == {
+        public_article.pk,
+        public_link.pk,
+        authenticated.pk,
+        gco_only.pk,
+    }
+
+    anonymous = Client()
+    listing = anonymous.get("/api/v1/public/resources?page_size=10")
+    assert listing.status_code == 200
+    ids = [item["id"] for item in listing.json()["items"]]
+    assert ids == [str(public_link.pk), str(public_article.pk)]
+    assert all("storage_key" not in item for item in listing.json()["items"])
+
+    detail = anonymous.get(f"/api/v1/public/resources/{public_link.pk}")
+    assert detail.status_code == 200
+    assert detail.json()["external_url"] == "https://example.edu/public-guidance"
+    assert "storage_key" not in detail.json()
+
+    assert anonymous.get(f"/api/v1/public/resources/{authenticated.pk}").status_code == 404
+
+
+@pytest.mark.django_db
+def test_public_file_resource_download_uses_private_short_lived_url_without_leaking_key():
+    sync_policy()
+    counselor = make_user("resource-public-file@example.edu", "COUNSELOR")
+    storage = FakeStorage()
+
+    public_file = create_draft(
+        actor=counselor,
+        kind=ResourceKind.FILE,
+        audience=PublicationAudience.PUBLIC,
+        title="Public PDF",
+    )
+    public_file = attach_resource_file(
+        actor=counselor,
+        resource_id=public_file.pk,
+        uploaded_file=SimpleUploadedFile(
+            "public-guide.pdf",
+            b"%PDF-1.7\npublic guide",
+            content_type="application/pdf",
+        ),
+        context=context(counselor),
+        storage=storage,
+    )
+    public_file = publish_resource(
+        actor=counselor,
+        resource_id=public_file.pk,
+        context=context(counselor),
+    )
+
+    download = create_public_resource_download(
+        resource_id=public_file.pk,
+        storage=storage,
+    )
+    assert download.url.startswith("https://private.example/")
+    assert storage.private_url_calls == [(public_file.storage_key, download.expires_in_seconds)]
+
+    non_public_file = create_draft(
+        actor=counselor,
+        kind=ResourceKind.FILE,
+        audience=PublicationAudience.ALL_AUTHENTICATED,
+        title="Private PDF",
+    )
+    non_public_file = attach_resource_file(
+        actor=counselor,
+        resource_id=non_public_file.pk,
+        uploaded_file=SimpleUploadedFile(
+            "private-guide.pdf",
+            b"%PDF-1.7\nprivate guide",
+            content_type="application/pdf",
+        ),
+        context=context(counselor),
+        storage=storage,
+    )
+    publish_resource(
+        actor=counselor,
+        resource_id=non_public_file.pk,
+        context=context(counselor),
+    )
+    with pytest.raises(ResourceNotFound):
+        create_public_resource_download(
+            resource_id=non_public_file.pk,
+            storage=storage,
+        )
+
+    archived_public_file = create_draft(
+        actor=counselor,
+        kind=ResourceKind.FILE,
+        audience=PublicationAudience.PUBLIC,
+        title="Archived public PDF",
+    )
+    archived_public_file = attach_resource_file(
+        actor=counselor,
+        resource_id=archived_public_file.pk,
+        uploaded_file=SimpleUploadedFile(
+            "archived-public.pdf",
+            b"%PDF-1.7\narchived public guide",
+            content_type="application/pdf",
+        ),
+        context=context(counselor),
+        storage=storage,
+    )
+    archived_public_file = publish_resource(
+        actor=counselor,
+        resource_id=archived_public_file.pk,
+        context=context(counselor),
+    )
+    archive_resource(
+        actor=counselor,
+        resource_id=archived_public_file.pk,
+        context=context(counselor),
+    )
+    with pytest.raises(ResourceNotFound):
+        create_public_resource_download(
+            resource_id=archived_public_file.pk,
+            storage=storage,
+        )
+
+    public_article = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        title="No file channel",
+    )
+    public_article = publish_resource(
+        actor=counselor,
+        resource_id=public_article.pk,
+        context=context(counselor),
+    )
+    with pytest.raises(ResourceConflict):
+        create_public_resource_download(
+            resource_id=public_article.pk,
+            storage=storage,
+        )
+
+    anonymous = Client()
+    with patch("compass.resources.services.ObjectStorage", return_value=storage):
+        api_download = anonymous.get(f"/api/v1/public/resources/{public_file.pk}/download")
+    assert api_download.status_code == 200
+    assert api_download.json()["url"].startswith("https://private.example/")
+    assert set(api_download.json()) == {"url", "expires_in_seconds"}
+    assert "storage_key" not in api_download.json()
+
+    assert (
+        anonymous.get(f"/api/v1/public/resources/{non_public_file.pk}/download").status_code == 404
+    )
+    assert (
+        anonymous.get(f"/api/v1/public/resources/{archived_public_file.pk}/download").status_code
+        == 404
+    )
+
+
+@pytest.mark.django_db
+def test_published_resource_consequences_require_acknowledgement_and_are_atomic():
+    sync_policy()
+    actor = make_user("resource-consequence@example.edu", "COUNSELOR")
+    item = create_draft(
+        actor=actor,
+        kind=ResourceKind.EXTERNAL_LINK,
+        audience=PublicationAudience.STUDENTS,
+        title="Original resource",
+        external_url="https://example.edu/old-guide",
+    )
+    item = publish_resource(actor=actor, resource_id=item.pk, context=context(actor))
+
+    same_destination = update_resource(
+        actor=actor,
+        resource_id=item.pk,
+        values={
+            "title": "Typo corrected",
+            "external_url": "  https://example.edu/old-guide  ",
+        },
+        context=context(actor),
+    )
+    assert same_destination.title == "Typo corrected"
+    assert same_destination.external_url == "https://example.edu/old-guide"
+
+    with pytest.raises(ResourcePublicationConsequenceReviewRequired) as caught:
+        update_resource(
+            actor=actor,
+            resource_id=item.pk,
+            values={
+                "title": "Reviewed resource",
+                "external_url": "https://example.edu/new-guide",
+            },
+            context=context(actor),
+        )
+    assert caught.value.fields == ("external_url",)
+
+    item.refresh_from_db()
+    assert item.title == "Typo corrected"
+    assert item.external_url == "https://example.edu/old-guide"
+
+    item = update_resource(
+        actor=actor,
+        resource_id=item.pk,
+        values={
+            "title": "Reviewed resource",
+            "external_url": "https://example.edu/new-guide",
+        },
+        context=context(actor),
+        acknowledge_publication_consequences=True,
+    )
+    assert item.title == "Reviewed resource"
+    assert item.external_url == "https://example.edu/new-guide"
+
+    event = AuditEvent.objects.filter(
+        target_type="resources.resource",
+        target_id=str(item.pk),
+        action="resource.updated",
+    ).latest("occurred_at")
+    assert event.metadata["publication_consequences"]["external_url"] == {
+        "before": "https://example.edu/old-guide",
+        "after": "https://example.edu/new-guide",
+    }
+
+
+@pytest.mark.django_db
+def test_published_resource_audience_and_publish_validity_remain_protected():
+    sync_policy()
+    actor = make_user("resource-audience@example.edu", "COUNSELOR")
+    item = create_draft(
+        actor=actor,
+        kind=ResourceKind.EXTERNAL_LINK,
+        audience=PublicationAudience.ALL_AUTHENTICATED,
+        external_url="https://example.edu/resource",
+    )
+    item = publish_resource(actor=actor, resource_id=item.pk, context=context(actor))
+
+    with pytest.raises(ResourcePublicationConsequenceReviewRequired):
+        update_resource(
+            actor=actor,
+            resource_id=item.pk,
+            values={"audience": PublicationAudience.PUBLIC},
+            context=context(actor),
+        )
+    item.refresh_from_db()
+    assert item.audience == PublicationAudience.ALL_AUTHENTICATED
+
+    item = update_resource(
+        actor=actor,
+        resource_id=item.pk,
+        values={"audience": PublicationAudience.PUBLIC},
+        context=context(actor),
+        acknowledge_publication_consequences=True,
+    )
+    assert item.audience == PublicationAudience.PUBLIC
+
+    with pytest.raises(InvalidResourceInput, match="body_markdown is required"):
+        update_resource(
+            actor=actor,
+            resource_id=item.pk,
+            values={"body_markdown": "   "},
+            context=context(actor),
+        )
+    with pytest.raises(InvalidResourceInput, match="external_url must use http or https"):
+        update_resource(
+            actor=actor,
+            resource_id=item.pk,
+            values={"external_url": "javascript:alert(1)"},
+            context=context(actor),
+            acknowledge_publication_consequences=True,
+        )
+    with pytest.raises(ResourceConflict, match="kind cannot be changed"):
+        update_resource(
+            actor=actor,
+            resource_id=item.pk,
+            values={"kind": ResourceKind.ARTICLE},
+            context=context(actor),
+            acknowledge_publication_consequences=True,
+        )
+
+
+@pytest.mark.django_db
+def test_resource_api_returns_structured_publication_consequence_review_required():
+    sync_policy()
+    actor = make_user("resource-review-api@example.edu", "COUNSELOR")
+    client = auth_client(actor)
+    created = client.post(
+        "/api/v1/resources/management",
+        data=json.dumps(
+            {
+                "title": "Published link",
+                "body_markdown": "Published body.",
+                "category": "GENERAL",
+                "kind": "EXTERNAL_LINK",
+                "audience": "GCO_PERSONNEL",
+                "external_url": "https://example.edu/old",
+                "display_order": 0,
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert created.status_code == 201
+    resource_id = created.json()["id"]
+    assert (
+        client.post(
+            f"/api/v1/resources/management/{resource_id}/publish",
+            **csrf(client),
+        ).status_code
+        == 200
+    )
+
+    rejected = client.patch(
+        f"/api/v1/resources/management/{resource_id}",
+        data=json.dumps(
+            {
+                "title": "Atomic resource",
+                "audience": "PUBLIC",
+                "external_url": "https://example.edu/new",
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert rejected.status_code == 409
+    assert rejected.json()["error"]["code"] == "publication_consequence_review_required"
+    assert rejected.json()["error"]["details"] == {"fields": ["audience", "external_url"]}
+
+    unchanged = client.get(f"/api/v1/resources/management/{resource_id}")
+    assert unchanged.status_code == 200
+    assert unchanged.json()["title"] == "Published link"
+    assert unchanged.json()["audience"] == "GCO_PERSONNEL"
+    assert unchanged.json()["external_url"] == "https://example.edu/old"
+
+    accepted = client.patch(
+        f"/api/v1/resources/management/{resource_id}",
+        data=json.dumps(
+            {
+                "title": "Atomic resource",
+                "audience": "PUBLIC",
+                "external_url": "https://example.edu/new",
+                "acknowledge_publication_consequences": True,
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert accepted.status_code == 200
+    assert accepted.json()["title"] == "Atomic resource"
+    assert accepted.json()["audience"] == "PUBLIC"
+    assert accepted.json()["external_url"] == "https://example.edu/new"
+
+
+@pytest.mark.django_db
+def test_resource_search_matches_normalizes_filters_orders_and_paginates():
+    sync_policy()
+    counselor = make_user("resource-search-publisher@example.edu", "COUNSELOR")
+
+    first = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.MENTAL_HEALTH,
+        title="Mental Health Starter Guide",
+        body="General orientation.",
+        display_order=10,
+    )
+    body_match = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.COUNSELING,
+        title="Campus support",
+        body="Practical ANXIETY coping guidance.",
+        display_order=20,
+    )
+    second = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.MENTAL_HEALTH,
+        title="Mental health follow-up",
+        body="Additional guidance.",
+        display_order=30,
+    )
+    unrelated = create_draft(
+        actor=counselor,
+        kind=ResourceKind.EXTERNAL_LINK,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.GENERAL,
+        title="University homepage",
+        body="Official campus website.",
+        external_url="https://example.edu",
+        display_order=40,
+    )
+
+    for item in (first, body_match, second, unrelated):
+        publish_resource(
+            actor=counselor,
+            resource_id=item.pk,
+            context=context(counselor),
+        )
+
+    title_rows = list_public_resources(search="  MENTAL health  ").items
+    assert [item.pk for item in title_rows] == [first.pk, second.pk]
+
+    body_rows = list_public_resources(search="anxiety").items
+    assert [item.pk for item in body_rows] == [body_match.pk]
+
+    blank_rows = list_public_resources(search="   ").items
+    baseline_rows = list_public_resources().items
+    assert [item.pk for item in blank_rows] == [item.pk for item in baseline_rows]
+    assert not list_public_resources(search="does-not-exist").items
+
+    combined = list_public_resources(
+        category=ResourceCategory.MENTAL_HEALTH,
+        kind=ResourceKind.ARTICLE,
+        search="mental",
+    ).items
+    assert [item.pk for item in combined] == [first.pk, second.pk]
+
+    page_one = list_public_resources(search="mental", page=1, page_size=1)
+    page_two = list_public_resources(search="mental", page=2, page_size=1)
+    assert [item.pk for item in page_one.items] == [first.pk]
+    assert page_one.has_next is True
+    assert [item.pk for item in page_two.items] == [second.pk]
+    assert page_two.has_next is False
+
+    assert not list_public_resources(search="MENTAL_HEALTH").items
+
+
+@pytest.mark.django_db
+def test_resource_search_preserves_visibility_management_filters_and_api_contract():
+    sync_policy()
+    counselor = make_user("resource-search-manager@example.edu", "COUNSELOR")
+    student = make_user("resource-search-student@example.edu", "STUDENT")
+
+    public_item = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.MENTAL_HEALTH,
+        title="Needle public guide",
+        body="Visible public content.",
+        display_order=10,
+    )
+    student_item = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.STUDENTS,
+        category=ResourceCategory.MENTAL_HEALTH,
+        title="Student guide",
+        body="Contains search NEEDLE for students.",
+        display_order=20,
+    )
+    gco_item = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.GCO_PERSONNEL,
+        category=ResourceCategory.COUNSELING,
+        title="Needle GCO guide",
+        body="Internal content.",
+        display_order=30,
+    )
+    draft_public = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.MENTAL_HEALTH,
+        title="Needle draft",
+        body="Management only.",
+        display_order=40,
+    )
+    archived = create_draft(
+        actor=counselor,
+        kind=ResourceKind.ARTICLE,
+        audience=PublicationAudience.PUBLIC,
+        category=ResourceCategory.MENTAL_HEALTH,
+        title="Needle archived",
+        body="No longer visible.",
+        display_order=50,
+    )
+
+    for item in (public_item, student_item, gco_item, archived):
+        publish_resource(
+            actor=counselor,
+            resource_id=item.pk,
+            context=context(counselor),
+        )
+    archive_resource(
+        actor=counselor,
+        resource_id=archived.pk,
+        context=context(counselor),
+    )
+
+    public_rows = list_public_resources(search="needle").items
+    assert [item.pk for item in public_rows] == [public_item.pk]
+
+    visible_rows = list_visible_resources(actor=student, search="needle").items
+    assert {item.pk for item in visible_rows} == {public_item.pk, student_item.pk}
+
+    anonymous = Client()
+    public_api = anonymous.get("/api/v1/public/resources?search=needle&page_size=10")
+    assert public_api.status_code == 200
+    assert [item["id"] for item in public_api.json()["items"]] == [str(public_item.pk)]
+
+    visible_api = auth_client(student).get("/api/v1/resources?search=needle&page_size=10")
+    assert visible_api.status_code == 200
+    assert {item["id"] for item in visible_api.json()["items"]} == {
+        str(public_item.pk),
+        str(student_item.pk),
+    }
+
+    manager = auth_client(counselor)
+    managed_draft = manager.get(
+        "/api/v1/resources/management"
+        "?search=needle&status=DRAFT&audience=PUBLIC"
+        "&category=MENTAL_HEALTH&kind=ARTICLE&page_size=10"
+    )
+    assert managed_draft.status_code == 200
+    assert [item["id"] for item in managed_draft.json()["items"]] == [str(draft_public.pk)]
+
+    managed_gco = manager.get(
+        "/api/v1/resources/management"
+        "?search=needle&status=PUBLISHED&audience=GCO_PERSONNEL"
+        "&category=COUNSELING&kind=ARTICLE&page_size=10"
+    )
+    assert managed_gco.status_code == 200
+    assert [item["id"] for item in managed_gco.json()["items"]] == [str(gco_item.pk)]

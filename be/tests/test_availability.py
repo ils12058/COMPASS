@@ -1,0 +1,1040 @@
+from __future__ import annotations
+
+import json
+from datetime import date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
+
+import pytest
+from django.core.management import call_command
+from django.db import IntegrityError, transaction
+from django.test import Client, override_settings
+from django.utils import timezone
+
+from compass.accounts.models import (
+    Capability,
+    Designation,
+    Role,
+    User,
+    UserCapabilityOverride,
+    UserDesignation,
+)
+from compass.audit.context import AuditContext
+from compass.audit.models import AuditEvent
+from compass.authentication.sessions import create_auth_session
+from compass.availability.models import (
+    OfficeAvailabilityWindow,
+    OfficeUnavailability,
+    ProviderAvailabilityWindow,
+    ProviderUnavailability,
+)
+from compass.availability.services import (
+    AvailabilityNotApplicable,
+    InvalidAvailabilityInput,
+    compute_base_availability,
+    create_office_exception,
+    create_provider_exception,
+    normalize_weekly_windows,
+    remove_provider_exception,
+    replace_office_weekly,
+    replace_provider_weekly,
+)
+from compass.service_catalog.services import create_service, set_service_active
+
+# Fixed-calendar exceptions below are recorded while they are still upcoming.
+RECORDED_BEFORE_FIXTURE_DAY = datetime(2026, 9, 20, 9, tzinfo=ZoneInfo("Asia/Manila"))
+
+
+def sync_policy() -> None:
+    call_command("sync_identity_policy", verbosity=0)
+
+
+def make_user(
+    email: str,
+    role: str,
+    *,
+    active: bool = True,
+    first_name: str = "Test",
+    last_name: str = "User",
+) -> User:
+    return User.objects.create_user(
+        email=email,
+        password="a-test-password",
+        role=Role.objects.get(code=role),
+        first_name=first_name,
+        last_name=last_name,
+        is_active=active,
+    )
+
+
+def context(actor: User) -> AuditContext:
+    return AuditContext.user(actor)
+
+
+def auth_client(user: User, *, recent_mfa: bool = False) -> Client:
+    now = timezone.now()
+    issued = create_auth_session(
+        user,
+        now=now,
+        mfa_verified_at=now if recent_mfa else None,
+    )
+    client = Client()
+    client.cookies["compass_session"] = issued.token
+    return client
+
+
+def csrf(client: Client) -> dict[str, str]:
+    response = client.get("/api/v1/auth/csrf")
+    assert response.status_code == 200
+    return {"HTTP_X_CSRFTOKEN": response.json()["csrf_token"]}
+
+
+def active_service(
+    actor: User,
+    *,
+    code: str = "SYNTHETIC_SERVICE",
+    duration: int | None = 60,
+    delivery_modes=None,
+):
+    service = create_service(
+        code=code,
+        name=code.replace("_", " ").title(),
+        appointment_booking_enabled=duration is not None,
+        default_appointment_duration_minutes=duration,
+        delivery_modes=delivery_modes or ["IN_PERSON", "ONLINE"],
+        context=context(actor),
+    )
+    return set_service_active(service_id=service.pk, is_active=True, context=context(actor))
+
+
+def weekly(
+    weekday: str = "MONDAY",
+    start: time = time(8),
+    end: time = time(17),
+    scope: str = "ALL",
+) -> dict[str, object]:
+    return {
+        "weekday": weekday,
+        "start_time": start,
+        "end_time": end,
+        "mode_scope": scope,
+    }
+
+
+@pytest.mark.django_db
+def test_availability_capability_policy_matches_role_and_designation_boundaries():
+    sync_policy()
+    admin = make_user("admin@example.edu", "IT_ADMIN")
+    counselor = make_user("counselor@example.edu", "COUNSELOR")
+    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    student = make_user("student@example.edu", "STUDENT")
+    head = make_user("head@example.edu", "COUNSELOR")
+    UserDesignation.objects.create(
+        user=head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+
+    assert admin.has_capability("availability.view")
+    assert admin.has_capability("availability.manage")
+    assert not admin.has_capability("availability.manage_self")
+    assert counselor.has_capability("availability.view")
+    assert counselor.has_capability("availability.manage_self")
+    assert not counselor.has_capability("availability.manage")
+    assert gss.has_capability("availability.view")
+    assert not gss.has_capability("availability.manage_self")
+    assert not gss.has_capability("availability.manage")
+    assert student.has_capability("availability.view")
+    assert not student.has_capability("availability.manage_self")
+    assert not student.has_capability("availability.manage")
+    assert head.has_capability("availability.manage_self")
+    assert head.has_capability("availability.manage")
+
+    UserCapabilityOverride.objects.create(
+        user=head,
+        capability=Capability.objects.get(code="availability.manage"),
+        effect="REVOKE",
+        reason="separation",
+    )
+    assert not head.has_capability("availability.manage")
+    assert head.has_capability("availability.manage_self")
+
+
+@pytest.mark.django_db
+def test_weekly_validation_rejects_invalid_duplicate_and_semantic_overlap_but_allows_adjacency():
+    adjacent = normalize_weekly_windows(
+        [
+            weekly(start=time(8), end=time(9), scope="ALL"),
+            weekly(start=time(9), end=time(10), scope="ALL"),
+        ]
+    )
+    assert len(adjacent) == 2
+
+    with pytest.raises(InvalidAvailabilityInput, match="earlier"):
+        normalize_weekly_windows([weekly(start=time(9), end=time(9))])
+    with pytest.raises(InvalidAvailabilityInput, match="earlier"):
+        normalize_weekly_windows([weekly(start=time(10), end=time(9))])
+    with pytest.raises(InvalidAvailabilityInput, match="exact duplicates"):
+        normalize_weekly_windows([weekly(), weekly()])
+    with pytest.raises(InvalidAvailabilityInput, match="overlap"):
+        normalize_weekly_windows(
+            [
+                weekly(start=time(8), end=time(12), scope="ALL"),
+                weekly(start=time(10), end=time(11), scope="ONLINE"),
+            ]
+        )
+
+    independent_modes = normalize_weekly_windows(
+        [
+            weekly(start=time(8), end=time(12), scope="IN_PERSON"),
+            weekly(start=time(8), end=time(12), scope="ONLINE"),
+        ]
+    )
+    assert len(independent_modes) == 2
+
+
+@pytest.mark.django_db
+def test_database_constraints_reject_bad_or_duplicate_weekly_rows():
+    sync_policy()
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    OfficeAvailabilityWindow.objects.create(
+        weekday="MONDAY", start_time=time(8), end_time=time(12), mode_scope="ALL"
+    )
+    ProviderAvailabilityWindow.objects.create(
+        provider=provider,
+        weekday="MONDAY",
+        start_time=time(8),
+        end_time=time(12),
+        mode_scope="ALL",
+    )
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            OfficeAvailabilityWindow.objects.create(
+                weekday="MONDAY", start_time=time(8), end_time=time(12), mode_scope="ALL"
+            )
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            ProviderAvailabilityWindow.objects.create(
+                provider=provider,
+                weekday="MONDAY",
+                start_time=time(12),
+                end_time=time(12),
+                mode_scope="ALL",
+            )
+
+
+@pytest.mark.django_db
+def test_provider_configuration_accepts_counselor_and_allows_legacy_cleanup_only():
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    counselor = make_user("c@example.edu", "COUNSELOR")
+    gss = make_user("g@example.edu", "GUIDANCE_SERVICES_STAFF")
+    student = make_user("s@example.edu", "STUDENT")
+    other_admin = make_user("a2@example.edu", "IT_ADMIN")
+    inactive = make_user("inactive@example.edu", "COUNSELOR", active=False)
+
+    assert (
+        len(
+            replace_provider_weekly(
+                provider_id=counselor.pk, windows=[weekly()], context=context(actor)
+            )
+        )
+        == 1
+    )
+    for provider in (gss, student, other_admin, inactive):
+        with pytest.raises(AvailabilityNotApplicable):
+            replace_provider_weekly(
+                provider_id=provider.pk, windows=[weekly()], context=context(actor)
+            )
+
+    for legacy_provider in (gss, inactive):
+        ProviderAvailabilityWindow.objects.create(
+            provider=legacy_provider,
+            weekday="MONDAY",
+            start_time=time(8),
+            end_time=time(12),
+            mode_scope="ALL",
+        )
+        cleaned = replace_provider_weekly(
+            provider_id=legacy_provider.pk,
+            windows=[],
+            context=context(actor),
+        )
+        assert cleaned == ()
+
+
+@pytest.mark.django_db
+def test_weekly_replacement_is_idempotent_and_emits_one_meaningful_audit_event():
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+
+    replace_office_weekly(windows=[weekly()], context=context(actor))
+    replace_office_weekly(windows=[weekly()], context=context(actor))
+    assert AuditEvent.objects.filter(action="availability.office_schedule.updated").count() == 1
+
+    replace_provider_weekly(provider_id=provider.pk, windows=[weekly()], context=context(actor))
+    replace_provider_weekly(provider_id=provider.pk, windows=[weekly()], context=context(actor))
+    event = AuditEvent.objects.get(action="availability.provider_schedule.updated")
+    assert event.target_type == "accounts.user"
+    assert event.target_id == str(provider.pk)
+    assert event.metadata == {"provider_id": str(provider.pk), "window_count": 1}
+
+
+@pytest.mark.django_db
+def test_exception_validation_requires_aware_ordered_ranges_and_bounded_reason():
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    aware_start = datetime(2026, 9, 21, 8, tzinfo=ZoneInfo("Asia/Manila"))
+    aware_end = datetime(2026, 9, 21, 9, tzinfo=ZoneInfo("Asia/Manila"))
+
+    with pytest.raises(InvalidAvailabilityInput, match="timezone-aware"):
+        create_office_exception(
+            starts_at=datetime(2026, 9, 21, 8),
+            ends_at=datetime(2026, 9, 21, 9),
+            mode_scope="ALL",
+            context=context(actor),
+        )
+    with pytest.raises(InvalidAvailabilityInput, match="earlier"):
+        create_provider_exception(
+            provider_id=provider.pk,
+            starts_at=aware_end,
+            ends_at=aware_start,
+            mode_scope="ALL",
+            context=context(actor),
+        )
+    with pytest.raises(InvalidAvailabilityInput, match="255"):
+        create_office_exception(
+            starts_at=aware_start,
+            ends_at=aware_end,
+            mode_scope="ALL",
+            reason="x" * 256,
+            context=context(actor),
+            now=RECORDED_BEFORE_FIXTURE_DAY,
+        )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("scope", ["office", "provider"])
+def test_new_unavailability_may_start_in_the_past_but_must_not_have_ended(scope):
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    zone = ZoneInfo("Asia/Manila")
+    now = datetime(2026, 10, 8, 10, tzinfo=zone)
+
+    def create(starts_at, ends_at):
+        values = {
+            "starts_at": starts_at,
+            "ends_at": ends_at,
+            "mode_scope": "ALL",
+            "context": context(actor),
+            "now": now,
+        }
+        if scope == "office":
+            return create_office_exception(**values)
+        return create_provider_exception(provider_id=provider.pk, **values)
+
+    upcoming = create(datetime(2026, 10, 9, 8, tzinfo=zone), datetime(2026, 10, 9, 17, tzinfo=zone))
+    # Recording an absence that began at 8:00 while it is still in effect at 10:00.
+    ongoing = create(datetime(2026, 10, 8, 8, tzinfo=zone), datetime(2026, 10, 8, 17, tzinfo=zone))
+    assert upcoming.starts_at == datetime(2026, 10, 9, 8, tzinfo=zone)
+    assert ongoing.starts_at == datetime(2026, 10, 8, 8, tzinfo=zone)
+    # The entry timestamp is the real COMPASS time, never the period's start.
+    assert abs(ongoing.created_at - timezone.now()) < timedelta(minutes=5)
+
+    for starts_at, ends_at in (
+        (datetime(2026, 10, 7, 8, tzinfo=zone), datetime(2026, 10, 7, 17, tzinfo=zone)),
+        (datetime(2026, 10, 8, 8, tzinfo=zone), now),
+        (datetime(2026, 10, 8, 8, tzinfo=zone), now - timedelta(minutes=1)),
+    ):
+        with pytest.raises(InvalidAvailabilityInput, match="must be in the future"):
+            create(starts_at, ends_at)
+    with pytest.raises(InvalidAvailabilityInput, match="earlier than ends_at"):
+        create(datetime(2026, 10, 9, 17, tzinfo=zone), datetime(2026, 10, 9, 8, tzinfo=zone))
+    with pytest.raises(InvalidAvailabilityInput, match="earlier than ends_at"):
+        create(datetime(2026, 10, 9, 8, tzinfo=zone), datetime(2026, 10, 9, 8, tzinfo=zone))
+
+    model = OfficeUnavailability if scope == "office" else ProviderUnavailability
+    assert model.objects.count() == 2
+
+
+@pytest.mark.django_db
+def test_ended_unavailability_is_rejected_by_the_api_and_stored_past_periods_remain():
+    sync_policy()
+    counselor = make_user("counselor@example.edu", "COUNSELOR")
+    stored = ProviderUnavailability.objects.create(
+        provider=counselor,
+        starts_at=timezone.now() - timedelta(days=3),
+        ends_at=timezone.now() - timedelta(days=2),
+        mode_scope="ALL",
+    )
+    client = auth_client(counselor)
+
+    def post(starts_at, ends_at):
+        return client.post(
+            "/api/v1/availability/me/exceptions",
+            data=json.dumps(
+                {
+                    "starts_at": starts_at.isoformat(),
+                    "ends_at": ends_at.isoformat(),
+                    "mode_scope": "ALL",
+                }
+            ),
+            content_type="application/json",
+            **csrf(client),
+        )
+
+    ended = post(timezone.now() - timedelta(hours=3), timezone.now() - timedelta(hours=1))
+    assert ended.status_code == 422
+    assert ended.json()["error"]["code"] == "invalid_availability_request"
+    ongoing = post(timezone.now() - timedelta(hours=1), timezone.now() + timedelta(hours=1))
+    assert ongoing.status_code == 201
+
+    listed = client.get("/api/v1/availability/me/exceptions")
+    assert listed.status_code == 200
+    assert {item["id"] for item in listed.json()["items"]} == {
+        str(stored.pk),
+        ongoing.json()["id"],
+    }
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_effective_availability_intersects_office_provider_and_subtracts_provider_exception():
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    service = active_service(actor)
+    replace_provider_weekly(provider_id=provider.pk, windows=[weekly()], context=context(actor))
+    replace_office_weekly(windows=[weekly(start=time(9), end=time(17))], context=context(actor))
+    create_provider_exception(
+        provider_id=provider.pk,
+        starts_at=datetime(2026, 9, 21, 12, tzinfo=ZoneInfo("Asia/Manila")),
+        ends_at=datetime(2026, 9, 21, 13, tzinfo=ZoneInfo("Asia/Manila")),
+        mode_scope="ALL",
+        context=context(actor),
+        now=RECORDED_BEFORE_FIXTURE_DAY,
+    )
+
+    result = compute_base_availability(
+        provider_id=provider.pk,
+        service_id=service.pk,
+        delivery_mode="IN_PERSON",
+        start_date=date(2026, 9, 21),
+        end_date=date(2026, 9, 22),
+    )
+    assert result.timezone_name == "Asia/Manila"
+    assert [(item.starts_at.hour, item.ends_at.hour) for item in result.windows] == [
+        (9, 12),
+        (13, 17),
+    ]
+    assert all(item.starts_at.utcoffset() == timedelta(hours=8) for item in result.windows)
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_mode_specific_office_exception_only_subtracts_matching_mode():
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    service = active_service(actor)
+    replace_provider_weekly(provider_id=provider.pk, windows=[weekly()], context=context(actor))
+    replace_office_weekly(windows=[weekly()], context=context(actor))
+    create_office_exception(
+        starts_at=datetime(2026, 9, 21, 13, tzinfo=ZoneInfo("Asia/Manila")),
+        ends_at=datetime(2026, 9, 21, 17, tzinfo=ZoneInfo("Asia/Manila")),
+        mode_scope="IN_PERSON",
+        context=context(actor),
+        now=RECORDED_BEFORE_FIXTURE_DAY,
+    )
+
+    in_person = compute_base_availability(
+        provider_id=provider.pk,
+        service_id=service.pk,
+        delivery_mode="IN_PERSON",
+        start_date=date(2026, 9, 21),
+        end_date=date(2026, 9, 22),
+    )
+    online = compute_base_availability(
+        provider_id=provider.pk,
+        service_id=service.pk,
+        delivery_mode="ONLINE",
+        start_date=date(2026, 9, 21),
+        end_date=date(2026, 9, 22),
+    )
+    assert [(item.starts_at.hour, item.ends_at.hour) for item in in_person.windows] == [(8, 13)]
+    assert [(item.starts_at.hour, item.ends_at.hour) for item in online.windows] == [(8, 17)]
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_service_default_duration_filters_short_windows_without_generating_slots():
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    service = active_service(actor, duration=60)
+    short = [weekly(start=time(10), end=time(10, 30))]
+    replace_provider_weekly(provider_id=provider.pk, windows=short, context=context(actor))
+    replace_office_weekly(windows=short, context=context(actor))
+    result = compute_base_availability(
+        provider_id=provider.pk,
+        service_id=service.pk,
+        delivery_mode="IN_PERSON",
+        start_date=date(2026, 9, 21),
+        end_date=date(2026, 9, 22),
+    )
+    assert result.windows == ()
+
+    long_window = [weekly(start=time(10), end=time(11, 30))]
+    replace_provider_weekly(provider_id=provider.pk, windows=long_window, context=context(actor))
+    replace_office_weekly(windows=long_window, context=context(actor))
+    result = compute_base_availability(
+        provider_id=provider.pk,
+        service_id=service.pk,
+        delivery_mode="IN_PERSON",
+        start_date=date(2026, 9, 21),
+        end_date=date(2026, 9, 22),
+    )
+    assert len(result.windows) == 1
+    assert result.windows[0].ends_at - result.windows[0].starts_at == timedelta(minutes=90)
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_effective_query_rejects_inactive_service_unsupported_mode_role_and_large_horizon():
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    counselor = make_user("c@example.edu", "COUNSELOR")
+    gss = make_user("g@example.edu", "GUIDANCE_SERVICES_STAFF")
+    inactive_service = create_service(
+        code="INACTIVE",
+        name="Inactive",
+        appointment_booking_enabled=False,
+        delivery_modes=["IN_PERSON"],
+        context=context(actor),
+    )
+    with pytest.raises(AvailabilityNotApplicable, match="inactive"):
+        compute_base_availability(
+            provider_id=counselor.pk,
+            service_id=inactive_service.pk,
+            delivery_mode="IN_PERSON",
+            start_date=date(2026, 9, 21),
+            end_date=date(2026, 9, 22),
+        )
+
+    service = active_service(
+        actor,
+        code="IN_PERSON_ONLY",
+        delivery_modes=["IN_PERSON"],
+    )
+    with pytest.raises(AvailabilityNotApplicable, match="delivery mode"):
+        compute_base_availability(
+            provider_id=counselor.pk,
+            service_id=service.pk,
+            delivery_mode="ONLINE",
+            start_date=date(2026, 9, 21),
+            end_date=date(2026, 9, 22),
+        )
+    with pytest.raises(AvailabilityNotApplicable, match="operationally available"):
+        compute_base_availability(
+            provider_id=gss.pk,
+            service_id=service.pk,
+            delivery_mode="IN_PERSON",
+            start_date=date(2026, 9, 21),
+            end_date=date(2026, 9, 22),
+        )
+    with pytest.raises(InvalidAvailabilityInput, match="31"):
+        compute_base_availability(
+            provider_id=counselor.pk,
+            service_id=service.pk,
+            delivery_mode="IN_PERSON",
+            start_date=date(2026, 9, 1),
+            end_date=date(2026, 10, 3),
+        )
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_inactive_provider_keeps_configuration_but_has_no_effective_availability():
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    service = active_service(actor)
+    replace_provider_weekly(provider_id=provider.pk, windows=[weekly()], context=context(actor))
+    replace_office_weekly(windows=[weekly()], context=context(actor))
+    provider.is_active = False
+    provider.save(update_fields=["is_active", "updated_at"])
+
+    assert ProviderAvailabilityWindow.objects.filter(provider=provider).exists()
+    with pytest.raises(AvailabilityNotApplicable):
+        compute_base_availability(
+            provider_id=provider.pk,
+            service_id=service.pk,
+            delivery_mode="IN_PERSON",
+            start_date=date(2026, 9, 21),
+            end_date=date(2026, 9, 22),
+        )
+
+
+@pytest.mark.django_db
+def test_provider_exception_cleanup_can_remove_inactive_provider_data():
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    item = create_provider_exception(
+        provider_id=provider.pk,
+        starts_at=timezone.now(),
+        ends_at=timezone.now() + timedelta(hours=1),
+        mode_scope="ALL",
+        context=context(actor),
+    )
+    provider.is_active = False
+    provider.save(update_fields=["is_active", "updated_at"])
+    assert remove_provider_exception(
+        exception_id=item.pk, provider_id=provider.pk, context=context(actor)
+    )
+    assert not ProviderUnavailability.objects.filter(pk=item.pk).exists()
+
+
+@pytest.mark.django_db
+def test_self_service_uses_authenticated_counselor_and_does_not_require_recent_mfa():
+    sync_policy()
+    counselor = make_user("counselor@example.edu", "COUNSELOR")
+    client = auth_client(counselor, recent_mfa=False)
+    response = client.put(
+        "/api/v1/availability/me/weekly",
+        data=json.dumps(
+            {
+                "windows": [
+                    {
+                        "weekday": "MONDAY",
+                        "start_time": "08:00",
+                        "end_time": "12:00",
+                        "mode_scope": "ALL",
+                    }
+                ]
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert response.status_code == 200
+    assert response.json()["provider_id"] == str(counselor.pk)
+    assert ProviderAvailabilityWindow.objects.filter(provider=counselor).count() == 1
+
+    own = client.get("/api/v1/availability/me/weekly")
+    assert own.status_code == 200
+    assert len(own.json()["windows"]) == 1
+
+
+@pytest.mark.django_db
+def test_gss_and_student_cannot_use_counselor_self_mutation_and_manage_self_revoke_wins():
+    sync_policy()
+    for role, email in [("GUIDANCE_SERVICES_STAFF", "g@example.edu"), ("STUDENT", "s@example.edu")]:
+        user = make_user(email, role)
+        client = auth_client(user)
+        response = client.put(
+            "/api/v1/availability/me/weekly",
+            data=json.dumps({"windows": []}),
+            content_type="application/json",
+            **csrf(client),
+        )
+        assert response.status_code == 403
+
+    counselor = make_user("c@example.edu", "COUNSELOR")
+    UserCapabilityOverride.objects.create(
+        user=counselor,
+        capability=Capability.objects.get(code="availability.manage_self"),
+        effect="REVOKE",
+        reason="separation",
+    )
+    client = auth_client(counselor)
+    denied = client.put(
+        "/api/v1/availability/me/weekly",
+        data=json.dumps({"windows": []}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert denied.status_code == 403
+
+
+@pytest.mark.django_db
+def test_head_manage_capability_can_still_self_manage_when_manage_self_is_revoked():
+    sync_policy()
+    head = make_user("head@example.edu", "COUNSELOR")
+    UserDesignation.objects.create(
+        user=head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+    UserCapabilityOverride.objects.create(
+        user=head,
+        capability=Capability.objects.get(code="availability.manage_self"),
+        effect="REVOKE",
+        reason="use administrative authority",
+    )
+    client = auth_client(head, recent_mfa=False)
+    response = client.put(
+        "/api/v1/availability/me/weekly",
+        data=json.dumps({"windows": []}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert response.status_code == 200
+
+
+@pytest.mark.django_db
+def test_administrative_mutation_requires_manage_but_not_step_up():
+    sync_policy()
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    counselor = make_user("ordinary@example.edu", "COUNSELOR")
+    counselor_client = auth_client(counselor, recent_mfa=True)
+    denied = counselor_client.put(
+        f"/api/v1/availability/providers/{provider.pk}/weekly",
+        data=json.dumps({"windows": []}),
+        content_type="application/json",
+        **csrf(counselor_client),
+    )
+    assert denied.status_code == 403
+
+    admin = make_user("admin@example.edu", "IT_ADMIN")
+    # Routine schedule administration needs the capability, not a recent step-up.
+    without_step_up = auth_client(admin, recent_mfa=False)
+    okay = without_step_up.put(
+        "/api/v1/availability/office/weekly",
+        data=json.dumps({"windows": []}),
+        content_type="application/json",
+        **csrf(without_step_up),
+    )
+    assert okay.status_code == 200
+
+
+@pytest.mark.django_db
+def test_self_exception_delete_cannot_target_another_provider_and_reason_is_not_audit_metadata():
+    sync_policy()
+    a = make_user("a@example.edu", "COUNSELOR")
+    b = make_user("b@example.edu", "COUNSELOR")
+    item = create_provider_exception(
+        provider_id=b.pk,
+        starts_at=timezone.now(),
+        ends_at=timezone.now() + timedelta(hours=1),
+        mode_scope="ALL",
+        reason="Internal operational note",
+        context=context(b),
+    )
+    client = auth_client(a)
+    response = client.delete(
+        f"/api/v1/availability/me/exceptions/{item.pk}",
+        **csrf(client),
+    )
+    assert response.status_code == 404
+    assert ProviderUnavailability.objects.filter(pk=item.pk).exists()
+    event = AuditEvent.objects.get(
+        action="availability.provider_exception.created", target_id=str(item.pk)
+    )
+    assert "reason" not in event.metadata
+    assert "Internal operational note" not in str(event.metadata)
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_student_can_read_effective_availability_but_not_raw_configuration_or_reasons():
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    student = make_user("student@example.edu", "STUDENT")
+    service = active_service(actor)
+    replace_provider_weekly(provider_id=provider.pk, windows=[weekly()], context=context(actor))
+    replace_office_weekly(windows=[weekly()], context=context(actor))
+    create_provider_exception(
+        provider_id=provider.pk,
+        starts_at=datetime(2026, 9, 21, 12, tzinfo=ZoneInfo("Asia/Manila")),
+        ends_at=datetime(2026, 9, 21, 13, tzinfo=ZoneInfo("Asia/Manila")),
+        mode_scope="ALL",
+        reason="Private operational note",
+        context=context(actor),
+        now=RECORDED_BEFORE_FIXTURE_DAY,
+    )
+    client = auth_client(student)
+    effective = client.get(
+        f"/api/v1/availability/providers/{provider.pk}/effective",
+        {
+            "service_id": str(service.pk),
+            "delivery_mode": "IN_PERSON",
+            "start_date": "2026-09-21",
+            "end_date": "2026-09-22",
+        },
+    )
+    assert effective.status_code == 200
+    body = effective.json()
+    assert body["timezone"] == "Asia/Manila"
+    assert "reason" not in json.dumps(body).lower()
+    assert "Private operational note" not in json.dumps(body)
+    assert client.get(f"/api/v1/availability/providers/{provider.pk}/weekly").status_code == 403
+    assert client.get("/api/v1/availability/office/exceptions").status_code == 403
+
+
+@pytest.mark.django_db
+def test_head_can_manage_office_and_other_provider_with_recent_mfa():
+    sync_policy()
+    head = make_user("head@example.edu", "COUNSELOR")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    UserDesignation.objects.create(
+        user=head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+    client = auth_client(head, recent_mfa=True)
+    office = client.put(
+        "/api/v1/availability/office/weekly",
+        data=json.dumps({"windows": []}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    provider_response = client.put(
+        f"/api/v1/availability/providers/{provider.pk}/weekly",
+        data=json.dumps(
+            {
+                "windows": [
+                    {
+                        "weekday": "MONDAY",
+                        "start_time": "08:00",
+                        "end_time": "12:00",
+                        "mode_scope": "ALL",
+                    }
+                ]
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert office.status_code == 200
+    assert provider_response.status_code == 200
+    assert ProviderAvailabilityWindow.objects.filter(provider=provider).count() == 1
+
+
+@pytest.mark.django_db
+@override_settings(TIME_ZONE="Asia/Manila")
+def test_gss_legacy_schedule_is_non_operational_but_cleanup_compatible():
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    gss = make_user("g@example.edu", "GUIDANCE_SERVICES_STAFF")
+    service = active_service(actor)
+    replace_office_weekly(
+        windows=[weekly(start=time(8), end=time(17))],
+        context=context(actor),
+    )
+    ProviderAvailabilityWindow.objects.create(
+        provider=gss,
+        weekday="MONDAY",
+        start_time=time(8),
+        end_time=time(12),
+        mode_scope="ALL",
+    )
+
+    with pytest.raises(AvailabilityNotApplicable, match="operationally available"):
+        compute_base_availability(
+            provider_id=gss.pk,
+            service_id=service.pk,
+            delivery_mode="IN_PERSON",
+            start_date=date(2026, 9, 21),
+            end_date=date(2026, 9, 22),
+        )
+
+    assert ProviderAvailabilityWindow.objects.filter(provider=gss).exists()
+    cleaned = replace_provider_weekly(
+        provider_id=gss.pk,
+        windows=[],
+        context=context(actor),
+    )
+    assert cleaned == ()
+
+
+@pytest.mark.django_db
+def test_exception_database_constraints_reject_nonpositive_ranges():
+    sync_policy()
+    actor = make_user("admin@example.edu", "IT_ADMIN")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    now = timezone.now()
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            OfficeUnavailability.objects.create(
+                starts_at=now,
+                ends_at=now,
+                mode_scope="ALL",
+                created_by=actor,
+            )
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            ProviderUnavailability.objects.create(
+                provider=provider,
+                starts_at=now + timedelta(hours=1),
+                ends_at=now,
+                mode_scope="ALL",
+                created_by=actor,
+            )
+
+
+@pytest.mark.django_db
+def test_provider_discovery_requires_only_availability_manage_and_includes_inactive_counselor():
+    sync_policy()
+    manager = make_user(
+        "manager@example.edu",
+        "COUNSELOR",
+        first_name="Morgan",
+        last_name="Manager",
+    )
+    UserCapabilityOverride.objects.create(
+        user=manager,
+        capability=Capability.objects.get(code="availability.manage"),
+        effect="GRANT",
+        reason="availability administration",
+    )
+    inactive = make_user(
+        "inactive@example.edu",
+        "COUNSELOR",
+        active=False,
+        first_name="Ina",
+        last_name="Inactive",
+    )
+
+    assert manager.has_capability("availability.manage")
+    assert not manager.has_capability("organization.manage")
+    assert not manager.has_capability("accounts.manage")
+
+    response = auth_client(manager).get("/api/v1/availability/providers")
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body) == {"items", "page", "page_size", "has_next"}
+    assert body["page"] == 1
+    assert body["page_size"] == 20
+
+    by_id = {item["id"]: item for item in body["items"]}
+    assert str(inactive.pk) in by_id
+    assert by_id[str(inactive.pk)]["is_active"] is False
+    assert by_id[str(inactive.pk)]["role"] == "COUNSELOR"
+    assert set(by_id[str(inactive.pk)]) == {
+        "id",
+        "full_name",
+        "email",
+        "role",
+        "is_active",
+    }
+
+
+@pytest.mark.django_db
+def test_provider_discovery_denies_ordinary_counselor_without_manage():
+    sync_policy()
+    counselor = make_user("ordinary@example.edu", "COUNSELOR")
+    assert not counselor.has_capability("availability.manage")
+
+    response = auth_client(counselor).get("/api/v1/availability/providers")
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "permission_denied"
+
+
+@pytest.mark.django_db
+def test_provider_discovery_supports_search_and_canonical_pagination():
+    sync_policy()
+    admin = make_user("admin@example.edu", "IT_ADMIN")
+    alpha = make_user(
+        "alpha.counselor@example.edu",
+        "COUNSELOR",
+        first_name="Alice",
+        last_name="Alpha",
+    )
+    beta = make_user(
+        "beta.counselor@example.edu",
+        "COUNSELOR",
+        first_name="Bob",
+        last_name="Beta",
+    )
+    gamma = make_user(
+        "gamma.counselor@example.edu",
+        "COUNSELOR",
+        first_name="Carol",
+        last_name="Gamma",
+    )
+    client = auth_client(admin)
+
+    by_last_name = client.get("/api/v1/availability/providers", {"search": "Beta"})
+    assert by_last_name.status_code == 200
+    assert [item["id"] for item in by_last_name.json()["items"]] == [str(beta.pk)]
+
+    by_first_name = client.get("/api/v1/availability/providers", {"search": "Carol"})
+    assert [item["id"] for item in by_first_name.json()["items"]] == [str(gamma.pk)]
+
+    by_email = client.get(
+        "/api/v1/availability/providers",
+        {"search": "alpha.counselor@example.edu"},
+    )
+    assert [item["id"] for item in by_email.json()["items"]] == [str(alpha.pk)]
+
+    first_page = client.get("/api/v1/availability/providers", {"page": 1, "page_size": 2})
+    assert first_page.status_code == 200
+    assert len(first_page.json()["items"]) == 2
+    assert first_page.json()["has_next"] is True
+
+    second_page = client.get("/api/v1/availability/providers", {"page": 2, "page_size": 2})
+    assert second_page.status_code == 200
+    assert len(second_page.json()["items"]) == 1
+    assert second_page.json()["has_next"] is False
+
+
+@pytest.mark.django_db
+def test_provider_discovery_limits_gss_to_legacy_cleanup_without_broadening_eligibility():
+    sync_policy()
+    admin = make_user("admin@example.edu", "IT_ADMIN")
+    clean_gss = make_user(
+        "clean-gss@example.edu",
+        "GUIDANCE_SERVICES_STAFF",
+        first_name="Clean",
+        last_name="Staff",
+    )
+    legacy_gss = make_user(
+        "legacy-gss@example.edu",
+        "GUIDANCE_SERVICES_STAFF",
+        first_name="Legacy",
+        last_name="Staff",
+    )
+    ProviderAvailabilityWindow.objects.create(
+        provider=legacy_gss,
+        weekday="MONDAY",
+        start_time=time(8),
+        end_time=time(12),
+        mode_scope="ALL",
+    )
+
+    client = auth_client(admin, recent_mfa=True)
+    response = client.get("/api/v1/availability/providers")
+    assert response.status_code == 200
+    ids = {item["id"] for item in response.json()["items"]}
+    assert str(legacy_gss.pk) in ids
+    assert str(clean_gss.pk) not in ids
+
+    rejected = client.put(
+        f"/api/v1/availability/providers/{legacy_gss.pk}/weekly",
+        data=json.dumps(
+            {
+                "windows": [
+                    {
+                        "weekday": "TUESDAY",
+                        "start_time": "08:00",
+                        "end_time": "12:00",
+                        "mode_scope": "ALL",
+                    }
+                ]
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert rejected.status_code == 409
+    assert rejected.json()["error"]["code"] == "availability_not_applicable"
+
+    cleaned = client.put(
+        f"/api/v1/availability/providers/{legacy_gss.pk}/weekly",
+        data=json.dumps({"windows": []}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert cleaned.status_code == 200
+    assert cleaned.json()["windows"] == []

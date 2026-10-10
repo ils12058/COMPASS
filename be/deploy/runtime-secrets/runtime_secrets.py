@@ -1,0 +1,106 @@
+"""Deployment-only inventory and metadata checks; never read secret contents."""
+
+from __future__ import annotations
+
+import stat
+from pathlib import Path
+
+SECRET_FILES = {
+    "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
+        "assessment_record_confidential_content_encryption_keys"
+    ),
+    "GUIDANCE_MESSAGE_ENCRYPTION_KEYS": "guidance_message_encryption_keys",
+    "SECRET_KEY": "django_secret_key",
+    "POSTGRES_PASSWORD": "postgres_password",
+    "REDIS_PASSWORD": "redis_password",
+    "S3_ACCESS_KEY_ID": "s3_access_key_id",
+    "S3_SECRET_ACCESS_KEY": "s3_secret_access_key",
+    "SMTP_USERNAME": "smtp_username",
+    "SMTP_PASSWORD": "smtp_password",
+    "TURNSTILE_SECRET_KEY": "turnstile_secret_key",
+    "DAILY_API_KEY": "daily_api_key",
+    "DAILY_WEBHOOK_HMAC": "daily_webhook_hmac",
+    "PSGC_API_TOKEN": "psgc_api_token",
+    "AUTH_TOTP_ENCRYPTION_KEY": "auth_totp_encryption_key",
+    "ROUTINE_INTERVIEW_ENCRYPTION_KEYS": "routine_interview_encryption_keys",
+    "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS": "counseling_shared_summary_encryption_keys",
+    "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
+        "referral_confidential_content_encryption_keys"
+    ),
+    "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
+        "exit_interview_confidential_content_encryption_keys"
+    ),
+    "INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
+        "inventory_confidential_content_encryption_keys"
+    ),
+    "GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
+        "graduate_tracer_confidential_content_encryption_keys"
+    ),
+    "ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
+        "account_profile_confidential_content_encryption_keys"
+    ),
+    "FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
+        "feedback_confidential_content_encryption_keys"
+    ),
+    "WEB_PUSH_PRIVATE_KEY": "web_push_private_key",
+    "WEB_PUSH_STORAGE_KEY": "web_push_storage_key",
+}
+REQUIRED_SECRETS = {
+    "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+    "GUIDANCE_MESSAGE_ENCRYPTION_KEYS",
+    "FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+    "ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+    "SECRET_KEY",
+    "POSTGRES_PASSWORD",
+    "REDIS_PASSWORD",
+    "S3_ACCESS_KEY_ID",
+    "S3_SECRET_ACCESS_KEY",
+    "AUTH_TOTP_ENCRYPTION_KEY",
+    "ROUTINE_INTERVIEW_ENCRYPTION_KEYS",
+    "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS",
+    "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+    "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+    "INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+    "GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+}
+URL_SETTINGS = (
+    "REDIS_URL",
+    "REDIS_CACHE_URL",
+    "REDIS_RATE_LIMIT_URL",
+    "REDIS_IDEMPOTENCY_URL",
+    "CELERY_BROKER_URL",
+    "CELERY_RESULT_BACKEND",
+)
+
+
+class SecretCheckError(ValueError):
+    """A safe error containing only a known setting/filename and reason."""
+
+
+def check_directory(directory: Path, owner_uid: int) -> None:
+    try:
+        info = directory.lstat()
+    except OSError:
+        raise SecretCheckError("secret directory: missing or inaccessible") from None
+    if not stat.S_ISDIR(info.st_mode):
+        raise SecretCheckError("secret directory: must be a real directory, not a symlink")
+    if stat.S_IMODE(info.st_mode) != 0o700:
+        raise SecretCheckError("secret directory: mode must be 0700")
+    if info.st_uid != owner_uid:
+        raise SecretCheckError("secret directory: unexpected owner")
+
+
+def check_file(directory: Path, setting: str, owner_uid: int) -> None:
+    filename = SECRET_FILES[setting]
+    try:
+        info = (directory / filename).lstat()
+    except OSError:
+        raise SecretCheckError(f"{filename}: missing or inaccessible") from None
+    if not stat.S_ISREG(info.st_mode):
+        raise SecretCheckError(f"{filename}: must be a regular file, not a symlink")
+    if stat.S_IMODE(info.st_mode) != 0o444:
+        raise SecretCheckError(f"{filename}: mode must be 0444")
+    if info.st_uid != owner_uid:
+        raise SecretCheckError(f"{filename}: unexpected owner")
+    if setting in REQUIRED_SECRETS and info.st_size == 0:
+        raise SecretCheckError(f"{filename}: must not be empty")

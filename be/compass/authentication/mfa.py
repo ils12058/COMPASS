@@ -17,6 +17,7 @@ from django.utils import timezone
 
 from compass.audit.context import AuditContext
 from compass.audit.services import record_event
+from compass.authentication.abuse import check_auth_rate_limit, request_ip
 from compass.authentication.actions import (
     AUTH_MFA_RECOVERY_CODE_FAILED,
     AUTH_MFA_RECOVERY_CODE_USED,
@@ -30,6 +31,8 @@ from compass.authentication.actions import (
 from compass.authentication.crypto import decrypt_totp_secret, encrypt_totp_secret
 from compass.authentication.models import AuthSession, RecoveryCode, TOTPFactor
 from compass.authentication.sessions import revoke_all_trusted_sessions
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 
 User = get_user_model()
 TOTP_CODE_RE = re.compile(r"^\d{6}$", re.ASCII)
@@ -39,6 +42,10 @@ RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 class TOTPAlreadyConfigured(RuntimeError):
     """Raised when an active TOTP factor already exists."""
+
+
+class TOTPEnrollmentAuthorizationFailed(RuntimeError):
+    """Raised when optional enrollment lacks fresh independent primary proof."""
 
 
 class TOTPEnrollmentMissing(RuntimeError):
@@ -226,6 +233,53 @@ def _replace_recovery_codes_locked(user_id, *, now: datetime) -> tuple[str, ...]
     return tuple(plaintext)
 
 
+def _locked_user_with_current_password(*, user, current_password: str):
+    locked_user = (
+        User.objects.select_for_update(of=("self",)).filter(pk=getattr(user, "pk", None)).first()
+    )
+    if (
+        locked_user is None
+        or not locked_user.is_active
+        or not isinstance(current_password, str)
+        or not current_password
+        or not locked_user.check_password(current_password)
+    ):
+        raise TOTPEnrollmentAuthorizationFailed(
+            "the current authentication proof could not be verified"
+        )
+    return locked_user
+
+
+def start_authenticated_totp_enrollment(
+    *,
+    user,
+    current_password: str,
+    context: AuditContext,
+    request=None,
+    limiter=None,
+    now: datetime | None = None,
+) -> TOTPSetupResult:
+    """Authorize optional TOTP enrollment with the account's current password."""
+
+    current = now or timezone.now()
+    check_auth_rate_limit(
+        "password_change",
+        ip_address=request_ip(request),
+        user_id=getattr(user, "pk", None),
+        limiter=limiter,
+    )
+    with transaction.atomic():
+        locked_user = _locked_user_with_current_password(
+            user=user,
+            current_password=current_password,
+        )
+        return start_totp_enrollment(
+            user=locked_user,
+            context=context,
+            now=current,
+        )
+
+
 def start_totp_enrollment(
     *, user, context: AuditContext, now: datetime | None = None
 ) -> TOTPSetupResult:
@@ -275,6 +329,38 @@ def start_totp_enrollment(
             issuer_name=settings.AUTH_TOTP_ISSUER_NAME,
         )
     return TOTPSetupResult(factor_id=pending.pk, provisioning_uri=uri)
+
+
+def confirm_authenticated_totp_enrollment(
+    *,
+    user,
+    current_password: str,
+    code: str,
+    context: AuditContext,
+    request=None,
+    limiter=None,
+    now: datetime | None = None,
+) -> TOTPConfirmationResult | None:
+    """Confirm optional enrollment only after revalidating independent primary proof."""
+
+    current = now or timezone.now()
+    check_auth_rate_limit(
+        "password_change",
+        ip_address=request_ip(request),
+        user_id=getattr(user, "pk", None),
+        limiter=limiter,
+    )
+    with transaction.atomic():
+        locked_user = _locked_user_with_current_password(
+            user=user,
+            current_password=current_password,
+        )
+        return confirm_totp_enrollment(
+            user=locked_user,
+            code=code,
+            context=context,
+            now=current,
+        )
 
 
 def confirm_totp_enrollment(
@@ -450,13 +536,21 @@ def regenerate_recovery_codes(
         if not has_active_totp_factor(user.pk):
             raise TOTPNotConfigured("TOTP is not enabled")
         codes = _replace_recovery_codes_locked(user.pk, now=current)
-        record_event(
+        audit_event = record_event(
             context=context,
             action=AUTH_MFA_RECOVERY_CODES_REGENERATED,
             outcome="SUCCESS",
             target_type="accounts.user",
             target_id=user.pk,
             metadata={"count": len(codes)},
+        )
+        create_notification_for_event(
+            recipient=user,
+            event=NotificationEvent.SECURITY_RECOVERY_CODES_REGENERATED,
+            source_type="audit_event",
+            source_id=audit_event.pk,
+            target_type="ACCOUNT_SECURITY",
+            target_id=user.pk,
         )
     return codes
 
@@ -521,7 +615,7 @@ def disable_totp(
             reason="mfa_disabled",
             now=current,
         )
-        record_event(
+        audit_event = record_event(
             context=context,
             action=AUTH_MFA_TOTP_DISABLED,
             outcome="SUCCESS",
@@ -529,17 +623,27 @@ def disable_totp(
             target_id=factor.pk,
             metadata={},
         )
+        create_notification_for_event(
+            recipient=user,
+            event=NotificationEvent.SECURITY_MFA_DISABLED,
+            source_type="audit_event",
+            source_id=audit_event.pk,
+            target_type="ACCOUNT_SECURITY",
+            target_id=user.pk,
+        )
 
 
 __all__ = [
     "TOTPAlreadyConfigured",
     "TOTPConfirmationResult",
+    "TOTPEnrollmentAuthorizationFailed",
     "TOTPEnrollmentMissing",
     "MFAResetResult",
     "TOTPNotConfigured",
     "TOTPSetupResult",
     "TOTPVerification",
     "active_totp_factor",
+    "confirm_authenticated_totp_enrollment",
     "confirm_totp_enrollment",
     "consume_recovery_code",
     "disable_totp",
@@ -550,6 +654,7 @@ __all__ = [
     "normalize_recovery_code",
     "regenerate_recovery_codes",
     "reset_totp_state",
+    "start_authenticated_totp_enrollment",
     "start_totp_enrollment",
     "verify_totp_for_login",
     "verify_totp_for_session",

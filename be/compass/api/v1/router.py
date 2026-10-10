@@ -4,34 +4,273 @@ from django.conf import settings
 from ninja import NinjaAPI
 
 from compass.account_management.api import router as account_management_router
+from compass.accounts.profile_api import router as profile_router
 from compass.activity.api import router as activity_router
+from compass.announcements.api import public_router as public_announcements_router
+from compass.announcements.api import router as announcements_router
+from compass.api.v1.constants import API_VERSION
 from compass.api.v1.health import router as health_router
+from compass.api.v1.metadata import SystemMetadataResponse, system_metadata
+from compass.appointments.api import router as appointments_router
+from compass.assessment_records.api import router as assessment_records_router
 from compass.authentication.api import router as authentication_router
+from compass.availability.api import router as availability_router
+from compass.call_slips.api import router as call_slips_router
 from compass.common.errors import register_exception_handlers
+from compass.counseling.api import router as counseling_router
+from compass.counseling.context_api import router as counseling_context_router
+from compass.ecounseling.api import daily_router
+from compass.ecounseling.api import router as ecounseling_router
+from compass.exit_interviews.api import router as exit_interviews_router
+from compass.feedback.api import router as feedback_router
+from compass.good_moral.api import router as good_moral_router
+from compass.graduate_tracer.api import router as graduate_tracer_router
+from compass.guidance_messages.api import router as guidance_messages_router
+from compass.guidance_operations.api import router as guidance_operations_router
+from compass.institutional_forms.api import router as institutional_forms_router
+from compass.inventory.api import router as inventory_router
+from compass.notifications.api import router as notifications_router
+from compass.organization.academic_years_api import router as academic_years_router
 from compass.organization.api import router as organization_router
+from compass.overview.api import router as overview_router
+from compass.platform_ops.api import router as platform_operations_router
+from compass.privacy_governance.api import router as privacy_governance_router
+from compass.privacy_governance.expansion_api import public_router as public_privacy_router
+from compass.privacy_governance.expansion_api import router as privacy_expansion_router
+from compass.privacy_governance.retention_api import router as retention_router
+from compass.realtime.api import router as realtime_router
+from compass.reference_data.api import router as reference_data_router
+from compass.referrals.api import router as referrals_router
+from compass.reports.api import router as reports_router
+from compass.resources.api import public_router as public_resources_router
+from compass.resources.api import router as resources_router
+from compass.routine_interviews.api import router as routine_interviews_router
+from compass.service_catalog.api import router as service_catalog_router
+from compass.student_actions.api import router as student_actions_router
+from compass.student_support.api import router as student_support_router
+from compass.work_queue.api import router as work_queue_router
 
 api = NinjaAPI(
     title="COMPASS API",
-    version="1.0.0",
+    version=API_VERSION,
     description="The version-one backend API for COMPASS.",
     openapi_extra={
         "tags": [
             {"name": "health", "description": "Process liveness and dependency readiness."},
+            {
+                "name": "metadata",
+                "description": "Public COMPASS application and immutable build identity.",
+            },
             {"name": "auth", "description": "Cookie-based authentication and account security."},
             {"name": "activity", "description": "Authenticated self-activity projections."},
+            {
+                "name": "profile",
+                "description": "Authenticated current account personal/contact profile.",
+            },
             {"name": "accounts", "description": "Capability-authorized account management."},
             {
                 "name": "organization",
                 "description": "Organizational structure and default responsibility routing.",
+            },
+            {
+                "name": "services",
+                "description": "Guidance and Counseling Office service catalog configuration.",
+            },
+            {
+                "name": "availability",
+                "description": "Office and provider scheduling Availability configuration.",
+            },
+            {
+                "name": "appointments",
+                "description": "Shared Student and provider Appointment reservations.",
+            },
+            {
+                "name": "counseling",
+                "description": "Assigned records of actual Counseling encounters.",
+            },
+            {
+                "name": "academic-years",
+                "description": "Institution-wide current Academic Year configuration.",
+            },
+            {
+                "name": "institutional-forms",
+                "description": "QMS-approved controlled-form revision metadata used by COMPASS.",
+            },
+            {
+                "name": "inventory",
+                "description": "Student annual Individual Inventory self-service.",
+            },
+            {
+                "name": "reference-data",
+                "description": "Authenticated normalized external reference data used by COMPASS.",
+            },
+            {
+                "name": "student-support",
+                "description": "Privacy-minimized Student Support context within Guidance scope.",
+            },
+            {
+                "name": "reports",
+                "description": "Restricted aggregate Guidance and Counseling Office reports.",
+            },
+            {
+                "name": "overview",
+                "description": (
+                    "Authenticated role- and designation-aware Portal Overview summaries."
+                ),
+            },
+            {
+                "name": "good-moral",
+                "description": (
+                    "Student Good Moral requests, Counselor issuance, and certificate PDFs."
+                ),
+            },
+            {
+                "name": "feedback",
+                "description": (
+                    "Customer Feedback and Client Satisfaction Measurement submissions and review."
+                ),
+            },
+            {
+                "name": "graduate-tracer",
+                "description": (
+                    "Graduate outcome survey draft, submission, and restricted review."
+                ),
+            },
+            {
+                "name": "exit-interviews",
+                "description": (
+                    "Student graduating Exit Interview survey, self-assessment, "
+                    "institutional feedback, and controlled correction lifecycle."
+                ),
+            },
+            {
+                "name": "routine-interviews",
+                "description": (
+                    "Interaction-specific Student Intake and assigned Counselor Evaluation."
+                ),
+            },
+            {
+                "name": "referrals",
+                "description": "Formal Student Referral intake and Guidance action records.",
+            },
+            {
+                "name": "call-slips",
+                "description": "Student reporting permits / Guidance Call Slip records.",
+            },
+            {
+                "name": "notifications",
+                "description": (
+                    "Authenticated self-service in-app Notifications and email preference."
+                ),
+            },
+            {
+                "name": "announcements",
+                "description": (
+                    "GCO Announcements with explicit public/authenticated readership "
+                    "and publishing management."
+                ),
+            },
+            {
+                "name": "resources",
+                "description": (
+                    "Curated Guidance Resources with explicit public/authenticated "
+                    "readership and private file access."
+                ),
+            },
+            {
+                "name": "e-counseling",
+                "description": "Secure ONLINE Counseling workspace and Daily provider boundary.",
+            },
+            {
+                "name": "platform-operations",
+                "description": (
+                    "Capability-authorized COMPASS platform health, configuration diagnostics, "
+                    "runtime operations, email delivery state, and technical activity."
+                ),
+            },
+            {
+                "name": "privacy-governance",
+                "description": (
+                    "COMPASS Privacy Notices, acknowledgment, and curated "
+                    "privacy/security oversight."
+                ),
+            },
+            {
+                "name": "realtime",
+                "description": (
+                    "One-time tickets that authenticate the separate realtime hint socket."
+                ),
+            },
+            {
+                "name": "guidance-messages",
+                "description": "Encrypted Guidance Office and Counseling communication.",
+            },
+            {
+                "name": "assessment-records",
+                "description": "Authorized institutional assessment result records.",
+            },
+            {"name": "work", "description": "Read-only Guidance staff actionable work projection."},
+            {
+                "name": "student-actions",
+                "description": "Read-only Student next actions from domain state.",
+            },
+            {
+                "name": "guidance-operations",
+                "description": "Current authorized Guidance workload and schedule aggregates.",
             },
         ]
     },
     openapi_url="/openapi.json" if settings.API_DOCS_ENABLED else None,
     docs_url="/docs" if settings.API_DOCS_ENABLED else None,
 )
+api.get(
+    "/meta",
+    response=SystemMetadataResponse,
+    operation_id="systemMetadata",
+    summary="Inspect COMPASS build and release metadata",
+    tags=["metadata"],
+)(system_metadata)
 api.add_router("/health", health_router)
 api.add_router("/auth", authentication_router)
 api.add_router("/me", activity_router)
+api.add_router("/me", profile_router)
 api.add_router("/accounts", account_management_router)
 api.add_router("/organization", organization_router)
+api.add_router("/services", service_catalog_router)
+api.add_router("/availability", availability_router)
+api.add_router("/appointments", appointments_router)
+api.add_router("/counseling", counseling_router)
+api.add_router("/counseling/context", counseling_context_router)
+api.add_router("/academic-years", academic_years_router)
+api.add_router("/institutional-forms", institutional_forms_router)
+api.add_router("/inventory", inventory_router)
+api.add_router("/reference-data/psgc", reference_data_router)
+api.add_router("/student-support", student_support_router)
+api.add_router("/assessment-records", assessment_records_router)
+api.add_router("/reports", reports_router)
+api.add_router("/overview", overview_router)
+api.add_router("/work", work_queue_router)
+api.add_router("/student-actions", student_actions_router)
+api.add_router("/guidance-operations", guidance_operations_router)
+api.add_router("/good-moral", good_moral_router)
+api.add_router("/feedback", feedback_router)
+api.add_router("/graduate-tracer", graduate_tracer_router)
+api.add_router("/exit-interviews", exit_interviews_router)
+api.add_router("/routine-interviews", routine_interviews_router)
+api.add_router("/referrals", referrals_router)
+api.add_router("/call-slips", call_slips_router)
+api.add_router("/notifications", notifications_router)
+api.add_router("/announcements", announcements_router)
+api.add_router("/resources", resources_router)
+api.add_router("/public/announcements", public_announcements_router)
+api.add_router("/public/resources", public_resources_router)
+api.add_router("/platform", platform_operations_router)
+api.add_router("/privacy", privacy_governance_router)
+api.add_router("/privacy", privacy_expansion_router)
+api.add_router("/privacy", retention_router)
+api.add_router("/privacy", public_privacy_router)
+api.add_router("/e-counseling", ecounseling_router)
+api.add_router("/integrations/daily", daily_router)
+api.add_router("/realtime", realtime_router)
+api.add_router("/guidance-messages", guidance_messages_router)
 register_exception_handlers(api)

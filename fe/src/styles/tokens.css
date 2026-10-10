@@ -1,0 +1,52 @@
+:root {
+  --compass-ink: #222a2d;
+  --compass-muted: #59636a;
+  --compass-on-brand: #ffffff;
+
+  --compass-brand: #6b1f2a;
+  --compass-brand-strong: #4d1520;
+  --compass-brand-soft: #8a3340;
+  --compass-brand-subtle: #f4efe4;
+  --compass-gold: #936515;
+
+  --compass-support: #587466;
+  --compass-support-strong: #36584b;
+  --compass-support-soft: #dfe9df;
+
+  --compass-success: #356b49;
+  --compass-info: #326676;
+  --compass-warning: #805700;
+  --compass-danger: #a52c35;
+  --compass-body: #f7f3ea;
+  --compass-surface: #fffdf8;
+  --compass-surface-raised: #ffffff;
+  --compass-surface-muted: #edf1e8;
+  --compass-surface-subtle: #f4efe4;
+
+  --compass-border: #d8d7cb;
+  --compass-border-strong: #aeb3aa;
+
+  /* Structural maroon, derived from the brand color rather than new hues. The line frames
+     working surfaces (panels, filter toolbars, tables); the wash tints table heads. Neither carries
+     text contrast on its own. */
+  --compass-brand-line: color-mix(in srgb, var(--compass-brand) 24%, var(--compass-border));
+  --compass-brand-wash: color-mix(in srgb, var(--compass-brand) 6%, var(--compass-surface-raised));
+  --compass-focus: #326676;
+  --compass-overlay: rgb(34 42 45 / 55%);
+
+  --compass-radius-sm: 0.25rem;
+  --compass-radius-md: 0.375rem;
+  --compass-radius-lg: 0.5rem;
+  --compass-shadow-dialog: 0 18px 48px rgb(34 42 45 / 18%);
+  /* Controls that float over the page they work on, such as the portal's list tools. Lighter than a
+     dialog: they sit above the records, not in front of the whole page. */
+  --compass-shadow-float: 0 6px 20px rgb(34 42 45 / 13%), 0 1px 3px rgb(34 42 45 / 9%);
+
+  --compass-entry-gradient: linear-gradient(
+    118deg,
+    var(--compass-brand-strong) 0%,
+    var(--compass-brand) 47%,
+    var(--compass-support-strong) 100%
+  );
+  --compass-hero-image-opacity: 0.48;
+}

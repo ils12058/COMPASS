@@ -23,6 +23,7 @@ from compass.authentication.actions import (
 from compass.authentication.models import AuthSession, LoginChallenge, TrustedSession
 from compass.common.correlation import normalize_request_id
 from compass.common.rate_limit import client_ip
+from compass.realtime.publish import close_session_sockets_on_commit
 
 OPAQUE_TOKEN_BYTES = 32
 MAX_COOKIE_TOKEN_LENGTH = 512
@@ -30,6 +31,14 @@ MAX_COOKIE_TOKEN_LENGTH = 512
 
 class RecentMFARequired(RuntimeError):
     """Raised when a sensitive action needs a recent MFA assertion."""
+
+
+class MFASetupRequired(RecentMFARequired):
+    """Raised when a sensitive action needs recent MFA but the account has no active TOTP factor.
+
+    A step-up challenge cannot be completed without an authenticator, so callers report that the
+    authenticator must be set up rather than asking for a code that does not exist.
+    """
 
 
 @dataclass(frozen=True, slots=True)
@@ -144,6 +153,30 @@ def create_auth_session(
         last_ip_address=_request_ip(request),
         created_request_id=_request_id(request),
     )
+    return IssuedSession(token=token, session=session)
+
+
+def rotate_auth_session_credential(
+    *,
+    session_id,
+    user_id=None,
+    now: datetime | None = None,
+) -> IssuedSession:
+    """Replace one active AuthSession credential without extending its lifetime."""
+
+    current = now or timezone.now()
+    with transaction.atomic():
+        session = AuthSession.objects.select_for_update().filter(pk=session_id).first()
+        if (
+            session is None
+            or (user_id is not None and session.user_id != user_id)
+            or session.revoked_at is not None
+            or session.expires_at <= current
+        ):
+            raise ValueError("an active authentication session is required")
+        token = generate_opaque_token()
+        session.token_digest = digest_opaque_token(token)
+        session.save(update_fields=["token_digest"])
     return IssuedSession(token=token, session=session)
 
 
@@ -328,6 +361,10 @@ def _revoke_auth_session_locked(
         target_id=session.pk,
         metadata={"reason": reason},
     )
+    # Every AuthSession revocation (logout, user/admin revocation, password and email changes,
+    # authority changes, account disablement) passes through here. Once it commits, realtime
+    # sockets for this session close and tickets minted for it stop working (ADR-100).
+    close_session_sockets_on_commit(session.pk)
     return True
 
 
@@ -470,14 +507,20 @@ def has_recent_mfa(session: AuthSession, *, now: datetime | None = None) -> bool
 
 
 def require_recent_mfa(session: AuthSession, *, now: datetime | None = None) -> None:
-    if not has_recent_mfa(session, now=now):
-        raise RecentMFARequired("recent MFA is required")
+    if has_recent_mfa(session, now=now):
+        return
+    from compass.authentication.mfa import has_active_totp_factor
+
+    if not has_active_totp_factor(session.user_id):
+        raise MFASetupRequired("an active TOTP factor is required before recent MFA")
+    raise RecentMFARequired("recent MFA is required")
 
 
 __all__ = [
     "IssuedLoginChallenge",
     "IssuedSession",
     "IssuedTrustedSession",
+    "MFASetupRequired",
     "RecentMFARequired",
     "create_auth_session",
     "create_login_challenge",
@@ -492,6 +535,7 @@ __all__ = [
     "resolve_auth_session",
     "resolve_login_challenge",
     "resolve_trusted_session",
+    "rotate_auth_session_credential",
     "revoke_all_auth_sessions",
     "revoke_all_trusted_sessions",
     "revoke_auth_session",

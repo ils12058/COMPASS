@@ -1,0 +1,197 @@
+"use client";
+
+import Link from "next/link";
+import { useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
+import { canShowLastKnownData, safeQueryData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { InventoryEditor } from "@/features/inventory/editor/inventory-editor";
+import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
+import { InventoryPdfDownload } from "@/features/inventory/inventory-pdf-download";
+import { getInventoryAccess } from "@/features/inventory/inventory-access";
+import { formatInventoryDate, InventoryHeading, InventoryNotice, InventoryQueryError, InventoryStatus } from "@/features/inventory/inventory-shared";
+import { inventoryErrorMessage } from "@/features/inventory/inventory-shared";
+import { usePortalSession } from "@/features/portal/components/portal-session";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
+import {
+  getInventoryGetMyCurrentQueryKey,
+  getInventoryGetMyStatusQueryKey,
+  getInventoryListMyHistoryQueryKey,
+  useInventoryEnsureMyCurrent,
+  useInventoryGetMyCurrent,
+  useInventoryGetMyStatus,
+} from "@/lib/api/generated/inventory/inventory";
+import { InventoryStatusValue } from "@/lib/api/generated/model";
+import { useQueryClient } from "@tanstack/react-query";
+
+export function CurrentInventoryPage() {
+  const { user } = usePortalSession();
+  const access = getInventoryAccess(user);
+  if (!access.canViewSelf) {
+    return (
+      <WorkspaceUnavailable title="Individual Inventory unavailable">
+        This current-record view is available only to Students with access to their own Individual Inventory.
+      </WorkspaceUnavailable>
+    );
+  }
+  return <StudentCurrentInventory />;
+}
+
+function StudentCurrentInventory() {
+  const queryClient = useQueryClient();
+  const { user } = usePortalSession();
+  const access = getInventoryAccess(user);
+  const [startError, setStartError] = useState<string | null>(null);
+  const status = useInventoryGetMyStatus({ query: { retry: false } });
+  const value = status.data?.data;
+  const record = useInventoryGetMyCurrent({
+    query: {
+      enabled: Boolean(value && value.status !== InventoryStatusValue.MISSING),
+      retry: false,
+    },
+  });
+  const ensure = useInventoryEnsureMyCurrent();
+
+  async function start() {
+    setStartError(null);
+    try {
+      const response = await ensure.mutateAsync();
+      queryClient.setQueryData(getInventoryGetMyCurrentQueryKey(), response);
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getInventoryGetMyStatusQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getInventoryListMyHistoryQueryKey() }),
+      ]);
+    } catch (error) {
+      setStartError(inventoryErrorMessage(error, "A new Individual Inventory could not be started."));
+      await queryClient.invalidateQueries({ queryKey: getInventoryGetMyStatusQueryKey() });
+    }
+  }
+
+  if (status.isPending) {
+    return (
+      <section aria-busy="true" className="space-y-5">
+        <InventoryHeading title="Individual Inventory" />
+        <Skeleton className="h-7 w-48" />
+        <Skeleton className="h-48" />
+        <p className="sr-only">Checking current Individual Inventory status…</p>
+      </section>
+    );
+  }
+
+  // A refresh that fails for a transient reason keeps the last confirmed status and record, so an open
+  // editor keeps its unsaved answers. A refusal, a missing record, or a first load that fails does not.
+  if (status.isError && !canShowLastKnownData(status)) {
+    return (
+      <section className="space-y-5">
+        <InventoryHeading title="Individual Inventory" />
+        <InventoryQueryError error={status.error} fallback="Current Individual Inventory status could not be loaded." onRetry={() => void status.refetch()} />
+      </section>
+    );
+  }
+
+  if (value?.status === InventoryStatusValue.MISSING) {
+    return (
+      <section className="space-y-5">
+        <InventoryHeading title="Individual Inventory" description={value.academic_year.label} />
+        {status.isError ? <RefreshFailureNotice retrying={status.isFetching} onRetry={() => void status.refetch()} /> : null}
+        <InventoryNotice title="No Individual Inventory for this Academic Year yet" tone="neutral">
+          {access.canManageSelf
+            ? "Start your Individual Inventory when you are ready. It will use the official form for this academic year."
+            : "No Individual Inventory has been started for this academic year."}
+        </InventoryNotice>
+        <div className="flex flex-wrap gap-3">
+          <Link href="/portal/inventory" className="inline-flex min-h-10 items-center rounded-md border border-border px-4 py-2 text-sm font-semibold text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+            Return to annual status
+          </Link>
+          {access.canManageSelf ? (
+            <Button disabled={ensure.isPending} onClick={() => void start()}>
+              {ensure.isPending ? "Starting…" : "Start Individual Inventory"}
+            </Button>
+          ) : (
+            <p className="self-center text-sm text-muted">
+              {access.isCurrentStudent
+                ? "Starting a current-year Individual Inventory is not available for this account."
+                : "Only current students can start this year’s Individual Inventory."}
+            </p>
+          )}
+        </div>
+        {startError ? <InventoryNotice tone="danger" role="alert">{startError}</InventoryNotice> : null}
+      </section>
+    );
+  }
+
+  if (record.isPending) {
+    return (
+      <section aria-busy="true" className="space-y-5">
+        <InventoryHeading title="Individual Inventory" />
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-64" />
+        <p className="sr-only">Loading current Individual Inventory…</p>
+      </section>
+    );
+  }
+
+  const recordData = safeQueryData(record);
+  if (!recordData) {
+    return (
+      <section className="space-y-5">
+        <InventoryHeading title="Individual Inventory" />
+        <InventoryQueryError error={record.error} fallback="Current Individual Inventory could not be loaded." onRetry={() => void record.refetch()} />
+      </section>
+    );
+  }
+
+  const inventory = recordData.data;
+  const refreshFailure = status.isError || record.isError ? (
+    <RefreshFailureNotice
+      message="The latest Individual Inventory could not be refreshed. Showing the last confirmed record; your unsaved answers are kept."
+      retrying={status.isFetching || record.isFetching}
+      onRetry={() => {
+        if (status.isError) void status.refetch();
+        if (record.isError) void record.refetch();
+      }}
+    />
+  ) : null;
+  if (inventory.status === InventoryStatusValue.DRAFT && access.canManageSelf) {
+    return <InventoryEditor key={inventory.id} inventory={inventory} refreshNotice={refreshFailure} />;
+  }
+
+  return (
+    <section aria-label="Current Individual Inventory">
+      <InventoryHeading
+        title="Individual Inventory"
+        description={`${inventory.academic_year.label} · ${inventory.form_revision.official_code} · Revision ${inventory.form_revision.official_revision}`}
+      />
+      {refreshFailure}
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <InventoryStatus status={inventory.status} correctionPending={inventory.correction_pending} />
+        {inventory.submitted_at ? <span className="text-sm text-muted">Submitted {formatInventoryDate(inventory.submitted_at)}</span> : null}
+      </div>
+      {inventory.status === InventoryStatusValue.SUBMITTED ? (
+        <div className="mt-4"><InventoryPdfDownload inventoryId={inventory.id} studentFacing /></div>
+      ) : null}
+      {inventory.status === InventoryStatusValue.DRAFT ? (
+        <div className="mt-5">
+          <InventoryNotice title="Read-only annual record" tone="warning">
+            {access.isCurrentStudent
+              ? "You can still read this draft, but editing and submission are unavailable for this account."
+              : "You can still read this draft, but you can no longer change or submit it because you are no longer a current student."}
+          </InventoryNotice>
+        </div>
+      ) : null}
+      {inventory.correction_pending && inventory.latest_correction ? (
+        <div className="mt-5">
+          <InventoryNotice title="Correction requested" tone="warning">
+            <p className="whitespace-pre-wrap">{inventory.latest_correction.message}</p>
+            <p className="mt-2 text-xs text-muted">Requested {formatInventoryDate(inventory.latest_correction.requested_at)}</p>
+          </InventoryNotice>
+        </div>
+      ) : null}
+      <div className="mt-7">
+        <InventoryReadOnly inventory={inventory} />
+      </div>
+    </section>
+  );
+}

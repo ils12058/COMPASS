@@ -1,0 +1,329 @@
+name: compass
+
+x-app: &app
+  image: ${COMPASS_IMAGE:?COMPASS_IMAGE must be set}
+  env_file:
+    - .env
+  secrets:
+    - django_secret_key
+    - postgres_password
+    - redis_password
+    - s3_access_key_id
+    - s3_secret_access_key
+    - smtp_username
+    - smtp_password
+    - turnstile_secret_key
+    - daily_api_key
+    - daily_webhook_hmac
+    - psgc_api_token
+    - auth_totp_encryption_key
+    - routine_interview_encryption_keys
+    - counseling_shared_summary_encryption_keys
+    - referral_confidential_content_encryption_keys
+    - exit_interview_confidential_content_encryption_keys
+    - inventory_confidential_content_encryption_keys
+    - account_profile_confidential_content_encryption_keys
+    - feedback_confidential_content_encryption_keys
+    - graduate_tracer_confidential_content_encryption_keys
+    - web_push_private_key
+    - web_push_storage_key
+  restart: unless-stopped
+
+services:
+  web:
+    <<: *app
+    secrets:
+      - django_secret_key
+      - postgres_password
+      - redis_password
+      - s3_access_key_id
+      - s3_secret_access_key
+      - smtp_username
+      - smtp_password
+      - turnstile_secret_key
+      - daily_api_key
+      - daily_webhook_hmac
+      - psgc_api_token
+      - auth_totp_encryption_key
+      - routine_interview_encryption_keys
+      - counseling_shared_summary_encryption_keys
+      - referral_confidential_content_encryption_keys
+      - exit_interview_confidential_content_encryption_keys
+      - inventory_confidential_content_encryption_keys
+      - account_profile_confidential_content_encryption_keys
+      - feedback_confidential_content_encryption_keys
+      - graduate_tracer_confidential_content_encryption_keys
+      - web_push_private_key
+      - web_push_storage_key
+      - guidance_message_encryption_keys
+      - assessment_record_confidential_content_encryption_keys
+    pull_policy: always
+    command:
+      [
+        "gunicorn",
+        "--bind",
+        "0.0.0.0:8000",
+        "--workers",
+        "${WEB_CONCURRENCY:-2}",
+        "--no-control-socket",
+        "--access-logfile",
+        "-",
+        "--error-logfile",
+        "-",
+        "config.wsgi:application",
+      ]
+    expose:
+      - "8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import os, urllib.request; request = urllib.request.Request('http://127.0.0.1:8000/api/v1/health/ready', headers={'Host': os.environ.get('CADDY_HEALTH_HOST', 'localhost'), 'X-Forwarded-Proto': 'https'}); urllib.request.urlopen(request, timeout=2)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    <<: *app
+    environment:
+      GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE: ""
+      GUIDANCE_MESSAGE_ENCRYPTION_KEYS: ""
+      ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE: ""
+      ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS: ""
+    pull_policy: always
+    command:
+      [
+        "celery",
+        "--app",
+        "config",
+        "worker",
+        "--loglevel=INFO",
+        "--concurrency=${CELERY_WORKER_CONCURRENCY:-2}",
+      ]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    <<: *app
+    environment:
+      GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE: ""
+      GUIDANCE_MESSAGE_ENCRYPTION_KEYS: ""
+      ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE: ""
+      ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS: ""
+    pull_policy: always
+    command: ["celery", "--app", "config", "beat", "--loglevel=INFO", "--pidfile="]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # Django-free realtime WebSocket hints (ADR-100). A separate process from Gunicorn that reuses
+  # the image. It is opt-in (COMPOSE_PROFILES=realtime) and receives only Redis settings, the
+  # Redis password file, and the exact browser Origins: no env_file, database credentials,
+  # SECRET_KEY, or content keyrings.
+  realtime:
+    image: ${COMPASS_IMAGE:?COMPASS_IMAGE must be set}
+    pull_policy: always
+    profiles: ["realtime"]
+    restart: unless-stopped
+    command:
+      [
+        "uvicorn",
+        "realtime_service.app:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8001",
+        "--ws",
+        "websockets-sansio",
+        "--ws-max-size",
+        "4096",
+        "--ws-ping-interval",
+        "20",
+        "--ws-ping-timeout",
+        "20",
+        "--lifespan",
+        "on",
+        "--log-level",
+        "warning",
+        "--no-access-log",
+        "--no-server-header",
+        "--timeout-graceful-shutdown",
+        "5",
+      ]
+    environment:
+      APP_ENV: "${APP_ENV:-live-staging}"
+      # Blank on purpose: the service never configures Django.
+      DJANGO_SETTINGS_MODULE: ""
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+      REDIS_HOST: "${REDIS_HOST:-redis}"
+      REDIS_PORT: "${REDIS_PORT:-6379}"
+      REALTIME_ALLOWED_ORIGINS: "${REALTIME_ALLOWED_ORIGINS:-}"
+      REDIS_SOCKET_TIMEOUT: "${REDIS_SOCKET_TIMEOUT:-2}"
+      REALTIME_CONNECTION_MAX_SECONDS: "${REALTIME_CONNECTION_MAX_SECONDS:-900}"
+      REALTIME_AUTH_TIMEOUT_SECONDS: "${REALTIME_AUTH_TIMEOUT_SECONDS:-5}"
+      REALTIME_MAX_CONNECTIONS: "${REALTIME_MAX_CONNECTIONS:-1000}"
+    secrets:
+      - redis_password
+    expose:
+      - "8001"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/api/realtime/v1/health/ready', timeout=2)",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  proxy:
+    image: docker.io/library/caddy:2.11.4-alpine
+    restart: unless-stopped
+    environment:
+      CADDY_ADDRESS: "${CADDY_ADDRESS:?CADDY_ADDRESS must be set}"
+      CADDY_HEALTH_HOST: "${CADDY_HEALTH_HOST:?CADDY_HEALTH_HOST must be set}"
+      CADDY_MAX_REQUEST_BODY_SIZE: "${CADDY_MAX_REQUEST_BODY_SIZE:-10MB}"
+    ports:
+      - "${PROXY_BIND_ADDRESS:-0.0.0.0}:${PROXY_HTTP_PORT:-80}:80"
+      - "${PROXY_BIND_ADDRESS:-0.0.0.0}:${PROXY_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--header=Host: ${CADDY_HEALTH_HOST}",
+          "--header=X-Forwarded-Proto: https",
+          "--spider",
+          "--quiet",
+          "http://web:8000/api/v1/health/ready",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    depends_on:
+      web:
+        condition: service_healthy
+
+  postgres:
+    image: docker.io/library/postgres:17.11-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-compass}"
+      POSTGRES_USER: "${POSTGRES_USER:-compass}"
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+    secrets:
+      - postgres_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: docker.io/library/redis:8.10.1-trixie
+    restart: unless-stopped
+    secrets:
+      - redis_password
+    entrypoint: ["sh", "/usr/local/bin/compass-redis-start"]
+    tmpfs:
+      - /run/redis-config:rw,noexec,nosuid,size=1m,mode=0700
+    volumes:
+      - redis_data:/data
+      - ./deploy/runtime-secrets/redis-start.sh:/usr/local/bin/compass-redis-start:ro
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "sh",
+          "/usr/local/bin/compass-redis-start",
+          "healthcheck",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+secrets:
+  django_secret_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/django_secret_key
+  postgres_password:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/postgres_password
+  redis_password:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/redis_password
+  s3_access_key_id:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/s3_access_key_id
+  s3_secret_access_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/s3_secret_access_key
+  smtp_username:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/smtp_username
+  smtp_password:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/smtp_password
+  turnstile_secret_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/turnstile_secret_key
+  daily_api_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/daily_api_key
+  daily_webhook_hmac:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/daily_webhook_hmac
+  psgc_api_token:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/psgc_api_token
+  auth_totp_encryption_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/auth_totp_encryption_key
+  routine_interview_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/routine_interview_encryption_keys
+  counseling_shared_summary_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/counseling_shared_summary_encryption_keys
+  referral_confidential_content_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/referral_confidential_content_encryption_keys
+  exit_interview_confidential_content_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/exit_interview_confidential_content_encryption_keys
+  inventory_confidential_content_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/inventory_confidential_content_encryption_keys
+  account_profile_confidential_content_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/account_profile_confidential_content_encryption_keys
+  feedback_confidential_content_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/feedback_confidential_content_encryption_keys
+  graduate_tracer_confidential_content_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/graduate_tracer_confidential_content_encryption_keys
+  web_push_private_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/web_push_private_key
+  web_push_storage_key:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/web_push_storage_key
+
+  assessment_record_confidential_content_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/assessment_record_confidential_content_encryption_keys
+
+  guidance_message_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/guidance_message_encryption_keys
+
+volumes:
+  postgres_data:
+  redis_data:
+  caddy_data:
+  caddy_config:

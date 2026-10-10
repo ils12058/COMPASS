@@ -1,16 +1,23 @@
 """Stable audit action codes used by the current COMPASS foundation."""
 
+PRIVACY_ACTIVITY_EXPORTED = "privacy.activity.exported"
+
 ACCOUNT_CREATED = "account.created"
+ACCOUNT_CSV_IMPORTED = "account.csv_imported"
 ACCOUNT_UPDATED = "account.updated"
 ACCOUNT_DISABLED = "account.disabled"
 ACCOUNT_ENABLED = "account.enabled"
+ACCOUNT_INSTITUTIONAL_ID_CHANGED = "account.institutional_id.changed"
 ACCOUNT_ROLE_CHANGED = "account.role.changed"
+ACCOUNT_STUDENT_LIFECYCLE_CHANGED = "account.student_lifecycle.changed"
 ACCOUNT_DESIGNATION_ASSIGNED = "account.designation.assigned"
 ACCOUNT_DESIGNATION_REMOVED = "account.designation.removed"
 ACCOUNT_CAPABILITY_OVERRIDE_SET = "account.capability.override.set"
 ACCOUNT_CAPABILITY_OVERRIDE_REMOVED = "account.capability.override.removed"
 ACCOUNT_MFA_RESET = "account.mfa.reset"
+PROFILE_UPDATED = "profile.updated"
 IDENTITY_POLICY_SYNCED = "identity.policy.synced"
+ORGANIZATION_CATALOG_SYNCED = "organization.catalog_synced"
 ORGANIZATION_CAMPUS_CREATED = "organization.campus.created"
 ORGANIZATION_CAMPUS_UPDATED = "organization.campus.updated"
 ORGANIZATION_CAMPUS_ENABLED = "organization.campus.enabled"
@@ -19,33 +26,234 @@ ORGANIZATION_COLLEGE_CREATED = "organization.college.created"
 ORGANIZATION_COLLEGE_UPDATED = "organization.college.updated"
 ORGANIZATION_COLLEGE_ENABLED = "organization.college.enabled"
 ORGANIZATION_COLLEGE_DISABLED = "organization.college.disabled"
-ORGANIZATION_COUNSELOR_RESPONSIBILITY_ASSIGNED = (
-    "organization.counselor_responsibility.assigned"
-)
-ORGANIZATION_COUNSELOR_RESPONSIBILITY_CHANGED = (
-    "organization.counselor_responsibility.changed"
-)
-ORGANIZATION_COUNSELOR_RESPONSIBILITY_REMOVED = (
-    "organization.counselor_responsibility.removed"
-)
+ORGANIZATION_PROGRAM_CREATED = "organization.program.created"
+ORGANIZATION_PROGRAM_UPDATED = "organization.program.updated"
+ORGANIZATION_PROGRAM_ENABLED = "organization.program.enabled"
+ORGANIZATION_PROGRAM_DISABLED = "organization.program.disabled"
+ORGANIZATION_COUNSELOR_RESPONSIBILITY_ASSIGNED = "organization.counselor_responsibility.assigned"
+ORGANIZATION_COUNSELOR_RESPONSIBILITY_CHANGED = "organization.counselor_responsibility.changed"
+ORGANIZATION_COUNSELOR_RESPONSIBILITY_REMOVED = "organization.counselor_responsibility.removed"
 ORGANIZATION_STAFF_SUPERVISION_ASSIGNED = "organization.staff_supervision.assigned"
 ORGANIZATION_STAFF_SUPERVISION_CHANGED = "organization.staff_supervision.changed"
 ORGANIZATION_STAFF_SUPERVISION_REMOVED = "organization.staff_supervision.removed"
 ORGANIZATION_STUDENT_AFFILIATION_ASSIGNED = "organization.student_affiliation.assigned"
 ORGANIZATION_STUDENT_AFFILIATION_CHANGED = "organization.student_affiliation.changed"
 ORGANIZATION_STUDENT_AFFILIATION_REMOVED = "organization.student_affiliation.removed"
+ACADEMIC_YEAR_CREATED = "academic_year.created"
+ACADEMIC_YEAR_CURRENT_CHANGED = "academic_year.current_changed"
+INSTITUTIONAL_FORM_REVISION_REGISTERED = "institutional_form.revision_registered"
+INSTITUTIONAL_FORM_REVISION_ACTIVATED = "institutional_form.revision_activated"
+INSTITUTIONAL_FORM_REVISION_DEACTIVATED = "institutional_form.revision_deactivated"
+INSTITUTIONAL_FORMS_SYNCED = "institutional_forms.synced"
+SERVICE_CREATED = "service.created"
+SERVICE_UPDATED = "service.updated"
+SERVICE_ENABLED = "service.enabled"
+SERVICE_DISABLED = "service.disabled"
+AVAILABILITY_OFFICE_SCHEDULE_UPDATED = "availability.office_schedule.updated"
+AVAILABILITY_OFFICE_EXCEPTION_CREATED = "availability.office_exception.created"
+AVAILABILITY_OFFICE_EXCEPTION_REMOVED = "availability.office_exception.removed"
+AVAILABILITY_PROVIDER_SCHEDULE_UPDATED = "availability.provider_schedule.updated"
+AVAILABILITY_PROVIDER_EXCEPTION_CREATED = "availability.provider_exception.created"
+AVAILABILITY_PROVIDER_EXCEPTION_REMOVED = "availability.provider_exception.removed"
+APPOINTMENT_CREATED = "appointment.created"
+APPOINTMENT_CANCELLED = "appointment.cancelled"
+APPOINTMENT_RESCHEDULED = "appointment.rescheduled"
+APPOINTMENT_REASSIGNED = "appointment.reassigned"
+APPOINTMENT_COMPLETED = "appointment.completed"
+APPOINTMENT_NO_SHOW = "appointment.no_show"
+COUNSELING_ENCOUNTER_CREATED = "counseling.encounter.created"
+COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
+COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
+INVENTORY_CREATED = "inventory.created"
+INVENTORY_SUBMITTED = "inventory.submitted"
+INVENTORY_REOPENED = "inventory.reopened"
+INVENTORY_RESUBMITTED = "inventory.resubmitted"
+GOOD_MORAL_REQUEST_CREATED = "good_moral.request_created"
+GOOD_MORAL_REQUEST_UPDATED = "good_moral.request_updated"
+GOOD_MORAL_REQUEST_CANCELLED = "good_moral.request.cancelled"
+GOOD_MORAL_ISSUED = "good_moral.issued"
+GOOD_MORAL_PREPARED = "good_moral.prepared"
+GOOD_MORAL_RETURNED_TO_PREPARATION = "good_moral.returned_to_preparation"
+CUSTOMER_FEEDBACK_SUBMITTED = "feedback.customer_feedback_submitted"
+CSM_SUBMITTED = "feedback.csm_submitted"
+GRADUATE_TRACER_DRAFT_CREATED = "graduate_tracer.draft_created"
+GRADUATE_TRACER_SUBMITTED = "graduate_tracer.submitted"
+EXIT_INTERVIEW_CREATED = "exit_interview.created"
+EXIT_INTERVIEW_SUBMITTED = "exit_interview.submitted"
+EXIT_INTERVIEW_REOPENED = "exit_interview.reopened"
+EXIT_INTERVIEW_RESUBMITTED = "exit_interview.resubmitted"
+EXIT_INTERVIEW_OPPORTUNITY_OPENED = "exit_interview.opportunity_opened"
+EXIT_INTERVIEW_OPPORTUNITY_REVOKED = "exit_interview.opportunity_revoked"
+EXIT_INTERVIEW_OPPORTUNITY_COMPLETED = "exit_interview.opportunity_completed"
+ROUTINE_INTERVIEW_CREATED = "routine_interview.created"
+ROUTINE_INTERVIEW_INTAKE_SUBMITTED = "routine_interview.intake_submitted"
+ROUTINE_INTERVIEW_ENCOUNTER_LINKED = "routine_interview.encounter_linked"
+ROUTINE_INTERVIEW_EVALUATION_FINALIZED = "routine_interview.evaluation_finalized"
+REFERRAL_CREATED = "referral.created"
+REFERRAL_ACTION_RECORDED = "referral.action_recorded"
+REFERRAL_STATUS_UPDATED = "referral.status_updated"
+REFERRAL_VOIDED = "referral.voided"
+CALL_SLIP_CREATED = "call_slip.created"
+CALL_SLIP_VOIDED = "call_slip.voided"
+DOCUMENT_BRANDING_UPDATED = "document_branding.updated"
+ANNOUNCEMENT_CREATED = "announcement.created"
+ANNOUNCEMENT_UPDATED = "announcement.updated"
+ANNOUNCEMENT_PUBLISHED = "announcement.published"
+ANNOUNCEMENT_ARCHIVED = "announcement.archived"
+RESOURCE_CREATED = "resource.created"
+RESOURCE_UPDATED = "resource.updated"
+RESOURCE_FILE_ATTACHED = "resource.file_attached"
+RESOURCE_FILE_REMOVED = "resource.file_removed"
+RESOURCE_PUBLISHED = "resource.published"
+RESOURCE_ARCHIVED = "resource.archived"
+PLATFORM_MAINTENANCE_ENABLED = "platform.maintenance.enabled"
+PLATFORM_MAINTENANCE_DISABLED = "platform.maintenance.disabled"
+PLATFORM_MAINTENANCE_SCHEDULED = "platform.maintenance.scheduled"
+PLATFORM_MAINTENANCE_SCHEDULE_CANCELLED = "platform.maintenance.schedule_cancelled"
+NOTIFICATION_EMAIL_RETRY_REQUESTED = "notification.email.retry_requested"
+PRIVACY_PROCESSING_CREATED = "privacy.processing.created"
+PRIVACY_RETENTION_CREATED = "privacy.retention.created"
+PRIVACY_RETENTION_UPDATED = "privacy.retention.updated"
+PRIVACY_RETENTION_RETIRED = "privacy.retention.retired"
+
+# Operational workflow introduced after the removed descriptive registry. Legacy codes stay intact.
+RETENTION_RULE_CREATED = "privacy.retention.rule.created"
+RETENTION_RULE_UPDATED = "privacy.retention.rule.updated"
+RETENTION_RULE_ACTIVATED = "privacy.retention.rule.activated"
+RETENTION_RULE_RETIRED = "privacy.retention.rule.retired"
+RETENTION_HOLD_PLACED = "privacy.retention.hold.placed"
+RETENTION_HOLD_RELEASED = "privacy.retention.hold.released"
+DISPOSITION_APPROVED = "privacy.disposition.approved"
+DISPOSITION_STARTED = "privacy.disposition.started"
+DISPOSITION_COMPLETED = "privacy.disposition.completed"
+DISPOSITION_FAILED = "privacy.disposition.failed"
+DISPOSITION_RETRY_AUTHORIZED = "privacy.disposition.retry.authorized"
+
+RETENTION_PRESENTATIONS = {
+    RETENTION_RULE_CREATED: (
+        "Retention rule drafted",
+        "An operational retention rule was drafted.",
+        "privacy.retention.rule",
+    ),
+    RETENTION_RULE_UPDATED: (
+        "Retention draft updated",
+        "An operational retention draft was updated.",
+        "privacy.retention.rule",
+    ),
+    RETENTION_RULE_ACTIVATED: (
+        "Retention rule activated",
+        "An approved operational retention rule was activated.",
+        "privacy.retention.rule",
+    ),
+    RETENTION_RULE_RETIRED: (
+        "Retention rule retired",
+        "An operational retention rule was retired.",
+        "privacy.retention.rule",
+    ),
+    RETENTION_HOLD_PLACED: (
+        "Disposition hold placed",
+        "A hold prevents disposition of a reviewed case.",
+        "privacy.disposition.case",
+    ),
+    RETENTION_HOLD_RELEASED: (
+        "Disposition hold released",
+        "A hold was released. Disposition requires a new approval.",
+        "privacy.disposition.case",
+    ),
+    DISPOSITION_APPROVED: (
+        "Disposition approved",
+        "A frozen single-record disposition case was approved.",
+        "privacy.disposition.case",
+    ),
+    DISPOSITION_STARTED: (
+        "Disposition started",
+        "Background disposition processing started.",
+        "privacy.disposition.case",
+    ),
+    DISPOSITION_COMPLETED: (
+        "Disposition completed",
+        "The domain executor verified the approved treatment.",
+        "privacy.disposition.case",
+    ),
+    DISPOSITION_FAILED: (
+        "Disposition unresolved",
+        "Disposition requires retry or reconciliation.",
+        "privacy.disposition.case",
+    ),
+    DISPOSITION_RETRY_AUTHORIZED: (
+        "Disposition retry authorized",
+        "A bounded retry was authorized after review.",
+        "privacy.disposition.case",
+    ),
+}
+PRIVACY_NOTICE_CREATED = "privacy.notice.created"
+PRIVACY_NOTICE_UPDATED = "privacy.notice.updated"
+PRIVACY_NOTICE_RETIRED = "privacy.notice.retired"
+PRIVACY_NOTICE_REVISION_CREATED = "privacy.notice.revision.created"
+PRIVACY_NOTICE_REVISION_UPDATED = "privacy.notice.revision.updated"
+PRIVACY_NOTICE_REVISION_PUBLISHED = "privacy.notice.revision.published"
+PRIVACY_NOTICE_ACKNOWLEDGED = "privacy.notice.acknowledged"
+PRIVACY_PROCESSING_UPDATED = "privacy.processing.updated"
+PRIVACY_PROCESSING_RETIRED = "privacy.processing.retired"
+PRIVACY_REVIEW_CREATED = "privacy.review.created"
+PRIVACY_REVIEW_UPDATED = "privacy.review.updated"
+PRIVACY_REVIEW_RESOLVED = "privacy.review.resolved"
+PRIVACY_INCIDENT_CREATED = "privacy.incident.created"
+PRIVACY_INCIDENT_UPDATED = "privacy.incident.updated"
+PRIVACY_INCIDENT_RESOLVED = "privacy.incident.resolved"
+REPORT_EXPORT_RELEASED = "report.export_released"
+DOCUMENT_DOWNLOAD_RELEASED = "document.download_released"
+CALL_SLIP_INTERVIEW_ENDED = "call_slip.interview_ended"
+ECOUNSELING_ROOM_PROVISIONED = "ecounseling.room_provisioned"
+ECOUNSELING_JOIN_AUTHORIZED = "ecounseling.join_authorized"
+ECOUNSELING_CONSENT_REQUESTED = "ecounseling.consent_requested"
+ECOUNSELING_CONSENT_APPROVED = "ecounseling.consent_approved"
+ECOUNSELING_CONSENT_DENIED = "ecounseling.consent_denied"
+ECOUNSELING_CONSENT_WITHDRAWN = "ecounseling.consent_withdrawn"
+ECOUNSELING_RECORDING_START_REQUESTED = "ecounseling.recording_start_requested"
+ECOUNSELING_RECORDING_STOP_REQUESTED = "ecounseling.recording_stop_requested"
+ECOUNSELING_TRANSCRIPTION_START_REQUESTED = "ecounseling.transcription_start_requested"
+ECOUNSELING_TRANSCRIPTION_STOP_REQUESTED = "ecounseling.transcription_stop_requested"
+ECOUNSELING_MEDIA_ARTIFACT_STORED = "ecounseling.media_artifact.stored"
+ECOUNSELING_MEDIA_PROVIDER_CLEANED = "ecounseling.media_artifact.provider_cleaned"
+ECOUNSELING_MEDIA_ARTIFACT_ACCESS_AUTHORIZED = "ecounseling.media_artifact.access_authorized"
+
+# Guidance Messages structural provenance only (ADR-102).
+GUIDANCE_MESSAGES_THREAD_CREATED = "guidance_messages.thread.created"
+GUIDANCE_MESSAGES_MESSAGE_SENT = "guidance_messages.message.sent"
+GUIDANCE_MESSAGES_THREAD_ASSIGNED = "guidance_messages.thread.assigned"
+GUIDANCE_MESSAGES_THREAD_RESOLVED = "guidance_messages.thread.resolved"
+GUIDANCE_MESSAGES_THREAD_REOPENED = "guidance_messages.thread.reopened"
+# Message template configuration (ADR-104): identifiers and status only, never template text.
+GUIDANCE_MESSAGES_TEMPLATE_CREATED = "guidance_messages.template.created"
+GUIDANCE_MESSAGES_TEMPLATE_UPDATED = "guidance_messages.template.updated"
+GUIDANCE_MESSAGES_TEMPLATE_ARCHIVED = "guidance_messages.template.archived"
+GUIDANCE_MESSAGES_TEMPLATE_RESTORED = "guidance_messages.template.restored"
 
 __all__ = [
+    "GUIDANCE_MESSAGES_THREAD_CREATED",
+    "GUIDANCE_MESSAGES_MESSAGE_SENT",
+    "GUIDANCE_MESSAGES_THREAD_ASSIGNED",
+    "GUIDANCE_MESSAGES_THREAD_RESOLVED",
+    "GUIDANCE_MESSAGES_THREAD_REOPENED",
+    "GUIDANCE_MESSAGES_TEMPLATE_CREATED",
+    "GUIDANCE_MESSAGES_TEMPLATE_UPDATED",
+    "GUIDANCE_MESSAGES_TEMPLATE_ARCHIVED",
+    "GUIDANCE_MESSAGES_TEMPLATE_RESTORED",
+    "PRIVACY_ACTIVITY_EXPORTED",
     "ACCOUNT_CREATED",
+    "ACCOUNT_CSV_IMPORTED",
     "ACCOUNT_UPDATED",
     "ACCOUNT_DISABLED",
     "ACCOUNT_ENABLED",
     "ACCOUNT_ROLE_CHANGED",
+    "ACCOUNT_STUDENT_LIFECYCLE_CHANGED",
     "ACCOUNT_DESIGNATION_ASSIGNED",
     "ACCOUNT_DESIGNATION_REMOVED",
     "ACCOUNT_CAPABILITY_OVERRIDE_SET",
     "ACCOUNT_CAPABILITY_OVERRIDE_REMOVED",
     "ACCOUNT_MFA_RESET",
+    "PROFILE_UPDATED",
     "IDENTITY_POLICY_SYNCED",
     "ORGANIZATION_CAMPUS_CREATED",
     "ORGANIZATION_CAMPUS_UPDATED",
@@ -55,6 +263,10 @@ __all__ = [
     "ORGANIZATION_COLLEGE_UPDATED",
     "ORGANIZATION_COLLEGE_ENABLED",
     "ORGANIZATION_COLLEGE_DISABLED",
+    "ORGANIZATION_PROGRAM_CREATED",
+    "ORGANIZATION_PROGRAM_UPDATED",
+    "ORGANIZATION_PROGRAM_ENABLED",
+    "ORGANIZATION_PROGRAM_DISABLED",
     "ORGANIZATION_COUNSELOR_RESPONSIBILITY_ASSIGNED",
     "ORGANIZATION_COUNSELOR_RESPONSIBILITY_CHANGED",
     "ORGANIZATION_COUNSELOR_RESPONSIBILITY_REMOVED",
@@ -64,4 +276,116 @@ __all__ = [
     "ORGANIZATION_STUDENT_AFFILIATION_ASSIGNED",
     "ORGANIZATION_STUDENT_AFFILIATION_CHANGED",
     "ORGANIZATION_STUDENT_AFFILIATION_REMOVED",
+    "ACADEMIC_YEAR_CREATED",
+    "ACADEMIC_YEAR_CURRENT_CHANGED",
+    "INSTITUTIONAL_FORM_REVISION_REGISTERED",
+    "INSTITUTIONAL_FORM_REVISION_ACTIVATED",
+    "INSTITUTIONAL_FORM_REVISION_DEACTIVATED",
+    "INSTITUTIONAL_FORMS_SYNCED",
+    "SERVICE_CREATED",
+    "SERVICE_UPDATED",
+    "SERVICE_ENABLED",
+    "SERVICE_DISABLED",
+    "AVAILABILITY_OFFICE_SCHEDULE_UPDATED",
+    "AVAILABILITY_OFFICE_EXCEPTION_CREATED",
+    "AVAILABILITY_OFFICE_EXCEPTION_REMOVED",
+    "AVAILABILITY_PROVIDER_SCHEDULE_UPDATED",
+    "AVAILABILITY_PROVIDER_EXCEPTION_CREATED",
+    "AVAILABILITY_PROVIDER_EXCEPTION_REMOVED",
+    "APPOINTMENT_CREATED",
+    "APPOINTMENT_CANCELLED",
+    "APPOINTMENT_RESCHEDULED",
+    "APPOINTMENT_REASSIGNED",
+    "APPOINTMENT_COMPLETED",
+    "APPOINTMENT_NO_SHOW",
+    "COUNSELING_ENCOUNTER_CREATED",
+    "COUNSELING_ENCOUNTER_UPDATED",
+    "COUNSELING_SHARED_SUMMARY_PUBLISHED",
+    "INVENTORY_CREATED",
+    "INVENTORY_SUBMITTED",
+    "GOOD_MORAL_REQUEST_CREATED",
+    "GOOD_MORAL_REQUEST_UPDATED",
+    "GOOD_MORAL_REQUEST_CANCELLED",
+    "GOOD_MORAL_ISSUED",
+    "GOOD_MORAL_PREPARED",
+    "GOOD_MORAL_RETURNED_TO_PREPARATION",
+    "CUSTOMER_FEEDBACK_SUBMITTED",
+    "CSM_SUBMITTED",
+    "GRADUATE_TRACER_DRAFT_CREATED",
+    "GRADUATE_TRACER_SUBMITTED",
+    "EXIT_INTERVIEW_CREATED",
+    "EXIT_INTERVIEW_SUBMITTED",
+    "EXIT_INTERVIEW_REOPENED",
+    "EXIT_INTERVIEW_RESUBMITTED",
+    "EXIT_INTERVIEW_OPPORTUNITY_OPENED",
+    "EXIT_INTERVIEW_OPPORTUNITY_REVOKED",
+    "EXIT_INTERVIEW_OPPORTUNITY_COMPLETED",
+    "ROUTINE_INTERVIEW_CREATED",
+    "ROUTINE_INTERVIEW_INTAKE_SUBMITTED",
+    "ROUTINE_INTERVIEW_ENCOUNTER_LINKED",
+    "ROUTINE_INTERVIEW_EVALUATION_FINALIZED",
+    "REFERRAL_CREATED",
+    "REFERRAL_ACTION_RECORDED",
+    "REFERRAL_STATUS_UPDATED",
+    "REFERRAL_VOIDED",
+    "CALL_SLIP_CREATED",
+    "CALL_SLIP_VOIDED",
+    "DOCUMENT_BRANDING_UPDATED",
+    "ANNOUNCEMENT_CREATED",
+    "ANNOUNCEMENT_UPDATED",
+    "ANNOUNCEMENT_PUBLISHED",
+    "ANNOUNCEMENT_ARCHIVED",
+    "RESOURCE_CREATED",
+    "RESOURCE_UPDATED",
+    "RESOURCE_FILE_ATTACHED",
+    "RESOURCE_FILE_REMOVED",
+    "RESOURCE_PUBLISHED",
+    "RESOURCE_ARCHIVED",
+    "PLATFORM_MAINTENANCE_ENABLED",
+    "PLATFORM_MAINTENANCE_DISABLED",
+    "PLATFORM_MAINTENANCE_SCHEDULED",
+    "PLATFORM_MAINTENANCE_SCHEDULE_CANCELLED",
+    "NOTIFICATION_EMAIL_RETRY_REQUESTED",
+    "PRIVACY_PROCESSING_CREATED",
+    "PRIVACY_RETENTION_CREATED",
+    "PRIVACY_RETENTION_UPDATED",
+    "PRIVACY_RETENTION_RETIRED",
+    "PRIVACY_NOTICE_CREATED",
+    "PRIVACY_NOTICE_UPDATED",
+    "PRIVACY_NOTICE_RETIRED",
+    "PRIVACY_NOTICE_REVISION_CREATED",
+    "PRIVACY_NOTICE_REVISION_UPDATED",
+    "PRIVACY_NOTICE_REVISION_PUBLISHED",
+    "PRIVACY_NOTICE_ACKNOWLEDGED",
+    "PRIVACY_PROCESSING_UPDATED",
+    "PRIVACY_PROCESSING_RETIRED",
+    "PRIVACY_REVIEW_CREATED",
+    "PRIVACY_REVIEW_UPDATED",
+    "PRIVACY_REVIEW_RESOLVED",
+    "PRIVACY_INCIDENT_CREATED",
+    "PRIVACY_INCIDENT_UPDATED",
+    "PRIVACY_INCIDENT_RESOLVED",
+    "REPORT_EXPORT_RELEASED",
+    "DOCUMENT_DOWNLOAD_RELEASED",
+    "CALL_SLIP_INTERVIEW_ENDED",
+    "ECOUNSELING_ROOM_PROVISIONED",
+    "ECOUNSELING_JOIN_AUTHORIZED",
+    "ECOUNSELING_CONSENT_REQUESTED",
+    "ECOUNSELING_CONSENT_APPROVED",
+    "ECOUNSELING_CONSENT_DENIED",
+    "ECOUNSELING_CONSENT_WITHDRAWN",
+    "ECOUNSELING_RECORDING_START_REQUESTED",
+    "ECOUNSELING_RECORDING_STOP_REQUESTED",
+    "ECOUNSELING_TRANSCRIPTION_START_REQUESTED",
+    "ECOUNSELING_TRANSCRIPTION_STOP_REQUESTED",
+    "ECOUNSELING_MEDIA_ARTIFACT_STORED",
+    "ECOUNSELING_MEDIA_PROVIDER_CLEANED",
+    "ECOUNSELING_MEDIA_ARTIFACT_ACCESS_AUTHORIZED",
 ]
+
+ASSESSMENT_RECORD_CREATED = "assessment_record.created"
+ASSESSMENT_RECORD_UPDATED = "assessment_record.updated"
+ASSESSMENT_TYPE_CREATED = "assessment_type.created"
+ASSESSMENT_TYPE_UPDATED = "assessment_type.updated"
+ASSESSMENT_TYPE_DEACTIVATED = "assessment_type.deactivated"
+ASSESSMENT_TYPE_REACTIVATED = "assessment_type.reactivated"

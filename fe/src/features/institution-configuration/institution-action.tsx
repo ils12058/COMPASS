@@ -1,0 +1,97 @@
+"use client";
+
+import { useRef, useState } from "react";
+
+import { StepUpDialog } from "@/features/account/security/security-shared";
+import {
+  stepUpNotice,
+  stepUpRequirement,
+  type StepUpRequirement,
+} from "@/features/account/security/step-up";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
+
+const knownErrors: Record<string, string> = {
+  academic_year_not_found: "The selected Academic Year is no longer available.",
+  academic_year_conflict:
+    "This Academic Year change conflicts with the current configuration.",
+  invalid_academic_year_request:
+    "Check the Academic Year label and try again.",
+  institutional_form_not_found:
+    "The selected Form Family or Form Revision is no longer available.",
+  permission_denied:
+    "You cannot make this institutional change with this account.",
+};
+
+export function institutionConfigurationErrorMessage(
+  error: unknown,
+  fallback: string,
+): string {
+  if (!(error instanceof CompassApiError)) return fallback;
+
+  const code = readApiErrorCode(error.body);
+  return (code && knownErrors[code]) || fallback;
+}
+
+type StepUpOptions = {
+  onStepUpRequired?: () => void;
+  onStepUpVerified?: () => void;
+};
+
+export function useInstitutionConfigurationAction() {
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
+  const restoreInteraction = useRef<(() => void) | null>(null);
+
+  function resetFeedback() {
+    setError(null);
+    setNotice(null);
+  }
+
+  async function run<T>(
+    operation: () => Promise<T>,
+    fallback: string,
+    options?: StepUpOptions,
+  ): Promise<T | undefined> {
+    resetFeedback();
+    try {
+      return await operation();
+    } catch (caught) {
+      const requirement = stepUpRequirement(caught);
+      if (requirement) {
+        setStepUp(requirement);
+        options?.onStepUpRequired?.();
+        restoreInteraction.current = options?.onStepUpVerified ?? null;
+        setNotice(stepUpNotice(requirement));
+        setStepUpOpen(true);
+      } else {
+        setError(institutionConfigurationErrorMessage(caught, fallback));
+      }
+      return undefined;
+    }
+  }
+
+  const stepUpDialog = (
+    <StepUpDialog
+      open={stepUpOpen}
+      requirement={stepUp}
+      onOpenChange={setStepUpOpen}
+      onVerified={() => {
+        setNotice("Verification complete. Submit or confirm the action again.");
+        const restore = restoreInteraction.current;
+        restoreInteraction.current = null;
+        restore?.();
+      }}
+    />
+  );
+
+  return {
+    error,
+    notice,
+    resetFeedback,
+    run,
+    setError,
+    stepUpDialog,
+  };
+}

@@ -1,4 +1,6 @@
 import json
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -7,16 +9,29 @@ import pyotp
 import pytest
 from cryptography.fernet import Fernet
 from django.conf import settings
-from django.db import transaction
+from django.core.management import call_command
+from django.db import close_old_connections, transaction
 from django.test import Client, override_settings
 from django.utils import timezone
 
-from compass.accounts.models import Role, User
+from compass.accounts.models import (
+    Capability,
+    Designation,
+    Role,
+    RoleCapability,
+    StudentLifecycleStatus,
+    User,
+    UserCapabilityOverride,
+    UserDesignation,
+)
+from compass.accounts.services import effective_capabilities, set_user_capability_override
+from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.abuse import (
     AuthenticationRateLimited,
     check_auth_rate_limit,
 )
+from compass.authentication.actions import AUTH_MFA_RECOVERY_CODES_REGENERATED
 from compass.authentication.crypto import decrypt_totp_secret, encrypt_totp_secret
 from compass.authentication.email_otp import (
     EmailOTPInvalid,
@@ -26,13 +41,27 @@ from compass.authentication.email_otp import (
     resend_email_otp,
 )
 from compass.authentication.mfa import invalidate_recovery_codes, verify_totp_for_login
-from compass.authentication.models import AuthSession, EmailOTPChallenge, RecoveryCode, TOTPFactor
+from compass.authentication.models import (
+    AuthSession,
+    EmailOTPChallenge,
+    LoginChallenge,
+    RecoveryCode,
+    TOTPFactor,
+)
+from compass.authentication.password_change import change_password
+from compass.authentication.services import authenticate_login
 from compass.authentication.sessions import (
     RecentMFARequired,
+    create_auth_session,
     require_recent_mfa,
     resolve_trusted_session,
 )
 from compass.common.rate_limit import RateLimitResult
+from compass.notifications.models import EmailDelivery, Notification
+
+
+def sync_policy() -> None:
+    call_command("sync_identity_policy", verbosity=0)
 
 
 def make_user(*, email="student@example.edu", password="correct-password", role_code="STUDENT"):
@@ -132,6 +161,199 @@ def test_password_login_is_generic_and_stores_only_a_session_digest():
     assert unknown_email.json()["error"]["code"] == "authentication_failed"
     assert AuditEvent.objects.filter(action="auth.login.failed", actor_user=user).exists()
     assert AuditEvent.objects.filter(action="auth.login.failed", actor_user__isnull=True).exists()
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_login_rejects_unknown_mutation_fields_before_creating_security_state():
+    user = make_user()
+    client = Client()
+
+    response = post_json(
+        client,
+        "/api/v1/auth/login",
+        {"email": user.email, "password": "correct-password", "role": "IT_ADMIN"},
+        headers=csrf_headers(client),
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "validation_error"
+    assert AuthSession.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_authenticated_student_contract_exposes_effective_capabilities_without_scope_leaks():
+    sync_policy()
+    user = make_user(email="auth-contract-student@example.edu", role_code="STUDENT")
+    client = Client()
+
+    response = login(client, email=user.email, password="correct-password")
+    assert response.status_code == 200
+    login_user = response.json()["user"]
+
+    assert login_user["role"] == "STUDENT"
+    assert login_user["designations"] == []
+    assert login_user["capabilities"] == sorted(effective_capabilities(user))
+    assert {
+        "organization.structure.view",
+        "services.catalog.view",
+        "appointments.view_self",
+        "appointments.manage_self",
+        "inventory.view_self",
+        "inventory.manage_self",
+    } <= set(login_user["capabilities"])
+    assert {
+        "accounts.manage",
+        "organization.manage",
+        "reports.view",
+        "inventory.view",
+        "inventory.reopen",
+    }.isdisjoint(login_user["capabilities"])
+    assert login_user["capabilities"] == sorted(set(login_user["capabilities"]))
+    assert {"organization.view", "services.view"}.isdisjoint(login_user["capabilities"])
+
+    expected_user_keys = {
+        "id",
+        "email",
+        "first_name",
+        "last_name",
+        "role",
+        "student_lifecycle_status",
+        "designations",
+        "capabilities",
+        "exit_interview_workspace_available",
+    }
+    assert set(login_user) == expected_user_keys
+    assert {
+        "role_capabilities",
+        "designation_capabilities",
+        "override_grants",
+        "override_revokes",
+        "override_reasons",
+        "override_expiry",
+        "college_ids",
+        "student_ids",
+        "scope",
+        "global_access",
+        "allowed_resources",
+    }.isdisjoint(login_user)
+
+    current = client.get("/api/v1/auth/session")
+    assert current.status_code == 200
+    assert current.json()["authenticated"] is True
+    assert current.json()["user"] == login_user
+    assert {"organization.structure.view", "services.catalog.view"} <= set(
+        current.json()["user"]["capabilities"]
+    )
+    assert {"organization.view", "services.view"}.isdisjoint(current.json()["user"]["capabilities"])
+    assert "capabilities" not in current.json()["session"]
+    assert "designations" not in current.json()["session"]
+
+
+@pytest.mark.django_db
+def test_session_refreshes_current_designations_and_override_aware_capabilities():
+    sync_policy()
+    user = make_user(email="auth-contract-counselor@example.edu", role_code="COUNSELOR")
+    client = Client()
+    assert login(client, email=user.email, password="correct-password").status_code == 200
+
+    initial = client.get("/api/v1/auth/session").json()["user"]
+    assert initial["designations"] == []
+    assert {
+        "appointments.manage",
+        "academic_years.view",
+        "institutional_forms.view",
+        "reports.view",
+        "inventory.view",
+        "inventory.reopen",
+    } <= set(initial["capabilities"])
+    assert "academic_years.manage" not in initial["capabilities"]
+    assert "platform_operations.view" not in initial["capabilities"]
+
+    UserDesignation.objects.create(
+        user=user,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+    # Synthetic second canonical assignment proves serializer ordering independently
+    # of insertion order. Normal management services still enforce role compatibility.
+    UserDesignation.objects.create(
+        user=user,
+        designation=Designation.objects.get(code="DPO"),
+    )
+    set_user_capability_override(
+        user=user,
+        capability="reports.view",
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Synthetic active revoke",
+    )
+    set_user_capability_override(
+        user=user,
+        capability="platform_operations.view",
+        effect=UserCapabilityOverride.Effect.GRANT,
+        reason="Synthetic active grant",
+    )
+    set_user_capability_override(
+        user=user,
+        capability="appointments.manage",
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Synthetic expired revoke",
+        expires_at=timezone.now() - timedelta(seconds=1),
+    )
+    unknown = Capability.objects.create(
+        code="accounts.future",
+        name="Unknown future capability",
+    )
+    RoleCapability.objects.create(role=user.role, capability=unknown)
+
+    refreshed = client.get("/api/v1/auth/session")
+    assert refreshed.status_code == 200
+    auth_user = refreshed.json()["user"]
+
+    assert auth_user["designations"] == ["DPO", "HEAD_GUIDANCE_COUNSELOR"]
+    assert auth_user["designations"] == sorted(set(auth_user["designations"]))
+    assert auth_user["capabilities"] == sorted(effective_capabilities(user))
+    assert auth_user["capabilities"] == sorted(set(auth_user["capabilities"]))
+    assert "reports.view" not in auth_user["capabilities"]
+    assert "platform_operations.view" in auth_user["capabilities"]
+    assert "appointments.manage" in auth_user["capabilities"]
+    assert "accounts.future" not in auth_user["capabilities"]
+    assert {
+        "organization.manage",
+        "academic_years.manage",
+        "privacy_governance.view",
+    } <= set(auth_user["capabilities"])
+
+
+@pytest.mark.django_db
+def test_dpo_session_exposes_designation_identity_and_only_effective_dpo_authority():
+    sync_policy()
+    officer = make_user(
+        email="auth-contract-dpo@example.edu",
+        role_code="INSTITUTIONAL_OFFICER",
+    )
+    UserDesignation.objects.create(
+        user=officer,
+        designation=Designation.objects.get(code="DPO"),
+    )
+    client = Client()
+
+    response = login(client, email=officer.email, password="correct-password")
+    assert response.status_code == 200
+    auth_user = response.json()["user"]
+
+    assert auth_user["role"] == "INSTITUTIONAL_OFFICER"
+    assert auth_user["designations"] == ["DPO"]
+    assert auth_user["capabilities"] == [
+        "privacy_governance.activity.export",
+        "privacy_governance.manage",
+        "privacy_governance.retention.approve",
+        "privacy_governance.retention.manage",
+        "privacy_governance.retention.view",
+        "privacy_governance.view",
+    ]
+    assert "accounts.manage" not in auth_user["capabilities"]
+    assert "reports.view" not in auth_user["capabilities"]
 
 
 @pytest.mark.django_db
@@ -223,12 +445,83 @@ def test_session_listing_and_revocation_primitives_are_explicit():
 
 
 @pytest.mark.django_db
+def test_optional_totp_enrollment_requires_current_password_before_pending_factor_is_created():
+    user = make_user(email="mfa-proof@example.edu")
+    client = Client()
+    assert login(client, email=user.email, password="correct-password").status_code == 200
+
+    missing = post_json(client, "/api/v1/auth/mfa/totp/setup", {}, headers=csrf_headers(client))
+    assert missing.status_code == 422
+    assert not TOTPFactor.objects.filter(user=user).exists()
+
+    wrong = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "wrong-password"},
+        headers=csrf_headers(client),
+    )
+    assert wrong.status_code == 403
+    assert wrong.json()["error"]["code"] == "mfa_enrollment_authorization_failed"
+    assert "provisioning_uri" not in wrong.json()
+    assert not TOTPFactor.objects.filter(user=user).exists()
+
+    allowed = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
+    assert allowed.status_code == 200
+    assert allowed.json()["provisioning_uri"].startswith("otpauth://totp/")
+    parsed = pyotp.parse_uri(allowed.json()["provisioning_uri"])
+    factor = TOTPFactor.objects.get(user=user)
+    assert factor.confirmed_at is None
+    pending_secret = factor.encrypted_secret
+
+    rejected_replacement = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "wrong-password"},
+        headers=csrf_headers(client),
+    )
+    assert rejected_replacement.status_code == 403
+    factor.refresh_from_db()
+    assert factor.encrypted_secret == pending_secret
+
+    rejected_confirmation = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/confirm",
+        {"code": parsed.now(), "current_password": "wrong-password"},
+        headers=csrf_headers(client),
+    )
+    assert rejected_confirmation.status_code == 403
+    assert rejected_confirmation.json()["error"]["code"] == "mfa_enrollment_authorization_failed"
+    factor.refresh_from_db()
+    assert factor.confirmed_at is None
+
+    confirmed = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/confirm",
+        {"code": parsed.now(), "current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
+    assert confirmed.status_code == 200
+    factor.refresh_from_db()
+    assert factor.confirmed_at is not None
+
+
+@pytest.mark.django_db
 def test_totp_enrollment_is_pending_then_returns_one_time_recovery_codes():
     user = make_user(email="mfa@example.edu")
     client = Client()
     assert login(client, email=user.email, password="correct-password").status_code == 200
 
-    setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {}, headers=csrf_headers(client))
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
     assert setup.status_code == 200
     uri = setup.json()["provisioning_uri"]
     parsed = pyotp.parse_uri(uri)
@@ -240,7 +533,7 @@ def test_totp_enrollment_is_pending_then_returns_one_time_recovery_codes():
     confirmation = post_json(
         client,
         "/api/v1/auth/mfa/totp/confirm",
-        {"code": parsed.now()},
+        {"code": parsed.now(), "current_password": "correct-password"},
         headers=csrf_headers(client),
     )
     assert confirmation.status_code == 200
@@ -259,16 +552,253 @@ def test_totp_enrollment_is_pending_then_returns_one_time_recovery_codes():
 
 
 @pytest.mark.django_db
-def test_mfa_login_requires_challenge_and_consumes_recovery_code_once():
-    user = make_user(email="challenge@example.edu")
+def test_mfa_status_reports_enabled_and_recent_state():
     client = Client()
+    assert client.get("/api/v1/auth/mfa/status").status_code == 401
+
+    user = make_user(email="mfa-status@example.edu")
     assert login(client, email=user.email, password="correct-password").status_code == 200
-    setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {}, headers=csrf_headers(client))
+
+    initial = client.get("/api/v1/auth/mfa/status")
+    assert initial.status_code == 200
+    assert initial.json() == {"enabled": False, "recent": False}
+
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
+    assert setup.status_code == 200
     parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
     confirmed = post_json(
         client,
         "/api/v1/auth/mfa/totp/confirm",
+        {"code": parsed.now(), "current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
+    assert confirmed.status_code == 200
+
+    enrolled = client.get("/api/v1/auth/mfa/status")
+    assert enrolled.status_code == 200
+    assert enrolled.json() == {"enabled": True, "recent": False}
+
+    future = timezone.now() + timedelta(seconds=settings.AUTH_TOTP_INTERVAL_SECONDS)
+    with (
+        patch("compass.authentication.mfa.timezone.now", return_value=future),
+        patch("compass.authentication.sessions.timezone.now", return_value=future),
+    ):
+        verified = post_json(
+            client,
+            "/api/v1/auth/mfa/totp/verify",
+            {"code": parsed.at(future)},
+            headers=csrf_headers(client),
+        )
+        assert verified.status_code == 200
+        assert verified.json() == {"enabled": True, "recent": True}
+
+        recent = client.get("/api/v1/auth/mfa/status")
+        assert recent.status_code == 200
+        assert recent.json() == {"enabled": True, "recent": True}
+
+
+@pytest.mark.django_db
+@override_settings(AUTH_MFA_REQUIRED_ROLE_CODES=["COUNSELOR"])
+def test_mandatory_mfa_bootstrap_is_challenge_only_until_totp_is_confirmed():
+    user = make_user(email="mandatory-mfa@example.edu", role_code="COUNSELOR")
+    client = Client()
+
+    login_response = login(client, email=user.email, password="correct-password")
+    assert login_response.status_code == 403
+    assert login_response.json()["error"]["code"] == "mfa_setup_required"
+    assert "compass_login_challenge" in login_response.cookies
+    challenge = LoginChallenge.objects.get(user=user)
+    assert challenge.allowed_methods == ["totp_enroll"]
+    assert not AuthSession.objects.filter(user=user).exists()
+    assert client.get("/api/v1/auth/session").status_code == 401
+
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/bootstrap/setup",
+        {},
+        headers=csrf_headers(client),
+    )
+    assert setup.status_code == 200
+    parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
+
+    confirmed = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/bootstrap/confirm",
         {"code": parsed.now()},
+        headers=csrf_headers(client),
+    )
+    assert confirmed.status_code == 200
+    assert confirmed.json()["enabled"] is True
+    challenge.refresh_from_db()
+    assert challenge.consumed_at is not None
+    assert TOTPFactor.objects.get(user=user).confirmed_at is not None
+    assert not AuthSession.objects.filter(user=user).exists()
+    assert client.get("/api/v1/auth/session").status_code == 401
+
+
+@pytest.mark.django_db(transaction=True)
+def test_password_change_serializes_against_primary_login_session_issuance(monkeypatch):
+    user = make_user(email="serialized-login@example.edu")
+    current = create_auth_session(user).session
+    verification_entered = threading.Event()
+    release_verification = threading.Event()
+    password_change_finished = threading.Event()
+    original_check_password = User.check_password
+
+    def paused_check_password(self, raw_password):
+        result = original_check_password(self, raw_password)
+        if threading.get_ident() == login_thread_ident["value"]:
+            verification_entered.set()
+            assert release_verification.wait(timeout=5)
+        return result
+
+    monkeypatch.setattr(User, "check_password", paused_check_password)
+
+    request = SimpleNamespace(
+        COOKIES={},
+        META={"REMOTE_ADDR": "127.0.0.1"},
+        headers={},
+        request_id=None,
+    )
+    login_thread_ident = {"value": None}
+
+    def login_worker():
+        login_thread_ident["value"] = threading.get_ident()
+        close_old_connections()
+        try:
+            return authenticate_login(
+                request=request,
+                email=user.email,
+                password="correct-password",
+            )
+        finally:
+            close_old_connections()
+
+    def change_worker():
+        close_old_connections()
+        try:
+            fresh_user = User.objects.get(pk=user.pk)
+            fresh_session = AuthSession.objects.get(pk=current.pk)
+            result = change_password(
+                user=fresh_user,
+                session=fresh_session,
+                current_password="correct-password",
+                new_password="new-secure-test-password-123!",
+                context=AuditContext.user(fresh_user),
+            )
+            password_change_finished.set()
+            return result
+        finally:
+            close_old_connections()
+
+    with ThreadPoolExecutor(max_workers=2, thread_name_prefix="login-race") as pool:
+        login_future = pool.submit(login_worker)
+        assert verification_entered.wait(timeout=5)
+        change_future = pool.submit(change_worker)
+        # The password transition must be waiting on the same User row while verification is paused.
+        assert not password_change_finished.wait(timeout=0.2)
+        release_verification.set()
+        login_result = login_future.result(timeout=5)
+        change_future.result(timeout=5)
+
+    assert login_result.session is not None
+    login_result.session.session.refresh_from_db()
+    assert login_result.session.session.revoked_at is not None
+    user.refresh_from_db()
+    assert user.check_password("new-secure-test-password-123!")
+
+
+@pytest.mark.django_db
+def test_mfa_recovery_regeneration_and_disable_create_mandatory_security_notifications():
+    user = make_user(email="mfa-security-events@example.edu")
+    client = Client()
+    assert login(client, email=user.email, password="correct-password").status_code == 200
+
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
+    parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
+    confirmed = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/confirm",
+        {"code": parsed.now(), "current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
+    assert confirmed.status_code == 200
+
+    session = AuthSession.objects.get(user=user, revoked_at__isnull=True)
+    session.mfa_verified_at = timezone.now()
+    session.save(update_fields=["mfa_verified_at"])
+
+    regenerated = post_json(
+        client,
+        "/api/v1/auth/mfa/recovery-codes/regenerate",
+        {},
+        headers=csrf_headers(client),
+    )
+    assert regenerated.status_code == 200
+    generated_codes = regenerated.json()["recovery_codes"]
+    regen_audit = AuditEvent.objects.get(
+        action=AUTH_MFA_RECOVERY_CODES_REGENERATED,
+        actor_user=user,
+    )
+    regen_notification = Notification.objects.get(
+        recipient=user,
+        event_code="security.recovery_codes.regenerated",
+        source_type="audit_event",
+        source_id=regen_audit.pk,
+    )
+    assert regen_notification.policy == "MANDATORY_SECURITY"
+    assert EmailDelivery.objects.filter(notification=regen_notification).exists()
+    assert all(code not in regen_notification.message for code in generated_codes)
+
+    disabled = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/disable",
+        {},
+        headers=csrf_headers(client),
+    )
+    assert disabled.status_code == 200
+    disable_audit = AuditEvent.objects.get(
+        action="auth.mfa.totp.disabled",
+        actor_user=user,
+    )
+    disable_notification = Notification.objects.get(
+        recipient=user,
+        event_code="security.mfa.disabled",
+        source_type="audit_event",
+        source_id=disable_audit.pk,
+    )
+    assert disable_notification.policy == "MANDATORY_SECURITY"
+    assert EmailDelivery.objects.filter(notification=disable_notification).exists()
+    assert str(TOTPFactor.objects.get(user=user).pk) not in disable_notification.message
+
+
+@pytest.mark.django_db
+def test_mfa_login_requires_challenge_and_consumes_recovery_code_once():
+    sync_policy()
+    user = make_user(email="challenge@example.edu")
+    client = Client()
+    assert login(client, email=user.email, password="correct-password").status_code == 200
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
+    parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
+    confirmed = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/confirm",
+        {"code": parsed.now(), "current_password": "correct-password"},
         headers=csrf_headers(client),
     )
     code = confirmed.json()["recovery_codes"][0]
@@ -282,6 +812,17 @@ def test_mfa_login_requires_challenge_and_consumes_recovery_code_once():
     assert client.cookies["compass_login_challenge"]["httponly"] is True
     assert AuthSession.objects.filter(user=user, revoked_at__isnull=True).count() == 0
 
+    failed_totp = post_json(
+        client,
+        "/api/v1/auth/mfa/verify",
+        {"method": "totp", "code": "000000"},
+        headers=csrf_headers(client),
+    )
+    assert failed_totp.status_code == 400
+    assert failed_totp.json()["error"]["code"] == "mfa_failed"
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
+
     completed = post_json(
         client,
         "/api/v1/auth/mfa/verify",
@@ -290,6 +831,9 @@ def test_mfa_login_requires_challenge_and_consumes_recovery_code_once():
     )
     assert completed.status_code == 200
     assert completed.json()["authenticated"] is True
+    assert completed.json()["user"]["role"] == "STUDENT"
+    assert completed.json()["user"]["designations"] == []
+    assert completed.json()["user"]["capabilities"] == sorted(effective_capabilities(user))
     assert AuthSession.objects.get(pk=completed.json()["session_id"]).mfa_verified_at is not None
     recovery = RecoveryCode.objects.get(user=user, used_at__isnull=False)
     assert recovery.used_at is not None
@@ -304,6 +848,8 @@ def test_mfa_login_requires_challenge_and_consumes_recovery_code_once():
     )
     assert reused.status_code == 400
     assert reused.json()["error"]["code"] == "mfa_failed"
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -311,12 +857,17 @@ def test_trusted_browser_satisfies_mfa_only_after_password_and_can_be_used_then_
     user = make_user(email="trusted@example.edu")
     client = Client()
     login(client, email=user.email, password="correct-password")
-    setup = post_json(client, "/api/v1/auth/mfa/totp/setup", {}, headers=csrf_headers(client))
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
     parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
     confirmed = post_json(
         client,
         "/api/v1/auth/mfa/totp/confirm",
-        {"code": parsed.now()},
+        {"code": parsed.now(), "current_password": "correct-password"},
         headers=csrf_headers(client),
     )
     recovery_code = confirmed.json()["recovery_codes"][0]
@@ -344,9 +895,42 @@ def test_trusted_browser_satisfies_mfa_only_after_password_and_can_be_used_then_
     trusted_login = login(client, email=user.email, password="correct-password")
     assert trusted_login.status_code == 200
     assert trusted_login.json()["authenticated"] is True
-    assert (
-        AuthSession.objects.get(pk=trusted_login.json()["session_id"]).mfa_verified_at is not None
+    trusted_login_session = AuthSession.objects.get(pk=trusted_login.json()["session_id"])
+    assert trusted_login_session.mfa_verified_at is None
+    status = client.get("/api/v1/auth/mfa/status")
+    assert status.status_code == 200
+    assert status.json() == {"enabled": True, "recent": False}
+
+    blocked = post_json(
+        client,
+        "/api/v1/auth/mfa/recovery-codes/regenerate",
+        {},
+        headers=csrf_headers(client),
     )
+    assert blocked.status_code == 403
+    assert blocked.json()["error"]["code"] == "recent_mfa_required"
+
+    future = timezone.now() + timedelta(seconds=settings.AUTH_TOTP_INTERVAL_SECONDS)
+    with (
+        patch("compass.authentication.mfa.timezone.now", return_value=future),
+        patch("compass.authentication.sessions.timezone.now", return_value=future),
+    ):
+        verified = post_json(
+            client,
+            "/api/v1/auth/mfa/totp/verify",
+            {"code": parsed.at(future)},
+            headers=csrf_headers(client),
+        )
+        assert verified.status_code == 200
+        assert verified.json() == {"enabled": True, "recent": True}
+
+        allowed = post_json(
+            client,
+            "/api/v1/auth/mfa/recovery-codes/regenerate",
+            {},
+            headers=csrf_headers(client),
+        )
+        assert allowed.status_code == 200
 
     revoke = client.delete(
         f"/api/v1/auth/trusted-sessions/{trusted.pk}",
@@ -355,6 +939,39 @@ def test_trusted_browser_satisfies_mfa_only_after_password_and_can_be_used_then_
     assert revoke.status_code == 200
     assert trusted.__class__.objects.get(pk=trusted.pk).revoked_at is not None
     assert resolve_trusted_session(trusted_raw) is None
+
+
+@pytest.mark.django_db
+def test_failed_step_up_totp_does_not_create_notification_or_email():
+    user = make_user(email="failed-step-up@example.edu")
+    client = Client()
+    assert login(client, email=user.email, password="correct-password").status_code == 200
+    setup = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/setup",
+        {"current_password": "correct-password"},
+        headers=csrf_headers(client),
+    )
+    parsed = pyotp.parse_uri(setup.json()["provisioning_uri"])
+    assert (
+        post_json(
+            client,
+            "/api/v1/auth/mfa/totp/confirm",
+            {"code": parsed.now(), "current_password": "correct-password"},
+            headers=csrf_headers(client),
+        ).status_code
+        == 200
+    )
+
+    failed = post_json(
+        client,
+        "/api/v1/auth/mfa/totp/verify",
+        {"code": "000000"},
+        headers=csrf_headers(client),
+    )
+    assert failed.status_code == 400
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -424,6 +1041,8 @@ def test_email_otp_is_hash_only_bounded_single_use_and_resendable(
     challenge = EmailOTPChallenge.objects.get(pk=issue.challenge.pk)
     assert first_code not in challenge.code_hash
     assert challenge.consumed_at is None
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
 
     consumed = consume_email_otp(
         challenge_id=challenge.pk,
@@ -543,6 +1162,7 @@ def test_recovery_code_invalidation_primitive_only_marks_usable_codes():
     assert usable.invalidated_at == now + timedelta(seconds=1)
 
 
+@pytest.mark.django_db
 def test_authentication_rate_limits_use_shared_redis_limiter_shapes():
     limiter = AllowLimiter()
     check_auth_rate_limit(
@@ -564,6 +1184,8 @@ def test_authentication_rate_limits_use_shared_redis_limiter_shapes():
             user_id="user-id",
             limiter=AllowLimiter(blocked=True),
         )
+    assert Notification.objects.count() == 0
+    assert EmailDelivery.objects.count() == 0
 
 
 @pytest.mark.django_db
@@ -600,3 +1222,45 @@ def test_turnstile_required_login_uses_server_side_verifier_without_persisting_t
             )
             assert accepted.status == "success"
     assert not EmailOTPChallenge.objects.filter(email="valid-token").exists()
+
+
+@pytest.mark.django_db
+def test_authenticated_user_summary_exposes_lifecycle_without_blocking_former_login():
+    student = make_user(email="lifecycle-auth@example.edu")
+    client = Client()
+
+    current = login(client, email=student.email, password="correct-password")
+    assert current.status_code == 200
+    assert current.json()["user"]["student_lifecycle_status"] == "CURRENT"
+    session = client.get("/api/v1/auth/session")
+    assert session.status_code == 200
+    assert session.json()["user"]["student_lifecycle_status"] == "CURRENT"
+
+    for status in (
+        StudentLifecycleStatus.GRADUATED,
+        StudentLifecycleStatus.FORMER,
+    ):
+        student.student_lifecycle_status = status
+        student.save(update_fields=["student_lifecycle_status", "updated_at"])
+        another_client = Client()
+        response = login(
+            another_client,
+            email=student.email,
+            password="correct-password",
+        )
+        assert response.status_code == 200
+        assert response.json()["authenticated"] is True
+        assert response.json()["user"]["student_lifecycle_status"] == status
+
+    counselor = make_user(
+        email="nonstudent-lifecycle-auth@example.edu",
+        role_code="COUNSELOR",
+    )
+    counselor_client = Client()
+    counselor_login = login(
+        counselor_client,
+        email=counselor.email,
+        password="correct-password",
+    )
+    assert counselor_login.status_code == 200
+    assert counselor_login.json()["user"]["student_lifecycle_status"] is None

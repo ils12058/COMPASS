@@ -47,6 +47,14 @@ ROLE_DEFINITIONS = (
         name="Student",
         description="Student account role.",
     ),
+    RoleDefinition(
+        code="INSTITUTIONAL_OFFICER",
+        name="Institutional Officer",
+        description=(
+            "Neutral institutional account role for university-level officers without an "
+            "operational GCO or platform-administration identity."
+        ),
+    ),
 )
 
 DESIGNATION_DEFINITIONS = (
@@ -64,6 +72,56 @@ DESIGNATION_DEFINITIONS = (
 
 CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
+        code="guidance_messages.view_self",
+        name="View own Guidance Messages",
+        description="View own authorized Guidance threads.",
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.manage_self",
+        name="Manage own Guidance Messages",
+        description="Start, send and update private read state for own eligible threads.",
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.view",
+        name="View scoped Guidance Messages",
+        description="View operational Office workload or exact Counselor participant threads.",
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.manage",
+        name="Manage scoped Guidance Messages",
+        description="Send and manage authorized Guidance threads without broadening content scope.",
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.templates.manage",
+        name="Manage Guidance Message templates",
+        description="Create, edit, archive and restore shared generic Message templates.",
+    ),
+    CapabilityDefinition(
+        code="activity.supervised_staff.view",
+        name="View supervised staff activity",
+        description="View selected operational activity within current direct StaffSupervision.",
+    ),
+    CapabilityDefinition(
+        code="privacy_governance.activity.export",
+        name="Export privacy and security activity",
+        description="Export the bounded curated privacy/security activity dataset as CSV.",
+    ),
+    CapabilityDefinition(
+        code="privacy_governance.retention.view",
+        name="View retention and disposition",
+        description="View minimized retention rules, cases, holds, and disposition outcomes.",
+    ),
+    CapabilityDefinition(
+        code="privacy_governance.retention.manage",
+        name="Manage retention rules and holds",
+        description=("Manage operational retention rules and holds without domain access."),
+    ),
+    CapabilityDefinition(
+        code="privacy_governance.retention.approve",
+        name="Approve disposition",
+        description="Authorize a reviewed frozen disposition case with recent MFA.",
+    ),
+    CapabilityDefinition(
         code="accounts.view",
         name="View account identity",
         description="View account identity fields through an authorized COMPASS workflow.",
@@ -74,14 +132,387 @@ CAPABILITY_DEFINITIONS = (
         description="Manage account identity and account status through an authorized workflow.",
     ),
     CapabilityDefinition(
-        code="organization.view",
-        name="View organization",
-        description="View safe organizational structure through an authorized COMPASS workflow.",
+        code="institutional_designations.manage",
+        name="Manage institutional designations",
+        description=(
+            "Record or remove high-trust institutional appointments in COMPASS through an "
+            "authorized account-management workflow."
+        ),
+    ),
+    CapabilityDefinition(
+        code="platform_operations.view",
+        name="View platform operations",
+        description=(
+            "View safe COMPASS platform health, configuration diagnostics, email delivery state, "
+            "technical runtime activity, and maintenance state."
+        ),
+    ),
+    CapabilityDefinition(
+        code="platform_operations.manage",
+        name="Manage platform operations",
+        description=(
+            "Manage controlled COMPASS runtime operations such as Maintenance Mode and eligible "
+            "delivery recovery actions."
+        ),
+    ),
+    CapabilityDefinition(
+        code="privacy_governance.view",
+        name="View privacy governance",
+        description=(
+            "View COMPASS Privacy Notices and curated privacy/security oversight activity."
+        ),
+    ),
+    CapabilityDefinition(
+        code="privacy_governance.manage",
+        name="Manage privacy governance",
+        description="Manage COMPASS Privacy Notices.",
+    ),
+    CapabilityDefinition(
+        code="organization.structure.view",
+        name="View organizational structure",
+        description=(
+            "View safe Campus, College, and Program structure through authorized COMPASS workflows."
+        ),
     ),
     CapabilityDefinition(
         code="organization.manage",
         name="Manage organization",
         description="Manage organizational routing and responsibility configuration.",
+    ),
+    CapabilityDefinition(
+        code="academic_years.view",
+        name="View academic years",
+        description="View institution-wide Academic Year configuration.",
+    ),
+    CapabilityDefinition(
+        code="academic_years.manage",
+        name="Manage academic years",
+        description="Create and select the institution-wide current Academic Year.",
+    ),
+    CapabilityDefinition(
+        code="institutional_forms.view",
+        name="View institutional form metadata",
+        description="View recorded QMS-issued institutional Form Family and Revision metadata.",
+    ),
+    CapabilityDefinition(
+        code="services.catalog.view",
+        name="View service catalog",
+        description=(
+            "View the active Guidance and Counseling Office service catalog through authorized "
+            "COMPASS workflows."
+        ),
+    ),
+    CapabilityDefinition(
+        code="services.manage",
+        name="Manage service catalog",
+        description="Manage Guidance and Counseling Office service catalog configuration.",
+    ),
+    CapabilityDefinition(
+        code="availability.view",
+        name="View availability",
+        description="View effective provider Availability through authorized workflows.",
+    ),
+    CapabilityDefinition(
+        code="availability.manage",
+        name="Manage availability",
+        description="Administratively manage Office and provider Availability configuration.",
+    ),
+    CapabilityDefinition(
+        code="availability.manage_self",
+        name="Manage own availability",
+        description="Manage the authenticated Counselor's own provider Availability.",
+    ),
+    CapabilityDefinition(
+        code="appointments.view_self",
+        name="View own appointments",
+        description="View Appointments assigned to the authenticated Student or Provider.",
+    ),
+    CapabilityDefinition(
+        code="appointments.manage_self",
+        name="Manage own appointments",
+        description="Create and cancel the authenticated Student's own Appointment reservations.",
+    ),
+    CapabilityDefinition(
+        code="appointments.manage",
+        name="Manage appointments",
+        description="Manage Guidance-office Appointment reservations operationally.",
+    ),
+    CapabilityDefinition(
+        code="counseling.view_assigned",
+        name="View assigned counseling encounters",
+        description="View Counseling Encounters assigned to the authenticated Counselor.",
+    ),
+    CapabilityDefinition(
+        code="counseling.manage_assigned",
+        name="Manage assigned counseling encounters",
+        description=(
+            "Create and correct Counseling Encounters assigned to the authenticated Counselor."
+        ),
+    ),
+    CapabilityDefinition(
+        code="shared_summaries.view_self",
+        name="View own shared counseling summaries",
+        description="View published Counseling Shared Summaries belonging to the Student.",
+    ),
+    CapabilityDefinition(
+        code="shared_summaries.view_assigned",
+        name="View assigned shared counseling summaries",
+        description="View Shared Summaries for Counseling Encounters assigned to the Counselor.",
+    ),
+    CapabilityDefinition(
+        code="shared_summaries.manage_assigned",
+        name="Manage assigned shared counseling summaries",
+        description="Draft and publish Shared Summaries for assigned Counseling Encounters.",
+    ),
+    CapabilityDefinition(
+        code="inventory.view_self",
+        name="View own individual inventory",
+        description="View the authenticated Student's own annual Individual Inventory records.",
+    ),
+    CapabilityDefinition(
+        code="inventory.manage_self",
+        name="Manage own individual inventory",
+        description="Create, edit, and submit the authenticated Student's current Inventory.",
+    ),
+    CapabilityDefinition(
+        code="inventory.view",
+        name="View submitted individual inventories",
+        description=(
+            "View submitted Student Individual Inventory records through an authorized "
+            "Guidance workflow."
+        ),
+    ),
+    CapabilityDefinition(
+        code="inventory.reopen",
+        name="Reopen individual inventories",
+        description=("Reopen an eligible submitted Individual Inventory for Student correction."),
+    ),
+    CapabilityDefinition(
+        code="assessment_records.view",
+        name="View Assessment Records",
+        description="View authorized structural and confidential institutional assessment records.",
+    ),
+    CapabilityDefinition(
+        code="assessment_records.manage",
+        name="Manage Assessment Records",
+        description="Record and correct authorized institutional assessment facts.",
+    ),
+    CapabilityDefinition(
+        code="student_support.view",
+        name="View Student Support context",
+        description=(
+            "View privacy-minimized Student Support indicators within authorized Guidance scope."
+        ),
+    ),
+    CapabilityDefinition(
+        code="reports.view",
+        name="View aggregate reports",
+        description="View privacy-bounded aggregate Guidance and Counseling Office reports.",
+    ),
+    CapabilityDefinition(
+        code="exit_interviews.view_self",
+        name="View own Exit Interviews",
+        description="View the authenticated Student's own Exit Interview records.",
+    ),
+    CapabilityDefinition(
+        code="exit_interviews.manage_self",
+        name="Manage own Exit Interview",
+        description="Create, edit, and submit the authenticated Student's Exit Interview.",
+    ),
+    CapabilityDefinition(
+        code="exit_interviews.view",
+        name="View Exit Interviews",
+        description="View identifiable Exit Interview records for Head Guidance oversight.",
+    ),
+    CapabilityDefinition(
+        code="exit_interviews.reopen",
+        name="Reopen Exit Interviews",
+        description="Reopen a submitted Exit Interview for controlled Student correction.",
+    ),
+    CapabilityDefinition(
+        code="exit_interviews.manage_opportunities",
+        name="Manage Exit Interview opportunities",
+        description="Open and revoke Student Exit Interview admission without reading responses.",
+    ),
+    CapabilityDefinition(
+        code="routine_interviews.view_self",
+        name="View own routine interviews",
+        description="View the authenticated Student's own Routine Interview records.",
+    ),
+    CapabilityDefinition(
+        code="routine_interviews.manage_self",
+        name="Manage own routine interview intake",
+        description=(
+            "Create, edit, and submit the authenticated Student's Routine Interview Intake."
+        ),
+    ),
+    CapabilityDefinition(
+        code="routine_interviews.view_assigned",
+        name="View assigned routine interviews",
+        description="View Routine Interviews assigned to the authenticated Counselor.",
+    ),
+    CapabilityDefinition(
+        code="routine_interviews.manage_assigned",
+        name="Manage assigned routine interviews",
+        description="Create direct Routine Interviews and manage assigned Counselor Evaluations.",
+    ),
+    CapabilityDefinition(
+        code="referrals.view",
+        name="View scoped referrals",
+        description=(
+            "View Referral records within the authenticated Guidance actor's resource scope."
+        ),
+    ),
+    CapabilityDefinition(
+        code="referrals.manage",
+        name="Manage scoped referrals",
+        description=(
+            "Create and manage Referral records within the Guidance actor's resource scope."
+        ),
+    ),
+    CapabilityDefinition(
+        code="call_slips.view",
+        name="View scoped Call Slips",
+        description=(
+            "View Call Slip records within the authenticated Guidance actor's resource scope."
+        ),
+    ),
+    CapabilityDefinition(
+        code="call_slips.manage",
+        name="Manage scoped Call Slips",
+        description=(
+            "Create and complete Call Slip records within the Guidance actor's resource scope."
+        ),
+    ),
+    CapabilityDefinition(
+        code="call_slips.view_self",
+        name="View own Call Slips",
+        description="View the authenticated Student's own Call Slip records.",
+    ),
+    CapabilityDefinition(
+        code="good_moral.view_self",
+        name="View own Good Moral requests",
+        description=(
+            "View the authenticated Student's own Good Moral requests and issued certificates."
+        ),
+    ),
+    CapabilityDefinition(
+        code="good_moral.request_self",
+        name="Request own Good Moral certificate",
+        description="Initiate an eligible Good Moral request for the authenticated Student.",
+    ),
+    CapabilityDefinition(
+        code="good_moral.view",
+        name="View Good Moral requests",
+        description="View identifiable Good Moral requests in the GCO operational queue.",
+    ),
+    CapabilityDefinition(
+        code="good_moral.manage",
+        name="Manage Good Moral requests",
+        description="Correct certificate-local Good Moral request facts before issuance.",
+    ),
+    CapabilityDefinition(
+        code="good_moral.prepare",
+        name="Prepare Good Moral requests",
+        description="Correct clerical certificate facts and mark Good Moral requests ready.",
+    ),
+    CapabilityDefinition(
+        code="good_moral.issue",
+        name="Issue Good Moral certificates",
+        description="Issue source-controlled Good Moral certificates as an authorized Counselor.",
+    ),
+    CapabilityDefinition(
+        code="feedback.submit_customer_feedback",
+        name="Submit Customer Feedback",
+        description="Submit the authenticated Student's Customer Feedback Form response.",
+    ),
+    CapabilityDefinition(
+        code="feedback.view_customer_feedback",
+        name="View Customer Feedback",
+        description="View identifiable Customer Feedback responses for Head Guidance oversight.",
+    ),
+    CapabilityDefinition(
+        code="feedback.submit_csm",
+        name="Submit Client Satisfaction Measurement",
+        description="Submit the authenticated Student's Client Satisfaction Measurement response.",
+    ),
+    CapabilityDefinition(
+        code="feedback.view_csm",
+        name="View Client Satisfaction Measurement",
+        description=(
+            "View raw Client Satisfaction Measurement responses for Head Guidance oversight."
+        ),
+    ),
+    CapabilityDefinition(
+        code="graduate_tracer.view_self",
+        name="View own Graduate Tracer response",
+        description="View the authenticated Student's own Graduate Tracer response.",
+    ),
+    CapabilityDefinition(
+        code="graduate_tracer.manage_self",
+        name="Manage own Graduate Tracer response",
+        description=(
+            "Create, edit, and submit the eligible Graduate's own Graduate Tracer response."
+        ),
+    ),
+    CapabilityDefinition(
+        code="graduate_tracer.view",
+        name="View Graduate Tracer responses",
+        description="View submitted Graduate Tracer responses for Head Guidance oversight.",
+    ),
+    CapabilityDefinition(
+        code="announcements.manage",
+        name="Manage GCO announcements",
+        description=(
+            "Create, edit, publish, pin, and archive Guidance and Counseling Office Announcements."
+        ),
+    ),
+    CapabilityDefinition(
+        code="resources.manage",
+        name="Manage curated GCO resources",
+        description=(
+            "Create, edit, publish, order, and archive curated Guidance and Counseling Office "
+            "Resources."
+        ),
+    ),
+    CapabilityDefinition(
+        code="ecounseling.view_self",
+        name="View own E-Counseling workspace",
+        description="View the authenticated Student's own eligible E-Counseling workspace.",
+    ),
+    CapabilityDefinition(
+        code="ecounseling.join_self",
+        name="Join own E-Counseling session",
+        description="Receive a short-lived join credential for the Student's own eligible session.",
+    ),
+    CapabilityDefinition(
+        code="ecounseling.consent_self",
+        name="Decide own E-Counseling media consent",
+        description=(
+            "View, decide, and withdraw the authenticated Student's session-specific media consent."
+        ),
+    ),
+    CapabilityDefinition(
+        code="ecounseling.view_assigned",
+        name="View assigned E-Counseling workspace",
+        description="View E-Counseling workspaces assigned to the authenticated Counselor.",
+    ),
+    CapabilityDefinition(
+        code="ecounseling.join_assigned",
+        name="Join assigned E-Counseling session",
+        description="Receive a short-lived join credential for the Counselor's assigned session.",
+    ),
+    CapabilityDefinition(
+        code="ecounseling.access_media_assigned",
+        name="Access assigned E-Counseling media",
+        description="Download stored media for the Counselor's assigned E-Counseling sessions.",
+    ),
+    CapabilityDefinition(
+        code="ecounseling.manage_media_assigned",
+        name="Manage assigned E-Counseling media",
+        description=(
+            "Request consent and control provider media capture for assigned E-Counseling sessions."
+        ),
     ),
 )
 
@@ -90,24 +521,248 @@ CAPABILITY_DEFINITIONS = (
 # concerns and are intentionally not implied by these grants.
 ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     "IT_ADMIN": frozenset(
-        {"accounts.view", "accounts.manage", "organization.view", "organization.manage"}
+        {
+            "accounts.view",
+            "accounts.manage",
+            "institutional_designations.manage",
+            "platform_operations.view",
+            "platform_operations.manage",
+            "organization.structure.view",
+            "organization.manage",
+            "services.catalog.view",
+            "services.manage",
+            "availability.view",
+            "availability.manage",
+        }
     ),
-    "COUNSELOR": frozenset({"accounts.view", "organization.view"}),
-    "GUIDANCE_SERVICES_STAFF": frozenset({"accounts.view", "organization.view"}),
-    "STUDENT": frozenset({"accounts.view", "organization.view"}),
+    "COUNSELOR": frozenset(
+        {
+            "guidance_messages.view",
+            "guidance_messages.manage",
+            "guidance_messages.templates.manage",
+            "activity.supervised_staff.view",
+            "accounts.view",
+            "organization.structure.view",
+            "academic_years.view",
+            "institutional_forms.view",
+            "services.catalog.view",
+            "availability.view",
+            "availability.manage_self",
+            "appointments.view_self",
+            "appointments.manage",
+            "inventory.view",
+            "inventory.reopen",
+            "counseling.view_assigned",
+            "counseling.manage_assigned",
+            "student_support.view",
+            "reports.view",
+            "shared_summaries.view_assigned",
+            "shared_summaries.manage_assigned",
+            "routine_interviews.view_assigned",
+            "routine_interviews.manage_assigned",
+            "referrals.view",
+            "referrals.manage",
+            "call_slips.view",
+            "call_slips.manage",
+            "good_moral.view",
+            "good_moral.manage",
+            "good_moral.prepare",
+            "good_moral.issue",
+            "announcements.manage",
+            "resources.manage",
+            "ecounseling.view_assigned",
+            "ecounseling.join_assigned",
+            "ecounseling.manage_media_assigned",
+            "ecounseling.access_media_assigned",
+        }
+    ),
+    "GUIDANCE_SERVICES_STAFF": frozenset(
+        {
+            "guidance_messages.view",
+            "guidance_messages.manage",
+            "guidance_messages.templates.manage",
+            "accounts.view",
+            "organization.structure.view",
+            "academic_years.view",
+            "institutional_forms.view",
+            "services.catalog.view",
+            "availability.view",
+            "appointments.view_self",
+            "appointments.manage",
+            "referrals.view",
+            "referrals.manage",
+            "call_slips.view",
+            "call_slips.manage",
+            "good_moral.view",
+            "good_moral.prepare",
+            "exit_interviews.manage_opportunities",
+            "announcements.manage",
+            "resources.manage",
+        }
+    ),
+    "STUDENT": frozenset(
+        {
+            "guidance_messages.view_self",
+            "guidance_messages.manage_self",
+            "accounts.view",
+            "organization.structure.view",
+            "services.catalog.view",
+            "availability.view",
+            "appointments.view_self",
+            "appointments.manage_self",
+            "inventory.view_self",
+            "inventory.manage_self",
+            "exit_interviews.view_self",
+            "exit_interviews.manage_self",
+            "routine_interviews.view_self",
+            "routine_interviews.manage_self",
+            "ecounseling.view_self",
+            "ecounseling.join_self",
+            "ecounseling.consent_self",
+            "shared_summaries.view_self",
+            "call_slips.view_self",
+            "good_moral.view_self",
+            "good_moral.request_self",
+            "feedback.submit_customer_feedback",
+            "feedback.submit_csm",
+            "graduate_tracer.view_self",
+            "graduate_tracer.manage_self",
+        }
+    ),
+    "INSTITUTIONAL_OFFICER": frozenset(),
 }
 
-# No designation currently adds account-foundation authority. The relationship is still modeled
-# explicitly so later domain policy can grant designation-specific capabilities without turning a
-# designation into a role.
+# Designations add only the explicitly confirmed domain authorities below. Head Guidance remains
+# a Counselor for confidential Counseling records and receives no blanket Counseling-content grant.
 DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
-    "HEAD_GUIDANCE_COUNSELOR": frozenset({"organization.manage"}),
-    "DPO": frozenset(),
+    "HEAD_GUIDANCE_COUNSELOR": frozenset(
+        {
+            "assessment_records.view",
+            "assessment_records.manage",
+            "organization.manage",
+            "services.manage",
+            "availability.manage",
+            "appointments.manage",
+            "academic_years.view",
+            "academic_years.manage",
+            "institutional_forms.view",
+            "exit_interviews.view",
+            "exit_interviews.reopen",
+            "exit_interviews.manage_opportunities",
+            "feedback.view_customer_feedback",
+            "feedback.view_csm",
+            "graduate_tracer.view",
+            "reports.view",
+        }
+    ),
+    "DPO": frozenset(
+        {
+            "privacy_governance.activity.export",
+            "privacy_governance.retention.view",
+            "privacy_governance.retention.manage",
+            "privacy_governance.retention.approve",
+            "privacy_governance.view",
+            "privacy_governance.manage",
+        }
+    ),
+}
+
+DESIGNATION_ROLE_COMPATIBILITY: dict[str, frozenset[str]] = {
+    "HEAD_GUIDANCE_COUNSELOR": frozenset({"COUNSELOR"}),
+    "DPO": frozenset({"INSTITUTIONAL_OFFICER"}),
 }
 
 ROLE_CODES = frozenset(definition.code for definition in ROLE_DEFINITIONS)
 DESIGNATION_CODES = frozenset(definition.code for definition in DESIGNATION_DEFINITIONS)
 CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINITIONS)
+
+# Dependencies constrain whether already-granted authority is effective. They never
+# create prerequisite authority or rewrite persisted grants/overrides.
+CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
+    "assessment_records.manage": frozenset({"assessment_records.view"}),
+    "guidance_messages.manage_self": frozenset({"guidance_messages.view_self"}),
+    "guidance_messages.manage": frozenset({"guidance_messages.view"}),
+    "guidance_messages.templates.manage": frozenset({"guidance_messages.manage"}),
+    "privacy_governance.activity.export": frozenset({"privacy_governance.view"}),
+    "privacy_governance.retention.manage": frozenset({"privacy_governance.retention.view"}),
+    "privacy_governance.retention.approve": frozenset({"privacy_governance.retention.view"}),
+    "routine_interviews.manage_self": frozenset({"routine_interviews.view_self"}),
+    "routine_interviews.manage_assigned": frozenset({"routine_interviews.view_assigned"}),
+    "exit_interviews.manage_self": frozenset({"exit_interviews.view_self"}),
+    "exit_interviews.reopen": frozenset({"exit_interviews.view"}),
+    "exit_interviews.manage_opportunities": frozenset({"accounts.view"}),
+    "graduate_tracer.manage_self": frozenset({"graduate_tracer.view_self"}),
+    "good_moral.request_self": frozenset({"good_moral.view_self"}),
+    "good_moral.manage": frozenset({"good_moral.view"}),
+    "good_moral.prepare": frozenset({"good_moral.view"}),
+    "good_moral.issue": frozenset({"good_moral.view"}),
+    "ecounseling.access_media_assigned": frozenset({"ecounseling.view_assigned"}),
+    "counseling.manage_assigned": frozenset({"counseling.view_assigned"}),
+    "referrals.manage": frozenset({"referrals.view"}),
+    "call_slips.manage": frozenset({"call_slips.view"}),
+    "availability.manage_self": frozenset({"availability.view"}),
+    "privacy_governance.manage": frozenset({"privacy_governance.view"}),
+    "platform_operations.manage": frozenset({"platform_operations.view"}),
+}
+
+
+def required_capabilities(capability_code: str) -> frozenset[str]:
+    """Return direct canonical prerequisites for one capability."""
+
+    return CAPABILITY_DEPENDENCIES.get(capability_code, frozenset())
+
+
+def resolve_capability_dependencies(candidate_codes) -> frozenset[str]:
+    """Return the largest dependency-coherent canonical subset."""
+
+    effective = set(candidate_codes) & CAPABILITY_CODES
+    while True:
+        blocked = {code for code in effective if not required_capabilities(code) <= effective}
+        if not blocked:
+            return frozenset(effective)
+        effective.difference_update(blocked)
+
+
+def missing_required_capabilities(
+    capability_code: str,
+    resolved_effective,
+) -> frozenset[str]:
+    """Return direct prerequisites unavailable in one resolved authority set."""
+
+    return required_capabilities(capability_code) - set(resolved_effective)
+
+
+def _validate_dependency_graph() -> None:
+    for capability_code, requirements in CAPABILITY_DEPENDENCIES.items():
+        if capability_code not in CAPABILITY_CODES:
+            raise RuntimeError(
+                f"capability dependency references unknown capability: {capability_code}"
+            )
+        if capability_code in requirements:
+            raise RuntimeError(f"capability cannot require itself: {capability_code}")
+        unknown = requirements - CAPABILITY_CODES
+        if unknown:
+            raise RuntimeError(
+                f"capability dependency for {capability_code} references unknown requirements: "
+                f"{sorted(unknown)}"
+            )
+
+    visiting: set[str] = set()
+    visited: set[str] = set()
+
+    def visit(capability_code: str) -> None:
+        if capability_code in visited:
+            return
+        if capability_code in visiting:
+            raise RuntimeError(f"capability dependency graph contains a cycle at {capability_code}")
+        visiting.add(capability_code)
+        for requirement in required_capabilities(capability_code):
+            visit(requirement)
+        visiting.remove(capability_code)
+        visited.add(capability_code)
+
+    for capability_code in CAPABILITY_DEPENDENCIES:
+        visit(capability_code)
 
 
 def _validate_policy() -> None:
@@ -120,9 +775,42 @@ def _validate_policy() -> None:
     for role_code, capability_codes in ROLE_CAPABILITY_GRANTS.items():
         if role_code not in ROLE_CODES or not capability_codes <= CAPABILITY_CODES:
             raise RuntimeError(f"invalid role capability policy for {role_code}")
+    if set(DESIGNATION_ROLE_COMPATIBILITY) != DESIGNATION_CODES:
+        raise RuntimeError(
+            "designation compatibility policy must define every canonical designation exactly once"
+        )
     for designation_code, capability_codes in DESIGNATION_CAPABILITY_GRANTS.items():
         if designation_code not in DESIGNATION_CODES or not capability_codes <= CAPABILITY_CODES:
             raise RuntimeError(f"invalid designation capability policy for {designation_code}")
+    for designation_code, role_codes in DESIGNATION_ROLE_COMPATIBILITY.items():
+        if designation_code not in DESIGNATION_CODES or not role_codes:
+            raise RuntimeError(f"invalid designation compatibility policy for {designation_code}")
+        if not role_codes <= ROLE_CODES:
+            raise RuntimeError(
+                f"designation compatibility references unknown role for {designation_code}"
+            )
+
+    _validate_dependency_graph()
+
+    for role_code, grants in ROLE_CAPABILITY_GRANTS.items():
+        if resolve_capability_dependencies(grants) != grants:
+            raise RuntimeError(f"role baseline violates capability dependencies for {role_code}")
+
+    for designation_code, designation_grants in DESIGNATION_CAPABILITY_GRANTS.items():
+        for role_code in DESIGNATION_ROLE_COMPATIBILITY[designation_code]:
+            combined = ROLE_CAPABILITY_GRANTS[role_code] | designation_grants
+            if resolve_capability_dependencies(combined) != combined:
+                raise RuntimeError(
+                    "designation baseline violates capability dependencies for "
+                    f"{designation_code} with {role_code}"
+                )
+
+
+def designation_role_compatible(*, designation_code: str, role_code: str) -> bool:
+    if designation_code not in DESIGNATION_CODES or role_code not in ROLE_CODES:
+        return False
+    allowed_roles = DESIGNATION_ROLE_COMPATIBILITY.get(designation_code)
+    return allowed_roles is not None and role_code in allowed_roles
 
 
 _validate_policy()

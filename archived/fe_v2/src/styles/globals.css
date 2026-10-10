@@ -1,0 +1,185 @@
+@import "tailwindcss";
+@import "./tokens.css";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+@import "./landing.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    border-color: var(--compass-border);
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    min-height: 100%;
+    background: var(--compass-body);
+    @apply font-sans;
+  }
+
+  body {
+    min-height: 100%;
+    margin: 0;
+    background: var(--compass-body);
+    color: var(--compass-ink);
+    font-family: var(--compass-font-ui);
+    line-height: var(--compass-line-height);
+    @apply bg-background text-foreground;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--compass-ink);
+    font-family: var(--compass-font-heading);
+    font-weight: var(--compass-heading-weight);
+    line-height: var(--compass-line-height-compact);
+  }
+
+  a {
+    color: var(--compass-brand-maroon);
+  }
+
+  a:hover {
+    color: var(--compass-brand-maroon-strong);
+  }
+
+  :focus-visible {
+    outline: var(--compass-focus-width) solid var(--compass-focus-color);
+    outline-offset: var(--compass-focus-offset);
+  }
+
+  ::selection {
+    background: var(--compass-support-soft);
+    color: var(--compass-ink);
+  }
+
+  button,
+  input {
+    font: inherit;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline-color: CanvasText;
+  }
+}
+
+html[data-compass-text-size="large"] {
+  font-size: 112.5%;
+}
+
+html[data-compass-text-size="extra-large"] {
+  font-size: 125%;
+}
+
+html[data-compass-spacing="relaxed"] body {
+  line-height: 1.8;
+}
+
+html[data-compass-spacing="relaxed"] :where(p, li, blockquote, dd, dt, label) {
+  letter-spacing: 0.025em;
+  word-spacing: 0.08em;
+  line-height: 1.8;
+}
+
+html[data-compass-underline-links="true"] a:not(.no-underline) {
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.09em;
+  text-underline-offset: 0.18em;
+}
+
+html[data-compass-motion="reduced"] *,
+html[data-compass-motion="reduced"] *::before,
+html[data-compass-motion="reduced"] *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+html[data-compass-status-banner="visible"] body {
+  padding-bottom: calc(
+    var(--compass-status-banner-height) + env(safe-area-inset-bottom)
+  );
+}
+
+.compass-navigation-progress {
+  position: fixed;
+  z-index: 80;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 0.2rem;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.portal-dock {
+  bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+html[data-compass-service-status="offline"] .portal-dock,
+html[data-compass-service-status="unavailable"] .portal-dock,
+html[data-compass-service-status="maintenance_active"] .portal-dock {
+  bottom: calc(6.5rem + env(safe-area-inset-bottom));
+}
+
+.portal-shell__main {
+  padding-bottom: calc(7.5rem + env(safe-area-inset-bottom));
+}
+
+@media (min-width: 48rem) {
+  .portal-shell__main {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom));
+  }
+}
+
+.compass-navigation-progress::after {
+  display: block;
+  width: 36%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--compass-brand-gold);
+  box-shadow: 0 0 0.65rem color-mix(in srgb, var(--compass-brand-gold) 65%, transparent);
+  content: "";
+  animation: compass-navigation-progress 1s ease-in-out infinite;
+}
+
+@keyframes compass-navigation-progress {
+  0% {
+    transform: translateX(-110%);
+  }
+
+  55% {
+    transform: translateX(170%);
+  }
+
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compass-navigation-progress::after {
+    animation: none;
+    transform: translateX(170%);
+  }
+}

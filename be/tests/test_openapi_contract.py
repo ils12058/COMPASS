@@ -8,6 +8,7 @@ import pytest
 from django.core.management import call_command
 from django.core.management.base import CommandError
 
+from compass.accounts.policy import CAPABILITY_CODES
 from compass.api.contract import (
     CURRENT_API_TAGS,
     OPERATION_ID_PATTERN,
@@ -20,18 +21,99 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
+    "assessmentRecordsList",
+    "assessmentRecordsCreate",
+    "assessmentRecordsGet",
+    "assessmentRecordsUpdate",
+    "assessmentRecordsListTypes",
+    "assessmentRecordsCreateType",
+    "assessmentRecordsUpdateType",
+    "assessmentRecordsEligibleStudents",
+    "workQueueList",
+    "studentActionsList",
+    "guidanceOperationsGet",
+    "guidanceMessagesListThreads",
+    "guidanceMessagesRecipientOptions",
+    "guidanceMessagesEligibleStudents",
+    "guidanceMessagesOpenMyOfficeThread",
+    "guidanceMessagesOpenStudentOfficeThread",
+    "guidanceMessagesOpenCounselingThread",
+    "guidanceMessagesGetAppointmentContext",
+    "guidanceMessagesGetThread",
+    "guidanceMessagesListMessages",
+    "guidanceMessagesSendMessage",
+    "guidanceMessagesMarkRead",
+    "guidanceMessagesResolveThread",
+    "guidanceMessagesReopenThread",
+    "guidanceMessagesAssignHandler",
+    "guidanceMessagesListEligibleHandlers",
+    "guidanceMessagesListTemplates",
+    "guidanceMessagesCreateTemplate",
+    "guidanceMessagesUpdateTemplate",
+    "guidanceMessagesArchiveTemplate",
+    "guidanceMessagesRestoreTemplate",
+    "privacyGovernanceRetentionCategories",
+    "privacyGovernanceListRetentionRules",
+    "privacyGovernanceCreateRetentionRule",
+    "privacyGovernanceGetRetentionRule",
+    "privacyGovernanceUpdateRetentionRule",
+    "privacyGovernanceActivateRetentionRule",
+    "privacyGovernanceRetireRetentionRule",
+    "privacyGovernanceRetentionSummary",
+    "privacyGovernanceListDispositionCases",
+    "privacyGovernanceGetDispositionCase",
+    "privacyGovernancePlaceDispositionHold",
+    "privacyGovernanceReleaseDispositionHold",
+    "privacyGovernanceApproveDispositionCase",
+    "privacyGovernanceRetryDispositionCase",
     "healthLive",
+    "systemMetadata",
     "healthReady",
+    "platformPublicStatus",
+    "platformOperationsHealth",
+    "platformOperationsWorkerSmoke",
+    "platformOperationsEnvironment",
+    "platformOperationsGetMaintenance",
+    "platformOperationsEnableMaintenance",
+    "platformOperationsDisableMaintenance",
+    "platformOperationsScheduleMaintenance",
+    "platformOperationsCancelMaintenanceSchedule",
+    "platformOperationsGetEmailDeliverySummary",
+    "platformOperationsListEmailDeliveries",
+    "platformOperationsRetryEmailDelivery",
+    "platformOperationsListActivity",
+    "privacyGovernanceListActivity",
+    "privacyGovernanceExportActivity",
+    "privacyGovernanceListNotices",
+    "privacyGovernanceCreateNotice",
+    "privacyGovernanceGetNotice",
+    "privacyGovernanceUpdateNotice",
+    "privacyGovernanceRetireNotice",
+    "privacyGovernanceListNoticeRevisions",
+    "privacyGovernanceCreateNoticeRevision",
+    "privacyGovernanceGetNoticeRevision",
+    "privacyGovernanceUpdateNoticeRevision",
+    "privacyGovernancePublishNoticeRevision",
+    "privacyGovernanceListMyNotices",
+    "privacyGovernanceAcknowledgeMyNotice",
+    "privacyGovernanceListPublicNotices",
     "authGetCsrf",
+    "authRequestEmailChangeSecurityChallenge",
+    "authRequestEmailChange",
+    "authConfirmEmailChange",
     "authLogin",
     "authRequestPasswordAccess",
     "authConfirmPasswordAccess",
+    "authChangePassword",
     "authVerifyLoginMfa",
     "authLogout",
     "authGetSession",
+    "authGetMfaStatus",
     "authListSessions",
     "authRevokeOtherSessions",
     "authRevokeSession",
+    "authStartMandatoryTotpBootstrap",
+    "authConfirmMandatoryTotpBootstrap",
     "authStartTotpSetup",
     "authConfirmTotpSetup",
     "authVerifyTotp",
@@ -41,14 +123,24 @@ EXPECTED_OPERATION_IDS = {
     "authRevokeOtherTrustedSessions",
     "authRevokeTrustedSession",
     "meListActivity",
+    "meListSupervisedStaff",
+    "meListSupervisedStaffActivity",
     "meListSecurityActivity",
+    "profileGetMyProfile",
+    "profileUpdateMyProfile",
+    "profileSetMyPhoto",
+    "profileRemoveMyPhoto",
     "accountsList",
     "accountsCreate",
+    "accountsImportCsv",
     "accountsGet",
+    "accountsGetEffectiveAccess",
     "accountsUpdateIdentity",
+    "accountsRequestEmailChange",
     "accountsDisable",
     "accountsEnable",
     "accountsChangeRole",
+    "accountsUpdateStudentLifecycle",
     "accountsListDesignations",
     "accountsAssignDesignation",
     "accountsRemoveDesignation",
@@ -59,17 +151,11 @@ EXPECTED_OPERATION_IDS = {
     "accountsRevokeTrustedSessions",
     "accountsResetMfa",
     "organizationListCampuses",
-    "organizationCreateCampus",
     "organizationGetCampus",
-    "organizationUpdateCampus",
-    "organizationEnableCampus",
-    "organizationDisableCampus",
     "organizationListColleges",
-    "organizationCreateCollege",
     "organizationGetCollege",
-    "organizationUpdateCollege",
-    "organizationEnableCollege",
-    "organizationDisableCollege",
+    "organizationListPrograms",
+    "organizationGetProgram",
     "organizationListCounselorResponsibilities",
     "organizationSetCollegeCounselor",
     "organizationRemoveCollegeCounselor",
@@ -80,6 +166,224 @@ EXPECTED_OPERATION_IDS = {
     "organizationSetStudentAffiliation",
     "organizationRemoveStudentAffiliation",
     "organizationListEligiblePeople",
+    "servicesList",
+    "servicesCreate",
+    "servicesGet",
+    "servicesUpdate",
+    "servicesEnable",
+    "servicesDisable",
+    "servicesListProviderCandidates",
+    "servicesGetProviders",
+    "availabilityGetOfficeWeekly",
+    "availabilityReplaceOfficeWeekly",
+    "availabilityListOfficeExceptions",
+    "availabilityCreateOfficeException",
+    "availabilityRemoveOfficeException",
+    "availabilityGetMyWeekly",
+    "availabilityReplaceMyWeekly",
+    "availabilityListMyExceptions",
+    "availabilityCreateMyException",
+    "availabilityRemoveMyException",
+    "availabilityListProviders",
+    "availabilityGetProvider",
+    "availabilityGetProviderWeekly",
+    "availabilityReplaceProviderWeekly",
+    "availabilityListProviderExceptions",
+    "availabilityCreateProviderException",
+    "availabilityRemoveProviderException",
+    "availabilityGetProviderEffective",
+    "appointmentsListBookingServices",
+    "appointmentsCreateMy",
+    "appointmentsListMy",
+    "appointmentsListManaged",
+    "appointmentsGet",
+    "appointmentsCancel",
+    "appointmentsReschedule",
+    "appointmentsReassign",
+    "appointmentsComplete",
+    "appointmentsMarkNoShow",
+    "appointmentsGetHistory",
+    "appointmentsListEligibleCounselors",
+    "appointmentsListBookableSlots",
+    "appointmentsListRescheduleSlots",
+    "appointmentsListReassignmentCandidates",
+    "counselingCreateEncounter",
+    "counselingGetEncounterCreationOptions",
+    "counselingListAppointmentCandidates",
+    "counselingListEncounterAppointmentCandidates",
+    "counselingListMyEncounters",
+    "counselingGetEncounter",
+    "counselingUpdateEncounter",
+    "counselingListStudents",
+    "counselingGetAssignedSharedSummary",
+    "counselingPutAssignedSharedSummary",
+    "counselingPublishAssignedSharedSummary",
+    "counselingListMySharedSummaries",
+    "counselingGetMySharedSummary",
+    "counselingContextGetOverview",
+    "counselingContextGetSupportIndicators",
+    "counselingContextGetInventory",
+    "counselingContextListHistory",
+    "counselingContextListSharedSummaries",
+    "academicYearsList",
+    "academicYearsCreate",
+    "academicYearsSetCurrent",
+    "institutionalFormsList",
+    "institutionalFormsRevisionsList",
+    "inventoryGetMyStatus",
+    "inventoryGetMyCurrent",
+    "inventoryEnsureMyCurrent",
+    "inventoryUpdateMyCurrent",
+    "inventorySubmitMyCurrent",
+    "inventoryListMyHistory",
+    "inventoryGetMyHistoryItem",
+    "inventoryDownloadMyPdf",
+    "inventoryListStudents",
+    "inventoryListStudentHistory",
+    "inventoryGetRecord",
+    "inventoryDownloadRecordPdf",
+    "inventoryReopenRecord",
+    "referenceDataListPSGCRegions",
+    "referenceDataListPSGCProvinces",
+    "referenceDataListPSGCCitiesMunicipalities",
+    "referenceDataListPSGCBarangays",
+    "studentSupportGetContext",
+    "reportsGetScope",
+    "overviewGetSummary",
+    "reportsGetStudentProfile",
+    "reportsDownloadStudentProfilePdf",
+    "reportsDownloadStudentProfileXlsx",
+    "reportsGetGraduateTracer",
+    "reportsDownloadGraduateTracerXlsx",
+    "goodMoralCreateMyCurrentStudentRequest",
+    "goodMoralCreateMyGraduateRequest",
+    "goodMoralListMyRequests",
+    "goodMoralGetMyRequest",
+    "goodMoralCancelMyRequest",
+    "goodMoralDownloadMyCertificate",
+    "goodMoralListRequests",
+    "goodMoralGetRequest",
+    "goodMoralUpdateRequest",
+    "goodMoralIssueRequest",
+    "goodMoralPrepareRequest",
+    "goodMoralCancelRequest",
+    "goodMoralDownloadCertificate",
+    "feedbackListMyOpportunities",
+    "feedbackGetMyOpportunity",
+    "feedbackSubmitCustomerFeedback",
+    "feedbackListCustomerFeedbackResponses",
+    "feedbackGetCustomerFeedbackResponse",
+    "feedbackSubmitCsm",
+    "feedbackListCsmResponses",
+    "feedbackGetCsmResponse",
+    "graduateTracerEnsureMyResponse",
+    "graduateTracerGetMyResponse",
+    "graduateTracerReplaceMyDraft",
+    "graduateTracerSubmitMyResponse",
+    "graduateTracerListResponses",
+    "graduateTracerGetResponse",
+    "exitInterviewsGetMyStatus",
+    "exitInterviewsListEligibleStudents",
+    "exitInterviewsListOpportunities",
+    "exitInterviewsOpenOpportunity",
+    "exitInterviewsGetOpportunity",
+    "exitInterviewsRevokeOpportunity",
+    "exitInterviewsEnsureMyCurrent",
+    "exitInterviewsGetMyCurrent",
+    "exitInterviewsUpdateMyCurrent",
+    "exitInterviewsSubmitMyCurrent",
+    "exitInterviewsUpdateMine",
+    "exitInterviewsSubmitMine",
+    "exitInterviewsListMine",
+    "exitInterviewsGetMine",
+    "exitInterviewsDownloadMyPdf",
+    "exitInterviewsList",
+    "exitInterviewsGet",
+    "exitInterviewsDownloadPdf",
+    "exitInterviewsReopen",
+    "routineInterviewsEnsureMyForAppointment",
+    "routineInterviewsCreateDirect",
+    "routineInterviewsListMyAppointmentCandidates",
+    "routineInterviewsGetDirectCreationOptions",
+    "routineInterviewsListDirectStudentCandidates",
+    "routineInterviewsListEncounterCandidates",
+    "routineInterviewsListMine",
+    "routineInterviewsGetMine",
+    "routineInterviewsReplaceMyIntake",
+    "routineInterviewsSubmitMyIntake",
+    "routineInterviewsListAssigned",
+    "routineInterviewsGetAssigned",
+    "routineInterviewsReplaceAssignedEvaluation",
+    "routineInterviewsFinalizeAssignedEvaluation",
+    "referralsCreate",
+    "referralsList",
+    "referralsGet",
+    "referralsUpdateStatus",
+    "referralsRecordAction",
+    "referralsVoid",
+    "referralsListEligibleStudents",
+    "referralsDownloadPdf",
+    "callSlipsCreate",
+    "callSlipsCreateFromReferral",
+    "callSlipsList",
+    "callSlipsGet",
+    "callSlipsListMy",
+    "callSlipsGetMy",
+    "callSlipsRecordInterviewEnded",
+    "callSlipsVoid",
+    "callSlipsListEligibleStudents",
+    "callSlipsDownloadPdf",
+    "callSlipsDownloadMyPdf",
+    "notificationsListMine",
+    "notificationsGetUnreadCount",
+    "notificationsMarkRead",
+    "notificationsMarkAllRead",
+    "notificationsGetPreferences",
+    "notificationsUpdatePreferences",
+    "notificationsGetPushConfig",
+    "notificationsGetPushStatus",
+    "notificationsRegisterPushSubscription",
+    "notificationsRemovePushSubscription",
+    "announcementsListManaged",
+    "announcementsCreateDraft",
+    "announcementsGetManaged",
+    "announcementsUpdate",
+    "announcementsPublish",
+    "announcementsArchive",
+    "announcementsListVisible",
+    "announcementsGetVisible",
+    "announcementsListPublic",
+    "announcementsGetPublic",
+    "resourcesListManaged",
+    "resourcesCreateDraft",
+    "resourcesGetManaged",
+    "resourcesUpdate",
+    "resourcesAttachDraftFile",
+    "resourcesDownloadManagedFile",
+    "resourcesRemoveDraftFile",
+    "resourcesPublish",
+    "resourcesArchive",
+    "resourcesListVisible",
+    "resourcesDownloadVisibleFile",
+    "resourcesGetVisible",
+    "resourcesListPublic",
+    "resourcesGetPublic",
+    "resourcesDownloadPublicFile",
+    "eCounselingGetMyWorkspace",
+    "eCounselingGetAssignedWorkspace",
+    "eCounselingListMyConsents",
+    "eCounselingListAssignedConsents",
+    "eCounselingRequestConsent",
+    "eCounselingDecideMyConsent",
+    "eCounselingWithdrawMyConsent",
+    "eCounselingStartAssignedRecording",
+    "eCounselingStopAssignedRecording",
+    "eCounselingStartAssignedTranscription",
+    "eCounselingStopAssignedTranscription",
+    "eCounselingAccessAssignedMedia",
+    "eCounselingCreateJoinCredential",
+    "eCounselingDailyWebhook",
+    "realtimeIssueTicket",
 }
 
 
@@ -95,6 +399,326 @@ def _operation(schema: dict, path: str, method: str) -> dict:
 
 def _response_statuses(operation: dict) -> set[int]:
     return {int(status) for status in operation["responses"]}
+
+
+def _response_schema(schema: dict, operation: dict) -> str:
+    content = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    return content["$ref"].rsplit("/", 1)[-1]
+
+
+# Every user-sortable collection and its closed ordering enum (ADR-090).
+SORTABLE_COLLECTIONS = {
+    "assessmentRecordsList": "AssessmentRecordOrdering",
+    "accountsList": "AccountOrdering",
+    "announcementsListManaged": "AnnouncementManagementOrdering",
+    "announcementsListPublic": "AnnouncementOrdering",
+    "announcementsListVisible": "AnnouncementOrdering",
+    "appointmentsListManaged": "AppointmentListOrdering",
+    "appointmentsListMy": "AppointmentListOrdering",
+    "callSlipsList": "CallSlipOrdering",
+    "counselingListMyEncounters": "CounselingEncounterOrdering",
+    "exitInterviewsList": "ExitInterviewOrdering",
+    "feedbackListCsmResponses": "FeedbackResponseOrdering",
+    "feedbackListCustomerFeedbackResponses": "FeedbackResponseOrdering",
+    "goodMoralListRequests": "GoodMoralOrdering",
+    "graduateTracerListResponses": "GraduateTracerOrdering",
+    "inventoryListStudents": "InventoryRosterOrdering",
+    "platformOperationsListEmailDeliveries": "EmailDeliveryOrdering",
+    "referralsList": "ReferralOrdering",
+    "resourcesListManaged": "ResourceManagementOrdering",
+    "resourcesListPublic": "ResourceOrdering",
+    "resourcesListVisible": "ResourceOrdering",
+    "routineInterviewsListAssigned": "RoutineInterviewOrdering",
+    "servicesList": "ServiceOrdering",
+}
+
+
+def test_sortable_collections_use_closed_orderings_and_report_the_applied_one() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    found: dict[str, str] = {}
+    for operations in schema["paths"].values():
+        for operation in operations.values():
+            parameters = {item["name"]: item for item in operation.get("parameters", [])}
+            if "ordering" not in parameters:
+                continue
+            parameter = parameters["ordering"]
+            assert parameter["in"] == "query"
+            assert parameter["required"] is False
+            # No generic sort/direction pair and no field names: only the closed enum, or omitted.
+            assert not {"sort", "direction", "order_by"} & set(parameters)
+            choices = [item.get("$ref") for item in parameter["schema"]["anyOf"]]
+            enum_name = next(ref for ref in choices if ref).rsplit("/", 1)[-1]
+            assert {"type": "null"} in parameter["schema"]["anyOf"]
+            assert "default" not in parameter["schema"]
+            response = schemas[_response_schema(schema, operation)]
+            assert "ordering" in response["required"]
+            assert response["properties"]["ordering"]["$ref"].endswith("/" + enum_name)
+            assert all(value == value.upper() for value in schemas[enum_name]["enum"])
+            found[operation["operationId"]] = enum_name
+    assert found == SORTABLE_COLLECTIONS
+
+
+def test_publication_update_contract_exposes_consequence_acknowledgement() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    for schema_name in ("AnnouncementUpdateRequest", "ResourceUpdateRequest"):
+        acknowledgement = schemas[schema_name]["properties"]["acknowledge_publication_consequences"]
+        assert acknowledgement["type"] == "boolean"
+        assert acknowledgement["default"] is False
+
+
+def test_good_moral_preparation_contract_has_explicit_actions_and_exact_versions():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    assert "READY_FOR_ISSUANCE" in schemas["GoodMoralStatusValue"]["enum"]
+    prepare = _operation(schema, "/api/v1/good-moral/requests/{request_id}/prepare", "post")
+    assert prepare["operationId"] == "goodMoralPrepareRequest"
+    assert _response_statuses(prepare) >= {200, 403, 409, 422}
+    assert schemas["GoodMoralPreparationPayload"]["required"] == ["expected_resource_version"]
+    assert schemas["GoodMoralIssuePayload"]["required"] == ["expected_preparation_version"]
+    actions = schemas["GoodMoralActionsResponse"]["properties"]
+    assert actions["request_version"]["type"] == "string"
+    for name in ("can_prepare", "can_correct", "can_issue", "can_cancel", "can_download"):
+        assert actions[name]["type"] == "boolean"
+    detail = schemas["GoodMoralOperationalDetailResponse"]["properties"]
+    assert {"prepared_at", "prepared_by", "actions"} <= set(detail)
+    listing = _operation(schema, "/api/v1/good-moral/requests", "get")
+    assert "academic_year_id" in {param["name"] for param in listing["parameters"]}
+
+    announcement_update = _operation(
+        schema,
+        "/api/v1/announcements/management/{announcement_id}",
+        "patch",
+    )
+    resource_update = _operation(
+        schema,
+        "/api/v1/resources/management/{resource_id}",
+        "patch",
+    )
+    assert 409 in _response_statuses(announcement_update)
+    assert 409 in _response_statuses(resource_update)
+
+
+def test_institutional_forms_contract_is_read_only_and_projects_support() -> None:
+    schema = _generated_schema()
+    paths = schema["paths"]
+
+    revisions_path = "/api/v1/institutional-forms/{family_key}/revisions"
+    assert set(paths[revisions_path]) == {"get"}
+    assert paths[revisions_path]["get"]["operationId"] == "institutionalFormsRevisionsList"
+    assert "/api/v1/institutional-forms/revisions/{revision_id}/activate" not in paths
+    assert "/api/v1/institutional-forms/revisions/{revision_id}/deactivate" not in paths
+
+    properties = schema["components"]["schemas"]["FormRevisionResponse"]["properties"]
+    assert properties["supported"] == {"title": "Supported", "type": "boolean"}
+
+
+def test_overview_summary_contract_is_typed_and_nullable_by_domain() -> None:
+    schema = _generated_schema()
+
+    operation = _operation(schema, "/api/v1/overview", "get")
+    assert operation["operationId"] == "overviewGetSummary"
+    assert operation["tags"] == ["overview"]
+    assert {200, 401, 403} <= _response_statuses(operation)
+    assert operation["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/OverviewSummaryResponse"
+    )
+    for status in (401, 403):
+        error_schema = operation["responses"][str(status)]["content"]["application/json"]["schema"]
+        assert error_schema["$ref"].endswith("/APIErrorResponse")
+
+    schemas = schema["components"]["schemas"]
+    root = schemas["OverviewSummaryResponse"]["properties"]
+    assert set(root) == {"generated_at", "student", "guidance", "platform"}
+
+    expected_fields = {
+        "OverviewStudentSummary": {
+            "upcoming_appointments_count",
+            "routine_intake_draft_count",
+            "good_moral_requested_count",
+            "active_call_slip_count",
+        },
+        "OverviewGuidanceSummary": {
+            "upcoming_self_appointments_count",
+            "upcoming_managed_appointments_count",
+            "routine_evaluation_pending_count",
+            "good_moral_requested_count",
+            "good_moral_ready_count",
+            "active_call_slip_count",
+        },
+        "OverviewPlatformSummary": {
+            "email_pending_count",
+            "email_due_pending_count",
+            "email_failed_count",
+            "email_sent_today_count",
+        },
+    }
+    assert "OverviewPrivacySummary" not in schemas
+    for schema_name, fields in expected_fields.items():
+        properties = schemas[schema_name]["properties"]
+        assert set(properties) == fields
+        for field in fields:
+            assert {"type": "null"} in properties[field]["anyOf"]
+            assert {"type": "integer"} in properties[field]["anyOf"]
+
+
+def test_exit_interview_head_review_contract_protects_drafts_and_reopen_response() -> None:
+    schema = _generated_schema()
+
+    detail = _operation(
+        schema,
+        "/api/v1/exit-interviews/{exit_interview_id}",
+        "get",
+    )
+    assert detail["operationId"] == "exitInterviewsGet"
+    assert {200, 401, 403, 404, 409, 422} <= _response_statuses(detail)
+    assert detail["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/ExitInterviewDetailResponse"
+    )
+    assert detail["responses"]["409"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/APIErrorResponse"
+    )
+
+    reopen = _operation(
+        schema,
+        "/api/v1/exit-interviews/{exit_interview_id}/reopen",
+        "post",
+    )
+    assert reopen["operationId"] == "exitInterviewsReopen"
+    assert {200, 401, 403, 404, 409, 422} <= _response_statuses(reopen)
+    assert reopen["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/ExitInterviewSummaryResponse"
+    )
+    for status in (401, 403, 404, 409, 422):
+        response_schema = reopen["responses"][str(status)]["content"]["application/json"]["schema"]
+        assert response_schema["$ref"].endswith("/APIErrorResponse")
+
+
+def test_reduced_product_surfaces_are_absent_from_openapi() -> None:
+    schema = _generated_schema()
+    paths = schema["paths"]
+    assert "/api/v1/document-branding/profile" not in paths
+    assert "/api/v1/student-support/students" not in paths
+    assert "/api/v1/platform/commands" not in paths
+
+
+PDF_DOWNLOAD_PATHS = (
+    "/api/v1/referrals/{referral_id}/pdf",
+    "/api/v1/call-slips/{call_slip_id}/pdf",
+    "/api/v1/call-slips/me/{call_slip_id}/pdf",
+    "/api/v1/good-moral/me/{request_id}/pdf",
+    "/api/v1/good-moral/requests/{request_id}/pdf",
+    "/api/v1/reports/student-profile/pdf",
+)
+XLSX_DOWNLOAD_PATHS = (
+    "/api/v1/reports/student-profile/xlsx",
+    "/api/v1/reports/graduate-tracer/xlsx",
+)
+XLSX_CONTENT_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+BINARY_DOWNLOAD_ERROR_STATUSES = {
+    "/api/v1/referrals/{referral_id}/pdf": {401, 403, 404, 503},
+    "/api/v1/call-slips/{call_slip_id}/pdf": {401, 403, 404, 503},
+    "/api/v1/call-slips/me/{call_slip_id}/pdf": {401, 403, 404, 503},
+    "/api/v1/good-moral/me/{request_id}/pdf": {401, 403, 404, 409, 503},
+    "/api/v1/good-moral/requests/{request_id}/pdf": {401, 403, 404, 409, 503},
+    "/api/v1/reports/student-profile/pdf": {401, 403, 404, 409, 422, 503},
+    "/api/v1/reports/student-profile/xlsx": {401, 403, 404, 409, 422, 503},
+    "/api/v1/reports/graduate-tracer/xlsx": {401, 403, 422, 503},
+}
+
+
+def test_binary_download_success_responses_are_explicitly_typed() -> None:
+    schema = _generated_schema()
+    binary_schema = {"type": "string", "format": "binary"}
+
+    for path in PDF_DOWNLOAD_PATHS:
+        response = _operation(schema, path, "get")["responses"]["200"]
+        assert response["content"]["application/pdf"]["schema"] == binary_schema
+
+    for path in XLSX_DOWNLOAD_PATHS:
+        response = _operation(schema, path, "get")["responses"]["200"]
+        assert response["content"][XLSX_CONTENT_TYPE]["schema"] == binary_schema
+
+
+def test_binary_download_contracts_preserve_typed_error_responses() -> None:
+    schema = _generated_schema()
+
+    for path, expected_statuses in BINARY_DOWNLOAD_ERROR_STATUSES.items():
+        operation = _operation(schema, path, "get")
+        assert expected_statuses <= _response_statuses(operation)
+        for status in expected_statuses:
+            response_schema = operation["responses"][str(status)]["content"]["application/json"][
+                "schema"
+            ]
+            assert response_schema["$ref"].endswith("/APIErrorResponse")
+
+
+def test_success_response_bodies_are_explicitly_documented() -> None:
+    schema = _generated_schema()
+
+    for method, path, operation in iter_operations(schema):
+        for status, response in operation["responses"].items():
+            code = int(status)
+            if 200 <= code < 300 and code != 204:
+                assert "content" in response, (
+                    f"{method.upper()} {path} has an undocumented {code} success response body"
+                )
+
+
+def test_organization_person_projection_schema_is_dedicated_and_complete() -> None:
+    schema = _generated_schema()
+    components = schema["components"]["schemas"]
+    person = components["OrganizationPersonSummary"]
+
+    expected_fields = {
+        "id",
+        "institutional_id",
+        "full_name",
+        "email",
+        "role",
+        "is_active",
+        "responsibility_scope",
+    }
+    assert set(person["properties"]) == expected_fields
+    assert person["required"] == [
+        "id",
+        "institutional_id",
+        "full_name",
+        "email",
+        "role",
+        "is_active",
+        "responsibility_scope",
+    ]
+    assert {option["type"] for option in person["properties"]["institutional_id"]["anyOf"]} == {
+        "string",
+        "null",
+    }
+
+    assert person["properties"]["responsibility_scope"]["anyOf"] == [
+        {"$ref": "#/components/schemas/OrganizationResponsibilityScope"},
+        {"type": "null"},
+    ]
+    assert components["OrganizationResponsibilityScope"]["enum"] == [
+        "ASSIGNED_AND_FALLBACK_COLLEGES",
+        "ASSIGNED_COLLEGES",
+    ]
+
+    # Other domains intentionally keep their minimal person projection.
+    assert set(components["PersonSummary"]["properties"]) == {"id", "display_name"}
+
+    organization_ref = "#/components/schemas/OrganizationPersonSummary"
+    assert (
+        components["PersonListResponse"]["properties"]["items"]["items"]["$ref"] == organization_ref
+    )
+    for response_name, field_names in {
+        "CounselorResponsibilityResponse": ("counselor",),
+        "StaffSupervisionResponse": ("staff", "supervisor"),
+        "StudentAffiliationResponse": ("student",),
+    }.items():
+        for field_name in field_names:
+            assert components[response_name]["properties"][field_name]["$ref"] == organization_ref
 
 
 def test_generated_schema_matches_committed_contract() -> None:
@@ -135,10 +759,42 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
     assert all("compass" not in operation_id.lower() for operation_id in operation_ids)
     assert [tag["name"] for tag in schema["tags"]] == [
         "health",
+        "metadata",
         "auth",
         "activity",
+        "profile",
         "accounts",
         "organization",
+        "services",
+        "availability",
+        "appointments",
+        "counseling",
+        "academic-years",
+        "institutional-forms",
+        "inventory",
+        "reference-data",
+        "student-support",
+        "reports",
+        "overview",
+        "good-moral",
+        "feedback",
+        "graduate-tracer",
+        "exit-interviews",
+        "routine-interviews",
+        "referrals",
+        "call-slips",
+        "notifications",
+        "announcements",
+        "resources",
+        "e-counseling",
+        "platform-operations",
+        "privacy-governance",
+        "realtime",
+        "guidance-messages",
+        "assessment-records",
+        "work",
+        "student-actions",
+        "guidance-operations",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -146,6 +802,140 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         and operation["tags"][0] in CURRENT_API_TAGS
         for _, _, operation in operations
     )
+
+
+def test_review_list_query_parameters_match_backend_consistency_contract() -> None:
+    schema = _generated_schema()
+    expected = {
+        "/api/v1/inventory/students": {
+            "form_revision_id",
+            "academic_year_id",
+            "status",
+            "college_id",
+            "program_id",
+            "year_level",
+            "search",
+            "student_id",
+            "ordering",
+            "page",
+            "page_size",
+        },
+        "/api/v1/exit-interviews": {
+            "academic_year_id",
+            "status",
+            "search",
+            "student_id",
+            "ordering",
+            "page",
+            "page_size",
+        },
+        "/api/v1/graduate-tracer/responses": {
+            "search",
+            "student_id",
+            "submitted_from",
+            "submitted_to",
+            "current_employment_state",
+            "ordering",
+            "page",
+            "page_size",
+        },
+        "/api/v1/referrals": {
+            "form_revision_id",
+            "search",
+            "student_id",
+            "from_date",
+            "to_date",
+            "include_voided",
+            "ordering",
+            "page",
+            "page_size",
+        },
+        "/api/v1/feedback/customer-feedback/responses": {
+            "form_revision_id",
+            "search",
+            "service",
+            "submitted_from",
+            "submitted_to",
+            "ordering",
+            "page",
+            "page_size",
+        },
+        "/api/v1/feedback/csm/responses": {
+            "client_type",
+            "service",
+            "submitted_from",
+            "submitted_to",
+            "ordering",
+            "page",
+            "page_size",
+        },
+    }
+
+    for path, expected_parameters in expected.items():
+        operation = _operation(schema, path, "get")
+        assert {parameter["name"] for parameter in operation["parameters"]} == expected_parameters
+
+    graduate_parameters = {
+        parameter["name"]
+        for parameter in _operation(
+            schema,
+            "/api/v1/graduate-tracer/responses",
+            "get",
+        )["parameters"]
+    }
+    assert "status" not in graduate_parameters
+
+    customer_feedback_parameters = {
+        parameter["name"]
+        for parameter in _operation(
+            schema,
+            "/api/v1/feedback/customer-feedback/responses",
+            "get",
+        )["parameters"]
+    }
+    csm_parameters = {
+        parameter["name"]
+        for parameter in _operation(
+            schema,
+            "/api/v1/feedback/csm/responses",
+            "get",
+        )["parameters"]
+    }
+    assert "student_id" not in customer_feedback_parameters
+    assert "student_id" not in csm_parameters
+
+
+def test_counseling_context_contract_is_anchor_based_and_read_only() -> None:
+    schema = _generated_schema()
+    expected = {
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}": "counselingContextGetOverview",
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/support-indicators": (
+            "counselingContextGetSupportIndicators"
+        ),
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/inventory": (
+            "counselingContextGetInventory"
+        ),
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/history": (
+            "counselingContextListHistory"
+        ),
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/shared-summaries": (
+            "counselingContextListSharedSummaries"
+        ),
+    }
+
+    for path, operation_id in expected.items():
+        assert set(schema["paths"][path]) == {"get"}
+        operation = _operation(schema, path, "get")
+        assert operation["operationId"] == operation_id
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        parameters = {parameter["name"] for parameter in operation["parameters"]}
+        assert {"anchor_type", "anchor_id"} <= parameters
+
+    assert "student_id" not in {
+        parameter["name"]
+        for path in expected
+        for parameter in _operation(schema, path, "get")["parameters"]
+    }
 
 
 def test_cookie_auth_and_public_csrf_contract_are_explicit() -> None:
@@ -169,6 +959,14 @@ def test_cookie_auth_and_public_csrf_contract_are_explicit() -> None:
 
     health_live = _operation(schema, "/api/v1/health/live", "get")
     assert "security" not in health_live
+    metadata = _operation(schema, "/api/v1/meta", "get")
+    assert metadata["operationId"] == "systemMetadata"
+    assert "security" not in metadata
+    assert metadata["responses"]["200"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/SystemMetadataResponse"
+    )
+    daily_webhook = _operation(schema, "/api/v1/integrations/daily/webhook", "post")
+    assert "security" not in daily_webhook
 
     secured_operations = [
         operation for _, _, operation in iter_operations(schema) if "security" in operation
@@ -185,28 +983,206 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     expected_schemas = {
         "APIErrorDetail",
         "APIErrorResponse",
+        "SystemMetadataResponse",
         "ValidationIssue",
         "AccountCreateRequest",
         "AccountDetailResponse",
         "AccountListResponse",
+        "EmailChangeSecurityChallengeRequest",
+        "EmailChangeSecurityChallengeResponse",
+        "EmailChangeRequest",
+        "EmailChangeRequestResponse",
+        "EmailChangeConfirmRequest",
+        "EmailChangeConfirmResponse",
+        "ManagedEmailChangeRequest",
+        "ManagedEmailChangeResponse",
         "ActivityPageResponse",
+        "MyProfileResponse",
+        "MyProfileUpdateRequest",
         "PasswordAccessRequest",
         "PasswordAccessRequestResponse",
         "PasswordAccessConfirmRequest",
         "PasswordAccessConfirmResponse",
+        "PasswordChangeRequest",
+        "PasswordChangeResponse",
         "LoginRequest",
         "LoginResponse",
         "SessionListResponse",
+        "CounselingEncounterResponse",
+        "CounselingStudentPageResponse",
+        "CounselingAssignedSharedSummaryResponse",
+        "CounselingStudentSharedSummaryPageResponse",
+        "StudentWorkspaceResponse",
+        "CounselorWorkspaceResponse",
+        "MediaWorkspaceState",
+        "ConsentResponse",
+        "ConsentListResponse",
+        "MediaCaptureResponse",
+        "JoinCredentialResponse",
+        "WebhookAckResponse",
+        "ExitInterviewDraftPayload",
+        "ExitInterviewDetailResponse",
+        "ExitInterviewSummaryResponse",
+        "ExitInterviewPageResponse",
+        "SelfAssessmentRatingPayload",
+        "CollegeFeedbackRatingPayload",
+        "ReopenRequest",
+        "GraduateTracerDraftPayload",
+        "GraduateTracerDetailResponse",
+        "GraduateTracerSummaryResponse",
+        "GraduateTracerPageResponse",
+        "GraduateTracerEducationPayload",
+        "GraduateTracerProfessionalExamPayload",
+        "GraduateTracerTrainingPayload",
+        "ProgramSummary",
+        "ProgramListResponse",
+        "InventoryProgramSummary",
+        "CivilStatusCategoryValue",
+        "CurrentReligionCategoryValue",
+        "PWDStatusValue",
+        "FourPsStatusValue",
+        "IndigenousPeoplesStatusValue",
+        "ParentLifeStatusValue",
+        "SupportProfilePayload",
+        "StudentSupportContextResponse",
+        "SupportIndicatorResponse",
+        "StudentReference",
+        "AcademicYearReference",
+        "ParentStatusCategoryValue",
+        "OccupationCategoryValue",
+        "AnnualIncomeStatusValue",
+        "GeographicLocationKindValue",
+        "TransportationFrequencyCategoryValue",
+        "GeographicLocationPayload",
+        "StudentProfilingReportResponse",
+        "ReportContext",
+        "ProgramColumn",
+        "InventoryCoverage",
+        "Methodology",
+        "StudentProfilingSections",
+        "BookableSlotResponse",
+        "BookableSlotListResponse",
+        "AppointmentReassignmentCandidate",
+        "AppointmentReassignmentCandidateList",
+        "ReferralStudentOptionResponse",
+        "ReferralStudentOptionPage",
+        "CallSlipStudentOptionResponse",
+        "CallSlipStudentOptionPage",
+        "DistributionSection",
+        "DistributionRow",
+        "ProgramCount",
+        "GeographicDistributionSection",
+        "GeographicDistributionRow",
     }
     assert expected_schemas <= schemas.keys()
     assert schemas["AccountSummaryResponse"]["properties"]["id"]["format"] == "uuid"
     assert schemas["AccountSummaryResponse"]["properties"]["created_at"]["format"] == "date-time"
+    account_summary = schemas["AccountSummaryResponse"]["properties"]
+    account_detail = schemas["AccountDetailResponse"]["properties"]
+    assert "student_lifecycle_status" in account_summary
+    assert "password_configured" in account_summary
+    assert "email_verified" in account_summary
+    assert "email_verified_at" not in account_summary
+    assert "email_verified_at" in account_detail
+    user_summary = schemas["UserSummary"]["properties"]
+    assert "student_lifecycle_status" in user_summary
+    assert user_summary["designations"]["type"] == "array"
+    assert user_summary["designations"]["items"]["$ref"].endswith("/DesignationCode")
+    assert user_summary["capabilities"]["type"] == "array"
+    assert user_summary["capabilities"]["items"]["$ref"].endswith("/CapabilityCode")
+    assert user_summary["role"]["$ref"].endswith("/RoleCode")
+    # Session typing reuses the canonical code-owned enums; it never becomes a second policy list.
+    assert set(schemas["CapabilityCode"]["enum"]) == set(CAPABILITY_CODES)
+    assert {
+        "college_ids",
+        "student_ids",
+        "scope",
+        "global_access",
+        "allowed_resources",
+        "role_capabilities",
+        "designation_capabilities",
+        "override_grants",
+        "override_revokes",
+    }.isdisjoint(user_summary)
+    assert schemas["LoginResponse"]["properties"]["user"]["anyOf"][0]["$ref"].endswith(
+        "/UserSummary"
+    )
+    assert schemas["CurrentSessionResponse"]["properties"]["user"]["$ref"].endswith("/UserSummary")
+    assert "capabilities" not in schemas["SessionSummary"]["properties"]
+    assert "designations" not in schemas["SessionSummary"]["properties"]
+    assert "INSTITUTIONAL_OFFICER" in schemas["RoleCode"]["enum"]
+    assert (
+        _operation(
+            schema,
+            "/api/v1/accounts/{user_id}/student-lifecycle",
+            "put",
+        )["operationId"]
+        == "accountsUpdateStudentLifecycle"
+    )
+    access_operation = _operation(schema, "/api/v1/accounts/{user_id}/access", "get")
+    assert access_operation["operationId"] == "accountsGetEffectiveAccess"
+    assert _response_statuses(access_operation) >= {200, 401, 403, 404, 422}
+    access_schema = schemas["AccountEffectiveAccessResponse"]["properties"]
+    assert access_schema["role"]["$ref"].endswith("/RoleCode")
+    assert access_schema["designations"]["items"]["$ref"].endswith("/DesignationCode")
+    assert access_schema["effective_capabilities"]["items"]["$ref"].endswith("/CapabilityCode")
+    assert access_schema["capabilities"]["items"]["$ref"].endswith("/AccessCapabilityResponse")
+    assert schemas["AccessSourceType"]["enum"] == ["ROLE", "DESIGNATION"]
+    access_capability = schemas["AccessCapabilityResponse"]["properties"]
+    assert access_capability["code"]["$ref"].endswith("/CapabilityCode")
+    assert access_capability["effective"]["type"] == "boolean"
+    assert access_capability["baseline_sources"]["type"] == "array"
+    assert {
+        "college_ids",
+        "campus_ids",
+        "student_ids",
+        "program_ids",
+        "resource_scope",
+        "global_access",
+        "authorized_records",
+    }.isdisjoint(access_schema)
+
     assert schemas["AccountListResponse"]["properties"]["items"]["type"] == "array"
     assert schemas["APIErrorResponse"]["properties"]["error"]["$ref"].endswith("/APIErrorDetail")
     assert schemas["APIErrorDetail"]["properties"]["details"]["anyOf"]
     assert _operation(schema, "/api/v1/accounts", "post")["requestBody"]["content"][
         "application/json"
     ]["schema"]["$ref"].endswith("/AccountCreateRequest")
+    csv_import_operation = _operation(schema, "/api/v1/accounts/imports/csv", "post")
+    assert csv_import_operation["operationId"] == "accountsImportCsv"
+    assert "multipart/form-data" in csv_import_operation["requestBody"]["content"]
+    assert (
+        _operation(
+            schema,
+            "/api/v1/auth/email-change/security-challenge",
+            "post",
+        )["operationId"]
+        == "authRequestEmailChangeSecurityChallenge"
+    )
+    assert (
+        _operation(
+            schema,
+            "/api/v1/auth/email-change/request",
+            "post",
+        )["operationId"]
+        == "authRequestEmailChange"
+    )
+    assert (
+        _operation(
+            schema,
+            "/api/v1/auth/email-change/confirm",
+            "post",
+        )["operationId"]
+        == "authConfirmEmailChange"
+    )
+    assert (
+        _operation(
+            schema,
+            "/api/v1/accounts/{user_id}/email-change",
+            "post",
+        )["operationId"]
+        == "accountsRequestEmailChange"
+    )
     assert _operation(schema, "/api/v1/auth/login", "post")["requestBody"]["content"][
         "application/json"
     ]["schema"]["$ref"].endswith("/LoginRequest")
@@ -216,10 +1192,314 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert _operation(schema, "/api/v1/auth/password/confirm", "post")["requestBody"]["content"][
         "application/json"
     ]["schema"]["$ref"].endswith("/PasswordAccessConfirmRequest")
+    for request_schema in (
+        "LoginRequest",
+        "MFARequest",
+        "LoginMFARequest",
+        "PasswordAccessRequest",
+        "PasswordAccessConfirmRequest",
+        "PasswordChangeRequest",
+        "EmailChangeSecurityChallengeRequest",
+        "EmailChangeRequest",
+        "EmailChangeConfirmRequest",
+    ):
+        assert schemas[request_schema]["additionalProperties"] is False
+    mandatory_setup = _operation(schema, "/api/v1/auth/mfa/totp/bootstrap/setup", "post")
+    assert mandatory_setup["operationId"] == "authStartMandatoryTotpBootstrap"
+    assert "security" not in mandatory_setup
+    assert {200, 403, 409, 503} <= _response_statuses(mandatory_setup)
+    mandatory_confirm = _operation(
+        schema,
+        "/api/v1/auth/mfa/totp/bootstrap/confirm",
+        "post",
+    )
+    assert mandatory_confirm["operationId"] == "authConfirmMandatoryTotpBootstrap"
+    assert "security" not in mandatory_confirm
+    assert {200, 400, 403, 422, 429, 503} <= _response_statuses(mandatory_confirm)
+
+    password_change = _operation(schema, "/api/v1/auth/password/change", "post")
+    assert password_change["operationId"] == "authChangePassword"
+    assert password_change["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/PasswordChangeRequest"
+    )
+    assert {200, 401, 403, 422, 429, 503} <= _response_statuses(password_change)
+    profile_response = schemas["MyProfileResponse"]["properties"]
+    assert {
+        "user_id",
+        "institutional_id",
+        "email",
+        "first_name",
+        "middle_name",
+        "last_name",
+        "suffix",
+        "full_name",
+        "role",
+        "date_of_birth",
+        "civil_status",
+        "contact_number",
+        "current_address",
+        "permanent_address",
+        "profile_photo_url",
+        "profile_photo_updated_at",
+    } <= set(profile_response)
+    assert "profile_photo_object_key" not in profile_response
+    profile_update = schemas["MyProfileUpdateRequest"]["properties"]
+    assert set(profile_update) == {
+        "date_of_birth",
+        "civil_status",
+        "contact_number",
+        "current_address",
+        "permanent_address",
+    }
+    assert "email" not in profile_update
+    assert "first_name" not in profile_update
+    assert "role" not in profile_update
+    assert "profile_photo_object_key" not in profile_update
+
+    program_summary = schemas["ProgramSummary"]["properties"]
+    assert {"id", "code", "name", "college", "is_active"} == set(program_summary)
+    inventory_payload = schemas["InventoryPayload"]["properties"]
+    assert {
+        "program_id",
+        "year_level",
+        "course_currently_enrolled",
+        "major",
+        "civil_status_category",
+        "current_religion_category",
+        "pwd_status",
+        "parent_status_category",
+        "support_profile",
+        "geographic_locations",
+    } <= set(inventory_payload)
+    assert inventory_payload["program_id"]["anyOf"][0]["format"] == "uuid"
+    assert inventory_payload["year_level"]["anyOf"][0]["minimum"] == 1
+    assert inventory_payload["year_level"]["anyOf"][0]["maximum"] == 10
+    inventory_response = schemas["InventoryResponse"]["properties"]
+    assert "program" in inventory_response
+    assert inventory_response["program"]["anyOf"][0]["$ref"].endswith("/InventoryProgramSummary")
+    family_member = schemas["FamilyMemberPayload"]["properties"]
+    assert {"occupation_category", "annual_income_status"} <= set(family_member)
+    assert "life_status" not in family_member
+    assert "physical_disadvantage_status" not in inventory_payload
+    support_profile = schemas["SupportProfilePayload"]["properties"]
+    assert set(support_profile) == {
+        "four_ps_status",
+        "indigenous_peoples_status",
+        "mother_life_status",
+        "father_life_status",
+    }
+    transport = schemas["TransportationEntryPayload"]["properties"]
+    assert "frequency_category" in transport
+    location = schemas["GeographicLocationPayload"]["properties"]
+    assert {
+        "kind",
+        "not_specified",
+        "region_psgc_code",
+        "region_name_snapshot",
+        "province_psgc_code",
+        "province_name_snapshot",
+        "city_municipality_psgc_code",
+        "city_municipality_name_snapshot",
+        "barangay_psgc_code",
+        "barangay_name_snapshot",
+    } == set(location)
+
+    support_context = schemas["StudentSupportContextResponse"]["properties"]
+    assert set(support_context) == {
+        "student",
+        "academic_year",
+        "inventory_status",
+        "available",
+        "indicators",
+    }
+    support_operation = _operation(
+        schema,
+        "/api/v1/student-support/students/{student_id}/context",
+        "get",
+    )
+    assert support_operation["operationId"] == "studentSupportGetContext"
+    assert support_operation["tags"] == ["student-support"]
+
+    exit_draft = schemas["ExitInterviewDraftPayload"]["properties"]
+    assert {
+        "student_name",
+        "age",
+        "civil_status",
+        "course",
+        "major",
+        "email_address",
+        "home_address",
+        "contact_number",
+        "program_completion",
+        "extra_terms_count",
+        "delay_reasons",
+        "delay_other",
+        "significant_learning_experiences",
+        "significant_learning_other",
+        "career_modes",
+        "work_choices",
+        "study_choices",
+        "self_assessment_ratings",
+        "college_feedback_ratings",
+        "dean_comments",
+        "program_chair_comments",
+        "faculty_comments",
+        "curriculum_comments",
+        "guidance_counselor_comments",
+        "office_staff_comments",
+        "facilities_comments",
+        "suggestions_recommendations",
+    } == set(exit_draft)
+    assert {
+        "student_id",
+        "academic_year_id",
+        "inventory_id",
+        "form_revision_id",
+        "status",
+        "created_at",
+        "first_submitted_at",
+        "last_submitted_at",
+        "reopened_by",
+    }.isdisjoint(exit_draft)
+
+    graduate_tracer_draft = schemas["GraduateTracerDraftPayload"]["properties"]
+    assert {
+        "name",
+        "permanent_address",
+        "email",
+        "telephone_contact_numbers",
+        "mobile_number",
+        "civil_status",
+        "sex",
+        "birth_date",
+        "region_of_origin",
+        "province",
+        "residence_location",
+        "education",
+        "professional_exams",
+        "undergraduate_degree_reasons",
+        "graduate_study_reasons",
+        "degree_other_reason",
+        "trainings",
+        "advanced_study_reasons",
+        "advanced_study_other_reason",
+        "current_employment_state",
+        "unemployment_reasons",
+        "unemployment_other_reason",
+        "present_employment_status",
+        "present_occupation",
+        "employer_business_line",
+        "place_of_work",
+        "first_job_after_college",
+        "time_to_first_job",
+        "curriculum_improvement_suggestions",
+    } <= set(graduate_tracer_draft)
+    student_profile = schemas["StudentProfilingReportResponse"]["properties"]
+    assert set(student_profile) == {
+        "report_context",
+        "methodology",
+        "disclosure_warnings",
+        "program_columns",
+        "inventory_coverage",
+        "sections",
+    }
+    report_context = schemas["ReportContext"]["properties"]
+    assert {
+        "academic_year",
+        "campus",
+        "college",
+        "program",
+        "year_level",
+        "year_level_label",
+        "submitted_inventory_count",
+        "generated_at",
+    } == set(report_context)
+    assert schemas["PWDStatusValue"]["enum"] == ["PWD", "NON_PWD", "NOT_SPECIFIED"]
+    assert schemas["FourPsStatusValue"]["enum"] == [
+        "BENEFICIARY",
+        "NOT_BENEFICIARY",
+        "NOT_SPECIFIED",
+    ]
+    assert schemas["IndigenousPeoplesStatusValue"]["enum"] == [
+        "MEMBER",
+        "NOT_MEMBER",
+        "NOT_SPECIFIED",
+    ]
+    assert schemas["DistributionRow"]["properties"]["percentage"]["anyOf"] == [
+        {"type": "number"},
+        {"type": "null"},
+    ]
+    assert schemas["InventoryCoverage"]["properties"]["missing_count"]["anyOf"][-1] == {
+        "type": "null"
+    }
+    scope_schema = schemas["ReportScopeResponse"]["properties"]
+    assert set(scope_schema) == {"is_global", "colleges"}
+    scope_college = schemas["ReportScopeCollege"]["properties"]
+    assert set(scope_college) == {"id", "code", "name", "campus"}
+    scope_operation = _operation(schema, "/api/v1/reports/scope", "get")
+    assert scope_operation["operationId"] == "reportsGetScope"
+    assert scope_operation["tags"] == ["reports"]
+    assert {200, 401, 403} <= _response_statuses(scope_operation)
+    assert scope_operation["responses"]["200"]["content"]["application/json"]["schema"][
+        "$ref"
+    ].endswith("/ReportScopeResponse")
+    for status in (401, 403):
+        response_schema = scope_operation["responses"][str(status)]["content"]["application/json"][
+            "schema"
+        ]
+        assert response_schema["$ref"].endswith("/APIErrorResponse")
+
+    assert _operation(schema, "/api/v1/reports/student-profile", "get")["operationId"] == (
+        "reportsGetStudentProfile"
+    )
+    graduate_report = schemas["GraduateTracerReportResponse"]["properties"]
+    assert set(graduate_report) == {
+        "report_context",
+        "methodology",
+        "sections",
+        "disclosure_warnings",
+    }
+    graduate_context = schemas["GraduateTracerReportContext"]["properties"]
+    assert set(graduate_context) == {
+        "instrument_schema_version",
+        "submitted_from",
+        "submitted_to",
+        "submitted_response_count",
+        "generated_at",
+    }
+    assert schemas["GraduateTracerDistributionRow"]["properties"]["percentage"]["anyOf"] == [
+        {"type": "number"},
+        {"type": "null"},
+    ]
+    graduate_operation = _operation(schema, "/api/v1/reports/graduate-tracer", "get")
+    assert graduate_operation["operationId"] == "reportsGetGraduateTracer"
+    assert graduate_operation["tags"] == ["reports"]
+    graduate_xlsx = _operation(schema, "/api/v1/reports/graduate-tracer/xlsx", "get")
+    assert graduate_xlsx["operationId"] == "reportsDownloadGraduateTracerXlsx"
+    assert graduate_xlsx["tags"] == ["reports"]
+
+    assert {
+        "student_id",
+        "instrument_schema_version",
+        "status",
+        "submitted_at",
+        "created_at",
+        "updated_at",
+    }.isdisjoint(graduate_tracer_draft)
+    assert schemas["SelfAssessmentRatingPayload"]["properties"]["rating"]["minimum"] == 1
+    assert schemas["SelfAssessmentRatingPayload"]["properties"]["rating"]["maximum"] == 5
+    assert schemas["CollegeFeedbackRatingPayload"]["properties"]["rating"]["minimum"] == 0
+    assert schemas["CollegeFeedbackRatingPayload"]["properties"]["rating"]["maximum"] == 5
+    assert len(schemas["SelfAssessmentItemValue"]["enum"]) == 15
+    assert len(schemas["CollegeFeedbackItemValue"]["enum"]) == 26
+
     assert "password" not in schemas["AccountCreateRequest"]["properties"]
-    assert {"email", "first_name", "last_name", "role"} <= set(
+    assert {"institutional_id", "email", "first_name", "last_name", "role"} <= set(
         schemas["AccountCreateRequest"]["required"]
     )
+    assert "institutional_id" in schemas["AccountSummaryResponse"]["properties"]
+    assert "email" not in schemas["IdentityUpdateRequest"]["properties"]
+    assert "institutional_id" in schemas["IdentityUpdateRequest"]["properties"]
     assert schemas["LoginResponse"]["properties"]["session_id"]["anyOf"][-1] == {"type": "null"}
 
     assert _response_statuses(_operation(schema, "/api/v1/auth/login", "post")) >= {
@@ -246,8 +1526,171 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         429,
         503,
     }
+    assert _response_statuses(_operation(schema, "/api/v1/me/profile", "get")) >= {
+        200,
+        401,
+        403,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/me/profile", "patch")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+
+    assert _response_statuses(_operation(schema, "/api/v1/organization/programs", "get")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+    assert "post" not in schema["paths"]["/api/v1/organization/programs"]
+    assert _response_statuses(
+        _operation(schema, "/api/v1/organization/programs/{program_id}", "get")
+    ) >= {200, 401, 403, 404, 422}
+    assert "patch" not in schema["paths"]["/api/v1/organization/programs/{program_id}"]
+    assert "/api/v1/organization/programs/{program_id}/enable" not in schema["paths"]
+    assert "/api/v1/organization/programs/{program_id}/disable" not in schema["paths"]
+
+    assert _response_statuses(
+        _operation(
+            schema,
+            "/api/v1/student-support/students/{student_id}/context",
+            "get",
+        )
+    ) >= {200, 401, 403, 404, 409}
+
+    assert _response_statuses(_operation(schema, "/api/v1/reports/student-profile", "get")) >= {
+        200,
+        401,
+        403,
+        404,
+        409,
+        422,
+    }
+
+    assert _response_statuses(
+        _operation(schema, "/api/v1/reports/student-profile/xlsx", "get")
+    ) >= {
+        200,
+        401,
+        403,
+        404,
+        409,
+        422,
+        503,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/reports/graduate-tracer", "get")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/reports/graduate-tracer/xlsx", "get")
+    ) >= {
+        200,
+        401,
+        403,
+        422,
+        503,
+    }
+
+    assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/me", "post")) >= {
+        200,
+        401,
+        403,
+        409,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/me", "get")) >= {
+        200,
+        401,
+        403,
+        404,
+        409,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/me", "put")) >= {
+        200,
+        401,
+        403,
+        404,
+        409,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/me/submit", "post")) >= {
+        200,
+        401,
+        403,
+        404,
+        409,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/graduate-tracer/responses", "get")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/graduate-tracer/responses/{response_id}", "get")
+    ) >= {200, 401, 403, 404, 422}
+
+    assert _response_statuses(_operation(schema, "/api/v1/exit-interviews/me/current", "post")) >= {
+        200,
+        401,
+        403,
+        409,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/exit-interviews/me/current", "get")) >= {
+        200,
+        401,
+        403,
+        404,
+        409,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/exit-interviews/me/current", "put")) >= {
+        200,
+        401,
+        403,
+        404,
+        409,
+        422,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/exit-interviews/me/current/submit", "post")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/exit-interviews/me/{exit_interview_id}", "put")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/exit-interviews/me/{exit_interview_id}/submit", "post")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(_operation(schema, "/api/v1/exit-interviews/me", "get")) >= {
+        200,
+        401,
+        403,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/exit-interviews", "get")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/exit-interviews/{exit_interview_id}/reopen", "post")
+    ) >= {200, 401, 403, 404, 409, 422}
     assert _response_statuses(_operation(schema, "/api/v1/accounts", "post")) >= {
         201,
+        401,
+        403,
+        409,
+        422,
+        503,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/accounts/imports/csv", "post")) >= {
+        200,
         401,
         403,
         409,
@@ -261,11 +1704,120 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         404,
         422,
     }
+    assert _response_statuses(_operation(schema, "/api/v1/accounts/{user_id}/access", "get")) >= {
+        200,
+        401,
+        403,
+        404,
+        422,
+    }
     assert _response_statuses(_operation(schema, "/api/v1/health/ready", "get")) == {200, 503}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/availability/providers/{provider_id}/effective", "get")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(_operation(schema, "/api/v1/appointments", "post")) >= {
+        201,
+        401,
+        403,
+        409,
+        422,
+        503,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/appointments/{appointment_id}/cancel", "post")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(_operation(schema, "/api/v1/counseling/encounters", "post")) >= {
+        201,
+        401,
+        403,
+        409,
+        422,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/counseling/encounters/{encounter_id}", "patch")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/counseling/encounters/{encounter_id}/shared-summary", "put")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(
+            schema,
+            "/api/v1/counseling/encounters/{encounter_id}/shared-summary/publish",
+            "post",
+        )
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/e-counseling/appointments/{appointment_id}/join", "post")
+    ) >= {200, 401, 403, 404, 409, 502, 503}
+    assert _response_statuses(
+        _operation(schema, "/api/v1/e-counseling/appointments/{appointment_id}/consents", "post")
+    ) >= {200, 401, 403, 404, 409, 422}
+    assert _response_statuses(
+        _operation(
+            schema, "/api/v1/e-counseling/appointments/{appointment_id}/recording/start", "post"
+        )
+    ) >= {200, 401, 403, 404, 409, 502, 503}
+    assert _response_statuses(
+        _operation(
+            schema,
+            "/api/v1/e-counseling/appointments/{appointment_id}/transcription/start",
+            "post",
+        )
+    ) >= {200, 401, 403, 404, 409, 422, 502, 503}
+    assert _response_statuses(_operation(schema, "/api/v1/integrations/daily/webhook", "post")) >= {
+        200,
+        400,
+        403,
+        503,
+    }
 
+    assert _response_statuses(_operation(schema, "/api/v1/call-slips", "post")) >= {
+        201,
+        401,
+        403,
+        404,
+        409,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/call-slips", "get")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/call-slips/me", "get")) >= {
+        200,
+        401,
+        403,
+        422,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/call-slips/{call_slip_id}/interview-ended", "patch")
+    ) >= {200, 401, 403, 404, 409, 422}
+
+    assert _response_statuses(_operation(schema, "/api/v1/notifications", "get")) >= {
+        200,
+        401,
+        422,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/notifications/unread-count", "get")) >= {
+        200,
+        401,
+    }
+    assert _response_statuses(
+        _operation(schema, "/api/v1/notifications/{notification_id}/read", "patch")
+    ) >= {200, 401, 404}
+    assert _response_statuses(_operation(schema, "/api/v1/notifications/preferences", "get")) >= {
+        200,
+        401,
+    }
+    assert _response_statuses(_operation(schema, "/api/v1/notifications/preferences", "patch")) >= {
+        200,
+        401,
+    }
     for method, path, operation in iter_operations(schema):
         for status, response in operation["responses"].items():
-            if int(status) in {400, 401, 403, 404, 409, 422, 429, 503}:
+            if int(status) in {400, 401, 403, 404, 409, 422, 429, 502, 503}:
                 if method == "get" and path == "/api/v1/health/ready" and int(status) == 503:
                     continue
                 response_schema = response["content"]["application/json"]["schema"]
@@ -278,24 +1830,162 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     assert schemas["RoleCode"]["enum"] == [
         "COUNSELOR",
         "GUIDANCE_SERVICES_STAFF",
+        "INSTITUTIONAL_OFFICER",
         "IT_ADMIN",
         "STUDENT",
     ]
     assert schemas["DesignationCode"]["enum"] == ["DPO", "HEAD_GUIDANCE_COUNSELOR"]
-    assert schemas["CapabilityCode"]["enum"] == [
-        "accounts.manage",
-        "accounts.view",
-        "organization.manage",
-        "organization.view",
-    ]
+    assert schemas["CapabilityCode"]["enum"] == sorted(
+        [
+            "guidance_messages.view_self",
+            "guidance_messages.manage_self",
+            "guidance_messages.view",
+            "guidance_messages.manage",
+            "guidance_messages.templates.manage",
+            "assessment_records.view",
+            "assessment_records.manage",
+            "accounts.manage",
+            "accounts.view",
+            "academic_years.manage",
+            "academic_years.view",
+            "activity.supervised_staff.view",
+            "announcements.manage",
+            "appointments.manage",
+            "appointments.manage_self",
+            "appointments.view_self",
+            "availability.manage",
+            "availability.manage_self",
+            "availability.view",
+            "call_slips.manage",
+            "call_slips.view",
+            "call_slips.view_self",
+            "counseling.manage_assigned",
+            "counseling.view_assigned",
+            "ecounseling.consent_self",
+            "ecounseling.join_assigned",
+            "ecounseling.join_self",
+            "ecounseling.manage_media_assigned",
+            "ecounseling.access_media_assigned",
+            "ecounseling.view_assigned",
+            "ecounseling.view_self",
+            "exit_interviews.manage_opportunities",
+            "exit_interviews.manage_self",
+            "exit_interviews.reopen",
+            "exit_interviews.view",
+            "exit_interviews.view_self",
+            "feedback.submit_csm",
+            "feedback.submit_customer_feedback",
+            "feedback.view_csm",
+            "feedback.view_customer_feedback",
+            "good_moral.issue",
+            "good_moral.manage",
+            "good_moral.prepare",
+            "good_moral.request_self",
+            "good_moral.view",
+            "good_moral.view_self",
+            "graduate_tracer.manage_self",
+            "graduate_tracer.view",
+            "graduate_tracer.view_self",
+            "institutional_designations.manage",
+            "institutional_forms.view",
+            "inventory.manage_self",
+            "inventory.reopen",
+            "inventory.view",
+            "inventory.view_self",
+            "organization.manage",
+            "organization.structure.view",
+            "platform_operations.manage",
+            "platform_operations.view",
+            "privacy_governance.manage",
+            "privacy_governance.activity.export",
+            "privacy_governance.retention.view",
+            "privacy_governance.retention.manage",
+            "privacy_governance.retention.approve",
+            "privacy_governance.view",
+            "reports.view",
+            "resources.manage",
+            "referrals.manage",
+            "referrals.view",
+            "routine_interviews.manage_assigned",
+            "routine_interviews.manage_self",
+            "routine_interviews.view_assigned",
+            "routine_interviews.view_self",
+            "services.manage",
+            "services.catalog.view",
+            "shared_summaries.manage_assigned",
+            "shared_summaries.view_assigned",
+            "shared_summaries.view_self",
+            "student_support.view",
+        ]
+    )
     assert schemas["Effect"]["enum"] == ["GRANT", "REVOKE"]
+    # ADR-089: two-state booking and Counselor coverage replace the three-state policy and
+    # provider-role configuration.
+    for retired in ("AppointmentPolicy", "ProviderRoleCode", "ConfigurableProviderRoleCode"):
+        assert retired not in schemas
+    assert schemas["DeliveryMode"]["enum"] == ["IN_PERSON", "ONLINE"]
+    assert schemas["ServiceProviderCoverage"]["enum"] == [
+        "ALL_COUNSELORS",
+        "SELECTED_COUNSELORS",
+    ]
+    for schema_name in ("ServiceResponse", "ServiceCreateRequest", "ServiceUpdateRequest"):
+        properties = schemas[schema_name]["properties"]
+        assert "appointment_booking_enabled" in properties
+        assert "default_appointment_duration_minutes" in properties
+        assert "provider_coverage" in properties
+        assert not {"appointment_policy", "provider_roles", "default_duration_minutes"} & set(
+            properties
+        )
+    assert set(schemas["ServiceProviderCandidate"]["properties"]) == {"id", "display_name"}
+    assert schemas["Weekday"]["enum"] == [
+        "MONDAY",
+        "TUESDAY",
+        "WEDNESDAY",
+        "THURSDAY",
+        "FRIDAY",
+        "SATURDAY",
+        "SUNDAY",
+    ]
+    assert schemas["AvailabilityModeScope"]["enum"] == ["ALL", "IN_PERSON", "ONLINE"]
+    assert schemas["AppointmentStatus"]["enum"] == [
+        "SCHEDULED",
+        "CANCELLED",
+        "COMPLETED",
+        "NO_SHOW",
+    ]
+    assert schemas["CounselingEntryMode"]["enum"] == [
+        "APPOINTMENT",
+        "WALK_IN",
+        "CALLED_IN",
+        "REFERRED",
+    ]
+    assert "cancellation_cutoff_minutes" in schemas["ServiceResponse"]["properties"]
 
     response_schema_names = {
         "AccountSummaryResponse",
         "AccountDetailResponse",
+        "MyProfileResponse",
         "CapabilityOverrideResponse",
         "SessionSummary",
         "TrustedSessionSummary",
+        "CounselingEncounterResponse",
+        "CounselingStudentResponse",
+        "CounselingAssignedSharedSummaryResponse",
+        "CounselingStudentSharedSummaryResponse",
+        "StudentWorkspaceResponse",
+        "CounselorWorkspaceResponse",
+        "ConsentResponse",
+        "MediaCaptureResponse",
+        "ReferralDetailResponse",
+        "ReferralActionResponse",
+        "CallSlipOperationalResponse",
+        "CallSlipStudentResponse",
+        "ExitInterviewDetailResponse",
+        "ExitInterviewSummaryResponse",
+        "ExitInterviewPageResponse",
+        "GraduateTracerDetailResponse",
+        "GraduateTracerSummaryResponse",
+        "GraduateTracerPageResponse",
     }
     forbidden_fields = {
         "password_hash",
@@ -305,6 +1995,14 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "code_hash",
         "turnstile_secret",
         "encryption_key",
+        "daily_api_key",
+        "daily_webhook_hmac",
+        "provider_instance_id",
+        "provider_artifact_id",
+        "provider_session_id",
+        "share_token",
+        "s3_key",
+        "transcript",
     }
     for schema_name in response_schema_names:
         assert forbidden_fields.isdisjoint(schemas[schema_name].get("properties", {}))
@@ -312,6 +2010,1002 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     serialized = json.dumps(schema).lower()
     assert not re.search(
         r"(?:password_hash|profile_photo_object_key|token_digest|encrypted_secret|code_hash|"
-        r"turnstile_secret|encryption_key)",
+        r"turnstile_secret|encryption_key|daily_api_key|daily_webhook_hmac|share_token|s3_key)",
         serialized,
     )
+
+
+def test_platform_operations_openapi_runtime_surface_and_secret_safety() -> None:
+    schema = _generated_schema()
+
+    public_status = _operation(schema, "/api/v1/platform/status", "get")
+    assert public_status["operationId"] == "platformPublicStatus"
+    assert public_status["tags"] == ["platform-operations"]
+    assert _response_statuses(public_status) == {200}
+    assert not public_status.get("security")
+
+    public_schema = schema["components"]["schemas"]["PlatformPublicStatusResponse"]
+    assert set(public_schema["properties"]) == {
+        "status",
+        "message",
+        "starts_at",
+        "ends_at",
+    }
+
+    read_only = {
+        "/api/v1/platform/health": "platformOperationsHealth",
+        "/api/v1/platform/environment": "platformOperationsEnvironment",
+        "/api/v1/platform/maintenance": "platformOperationsGetMaintenance",
+        "/api/v1/platform/email-deliveries/summary": "platformOperationsGetEmailDeliverySummary",
+        "/api/v1/platform/email-deliveries": "platformOperationsListEmailDeliveries",
+        "/api/v1/platform/activity": "platformOperationsListActivity",
+    }
+    for path, operation_id in read_only.items():
+        path_item = schema["paths"][path]
+        assert set(path_item) == {"get"}
+        assert path_item["get"]["operationId"] == operation_id
+        assert path_item["get"]["tags"] == ["platform-operations"]
+        assert _response_statuses(path_item["get"]) >= {200, 401, 403}
+
+    mutations = {
+        ("/api/v1/platform/health/worker-smoke", "post"): (
+            "platformOperationsWorkerSmoke",
+            {200, 401, 403, 500},
+        ),
+        ("/api/v1/platform/maintenance/enable", "post"): (
+            "platformOperationsEnableMaintenance",
+            {200, 401, 403, 409, 422},
+        ),
+        ("/api/v1/platform/maintenance/disable", "post"): (
+            "platformOperationsDisableMaintenance",
+            {200, 401, 403, 409},
+        ),
+        ("/api/v1/platform/maintenance/schedule", "put"): (
+            "platformOperationsScheduleMaintenance",
+            {200, 401, 403, 409, 422},
+        ),
+        ("/api/v1/platform/maintenance/schedule", "delete"): (
+            "platformOperationsCancelMaintenanceSchedule",
+            {200, 401, 403, 404},
+        ),
+        ("/api/v1/platform/email-deliveries/{delivery_id}/retry", "post"): (
+            "platformOperationsRetryEmailDelivery",
+            {200, 401, 403, 404, 409},
+        ),
+    }
+    for (path, method), (operation_id, statuses) in mutations.items():
+        operation = _operation(schema, path, method)
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["platform-operations"]
+        assert _response_statuses(operation) >= statuses
+
+    worker_smoke = _operation(schema, "/api/v1/platform/health/worker-smoke", "post")
+    assert "requestBody" not in worker_smoke
+    assert worker_smoke.get("parameters", []) == []
+    worker_success = worker_smoke["responses"]["200"]["content"]["application/json"]["schema"]
+    assert worker_success["$ref"].endswith("/HealthCheckResponse")
+
+    assert "/api/v1/platform/commands/run" not in schema["paths"]
+    assert "/api/v1/platform/email-deliveries/retry" not in schema["paths"]
+
+    schemas = schema["components"]["schemas"]
+    safe_schema_names = {
+        name
+        for name in schemas
+        if name.startswith(
+            (
+                "Platform",
+                "Environment",
+                "HealthCheck",
+                "CommandCatalog",
+                "Maintenance",
+                "EmailDelivery",
+                "TechnicalActivity",
+            )
+        )
+    }
+    serialized = json.dumps({name: schemas[name] for name in safe_schema_names}).lower()
+    for forbidden in (
+        "secret_key",
+        "password",
+        "redis_url",
+        "bucket_name",
+        "access_key",
+        "smtp_host",
+        "smtp_username",
+        "daily_api_key",
+        "daily_webhook_hmac",
+        "turnstile_secret",
+        "totp_encryption_key",
+        "claim_token",
+        "claim_expires_at",
+        "recipient_email",
+        "recipient_name",
+        "notification_message",
+        "notification_title",
+        "email_body",
+        "rendered_html",
+        "metadata",
+    ):
+        assert forbidden not in serialized
+
+
+def test_privacy_governance_openapi_is_reduced_to_retained_system_controls() -> None:
+    schema = _generated_schema()
+
+    activity = _operation(schema, "/api/v1/privacy/activity", "get")
+    assert activity["operationId"] == "privacyGovernanceListActivity"
+    assert activity["tags"] == ["privacy-governance"]
+    assert _response_statuses(activity) >= {200, 401, 403, 422}
+
+    for removed_path in (
+        "/api/v1/privacy/processing-activities",
+        "/api/v1/privacy/processing-activities/{processing_id}",
+        "/api/v1/privacy/processing-activities/{processing_id}/retire",
+        "/api/v1/privacy/processing-activities/{processing_id}/reviews",
+        "/api/v1/privacy/reviews",
+        "/api/v1/privacy/reviews/{review_id}",
+        "/api/v1/privacy/reviews/{review_id}/resolve",
+        "/api/v1/privacy/incidents",
+        "/api/v1/privacy/incidents/{incident_id}",
+        "/api/v1/privacy/incidents/{incident_id}/resolve",
+    ):
+        assert removed_path not in schema["paths"]
+
+    assert "/api/v1/privacy/audit-events" not in schema["paths"]
+
+    schemas = schema["components"]["schemas"]
+    for removed_prefix in ("ProcessingActivity", "PrivacyReview", "PrivacyIncident"):
+        assert not any(name.startswith(removed_prefix) for name in schemas)
+
+    # Closed event-type values legitimately name password/OTP security actions;
+    # sensitive payload fields must remain absent from the safe response schemas.
+    serialized = json.dumps(
+        {
+            name: value
+            for name, value in schemas.items()
+            if name.startswith("PrivacyActivity") and name != "PrivacyActivityType"
+        }
+    ).lower()
+    for forbidden in (
+        "raw_metadata",
+        "ip_address",
+        "user_agent",
+        "password",
+        "otp",
+        "session_token",
+        "counseling_note",
+        "inventory_content",
+    ):
+        assert forbidden not in serialized
+    assert "auth.password.reset" in schemas["PrivacyActivityType"]["enum"]
+    assert "auth.mfa.totp.disabled" in schemas["PrivacyActivityType"]["enum"]
+
+
+def test_availability_provider_discovery_openapi_contract() -> None:
+    schema = _generated_schema()
+    operation = _operation(schema, "/api/v1/availability/providers", "get")
+    assert operation["operationId"] == "availabilityListProviders"
+    assert operation["tags"] == ["availability"]
+    assert _response_statuses(operation) == {200, 401, 403, 422}
+
+    response_schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert response_schema["$ref"].endswith("/AvailabilityProviderListResponse")
+
+    schemas = schema["components"]["schemas"]
+    provider = schemas["AvailabilityProviderSummary"]
+    assert set(provider["properties"]) == {
+        "id",
+        "full_name",
+        "email",
+        "role",
+        "is_active",
+    }
+    assert set(provider["required"]) == {
+        "id",
+        "full_name",
+        "email",
+        "role",
+        "is_active",
+    }
+
+    provider_list = schemas["AvailabilityProviderListResponse"]
+    assert set(provider_list["properties"]) == {
+        "items",
+        "page",
+        "page_size",
+        "has_next",
+    }
+    assert set(provider_list["required"]) == {
+        "items",
+        "page",
+        "page_size",
+        "has_next",
+    }
+
+    for status in ("401", "403", "422"):
+        error_schema = operation["responses"][status]["content"]["application/json"]["schema"]
+        assert error_schema["$ref"].endswith("/APIErrorResponse")
+
+
+def test_appointment_frontend_readiness_openapi_contract() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    appointment = schemas["AppointmentResponse"]
+    assert "student_id" in appointment["properties"]
+    assert appointment["properties"]["student"]["$ref"].endswith("/AppointmentStudentSummary")
+
+    student = schemas["AppointmentStudentSummary"]
+    assert set(student["properties"]) == {"id", "institutional_id", "display_name"}
+    assert set(student["required"]) == {"id", "institutional_id", "display_name"}
+    assert "email" not in student["properties"]
+    assert "contact_number" not in student["properties"]
+
+    operation = _operation(schema, "/api/v1/appointments/booking/services", "get")
+    assert operation["operationId"] == "appointmentsListBookingServices"
+    assert operation["tags"] == ["appointments"]
+    assert _response_statuses(operation) == {200, 401, 403, 422}
+
+    response_schema = operation["responses"]["200"]["content"]["application/json"]["schema"]
+    assert response_schema["$ref"].endswith("/AppointmentBookingServiceListResponse")
+
+    booking_service = schemas["AppointmentBookingServiceSummary"]
+    expected_fields = {
+        "id",
+        "code",
+        "name",
+        "description",
+        "delivery_modes",
+        "default_appointment_duration_minutes",
+        "cancellation_cutoff_minutes",
+        "requires_current_inventory",
+    }
+    assert set(booking_service["properties"]) == expected_fields
+    assert set(booking_service["required"]) == expected_fields
+    assert "is_active" not in booking_service["properties"]
+    assert "created_at" not in booking_service["properties"]
+    assert "updated_at" not in booking_service["properties"]
+    assert "provider_roles" not in booking_service["properties"]
+
+    booking_list = schemas["AppointmentBookingServiceListResponse"]
+    assert set(booking_list["properties"]) == {"items", "page", "page_size", "has_next"}
+    assert set(booking_list["required"]) == {"items", "page", "page_size", "has_next"}
+
+    for status in ("401", "403", "422"):
+        error_schema = operation["responses"][status]["content"]["application/json"]["schema"]
+        assert error_schema["$ref"].endswith("/APIErrorResponse")
+
+
+def test_appointment_list_ordering_openapi_contract() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    ordering_schema = schemas["AppointmentListOrdering"]
+    assert ordering_schema["enum"] == ["EARLIEST_START", "LATEST_START"]
+
+    for path, operation_id in (
+        ("/api/v1/appointments/me", "appointmentsListMy"),
+        ("/api/v1/appointments", "appointmentsListManaged"),
+    ):
+        operation = _operation(schema, path, "get")
+        assert operation["operationId"] == operation_id
+        assert _response_statuses(operation) == {200, 401, 403, 422}
+        parameters = {parameter["name"]: parameter for parameter in operation["parameters"]}
+        assert "ordering" in parameters
+        ordering = parameters["ordering"]
+        assert ordering["in"] == "query"
+        assert ordering["required"] is False
+        # Omitted, the backend resolves the default for the selected population (ADR-090).
+        ordering_parameter_schema = ordering["schema"]
+        assert "default" not in ordering_parameter_schema
+        response = _response_schema(schema, operation)
+        assert schemas[response]["properties"]["ordering"]["$ref"].endswith(
+            "/AppointmentListOrdering"
+        )
+        assert "ordering" in schemas[response]["required"]
+
+
+def test_inventory_frontend_readiness_openapi_contract() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    expected_reference_operations = {
+        "/api/v1/reference-data/psgc/regions": "referenceDataListPSGCRegions",
+        "/api/v1/reference-data/psgc/provinces": "referenceDataListPSGCProvinces",
+        "/api/v1/reference-data/psgc/cities-municipalities": (
+            "referenceDataListPSGCCitiesMunicipalities"
+        ),
+        "/api/v1/reference-data/psgc/barangays": "referenceDataListPSGCBarangays",
+    }
+    for path, operation_id in expected_reference_operations.items():
+        operation = _operation(schema, path, "get")
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["reference-data"]
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        assert _response_statuses(operation) == {200, 401, 422, 503}
+        response = operation["responses"]["200"]["content"]["application/json"]["schema"]
+        assert response["$ref"].endswith("/PSGCReferenceListResponse")
+        for status in ("401", "422", "503"):
+            error = operation["responses"][status]["content"]["application/json"]["schema"]
+            assert error["$ref"].endswith("/APIErrorResponse")
+
+    reference_item = schemas["PSGCReferenceItem"]
+    assert set(reference_item["properties"]) == {"code", "name"}
+    assert set(reference_item["required"]) == {"code", "name"}
+
+    reference_list = schemas["PSGCReferenceListResponse"]
+    assert set(reference_list["properties"]) == {"version", "items"}
+    assert set(reference_list["required"]) == {"version", "items"}
+
+    provinces = _operation(schema, "/api/v1/reference-data/psgc/provinces", "get")
+    province_parameters = {parameter["name"]: parameter for parameter in provinces["parameters"]}
+    assert province_parameters["region_code"]["required"] is True
+
+    cities = _operation(
+        schema,
+        "/api/v1/reference-data/psgc/cities-municipalities",
+        "get",
+    )
+    city_parameters = {parameter["name"]: parameter for parameter in cities["parameters"]}
+    assert city_parameters["region_code"]["required"] is True
+    assert city_parameters["province_code"]["required"] is False
+
+    barangays = _operation(schema, "/api/v1/reference-data/psgc/barangays", "get")
+    barangay_parameters = {parameter["name"]: parameter for parameter in barangays["parameters"]}
+    assert barangay_parameters["city_municipality_code"]["required"] is True
+
+    correction = schemas["InventoryCorrectionSummary"]
+    assert set(correction["properties"]) == {"requested_at", "message"}
+    assert set(correction["required"]) == {"requested_at", "message"}
+    assert "reopened_by" not in correction["properties"]
+    assert "email" not in correction["properties"]
+
+    status = schemas["InventoryStatusResponse"]
+    assert {"correction_pending", "latest_correction"} <= set(status["properties"])
+
+    inventory = schemas["InventoryResponse"]
+    assert {"correction_pending", "latest_correction"} <= set(inventory["properties"])
+
+    summary = schemas["InventorySummaryResponse"]
+    assert "correction_pending" in summary["properties"]
+    assert "latest_correction" not in summary["properties"]
+
+    reopen = schemas["InventoryReopenRequest"]
+    reason = reopen["properties"]["reason"]
+    assert "Student-visible correction guidance" in reason["description"]
+
+    submit = _operation(schema, "/api/v1/inventory/me/current/submit", "post")
+    assert _response_statuses(submit) == {200, 401, 403, 404, 409, 422, 503}
+
+    serialized = json.dumps(schema)
+    assert "PSGC_API_TOKEN" not in serialized
+    assert "PSGC_API_BASE_URL" not in serialized
+
+
+def test_routine_interview_candidate_discovery_openapi_contract() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    expected = {
+        "/api/v1/routine-interviews/me/appointment-candidates": (
+            "routineInterviewsListMyAppointmentCandidates",
+            {200, 401, 403, 409},
+        ),
+        "/api/v1/routine-interviews/direct/options": (
+            "routineInterviewsGetDirectCreationOptions",
+            {200, 401, 403, 409},
+        ),
+        "/api/v1/routine-interviews/direct/student-candidates": (
+            "routineInterviewsListDirectStudentCandidates",
+            {200, 401, 403, 409, 422},
+        ),
+        "/api/v1/routine-interviews/{routine_interview_id}/encounter-candidates": (
+            "routineInterviewsListEncounterCandidates",
+            {200, 401, 403, 404, 409, 422},
+        ),
+    }
+    for path, (operation_id, statuses) in expected.items():
+        operation = _operation(schema, path, "get")
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["routine-interviews"]
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        assert statuses <= _response_statuses(operation)
+        for status in statuses - {200}:
+            response_schema = operation["responses"][str(status)]["content"]["application/json"][
+                "schema"
+            ]
+            assert response_schema["$ref"].endswith("/APIErrorResponse")
+
+    direct_students = _operation(
+        schema,
+        "/api/v1/routine-interviews/direct/student-candidates",
+        "get",
+    )
+    assert {parameter["name"] for parameter in direct_students["parameters"]} == {
+        "search",
+        "page",
+        "page_size",
+    }
+
+    encounter_candidates = _operation(
+        schema,
+        "/api/v1/routine-interviews/{routine_interview_id}/encounter-candidates",
+        "get",
+    )
+    assert {parameter["name"] for parameter in encounter_candidates["parameters"]} == {
+        "routine_interview_id",
+        "page",
+        "page_size",
+    }
+
+    appointment = schemas["RoutineAppointmentCandidate"]
+    assert set(appointment["properties"]) == {
+        "id",
+        "reference_code",
+        "counselor",
+        "delivery_mode",
+        "starts_at",
+        "ends_at",
+    }
+
+    options = schemas["RoutineDirectCreationOptions"]
+    assert set(options["properties"]) == {"service", "delivery_modes"}
+    service = schemas["RoutineServiceSummary"]
+    assert set(service["properties"]) == {"id", "code", "name"}
+
+    student = schemas["RoutineDirectStudentCandidate"]
+    assert set(student["properties"]) == {
+        "id",
+        "institutional_id",
+        "display_name",
+        "inventory_context",
+    }
+    assert set(schemas["RoutineInventoryContext"]["properties"]) == {
+        "id",
+        "academic_year",
+        "available",
+        "full_name",
+        "course",
+        "major",
+    }
+
+    encounter = schemas["RoutineEncounterCandidate"]
+    assert set(encounter["properties"]) == {
+        "id",
+        "entry_mode",
+        "delivery_mode",
+        "started_at",
+        "ended_at",
+        "appointment",
+    }
+
+    serialized = json.dumps(
+        {
+            "appointment": appointment,
+            "student": student,
+            "encounter": encounter,
+        }
+    ).lower()
+    for forbidden in (
+        "email",
+        "phone",
+        "address",
+        "support_profile",
+        "concerns",
+        "suicidal",
+        "special_concern",
+        "recommendations",
+        "shared_summary",
+        "audit",
+    ):
+        assert forbidden not in serialized
+
+
+def test_counseling_frontend_readiness_openapi_contract() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    expected = {
+        "/api/v1/counseling/encounter-options": (
+            "counselingGetEncounterCreationOptions",
+            {200, 401, 403, 409},
+        ),
+        "/api/v1/counseling/appointment-candidates": (
+            "counselingListAppointmentCandidates",
+            {200, 401, 403, 409, 422},
+        ),
+        "/api/v1/counseling/encounters/{encounter_id}/appointment-candidates": (
+            "counselingListEncounterAppointmentCandidates",
+            {200, 401, 403, 404, 409, 422},
+        ),
+    }
+    for path, (operation_id, statuses) in expected.items():
+        operation = _operation(schema, path, "get")
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["counseling"]
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        assert statuses <= _response_statuses(operation)
+        for status in statuses - {200}:
+            error = operation["responses"][str(status)]["content"]["application/json"]["schema"]
+            assert error["$ref"].endswith("/APIErrorResponse")
+
+    options = schemas["CounselingEncounterCreationOptions"]
+    assert set(options["properties"]) == {"service", "delivery_modes"}
+
+    appointment = schemas["CounselingAppointmentCandidate"]
+    assert set(appointment["properties"]) == {
+        "id",
+        "reference_code",
+        "student",
+        "delivery_mode",
+        "starts_at",
+        "ends_at",
+        "status",
+    }
+    appointment_student = schemas["CounselingAppointmentCandidateStudent"]
+    assert set(appointment_student["properties"]) == {
+        "id",
+        "institutional_id",
+        "display_name",
+    }
+
+    correction = schemas["CounselingEncounterAppointmentCandidate"]
+    assert set(correction["properties"]) == {
+        "id",
+        "reference_code",
+        "delivery_mode",
+        "starts_at",
+        "ends_at",
+        "status",
+    }
+
+    student = schemas["CounselingStudentResponse"]
+    assert set(student["properties"]) == {
+        "id",
+        "institutional_id",
+        "display_name",
+    }
+
+    student_list = _operation(schema, "/api/v1/counseling/students", "get")
+    assert student_list["operationId"] == "counselingListStudents"
+    assert {parameter["name"] for parameter in student_list["parameters"]} == {
+        "search",
+        "page",
+        "page_size",
+    }
+
+    new_candidates = _operation(schema, "/api/v1/counseling/appointment-candidates", "get")
+    assert {parameter["name"] for parameter in new_candidates["parameters"]} == {
+        "search",
+        "page",
+        "page_size",
+    }
+
+    correction_candidates = _operation(
+        schema,
+        "/api/v1/counseling/encounters/{encounter_id}/appointment-candidates",
+        "get",
+    )
+    assert {parameter["name"] for parameter in correction_candidates["parameters"]} == {
+        "encounter_id",
+        "page",
+        "page_size",
+    }
+
+    serialized = json.dumps(
+        {
+            "options": options,
+            "appointment": appointment,
+            "appointment_student": appointment_student,
+            "correction": correction,
+            "student": student,
+        }
+    ).lower()
+    for forbidden in (
+        "email",
+        "phone",
+        "address",
+        "history",
+        "reason",
+        "audit",
+        "support_profile",
+        "shared_summary",
+    ):
+        assert forbidden not in serialized
+
+
+def test_ecounseling_join_and_context_readiness_openapi_contract() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    readiness = schemas["ProviderReadiness"]
+    assert {
+        "daily_enabled",
+        "room_provisioned",
+        "join_allowed",
+        "join_available_from",
+        "join_available_until",
+        "join_state",
+    } == set(readiness["properties"])
+    assert readiness["properties"]["join_state"]["$ref"].endswith("/ECounselingJoinState")
+    assert schemas["ECounselingJoinState"]["enum"] == [
+        "TOO_EARLY",
+        "OPEN",
+        "CLOSED",
+        "PROVIDER_DISABLED",
+    ]
+
+    counselor_workspace = schemas["CounselorWorkspaceResponse"]
+    assert counselor_workspace["properties"]["counseling_context_available"]["type"] == "boolean"
+
+
+def test_feedback_submission_idempotency_openapi_contract() -> None:
+    schema = _generated_schema()
+    expected = {
+        "/api/v1/feedback/customer-feedback": "feedbackSubmitCustomerFeedback",
+        "/api/v1/feedback/csm": "feedbackSubmitCsm",
+    }
+
+    for path, operation_id in expected.items():
+        operation = _operation(schema, path, "post")
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["feedback"]
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        assert {201, 401, 403, 409, 422, 503} <= _response_statuses(operation)
+
+        headers = [
+            parameter
+            for parameter in operation["parameters"]
+            if parameter["in"] == "header" and parameter["name"] == "Idempotency-Key"
+        ]
+        assert len(headers) == 1
+        assert headers[0]["required"] is True
+        assert headers[0]["schema"]["type"] == "string"
+
+        for status in (401, 403, 409, 422, 503):
+            error_schema = operation["responses"][str(status)]["content"]["application/json"][
+                "schema"
+            ]
+            assert error_schema["$ref"].endswith("/APIErrorResponse")
+
+        success_schema = operation["responses"]["201"]["content"]["application/json"]["schema"]
+        assert success_schema["$ref"].endswith("/FeedbackSubmissionResponse")
+
+    customer = _operation(schema, "/api/v1/feedback/customer-feedback", "post")
+    csm = _operation(schema, "/api/v1/feedback/csm", "post")
+    assert customer["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/CustomerFeedbackSubmitRequest"
+    )
+    assert csm["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith(
+        "/CSMSubmitRequest"
+    )
+
+    schemas = schema["components"]["schemas"]
+    for request_name in ("CustomerFeedbackSubmitRequest", "CSMSubmitRequest"):
+        request = schemas[request_name]
+        assert "opportunity_id" in request["properties"]
+        assert "opportunity_id" in request["required"]
+        assert request["properties"]["opportunity_id"]["format"] == "uuid"
+
+    opportunities = _operation(schema, "/api/v1/feedback/opportunities", "get")
+    assert opportunities["operationId"] == "feedbackListMyOpportunities"
+    assert opportunities["tags"] == ["feedback"]
+    assert opportunities["security"] == [{"OpaqueSessionAuth": []}]
+    assert _response_statuses(opportunities) >= {200, 401, 403}
+
+    detail = _operation(
+        schema,
+        "/api/v1/feedback/opportunities/{opportunity_id}",
+        "get",
+    )
+    assert detail["operationId"] == "feedbackGetMyOpportunity"
+    assert _response_statuses(detail) >= {200, 401, 403, 404}
+    path_parameter = next(
+        parameter for parameter in detail["parameters"] if parameter["name"] == "opportunity_id"
+    )
+    assert path_parameter["in"] == "path"
+    assert path_parameter["required"] is True
+    assert path_parameter["schema"]["format"] == "uuid"
+
+    opportunity = schemas["FeedbackOpportunityResponse"]
+    assert set(opportunity["properties"]) == {
+        "id",
+        "service_kind",
+        "service_label",
+        "service_completed_at",
+        "customer_feedback_submitted",
+        "csm_submitted",
+        "can_submit_customer_feedback",
+        "can_submit_csm",
+    }
+
+
+def test_referral_call_slip_atomic_issuance_openapi_contract() -> None:
+    schema = _generated_schema()
+    path = "/api/v1/call-slips/from-referral/{referral_id}"
+    assert set(schema["paths"][path]) == {"post"}
+
+    operation = _operation(schema, path, "post")
+    assert operation["operationId"] == "callSlipsCreateFromReferral"
+    assert operation["tags"] == ["call-slips"]
+    assert operation["security"] == [{"OpaqueSessionAuth": []}]
+    assert {201, 401, 403, 404, 409, 422} <= _response_statuses(operation)
+
+    parameters = {
+        (parameter["in"], parameter["name"]): parameter for parameter in operation["parameters"]
+    }
+    referral_id = parameters[("path", "referral_id")]
+    assert referral_id["required"] is True
+    assert referral_id["schema"]["format"] == "uuid"
+
+    idempotency_key = parameters[("header", "Idempotency-Key")]
+    assert idempotency_key["required"] is True
+    assert idempotency_key["schema"]["type"] == "string"
+
+    request_schema = operation["requestBody"]["content"]["application/json"]["schema"]
+    assert request_schema["$ref"].endswith("/CallSlipCreateFromReferralRequest")
+    request = schema["components"]["schemas"]["CallSlipCreateFromReferralRequest"]
+    assert set(request["properties"]) == {
+        "course_year",
+        "destination_type",
+        "other_destination",
+        "report_at",
+        "notify_student",
+        "action",
+    }
+    assert {
+        "student_id",
+        "referral_id",
+        "issued_by_id",
+        "recorded_by_id",
+        "student_name",
+        "issuer_name",
+    }.isdisjoint(request["properties"])
+
+    action = schema["components"]["schemas"]["CallSlipReferralActionInput"]
+    assert set(action["properties"]) == {"occurred_at", "remarks"}
+
+    success = operation["responses"]["201"]["content"]["application/json"]["schema"]
+    assert success["$ref"].endswith("/CallSlipOperationalResponse")
+    for status in (401, 403, 404, 409, 422):
+        error = operation["responses"][str(status)]["content"]["application/json"]["schema"]
+        assert error["$ref"].endswith("/APIErrorResponse")
+
+    existing = _operation(schema, "/api/v1/call-slips", "post")
+    assert existing["operationId"] == "callSlipsCreate"
+    existing_request = existing["requestBody"]["content"]["application/json"]["schema"]
+    assert existing_request["$ref"].endswith("/CallSlipCreateRequest")
+
+
+def test_good_moral_request_creation_idempotency_openapi_contract() -> None:
+    schema = _generated_schema()
+    expected = {
+        "/api/v1/good-moral/me/requests/current-student": (
+            "goodMoralCreateMyCurrentStudentRequest",
+            "CurrentStudentRequestPayload",
+        ),
+        "/api/v1/good-moral/me/requests/graduate": (
+            "goodMoralCreateMyGraduateRequest",
+            "GraduateRequestPayload",
+        ),
+    }
+
+    for path, (operation_id, request_schema_name) in expected.items():
+        operation = _operation(schema, path, "post")
+        assert operation["operationId"] == operation_id
+        assert operation["tags"] == ["good-moral"]
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        assert _response_statuses(operation) == {201, 401, 403, 409, 422}
+
+        headers = [
+            parameter
+            for parameter in operation["parameters"]
+            if parameter["in"] == "header" and parameter["name"] == "Idempotency-Key"
+        ]
+        assert len(headers) == 1
+        assert headers[0]["required"] is True
+        assert headers[0]["schema"]["type"] == "string"
+
+        request_schema = operation["requestBody"]["content"]["application/json"]["schema"]
+        assert request_schema["$ref"].endswith(f"/{request_schema_name}")
+        success_schema = operation["responses"]["201"]["content"]["application/json"]["schema"]
+        assert success_schema["$ref"].endswith("/GoodMoralDetailResponse")
+
+        for status in (401, 403, 409, 422):
+            error_schema = operation["responses"][str(status)]["content"]["application/json"][
+                "schema"
+            ]
+            assert error_schema["$ref"].endswith("/APIErrorResponse")
+
+
+def test_privacy_expansion_contract_keeps_notice_boundaries_and_removes_legacy_retention() -> None:
+    schema = _generated_schema()
+    public = _operation(schema, "/api/v1/privacy/public-notices", "get")
+    self_list = _operation(schema, "/api/v1/privacy/my-notices", "get")
+    acknowledge = _operation(schema, "/api/v1/privacy/my-notices/{revision_id}/acknowledge", "post")
+    assert "security" not in public
+    assert self_list["security"] == [{"OpaqueSessionAuth": []}]
+    assert acknowledge["security"] == [{"OpaqueSessionAuth": []}]
+    assert _response_statuses(acknowledge) >= {200, 401, 403, 404, 409, 422}
+
+    schemas = schema["components"]["schemas"]
+    assert schemas["AudienceValue"]["enum"] == ["PUBLIC", "STUDENT", "STAFF"]
+    assert schemas["RevisionStatusValue"]["enum"] == ["DRAFT", "PUBLISHED", "SUPERSEDED"]
+    assert "RetentionPolicyResponse" not in schemas
+    assert "RetentionRuleResponse" in schemas
+    assert "DispositionCaseResponse" in schemas
+    assert not any("/privacy/retention-policies" in path for path in schema["paths"])
+    for path in (
+        "/api/v1/privacy/notices/{notice_id}",
+        "/api/v1/privacy/notice-revisions/{revision_id}",
+    ):
+        assert "delete" not in schema["paths"][path]
+
+
+def test_record_retrieval_contracts_are_narrow_and_historical_filters_are_domain_owned():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    for path in ("/api/v1/appointments/me", "/api/v1/counseling/me/encounters"):
+        assert "search" in {p["name"] for p in _operation(schema, path, "get")["parameters"]}
+    provider = _operation(schema, "/api/v1/availability/providers/{provider_id}", "get")
+    assert provider["operationId"] == "availabilityGetProvider"
+    assert {"401", "403", "404", "422"} <= set(provider["responses"])
+    for path, page_schema in (
+        ("/api/v1/referrals", "ReferralPageResponse"),
+        ("/api/v1/call-slips", "CallSlipOperationalPageResponse"),
+        ("/api/v1/inventory/students", "CounselorInventoryRosterPage"),
+        ("/api/v1/feedback/customer-feedback/responses", "CustomerFeedbackPageResponse"),
+        ("/api/v1/good-moral/requests", "GoodMoralPageResponse"),
+    ):
+        param = next(
+            p
+            for p in _operation(schema, path, "get")["parameters"]
+            if p["name"] == "form_revision_id"
+        )
+        assert {"type": "string", "format": "uuid"} in param["schema"]["anyOf"]
+        assert schemas[page_schema]["properties"]["filter_options"]["$ref"].endswith(
+            "/CollectionFilterOptions"
+        )
+    assert set(schemas["FormRevisionFilterOption"]["properties"]) == {
+        "id",
+        "official_code",
+        "official_revision",
+    }
+    assert "institutional_id" in schemas["EncounterCollectionStudent"]["properties"]
+    assert "institutional_id" not in schemas["IdentitySummaryResponse"]["properties"]
+    assert "official_receipt_number" in schemas["GoodMoralOperationalSummaryResponse"]["properties"]
+    assert (
+        "official_receipt_amount"
+        not in schemas["GoodMoralOperationalSummaryResponse"]["properties"]
+    )
+    assert "official_receipt_number" not in schemas["GoodMoralSummaryResponse"]["properties"]
+    for path in (
+        "/api/v1/routine-interviews",
+        "/api/v1/exit-interviews",
+        "/api/v1/feedback/csm/responses",
+        "/api/v1/graduate-tracer/responses",
+        "/api/v1/call-slips/me",
+    ):
+        assert "form_revision_id" not in {
+            p["name"] for p in _operation(schema, path, "get").get("parameters", [])
+        }
+
+
+def test_guidance_messages_contract_is_private_strict_and_persistent_idempotency():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    assert schemas["GuidanceSendRequest"]["additionalProperties"] is False
+    assert set(schemas["GuidanceSendRequest"]["required"]) == {"body", "client_message_id"}
+    assert schemas["GuidanceSendRequest"]["properties"]["body"]["maxLength"] == 4000
+    assert set(schemas["GuidanceReadRequest"]["properties"]) == {"sequence"}
+    assert set(schemas["GuidancePerson"]["properties"]) == {"id", "display_name"}
+    assert "body" not in schemas["GuidanceThreadResponse"]["properties"]
+    assert "read_states" not in schemas["GuidanceThreadResponse"]["properties"]
+    assert set(schemas["ThreadStatus"]["enum"]) == {"OPEN", "RESOLVED"}
+    for method, path, operation in iter_operations(schema):
+        if not path.startswith("/api/v1/guidance-messages"):
+            continue
+        assert operation["security"] == [{"OpaqueSessionAuth": []}]
+        assert operation["tags"] == ["guidance-messages"]
+        assert not any(
+            p["name"].lower() == "idempotency-key" for p in operation.get("parameters", [])
+        )
+        assert method not in {"delete", "put"}
+    assert "body_ciphertext" not in json.dumps(schema)
+
+
+def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
+    schema = _generated_schema()
+    operation = schema["paths"]["/api/v1/work"]["get"]
+    assert operation["operationId"] == "workQueueList"
+    assert set(schema["paths"]["/api/v1/work"]) == {"get"}
+    schemas = schema["components"]["schemas"]
+    assert schemas["WorkKind"]["enum"] == [
+        "GUIDANCE_MESSAGE_REPLY",
+        "ROUTINE_EVALUATION",
+        "GOOD_MORAL_PREPARATION",
+        "GOOD_MORAL_ISSUANCE",
+        "CALL_SLIP_DUE",
+    ]
+    assert schemas["WorkPriority"]["enum"] == ["TIME_SENSITIVE", "ACTION_REQUIRED"]
+    assert schemas["WorkItem"]["additionalProperties"] is False
+    assert set(schemas["WorkItem"]["properties"]) == {
+        "id",
+        "kind",
+        "priority",
+        "source_id",
+        "student",
+        "conversation_kind",
+        "due_at",
+        "waiting_since",
+    }
+    assert schemas["WorkStudent"]["additionalProperties"] is False
+    assert set(schemas["WorkStudent"]["properties"]) == {"id", "display_name"}
+    assert "total" not in schemas["WorkQueueResponse"]["properties"]
+    assert "expected_updated_at" in schemas["GuidanceTemplateUpdateRequest"]["required"]
+    assert (
+        schemas["GuidanceTemplateUpdateRequest"]["properties"]["expected_updated_at"]["type"]
+        == "string"
+    )
+
+
+def test_student_actions_contract_is_closed_read_only_and_structural():
+    from compass.api.v1.router import api
+
+    schema = api.get_openapi_schema()
+    path = schema["paths"]["/api/v1/student-actions"]
+    assert set(path) == {"get"}
+    assert path["get"]["operationId"] == "studentActionsList"
+    item = schema["components"]["schemas"]["StudentActionItem"]
+    assert item["additionalProperties"] is False
+    assert set(item["properties"]) == {
+        "id",
+        "kind",
+        "priority",
+        "source_id",
+        "due_at",
+        "waiting_since",
+        "conversation_kind",
+        "pending_count",
+    }
+    assert len(schema["components"]["schemas"]["StudentActionKind"]["enum"]) == 11
+    assert schema["components"]["schemas"]["StudentActionPriority"]["enum"] == [
+        "TIME_SENSITIVE",
+        "ACTION_REQUIRED",
+        "INCOMPLETE_SELF_SERVICE",
+    ]
+    assert "total" not in schema["components"]["schemas"]["StudentActionsResponse"]["properties"]
+
+
+def test_guidance_operations_contract_is_closed_read_only_and_aggregate_only():
+    schema = _generated_schema()
+    path = schema["paths"]["/api/v1/guidance-operations"]
+    assert set(path) == {"get"}
+    assert path["get"]["operationId"] == "guidanceOperationsGet"
+    assert path["get"].get("parameters", []) == []
+    schemas = schema["components"]["schemas"]
+    expected = {
+        "GuidanceOperationsResponse": {"generated_at", "backlog", "schedule"},
+        "GuidanceOperationsBacklog": {
+            "guidance_messages",
+            "routine_evaluations",
+            "good_moral_preparation",
+            "good_moral_issuance",
+            "call_slips_due",
+        },
+        "GuidanceOperationsSchedule": {
+            "upcoming_self_appointments_count",
+            "upcoming_managed_appointments_count",
+            "active_call_slips_count",
+        },
+        "WaitingMetric": {"count", "oldest_waiting_since"},
+        "DueMetric": {"count", "oldest_due_at"},
+    }
+    for name, fields in expected.items():
+        assert schemas[name]["additionalProperties"] is False
+        assert set(schemas[name]["properties"]) == fields
+        assert set(schemas[name]["required"]) == fields
+    assert schemas["WaitingMetric"]["properties"]["count"]["minimum"] == 0
+    assert schemas["DueMetric"]["properties"]["count"]["minimum"] == 0
+    assert not any(code.startswith("guidance_operations.") for code in CAPABILITY_CODES)

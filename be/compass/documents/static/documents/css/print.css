@@ -1,0 +1,624 @@
+@page {
+  size: A4;
+  /* The 7 mm page edge admits the wide recognition strip. Shell content adds 18 mm. */
+  margin: 13mm 7mm 7mm;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 10pt;
+  line-height: 1.35;
+  color: #111;
+  background: #fff;
+}
+
+.document {
+  width: 100%;
+  padding: 0 18mm;
+}
+
+.institution-masthead {
+  display: grid;
+  grid-template-columns: 28mm minmax(0, 1fr) 22mm;
+  align-items: start;
+  gap: 2mm;
+  min-height: 26mm;
+}
+
+.masthead-logo {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  height: 26mm;
+  margin-top: -4mm;
+}
+
+.masthead-logo img {
+  width: 27mm;
+  height: 27mm;
+  object-fit: contain;
+}
+
+.masthead-logo-right img {
+  width: 26mm;
+  height: 26mm;
+}
+
+.masthead-copy {
+  text-align: center;
+}
+
+.country-line {
+  font-size: 10.5pt;
+  line-height: 1.1;
+}
+
+.institution-name {
+  color: #750000;
+  font-size: 15pt;
+  line-height: 1.06;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.former-institution-name {
+  font-size: 9.5pt;
+  line-height: 1.1;
+  font-style: italic;
+}
+
+.institution-address {
+  margin-top: 0.5mm;
+  font-size: 8.5pt;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.institution-contact {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.8mm;
+  margin-top: 3.3mm;
+  font-size: 6.7pt;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.contact-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5mm;
+}
+
+.contact-icon {
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  justify-content: center;
+  width: 3.3mm;
+  height: 3.3mm;
+  flex: none;
+  color: #750000;
+}
+
+.contact-icon-web {
+  border: 0.45mm solid currentColor;
+  border-radius: 50%;
+}
+
+.contact-icon-web::before,
+.contact-icon-web::after {
+  content: "";
+  position: absolute;
+  inset: -0.4mm 0.7mm;
+  border-left: 0.3mm solid currentColor;
+  border-right: 0.3mm solid currentColor;
+  border-radius: 50%;
+}
+
+.contact-icon-web::after {
+  inset: 1.2mm -0.25mm auto;
+  border: 0;
+  border-top: 0.3mm solid currentColor;
+  border-radius: 0;
+}
+
+.contact-icon-mail {
+  height: 2.5mm;
+  border: 0.4mm solid currentColor;
+  border-radius: 0.2mm;
+}
+
+.contact-icon-mail::after {
+  content: "";
+  position: absolute;
+  top: -0.5mm;
+  width: 2mm;
+  height: 2mm;
+  transform: rotate(45deg);
+  border-right: 0.3mm solid currentColor;
+  border-bottom: 0.3mm solid currentColor;
+}
+
+.contact-icon-social {
+  border-radius: 50%;
+  background: #750000;
+  color: white;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 9pt;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.institution-separator {
+  height: 0.75mm;
+  margin-top: 1.5mm;
+  background: #750000;
+}
+
+.office-heading {
+  margin: 2mm 0 10mm;
+  text-align: center;
+  color: #750000;
+  line-height: 1.1;
+}
+
+.office-parent-unit,
+.office-name {
+  font-size: 11.5pt;
+  text-transform: uppercase;
+}
+
+.office-name {
+  font-weight: 400;
+}
+
+.office-email {
+  margin-top: 0.5mm;
+  color: #111;
+  font-size: 10.5pt;
+}
+
+.document-body {
+  min-height: 30mm;
+}
+
+.document-body h1 {
+  margin: 0 0 4mm;
+  font-size: 14pt;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 5mm;
+}
+
+.report-table thead {
+  display: table-header-group;
+}
+
+.report-table tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.report-table th,
+.report-table td {
+  border: 0.25mm solid #777;
+  padding: 1.5mm 2mm;
+  vertical-align: top;
+}
+
+.report-table th {
+  background: #f1f1f1;
+  font-weight: 700;
+}
+
+.controlled-form-metadata {
+  display: flex;
+  justify-content: space-between;
+  gap: 8mm;
+  margin-top: 7mm;
+  padding-top: 2mm;
+  border-top: 0.25mm solid #555;
+  font-size: 8pt;
+}
+
+.layout-certificate .controlled-form-metadata,
+.layout-compact_form .controlled-form-metadata,
+.layout-report .controlled-form-metadata {
+  position: fixed;
+  bottom: -1.5mm;
+  left: 0;
+  width: 176mm;
+  margin: 0;
+  margin-left: 1mm;
+  padding: 0;
+  border: 0;
+}
+
+.controlled-form-metadata > div:first-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.controlled-form-code {
+  font-weight: 700;
+}
+
+.accreditation-footer {
+  margin-top: 8mm;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.accreditation-footer img {
+  display: block;
+  width: 100%;
+  max-height: 18mm;
+  object-fit: contain;
+}
+
+.layout-certificate .accreditation-footer,
+.layout-compact_form .accreditation-footer,
+.layout-report .accreditation-footer {
+  position: fixed;
+  bottom: 10mm;
+  left: 0;
+  width: 196mm;
+  margin: 0;
+  padding-top: 1mm;
+  border-top: 0.75mm solid #750000;
+}
+
+.layout-certificate .accreditation-footer img,
+.layout-compact_form .accreditation-footer img,
+.layout-report .accreditation-footer img {
+  height: 12mm;
+  max-height: none;
+  object-fit: fill;
+}
+
+.page-break-before {
+  break-before: page;
+  page-break-before: always;
+}
+
+.avoid-page-break {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+@media print {
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+}
+
+
+.good-moral-certificate {
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 11pt;
+  line-height: 1.65;
+}
+
+.good-moral-certificate h1 {
+  margin: 2mm 0 12mm;
+  text-align: center;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 15pt;
+  letter-spacing: 0.3mm;
+}
+
+.good-moral-certificate p {
+  margin: 0 0 7mm;
+  text-align: justify;
+  text-indent: 10mm;
+}
+
+/* F5 has three controlled source pages with a repeated institutional shell. */
+.individual-inventory-page {
+  position: relative;
+  height: 275mm;
+  break-after: page;
+  page-break-after: always;
+}
+
+.individual-inventory-page:last-child {
+  break-after: auto;
+  page-break-after: auto;
+}
+
+.individual-inventory-page .office-heading {
+  margin-bottom: 2.5mm;
+}
+
+.inventory-source-body {
+  width: 180mm;
+  margin: 0 0 0 -5mm;
+  font-size: 8.5pt;
+  line-height: 1.2;
+}
+
+.inventory-source-body .generated-value {
+  font-family: Arial, Helvetica, sans-serif;
+  font-weight: 400;
+}
+
+.inventory-title {
+  margin: 1mm 0 4mm;
+  text-align: center;
+  font-size: 11pt;
+}
+
+.inventory-instructions { margin-bottom: 2mm; }
+.inventory-instructions > span { display: block; text-indent: 11mm; }
+
+.inventory-section-title {
+  position: relative;
+  height: 6mm;
+  margin: 1.2mm 0 0.5mm;
+  border-bottom: 0.22mm solid #333;
+}
+
+.inventory-section-title strong {
+  position: absolute;
+  top: 0;
+  left: 0;
+  min-width: 34mm;
+  padding: 1mm 2.4mm;
+  border: 0.22mm solid #333;
+  text-align: center;
+  background: #fff;
+  font-size: 9pt;
+}
+
+.inventory-row { display: flex; align-items: baseline; gap: 1.1mm; min-height: 4mm; }
+.inventory-row > span:not(.inventory-line) { flex: none; }
+.inventory-line {
+  display: inline-block;
+  flex: 1 1 0;
+  min-width: 4mm;
+  min-height: 3.1mm;
+  border-bottom: 0.17mm solid #333;
+  vertical-align: baseline;
+}
+.inventory-fit { display: block; overflow: hidden; white-space: nowrap; }
+td.inventory-fit { display: table-cell; }
+.inventory-line .generated-value { padding: 0 0.5mm; }
+.inventory-answer-lines {
+  position: relative;
+  display: block;
+  height: 6.5mm;
+  min-height: 6.5mm;
+  overflow: visible;
+  white-space: normal;
+  line-height: 3.15mm;
+  border-bottom: 0;
+}
+.inventory-answer-rule {
+  position: absolute;
+  z-index: 0;
+  right: 0;
+  display: block;
+  height: 0;
+  border-bottom: 0.17mm solid #333;
+}
+.inventory-answer-rule-first { top: 3.15mm; left: 0; }
+.inventory-answer-rule-continuation {
+  right: 0;
+  bottom: 0;
+  left: -31mm;
+}
+.inventory-answer-lines .generated-value {
+  position: relative;
+  z-index: 1;
+  display: block;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.inventory-checkbox {
+  display: inline-flex;
+  width: 5mm;
+  justify-content: center;
+  font-weight: 400;
+}
+.inventory-checkbox::before { content: "[ "; color: #111; }
+.inventory-checkbox::after { content: " ]"; color: #111; }
+.inventory-personal-first {
+  display: grid;
+  grid-template-columns: 9mm 65mm 19mm 18mm 15mm 14mm;
+  column-gap: 3mm;
+}
+.inventory-personal-first .inventory-line { flex: none; min-width: 0; }
+.inventory-personal-first > span:nth-child(5) { white-space: nowrap; }
+.inventory-name-note { padding-left: 12mm; font-size: 6.8pt; }
+.inventory-four-fields .inventory-line { max-width: 21mm; }
+.inventory-four-fields .inventory-line:nth-of-type(6) { max-width: none; }
+.inventory-personal-checks .inventory-line { max-width: 20mm; }
+.inventory-stacked-field { height: 7mm; }
+.inventory-stacked-field .inventory-line { display: block; width: 100%; }
+.inventory-label-line .inventory-line { flex: 1; }
+.inventory-contact-row .inventory-line { flex: 1; }
+.inventory-family-title { margin-top: 1.5mm; }
+
+.inventory-family-table, .inventory-sibling-table, .inventory-education-table,
+.inventory-organizations, .inventory-transport, .inventory-daily-hours table {
+  width: 100%; border-collapse: collapse; table-layout: fixed;
+}
+.inventory-family-table th, .inventory-family-table td,
+.inventory-education-table th, .inventory-education-table td,
+.inventory-organizations th, .inventory-organizations td,
+.inventory-transport th, .inventory-transport td { border: 0; padding: 0 1mm; }
+.inventory-family-table th { width: 21%; text-align: left; font-weight: 400; }
+.inventory-family-table thead th { font-weight: 700; text-align: center; }
+.inventory-family-table td,
+.inventory-education-table td,
+.inventory-organizations td,
+.inventory-transport td {
+  border: 0;
+  background-image: linear-gradient(#333, #333);
+  background-repeat: no-repeat;
+  background-size: calc(100% - 3mm) 0.17mm;
+  background-position: center bottom;
+}
+.inventory-family-table td { width: 26.3%; }
+.inventory-family-table tbody tr { height: 4.7mm; }
+.inventory-parent-status-label { margin: 1.5mm 0 0.5mm; }
+.inventory-parent-statuses { display: grid; grid-template-columns: 1.2fr repeat(3, 1fr); gap: 0.5mm 1mm; font-size: 6.8pt; }
+.inventory-guardian-row { margin-top: 1mm; }
+.inventory-emergency-title { margin: 2mm 0 1mm; }
+.individual-inventory-page .controlled-form-metadata {
+  position: absolute; bottom: 0; left: -5mm; width: 170mm;
+  margin: 0; padding: 0; border: 0;
+}
+
+.inventory-sibling-instruction { margin: 0 0 0.5mm; text-align: center; }
+.inventory-sibling-table { width: 182mm; margin-left: -2.5mm; font-size: 7.4pt; }
+.inventory-sibling-table th, .inventory-sibling-table td { border: 0.17mm solid #333; height: 6.3mm; padding: 0.2mm 0.5mm; }
+.inventory-sibling-table th { height: 6.3mm; }
+.inventory-sibling-table th:nth-child(1), .inventory-sibling-table th:nth-child(7) { width: 16%; }
+.inventory-sibling-table th:nth-child(2), .inventory-sibling-table th:nth-child(8) { width: 5%; }
+.inventory-sibling-table th:nth-child(3), .inventory-sibling-table th:nth-child(9) { width: 5%; }
+.inventory-sibling-table th:nth-child(4), .inventory-sibling-table th:nth-child(10) { width: 11%; }
+.inventory-sibling-table th:nth-child(5), .inventory-sibling-table th:nth-child(11) { width: 11%; }
+.inventory-sibling-divider { width: 1%; border-top: 0 !important; border-bottom: 0 !important; }
+.inventory-unique-title { margin-top: 1mm; }
+.inventory-unique-row > span:first-child { width: 48.5mm; white-space: nowrap; }
+.inventory-unique-row.indent > span:first-child { padding-left: 12mm; }
+.inventory-living-grid { position: relative; display: grid; grid-template-columns: 26.5mm 27.5mm 1fr; gap: 1mm; min-height: 22.5mm; }
+.inventory-living-options { border: 0.17mm solid #333; padding: 1mm; }
+.inventory-living-options > div, .inventory-boarding-details > div { min-height: 5mm; }
+.inventory-boarding-details { grid-column: 3; margin-left: 2.4mm; }
+.inventory-boarding-details .inventory-line { min-width: 26mm; }
+.inventory-exclusive { position: absolute; top: 4mm; right: 0; width: 79mm; white-space: nowrap; font-size: 8.5pt; }
+.inventory-people-row .inventory-line { max-width: 13mm; }
+.inventory-health-row > span:first-child { width: 35mm; }
+.inventory-health-row .inventory-line:first-of-type { max-width: 38mm; }
+.inventory-immunizations { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5mm 1mm; }
+.inventory-health-measures .inventory-line { max-width: 33mm; }
+.inventory-education-table { font-size: 8pt; }
+.inventory-education-table th { text-align: left; font-weight: 400; }
+.inventory-education-table thead th { font-weight: 700; }
+.inventory-education-table th:nth-child(1) { width: 24%; }
+.inventory-education-table th:nth-child(2) { width: 31%; }
+.inventory-education-table th:nth-child(3) { width: 27%; }
+.inventory-education-table th:nth-child(4) { width: 18%; }
+.inventory-education-table tbody tr { height: 4.7mm; }
+.inventory-daily-hours th { font-weight: 400; }
+.inventory-schedule-row .inventory-line { max-width: 38mm; }
+
+.inventory-first-choice { justify-content: space-between; }
+.inventory-choice-grid { display: grid; grid-template-columns: 0.6fr 1fr; gap: 1mm 4mm; margin: 1mm 0; }
+.inventory-choice-grid > span { min-width: 0; }
+.inventory-choice-grid .inventory-line { min-width: 15mm; }
+.inventory-grades-row .inventory-line { max-width: 23mm; }
+.inventory-interest-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.5mm 1mm; margin: 1mm 0; }
+.inventory-daily-hours { display: grid; grid-template-columns: 43mm 1fr; border: 0.17mm solid #333; margin-top: 1mm; min-height: 15mm; }
+.inventory-daily-hours > div { padding: 1mm; }
+.inventory-daily-hours > div:first-child { border-right: 0.17mm solid #333; }
+.inventory-daily-hours table { margin-top: 1mm; }
+.inventory-daily-hours th, .inventory-daily-hours td { border: 0.17mm solid #333; text-align: center; }
+.inventory-organizations th { text-align: center; font-weight: 700; }
+.inventory-organizations td { border-bottom: 0; }
+.inventory-organizations tbody tr { height: 4mm; }
+.inventory-transport th { font-weight: 400; text-align: left; }
+.inventory-transport thead th { font-weight: 700; text-align: center; }
+.inventory-transport td { border-bottom: 0; }
+.inventory-transport tbody tr { height: 4mm; }
+.inventory-perception-row { display: flex; justify-content: space-between; gap: 1mm; margin: 1mm 0; font-size: 6.9pt; }
+.inventory-work-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5mm 1mm; margin: 1mm 0; }
+.inventory-counseling-row { margin-top: 1mm; font-size: 7pt; }
+.inventory-signature { width: 42mm; margin: 7mm 5mm 0 auto; text-align: center; }
+.inventory-signature .inventory-line { display: block; }
+.inventory-date-row { width: 54mm; margin-left: auto; }
+.inventory-narrative-row {
+  display: grid;
+  grid-template-columns: 31mm 1fr;
+  min-height: 6.5mm;
+  align-items: start;
+}
+
+.good-moral-field {
+  display: inline-block;
+  min-width: 28mm;
+  padding: 0 1mm;
+  border-bottom: 0.25mm solid #111;
+  text-align: center;
+  text-indent: 0;
+}
+
+.good-moral-field-wide {
+  min-width: 58mm;
+}
+
+/* Only values supplied by the system use the form's blue entry ink. */
+.generated-value {
+  color: #0000ff;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.good-moral-signature {
+  width: 70mm;
+  margin: 15mm 0 7mm auto;
+  text-align: center;
+  line-height: 1.25;
+}
+
+.good-moral-signature-name {
+  margin-top: 1mm;
+  font-weight: 700;
+}
+
+.good-moral-signature-line {
+  height: 12mm;
+  border-bottom: 0.25mm solid #111;
+}
+
+.good-moral-receipt {
+  width: 72mm;
+  margin-top: 8mm;
+  line-height: 1.5;
+}
+
+.good-moral-controlled-footer {
+  margin: 0;
+}
+
+
+/* Compact controlled forms: Referral Slip and Interview Permit / Call Slip. */
+.official-form { font-size: 9.5pt; }
+.official-form-title { margin: 0 0 7mm; text-align: center; font-size: 13pt; letter-spacing: 0.2mm; }
+.document-state-banner { margin: 0 auto 4mm; padding: 1.5mm 4mm; border: 0.5mm solid #111; text-align: center; font-weight: 700; letter-spacing: 0.8mm; }
+.document-state-banner.subtle { border-width: 0.25mm; font-size: 8.5pt; }
+.official-form-grid { display: grid; grid-template-columns: 38mm 1fr; gap: 2mm 4mm; align-items: end; margin-bottom: 4mm; }
+.official-form-grid.compact { grid-template-columns: 22mm 1fr; margin-bottom: 2mm; }
+.official-form-label { font-weight: 600; }
+.official-form-value { min-height: 5mm; padding: 0 1mm 0.5mm; border-bottom: 0.25mm solid #333; }
+.official-form-section { margin: 5mm 0; }
+.official-form-long-text { min-height: 32mm; margin-top: 1.5mm; padding: 2mm; border: 0.25mm solid #777; white-space: normal; }
+.official-form-two-column, .call-slip-report { display: grid; grid-template-columns: 1fr 1fr; gap: 12mm; margin: 5mm 0; }
+.official-form-subheading { margin: 8mm 0 4mm; padding-top: 3mm; border-top: 0.25mm solid #777; text-align: center; font-style: italic; }
+.official-form-table { width: 100%; border-collapse: collapse; margin: 4mm 0; }
+.official-form-table th, .official-form-table td { border: 0.25mm solid #777; padding: 1.5mm 2mm; vertical-align: top; }
+.official-form-table th { text-align: center; }
+.official-form-table th:first-child, .official-form-table td:first-child { width: 45%; }
+.check-box { display: inline-flex; width: 4mm; height: 4mm; margin-right: 1.5mm; border: 0.25mm solid #333; align-items: center; justify-content: center; font-size: 8pt; line-height: 1; }
+.signature-block { width: 76mm; margin: 9mm auto 7mm; text-align: center; }
+.signature-line { min-height: 6mm; padding: 0 2mm 0.5mm; border-bottom: 0.25mm solid #333; text-align: center; }
+.signature-caption { margin-top: 1mm; text-align: center; font-size: 8.5pt; }
+.call-slip-destination { margin-top: 2mm; }
+.call-slip-instruction { margin: 6mm auto; max-width: 155mm; text-align: center; font-style: italic; }
+.status-row { margin-top: 5mm; }
+.void-reason { margin-top: 4mm; padding: 2mm; border: 0.25mm solid #777; }

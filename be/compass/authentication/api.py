@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 from uuid import UUID
 
 from django.conf import settings
@@ -12,21 +13,41 @@ from django.utils import timezone
 from ninja import Router, Schema, Status
 from ninja.security import APIKeyCookie
 from ninja.utils import check_csrf
+from pydantic import ConfigDict
 
+from compass.accounts.api_codes import (
+    CapabilityCode,
+    DesignationCode,
+    RoleCode,
+    StudentLifecycleCode,
+)
+from compass.accounts.policy import DESIGNATION_CODES
+from compass.accounts.services import effective_capabilities
 from compass.audit.context import AuditContext
 from compass.authentication.abuse import (
     AuthenticationAbuseUnavailable,
     AuthenticationRateLimited,
 )
+from compass.authentication.email_change import (
+    EmailChangeConflict,
+    EmailChangeInvalid,
+    EmailChangeNotFound,
+    EmailChangeStrongAuthRequired,
+    confirm_email_change,
+    request_current_email_security_challenge,
+    request_self_email_change,
+)
 from compass.authentication.email_otp import EmailOTPInvalid, EmailOTPSecurityUnavailable
 from compass.authentication.mfa import (
     TOTPAlreadyConfigured,
+    TOTPEnrollmentAuthorizationFailed,
     TOTPEnrollmentMissing,
     TOTPNotConfigured,
-    confirm_totp_enrollment,
+    confirm_authenticated_totp_enrollment,
     disable_totp,
+    has_active_totp_factor,
     regenerate_recovery_codes,
-    start_totp_enrollment,
+    start_authenticated_totp_enrollment,
     verify_totp_for_session,
 )
 from compass.authentication.models import AuthSession, TrustedSession
@@ -39,15 +60,24 @@ from compass.authentication.password_access import (
     confirm_password_access,
     request_password_access,
 )
+from compass.authentication.password_change import (
+    PasswordChangeAuthenticationFailed,
+    PasswordChangeStrongAuthRequired,
+    change_password,
+)
 from compass.authentication.services import (
     AuthenticationUnavailable,
     InvalidLoginChallenge,
     LoginResult,
     authenticate_login,
     complete_login_mfa,
+    confirm_login_totp_enrollment,
     logout_current_session,
+    start_login_totp_enrollment,
 )
 from compass.authentication.sessions import (
+    MFASetupRequired,
+    RecentMFARequired,
     has_recent_mfa,
     resolve_trusted_session,
     revoke_all_trusted_sessions,
@@ -55,6 +85,7 @@ from compass.authentication.sessions import (
     revoke_other_auth_sessions,
     revoke_trusted_session,
 )
+from compass.authentication.step_up import step_up_api_error
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.rate_limit import client_ip
@@ -62,19 +93,32 @@ from compass.common.rate_limit import client_ip
 router = Router(tags=["auth"])
 
 
+class StrictSchema(Schema):
+    model_config = ConfigDict(extra="forbid")
+
+
+class LoginMFAMethod(StrEnum):
+    TOTP = "totp"
+    RECOVERY = "recovery"
+
+
 class UserSummary(Schema):
     id: UUID
     email: str
     first_name: str
     last_name: str
-    role: str
+    role: RoleCode
+    exit_interview_workspace_available: bool = False
+    student_lifecycle_status: StudentLifecycleCode | None
+    designations: list[DesignationCode]
+    capabilities: list[CapabilityCode]
 
 
 class CSRFResponse(Schema):
     csrf_token: str
 
 
-class LoginRequest(Schema):
+class LoginRequest(StrictSchema):
     email: str
     password: str
     trust_browser: bool = False
@@ -84,22 +128,31 @@ class LoginRequest(Schema):
 class LoginResponse(Schema):
     authenticated: bool
     mfa_required: bool
-    mfa_methods: list[str]
+    mfa_methods: list[LoginMFAMethod]
     session_id: UUID | None = None
     challenge_expires_at: datetime | None = None
     user: UserSummary | None = None
 
 
-class MFARequest(Schema):
+class MFARequest(StrictSchema):
     code: str
 
 
-class LoginMFARequest(Schema):
-    method: str
+class TOTPSetupRequest(StrictSchema):
+    current_password: str
+
+
+class TOTPConfirmationRequest(StrictSchema):
+    code: str
+    current_password: str
+
+
+class LoginMFARequest(StrictSchema):
+    method: LoginMFAMethod
     code: str
 
 
-class PasswordAccessRequest(Schema):
+class PasswordAccessRequest(StrictSchema):
     email: str
     turnstile_token: str | None = None
 
@@ -110,7 +163,7 @@ class PasswordAccessRequestResponse(Schema):
     message: str
 
 
-class PasswordAccessConfirmRequest(Schema):
+class PasswordAccessConfirmRequest(StrictSchema):
     challenge_id: UUID
     code: str
     new_password: str
@@ -118,6 +171,48 @@ class PasswordAccessConfirmRequest(Schema):
 
 class PasswordAccessConfirmResponse(Schema):
     password_set: bool
+
+
+class PasswordChangeRequest(StrictSchema):
+    current_password: str | None = None
+    new_password: str
+
+
+class PasswordChangeResponse(Schema):
+    changed: bool
+
+
+class EmailChangeSecurityChallengeRequest(StrictSchema):
+    turnstile_token: str | None = None
+
+
+class EmailChangeSecurityChallengeResponse(Schema):
+    challenge_id: UUID
+    expires_at: datetime
+
+
+class EmailChangeRequest(StrictSchema):
+    new_email: str
+    turnstile_token: str | None = None
+    current_email_challenge_id: UUID | None = None
+    current_email_code: str | None = None
+
+
+class EmailChangeRequestResponse(Schema):
+    request_id: UUID
+    challenge_id: UUID
+    expires_at: datetime
+
+
+class EmailChangeConfirmRequest(StrictSchema):
+    code: str
+    request_id: UUID | None = None
+    challenge_id: UUID | None = None
+
+
+class EmailChangeConfirmResponse(Schema):
+    changed: bool
+    reauthentication_required: bool
 
 
 class SessionSummary(Schema):
@@ -222,12 +317,26 @@ def _require_csrf(request) -> None:
 
 
 def _user_summary(user) -> dict[str, object]:
+    from compass.exit_interviews.opportunities import has_student_workspace
+
+    designations = sorted(
+        set(
+            user.designations.filter(code__in=DESIGNATION_CODES).values_list(
+                "code",
+                flat=True,
+            )
+        )
+    )
     return {
         "id": user.pk,
         "email": user.email,
         "first_name": user.first_name,
         "last_name": user.last_name,
         "role": user.role.code,
+        "student_lifecycle_status": user.student_lifecycle_status,
+        "exit_interview_workspace_available": has_student_workspace(user),
+        "designations": designations,
+        "capabilities": sorted(effective_capabilities(user)),
     }
 
 
@@ -316,7 +425,7 @@ def _apply_login_cookies(response: HttpResponse, result: LoginResult) -> None:
             path=settings.AUTH_LOGIN_CHALLENGE_COOKIE_PATH,
         )
         return
-    if result.status == "mfa_required" and result.challenge is not None:
+    if result.status in {"mfa_required", "mfa_setup_required"} and result.challenge is not None:
         _set_credential_cookie(
             response,
             name=settings.AUTH_LOGIN_CHALLENGE_COOKIE_NAME,
@@ -391,6 +500,56 @@ def _raise_password_policy(exc: PasswordPolicyRejected) -> None:
     ) from exc
 
 
+def _raise_password_change_error(exc: Exception) -> None:
+    if isinstance(exc, RecentMFARequired):
+        raise step_up_api_error(exc) from exc
+    if isinstance(exc, PasswordChangeStrongAuthRequired):
+        raise APIError(
+            403,
+            "mfa_setup_required",
+            "Additional account security setup is required.",
+        ) from exc
+    if isinstance(exc, PasswordChangeAuthenticationFailed):
+        raise APIError(
+            403,
+            "password_change_authentication_failed",
+            "The current authentication proof could not be verified.",
+        ) from exc
+    raise APIError(
+        500,
+        "internal_error",
+        "The password change operation could not be completed.",
+    ) from exc
+
+
+def _raise_email_change_error(exc: Exception) -> None:
+    if isinstance(exc, RecentMFARequired):
+        raise step_up_api_error(exc) from exc
+    if isinstance(exc, EmailChangeStrongAuthRequired):
+        raise APIError(
+            403,
+            "totp_step_up_required",
+            "TOTP-backed step-up authentication is required.",
+        ) from exc
+    if isinstance(exc, EmailChangeNotFound):
+        raise APIError(
+            404, "email_change_not_found", "The email change request was not found."
+        ) from exc
+    if isinstance(exc, EmailChangeConflict):
+        raise APIError(409, "email_change_conflict", str(exc)) from exc
+    if isinstance(exc, (EmailChangeInvalid, EmailOTPInvalid)):
+        raise APIError(
+            422,
+            "invalid_email_change_request",
+            "The email change request could not be verified.",
+        ) from exc
+    raise APIError(
+        500,
+        "internal_error",
+        "The email change operation could not be completed.",
+    ) from exc
+
+
 @router.get(
     "/csrf",
     response=CSRFResponse,
@@ -405,6 +564,141 @@ def csrf_token(request):
     """Return a masked Django CSRF token and cause the CSRF cookie to be issued."""
 
     return {"csrf_token": get_token(request)}
+
+
+@router.post(
+    "/email-change/security-challenge",
+    response=response_with_errors(
+        EmailChangeSecurityChallengeResponse,
+        401,
+        403,
+        422,
+        429,
+        503,
+    ),
+    auth=session_auth,
+    operation_id="authRequestEmailChangeSecurityChallenge",
+    summary="Authorize email change from the current mailbox",
+)
+def request_email_change_security_challenge(
+    request,
+    payload: EmailChangeSecurityChallengeRequest,
+):
+    try:
+        challenge = request_current_email_security_challenge(
+            user=request.auth_user,
+            request=request,
+            turnstile_token=payload.turnstile_token,
+        )
+    except AuthenticationRateLimited as exc:
+        _raise_rate_limited(exc)
+    except EmailOTPSecurityUnavailable as exc:
+        _raise_security_unavailable(exc)
+    except Exception as exc:
+        _raise_email_change_error(exc)
+    return {
+        "challenge_id": challenge.challenge_id,
+        "expires_at": challenge.expires_at,
+    }
+
+
+@router.post(
+    "/email-change/request",
+    response=response_with_errors(
+        EmailChangeRequestResponse,
+        401,
+        403,
+        409,
+        422,
+        429,
+        503,
+    ),
+    auth=session_auth,
+    operation_id="authRequestEmailChange",
+    summary="Request a verified sign-in email change",
+)
+def request_email_change(request, payload: EmailChangeRequest):
+    try:
+        pending = request_self_email_change(
+            user=request.auth_user,
+            session=request.auth_session,
+            new_email=payload.new_email,
+            context=AuditContext.from_request(request, actor=request.auth_user),
+            request=request,
+            turnstile_token=payload.turnstile_token,
+            current_email_challenge_id=payload.current_email_challenge_id,
+            current_email_code=payload.current_email_code,
+        )
+    except AuthenticationRateLimited as exc:
+        _raise_rate_limited(exc)
+    except EmailOTPSecurityUnavailable as exc:
+        _raise_security_unavailable(exc)
+    except Exception as exc:
+        _raise_email_change_error(exc)
+    return {
+        "request_id": pending.request_id,
+        "challenge_id": pending.challenge_id,
+        "expires_at": pending.expires_at,
+    }
+
+
+@router.post(
+    "/email-change/confirm",
+    response=response_with_errors(
+        EmailChangeConfirmResponse,
+        401,
+        403,
+        404,
+        409,
+        422,
+        429,
+        503,
+    ),
+    auth=session_auth,
+    operation_id="authConfirmEmailChange",
+    summary="Confirm a verified sign-in email change",
+)
+def confirm_email_change_route(
+    request,
+    payload: EmailChangeConfirmRequest,
+    response: HttpResponse,
+):
+    try:
+        result = confirm_email_change(
+            user=request.auth_user,
+            session=request.auth_session,
+            request_id=payload.request_id,
+            challenge_id=payload.challenge_id,
+            code=payload.code,
+            context=AuditContext.from_request(request, actor=request.auth_user),
+            request=request,
+        )
+    except AuthenticationRateLimited as exc:
+        _raise_rate_limited(exc)
+    except EmailOTPSecurityUnavailable as exc:
+        _raise_security_unavailable(exc)
+    except Exception as exc:
+        _raise_email_change_error(exc)
+
+    _delete_cookie(
+        response,
+        name=settings.AUTH_SESSION_COOKIE_NAME,
+        path=settings.AUTH_SESSION_COOKIE_PATH,
+    )
+    _delete_cookie(
+        response,
+        name=settings.AUTH_TRUSTED_COOKIE_NAME,
+        path=settings.AUTH_TRUSTED_COOKIE_PATH,
+    )
+    _delete_cookie(
+        response,
+        name=settings.AUTH_LOGIN_CHALLENGE_COOKIE_NAME,
+        path=settings.AUTH_LOGIN_CHALLENGE_COOKIE_PATH,
+    )
+    return {
+        "changed": True,
+        "reauthentication_required": result.reauthentication_required,
+    }
 
 
 @router.post(
@@ -431,8 +725,62 @@ def login(request, payload: LoginRequest, response: HttpResponse):
     if result.status == "failed":
         raise APIError(401, "authentication_failed", "Invalid email or password.")
     if result.status == "mfa_setup_required":
-        raise APIError(403, "mfa_setup_required", "Additional account security setup is required.")
+        return Status(
+            403,
+            {
+                "error": {
+                    "code": "mfa_setup_required",
+                    "message": "Additional account security setup is required.",
+                    "request_id": getattr(request, "request_id", None),
+                }
+            },
+        )
     return _login_response(result)
+
+
+@router.post(
+    "/password/change",
+    response=response_with_errors(PasswordChangeResponse, 401, 403, 422, 429, 503),
+    auth=session_auth,
+    operation_id="authChangePassword",
+    summary="Change the authenticated account password",
+    description=(
+        "Change the current authenticated account password using recent TOTP-backed MFA when "
+        "required, or the current password for accounts that do not require MFA."
+    ),
+)
+def password_change(request, payload: PasswordChangeRequest, response: HttpResponse):
+    try:
+        result = change_password(
+            user=request.auth_user,
+            session=request.auth_session,
+            current_password=payload.current_password,
+            new_password=payload.new_password,
+            context=AuditContext.from_request(request, actor=request.auth_user),
+            request=request,
+        )
+    except AuthenticationRateLimited as exc:
+        _raise_rate_limited(exc)
+    except AuthenticationAbuseUnavailable as exc:
+        _raise_security_unavailable(exc)
+    except PasswordPolicyRejected as exc:
+        _raise_password_policy(exc)
+    except Exception as exc:
+        _raise_password_change_error(exc)
+
+    remaining_seconds = max(
+        int((result.replacement_session.session.expires_at - timezone.now()).total_seconds()),
+        1,
+    )
+    _set_credential_cookie(
+        response,
+        name=settings.AUTH_SESSION_COOKIE_NAME,
+        value=result.replacement_session.token,
+        max_age=remaining_seconds,
+        path=settings.AUTH_SESSION_COOKIE_PATH,
+        httponly=True,
+    )
+    return {"changed": result.changed}
 
 
 @router.post(
@@ -530,7 +878,7 @@ def verify_login_mfa(request, payload: LoginMFARequest, response: HttpResponse):
     try:
         result = complete_login_mfa(
             request=request,
-            method=payload.method,
+            method=payload.method.value,
             code=payload.code,
         )
     except AuthenticationRateLimited as exc:
@@ -583,6 +931,20 @@ def current_session(request):
         "authenticated": True,
         "user": _user_summary(user),
         "session": _session_summary(session, current_session_id=session.pk),
+    }
+
+
+@router.get(
+    "/mfa/status",
+    response=response_with_errors(MFAStatusResponse, 401),
+    auth=session_auth,
+    operation_id="authGetMfaStatus",
+    summary="Inspect current MFA status",
+)
+def mfa_status(request):
+    return {
+        "enabled": has_active_totp_factor(request.auth_user.pk),
+        "recent": has_recent_mfa(request.auth_session),
     }
 
 
@@ -657,19 +1019,91 @@ def revoke_session(request, session_id: UUID, response: HttpResponse):
 
 
 @router.post(
+    "/mfa/totp/bootstrap/setup",
+    response=response_with_errors(TOTPSetupResponse, 403, 409, 503),
+    operation_id="authStartMandatoryTotpBootstrap",
+    summary="Start mandatory TOTP enrollment from a restricted login challenge",
+)
+def totp_bootstrap_setup(request):
+    _require_csrf(request)
+    try:
+        result = start_login_totp_enrollment(request=request)
+    except InvalidLoginChallenge as exc:
+        raise APIError(
+            403,
+            "mfa_enrollment_challenge_invalid",
+            "The MFA enrollment challenge is unavailable.",
+        ) from exc
+    except TOTPAlreadyConfigured as exc:
+        raise APIError(409, "mfa_already_enabled", "TOTP is already enabled.") from exc
+    except Exception as exc:
+        _raise_security_unavailable(exc)
+    return {"factor_id": result.factor_id, "provisioning_uri": result.provisioning_uri}
+
+
+@router.post(
+    "/mfa/totp/bootstrap/confirm",
+    response=response_with_errors(TOTPConfirmationResponse, 400, 403, 422, 429, 503),
+    operation_id="authConfirmMandatoryTotpBootstrap",
+    summary="Confirm mandatory TOTP enrollment from a restricted login challenge",
+)
+def totp_bootstrap_confirm(request, payload: MFARequest, response: HttpResponse):
+    _require_csrf(request)
+    try:
+        result = confirm_login_totp_enrollment(
+            request=request,
+            code=payload.code,
+        )
+    except AuthenticationRateLimited as exc:
+        _raise_rate_limited(exc)
+    except InvalidLoginChallenge as exc:
+        raise APIError(
+            403,
+            "mfa_enrollment_challenge_invalid",
+            "The MFA enrollment challenge is unavailable.",
+        ) from exc
+    except AuthenticationUnavailable as exc:
+        _raise_security_unavailable(exc)
+    except TOTPEnrollmentMissing as exc:
+        raise APIError(400, "mfa_failed", "The MFA response could not be verified.") from exc
+    except Exception as exc:
+        _raise_security_unavailable(exc)
+    if result is None:
+        _raise_invalid_mfa(TOTPEnrollmentMissing("invalid TOTP code"))
+    _delete_cookie(
+        response,
+        name=settings.AUTH_LOGIN_CHALLENGE_COOKIE_NAME,
+        path=settings.AUTH_LOGIN_CHALLENGE_COOKIE_PATH,
+    )
+    return {"enabled": True, "recovery_codes": list(result.recovery_codes)}
+
+
+@router.post(
     "/mfa/totp/setup",
-    response=response_with_errors(TOTPSetupResponse, 401, 403, 409, 503),
+    response=response_with_errors(TOTPSetupResponse, 401, 403, 409, 422, 429, 503),
     auth=session_auth,
     operation_id="authStartTotpSetup",
     summary="Start TOTP enrollment",
 )
-def totp_setup(request):
+def totp_setup(request, payload: TOTPSetupRequest):
     user = request.auth_user
     try:
-        result = start_totp_enrollment(
+        result = start_authenticated_totp_enrollment(
             user=user,
+            current_password=payload.current_password,
             context=AuditContext.from_request(request, actor=user),
+            request=request,
         )
+    except AuthenticationRateLimited as exc:
+        _raise_rate_limited(exc)
+    except AuthenticationAbuseUnavailable as exc:
+        _raise_security_unavailable(exc)
+    except TOTPEnrollmentAuthorizationFailed as exc:
+        raise APIError(
+            403,
+            "mfa_enrollment_authorization_failed",
+            "The current authentication proof could not be verified.",
+        ) from exc
     except TOTPAlreadyConfigured as exc:
         raise APIError(409, "mfa_already_enabled", "TOTP is already enabled.") from exc
     except Exception as exc:
@@ -684,21 +1118,29 @@ def totp_setup(request):
     operation_id="authConfirmTotpSetup",
     summary="Confirm TOTP enrollment",
 )
-def totp_confirm(request, payload: MFARequest):
+def totp_confirm(request, payload: TOTPConfirmationRequest):
     user = request.auth_user
     try:
         from compass.authentication.abuse import check_auth_rate_limit
 
         check_auth_rate_limit("totp", ip_address=client_ip(request), user_id=user.pk)
-        result = confirm_totp_enrollment(
+        result = confirm_authenticated_totp_enrollment(
             user=user,
+            current_password=payload.current_password,
             code=payload.code,
             context=AuditContext.from_request(request, actor=user),
+            request=request,
         )
     except AuthenticationRateLimited as exc:
         _raise_rate_limited(exc)
     except AuthenticationAbuseUnavailable as exc:
         _raise_security_unavailable(exc)
+    except TOTPEnrollmentAuthorizationFailed as exc:
+        raise APIError(
+            403,
+            "mfa_enrollment_authorization_failed",
+            "The current authentication proof could not be verified.",
+        ) from exc
     except TOTPEnrollmentMissing as exc:
         raise APIError(400, "mfa_failed", "The MFA response could not be verified.") from exc
     except Exception as exc:
@@ -754,12 +1196,11 @@ def totp_disable(request):
             context=AuditContext.from_request(request, actor=user),
         )
     except Exception as exc:
-        from compass.authentication.sessions import RecentMFARequired
-
-        if isinstance(exc, RecentMFARequired):
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
-        if isinstance(exc, TOTPNotConfigured):
+        # Without an authenticator there is nothing to disable or regenerate codes for.
+        if isinstance(exc, (TOTPNotConfigured, MFASetupRequired)):
             raise APIError(400, "mfa_not_configured", "TOTP is not enabled.") from exc
+        if isinstance(exc, RecentMFARequired):
+            raise step_up_api_error(exc) from exc
         _raise_security_unavailable(exc)
     return {"enabled": False, "recent": has_recent_mfa(request.auth_session)}
 
@@ -780,12 +1221,11 @@ def recovery_codes_regenerate(request):
             context=AuditContext.from_request(request, actor=user),
         )
     except Exception as exc:
-        from compass.authentication.sessions import RecentMFARequired
-
-        if isinstance(exc, RecentMFARequired):
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
-        if isinstance(exc, TOTPNotConfigured):
+        # Without an authenticator there is nothing to disable or regenerate codes for.
+        if isinstance(exc, (TOTPNotConfigured, MFASetupRequired)):
             raise APIError(400, "mfa_not_configured", "TOTP is not enabled.") from exc
+        if isinstance(exc, RecentMFARequired):
+            raise step_up_api_error(exc) from exc
         _raise_security_unavailable(exc)
     return {"enabled": True, "recovery_codes": list(codes)}
 

@@ -5,6 +5,8 @@
 
 import os
 
+from cryptography.fernet import Fernet
+
 
 _TEST_ENV = {
     "APP_ENV": "local-staging",
@@ -21,6 +23,7 @@ _TEST_ENV = {
     "REDIS_CACHE_URL": "redis://127.0.0.1:6379/1",
     "REDIS_RATE_LIMIT_URL": "redis://127.0.0.1:6379/2",
     "REDIS_IDEMPOTENCY_URL": "redis://127.0.0.1:6379/3",
+    "REDIS_REALTIME_URL": "redis://127.0.0.1:6379/4",
     "S3_BUCKET_NAME": "compass-test",
     "S3_ACCESS_KEY_ID": "test-access",
     "S3_SECRET_ACCESS_KEY": "test-secret",
@@ -30,6 +33,17 @@ _TEST_ENV = {
     "DEFAULT_FROM_EMAIL": "no-reply@testserver",
     "TURNSTILE_ENABLED": "false",
     "API_DOCS_ENABLED": "true",
+    "ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
+    "FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
+    # Ephemeral per test process; never a deployment key.
+    "ROUTINE_INTERVIEW_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
+    "GUIDANCE_MESSAGE_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
+    "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
+    "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
+    "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
+    "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
+    "INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
+    "GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
 }
 
 for _name, _value in _TEST_ENV.items():

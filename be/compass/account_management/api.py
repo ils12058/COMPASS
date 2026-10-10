@@ -3,26 +3,61 @@
 from __future__ import annotations
 
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
-from ninja import Router, Schema, Status
+from ninja import File, Router, Schema, Status
+from ninja.files import UploadedFile
 from pydantic import ConfigDict
 
+from compass.accounts.api_codes import (
+    CapabilityCode,
+    DesignationCode,
+    RoleCode,
+    StudentLifecycleCode,
+)
 from compass.accounts.models import UserCapabilityOverride
-from compass.accounts.policy import CAPABILITY_CODES, DESIGNATION_CODES, ROLE_CODES
 from compass.audit.context import AuditContext
+from compass.authentication.abuse import AuthenticationRateLimited
 from compass.authentication.api import session_auth
-from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
+from compass.authentication.email_change import (
+    EmailChangeConflict,
+    EmailChangeError,
+    EmailChangeInvalid,
+    EmailChangeNotFound,
+    EmailChangePermissionDenied,
+    request_administrative_email_change,
+)
+from compass.authentication.email_otp import EmailOTPInvalid, EmailOTPSecurityUnavailable
+from compass.authentication.sessions import RecentMFARequired
+from compass.authentication.step_up import require_recent_mfa_for_request, step_up_api_error
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
+from .csv_import import (
+    MAX_CSV_BYTES,
+    CsvImportConflict,
+    CsvImportDuplicateIdentity,
+    CsvImportInvalidRows,
+    CsvImportMalformed,
+    CsvImportReport,
+    CsvImportTooLarge,
+    CsvImportUnsupportedHeaders,
+    provision_accounts_from_csv,
+)
 from .services import (
     DEFAULT_PAGE_SIZE,
     AccountManagementError,
     AccountNotFound,
+    AccountOrdering,
+    AppointmentRelationshipConflict,
+    AvailabilityRelationshipConflict,
+    CapabilityDependencyConflict,
+    DesignationManagementNotAuthorized,
+    DesignationRoleConflict,
     DuplicateEmail,
+    DuplicateInstitutionalId,
     InvalidManagementInput,
     LastAccountManagerError,
     ManagementConfigurationError,
@@ -30,10 +65,12 @@ from .services import (
     OrganizationRelationshipConflict,
     PaginationError,
     SelfTargetForbidden,
+    StudentLifecycleConflict,
     assign_designation,
     change_role,
     create_account,
     get_account,
+    inspect_account_access,
     list_accounts,
     list_capability_overrides,
     list_designations,
@@ -45,20 +82,11 @@ from .services import (
     serialize_account,
     set_account_active,
     set_capability_override,
+    set_student_lifecycle,
     update_identity,
 )
 
 router = Router(tags=["accounts"])
-
-
-def _code_enum(name: str, codes: frozenset[str]) -> type[Enum]:
-    members = {code.replace(".", "_").replace("-", "_").upper(): code for code in sorted(codes)}
-    return Enum(name, members, module=__name__, type=str)
-
-
-RoleCode = _code_enum("RoleCode", ROLE_CODES)
-DesignationCode = _code_enum("DesignationCode", DESIGNATION_CODES)
-CapabilityCode = _code_enum("CapabilityCode", CAPABILITY_CODES)
 
 
 class StrictSchema(Schema):
@@ -67,6 +95,7 @@ class StrictSchema(Schema):
 
 class AccountSummaryResponse(StrictSchema):
     id: UUID
+    institutional_id: str | None
     email: str
     first_name: str
     middle_name: str
@@ -74,14 +103,17 @@ class AccountSummaryResponse(StrictSchema):
     suffix: str
     full_name: str
     role: RoleCode
+    student_lifecycle_status: StudentLifecycleCode | None
     designations: list[DesignationCode]
     is_active: bool
+    password_configured: bool
+    email_verified: bool
     created_at: datetime
 
 
 class AccountDetailResponse(AccountSummaryResponse):
     updated_at: datetime
-    password_configured: bool
+    email_verified_at: datetime | None
     mfa_enabled: bool
 
 
@@ -90,9 +122,12 @@ class AccountListResponse(StrictSchema):
     page: int
     page_size: int
     has_next: bool
+    # The ordering applied: the requested one, or name A–Z.
+    ordering: AccountOrdering
 
 
 class AccountCreateRequest(StrictSchema):
+    institutional_id: str
     email: str
     first_name: str
     last_name: str
@@ -103,15 +138,30 @@ class AccountCreateRequest(StrictSchema):
 
 
 class IdentityUpdateRequest(StrictSchema):
-    email: str | None = None
+    institutional_id: str | None = None
     first_name: str | None = None
     middle_name: str | None = None
     last_name: str | None = None
     suffix: str | None = None
 
 
+class ManagedEmailChangeRequest(StrictSchema):
+    new_email: str
+    turnstile_token: str | None = None
+
+
+class ManagedEmailChangeResponse(StrictSchema):
+    request_id: UUID
+    challenge_id: UUID
+    expires_at: datetime
+
+
 class RoleUpdateRequest(StrictSchema):
     role: RoleCode
+
+
+class StudentLifecycleUpdateRequest(StrictSchema):
+    status: StudentLifecycleCode
 
 
 class DesignationListResponse(StrictSchema):
@@ -143,6 +193,51 @@ class CapabilityOverrideListResponse(StrictSchema):
     overrides: list[CapabilityOverrideResponse]
 
 
+class AccessSourceType(StrEnum):
+    ROLE = "ROLE"
+    DESIGNATION = "DESIGNATION"
+
+
+class AccessAccountResponse(StrictSchema):
+    id: UUID
+    email: str
+    full_name: str
+    is_active: bool
+
+
+class AccessBaselineSourceResponse(StrictSchema):
+    type: AccessSourceType
+    code: str
+
+
+class AccessOverrideResponse(StrictSchema):
+    effect: UserCapabilityOverride.Effect
+    reason: str
+    expires_at: datetime | None
+    created_at: datetime
+    created_by: CapabilityOverrideCreatorResponse | None
+    active: bool
+
+
+class AccessCapabilityResponse(StrictSchema):
+    code: CapabilityCode
+    name: str
+    description: str
+    effective: bool
+    baseline_sources: list[AccessBaselineSourceResponse]
+    override: AccessOverrideResponse | None
+    required_capabilities: list[CapabilityCode]
+    missing_required_capabilities: list[CapabilityCode]
+
+
+class AccountEffectiveAccessResponse(StrictSchema):
+    account: AccessAccountResponse
+    role: RoleCode
+    designations: list[DesignationCode]
+    effective_capabilities: list[CapabilityCode]
+    capabilities: list[AccessCapabilityResponse]
+
+
 class OverrideRemovalResponse(StrictSchema):
     removed: bool
 
@@ -157,6 +252,25 @@ class MFAResetResponse(StrictSchema):
     revoked_trusted_session_count: int
 
 
+class CsvImportRowResponse(StrictSchema):
+    row_number: int
+    institutional_id: str
+    email: str
+    action: str
+    message: str
+
+
+class CsvImportResponse(StrictSchema):
+    valid: bool
+    committed: bool
+    total_rows: int
+    create_count: int
+    skip_count: int
+    conflict_count: int
+    invalid_count: int
+    rows: list[CsvImportRowResponse]
+
+
 def _require_management(request, *, recent_mfa: bool) -> None:
     user = request.auth_user
     if not user.has_capability("accounts.manage"):
@@ -166,17 +280,44 @@ def _require_management(request, *, recent_mfa: bool) -> None:
             "The accounts.manage capability is required.",
         )
     if recent_mfa:
-        try:
-            require_recent_mfa(request.auth_session)
-        except RecentMFARequired as exc:
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        require_recent_mfa_for_request(request)
+
+
+def _require_designation_management(request) -> None:
+    _require_management(request, recent_mfa=True)
+    if not request.auth_user.has_capability("institutional_designations.manage"):
+        raise APIError(
+            403,
+            "institutional_designation_permission_denied",
+            (
+                "The accounts.manage and institutional_designations.manage capabilities "
+                "are required."
+            ),
+        )
 
 
 def _raise_management_error(exc: AccountManagementError) -> NoReturn:
+    if isinstance(exc, DesignationManagementNotAuthorized):
+        raise APIError(
+            403,
+            "institutional_designation_permission_denied",
+            (
+                "The accounts.manage and institutional_designations.manage capabilities "
+                "are required."
+            ),
+        ) from exc
+    if isinstance(exc, DesignationRoleConflict):
+        raise APIError(409, "designation_role_conflict", str(exc)) from exc
     if isinstance(exc, AccountNotFound):
         raise APIError(404, "account_not_found", "The requested account was not found.") from exc
     if isinstance(exc, DuplicateEmail):
         raise APIError(409, "email_in_use", "An account with this email already exists.") from exc
+    if isinstance(exc, DuplicateInstitutionalId):
+        raise APIError(
+            409,
+            "institutional_id_in_use",
+            "An account with this Institutional ID already exists.",
+        ) from exc
     if isinstance(exc, LastAccountManagerError):
         raise APIError(
             409,
@@ -189,6 +330,22 @@ def _raise_management_error(exc: AccountManagementError) -> NoReturn:
             "organization_relationship_conflict",
             str(exc),
         ) from exc
+    if isinstance(exc, AvailabilityRelationshipConflict):
+        raise APIError(
+            409,
+            "availability_relationship_conflict",
+            str(exc),
+        ) from exc
+    if isinstance(exc, AppointmentRelationshipConflict):
+        raise APIError(
+            409,
+            "appointment_relationship_conflict",
+            str(exc),
+        ) from exc
+    if isinstance(exc, StudentLifecycleConflict):
+        raise APIError(409, "student_lifecycle_conflict", str(exc)) from exc
+    if isinstance(exc, CapabilityDependencyConflict):
+        raise APIError(409, "capability_dependency_conflict", str(exc)) from exc
     if isinstance(exc, SelfTargetForbidden):
         raise APIError(
             403,
@@ -220,6 +377,40 @@ def _context(request) -> AuditContext:
     return AuditContext.from_request(request, actor=request.auth_user)
 
 
+def _csv_report(report: CsvImportReport) -> dict[str, object]:
+    return {
+        "valid": report.valid,
+        "committed": report.committed,
+        "total_rows": report.total_rows,
+        "create_count": report.create_count,
+        "skip_count": report.skip_count,
+        "conflict_count": report.conflict_count,
+        "invalid_count": report.invalid_count,
+        "rows": [
+            {
+                "row_number": row.row_number,
+                "institutional_id": row.institutional_id,
+                "email": row.email,
+                "action": row.action,
+                "message": row.message,
+            }
+            for row in report.rows
+        ],
+    }
+
+
+def _csv_issue_details(exc: CsvImportInvalidRows) -> list[dict[str, object]]:
+    return [
+        {
+            "row_number": issue.row_number,
+            "institutional_id": issue.institutional_id,
+            "email": issue.email,
+            "message": issue.message,
+        }
+        for issue in exc.issues
+    ]
+
+
 @router.get(
     "",
     response=response_with_errors(AccountListResponse, 401, 403, 422),
@@ -234,7 +425,9 @@ def accounts(
     role: RoleCode | None = None,
     is_active: bool | None = None,
     designation: DesignationCode | None = None,
+    email_verified: bool | None = None,
     search: str | None = None,
+    ordering: AccountOrdering | None = None,
 ):
     _require_management(request, recent_mfa=False)
     try:
@@ -244,7 +437,9 @@ def accounts(
             role=role.value if role is not None else None,
             is_active=is_active,
             designation=designation.value if designation is not None else None,
+            email_verified=email_verified,
             search=search,
+            ordering=ordering,
         )
     except AccountManagementError as exc:
         _raise_management_error(exc)
@@ -253,7 +448,71 @@ def accounts(
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
+        "ordering": result.ordering,
     }
+
+
+@router.post(
+    "/imports/csv",
+    response=response_with_errors(CsvImportResponse, 401, 403, 409, 422, 503),
+    auth=session_auth,
+    operation_id="accountsImportCsv",
+    summary="Validate or commit a bounded CSV account import",
+)
+def account_csv_import(
+    request,
+    file: File[UploadedFile],
+    dry_run: bool = True,
+):
+    _require_management(request, recent_mfa=True)
+    data = file.read(MAX_CSV_BYTES + 1)
+    try:
+        report = provision_accounts_from_csv(
+            actor=request.auth_user,
+            actor_session=request.auth_session,
+            context=_context(request),
+            data=data,
+            dry_run=dry_run,
+        )
+    except RecentMFARequired as exc:
+        raise step_up_api_error(exc) from exc
+    except CsvImportTooLarge as exc:
+        raise APIError(422, "csv_import_too_large", str(exc)) from exc
+    except CsvImportUnsupportedHeaders as exc:
+        raise APIError(422, "csv_import_unsupported_headers", str(exc)) from exc
+    except CsvImportMalformed as exc:
+        raise APIError(422, "csv_import_malformed", str(exc)) from exc
+    except CsvImportDuplicateIdentity as exc:
+        raise APIError(
+            422,
+            "csv_import_duplicate_identity",
+            str(exc),
+            details=_csv_issue_details(exc),
+        ) from exc
+    except CsvImportInvalidRows as exc:
+        raise APIError(
+            422,
+            "csv_import_invalid_rows",
+            str(exc),
+            details=_csv_issue_details(exc),
+        ) from exc
+    except CsvImportConflict as exc:
+        raise APIError(
+            409,
+            "csv_import_conflict",
+            str(exc),
+            details=[
+                {
+                    "row_number": row.row_number,
+                    "email": row.email,
+                    "message": row.message,
+                }
+                for row in exc.rows
+            ],
+        ) from exc
+    except AccountManagementError as exc:
+        _raise_management_error(exc)
+    return _csv_report(report)
 
 
 @router.post(
@@ -278,6 +537,7 @@ def account_create(request, payload: AccountCreateRequest):
             actor=request.auth_user,
             actor_session=request.auth_session,
             context=_context(request),
+            institutional_id=payload.institutional_id,
             email=payload.email,
             first_name=payload.first_name,
             middle_name=payload.middle_name,
@@ -287,7 +547,7 @@ def account_create(request, payload: AccountCreateRequest):
             is_active=payload.is_active,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return Status(201, _detail(user.pk))
@@ -301,7 +561,7 @@ def account_create(request, payload: AccountCreateRequest):
     summary="Update managed account identity",
 )
 def account_identity(request, user_id: UUID, payload: IdentityUpdateRequest):
-    _require_management(request, recent_mfa=True)
+    _require_management(request, recent_mfa=False)
     try:
         update_identity(
             actor=request.auth_user,
@@ -310,11 +570,79 @@ def account_identity(request, user_id: UUID, payload: IdentityUpdateRequest):
             context=_context(request),
             changes=payload.model_dump(exclude_unset=True),
         )
-    except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
+
+
+@router.post(
+    "/{user_id}/email-change",
+    response=response_with_errors(
+        ManagedEmailChangeResponse,
+        401,
+        403,
+        404,
+        409,
+        422,
+        429,
+        503,
+    ),
+    auth=session_auth,
+    operation_id="accountsRequestEmailChange",
+    summary="Stage a managed account email change",
+)
+def account_email_change(request, user_id: UUID, payload: ManagedEmailChangeRequest):
+    _require_management(request, recent_mfa=True)
+    try:
+        pending = request_administrative_email_change(
+            actor=request.auth_user,
+            actor_session=request.auth_session,
+            target_id=user_id,
+            new_email=payload.new_email,
+            context=_context(request),
+            request=request,
+            turnstile_token=payload.turnstile_token,
+        )
+    except RecentMFARequired as exc:
+        raise step_up_api_error(exc) from exc
+    except AuthenticationRateLimited as exc:
+        raise APIError(
+            429,
+            "rate_limited",
+            "Too many authentication attempts. Please try again later.",
+            headers={"Retry-After": str(exc.retry_after_seconds)},
+        ) from exc
+    except EmailOTPSecurityUnavailable as exc:
+        raise APIError(
+            503,
+            "security_unavailable",
+            "Authentication is temporarily unavailable.",
+        ) from exc
+    except EmailChangePermissionDenied as exc:
+        raise APIError(
+            403, "permission_denied", "The accounts.manage capability is required."
+        ) from exc
+    except EmailChangeNotFound as exc:
+        raise APIError(404, "account_not_found", "The requested account was not found.") from exc
+    except EmailChangeConflict as exc:
+        raise APIError(409, "email_change_conflict", str(exc)) from exc
+    except (EmailChangeInvalid, EmailOTPInvalid) as exc:
+        raise APIError(
+            422,
+            "invalid_email_change_request",
+            "The email change request could not be staged.",
+        ) from exc
+    except EmailChangeError as exc:
+        raise APIError(
+            500,
+            "internal_error",
+            "The email change operation could not be completed.",
+        ) from exc
+    return {
+        "request_id": pending.request_id,
+        "challenge_id": pending.challenge_id,
+        "expires_at": pending.expires_at,
+    }
 
 
 @router.post(
@@ -335,7 +663,7 @@ def account_disable(request, user_id: UUID):
             is_active=False,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
@@ -359,7 +687,7 @@ def account_enable(request, user_id: UUID):
             is_active=True,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
@@ -383,10 +711,53 @@ def account_role(request, user_id: UUID, payload: RoleUpdateRequest):
             role=payload.role.value,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
+
+
+@router.put(
+    "/{user_id}/student-lifecycle",
+    response=response_with_errors(AccountDetailResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="accountsUpdateStudentLifecycle",
+    summary="Update managed Student lifecycle",
+)
+def account_student_lifecycle(
+    request,
+    user_id: UUID,
+    payload: StudentLifecycleUpdateRequest,
+):
+    _require_management(request, recent_mfa=True)
+    try:
+        set_student_lifecycle(
+            actor=request.auth_user,
+            actor_session=request.auth_session,
+            target_id=user_id,
+            context=_context(request),
+            status=payload.status.value,
+        )
+    except RecentMFARequired as exc:
+        raise step_up_api_error(exc) from exc
+    except AccountManagementError as exc:
+        _raise_management_error(exc)
+    return _detail(user_id)
+
+
+@router.get(
+    "/{user_id}/access",
+    response=response_with_errors(AccountEffectiveAccessResponse, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="accountsGetEffectiveAccess",
+    summary="Inspect managed account effective access",
+)
+def account_effective_access(request, user_id: UUID):
+    _require_management(request, recent_mfa=False)
+    try:
+        return inspect_account_access(user_id=user_id)
+    except AccountManagementError as exc:
+        _raise_management_error(exc)
 
 
 @router.get(
@@ -413,7 +784,7 @@ def account_designations(request, user_id: UUID):
     summary="Assign a managed account designation",
 )
 def account_designation_assign(request, user_id: UUID, designation_code: DesignationCode):
-    _require_management(request, recent_mfa=True)
+    _require_designation_management(request)
     try:
         assign_designation(
             actor=request.auth_user,
@@ -423,7 +794,7 @@ def account_designation_assign(request, user_id: UUID, designation_code: Designa
             designation=designation_code.value,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
@@ -437,7 +808,7 @@ def account_designation_assign(request, user_id: UUID, designation_code: Designa
     summary="Remove a managed account designation",
 )
 def account_designation_remove(request, user_id: UUID, designation_code: DesignationCode):
-    _require_management(request, recent_mfa=True)
+    _require_designation_management(request)
     try:
         remove_designation(
             actor=request.auth_user,
@@ -447,7 +818,7 @@ def account_designation_remove(request, user_id: UUID, designation_code: Designa
             designation=designation_code.value,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return _detail(user_id)
@@ -495,7 +866,7 @@ def account_capability_override_set(
             expires_at=payload.expires_at,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     assert result.override is not None
@@ -533,7 +904,7 @@ def account_capability_override_remove(request, user_id: UUID, capability_code: 
             capability=capability_code.value,
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return {"removed": result.changed}
@@ -556,7 +927,7 @@ def account_revoke_sessions(request, user_id: UUID):
             context=_context(request),
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return {"revoked_count": result.revoked_count}
@@ -579,7 +950,7 @@ def account_revoke_trusted_sessions(request, user_id: UUID):
             context=_context(request),
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return {"revoked_count": result.revoked_count}
@@ -602,7 +973,7 @@ def account_reset_mfa(request, user_id: UUID):
             context=_context(request),
         )
     except RecentMFARequired as exc:
-        raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        raise step_up_api_error(exc) from exc
     except AccountManagementError as exc:
         _raise_management_error(exc)
     return {

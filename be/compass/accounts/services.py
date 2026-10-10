@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
 
 from django.db.models import Q
@@ -11,23 +12,22 @@ from compass.accounts.models import (
     Capability,
     DesignationCapability,
     RoleCapability,
+    StudentLifecycleStatus,
     User,
     UserCapabilityOverride,
 )
-from compass.accounts.policy import CAPABILITY_CODES
+from compass.accounts.policy import CAPABILITY_CODES, resolve_capability_dependencies
 
 
-def effective_capabilities(user: User, *, at: datetime | None = None) -> frozenset[str]:
-    """Return the active, scope-free capabilities effective for one account.
+def _candidate_capabilities(
+    user: User,
+    *,
+    at: datetime | None = None,
+    override_effects: Mapping[str, str | None] | None = None,
+) -> frozenset[str]:
+    """Collect canonical candidate authority without account-active/runtime gating."""
 
-    Role and designation grants are collected first. Active account overrides are then applied,
-    with revocations removed last so a revoke is deterministic even if bad data ever contains
-    both effects. Unknown capability codes are never returned because policy is canonical in code.
-    """
-
-    if not getattr(user, "pk", None) or not getattr(user, "is_authenticated", False):
-        return frozenset()
-    if not getattr(user, "is_active", False):
+    if not getattr(user, "pk", None):
         return frozenset()
 
     capability_codes: set[str] = set()
@@ -46,18 +46,68 @@ def effective_capabilities(user: User, *, at: datetime | None = None) -> frozens
     )
 
     now = at if at is not None else timezone.now()
-    granted: set[str] = set()
-    revoked: set[str] = set()
-    active_overrides = UserCapabilityOverride.objects.filter(user_id=user.pk).filter(
-        Q(expires_at__isnull=True) | Q(expires_at__gt=now)
-    )
-    for code, effect in active_overrides.values_list("capability__code", "effect"):
-        if effect == UserCapabilityOverride.Effect.REVOKE:
-            revoked.add(code)
-        elif effect == UserCapabilityOverride.Effect.GRANT:
-            granted.add(code)
+    effects = {
+        code: effect
+        for code, effect in UserCapabilityOverride.objects.filter(user_id=user.pk)
+        .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+        .values_list("capability__code", "effect")
+        if code in CAPABILITY_CODES
+    }
+    if override_effects:
+        for code, effect in override_effects.items():
+            if code not in CAPABILITY_CODES:
+                continue
+            if effect is None:
+                effects.pop(code, None)
+            else:
+                effects[code] = effect
 
+    granted = {
+        code for code, effect in effects.items() if effect == UserCapabilityOverride.Effect.GRANT
+    }
+    revoked = {
+        code for code, effect in effects.items() if effect == UserCapabilityOverride.Effect.REVOKE
+    }
     return frozenset(((capability_codes | granted) & CAPABILITY_CODES) - revoked)
+
+
+def projected_capabilities(
+    user: User,
+    *,
+    at: datetime | None = None,
+    override_effects: Mapping[str, str | None] | None = None,
+) -> frozenset[str]:
+    """Resolve policy composition independently of sign-in/account-active eligibility."""
+
+    return resolve_capability_dependencies(
+        _candidate_capabilities(
+            user,
+            at=at,
+            override_effects=override_effects,
+        )
+    )
+
+
+def effective_capabilities(user: User, *, at: datetime | None = None) -> frozenset[str]:
+    """Return dependency-coherent runtime capabilities for one active account."""
+
+    if not getattr(user, "pk", None) or not getattr(user, "is_authenticated", False):
+        return frozenset()
+    if not getattr(user, "is_active", False):
+        return frozenset()
+    return projected_capabilities(user, at=at)
+
+
+def is_current_student(user: User) -> bool:
+    """Return whether this account currently has active Student workflow access."""
+
+    return bool(
+        getattr(user, "pk", None)
+        and getattr(user, "is_active", False)
+        and getattr(user, "role_id", None)
+        and user.role.code == "STUDENT"
+        and user.student_lifecycle_status == StudentLifecycleStatus.CURRENT
+    )
 
 
 def user_has_capability(

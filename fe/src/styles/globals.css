@@ -1,0 +1,294 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@theme inline {
+  --font-sans: var(--font-plus-jakarta);
+  --font-heading: var(--font-outfit);
+  --font-script: var(--font-caveat);
+
+  --color-ink: var(--compass-ink);
+  --color-muted: var(--compass-muted);
+  --color-on-brand: var(--compass-on-brand);
+  --color-brand: var(--compass-brand);
+  --color-brand-strong: var(--compass-brand-strong);
+  --color-brand-soft: var(--compass-brand-soft);
+  --color-brand-subtle: var(--compass-brand-subtle);
+  --color-gold: var(--compass-gold);
+  --color-support: var(--compass-support);
+  --color-support-strong: var(--compass-support-strong);
+  --color-support-soft: var(--compass-support-soft);
+  --color-success: var(--compass-success);
+  --color-info: var(--compass-info);
+  --color-warning: var(--compass-warning);
+  --color-danger: var(--compass-danger);
+  --color-body: var(--compass-body);
+  --color-surface: var(--compass-surface);
+  --color-surface-raised: var(--compass-surface-raised);
+  --color-surface-muted: var(--compass-surface-muted);
+  --color-surface-subtle: var(--compass-surface-subtle);
+  --color-border: var(--compass-border);
+  --color-border-strong: var(--compass-border-strong);
+  --color-brand-line: var(--compass-brand-line);
+  --color-brand-wash: var(--compass-brand-wash);
+  --color-focus: var(--compass-focus);
+  --color-overlay: var(--compass-overlay);
+  --radius-sm: var(--compass-radius-sm);
+  --radius-md: var(--compass-radius-md);
+  --radius-lg: var(--compass-radius-lg);
+  --shadow-dialog: var(--compass-shadow-dialog);
+  --shadow-float: var(--compass-shadow-float);
+}
+
+@layer base {
+  * {
+    border-color: var(--compass-border);
+  }
+}
+
+
+html {
+  background: var(--compass-body);
+}
+
+body {
+  min-height: 100dvh;
+  margin: 0;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--compass-body);
+  color: var(--compass-ink);
+  font-family: var(--font-plus-jakarta), sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-outfit), sans-serif;
+}
+
+::selection {
+  background: var(--compass-support-soft);
+  color: var(--compass-ink);
+}
+
+:focus-visible {
+  outline-color: var(--compass-focus);
+}
+
+.public-hero {
+  background: var(--compass-entry-gradient);
+}
+
+.public-hero-campus {
+  background-image: url("/brand/campus-bg.jpg");
+  background-position: 70% 68%;
+  background-repeat: no-repeat;
+  background-size: cover;
+  opacity: var(--compass-hero-image-opacity);
+  -webkit-mask-image: linear-gradient(to right, transparent 2%, black 42%, black 100%);
+  mask-image: linear-gradient(to right, transparent 2%, black 42%, black 100%);
+}
+
+.public-markdown {
+  color: var(--compass-ink);
+  font-size: 1rem;
+  line-height: 1.8;
+}
+
+.public-markdown > * + * {
+  margin-top: 1.25rem;
+}
+
+.public-markdown h2,
+.public-markdown h3,
+.public-markdown h4 {
+  color: var(--compass-ink);
+  font-family: var(--font-outfit), sans-serif;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 2rem;
+}
+
+.public-markdown h2 {
+  font-size: 1.5rem;
+}
+
+.public-markdown h3 {
+  font-size: 1.25rem;
+}
+
+.public-markdown ul,
+.public-markdown ol {
+  padding-left: 1.5rem;
+}
+
+.public-markdown ul {
+  list-style: disc;
+}
+
+.public-markdown ol {
+  list-style: decimal;
+}
+
+.public-markdown li + li {
+  margin-top: 0.4rem;
+}
+
+.public-markdown a {
+  color: var(--compass-brand);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.public-markdown blockquote {
+  border-left: 3px solid var(--compass-support);
+  color: var(--compass-muted);
+  padding-left: 1rem;
+}
+
+.public-markdown code {
+  background: var(--compass-surface-muted);
+  border-radius: var(--compass-radius-sm);
+  font-size: 0.9em;
+  padding: 0.12rem 0.3rem;
+}
+
+.public-markdown pre {
+  background: var(--compass-ink);
+  border-radius: var(--compass-radius-md);
+  color: var(--compass-on-brand);
+  overflow-x: auto;
+  padding: 1rem;
+}
+
+.public-markdown pre code {
+  background: transparent;
+  padding: 0;
+}
+
+/* The Markdown editor's writing surface uses the published-page typography;
+   its frame shows focus, so the editable itself draws no outline. */
+.markdown-editor-content {
+  min-height: 18rem;
+  padding: 1rem 1.25rem;
+  outline: none;
+}
+
+.markdown-editor-content > :first-child {
+  margin-top: 0;
+}
+
+.markdown-editor-content .ProseMirror-selectednode {
+  outline: 2px solid var(--compass-focus);
+  outline-offset: 2px;
+}
+
+@media (max-width: 639px) {
+  .public-hero-campus {
+    background-position: 62% 100%;
+    opacity: 0.28;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 5%, black 58%, black 100%);
+    mask-image: linear-gradient(to bottom, transparent 5%, black 58%, black 100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+/* Floating list tools (components/ui/floating-list-tools.tsx). The portal shell reads the same
+   values to keep a collection's last records and pagination clear of the tools. */
+:root {
+  --list-tools-height: 3.5rem;
+  --list-tools-offset: max(1rem, env(safe-area-inset-bottom));
+  --list-tools-clearance: calc(var(--list-tools-height) + var(--list-tools-offset) + 1.5rem);
+  /* Action status (components/ui/action-status.tsx): bottom right of the workspace, lifted above a
+     collection's floating tools while they are on the page. */
+  --action-status-offset: max(1rem, env(safe-area-inset-bottom));
+}
+
+:root:has([data-floating-list-tools]) {
+  --action-status-offset: var(--list-tools-clearance);
+}
+
+/* The E-Counseling call dock (features/ecounseling/runtime/global-call-dock.tsx) sits at the bottom
+   right of the workspace, above a collection's floating tools when they are on the page. While it is
+   on screen it publishes its height, so the portal content and the action status stay clear of it. */
+:root {
+  --call-dock-offset: max(1rem, env(safe-area-inset-bottom));
+}
+
+:root:has([data-floating-list-tools]) {
+  --call-dock-offset: var(--list-tools-clearance);
+}
+
+:root:has([data-call-dock]) {
+  --call-dock-clearance: calc(var(--call-dock-offset) + var(--call-dock-height, 0px) + 1rem);
+  --action-status-offset: calc(var(--call-dock-offset) + var(--call-dock-height, 0px) + 0.75rem);
+}
+
+/* A routine success message settles into place once; reduced-motion settings make it instant. */
+@keyframes action-status-in {
+  from {
+    opacity: 0;
+    translate: 0 0.375rem;
+  }
+}
+
+/* Portal navigation drawer on small screens. Radix keeps the drawer mounted until the closing
+   animation ends; reduced-motion settings shorten both to an instant change. */
+@keyframes portal-drawer-in {
+  from {
+    translate: -100% 0;
+  }
+}
+
+@keyframes portal-drawer-out {
+  to {
+    translate: -100% 0;
+  }
+}
+
+/* Reader accessibility settings (features/accessibility). These rules sit outside the Tailwind
+   layers on purpose, so a reader's choice wins over component utilities. */
+html[data-a11y-text-size="large"] {
+  font-size: 112.5%;
+}
+
+html[data-a11y-text-size="extra-large"] {
+  font-size: 125%;
+}
+
+html[data-a11y-spacing="relaxed"] :where(p, li, dd, dt, blockquote, label) {
+  line-height: 1.8;
+  letter-spacing: 0.03em;
+  word-spacing: 0.08em;
+}
+
+html[data-a11y-links="underline"] a {
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.08em;
+  text-underline-offset: 0.18em;
+}
+
+html[data-a11y-motion="reduce"] *,
+html[data-a11y-motion="reduce"] *::before,
+html[data-a11y-motion="reduce"] *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  transition-delay: 0s !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}

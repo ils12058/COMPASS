@@ -24,6 +24,8 @@ jobs:
       url: https://staging-api.compass-gco.com
     permissions:
       contents: read
+      # Read-only: confirms Backend full regression passed for the exact revision.
+      actions: read
     env:
       DO_REGISTRY_NAME: ${{ vars.DO_REGISTRY_NAME }}
       DO_REGISTRY_REPOSITORY: ${{ vars.DO_REGISTRY_REPOSITORY }}
@@ -70,6 +72,17 @@ jobs:
           deploy_sha="$(git rev-parse HEAD)"
           echo "deploy_sha=$deploy_sha" >> "$GITHUB_OUTPUT"
 
+      # Pull requests run targeted tests; the complete backend suite is the deployment gate.
+      - name: Require Backend full regression for this exact revision
+        env:
+          GH_TOKEN: ${{ github.token }}
+          DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 .github/scripts/require_full_regression.py \
+            --repo "$GITHUB_REPOSITORY" --sha "$DEPLOY_SHA"
+
       - name: Validate deployment configuration
         shell: bash
         run: |
@@ -80,6 +93,18 @@ jobs:
           [[ "$STAGING_DEPLOY_USER" == "compass" ]]
           [[ "$STAGING_DEPLOY_PORT" == "22" ]]
           [[ "$STAGING_FIREWALL_ID" =~ ^[0-9a-f-]{36}$ ]]
+
+      - name: Resolve immutable build metadata
+        id: build_metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(python -c 'import sys,tomllib; data=tomllib.load(open("be/pyproject.toml","rb")); value=data.get("project",{}).get("version"); sys.exit("be/pyproject.toml [project].version must be non-empty") if not isinstance(value,str) or not value.strip() else print(value.strip())')"
+          build_time="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+          test -n "$version"
+          [[ "$build_time" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "build_time=$build_time" >> "$GITHUB_OUTPUT"
 
       - name: Install doctl
         uses: digitalocean/action-doctl@v2
@@ -109,17 +134,32 @@ jobs:
         shell: bash
         env:
           DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
+          APP_VERSION: ${{ steps.build_metadata.outputs.version }}
+          BUILD_TIME: ${{ steps.build_metadata.outputs.build_time }}
         run: |
           set -euo pipefail
           image="registry.digitalocean.com/$DO_REGISTRY_NAME/$DO_REGISTRY_REPOSITORY:$DEPLOY_SHA"
           docker buildx build \
             --platform linux/amd64 \
             --file be/Containerfile \
+            --build-arg "COMPASS_BUILD_ID=$DEPLOY_SHA" \
+            --build-arg "COMPASS_BUILD_TIME=$BUILD_TIME" \
+            --build-arg "COMPASS_VERSION=$APP_VERSION" \
             --tag "$image" \
             --push \
             be
           digest="$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')"
           test -n "$digest"
+
+          image_config="$RUNNER_TEMP/compass-image-config.json"
+          docker buildx imagetools inspect "$image" --format '{{json .Image}}' > "$image_config"
+          image_revision="$(python -c 'import json,sys; print((json.load(open(sys.argv[1])).get("config",{}).get("Labels") or {}).get("org.opencontainers.image.revision",""))' "$image_config")"
+          image_version="$(python -c 'import json,sys; print((json.load(open(sys.argv[1])).get("config",{}).get("Labels") or {}).get("org.opencontainers.image.version",""))' "$image_config")"
+          image_created="$(python -c 'import json,sys; print((json.load(open(sys.argv[1])).get("config",{}).get("Labels") or {}).get("org.opencontainers.image.created",""))' "$image_config")"
+          [[ "$image_revision" == "$DEPLOY_SHA" ]]
+          [[ "$image_version" == "$APP_VERSION" ]]
+          [[ "$image_created" == "$BUILD_TIME" ]]
+
           echo "image=$image" >> "$GITHUB_OUTPUT"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
           echo "Pushed $image ($digest)"
@@ -193,11 +233,16 @@ jobs:
           )
 
           ssh "${ssh_opts[@]}" "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST" \
-            "test -d '$DEPLOY_PATH' && test -f '$DEPLOY_PATH/.env' && mkdir -p '$release_dir' && chmod 750 '$release_dir'"
+            "test -d '$DEPLOY_PATH' && test -f '$DEPLOY_PATH/.env' && mkdir -p '$release_dir/deploy/runtime-secrets' && chmod 750 '$release_dir'"
           scp "${scp_opts[@]}" \
             be/compose.staging.yaml \
             be/Caddyfile \
             "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST:$release_dir/"
+          scp "${scp_opts[@]}" \
+            be/deploy/runtime-secrets/redis-start.sh \
+            be/deploy/runtime-secrets/check-runtime-secrets.py \
+            be/deploy/runtime-secrets/runtime_secrets.py \
+            "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST:$release_dir/deploy/runtime-secrets/"
           scp "${scp_opts[@]}" \
             "$STAGING_REGISTRY_PULL_CONFIG" \
             "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST:$remote_registry_config"
@@ -254,15 +299,24 @@ jobs:
           install -m 600 "$REGISTRY_CONFIG" "$docker_config_dir/config.json"
           export DOCKER_CONFIG="$docker_config_dir"
           export COMPASS_IMAGE="$IMAGE"
+          export COMPASS_SECRETS_DIR="$DEPLOY_PATH/secrets"
           cd "$RELEASE_DIR"
           compose=(docker compose -f compose.staging.yaml)
 
+          python3 deploy/runtime-secrets/check-runtime-secrets.py \
+            --secrets-dir "$COMPASS_SECRETS_DIR" \
+            --env-file "$DEPLOY_PATH/.env" --owner compass
           "${compose[@]}" config >/dev/null
           "${compose[@]}" pull --quiet web worker beat proxy postgres redis
           docker image inspect "$IMAGE" >/dev/null
           "${compose[@]}" run --rm --no-deps -T web python manage.py check </dev/null
           "${compose[@]}" up -d postgres redis
           "${compose[@]}" run --rm -T web python manage.py migrate --noinput </dev/null
+          "${compose[@]}" run --rm -T web python manage.py sync_identity_policy </dev/null
+          "${compose[@]}" run --rm -T web python manage.py sync_canonical_services </dev/null
+          "${compose[@]}" run --rm -T web python manage.py sync_institutional_forms </dev/null
+          "${compose[@]}" run --rm -T web python manage.py sync_organization_catalog </dev/null
+          "${compose[@]}" run --rm -T web python manage.py check --deploy </dev/null
 
           state="$DEPLOY_PATH/.deploy.env"
           previous_state="$DEPLOY_PATH/.deploy.previous.env"
@@ -296,6 +350,29 @@ jobs:
 
           echo "Deployed $IMAGE"
           REMOTE
+
+      - name: Verify public running build identity
+        shell: bash
+        env:
+          DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
+          APP_VERSION: ${{ steps.build_metadata.outputs.version }}
+        run: |
+          set -euo pipefail
+          metadata="$RUNNER_TEMP/compass-running-meta.json"
+          curl --fail --silent --show-error --retry 5 --retry-delay 2 --retry-all-errors \
+            -H "Cache-Control: no-cache" \
+            https://staging-api.compass-gco.com/api/v1/meta \
+            > "$metadata"
+          application="$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("application",""))' "$metadata")"
+          build_id="$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("build_id",""))' "$metadata")"
+          version="$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("version",""))' "$metadata")"
+          environment="$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("environment",""))' "$metadata")"
+          built_at="$(python -c 'import json,sys; print(json.load(open(sys.argv[1])).get("built_at",""))' "$metadata")"
+          [[ "$application" == "COMPASS" ]]
+          [[ "$build_id" == "$DEPLOY_SHA" ]]
+          [[ "$version" == "$APP_VERSION" ]]
+          [[ "$environment" == "live-staging" ]]
+          test -n "$built_at"
 
       - name: Close temporary runner SSH access
         if: always() && steps.runner_firewall.outputs.runner_ip != ''

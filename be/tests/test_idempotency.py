@@ -23,12 +23,16 @@ class FakeRedis:
     def get(self, key):
         return self.records.get(key)
 
-    def eval(
-        self, script, number_of_keys, key, owner_token, status_code, content_type, body_b64, ttl
-    ):
+    def eval(self, script, number_of_keys, key, owner_token, *args):
         record = json.loads(self.records[key])
         if record["owner_token"] != owner_token:
             return 0
+        if not args:
+            if record["state"] != "in_progress":
+                return -2
+            del self.records[key]
+            return 1
+        status_code, content_type, body_b64, ttl = args
         record.update(
             {
                 "state": "completed",
@@ -86,3 +90,25 @@ def test_idempotency_reserves_replays_and_rejects_different_requests():
             key="request-1",
             fingerprint=_fingerprint(b'{"value":2}'),
         )
+
+
+def test_idempotency_can_abandon_owned_in_progress_reservation():
+    store = RedisIdempotencyStore(FakeRedis(), ttl_seconds=60)
+    fingerprint = _fingerprint()
+    first = store.begin(
+        actor_id="user:1",
+        method="POST",
+        route="/api/v1/example",
+        key="retryable",
+        fingerprint=fingerprint,
+    )
+    store.abandon(first.reservation)
+
+    retried = store.begin(
+        actor_id="user:1",
+        method="POST",
+        route="/api/v1/example",
+        key="retryable",
+        fingerprint=fingerprint,
+    )
+    assert retried.outcome == "execute"

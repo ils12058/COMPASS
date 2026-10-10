@@ -1,0 +1,12 @@
+{% extends "documents/base.html" %}
+{% block document %}
+  <div class="compact-form">
+    {% include "documents/partials/institution_masthead.html" %}
+    {% include "documents/partials/office_heading.html" %}
+    <main class="document-body compact-form-body">
+      {% block body %}{% endblock %}
+    </main>
+    {% include "documents/partials/accreditation_footer.html" %}
+    {% if not document_pdf_footer %}{% include "documents/partials/controlled_form_metadata.html" %}{% endif %}
+  </div>
+{% endblock %}

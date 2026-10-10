@@ -27,11 +27,18 @@ from compass.authentication.email_otp import (
 )
 from compass.authentication.models import EmailOTPChallenge, EmailOTPPurpose
 from compass.authentication.security import invalidate_reusable_auth_state
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 
 User = get_user_model()
 
 PASSWORD_ACCESS_METHOD = "email_otp"
-PASSWORD_ACCESS_PURPOSE = EmailOTPPurpose.RECOVERY
+PASSWORD_ACCESS_PURPOSES = frozenset(
+    {
+        EmailOTPPurpose.EMAIL_VERIFICATION,
+        EmailOTPPurpose.RECOVERY,
+    }
+)
 PASSWORD_ACCESS_MESSAGE = "If the account is eligible, a security code has been sent."
 PASSWORD_CHALLENGE_INVALID_MESSAGE = (
     "The security code could not be verified or is no longer valid."
@@ -102,7 +109,7 @@ def _password_policy_issues(exc: ValidationError) -> tuple[PasswordPolicyIssue, 
     return tuple(issues)
 
 
-def _validate_new_password(*, user, new_password: str) -> None:
+def validate_new_password(*, user, new_password: str) -> None:
     if len(new_password) > MAX_PASSWORD_LENGTH:
         raise PasswordPolicyRejected(
             (
@@ -137,16 +144,21 @@ def request_password_access(
     turnstile_token: str | None = None,
     now: datetime | None = None,
 ) -> PasswordAccessRequestResult:
-    """Issue one real or decoy recovery challenge without account enumeration."""
+    """Issue one real or decoy password-access challenge without account enumeration."""
 
     normalized_email = _normalize_email(email)
     current = now or timezone.now()
     with transaction.atomic():
         user = User.objects.select_for_update().filter(email=normalized_email).first()
         eligible = user is not None and user.is_active
+        purpose = (
+            EmailOTPPurpose.EMAIL_VERIFICATION
+            if eligible and not user.has_usable_password()
+            else EmailOTPPurpose.RECOVERY
+        )
         issue = issue_email_otp(
             email=normalized_email,
-            purpose=PASSWORD_ACCESS_PURPOSE,
+            purpose=purpose,
             user=user if eligible else None,
             request=request,
             limiter=limiter,
@@ -171,7 +183,7 @@ def confirm_password_access(
     limiter=None,
     now: datetime | None = None,
 ) -> PasswordAccessConfirmResult:
-    """Atomically verify one recovery OTP and establish or replace the user password."""
+    """Atomically verify one password-access OTP and establish or replace the password."""
 
     current = now or timezone.now()
     try:
@@ -202,21 +214,33 @@ def confirm_password_access(
             challenge.user = locked_user
         if challenge is None:
             invalid = True
+        elif challenge.purpose not in PASSWORD_ACCESS_PURPOSES:
+            invalid = True
         elif not _verify_email_otp_locked(
             challenge=challenge,
             code=code,
             request=request,
             current=current,
-            expected_purpose=PASSWORD_ACCESS_PURPOSE,
+            expected_purpose=challenge.purpose,
         ):
             invalid = True
         else:
             user = locked_user
+            purpose_state_invalid = (
+                challenge.purpose == EmailOTPPurpose.EMAIL_VERIFICATION
+                and user is not None
+                and user.has_usable_password()
+            ) or (
+                challenge.purpose == EmailOTPPurpose.RECOVERY
+                and user is not None
+                and not user.has_usable_password()
+            )
             if (
                 user is None
                 or challenge.user_id != user.pk
                 or not user.is_active
                 or challenge.email != user.email
+                or purpose_state_invalid
             ):
                 _consume_email_otp_locked(
                     challenge=challenge,
@@ -225,10 +249,14 @@ def confirm_password_access(
                 )
                 invalid = True
             else:
-                _validate_new_password(user=user, new_password=new_password)
+                validate_new_password(user=user, new_password=new_password)
                 initial_password = not user.has_usable_password()
                 user.set_password(new_password)
-                user.save(update_fields=["password", "updated_at"])
+                update_fields = ["password", "updated_at"]
+                if user.email_verified_at is None:
+                    user.email_verified_at = current
+                    update_fields.append("email_verified_at")
+                user.save(update_fields=update_fields)
                 _consume_email_otp_locked(
                     challenge=challenge,
                     request=request,
@@ -246,10 +274,10 @@ def confirm_password_access(
                     context=context,
                     reason=reason,
                     now=current,
-                    email_challenge_purposes=(PASSWORD_ACCESS_PURPOSE,),
+                    email_challenge_purposes=tuple(PASSWORD_ACCESS_PURPOSES),
                     email_challenge_email=user.email,
                 )
-                record_event(
+                audit_event = record_event(
                     context=context,
                     action=action,
                     outcome="SUCCESS",
@@ -257,6 +285,15 @@ def confirm_password_access(
                     target_id=user.pk,
                     metadata={"method": PASSWORD_ACCESS_METHOD},
                 )
+                if action == AUTH_PASSWORD_RESET:
+                    create_notification_for_event(
+                        recipient=user,
+                        event=NotificationEvent.SECURITY_PASSWORD_RESET,
+                        source_type="audit_event",
+                        source_id=audit_event.pk,
+                        target_type="ACCOUNT_SECURITY",
+                        target_id=user.pk,
+                    )
                 result = PasswordAccessConfirmResult(password_set=True, action=action)
 
     if invalid or result is None:
@@ -278,4 +315,5 @@ __all__ = [
     "PasswordPolicyRejected",
     "confirm_password_access",
     "request_password_access",
+    "validate_new_password",
 ]

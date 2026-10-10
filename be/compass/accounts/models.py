@@ -59,6 +59,12 @@ class Capability(models.Model):
         return self.code
 
 
+class StudentLifecycleStatus(models.TextChoices):
+    CURRENT = "CURRENT", "Current"
+    GRADUATED = "GRADUATED", "Graduated"
+    FORMER = "FORMER", "Former"
+
+
 class UserManager(BaseUserManager):
     """Create users with an explicit primary role and Django password hashing."""
 
@@ -71,6 +77,21 @@ class UserManager(BaseUserManager):
         if not isinstance(email, str):
             raise ValueError("email must be a string")
         return email.strip().lower()
+
+    @classmethod
+    def normalize_institutional_id(cls, institutional_id: str | None) -> str | None:
+        """Normalize a UCN-issued identifier without interpreting its structure."""
+
+        if institutional_id is None:
+            return None
+        if not isinstance(institutional_id, str):
+            raise ValueError("institutional_id must be a string or null")
+        normalized = institutional_id.strip().upper()
+        if not normalized:
+            return None
+        if len(normalized) > 64 or any(ord(character) < 32 for character in normalized):
+            raise ValueError("institutional_id is invalid")
+        return normalized
 
     def clean_email(self, email: str | None) -> str:
         normalized = self.normalize_email(email)
@@ -107,15 +128,21 @@ class UserManager(BaseUserManager):
         middle_name: str = "",
         last_name: str = "",
         suffix: str = "",
+        institutional_id: str | None = None,
         is_active: bool = True,
     ) -> User:
         if not first_name.strip() or not last_name.strip():
             raise ValueError("first_name and last_name are required")
         if password == "":
             raise ValueError("password must not be blank")
+        resolved_role = self._resolve_role(role)
         user = self.model(
             email=self.clean_email(email),
-            role=self._resolve_role(role),
+            institutional_id=self.normalize_institutional_id(institutional_id),
+            role=resolved_role,
+            student_lifecycle_status=(
+                StudentLifecycleStatus.CURRENT if resolved_role.code == "STUDENT" else None
+            ),
             first_name=first_name,
             middle_name=middle_name,
             last_name=last_name,
@@ -126,6 +153,12 @@ class UserManager(BaseUserManager):
             user.set_unusable_password()
         else:
             user.set_password(password)
+        from .confidential_profile import (
+            AccountProfileConfidentialContent,
+            write_account_profile_confidential_content,
+        )
+
+        write_account_profile_confidential_content(user, AccountProfileConfidentialContent())
         user.save(using=self._db)
         return user
 
@@ -135,16 +168,25 @@ class User(AbstractBaseUser):
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(max_length=254, unique=True)
+    institutional_id = models.CharField(max_length=64, blank=True, null=True)
     first_name = models.CharField(max_length=150)
     middle_name = models.CharField(max_length=150, blank=True, default="")
     last_name = models.CharField(max_length=150)
     suffix = models.CharField(max_length=32, blank=True, default="")
+    profile_confidential_content_ciphertext = models.TextField(editable=False)
     role = models.ForeignKey(
         Role,
         on_delete=models.PROTECT,
         related_name="users",
     )
+    student_lifecycle_status = models.CharField(
+        max_length=16,
+        choices=StudentLifecycleStatus.choices,
+        blank=True,
+        null=True,
+    )
     is_active = models.BooleanField(default=True)
+    email_verified_at = models.DateTimeField(blank=True, null=True)
     profile_photo_object_key = models.CharField(
         max_length=512,
         blank=True,
@@ -169,9 +211,25 @@ class User(AbstractBaseUser):
     class Meta:
         default_permissions = ()
         constraints = [
+            models.CheckConstraint(
+                condition=~models.Q(profile_confidential_content_ciphertext=""),
+                name="accounts_user_profile_cipher_nonempty",
+            ),
             models.UniqueConstraint(
                 Lower("email"),
                 name="accounts_user_email_ci_uniq",
+            ),
+            models.UniqueConstraint(
+                Lower("institutional_id"),
+                condition=models.Q(institutional_id__isnull=False),
+                name="accounts_user_institutional_id_ci_uniq",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(student_lifecycle_status__isnull=True)
+                    | models.Q(student_lifecycle_status__in=StudentLifecycleStatus.values)
+                ),
+                name="accounts_user_student_lifecycle_valid",
             ),
         ]
         ordering = ("-created_at",)
@@ -180,10 +238,16 @@ class User(AbstractBaseUser):
         super().clean()
         if self.email is not None:
             self.email = self.__class__.objects.normalize_email(self.email)
+        self.institutional_id = self.__class__.objects.normalize_institutional_id(
+            self.institutional_id
+        )
 
     def save(self, *args, **kwargs):
         if self.email is not None:
             self.email = self.__class__.objects.normalize_email(self.email)
+        self.institutional_id = self.__class__.objects.normalize_institutional_id(
+            self.institutional_id
+        )
         return super().save(*args, **kwargs)
 
     def get_full_name(self) -> str:

@@ -7,6 +7,8 @@ import logging
 from django.db import connection
 from ninja import Router, Schema, Status
 
+from compass.service_catalog.bootstrap import canonical_counseling_readiness
+
 logger = logging.getLogger("compass.health")
 router = Router(tags=["health"])
 
@@ -42,7 +44,26 @@ def ready(request):
             503,
             {"status": "not_ready", "checks": {"application": "ok", "database": "failed"}},
         )
+    try:
+        valid, reason = canonical_counseling_readiness()
+    except Exception:
+        valid, reason = False, "check_error"
+    if not valid:
+        logger.warning(
+            "canonical Service readiness check failed",
+            extra={"event": "readiness_failed", "reason": reason},
+        )
+        return Status(
+            503,
+            {
+                "status": "not_ready",
+                "checks": {"application": "ok", "database": "ok", "canonical_services": "failed"},
+            },
+        )
     return Status(
         200,
-        {"status": "ok", "checks": {"application": "ok", "database": "ok"}},
+        {
+            "status": "ok",
+            "checks": {"application": "ok", "database": "ok", "canonical_services": "ok"},
+        },
     )

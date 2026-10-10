@@ -5,19 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from uuid import UUID
 
-from django.db import IntegrityError, transaction
+from django.db import transaction
 from django.db.models import Q
 
 from compass.accounts.models import User
 from compass.audit.actions import (
-    ORGANIZATION_CAMPUS_CREATED,
-    ORGANIZATION_CAMPUS_DISABLED,
-    ORGANIZATION_CAMPUS_ENABLED,
-    ORGANIZATION_CAMPUS_UPDATED,
-    ORGANIZATION_COLLEGE_CREATED,
-    ORGANIZATION_COLLEGE_DISABLED,
-    ORGANIZATION_COLLEGE_ENABLED,
-    ORGANIZATION_COLLEGE_UPDATED,
     ORGANIZATION_COUNSELOR_RESPONSIBILITY_ASSIGNED,
     ORGANIZATION_COUNSELOR_RESPONSIBILITY_CHANGED,
     ORGANIZATION_COUNSELOR_RESPONSIBILITY_REMOVED,
@@ -31,18 +23,21 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.organization.access_scope import (
+    active_head_guidance_counselors,
+    resolve_operational_responsibility_scope,
+)
 from compass.organization.models import (
     Campus,
     College,
     CounselorResponsibility,
+    Program,
     StaffSupervision,
     StudentAffiliation,
-    normalize_code,
 )
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
-HEAD_DESIGNATION = "HEAD_GUIDANCE_COUNSELOR"
 
 
 class OrganizationError(RuntimeError):
@@ -80,22 +75,12 @@ class PeoplePage:
     has_next: bool
 
 
-def _clean_name(value: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise InvalidOrganizationInput("name is required")
-    cleaned = value.strip()
-    if len(cleaned) > 160:
-        raise InvalidOrganizationInput("name is too long")
-    return cleaned
-
-
-def _clean_code(value: str) -> str:
-    if not isinstance(value, str) or not value.strip():
-        raise InvalidOrganizationInput("code is required")
-    cleaned = normalize_code(value)
-    if len(cleaned) > 32:
-        raise InvalidOrganizationInput("code is too long")
-    return cleaned
+@dataclass(frozen=True, slots=True)
+class StudentAffiliationPage:
+    items: tuple[StudentAffiliation, ...]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 def _actor(context: AuditContext) -> User | None:
@@ -108,29 +93,11 @@ def _active_colleges():
 
 
 def effective_responsibility_colleges(user: User) -> tuple[College, ...]:
-    """Resolve default responsibility only; this is not a resource-access decision."""
-    if not getattr(user, "pk", None) or not user.is_active:
-        return ()
-    if user.role.code == "COUNSELOR":
-        if user.designations.filter(code=HEAD_DESIGNATION).exists():
-            return tuple(_active_colleges().order_by("campus__code", "code"))
-        return tuple(
-            _active_colleges()
-            .filter(counselor_responsibility__counselor_id=user.pk)
-            .order_by("campus__code", "code")
-        )
-    if user.role.code == "GUIDANCE_SERVICES_STAFF":
-        supervision = (
-            StaffSupervision.objects.select_related("supervisor__role")
-            .filter(staff_id=user.pk)
-            .first()
-        )
-        if supervision is None or not supervision.supervisor.is_active:
-            return ()
-        if supervision.supervisor.role.code != "COUNSELOR":
-            return ()
-        return effective_responsibility_colleges(supervision.supervisor)
-    return ()
+    """Project current handled workload; domain authorization remains a separate decision."""
+    scope = resolve_operational_responsibility_scope(user)
+    return tuple(
+        _active_colleges().filter(pk__in=scope.college_ids).order_by("campus__code", "code")
+    )
 
 
 def resolve_default_counselor_for_student(student: User) -> DefaultCounselorResolution:
@@ -156,18 +123,8 @@ def resolve_default_counselor_for_student(student: User) -> DefaultCounselorReso
         and responsibility.counselor.is_active
         and responsibility.counselor.role.code == "COUNSELOR"
     ):
-        return DefaultCounselorResolution(
-            responsibility.counselor, "COLLEGE_RESPONSIBILITY"
-        )
-    heads = list(
-        User.objects.filter(
-            is_active=True,
-            role__code="COUNSELOR",
-            designation_assignments__designation__code=HEAD_DESIGNATION,
-        )
-        .select_related("role")
-        .distinct()[:2]
-    )
+        return DefaultCounselorResolution(responsibility.counselor, "COLLEGE_RESPONSIBILITY")
+    heads = list(active_head_guidance_counselors()[:2])
     if len(heads) == 1:
         return DefaultCounselorResolution(heads[0], "HEAD_GUIDANCE_FALLBACK")
     if not heads:
@@ -187,19 +144,25 @@ def validate_role_transition(*, user: User, new_role_code: str) -> None:
             raise OrganizationRoleTransitionConflict(
                 "Remove or reassign supervised Guidance Services Staff before changing role."
             )
-    if user.role.code == "GUIDANCE_SERVICES_STAFF" and StaffSupervision.objects.filter(
-        staff_id=user.pk
-    ).exists():
+    if (
+        user.role.code == "GUIDANCE_SERVICES_STAFF"
+        and StaffSupervision.objects.filter(staff_id=user.pk).exists()
+    ):
         raise OrganizationRoleTransitionConflict(
             "Remove the staff supervision relationship before changing role."
         )
-    if user.role.code == "STUDENT" and StudentAffiliation.objects.filter(student_id=user.pk).exists():
+    if (
+        user.role.code == "STUDENT"
+        and StudentAffiliation.objects.filter(student_id=user.pk).exists()
+    ):
         raise OrganizationRoleTransitionConflict(
             "Remove the student's organizational affiliation before changing role."
         )
 
 
-def list_campuses(*, is_active: bool | None = None, search: str | None = None) -> tuple[Campus, ...]:
+def list_campuses(
+    *, is_active: bool | None = None, search: str | None = None
+) -> tuple[Campus, ...]:
     qs = Campus.objects.all().order_by("code")
     if is_active is not None:
         qs = qs.filter(is_active=is_active)
@@ -216,76 +179,9 @@ def get_campus(campus_id: UUID) -> Campus:
     return campus
 
 
-def create_campus(*, code: str, name: str, context: AuditContext) -> Campus:
-    with transaction.atomic():
-        try:
-            campus = Campus.objects.create(code=_clean_code(code), name=_clean_name(name))
-        except IntegrityError as exc:
-            raise OrganizationConflict("A campus with this code already exists.") from exc
-        record_event(
-            context=context,
-            action=ORGANIZATION_CAMPUS_CREATED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.campus",
-            target_id=campus.pk,
-            metadata={"code": campus.code},
-        )
-        return campus
-
-
-def update_campus(*, campus_id: UUID, changes: dict[str, object], context: AuditContext) -> Campus:
-    with transaction.atomic():
-        campus = Campus.objects.select_for_update().filter(pk=campus_id).first()
-        if campus is None:
-            raise OrganizationNotFound("The requested campus was not found.")
-        normalized = {}
-        if "code" in changes:
-            normalized["code"] = _clean_code(changes["code"])
-        if "name" in changes:
-            normalized["name"] = _clean_name(changes["name"])
-        changed = [key for key, value in normalized.items() if getattr(campus, key) != value]
-        if not changed:
-            return campus
-        for key in changed:
-            setattr(campus, key, normalized[key])
-        try:
-            campus.save(update_fields=[*changed, "updated_at"])
-        except IntegrityError as exc:
-            raise OrganizationConflict("A campus with this code already exists.") from exc
-        record_event(
-            context=context,
-            action=ORGANIZATION_CAMPUS_UPDATED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.campus",
-            target_id=campus.pk,
-            metadata={"changed_fields": changed},
-        )
-        return campus
-
-
-def set_campus_active(*, campus_id: UUID, is_active: bool, context: AuditContext) -> Campus:
-    with transaction.atomic():
-        campus = Campus.objects.select_for_update().filter(pk=campus_id).first()
-        if campus is None:
-            raise OrganizationNotFound("The requested campus was not found.")
-        if campus.is_active == is_active:
-            return campus
-        if not is_active and College.objects.filter(campus_id=campus.pk, is_active=True).exists():
-            raise OrganizationConflict("Disable active Colleges before disabling this Campus.")
-        campus.is_active = is_active
-        campus.save(update_fields=["is_active", "updated_at"])
-        record_event(
-            context=context,
-            action=ORGANIZATION_CAMPUS_ENABLED if is_active else ORGANIZATION_CAMPUS_DISABLED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.campus",
-            target_id=campus.pk,
-            metadata={},
-        )
-        return campus
-
-
-def list_colleges(*, campus_id: UUID | None = None, is_active: bool | None = None, search: str | None = None) -> tuple[College, ...]:
+def list_colleges(
+    *, campus_id: UUID | None = None, is_active: bool | None = None, search: str | None = None
+) -> tuple[College, ...]:
     qs = College.objects.select_related("campus").order_by("campus__code", "code")
     if campus_id is not None:
         qs = qs.filter(campus_id=campus_id)
@@ -304,103 +200,30 @@ def get_college(college_id: UUID) -> College:
     return college
 
 
-def create_college(*, campus_id: UUID, code: str, name: str, context: AuditContext) -> College:
-    with transaction.atomic():
-        campus = Campus.objects.select_for_update().filter(pk=campus_id).first()
-        if campus is None:
-            raise OrganizationNotFound("The requested campus was not found.")
-        if not campus.is_active:
-            raise OrganizationConflict("A College cannot be created under an inactive Campus.")
-        try:
-            college = College.objects.create(
-                campus=campus,
-                code=_clean_code(code),
-                name=_clean_name(name),
-            )
-        except IntegrityError as exc:
-            raise OrganizationConflict(
-                "A College with this code already exists in the Campus."
-            ) from exc
-        record_event(
-            context=context,
-            action=ORGANIZATION_COLLEGE_CREATED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.college",
-            target_id=college.pk,
-            metadata={"campus_id": str(campus.pk), "code": college.code},
-        )
-        return college
+def list_programs(
+    *,
+    college_id: UUID | None = None,
+    is_active: bool | None = None,
+    search: str | None = None,
+) -> tuple[Program, ...]:
+    qs = Program.objects.select_related("college__campus").order_by(
+        "college__campus__code", "college__code", "code"
+    )
+    if college_id is not None:
+        qs = qs.filter(college_id=college_id)
+    if is_active is not None:
+        qs = qs.filter(is_active=is_active)
+    if search and search.strip():
+        term = search.strip()[:160]
+        qs = qs.filter(Q(code__icontains=term) | Q(name__icontains=term))
+    return tuple(qs)
 
 
-def update_college(*, college_id: UUID, changes: dict[str, object], context: AuditContext) -> College:
-    with transaction.atomic():
-        college = (
-            College.objects.select_for_update()
-            .select_related("campus")
-            .filter(pk=college_id)
-            .first()
-        )
-        if college is None:
-            raise OrganizationNotFound("The requested college was not found.")
-        normalized = {}
-        if "code" in changes:
-            normalized["code"] = _clean_code(changes["code"])
-        if "name" in changes:
-            normalized["name"] = _clean_name(changes["name"])
-        changed = [key for key, value in normalized.items() if getattr(college, key) != value]
-        if not changed:
-            return college
-        for key in changed:
-            setattr(college, key, normalized[key])
-        try:
-            college.save(update_fields=[*changed, "updated_at"])
-        except IntegrityError as exc:
-            raise OrganizationConflict(
-                "A College with this code already exists in the Campus."
-            ) from exc
-        record_event(
-            context=context,
-            action=ORGANIZATION_COLLEGE_UPDATED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.college",
-            target_id=college.pk,
-            metadata={"changed_fields": changed},
-        )
-        return college
-
-
-def set_college_active(*, college_id: UUID, is_active: bool, context: AuditContext) -> College:
-    with transaction.atomic():
-        college = (
-            College.objects.select_for_update()
-            .select_related("campus")
-            .filter(pk=college_id)
-            .first()
-        )
-        if college is None:
-            raise OrganizationNotFound("The requested college was not found.")
-        if college.is_active == is_active:
-            return college
-        if is_active and not college.campus.is_active:
-            raise OrganizationConflict("Enable the parent Campus before enabling this College.")
-        if not is_active and (
-            StudentAffiliation.objects.filter(college_id=college.pk).exists()
-            or CounselorResponsibility.objects.filter(college_id=college.pk).exists()
-        ):
-            raise OrganizationConflict(
-                "Remove or reassign current organizational relationships before disabling this College."
-            )
-        college.is_active = is_active
-        college.save(update_fields=["is_active", "updated_at"])
-        record_event(
-            context=context,
-            action=ORGANIZATION_COLLEGE_ENABLED if is_active else ORGANIZATION_COLLEGE_DISABLED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.college",
-            target_id=college.pk,
-            metadata={},
-        )
-        return college
+def get_program(program_id: UUID) -> Program:
+    program = Program.objects.select_related("college__campus").filter(pk=program_id).first()
+    if program is None:
+        raise OrganizationNotFound("The requested program was not found.")
+    return program
 
 
 def _lock_user_with_role(
@@ -410,7 +233,12 @@ def _lock_user_with_role(
     *,
     require_active: bool,
 ) -> User:
-    user = User.objects.select_for_update().select_related("role").filter(pk=user_id).first()
+    user = (
+        User.objects.select_for_update(of=("self",))
+        .select_related("role")
+        .filter(pk=user_id)
+        .first()
+    )
     if user is None:
         raise OrganizationNotFound(f"The requested {label} was not found.")
     if user.role.code != role_code or (require_active and not user.is_active):
@@ -425,7 +253,7 @@ def _lock_active_user(user_id: UUID, role_code: str, label: str) -> User:
 
 def _lock_active_college(college_id: UUID) -> College:
     college = (
-        College.objects.select_for_update()
+        College.objects.select_for_update(of=("self", "campus"))
         .select_related("campus")
         .filter(pk=college_id)
         .first()
@@ -437,11 +265,15 @@ def _lock_active_college(college_id: UUID) -> College:
     return college
 
 
-def set_student_affiliation(*, student_id: UUID, college_id: UUID, context: AuditContext) -> StudentAffiliation:
+def set_student_affiliation(
+    *, student_id: UUID, college_id: UUID, context: AuditContext
+) -> StudentAffiliation:
     with transaction.atomic():
         student = _lock_active_user(student_id, "STUDENT", "student")
         college = _lock_active_college(college_id)
-        current = StudentAffiliation.objects.select_for_update().filter(student_id=student.pk).first()
+        current = (
+            StudentAffiliation.objects.select_for_update().filter(student_id=student.pk).first()
+        )
         if current is not None and current.college_id == college.pk:
             return current
         previous = str(current.college_id) if current is not None else None
@@ -471,7 +303,9 @@ def set_student_affiliation(*, student_id: UUID, college_id: UUID, context: Audi
 def remove_student_affiliation(*, student_id: UUID, context: AuditContext) -> bool:
     with transaction.atomic():
         _lock_user_with_role(student_id, "STUDENT", "student", require_active=False)
-        current = StudentAffiliation.objects.select_for_update().filter(student_id=student_id).first()
+        current = (
+            StudentAffiliation.objects.select_for_update().filter(student_id=student_id).first()
+        )
         if current is None:
             return False
         college_id = str(current.college_id)
@@ -487,7 +321,9 @@ def remove_student_affiliation(*, student_id: UUID, context: AuditContext) -> bo
         return True
 
 
-def set_counselor_responsibility(*, college_id: UUID, counselor_id: UUID, context: AuditContext) -> CounselorResponsibility:
+def set_counselor_responsibility(
+    *, college_id: UUID, counselor_id: UUID, context: AuditContext
+) -> CounselorResponsibility:
     with transaction.atomic():
         college = _lock_active_college(college_id)
         counselor = _lock_active_user(counselor_id, "COUNSELOR", "counselor")
@@ -548,7 +384,9 @@ def remove_counselor_responsibility(*, college_id: UUID, context: AuditContext) 
         return True
 
 
-def set_staff_supervisor(*, staff_id: UUID, supervisor_id: UUID, context: AuditContext) -> StaffSupervision:
+def set_staff_supervisor(
+    *, staff_id: UUID, supervisor_id: UUID, context: AuditContext
+) -> StaffSupervision:
     with transaction.atomic():
         staff = _lock_active_user(staff_id, "GUIDANCE_SERVICES_STAFF", "staff member")
         supervisor = _lock_active_user(supervisor_id, "COUNSELOR", "supervisor")
@@ -606,7 +444,9 @@ def remove_staff_supervisor(*, staff_id: UUID, context: AuditContext) -> bool:
         return True
 
 
-def list_people(*, role: str, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE, search: str | None = None) -> PeoplePage:
+def list_people(
+    *, role: str, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE, search: str | None = None
+) -> PeoplePage:
     allowed = {"COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT"}
     if role not in allowed:
         raise InvalidOrganizationInput(
@@ -617,17 +457,66 @@ def list_people(*, role: str, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE,
     if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
         raise InvalidOrganizationInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
     qs = (
-        User.objects.filter(role__code=role)
+        User.objects.filter(role__code=role, is_active=True)
         .select_related("role")
+        .prefetch_related("designations")
         .order_by("last_name", "first_name", "id")
     )
     if search and search.strip():
         term = search.strip()[:254]
         qs = qs.filter(
-            Q(email__icontains=term)
-            | Q(first_name__icontains=term)
-            | Q(last_name__icontains=term)
+            Q(email__icontains=term) | Q(first_name__icontains=term) | Q(last_name__icontains=term)
         )
     offset = (page - 1) * page_size
     rows = list(qs[offset : offset + page_size + 1])
     return PeoplePage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
+
+
+def list_student_affiliations(
+    *,
+    student_id: UUID | None = None,
+    college_id: UUID | None = None,
+    campus_id: UUID | None = None,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> StudentAffiliationPage:
+    if type(page) is not int or page < 1:
+        raise InvalidOrganizationInput("page must be a positive integer")
+    if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
+        raise InvalidOrganizationInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
+
+    term = ""
+    if search is not None:
+        if not isinstance(search, str):
+            raise InvalidOrganizationInput("search must be text")
+        term = search.strip()
+        if len(term) > 160:
+            raise InvalidOrganizationInput("search must be at most 160 characters")
+
+    queryset = StudentAffiliation.objects.select_related(
+        "student__role",
+        "college__campus",
+    )
+    if student_id is not None:
+        queryset = queryset.filter(student_id=student_id)
+    if college_id is not None:
+        queryset = queryset.filter(college_id=college_id)
+    if campus_id is not None:
+        queryset = queryset.filter(college__campus_id=campus_id)
+    if term:
+        queryset = queryset.filter(
+            Q(student__institutional_id__icontains=term)
+            | Q(student__first_name__icontains=term)
+            | Q(student__middle_name__icontains=term)
+            | Q(student__last_name__icontains=term)
+        )
+    queryset = queryset.order_by("student__last_name", "student__first_name", "student_id")
+    offset = (page - 1) * page_size
+    rows = list(queryset[offset : offset + page_size + 1])
+    return StudentAffiliationPage(
+        tuple(rows[:page_size]),
+        page,
+        page_size,
+        len(rows) > page_size,
+    )

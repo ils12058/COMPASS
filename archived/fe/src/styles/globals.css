@@ -1,0 +1,115 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@layer base {
+  * {
+    box-sizing: border-box;
+    border-color: var(--compass-border);
+  }
+
+  html {
+    min-height: 100%;
+    background: var(--compass-body);
+  }
+
+  body {
+    min-height: 100%;
+    margin: 0;
+    background: var(--compass-body);
+    color: var(--compass-ink);
+    font-family: var(--compass-font-ui);
+    line-height: var(--compass-line-height);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--compass-ink);
+    font-family: var(--compass-font-heading);
+    font-weight: var(--compass-heading-weight);
+    line-height: var(--compass-line-height-compact);
+  }
+
+  a {
+    color: var(--compass-brand-maroon);
+  }
+
+  a:hover {
+    color: var(--compass-brand-maroon-strong);
+  }
+
+  :focus-visible {
+    outline: var(--compass-focus-width) solid var(--compass-focus-color);
+    outline-offset: var(--compass-focus-offset);
+  }
+
+  ::selection {
+    background: var(--compass-support-soft);
+    color: var(--compass-ink);
+  }
+
+  button,
+  input {
+    font: inherit;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+@media (forced-colors: active) {
+  :focus-visible {
+    outline-color: CanvasText;
+  }
+}
+
+
+html[data-compass-text-size="large"] {
+  font-size: 112.5%;
+}
+
+html[data-compass-text-size="extra-large"] {
+  font-size: 125%;
+}
+
+html[data-compass-spacing="relaxed"] body {
+  line-height: 1.8;
+}
+
+html[data-compass-spacing="relaxed"] :where(p, li, blockquote, dd, dt, label) {
+  letter-spacing: 0.025em;
+  word-spacing: 0.08em;
+  line-height: 1.8;
+}
+
+html[data-compass-underline-links="true"] a:not(.no-underline) {
+  text-decoration-line: underline;
+  text-decoration-thickness: 0.09em;
+  text-underline-offset: 0.18em;
+}
+
+html[data-compass-motion="reduced"] *,
+html[data-compass-motion="reduced"] *::before,
+html[data-compass-motion="reduced"] *::after {
+  scroll-behavior: auto !important;
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+}
+
+html[data-compass-status-banner="visible"] body {
+  padding-bottom: calc(
+    var(--compass-status-banner-height) + env(safe-area-inset-bottom)
+  );
+}

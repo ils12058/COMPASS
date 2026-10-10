@@ -1,0 +1,82 @@
+"use client";
+
+import Link from "next/link";
+
+import { pageBackLinkClass } from "@/components/ui/page-header";
+import { Skeleton } from "@/components/ui/skeleton";
+import { getInventoryAccess } from "@/features/inventory/inventory-access";
+import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
+import { InventoryPdfDownload } from "@/features/inventory/inventory-pdf-download";
+import { formatInventoryDate, InventoryHeading, InventoryNotice, InventoryQueryError, InventoryStatus } from "@/features/inventory/inventory-shared";
+import { usePortalSession } from "@/features/portal/components/portal-session";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
+import { useInventoryGetMyHistoryItem } from "@/lib/api/generated/inventory/inventory";
+import { InventoryStatusValue } from "@/lib/api/generated/model";
+
+export function InventoryHistoryDetail({ inventoryId }: { inventoryId: string }) {
+  const { user } = usePortalSession();
+  const access = getInventoryAccess(user);
+  if (!access.canViewSelf) {
+    return (
+      <WorkspaceUnavailable title="Individual Inventory unavailable">
+        This historical record is available only to its Student through the self-service Inventory workspace.
+      </WorkspaceUnavailable>
+    );
+  }
+  return <StudentInventoryHistoryDetail inventoryId={inventoryId} />;
+}
+
+function StudentInventoryHistoryDetail({ inventoryId }: { inventoryId: string }) {
+  const record = useInventoryGetMyHistoryItem(inventoryId, {
+    query: { retry: false },
+  });
+
+  if (record.isPending) {
+    return (
+      <section aria-busy="true" className="space-y-5">
+        <InventoryHeading title="Annual Individual Inventory" />
+        <Skeleton className="h-8 w-56" />
+        <Skeleton className="h-64" />
+        <p className="sr-only">Loading annual Individual Inventory record…</p>
+      </section>
+    );
+  }
+
+  if (record.isError) {
+    return (
+      <section className="space-y-5">
+        <InventoryHeading title="Annual Individual Inventory" back={<Link href="/portal/inventory" className={pageBackLinkClass}>Back to annual history</Link>} />
+        <InventoryQueryError error={record.error} fallback="This annual Individual Inventory could not be found or is not available to you." />
+      </section>
+    );
+  }
+
+  const inventory = record.data.data;
+  return (
+    <section aria-label="Historical Individual Inventory">
+      <InventoryHeading
+        title="Annual Individual Inventory"
+        description={`${inventory.academic_year.label} · ${inventory.form_revision.official_code} · Revision ${inventory.form_revision.official_revision}`}
+        back={<Link href="/portal/inventory" className={pageBackLinkClass}>Back to annual history</Link>}
+      />
+      <div className="mt-5 flex flex-wrap items-center gap-3">
+        <InventoryStatus status={inventory.status} correctionPending={inventory.correction_pending} />
+        {inventory.submitted_at ? <span className="text-sm text-muted">Submitted {formatInventoryDate(inventory.submitted_at)}</span> : null}
+      </div>
+      {inventory.status === InventoryStatusValue.SUBMITTED ? (
+        <div className="mt-4"><InventoryPdfDownload inventoryId={inventory.id} studentFacing /></div>
+      ) : null}
+      {inventory.correction_pending && inventory.latest_correction ? (
+        <div className="mt-5">
+          <InventoryNotice title="Correction requested" tone="warning">
+            <p className="whitespace-pre-wrap">{inventory.latest_correction.message}</p>
+            <p className="mt-2 text-xs text-muted">Requested {formatInventoryDate(inventory.latest_correction.requested_at)}</p>
+          </InventoryNotice>
+        </div>
+      ) : null}
+      <div className="mt-7">
+        <InventoryReadOnly inventory={inventory} />
+      </div>
+    </section>
+  );
+}

@@ -1,0 +1,965 @@
+"""Thin Django Ninja API for Appointment reservation workflows."""
+
+from __future__ import annotations
+
+from datetime import date, datetime
+from enum import StrEnum
+from typing import NoReturn
+from uuid import UUID
+
+from django.core.serializers.json import DjangoJSONEncoder
+from django.http import HttpResponse, JsonResponse
+from ninja import Header, Router, Schema
+from pydantic import ConfigDict
+
+from compass.audit.context import AuditContext
+from compass.authentication.api import session_auth
+from compass.common.api import response_with_errors
+from compass.common.errors import APIError
+from compass.common.idempotency import (
+    IdempotencyConflict,
+    IdempotencyOwnershipError,
+    IdempotencyUnavailable,
+    RedisIdempotencyStore,
+    StoredResponse,
+    abandon_after_unexpected_failure,
+    request_fingerprint,
+)
+from compass.service_catalog.api import DeliveryMode
+
+from .services import (
+    DEFAULT_PAGE_SIZE,
+    AppointmentActionBlocker,
+    AppointmentActionConsequenceCode,
+    AppointmentCancellationConflict,
+    AppointmentCancellationCutoffPassed,
+    AppointmentCurrentAcademicYearNotConfigured,
+    AppointmentCurrentInventoryRequired,
+    AppointmentCurrentStudentRequired,
+    AppointmentDefaultProviderNotQualified,
+    AppointmentDefaultProviderUnresolved,
+    AppointmentECounselingAccessOpen,
+    AppointmentECounselingAccessStarted,
+    AppointmentECounselingRoomLinked,
+    AppointmentError,
+    AppointmentLifecycleConflict,
+    AppointmentListOrdering,
+    AppointmentNotFound,
+    AppointmentNotSchedulable,
+    AppointmentReferenceConflict,
+    AppointmentTimeConflict,
+    AppointmentTimeUnavailable,
+    InvalidAppointmentInput,
+    appointment_actions_for,
+    cancel_appointment,
+    complete_appointment,
+    create_student_appointment,
+    get_appointment_for_actor,
+    get_appointment_history,
+    list_bookable_slots,
+    list_booking_services,
+    list_eligible_counselors,
+    list_managed_appointments,
+    list_my_appointments,
+    list_reassignment_candidates,
+    list_reschedule_slots,
+    mark_appointment_no_show,
+    reassign_appointment,
+    reschedule_appointment,
+)
+
+router = Router(tags=["appointments"])
+BOOKING_ROUTE = "/api/v1/appointments"
+
+
+class StrictSchema(Schema):
+    model_config = ConfigDict(extra="forbid")
+
+
+class AppointmentStatus(StrEnum):
+    SCHEDULED = "SCHEDULED"
+    CANCELLED = "CANCELLED"
+    COMPLETED = "COMPLETED"
+    NO_SHOW = "NO_SHOW"
+
+
+class AppointmentHistoryEventType(StrEnum):
+    CREATED = "CREATED"
+    RESCHEDULED = "RESCHEDULED"
+    REASSIGNED = "REASSIGNED"
+    CANCELLED = "CANCELLED"
+    COMPLETED = "COMPLETED"
+    NO_SHOW = "NO_SHOW"
+
+
+class AppointmentCreateRequest(StrictSchema):
+    service_id: UUID
+    provider_id: UUID | None = None
+    delivery_mode: DeliveryMode
+    starts_at: datetime
+
+
+class AppointmentRescheduleRequest(StrictSchema):
+    starts_at: datetime
+    reason: str = ""
+
+
+class AppointmentReassignRequest(StrictSchema):
+    provider_id: UUID
+    reason: str
+
+
+class ServiceSummaryResponse(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
+class ProviderSummaryResponse(StrictSchema):
+    id: UUID
+    display_name: str
+
+
+class AppointmentStudentSummary(StrictSchema):
+    id: UUID
+    institutional_id: str | None
+    display_name: str
+
+
+class AppointmentBookingServiceSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+    description: str
+    delivery_modes: list[DeliveryMode]
+    default_appointment_duration_minutes: int
+    cancellation_cutoff_minutes: int | None
+    requires_current_inventory: bool
+
+
+class AppointmentBookingServiceListResponse(StrictSchema):
+    items: list[AppointmentBookingServiceSummary]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class AppointmentResponse(StrictSchema):
+    id: UUID
+    reference_code: str
+    student_id: UUID
+    student: AppointmentStudentSummary
+    service: ServiceSummaryResponse
+    provider: ProviderSummaryResponse
+    delivery_mode: DeliveryMode
+    starts_at: datetime
+    ends_at: datetime
+    status: AppointmentStatus
+    cancellation_cutoff_minutes: int | None
+    cancelled_at: datetime | None
+    completed_at: datetime | None
+    no_show_at: datetime | None
+    created_at: datetime
+
+
+class AppointmentActionConsequenceResponse(StrictSchema):
+    code: AppointmentActionConsequenceCode
+    routine_interview_id: UUID
+
+
+class AppointmentActionStateResponse(StrictSchema):
+    allowed: bool
+    blocker: AppointmentActionBlocker | None
+    consequences: list[AppointmentActionConsequenceResponse]
+
+
+class AppointmentActionsResponse(StrictSchema):
+    cancel: AppointmentActionStateResponse
+    reschedule: AppointmentActionStateResponse
+    reassign: AppointmentActionStateResponse
+    complete: AppointmentActionStateResponse
+    mark_no_show: AppointmentActionStateResponse
+
+
+class AppointmentDetailResponse(AppointmentResponse):
+    actions: AppointmentActionsResponse
+    # True only for the assigned Counselor while this Appointment's Counseling Context is open.
+    counseling_context_available: bool
+
+
+class AppointmentPageResponse(StrictSchema):
+    items: list[AppointmentResponse]
+    page: int
+    page_size: int
+    has_next: bool
+    # The ordering applied: the requested one, or the default for the selected population.
+    ordering: AppointmentListOrdering
+
+
+class BookableSlotResponse(StrictSchema):
+    starts_at: datetime
+    ends_at: datetime
+
+
+class BookableSlotListResponse(StrictSchema):
+    date: date
+    timezone: str
+    duration_minutes: int
+    items: list[BookableSlotResponse]
+
+
+class AppointmentReassignmentCandidate(StrictSchema):
+    id: UUID
+    display_name: str
+
+
+class AppointmentReassignmentCandidateList(StrictSchema):
+    items: list[AppointmentReassignmentCandidate]
+
+
+class EligibleCounselorResponse(StrictSchema):
+    id: UUID
+    display_name: str
+    is_default: bool
+
+
+class EligibleCounselorListResponse(StrictSchema):
+    items: list[EligibleCounselorResponse]
+
+
+class AppointmentHistoryActorResponse(StrictSchema):
+    id: UUID
+    display_name: str
+
+
+class AppointmentHistoryEntryResponse(StrictSchema):
+    event_type: AppointmentHistoryEventType
+    occurred_at: datetime
+    actor: AppointmentHistoryActorResponse | None
+    reason: str
+    previous_starts_at: datetime | None
+    previous_ends_at: datetime | None
+    new_starts_at: datetime | None
+    new_ends_at: datetime | None
+    previous_provider: AppointmentHistoryActorResponse | None
+    new_provider: AppointmentHistoryActorResponse | None
+
+
+class AppointmentHistoryResponse(StrictSchema):
+    items: list[AppointmentHistoryEntryResponse]
+
+
+def _context(request) -> AuditContext:
+    return AuditContext.from_request(request, actor=request.auth_user)
+
+
+def _require(request, capability: str) -> None:
+    if not request.auth_user.has_capability(capability):
+        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+
+
+def _require_student_self_management(request) -> None:
+    user = request.auth_user
+    if not user.is_active or user.role.code != "STUDENT":
+        raise APIError(403, "permission_denied", "Active Student self-service is required.")
+    _require(request, "appointments.manage_self")
+
+
+def _raise(exc: AppointmentError) -> NoReturn:
+    if isinstance(exc, AppointmentCurrentStudentRequired):
+        raise APIError(409, "current_student_required", str(exc)) from exc
+    if isinstance(exc, AppointmentCurrentAcademicYearNotConfigured):
+        raise APIError(409, "current_academic_year_not_configured", str(exc)) from exc
+    if isinstance(exc, AppointmentCurrentInventoryRequired):
+        raise APIError(409, "current_inventory_required", str(exc)) from exc
+    if isinstance(exc, AppointmentNotFound):
+        raise APIError(404, "appointment_not_found", str(exc)) from exc
+    if isinstance(exc, InvalidAppointmentInput):
+        raise APIError(422, "invalid_appointment_request", str(exc)) from exc
+    if isinstance(exc, AppointmentDefaultProviderUnresolved):
+        raise APIError(409, "appointment_default_provider_unresolved", str(exc)) from exc
+    if isinstance(exc, AppointmentDefaultProviderNotQualified):
+        raise APIError(409, "appointment_default_provider_not_qualified", str(exc)) from exc
+    if isinstance(exc, AppointmentTimeUnavailable):
+        raise APIError(409, "appointment_time_unavailable", str(exc)) from exc
+    if isinstance(exc, AppointmentTimeConflict):
+        raise APIError(409, "appointment_time_conflict", str(exc)) from exc
+    if isinstance(exc, AppointmentECounselingAccessStarted):
+        raise APIError(409, "ecounseling_access_started", str(exc)) from exc
+    if isinstance(exc, AppointmentECounselingAccessOpen):
+        raise APIError(409, "ecounseling_access_open", str(exc)) from exc
+    if isinstance(exc, AppointmentECounselingRoomLinked):
+        raise APIError(409, "ecounseling_room_linked", str(exc)) from exc
+    if isinstance(exc, AppointmentLifecycleConflict):
+        raise APIError(409, "appointment_lifecycle_conflict", str(exc)) from exc
+    if isinstance(exc, AppointmentCancellationCutoffPassed):
+        raise APIError(409, "appointment_cancellation_cutoff_passed", str(exc)) from exc
+    if isinstance(exc, AppointmentCancellationConflict):
+        raise APIError(409, "appointment_cancellation_conflict", str(exc)) from exc
+    if isinstance(exc, (AppointmentNotSchedulable, AppointmentReferenceConflict)):
+        raise APIError(409, "appointment_not_schedulable", str(exc)) from exc
+    raise APIError(
+        500, "internal_error", "The Appointment operation could not be completed."
+    ) from exc
+
+
+def _institutional(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    from compass.common.institutional_time import institution_zone
+
+    return value.astimezone(institution_zone())
+
+
+def _appointment(item) -> dict[str, object]:
+    return {
+        "id": item.pk,
+        "reference_code": item.reference_code,
+        "student_id": item.student_id,
+        "student": {
+            "id": item.student_id,
+            "institutional_id": item.student.institutional_id,
+            "display_name": item.student.get_full_name(),
+        },
+        "service": {
+            "id": item.service_id,
+            "code": item.service.code,
+            "name": item.service_name_snapshot,
+        },
+        "provider": {
+            "id": item.provider_id,
+            "display_name": item.provider.get_full_name(),
+        },
+        "delivery_mode": item.delivery_mode,
+        "starts_at": _institutional(item.starts_at),
+        "ends_at": _institutional(item.ends_at),
+        "status": item.status,
+        "cancellation_cutoff_minutes": item.cancellation_cutoff_minutes,
+        "cancelled_at": _institutional(item.cancelled_at),
+        "completed_at": _institutional(item.completed_at),
+        "no_show_at": _institutional(item.no_show_at),
+        "created_at": _institutional(item.created_at),
+    }
+
+
+def _booking_service(item) -> dict[str, object]:
+    return {
+        "id": item.pk,
+        "code": item.code,
+        "name": item.name,
+        "description": item.description,
+        "delivery_modes": [assignment.mode for assignment in item.delivery_mode_assignments.all()],
+        "default_appointment_duration_minutes": item.default_appointment_duration_minutes,
+        "cancellation_cutoff_minutes": item.cancellation_cutoff_minutes,
+        "requires_current_inventory": item.requires_current_inventory,
+    }
+
+
+def _json_response(payload: dict[str, object], *, status: int) -> JsonResponse:
+    return JsonResponse(payload, status=status, encoder=DjangoJSONEncoder)
+
+
+def _complete_or_503(store, reservation, response: HttpResponse) -> None:
+    try:
+        store.complete(
+            reservation,
+            StoredResponse(
+                status_code=response.status_code,
+                body=bytes(response.content),
+                content_type=response.get("Content-Type", "application/json"),
+            ),
+        )
+    except (IdempotencyUnavailable, IdempotencyOwnershipError, ValueError) as exc:
+        raise APIError(
+            503,
+            "idempotency_unavailable",
+            "The booking replay boundary could not be completed safely.",
+        ) from exc
+
+
+def _abandon_or_503(store, reservation) -> None:
+    try:
+        store.abandon(reservation)
+    except (IdempotencyUnavailable, IdempotencyOwnershipError) as exc:
+        raise APIError(
+            503,
+            "idempotency_unavailable",
+            "The booking replay boundary could not be released safely.",
+        ) from exc
+
+
+@router.get(
+    "/me",
+    response=response_with_errors(AppointmentPageResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="appointmentsListMy",
+)
+def appointments_list_my(
+    request,
+    status: AppointmentStatus | None = None,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    search: str | None = None,
+    upcoming: bool = False,
+    ordering: AppointmentListOrdering | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require(request, "appointments.view_self")
+    try:
+        result = list_my_appointments(
+            actor=request.auth_user,
+            status=status.value if status else None,
+            from_date=from_date,
+            to_date=to_date,
+            search=search,
+            upcoming=upcoming,
+            ordering=ordering,
+            page=page,
+            page_size=page_size,
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return {
+        "items": [_appointment(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+        "ordering": result.ordering,
+    }
+
+
+@router.get(
+    "/booking/services",
+    response=response_with_errors(AppointmentBookingServiceListResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="appointmentsListBookingServices",
+)
+def appointments_list_booking_services(
+    request,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    user = request.auth_user
+    if not user.is_active or user.role.code != "STUDENT":
+        raise APIError(403, "permission_denied", "Active Student booking access is required.")
+    if not (
+        user.has_capability("appointments.view_self")
+        or user.has_capability("appointments.manage_self")
+    ):
+        raise APIError(403, "permission_denied", "Appointment self-service access is required.")
+    try:
+        result = list_booking_services(search=search, page=page, page_size=page_size)
+    except AppointmentError as exc:
+        _raise(exc)
+    return {
+        "items": [_booking_service(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.get(
+    "/booking/counselors",
+    response=response_with_errors(EligibleCounselorListResponse, 401, 403, 409, 422),
+    auth=session_auth,
+    operation_id="appointmentsListEligibleCounselors",
+)
+def appointments_list_eligible_counselors(
+    request,
+    service_id: UUID,
+    delivery_mode: DeliveryMode,
+):
+    user = request.auth_user
+    if not user.is_active or user.role.code != "STUDENT":
+        raise APIError(403, "permission_denied", "Active Student booking access is required.")
+    if not (
+        user.has_capability("appointments.view_self")
+        or user.has_capability("appointments.manage_self")
+    ):
+        raise APIError(403, "permission_denied", "Appointment self-service access is required.")
+    try:
+        rows = list_eligible_counselors(
+            student=user,
+            service_id=service_id,
+            delivery_mode=delivery_mode.value,
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return {
+        "items": [
+            {
+                "id": row.user.pk,
+                "display_name": row.user.get_full_name(),
+                "is_default": row.is_default,
+            }
+            for row in rows
+        ]
+    }
+
+
+@router.get(
+    "/booking/slots",
+    response=response_with_errors(
+        BookableSlotListResponse,
+        401,
+        403,
+        409,
+        422,
+    ),
+    auth=session_auth,
+    operation_id="appointmentsListBookableSlots",
+)
+def appointments_list_bookable_slots(
+    request,
+    service_id: UUID,
+    provider_id: UUID,
+    delivery_mode: DeliveryMode,
+    date: date,
+):
+    _require_student_self_management(request)
+    try:
+        result = list_bookable_slots(
+            student=request.auth_user,
+            service_id=service_id,
+            provider_id=provider_id,
+            delivery_mode=delivery_mode.value,
+            target_date=date,
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return {
+        "date": result.date,
+        "timezone": result.timezone_name,
+        "duration_minutes": result.duration_minutes,
+        "items": [
+            {
+                "starts_at": _institutional(item.starts_at),
+                "ends_at": _institutional(item.ends_at),
+            }
+            for item in result.items
+        ],
+    }
+
+
+@router.post(
+    "",
+    response=response_with_errors(
+        AppointmentResponse,
+        401,
+        403,
+        409,
+        422,
+        503,
+        success_status=201,
+    ),
+    auth=session_auth,
+    operation_id="appointmentsCreateMy",
+)
+def appointments_create_my(
+    request,
+    payload: AppointmentCreateRequest,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
+    _require_student_self_management(request)
+    store = RedisIdempotencyStore.from_settings()
+    fingerprint = request_fingerprint(
+        method="POST",
+        route=BOOKING_ROUTE,
+        query_string=request.META.get("QUERY_STRING", ""),
+        body=request.body,
+    )
+    try:
+        decision = store.begin(
+            actor_id=str(request.auth_user.pk),
+            method="POST",
+            route=BOOKING_ROUTE,
+            key=idempotency_key,
+            fingerprint=fingerprint,
+        )
+    except ValueError as exc:
+        raise APIError(422, "invalid_idempotency_key", str(exc)) from exc
+    except IdempotencyConflict as exc:
+        raise APIError(
+            409,
+            "idempotency_key_conflict",
+            "The Idempotency-Key was already used for a different booking request.",
+        ) from exc
+    except IdempotencyUnavailable as exc:
+        raise APIError(
+            503,
+            "idempotency_unavailable",
+            "The booking replay boundary is temporarily unavailable.",
+        ) from exc
+
+    if decision.outcome == "replay":
+        assert decision.response is not None
+        return HttpResponse(
+            decision.response.body,
+            status=decision.response.status_code,
+            content_type=decision.response.content_type,
+        )
+    if decision.outcome == "in_progress":
+        raise APIError(
+            409,
+            "idempotency_in_progress",
+            "A booking request with this Idempotency-Key is already in progress.",
+        )
+    assert decision.reservation is not None
+
+    try:
+        item = create_student_appointment(
+            student=request.auth_user,
+            service_id=payload.service_id,
+            provider_id=payload.provider_id,
+            delivery_mode=payload.delivery_mode.value,
+            starts_at=payload.starts_at,
+            context=_context(request),
+        )
+    except AppointmentError as exc:
+        _abandon_or_503(store, decision.reservation)
+        _raise(exc)
+    except Exception:
+        abandon_after_unexpected_failure(store, decision.reservation)
+        raise
+
+    response = _json_response(_appointment(item), status=201)
+    _complete_or_503(store, decision.reservation, response)
+    return response
+
+
+@router.get(
+    "",
+    response=response_with_errors(AppointmentPageResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="appointmentsListManaged",
+)
+def appointments_list_managed(
+    request,
+    status: AppointmentStatus | None = None,
+    student_id: UUID | None = None,
+    provider_id: UUID | None = None,
+    service_id: UUID | None = None,
+    delivery_mode: DeliveryMode | None = None,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    search: str | None = None,
+    upcoming: bool = False,
+    ordering: AppointmentListOrdering | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require(request, "appointments.manage")
+    try:
+        result = list_managed_appointments(
+            actor=request.auth_user,
+            status=status.value if status else None,
+            student_id=student_id,
+            provider_id=provider_id,
+            service_id=service_id,
+            delivery_mode=delivery_mode.value if delivery_mode else None,
+            from_date=from_date,
+            to_date=to_date,
+            search=search,
+            upcoming=upcoming,
+            ordering=ordering,
+            page=page,
+            page_size=page_size,
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return {
+        "items": [_appointment(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+        "ordering": result.ordering,
+    }
+
+
+def _action_state(state) -> dict[str, object]:
+    return {
+        "allowed": state.allowed,
+        "blocker": state.blocker,
+        "consequences": [
+            {
+                "code": consequence.code,
+                "routine_interview_id": consequence.routine_interview_id,
+            }
+            for consequence in state.consequences
+        ],
+    }
+
+
+@router.get(
+    "/{appointment_id}",
+    response=response_with_errors(AppointmentDetailResponse, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="appointmentsGet",
+)
+def appointments_get(request, appointment_id: UUID):
+    try:
+        item = get_appointment_for_actor(appointment_id=appointment_id, actor=request.auth_user)
+    except AppointmentError as exc:
+        _raise(exc)
+    from compass.counseling.context_access import (
+        CounselingContextSource,
+        counseling_context_available,
+    )
+
+    actions = appointment_actions_for(actor=request.auth_user, item=item)
+    return {
+        **_appointment(item),
+        "counseling_context_available": counseling_context_available(
+            actor=request.auth_user,
+            anchor_type=CounselingContextSource.APPOINTMENT,
+            anchor_id=item.pk,
+        ),
+        "actions": {
+            "cancel": _action_state(actions.cancel),
+            "reschedule": _action_state(actions.reschedule),
+            "reassign": _action_state(actions.reassign),
+            "complete": _action_state(actions.complete),
+            "mark_no_show": _action_state(actions.mark_no_show),
+        },
+    }
+
+
+@router.post(
+    "/{appointment_id}/cancel",
+    response=response_with_errors(AppointmentResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="appointmentsCancel",
+)
+def appointments_cancel(request, appointment_id: UUID):
+    actor = request.auth_user
+    self_mode = actor.role.code == "STUDENT" and actor.has_capability("appointments.manage_self")
+    administrative = False
+    if not self_mode:
+        _require(request, "appointments.manage")
+        administrative = True
+    try:
+        item = cancel_appointment(
+            appointment_id=appointment_id,
+            actor=actor,
+            administrative=administrative,
+            context=_context(request),
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return _appointment(item)
+
+
+@router.get(
+    "/{appointment_id}/reschedule-slots",
+    response=response_with_errors(
+        BookableSlotListResponse,
+        401,
+        403,
+        404,
+        409,
+        422,
+    ),
+    auth=session_auth,
+    operation_id="appointmentsListRescheduleSlots",
+)
+def appointments_list_reschedule_slots(
+    request,
+    appointment_id: UUID,
+    date: date,
+):
+    actor = request.auth_user
+    self_mode = actor.role.code == "STUDENT" and actor.has_capability("appointments.manage_self")
+    administrative = False
+    if not self_mode:
+        _require(request, "appointments.manage")
+        administrative = True
+    try:
+        result = list_reschedule_slots(
+            appointment_id=appointment_id,
+            actor=actor,
+            target_date=date,
+            administrative=administrative,
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return {
+        "date": result.date,
+        "timezone": result.timezone_name,
+        "duration_minutes": result.duration_minutes,
+        "items": [
+            {
+                "starts_at": _institutional(item.starts_at),
+                "ends_at": _institutional(item.ends_at),
+            }
+            for item in result.items
+        ],
+    }
+
+
+@router.post(
+    "/{appointment_id}/reschedule",
+    response=response_with_errors(AppointmentResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="appointmentsReschedule",
+)
+def appointments_reschedule(
+    request,
+    appointment_id: UUID,
+    payload: AppointmentRescheduleRequest,
+):
+    actor = request.auth_user
+    self_mode = actor.role.code == "STUDENT" and actor.has_capability("appointments.manage_self")
+    administrative = False
+    if not self_mode:
+        _require(request, "appointments.manage")
+        administrative = True
+    try:
+        item = reschedule_appointment(
+            appointment_id=appointment_id,
+            actor=actor,
+            starts_at=payload.starts_at,
+            reason=payload.reason,
+            administrative=administrative,
+            context=_context(request),
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return _appointment(item)
+
+
+@router.get(
+    "/{appointment_id}/reassignment-candidates",
+    response=response_with_errors(
+        AppointmentReassignmentCandidateList,
+        401,
+        403,
+        404,
+        409,
+        422,
+    ),
+    auth=session_auth,
+    operation_id="appointmentsListReassignmentCandidates",
+)
+def appointments_list_reassignment_candidates(request, appointment_id: UUID):
+    _require(request, "appointments.manage")
+    try:
+        rows = list_reassignment_candidates(
+            appointment_id=appointment_id,
+            actor=request.auth_user,
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return {
+        "items": [
+            {
+                "id": row.user.pk,
+                "display_name": row.user.get_full_name(),
+            }
+            for row in rows
+        ]
+    }
+
+
+@router.post(
+    "/{appointment_id}/reassign",
+    response=response_with_errors(AppointmentResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="appointmentsReassign",
+)
+def appointments_reassign(
+    request,
+    appointment_id: UUID,
+    payload: AppointmentReassignRequest,
+):
+    _require(request, "appointments.manage")
+    try:
+        item = reassign_appointment(
+            appointment_id=appointment_id,
+            actor=request.auth_user,
+            provider_id=payload.provider_id,
+            reason=payload.reason,
+            context=_context(request),
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return _appointment(item)
+
+
+@router.post(
+    "/{appointment_id}/complete",
+    response=response_with_errors(AppointmentResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="appointmentsComplete",
+)
+def appointments_complete(request, appointment_id: UUID):
+    _require(request, "appointments.manage")
+    try:
+        item = complete_appointment(
+            appointment_id=appointment_id,
+            actor=request.auth_user,
+            context=_context(request),
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return _appointment(item)
+
+
+@router.post(
+    "/{appointment_id}/no-show",
+    response=response_with_errors(AppointmentResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="appointmentsMarkNoShow",
+)
+def appointments_mark_no_show(request, appointment_id: UUID):
+    _require(request, "appointments.manage")
+    try:
+        item = mark_appointment_no_show(
+            appointment_id=appointment_id,
+            actor=request.auth_user,
+            context=_context(request),
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+    return _appointment(item)
+
+
+@router.get(
+    "/{appointment_id}/history",
+    response=response_with_errors(AppointmentHistoryResponse, 401, 403, 404),
+    auth=session_auth,
+    operation_id="appointmentsGetHistory",
+)
+def appointments_get_history(request, appointment_id: UUID):
+    try:
+        items = get_appointment_history(
+            appointment_id=appointment_id,
+            actor=request.auth_user,
+        )
+    except AppointmentError as exc:
+        _raise(exc)
+
+    def person(user):
+        if user is None:
+            return None
+        return {"id": user.pk, "display_name": user.get_full_name()}
+
+    return {
+        "items": [
+            {
+                "event_type": row.event_type,
+                "occurred_at": _institutional(row.occurred_at),
+                "actor": person(row.actor),
+                "reason": row.reason,
+                "previous_starts_at": _institutional(row.previous_starts_at),
+                "previous_ends_at": _institutional(row.previous_ends_at),
+                "new_starts_at": _institutional(row.new_starts_at),
+                "new_ends_at": _institutional(row.new_ends_at),
+                "previous_provider": person(row.previous_provider),
+                "new_provider": person(row.new_provider),
+            }
+            for row in items
+        ]
+    }

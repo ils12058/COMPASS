@@ -6,6 +6,7 @@ from collections.abc import Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
+from enum import StrEnum
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
@@ -16,12 +17,28 @@ from compass.accounts.models import (
     Capability,
     Designation,
     Role,
+    StudentLifecycleStatus,
     User,
     UserCapabilityOverride,
     UserDesignation,
 )
-from compass.accounts.policy import CAPABILITY_CODES, DESIGNATION_CODES, ROLE_CODES
-from compass.accounts.services import set_user_capability_override, user_has_capability
+from compass.accounts.policy import (
+    CAPABILITY_CODES,
+    CAPABILITY_DEFINITIONS,
+    DESIGNATION_CAPABILITY_GRANTS,
+    DESIGNATION_CODES,
+    ROLE_CAPABILITY_GRANTS,
+    ROLE_CODES,
+    designation_role_compatible,
+    missing_required_capabilities,
+    required_capabilities,
+)
+from compass.accounts.services import (
+    effective_capabilities,
+    projected_capabilities,
+    set_user_capability_override,
+    user_has_capability,
+)
 from compass.audit.actions import (
     ACCOUNT_CAPABILITY_OVERRIDE_REMOVED,
     ACCOUNT_CAPABILITY_OVERRIDE_SET,
@@ -30,8 +47,10 @@ from compass.audit.actions import (
     ACCOUNT_DESIGNATION_REMOVED,
     ACCOUNT_DISABLED,
     ACCOUNT_ENABLED,
+    ACCOUNT_INSTITUTIONAL_ID_CHANGED,
     ACCOUNT_MFA_RESET,
     ACCOUNT_ROLE_CHANGED,
+    ACCOUNT_STUDENT_LIFECYCLE_CHANGED,
     ACCOUNT_UPDATED,
 )
 from compass.audit.context import AuditContext
@@ -48,11 +67,31 @@ from compass.authentication.sessions import (
     revoke_all_auth_sessions,
     revoke_all_trusted_sessions,
 )
+from compass.common.ordering import parse_ordering
+from compass.notifications.policy import NotificationEvent
+from compass.notifications.services import create_notification_for_event
 
 ACCOUNT_MANAGE_CAPABILITY = "accounts.manage"
+INSTITUTIONAL_DESIGNATION_MANAGE_CAPABILITY = "institutional_designations.manage"
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_PAGE_NUMBER = 100_000
+
+
+def _create_account_security_notification(
+    *,
+    target: User,
+    audit_event,
+    event: NotificationEvent,
+) -> None:
+    create_notification_for_event(
+        recipient=target,
+        event=event,
+        source_type="audit_event",
+        source_id=audit_event.pk,
+        target_type="ACCOUNT_SECURITY",
+        target_id=target.pk,
+    )
 
 
 class AccountManagementError(RuntimeError):
@@ -63,6 +102,10 @@ class ManagementNotAuthorized(AccountManagementError):
     """The actor does not currently have effective account-management authority."""
 
 
+class DesignationManagementNotAuthorized(ManagementNotAuthorized):
+    """The actor lacks the dedicated authority to record institutional designations."""
+
+
 class AccountNotFound(AccountManagementError):
     """The requested account does not exist."""
 
@@ -71,12 +114,24 @@ class DuplicateEmail(AccountManagementError):
     """The requested email is already assigned to another account."""
 
 
+class DuplicateInstitutionalId(AccountManagementError):
+    """The requested Institutional ID is already assigned to another account."""
+
+
 class InvalidManagementInput(AccountManagementError):
     """The request asks for a noncanonical or otherwise invalid management state."""
 
 
+class StudentLifecycleConflict(AccountManagementError):
+    """The requested Student lifecycle mutation is not valid for the target account."""
+
+
 class ManagementConfigurationError(AccountManagementError):
     """Canonical identity policy has not been synchronized into the database."""
+
+
+class CapabilityDependencyConflict(AccountManagementError):
+    """A proposed GRANT lacks one or more required capabilities."""
 
 
 class LastAccountManagerError(AccountManagementError):
@@ -95,12 +150,45 @@ class OrganizationRelationshipConflict(AccountManagementError):
     """The role change would invalidate an Organization relationship."""
 
 
+class AvailabilityRelationshipConflict(AccountManagementError):
+    """The role change would strand provider-specific Availability configuration."""
+
+
+class AppointmentRelationshipConflict(AccountManagementError):
+    """The role change would strand an active or future Appointment reservation."""
+
+
+class DesignationRoleConflict(AccountManagementError):
+    """The requested role/designation combination is incompatible with canonical policy."""
+
+
+class AccountOrdering(StrEnum):
+    """Closed managed-account orderings (ADR-090); the account list is a directory, A–Z."""
+
+    NAME_ASC = "NAME_ASC"
+    NAME_DESC = "NAME_DESC"
+    NEWEST_CREATED = "NEWEST_CREATED"
+    OLDEST_CREATED = "OLDEST_CREATED"
+    RECENTLY_UPDATED = "RECENTLY_UPDATED"
+
+
+_ACCOUNT_NAME = ("last_name", "first_name", "middle_name")
+_ACCOUNT_ORDER_BY: dict[AccountOrdering, tuple[str, ...]] = {
+    AccountOrdering.NAME_ASC: (*_ACCOUNT_NAME, "id"),
+    AccountOrdering.NAME_DESC: (*(f"-{field}" for field in _ACCOUNT_NAME), "-id"),
+    AccountOrdering.NEWEST_CREATED: ("-created_at", "-id"),
+    AccountOrdering.OLDEST_CREATED: ("created_at", "id"),
+    AccountOrdering.RECENTLY_UPDATED: ("-updated_at", "-id"),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class AccountPage:
     items: tuple[User, ...]
     page: int
     page_size: int
     has_next: bool
+    ordering: AccountOrdering | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -186,6 +274,21 @@ def _clean_email(value: str) -> str:
         raise InvalidManagementInput("a valid email address is required") from exc
 
 
+def _clean_institutional_id(value: str | None, *, required: bool = True) -> str | None:
+    try:
+        normalized = User.objects.normalize_institutional_id(value)
+    except (TypeError, ValueError) as exc:
+        raise InvalidManagementInput("institutional_id is invalid") from exc
+    if required and normalized is None:
+        raise InvalidManagementInput("institutional_id is required")
+    if normalized is not None:
+        try:
+            User._meta.get_field("institutional_id").clean(normalized, None)
+        except ValidationError as exc:
+            raise InvalidManagementInput("institutional_id is invalid") from exc
+    return normalized
+
+
 def _clean_expiry(value: datetime | None) -> datetime | None:
     if value is None:
         return None
@@ -216,7 +319,10 @@ def _lock_users(*, actor_id, target_id=None) -> tuple[User, User | None]:
     if target_id is not None:
         ids.add(target_id)
     locked = (
-        User.objects.select_for_update().select_related("role").filter(pk__in=ids).order_by("id")
+        User.objects.select_for_update(of=("self",))
+        .select_related("role")
+        .filter(pk__in=ids)
+        .order_by("id")
     )
     users = {user.pk: user for user in locked}
     actor = users.get(actor_id)
@@ -233,6 +339,34 @@ def _assert_manager(actor: User) -> None:
         raise ManagementNotAuthorized("accounts.manage is required")
 
 
+def _assert_designation_manager(actor: User) -> None:
+    if not user_has_capability(actor, INSTITUTIONAL_DESIGNATION_MANAGE_CAPABILITY):
+        raise DesignationManagementNotAuthorized(
+            "accounts.manage and institutional_designations.manage are required"
+        )
+
+
+def _assert_user_designations_compatible(*, user_id, role_code: str) -> None:
+    designation_codes = tuple(
+        UserDesignation.objects.filter(user_id=user_id)
+        .select_related("designation")
+        .values_list("designation__code", flat=True)
+    )
+    incompatible = tuple(
+        code
+        for code in designation_codes
+        if not designation_role_compatible(
+            designation_code=code,
+            role_code=role_code,
+        )
+    )
+    if incompatible:
+        joined = ", ".join(sorted(incompatible))
+        raise DesignationRoleConflict(
+            f"role {role_code} is incompatible with existing designation(s): {joined}"
+        )
+
+
 def _assert_recent_mfa(*, actor: User, actor_session) -> None:
     if getattr(actor_session, "user_id", None) != actor.pk:
         raise ManagementNotAuthorized("the step-up session does not belong to the actor")
@@ -243,27 +377,60 @@ def _assert_recent_mfa(*, actor: User, actor_session) -> None:
 
 
 @contextmanager
-def _admin_mutation(*, actor: User, actor_session, target_id=None, authority_change: bool = False):
+def _admin_mutation(
+    *,
+    actor: User,
+    actor_session,
+    target_id=None,
+    authority_change: bool = False,
+    recent_mfa: bool = True,
+):
     with transaction.atomic():
         if authority_change:
             _lock_management_mutex()
         locked_actor, locked_target = _lock_users(actor_id=actor.pk, target_id=target_id)
         _assert_manager(locked_actor)
-        _assert_recent_mfa(actor=locked_actor, actor_session=actor_session)
+        if recent_mfa:
+            _assert_recent_mfa(actor=locked_actor, actor_session=actor_session)
         yield locked_actor, locked_target
 
 
-def _active_manager_count() -> int:
-    count = 0
-    candidates = User.objects.filter(is_active=True).select_related("role")
-    for candidate in candidates:
-        if user_has_capability(candidate, ACCOUNT_MANAGE_CAPABILITY):
-            count += 1
-    return count
+def _active_manager_candidates():
+    """Accounts that could hold accounts.manage through a role, designation, or grant override.
+
+    Only these accounts need the exact effective-capability check; scanning every active account
+    (thousands of Students) is unnecessary because none of them can hold the capability otherwise.
+    """
+
+    return (
+        User.objects.filter(is_active=True)
+        .filter(
+            Q(role__capability_grants__capability__code=ACCOUNT_MANAGE_CAPABILITY)
+            | Q(
+                designation_assignments__designation__capability_grants__capability__code=(
+                    ACCOUNT_MANAGE_CAPABILITY
+                )
+            )
+            | Q(
+                capability_overrides__capability__code=ACCOUNT_MANAGE_CAPABILITY,
+                capability_overrides__effect=UserCapabilityOverride.Effect.GRANT,
+            )
+        )
+        .distinct()
+        .select_related("role")
+        .order_by("id")
+    )
+
+
+def _active_manager_exists() -> bool:
+    return any(
+        user_has_capability(candidate, ACCOUNT_MANAGE_CAPABILITY)
+        for candidate in _active_manager_candidates()
+    )
 
 
 def _ensure_active_manager_remains() -> None:
-    if _active_manager_count() == 0:
+    if not _active_manager_exists():
         raise LastAccountManagerError(
             "the operation would leave no active account with accounts.manage"
         )
@@ -278,6 +445,7 @@ def serialize_account(user: User, *, detail: bool = False) -> dict[str, object]:
 
     payload: dict[str, object] = {
         "id": user.pk,
+        "institutional_id": user.institutional_id,
         "email": user.email,
         "first_name": user.first_name,
         "middle_name": user.middle_name,
@@ -285,15 +453,18 @@ def serialize_account(user: User, *, detail: bool = False) -> dict[str, object]:
         "suffix": user.suffix,
         "full_name": user.get_full_name(),
         "role": user.role.code,
+        "student_lifecycle_status": user.student_lifecycle_status,
         "designations": _account_designation_codes(user),
         "is_active": user.is_active,
+        "password_configured": user.has_usable_password(),
+        "email_verified": user.email_verified_at is not None,
         "created_at": user.created_at,
     }
     if detail:
         payload.update(
             {
                 "updated_at": user.updated_at,
-                "password_configured": user.has_usable_password(),
+                "email_verified_at": user.email_verified_at,
                 "mfa_enabled": has_active_totp_factor(user.pk),
             }
         )
@@ -319,13 +490,21 @@ def list_accounts(
     role: str | None = None,
     is_active: bool | None = None,
     designation: str | None = None,
+    email_verified: bool | None = None,
     search: str | None = None,
+    ordering: str | AccountOrdering | None = None,
 ) -> AccountPage:
     page, page_size = _validate_pagination(page=page, page_size=page_size)
+    resolved = parse_ordering(
+        ordering,
+        AccountOrdering,
+        default=AccountOrdering.NAME_ASC,
+        error=InvalidManagementInput,
+    )
     queryset = (
         User.objects.select_related("role")
         .prefetch_related("designations")
-        .order_by("-created_at", "-id")
+        .order_by(*_ACCOUNT_ORDER_BY[resolved])
     )
     if role is not None:
         queryset = queryset.filter(role__code=_canonical_role_code(role))
@@ -335,6 +514,8 @@ def list_accounts(
         queryset = queryset.filter(
             designations__code=_canonical_designation_code(designation)
         ).distinct()
+    if email_verified is not None:
+        queryset = queryset.filter(email_verified_at__isnull=not email_verified)
     if search is not None:
         if not isinstance(search, str):
             raise InvalidManagementInput("search must be a string")
@@ -343,7 +524,8 @@ def list_accounts(
             raise InvalidManagementInput("search is too long")
         if normalized_search:
             search_filter = (
-                Q(email__icontains=normalized_search)
+                Q(institutional_id__icontains=normalized_search)
+                | Q(email__icontains=normalized_search)
                 | Q(first_name__icontains=normalized_search)
                 | Q(middle_name__icontains=normalized_search)
                 | Q(last_name__icontains=normalized_search)
@@ -358,6 +540,7 @@ def list_accounts(
         page=page,
         page_size=page_size,
         has_next=has_next,
+        ordering=resolved,
     )
 
 
@@ -394,11 +577,91 @@ def list_capability_overrides(*, user_id) -> list[dict[str, object]]:
     return [_override_payload(override) for override in overrides.order_by("capability__code")]
 
 
+def inspect_account_access(
+    *,
+    user_id,
+    at: datetime | None = None,
+) -> dict[str, object]:
+    """Explain one managed account's current scope-free effective access.
+
+    Final effective truth comes only from effective_capabilities. Canonical Role and
+    Designation grant maps are used solely to explain baseline provenance.
+    """
+
+    user = get_account(user_id=user_id)
+    now = at if at is not None else timezone.now()
+    effective = effective_capabilities(user, at=now)
+    policy_effective = projected_capabilities(user, at=now)
+    designation_codes = sorted(
+        code for code in _account_designation_codes(user) if code in DESIGNATION_CODES
+    )
+    overrides = {
+        override.capability.code: override
+        for override in UserCapabilityOverride.objects.filter(
+            user_id=user.pk,
+            capability__code__in=CAPABILITY_CODES,
+        )
+        .select_related("capability", "created_by")
+        .order_by("capability__code")
+    }
+
+    capability_rows: list[dict[str, object]] = []
+    role_grants = ROLE_CAPABILITY_GRANTS.get(user.role.code, frozenset())
+    for definition in sorted(CAPABILITY_DEFINITIONS, key=lambda item: item.code):
+        sources: list[dict[str, str]] = []
+        if definition.code in role_grants:
+            sources.append({"type": "ROLE", "code": user.role.code})
+        for designation_code in designation_codes:
+            if definition.code in DESIGNATION_CAPABILITY_GRANTS.get(
+                designation_code,
+                frozenset(),
+            ):
+                sources.append({"type": "DESIGNATION", "code": designation_code})
+
+        override = overrides.get(definition.code)
+        override_payload = None
+        if override is not None:
+            override_payload = {
+                **_override_payload(override),
+                "active": override.expires_at is None or override.expires_at > now,
+            }
+            override_payload.pop("capability", None)
+
+        capability_rows.append(
+            {
+                "code": definition.code,
+                "name": definition.name,
+                "description": definition.description,
+                "effective": definition.code in effective,
+                "baseline_sources": sources,
+                "override": override_payload,
+                "required_capabilities": sorted(required_capabilities(definition.code)),
+                "missing_required_capabilities": sorted(
+                    missing_required_capabilities(definition.code, policy_effective)
+                ),
+            }
+        )
+
+    return {
+        "account": {
+            "id": user.pk,
+            "email": user.email,
+            "full_name": user.get_full_name(),
+            "is_active": user.is_active,
+        },
+        "role": user.role.code,
+        "designations": designation_codes,
+        "effective_capabilities": sorted(effective),
+        "capabilities": capability_rows,
+    }
+
+
 def create_account(
     *,
     actor: User,
     actor_session,
     context: AuditContext,
+    institutional_id: str,
     email: str,
     first_name: str,
     last_name: str,
@@ -407,6 +670,7 @@ def create_account(
     suffix: str = "",
     is_active: bool = True,
 ) -> User:
+    cleaned_institutional_id = _clean_institutional_id(institutional_id)
     cleaned_email = _clean_email(email)
     cleaned_first_name = _clean_identity_text("first_name", first_name, required=True)
     cleaned_last_name = _clean_identity_text("last_name", last_name, required=True)
@@ -424,10 +688,15 @@ def create_account(
             raise ManagementConfigurationError(
                 "the requested canonical role is not synchronized; run sync_identity_policy first"
             )
+        if User.objects.filter(email__iexact=cleaned_email).exists():
+            raise DuplicateEmail("an account with this email already exists")
+        if User.objects.filter(institutional_id__iexact=cleaned_institutional_id).exists():
+            raise DuplicateInstitutionalId("an account with this institutional_id already exists")
         try:
             with transaction.atomic():
                 user = User.objects.create_user(
                     email=cleaned_email,
+                    institutional_id=cleaned_institutional_id,
                     password=None,
                     role=role_record,
                     first_name=cleaned_first_name,
@@ -437,7 +706,13 @@ def create_account(
                     is_active=is_active,
                 )
         except IntegrityError as exc:
-            raise DuplicateEmail("an account with this email already exists") from exc
+            if User.objects.filter(institutional_id__iexact=cleaned_institutional_id).exists():
+                raise DuplicateInstitutionalId(
+                    "an account with this institutional_id already exists"
+                ) from exc
+            if User.objects.filter(email__iexact=cleaned_email).exists():
+                raise DuplicateEmail("an account with this email already exists") from exc
+            raise
         record_event(
             context=context,
             action=ACCOUNT_CREATED,
@@ -457,18 +732,21 @@ def update_identity(
     context: AuditContext,
     changes: Mapping[str, object],
 ) -> MutationResult:
-    allowed_fields = ("email", "first_name", "middle_name", "last_name", "suffix")
+    allowed_fields = ("institutional_id", "first_name", "middle_name", "last_name", "suffix")
     unknown_fields = set(changes) - set(allowed_fields)
     if unknown_fields:
         raise InvalidManagementInput("identity updates contain unsupported fields")
     if not changes:
         raise InvalidManagementInput("at least one identity field is required")
 
+    # Name and institutional ID corrections are routine record keeping, not an access change, so
+    # they do not need step-up. Sign-in email, role, access, and security changes keep it.
     with _admin_mutation(
         actor=actor,
         actor_session=actor_session,
         target_id=target_id,
         authority_change=False,
+        recent_mfa=False,
     ) as (_locked_actor, target):
         assert target is not None
         normalized: dict[str, object] = {}
@@ -476,8 +754,8 @@ def update_identity(
             if field_name not in changes:
                 continue
             value = changes[field_name]
-            if field_name == "email":
-                normalized[field_name] = _clean_email(value)  # type: ignore[arg-type]
+            if field_name == "institutional_id":
+                normalized[field_name] = _clean_institutional_id(value)  # type: ignore[arg-type]
             elif field_name in {"first_name", "last_name"}:
                 normalized[field_name] = _clean_identity_text(
                     field_name,
@@ -498,22 +776,27 @@ def update_identity(
         if not changed_fields:
             return MutationResult(user=target, changed=False)
 
-        previous_email = target.email
         for field_name in changed_fields:
             setattr(target, field_name, normalized[field_name])
+        update_fields = [*changed_fields, "updated_at"]
         try:
             with transaction.atomic():
-                target.save(update_fields=[*changed_fields, "updated_at"])
+                target.save(update_fields=update_fields)
         except IntegrityError as exc:
-            raise DuplicateEmail("an account with this email already exists") from exc
+            if "institutional_id" in changed_fields:
+                raise DuplicateInstitutionalId(
+                    "an account with this institutional_id already exists"
+                ) from exc
+            raise
 
-        if "email" in changed_fields:
-            invalidate_auth_state_after_authority_change(
-                user_id=target.pk,
+        if "institutional_id" in changed_fields:
+            record_event(
                 context=context,
-                reason="email_changed",
-                invalidate_email_security_challenges=True,
-                previous_email=previous_email,
+                action=ACCOUNT_INSTITUTIONAL_ID_CHANGED,
+                outcome=AuditOutcome.SUCCESS,
+                target_type="accounts.user",
+                target_id=target.pk,
+                metadata={"changed_fields": ["institutional_id"]},
             )
         record_event(
             context=context,
@@ -600,6 +883,7 @@ def change_role(
             )
         if target.role_id == role_record.pk:
             return MutationResult(user=target, changed=False)
+        _assert_user_designations_compatible(user_id=target.pk, role_code=role_code)
         from compass.organization.services import (
             OrganizationRoleTransitionConflict,
             validate_role_transition,
@@ -609,9 +893,37 @@ def change_role(
             validate_role_transition(user=target, new_role_code=role_code)
         except OrganizationRoleTransitionConflict as exc:
             raise OrganizationRelationshipConflict(str(exc)) from exc
+        from compass.availability.services import (
+            AvailabilityRoleTransitionConflict,
+        )
+        from compass.availability.services import (
+            validate_role_transition as validate_availability_role_transition,
+        )
+
+        try:
+            validate_availability_role_transition(user=target, new_role_code=role_code)
+        except AvailabilityRoleTransitionConflict as exc:
+            raise AvailabilityRelationshipConflict(str(exc)) from exc
+
+        from compass.appointments.services import (
+            AppointmentRoleTransitionConflict,
+        )
+        from compass.appointments.services import (
+            validate_role_transition as validate_appointment_role_transition,
+        )
+
+        try:
+            validate_appointment_role_transition(user=target, new_role_code=role_code)
+        except AppointmentRoleTransitionConflict as exc:
+            raise AppointmentRelationshipConflict(str(exc)) from exc
+
         from_role = target.role.code
         target.role = role_record
-        target.save(update_fields=["role", "updated_at"])
+        update_fields = ["role", "updated_at"]
+        if role_code == "STUDENT" and target.student_lifecycle_status is None:
+            target.student_lifecycle_status = StudentLifecycleStatus.CURRENT
+            update_fields.append("student_lifecycle_status")
+        target.save(update_fields=update_fields)
         if target.pk == actor.pk and not user_has_capability(target, ACCOUNT_MANAGE_CAPABILITY):
             raise SelfTargetForbidden(
                 "an administrator cannot remove their own management authority"
@@ -622,13 +934,57 @@ def change_role(
             context=context,
             reason="role_changed",
         )
-        record_event(
+        audit_event = record_event(
             context=context,
             action=ACCOUNT_ROLE_CHANGED,
             outcome=AuditOutcome.SUCCESS,
             target_type="accounts.user",
             target_id=target.pk,
             metadata={"from_role": from_role, "to_role": role_code},
+        )
+        _create_account_security_notification(
+            target=target,
+            audit_event=audit_event,
+            event=NotificationEvent.SECURITY_ACCOUNT_ACCESS_CHANGED,
+        )
+        return MutationResult(user=target, changed=True)
+
+
+def set_student_lifecycle(
+    *,
+    actor: User,
+    actor_session,
+    target_id,
+    context: AuditContext,
+    status: str,
+) -> MutationResult:
+    if status not in StudentLifecycleStatus.values:
+        raise InvalidManagementInput("student lifecycle status is not supported")
+    with _admin_mutation(
+        actor=actor,
+        actor_session=actor_session,
+        target_id=target_id,
+        authority_change=False,
+    ) as (_locked_actor, target):
+        assert target is not None
+        if target.pk == actor.pk:
+            raise SelfTargetForbidden("an administrator cannot change their own Student lifecycle")
+        if target.role.code != "STUDENT":
+            raise StudentLifecycleConflict(
+                "Student lifecycle can only be changed for a STUDENT-role account."
+            )
+        if target.student_lifecycle_status == status:
+            return MutationResult(user=target, changed=False)
+        from_status = target.student_lifecycle_status
+        target.student_lifecycle_status = status
+        target.save(update_fields=["student_lifecycle_status", "updated_at"])
+        record_event(
+            context=context,
+            action=ACCOUNT_STUDENT_LIFECYCLE_CHANGED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="accounts.user",
+            target_id=target.pk,
+            metadata={"from_status": from_status, "to_status": status},
         )
         return MutationResult(user=target, changed=True)
 
@@ -647,8 +1003,9 @@ def assign_designation(
         actor_session=actor_session,
         target_id=target_id,
         authority_change=True,
-    ) as (_locked_actor, target):
+    ) as (locked_actor, target):
         assert target is not None
+        _assert_designation_manager(locked_actor)
         if target.pk == actor.pk:
             raise SelfTargetForbidden("an administrator cannot change their own designations")
         designation_record = Designation.objects.filter(code=designation_code).first()
@@ -656,6 +1013,13 @@ def assign_designation(
             raise ManagementConfigurationError(
                 "the requested canonical designation is not synchronized; run "
                 "sync_identity_policy first"
+            )
+        if not designation_role_compatible(
+            designation_code=designation_code,
+            role_code=target.role.code,
+        ):
+            raise DesignationRoleConflict(
+                f"designation {designation_code} is incompatible with role {target.role.code}"
             )
         assignment = (
             UserDesignation.objects.select_for_update()
@@ -674,13 +1038,18 @@ def assign_designation(
             context=context,
             reason="designation_assigned",
         )
-        record_event(
+        audit_event = record_event(
             context=context,
             action=ACCOUNT_DESIGNATION_ASSIGNED,
             outcome=AuditOutcome.SUCCESS,
             target_type="accounts.user",
             target_id=target.pk,
             metadata={"designation": designation_code},
+        )
+        _create_account_security_notification(
+            target=target,
+            audit_event=audit_event,
+            event=NotificationEvent.SECURITY_ACCOUNT_ACCESS_CHANGED,
         )
         return MutationResult(user=target, changed=True)
 
@@ -699,8 +1068,9 @@ def remove_designation(
         actor_session=actor_session,
         target_id=target_id,
         authority_change=True,
-    ) as (_locked_actor, target):
+    ) as (locked_actor, target):
         assert target is not None
+        _assert_designation_manager(locked_actor)
         if target.pk == actor.pk:
             raise SelfTargetForbidden("an administrator cannot change their own designations")
         designation_record = Designation.objects.filter(code=designation_code).first()
@@ -726,13 +1096,18 @@ def remove_designation(
             context=context,
             reason="designation_removed",
         )
-        record_event(
+        audit_event = record_event(
             context=context,
             action=ACCOUNT_DESIGNATION_REMOVED,
             outcome=AuditOutcome.SUCCESS,
             target_type="accounts.user",
             target_id=target.pk,
             metadata={"designation": designation_code},
+        )
+        _create_account_security_notification(
+            target=target,
+            audit_event=audit_event,
+            event=NotificationEvent.SECURITY_ACCOUNT_ACCESS_CHANGED,
         )
         return MutationResult(user=target, changed=True)
 
@@ -793,6 +1168,26 @@ def set_capability_override(
             and existing.created_by_id == locked_actor.pk
         ):
             return OverrideMutationResult(override=existing, changed=False)
+
+        if effect_value == UserCapabilityOverride.Effect.GRANT:
+            projected = projected_capabilities(
+                target,
+                at=timezone.now(),
+                override_effects={
+                    capability_code: UserCapabilityOverride.Effect.GRANT,
+                },
+            )
+            missing = missing_required_capabilities(capability_code, projected)
+            if missing:
+                names_by_code = {
+                    definition.code: definition.name for definition in CAPABILITY_DEFINITIONS
+                }
+                missing_names = ", ".join(names_by_code.get(code, code) for code in sorted(missing))
+                raise CapabilityDependencyConflict(
+                    f"{names_by_code.get(capability_code, capability_code)} requires "
+                    f"{missing_names}. Grant the required capability first."
+                )
+
         override = set_user_capability_override(
             user=target,
             capability=capability_record,
@@ -807,7 +1202,7 @@ def set_capability_override(
             context=context,
             reason="capability_override_changed",
         )
-        record_event(
+        audit_event = record_event(
             context=context,
             action=ACCOUNT_CAPABILITY_OVERRIDE_SET,
             outcome=AuditOutcome.SUCCESS,
@@ -818,6 +1213,11 @@ def set_capability_override(
                 "effect": effect_value,
                 "has_expiry": cleaned_expiry is not None,
             },
+        )
+        _create_account_security_notification(
+            target=target,
+            audit_event=audit_event,
+            event=NotificationEvent.SECURITY_ACCOUNT_ACCESS_CHANGED,
         )
         return OverrideMutationResult(override=override, changed=True)
 
@@ -865,13 +1265,18 @@ def remove_capability_override(
             context=context,
             reason="capability_override_removed",
         )
-        record_event(
+        audit_event = record_event(
             context=context,
             action=ACCOUNT_CAPABILITY_OVERRIDE_REMOVED,
             outcome=AuditOutcome.SUCCESS,
             target_type="accounts.user",
             target_id=target.pk,
             metadata={"capability": capability_code},
+        )
+        _create_account_security_notification(
+            target=target,
+            audit_event=audit_event,
+            event=NotificationEvent.SECURITY_ACCOUNT_ACCESS_CHANGED,
         )
         return OverrideMutationResult(override=override, changed=True)
 
@@ -949,13 +1354,18 @@ def reset_account_mfa(
             reason="admin_mfa_reset",
         )
         if mfa_result.changed:
-            record_event(
+            audit_event = record_event(
                 context=context,
                 action=ACCOUNT_MFA_RESET,
                 outcome=AuditOutcome.SUCCESS,
                 target_type="accounts.user",
                 target_id=target.pk,
                 metadata={},
+            )
+            _create_account_security_notification(
+                target=target,
+                audit_event=audit_event,
+                event=NotificationEvent.SECURITY_MFA_ADMIN_RESET,
             )
         return MFAResetMutationResult(
             reset=mfa_result.changed,
@@ -966,10 +1376,13 @@ def reset_account_mfa(
 
 __all__ = [
     "ACCOUNT_MANAGE_CAPABILITY",
+    "INSTITUTIONAL_DESIGNATION_MANAGE_CAPABILITY",
     "AccountManagementError",
     "AccountNotFound",
     "AccountPage",
     "DEFAULT_PAGE_SIZE",
+    "DesignationManagementNotAuthorized",
+    "DesignationRoleConflict",
     "DuplicateEmail",
     "InvalidManagementInput",
     "LastAccountManagerError",

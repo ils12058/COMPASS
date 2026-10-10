@@ -2,42 +2,40 @@
 
 from __future__ import annotations
 
-from enum import Enum
+from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
-from ninja import Router, Schema, Status
+from ninja import Router, Schema
 from pydantic import ConfigDict
 
+from compass.accounts.api_codes import RoleCode
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
-from compass.authentication.sessions import RecentMFARequired, require_recent_mfa
+from compass.authentication.step_up import require_recent_mfa_for_request
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
-from compass.organization.models import CounselorResponsibility, StaffSupervision, StudentAffiliation
+from compass.organization.models import CounselorResponsibility, StaffSupervision
 from compass.organization.services import (
     DEFAULT_PAGE_SIZE,
     InvalidOrganizationInput,
     OrganizationConflict,
     OrganizationError,
     OrganizationNotFound,
-    create_campus,
-    create_college,
     get_campus,
     get_college,
+    get_program,
     list_campuses,
     list_colleges,
     list_people,
+    list_programs,
+    list_student_affiliations,
     remove_counselor_responsibility,
     remove_staff_supervisor,
     remove_student_affiliation,
-    set_campus_active,
-    set_college_active,
     set_counselor_responsibility,
     set_staff_supervisor,
     set_student_affiliation,
-    update_campus,
-    update_college,
 )
 
 router = Router(tags=["organization"])
@@ -58,16 +56,6 @@ class CampusListResponse(StrictSchema):
     items: list[CampusSummary]
 
 
-class CampusCreateRequest(StrictSchema):
-    code: str
-    name: str
-
-
-class CampusUpdateRequest(StrictSchema):
-    code: str | None = None
-    name: str | None = None
-
-
 class CollegeSummary(StrictSchema):
     id: UUID
     code: str
@@ -80,27 +68,35 @@ class CollegeListResponse(StrictSchema):
     items: list[CollegeSummary]
 
 
-class CollegeCreateRequest(StrictSchema):
-    campus_id: UUID
+class ProgramSummary(StrictSchema):
+    id: UUID
     code: str
     name: str
-
-
-class CollegeUpdateRequest(StrictSchema):
-    code: str | None = None
-    name: str | None = None
-
-
-class PersonSummary(StrictSchema):
-    id: UUID
-    full_name: str
-    email: str
-    role: str
+    college: CollegeSummary
     is_active: bool
 
 
+class ProgramListResponse(StrictSchema):
+    items: list[ProgramSummary]
+
+
+class OrganizationResponsibilityScope(StrEnum):
+    ASSIGNED_AND_FALLBACK_COLLEGES = "ASSIGNED_AND_FALLBACK_COLLEGES"
+    ASSIGNED_COLLEGES = "ASSIGNED_COLLEGES"
+
+
+class OrganizationPersonSummary(StrictSchema):
+    id: UUID
+    institutional_id: str | None
+    full_name: str
+    email: str
+    role: RoleCode
+    is_active: bool
+    responsibility_scope: OrganizationResponsibilityScope | None
+
+
 class PersonListResponse(StrictSchema):
-    items: list[PersonSummary]
+    items: list[OrganizationPersonSummary]
     page: int
     page_size: int
     has_next: bool
@@ -120,7 +116,7 @@ class StudentAffiliationRequest(StrictSchema):
 
 class CounselorResponsibilityResponse(StrictSchema):
     college: CollegeSummary
-    counselor: PersonSummary
+    counselor: OrganizationPersonSummary
 
 
 class CounselorResponsibilityListResponse(StrictSchema):
@@ -128,8 +124,8 @@ class CounselorResponsibilityListResponse(StrictSchema):
 
 
 class StaffSupervisionResponse(StrictSchema):
-    staff: PersonSummary
-    supervisor: PersonSummary
+    staff: OrganizationPersonSummary
+    supervisor: OrganizationPersonSummary
 
 
 class StaffSupervisionListResponse(StrictSchema):
@@ -137,19 +133,22 @@ class StaffSupervisionListResponse(StrictSchema):
 
 
 class StudentAffiliationResponse(StrictSchema):
-    student: PersonSummary
+    student: OrganizationPersonSummary
     college: CollegeSummary
 
 
 class StudentAffiliationListResponse(StrictSchema):
     items: list[StudentAffiliationResponse]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 class RemovedResponse(StrictSchema):
     removed: bool
 
 
-class OrganizationRole(str, Enum):
+class OrganizationRole(StrEnum):
     COUNSELOR = "COUNSELOR"
     GUIDANCE_SERVICES_STAFF = "GUIDANCE_SERVICES_STAFF"
     STUDENT = "STUDENT"
@@ -163,10 +162,7 @@ def _require(request, capability: str, *, recent_mfa: bool = False) -> None:
     if not request.auth_user.has_capability(capability):
         raise APIError(403, "permission_denied", f"The {capability} capability is required.")
     if recent_mfa:
-        try:
-            require_recent_mfa(request.auth_session)
-        except RecentMFARequired as exc:
-            raise APIError(403, "recent_mfa_required", "Recent MFA is required.") from exc
+        require_recent_mfa_for_request(request)
 
 
 def _raise(exc: OrganizationError) -> NoReturn:
@@ -176,11 +172,18 @@ def _raise(exc: OrganizationError) -> NoReturn:
         raise APIError(409, "organization_conflict", str(exc)) from exc
     if isinstance(exc, InvalidOrganizationInput):
         raise APIError(422, "invalid_organization_request", str(exc)) from exc
-    raise APIError(500, "internal_error", "The organization operation could not be completed.") from exc
+    raise APIError(
+        500, "internal_error", "The organization operation could not be completed."
+    ) from exc
 
 
 def _campus(campus) -> dict[str, object]:
-    return {"id": campus.pk, "code": campus.code, "name": campus.name, "is_active": campus.is_active}
+    return {
+        "id": campus.pk,
+        "code": campus.code,
+        "name": campus.name,
+        "is_active": campus.is_active,
+    }
 
 
 def _college(college) -> dict[str, object]:
@@ -193,13 +196,35 @@ def _college(college) -> dict[str, object]:
     }
 
 
+def _program(program) -> dict[str, object]:
+    return {
+        "id": program.pk,
+        "code": program.code,
+        "name": program.name,
+        "college": _college(program.college),
+        "is_active": program.is_active,
+    }
+
+
 def _person(user) -> dict[str, object]:
+    responsibility_scope = None
+    if user.role.code == "COUNSELOR":
+        responsibility_scope = (
+            OrganizationResponsibilityScope.ASSIGNED_AND_FALLBACK_COLLEGES
+            if any(
+                designation.code == "HEAD_GUIDANCE_COUNSELOR"
+                for designation in user.designations.all()
+            )
+            else OrganizationResponsibilityScope.ASSIGNED_COLLEGES
+        )
     return {
         "id": user.pk,
+        "institutional_id": user.institutional_id,
         "full_name": user.get_full_name(),
         "email": user.email,
         "role": user.role.code,
         "is_active": user.is_active,
+        "responsibility_scope": responsibility_scope,
     }
 
 
@@ -210,23 +235,8 @@ def _person(user) -> dict[str, object]:
     operation_id="organizationListCampuses",
 )
 def campuses(request, is_active: bool | None = None, search: str | None = None):
-    _require(request, "organization.view")
+    _require(request, "organization.structure.view")
     return {"items": [_campus(item) for item in list_campuses(is_active=is_active, search=search)]}
-
-
-@router.post(
-    "/campuses",
-    response=response_with_errors(CampusSummary, 401, 403, 409, 422, success_status=201),
-    auth=session_auth,
-    operation_id="organizationCreateCampus",
-)
-def campus_create(request, payload: CampusCreateRequest):
-    _require(request, "organization.manage", recent_mfa=True)
-    try:
-        campus = create_campus(code=payload.code, name=payload.name, context=_context(request))
-    except OrganizationError as exc:
-        _raise(exc)
-    return Status(201, _campus(campus))
 
 
 @router.get(
@@ -236,57 +246,9 @@ def campus_create(request, payload: CampusCreateRequest):
     operation_id="organizationGetCampus",
 )
 def campus_get(request, campus_id: UUID):
-    _require(request, "organization.view")
+    _require(request, "organization.structure.view")
     try:
         return _campus(get_campus(campus_id))
-    except OrganizationError as exc:
-        _raise(exc)
-
-
-@router.patch(
-    "/campuses/{campus_id}",
-    response=response_with_errors(CampusSummary, 401, 403, 404, 409, 422),
-    auth=session_auth,
-    operation_id="organizationUpdateCampus",
-)
-def campus_update(request, campus_id: UUID, payload: CampusUpdateRequest):
-    _require(request, "organization.manage", recent_mfa=True)
-    try:
-        return _campus(
-            update_campus(
-                campus_id=campus_id,
-                changes=payload.model_dump(exclude_unset=True),
-                context=_context(request),
-            )
-        )
-    except OrganizationError as exc:
-        _raise(exc)
-
-
-@router.post(
-    "/campuses/{campus_id}/enable",
-    response=response_with_errors(CampusSummary, 401, 403, 404, 409, 422),
-    auth=session_auth,
-    operation_id="organizationEnableCampus",
-)
-def campus_enable(request, campus_id: UUID):
-    _require(request, "organization.manage", recent_mfa=True)
-    try:
-        return _campus(set_campus_active(campus_id=campus_id, is_active=True, context=_context(request)))
-    except OrganizationError as exc:
-        _raise(exc)
-
-
-@router.post(
-    "/campuses/{campus_id}/disable",
-    response=response_with_errors(CampusSummary, 401, 403, 404, 409, 422),
-    auth=session_auth,
-    operation_id="organizationDisableCampus",
-)
-def campus_disable(request, campus_id: UUID):
-    _require(request, "organization.manage", recent_mfa=True)
-    try:
-        return _campus(set_campus_active(campus_id=campus_id, is_active=False, context=_context(request)))
     except OrganizationError as exc:
         _raise(exc)
 
@@ -297,34 +259,16 @@ def campus_disable(request, campus_id: UUID):
     auth=session_auth,
     operation_id="organizationListColleges",
 )
-def colleges(request, campus_id: UUID | None = None, is_active: bool | None = None, search: str | None = None):
-    _require(request, "organization.view")
+def colleges(
+    request, campus_id: UUID | None = None, is_active: bool | None = None, search: str | None = None
+):
+    _require(request, "organization.structure.view")
     return {
         "items": [
             _college(item)
             for item in list_colleges(campus_id=campus_id, is_active=is_active, search=search)
         ]
     }
-
-
-@router.post(
-    "/colleges",
-    response=response_with_errors(CollegeSummary, 401, 403, 404, 409, 422, success_status=201),
-    auth=session_auth,
-    operation_id="organizationCreateCollege",
-)
-def college_create(request, payload: CollegeCreateRequest):
-    _require(request, "organization.manage", recent_mfa=True)
-    try:
-        college = create_college(
-            campus_id=payload.campus_id,
-            code=payload.code,
-            name=payload.name,
-            context=_context(request),
-        )
-    except OrganizationError as exc:
-        _raise(exc)
-    return Status(201, _college(college))
 
 
 @router.get(
@@ -334,57 +278,48 @@ def college_create(request, payload: CollegeCreateRequest):
     operation_id="organizationGetCollege",
 )
 def college_get(request, college_id: UUID):
-    _require(request, "organization.view")
+    _require(request, "organization.structure.view")
     try:
         return _college(get_college(college_id))
     except OrganizationError as exc:
         _raise(exc)
 
 
-@router.patch(
-    "/colleges/{college_id}",
-    response=response_with_errors(CollegeSummary, 401, 403, 404, 409, 422),
+@router.get(
+    "/programs",
+    response=response_with_errors(ProgramListResponse, 401, 403, 422),
     auth=session_auth,
-    operation_id="organizationUpdateCollege",
+    operation_id="organizationListPrograms",
 )
-def college_update(request, college_id: UUID, payload: CollegeUpdateRequest):
-    _require(request, "organization.manage", recent_mfa=True)
-    try:
-        return _college(
-            update_college(
+def programs(
+    request,
+    college_id: UUID | None = None,
+    is_active: bool | None = None,
+    search: str | None = None,
+):
+    _require(request, "organization.structure.view")
+    return {
+        "items": [
+            _program(item)
+            for item in list_programs(
                 college_id=college_id,
-                changes=payload.model_dump(exclude_unset=True),
-                context=_context(request),
+                is_active=is_active,
+                search=search,
             )
-        )
-    except OrganizationError as exc:
-        _raise(exc)
+        ]
+    }
 
 
-@router.post(
-    "/colleges/{college_id}/enable",
-    response=response_with_errors(CollegeSummary, 401, 403, 404, 409, 422),
+@router.get(
+    "/programs/{program_id}",
+    response=response_with_errors(ProgramSummary, 401, 403, 404, 422),
     auth=session_auth,
-    operation_id="organizationEnableCollege",
+    operation_id="organizationGetProgram",
 )
-def college_enable(request, college_id: UUID):
-    _require(request, "organization.manage", recent_mfa=True)
+def program_get(request, program_id: UUID):
+    _require(request, "organization.structure.view")
     try:
-        return _college(set_college_active(college_id=college_id, is_active=True, context=_context(request)))
-    except OrganizationError as exc:
-        _raise(exc)
-
-
-@router.post(
-    "/colleges/{college_id}/disable",
-    response=response_with_errors(CollegeSummary, 401, 403, 404, 409, 422),
-    auth=session_auth,
-    operation_id="organizationDisableCollege",
-)
-def college_disable(request, college_id: UUID):
-    _require(request, "organization.manage", recent_mfa=True)
-    try:
-        return _college(set_college_active(college_id=college_id, is_active=False, context=_context(request)))
+        return _program(get_program(program_id))
     except OrganizationError as exc:
         _raise(exc)
 
@@ -402,9 +337,11 @@ def counselor_responsibilities(
     campus_id: UUID | None = None,
 ):
     _require(request, "organization.manage")
-    qs = CounselorResponsibility.objects.select_related(
-        "college__campus", "counselor__role"
-    ).order_by("college__campus__code", "college__code")
+    qs = (
+        CounselorResponsibility.objects.select_related("college__campus", "counselor__role")
+        .prefetch_related("counselor__designations")
+        .order_by("college__campus__code", "college__code")
+    )
     if counselor_id is not None:
         qs = qs.filter(counselor_id=counselor_id)
     if college_id is not None:
@@ -413,8 +350,7 @@ def counselor_responsibilities(
         qs = qs.filter(college__campus_id=campus_id)
     return {
         "items": [
-            {"college": _college(item.college), "counselor": _person(item.counselor)}
-            for item in qs
+            {"college": _college(item.college), "counselor": _person(item.counselor)} for item in qs
         ]
     }
 
@@ -461,13 +397,14 @@ def college_counselor_remove(request, college_id: UUID):
 )
 def staff_supervisions(request):
     _require(request, "organization.manage")
-    qs = StaffSupervision.objects.select_related(
-        "staff__role", "supervisor__role"
-    ).order_by("staff__last_name", "staff__id")
+    qs = (
+        StaffSupervision.objects.select_related("staff__role", "supervisor__role")
+        .prefetch_related("supervisor__designations")
+        .order_by("staff__last_name", "staff__id")
+    )
     return {
         "items": [
-            {"staff": _person(item.staff), "supervisor": _person(item.supervisor)}
-            for item in qs
+            {"staff": _person(item.staff), "supervisor": _person(item.supervisor)} for item in qs
         ]
     }
 
@@ -508,20 +445,39 @@ def staff_supervisor_remove(request, staff_id: UUID):
 
 @router.get(
     "/student-affiliations",
-    response=response_with_errors(StudentAffiliationListResponse, 401, 403),
+    response=response_with_errors(StudentAffiliationListResponse, 401, 403, 422),
     auth=session_auth,
     operation_id="organizationListStudentAffiliations",
 )
-def student_affiliations(request):
+def student_affiliations(
+    request,
+    student_id: UUID | None = None,
+    college_id: UUID | None = None,
+    campus_id: UUID | None = None,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
     _require(request, "organization.manage")
-    qs = StudentAffiliation.objects.select_related(
-        "student__role", "college__campus"
-    ).order_by("student__last_name", "student__id")
+    try:
+        result = list_student_affiliations(
+            student_id=student_id,
+            college_id=college_id,
+            campus_id=campus_id,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except OrganizationError as exc:
+        _raise(exc)
     return {
         "items": [
             {"student": _person(item.student), "college": _college(item.college)}
-            for item in qs
-        ]
+            for item in result.items
+        ],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
     }
 
 

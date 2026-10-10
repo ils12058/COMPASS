@@ -1,0 +1,5 @@
+{% block notice %}{% endblock %}{% block content %}{% endblock %}
+
+This is an automated COMPASS message.
+University of Camarines Norte
+Guidance and Counseling Office

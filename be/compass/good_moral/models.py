@@ -1,0 +1,255 @@
+"""Good Moral request, issuance provenance, and certificate-local snapshots."""
+
+from __future__ import annotations
+
+import uuid
+from decimal import Decimal
+
+from django.conf import settings
+from django.core.validators import MinValueValidator
+from django.db import models
+
+from compass.institutional_forms.models import FormRevision
+from compass.inventory.models import StudentInventory
+from compass.organization.models import AcademicYear
+
+
+class GoodMoralVariant(models.TextChoices):
+    CURRENT_STUDENT = "CURRENT_STUDENT", "Current Student"
+    GRADUATE = "GRADUATE", "Graduate"
+
+
+class GoodMoralStatus(models.TextChoices):
+    REQUESTED = "REQUESTED", "Requested"
+    READY_FOR_ISSUANCE = "READY_FOR_ISSUANCE", "Ready for issuance"
+    ISSUED = "ISSUED", "Issued"
+    CANCELLED = "CANCELLED", "Cancelled"
+
+
+class GoodMoralRequest(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    graduation_opportunity = models.ForeignKey(
+        "exit_interviews.ExitInterviewOpportunity",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="good_moral_requests",
+    )
+    exit_interview = models.ForeignKey(
+        "exit_interviews.ExitInterview",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="good_moral_requests",
+    )
+    exit_interview_submitted_at = models.DateTimeField(null=True, blank=True)
+    student = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="good_moral_requests",
+    )
+    variant = models.CharField(max_length=24, choices=GoodMoralVariant.choices)
+    status = models.CharField(
+        max_length=24,
+        choices=GoodMoralStatus.choices,
+        default=GoodMoralStatus.REQUESTED,
+    )
+
+    inventory = models.ForeignKey(
+        StudentInventory,
+        on_delete=models.PROTECT,
+        related_name="good_moral_requests",
+        null=True,
+        blank=True,
+    )
+    academic_year = models.ForeignKey(
+        AcademicYear,
+        on_delete=models.PROTECT,
+        related_name="good_moral_requests",
+        null=True,
+        blank=True,
+    )
+    form_revision = models.ForeignKey(
+        FormRevision,
+        on_delete=models.PROTECT,
+        related_name="good_moral_requests",
+        null=True,
+        blank=True,
+    )
+
+    applicant_name_snapshot = models.CharField(max_length=200, blank=True, default="")
+    major_snapshot = models.CharField(max_length=180, blank=True, default="")
+
+    year_level_snapshot = models.CharField(max_length=64, blank=True, default="")
+    college_snapshot = models.CharField(max_length=160, blank=True, default="")
+    course_snapshot = models.CharField(max_length=180, blank=True, default="")
+    semester_snapshot = models.CharField(max_length=80, blank=True, default="")
+
+    degree_snapshot = models.CharField(max_length=255, blank=True, default="")
+    graduation_date = models.DateField(null=True, blank=True)
+
+    official_receipt_number = models.CharField(max_length=96, blank=True, default="")
+    official_receipt_date = models.DateField(null=True, blank=True)
+    official_receipt_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.00"))],
+    )
+
+    prepared_at = models.DateTimeField(null=True, blank=True)
+    prepared_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="prepared_good_moral_requests",
+        null=True,
+        blank=True,
+    )
+    issued_at = models.DateTimeField(null=True, blank=True)
+    issued_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="issued_good_moral_requests",
+        null=True,
+        blank=True,
+    )
+    issued_by_name_snapshot = models.CharField(max_length=200, blank=True, default="")
+    document_template_key = models.CharField(max_length=128, null=True, blank=True)
+    document_template_version = models.PositiveIntegerField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    cancelled_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="cancelled_good_moral_requests",
+        null=True,
+        blank=True,
+    )
+    cancellation_reason = models.TextField(blank=True, default="", max_length=1000)
+
+    creation_key_digest = models.CharField(max_length=64, unique=True, null=True, blank=True)
+    creation_request_fingerprint = models.CharField(max_length=64, null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("-created_at", "id")
+        indexes = [
+            models.Index(
+                fields=("student", "created_at"),
+                name="good_moral_student_created_idx",
+            ),
+            models.Index(
+                fields=("status", "created_at"),
+                name="good_moral_status_created_idx",
+            ),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    (
+                        models.Q(prepared_at__isnull=True, prepared_by__isnull=True)
+                        & ~models.Q(status=GoodMoralStatus.READY_FOR_ISSUANCE)
+                    )
+                    | models.Q(
+                        status__in=(
+                            GoodMoralStatus.READY_FOR_ISSUANCE,
+                            GoodMoralStatus.ISSUED,
+                            GoodMoralStatus.CANCELLED,
+                        ),
+                        prepared_at__isnull=False,
+                        prepared_by__isnull=False,
+                    )
+                ),
+                name="good_moral_preparation_shape",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        graduation_opportunity__isnull=True,
+                        exit_interview__isnull=True,
+                        exit_interview_submitted_at__isnull=True,
+                    )
+                    | models.Q(
+                        variant=GoodMoralVariant.CURRENT_STUDENT,
+                        graduation_opportunity__isnull=False,
+                        exit_interview__isnull=False,
+                        exit_interview_submitted_at__isnull=False,
+                    )
+                ),
+                name="good_moral_exit_prereq_shape",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        variant=GoodMoralVariant.CURRENT_STUDENT,
+                        inventory__isnull=False,
+                        academic_year__isnull=False,
+                        degree_snapshot="",
+                        graduation_date__isnull=True,
+                    )
+                    | models.Q(
+                        variant=GoodMoralVariant.GRADUATE,
+                        inventory__isnull=True,
+                        academic_year__isnull=True,
+                        year_level_snapshot="",
+                        college_snapshot="",
+                        course_snapshot="",
+                        semester_snapshot="",
+                    )
+                ),
+                name="good_moral_variant_provenance_shape",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        status__in=(
+                            GoodMoralStatus.REQUESTED,
+                            GoodMoralStatus.READY_FOR_ISSUANCE,
+                            GoodMoralStatus.CANCELLED,
+                        ),
+                        form_revision__isnull=True,
+                        issued_at__isnull=True,
+                        issued_by__isnull=True,
+                        issued_by_name_snapshot="",
+                        document_template_key__isnull=True,
+                        document_template_version__isnull=True,
+                    )
+                    | (
+                        models.Q(
+                            status=GoodMoralStatus.ISSUED,
+                            form_revision__isnull=False,
+                            issued_at__isnull=False,
+                            issued_by__isnull=False,
+                            document_template_key__isnull=False,
+                            document_template_version__isnull=False,
+                        )
+                        & ~models.Q(issued_by_name_snapshot="")
+                    )
+                ),
+                name="good_moral_issuance_shape",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        status__in=(
+                            GoodMoralStatus.REQUESTED,
+                            GoodMoralStatus.READY_FOR_ISSUANCE,
+                            GoodMoralStatus.ISSUED,
+                        ),
+                        cancelled_at__isnull=True,
+                        cancellation_reason="",
+                    )
+                    | (
+                        models.Q(
+                            status=GoodMoralStatus.CANCELLED,
+                            cancelled_at__isnull=False,
+                        )
+                        & ~models.Q(cancellation_reason="")
+                    )
+                ),
+                name="good_moral_cancellation_shape",
+            ),
+        ]

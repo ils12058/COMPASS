@@ -1,0 +1,1 @@
+"""COMPASS Counseling encounter domain."""

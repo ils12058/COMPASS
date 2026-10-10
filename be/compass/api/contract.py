@@ -7,16 +7,91 @@ from collections.abc import Iterator
 from typing import Any
 
 OPENAPI_VERSION = "3.1.0"
-CURRENT_API_TAGS = frozenset({"health", "auth", "activity", "accounts", "organization"})
+CURRENT_API_TAGS = frozenset(
+    {
+        "health",
+        "metadata",
+        "auth",
+        "activity",
+        "profile",
+        "accounts",
+        "organization",
+        "services",
+        "availability",
+        "appointments",
+        "counseling",
+        "academic-years",
+        "institutional-forms",
+        "inventory",
+        "reference-data",
+        "student-support",
+        "assessment-records",
+        "reports",
+        "overview",
+        "work",
+        "student-actions",
+        "guidance-operations",
+        "good-moral",
+        "feedback",
+        "graduate-tracer",
+        "exit-interviews",
+        "routine-interviews",
+        "referrals",
+        "call-slips",
+        "notifications",
+        "announcements",
+        "resources",
+        "e-counseling",
+        "platform-operations",
+        "privacy-governance",
+        "realtime",
+        "guidance-messages",
+    }
+)
 OPERATION_ID_PATTERN = re.compile(r"^[a-z][A-Za-z0-9]*$", re.ASCII)
 OPERATION_ID_PREFIXES = {
+    "work": "workQueue",
+    "student-actions": "studentActions",
+    "guidance-operations": "guidanceOperations",
+    "guidance-messages": "guidanceMessages",
     "health": "health",
+    "metadata": "system",
     "auth": "auth",
     "activity": "me",
+    "profile": "profile",
     "accounts": "accounts",
     "organization": "organization",
+    "services": "services",
+    "availability": "availability",
+    "appointments": "appointments",
+    "counseling": "counseling",
+    "academic-years": "academicYears",
+    "institutional-forms": "institutionalForms",
+    "inventory": "inventory",
+    "reference-data": "referenceData",
+    "student-support": "studentSupport",
+    "assessment-records": "assessmentRecords",
+    "reports": "reports",
+    "overview": "overview",
+    "good-moral": "goodMoral",
+    "feedback": "feedback",
+    "graduate-tracer": "graduateTracer",
+    "exit-interviews": "exitInterviews",
+    "routine-interviews": "routineInterviews",
+    "referrals": "referrals",
+    "call-slips": "callSlips",
+    "notifications": "notifications",
+    "announcements": "announcements",
+    "resources": "resources",
+    "e-counseling": "eCounseling",
+    "platform-operations": "platformOperations",
+    "privacy-governance": "privacyGovernance",
+    "realtime": "realtime",
 }
 HTTP_METHODS = frozenset({"get", "put", "post", "delete", "options", "head", "patch"})
+_OPERATION_ID_LOCATION_EXCEPTIONS = {
+    ("get", "/api/v1/platform/status"): "platformPublicStatus",
+}
 
 
 def iter_operations(schema: dict[str, Any]) -> Iterator[tuple[str, str, dict[str, Any]]]:
@@ -72,10 +147,12 @@ def validate_openapi_contract(schema: dict[str, Any]) -> None:
             operation_id[len(expected_prefix) :] if operation_id.startswith(expected_prefix) else ""
         )
         if not suffix or suffix[0] not in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
-            problems.append(
-                f"{location} operationId {operation_id!r} must use the {expected_prefix}<Action> "
-                "convention"
-            )
+            allowed_exception = _OPERATION_ID_LOCATION_EXCEPTIONS.get((method, path))
+            if operation_id != allowed_exception:
+                problems.append(
+                    f"{location} operationId {operation_id!r} must use the "
+                    f"{expected_prefix}<Action> convention"
+                )
 
     if operation_count == 0:
         problems.append("schema has no public HTTP operations")

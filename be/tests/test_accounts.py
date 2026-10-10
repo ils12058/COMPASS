@@ -1,8 +1,10 @@
 from datetime import timedelta
+from importlib import import_module
 from io import StringIO
 from unittest.mock import patch
 
 import pytest
+from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
@@ -19,14 +21,17 @@ from compass.accounts.models import (
     DesignationCapability,
     Role,
     RoleCapability,
+    StudentLifecycleStatus,
     UserCapabilityOverride,
     UserDesignation,
 )
-from compass.accounts.policy import CAPABILITY_CODES
+from compass.accounts.policy import CAPABILITY_CODES, designation_role_compatible
 from compass.accounts.services import (
     effective_capabilities,
+    is_current_student,
     set_user_capability_override,
 )
+from tests.profile_fixtures import initialized_user
 
 User = get_user_model()
 
@@ -80,26 +85,29 @@ def test_postgresql_expression_constraint_rejects_case_only_email_collision():
     role = Role.objects.create(code="TEST_ROLE", name="Test role")
     User.objects.bulk_create(
         [
-            User(
-                email="Reynan@Example.edu",
-                password=make_password("password"),
-                first_name="Reynan",
-                last_name="Test",
-                role=role,
+            initialized_user(
+                User(
+                    email="Reynan@Example.edu",
+                    password=make_password("password"),
+                    first_name="Reynan",
+                    last_name="Test",
+                    role=role,
+                )
             )
         ]
     )
-
     with pytest.raises(IntegrityError):
         with transaction.atomic():
             User.objects.bulk_create(
                 [
-                    User(
-                        email="reynan@example.edu",
-                        password=make_password("password"),
-                        first_name="Another",
-                        last_name="Test",
-                        role=role,
+                    initialized_user(
+                        User(
+                            email="reynan@example.edu",
+                            password=make_password("password"),
+                            first_name="Another",
+                            last_name="Test",
+                            role=role,
+                        )
                     )
                 ]
             )
@@ -134,14 +142,17 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
         "COUNSELOR",
         "GUIDANCE_SERVICES_STAFF",
         "STUDENT",
+        "INSTITUTIONAL_OFFICER",
     }
     assert set(Designation.objects.values_list("code", flat=True)) == {
         "HEAD_GUIDANCE_COUNSELOR",
         "DPO",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 10
-    assert DesignationCapability.objects.count() == 1
+    assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
+    assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
+    assert RoleCapability.objects.count() == 93
+    assert DesignationCapability.objects.count() == 22
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -150,28 +161,139 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "designations created=0 updated=0" in second_output.getvalue()
     assert "capabilities created=0 updated=0" in second_output.getvalue()
     assert "role grants created=0" in second_output.getvalue()
-    assert Role.objects.count() == 4
+    assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 4
-    assert RoleCapability.objects.count() == 10
-    assert DesignationCapability.objects.count() == 1
+    assert Capability.objects.count() == 79
+    assert RoleCapability.objects.count() == 93
+    assert DesignationCapability.objects.count() == 22
 
 
 @pytest.mark.django_db
-def test_user_has_one_primary_role_and_can_hold_multiple_non_duplicate_designations():
+def test_policy_sync_removes_all_retired_capability_state():
     sync_policy()
-    user = make_user()
-    designations = list(Designation.objects.order_by("code"))
-    UserDesignation.objects.create(user=user, designation=designations[0])
-    UserDesignation.objects.create(user=user, designation=designations[1])
+    retired_codes = (
+        "institutional_forms.manage",
+        "document_branding.view",
+        "document_branding.manage",
+    )
+    assert set(retired_codes).isdisjoint(CAPABILITY_CODES)
 
-    assert set(user.designations.values_list("code", flat=True)) == {
-        "DPO",
-        "HEAD_GUIDANCE_COUNSELOR",
+    counselor_role = Role.objects.get(code="COUNSELOR")
+    head = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    user = make_user(role=counselor_role, email="retired-authority@example.edu")
+    for code in retired_codes:
+        retired = Capability.objects.create(code=code, name=f"Retired {code}")
+        RoleCapability.objects.create(role=counselor_role, capability=retired)
+        DesignationCapability.objects.create(designation=head, capability=retired)
+        UserCapabilityOverride.objects.create(
+            user=user,
+            capability=retired,
+            effect=UserCapabilityOverride.Effect.GRANT,
+            reason="Legacy override that must not survive retirement",
+        )
+        assert not user.has_capability(code)
+
+    output = StringIO()
+    call_command("sync_identity_policy", stdout=output)
+
+    assert not Capability.objects.filter(code__in=retired_codes).exists()
+    assert not RoleCapability.objects.filter(capability__code__in=retired_codes).exists()
+    assert not DesignationCapability.objects.filter(capability__code__in=retired_codes).exists()
+    assert not UserCapabilityOverride.objects.filter(capability__code__in=retired_codes).exists()
+    assert "role grants deleted=3" in output.getvalue()
+    assert "designation grants deleted=3" in output.getvalue()
+    assert "overrides deleted=3" in output.getvalue()
+    assert "capabilities deleted=3" in output.getvalue()
+
+
+@pytest.mark.django_db
+def test_reference_reads_do_not_grant_management_to_students_or_staff():
+    sync_policy()
+    for role_code in ("STUDENT", "GUIDANCE_SERVICES_STAFF"):
+        actor = make_user(role=role_code, email=f"reference-{role_code.lower()}@example.edu")
+        assert actor.has_capability("organization.structure.view")
+        assert actor.has_capability("services.catalog.view")
+        assert not actor.has_capability("organization.manage")
+        assert not actor.has_capability("services.manage")
+        assert not actor.has_capability("organization.view")
+        assert not actor.has_capability("services.view")
+
+
+@pytest.mark.django_db
+def test_policy_sync_rejects_legacy_rows_before_creating_new_capabilities():
+    Capability.objects.create(code="organization.view", name="Legacy organization read")
+    with pytest.raises(CommandError, match="Run accounts migration"):
+        call_command("sync_identity_policy", stdout=StringIO())
+    assert not Capability.objects.filter(code="organization.structure.view").exists()
+
+
+@pytest.mark.django_db
+def test_stray_legacy_row_and_grant_cannot_restore_old_authority():
+    sync_policy()
+    student = make_user(email="legacy-unknown@example.edu")
+    legacy = Capability.objects.create(code="organization.view", name="Stray legacy code")
+    RoleCapability.objects.create(role=student.role, capability=legacy)
+    UserCapabilityOverride.objects.create(
+        user=student,
+        capability=legacy,
+        effect=UserCapabilityOverride.Effect.GRANT,
+        reason="Stray legacy grant",
+    )
+    assert "organization.view" not in effective_capabilities(student)
+    assert not student.has_capability("organization.view")
+    assert student.has_capability("organization.structure.view")
+
+
+@pytest.mark.django_db
+def test_counselor_baseline_adds_scoped_authority_without_admin_expansion():
+    sync_policy()
+    counselor = make_user(role="COUNSELOR", email="baseline-counselor@example.edu")
+    expected = {
+        "appointments.manage",
+        "academic_years.view",
+        "institutional_forms.view",
+        "reports.view",
+        "inventory.view",
+        "inventory.reopen",
+        "ecounseling.access_media_assigned",
     }
+    denied = {
+        "availability.manage",
+        "academic_years.manage",
+        "institutional_forms.manage",
+        "organization.manage",
+        "services.manage",
+        "feedback.view_customer_feedback",
+        "feedback.view_csm",
+        "graduate_tracer.view",
+        "exit_interviews.view",
+        "exit_interviews.reopen",
+        "exit_interviews.manage_opportunities",
+        "platform_operations.view",
+        "privacy_governance.view",
+    }
+
+    assert all(counselor.has_capability(code) for code in expected)
+    assert all(not counselor.has_capability(code) for code in denied)
+
+    gss = make_user(role="GUIDANCE_SERVICES_STAFF", email="baseline-gss@example.edu")
+    assert not gss.has_capability("reports.view")
+    assert gss.has_capability("academic_years.view")
+    assert gss.has_capability("institutional_forms.view")
+    assert gss.has_capability("exit_interviews.manage_opportunities")
+
+
+@pytest.mark.django_db
+def test_user_has_one_primary_role_and_designation_assignment_is_non_duplicate():
+    sync_policy()
+    user = make_user(role="COUNSELOR")
+    head = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    UserDesignation.objects.create(user=user, designation=head)
+
+    assert list(user.designations.values_list("code", flat=True)) == ["HEAD_GUIDANCE_COUNSELOR"]
     with pytest.raises(IntegrityError):
         with transaction.atomic():
-            UserDesignation.objects.create(user=user, designation=designations[0])
+            UserDesignation.objects.create(user=user, designation=head)
 
 
 @pytest.mark.django_db
@@ -184,10 +306,56 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     DesignationCapability.objects.create(designation=head, capability=manage)
 
     assert effective_capabilities(user) == {
+        "activity.supervised_staff.view",
         "accounts.view",
         "accounts.manage",
-        "organization.view",
+        "organization.structure.view",
         "organization.manage",
+        "academic_years.view",
+        "academic_years.manage",
+        "institutional_forms.view",
+        "exit_interviews.view",
+        "exit_interviews.reopen",
+        "exit_interviews.manage_opportunities",
+        "services.catalog.view",
+        "services.manage",
+        "availability.view",
+        "availability.manage",
+        "availability.manage_self",
+        "appointments.view_self",
+        "appointments.manage",
+        "inventory.view",
+        "inventory.reopen",
+        "counseling.view_assigned",
+        "counseling.manage_assigned",
+        "guidance_messages.view",
+        "guidance_messages.manage",
+        "guidance_messages.templates.manage",
+        "assessment_records.view",
+        "assessment_records.manage",
+        "student_support.view",
+        "shared_summaries.view_assigned",
+        "shared_summaries.manage_assigned",
+        "routine_interviews.view_assigned",
+        "routine_interviews.manage_assigned",
+        "referrals.view",
+        "referrals.manage",
+        "call_slips.view",
+        "call_slips.manage",
+        "good_moral.view",
+        "good_moral.manage",
+        "good_moral.prepare",
+        "good_moral.issue",
+        "announcements.manage",
+        "resources.manage",
+        "feedback.view_customer_feedback",
+        "feedback.view_csm",
+        "graduate_tracer.view",
+        "reports.view",
+        "ecounseling.view_assigned",
+        "ecounseling.join_assigned",
+        "ecounseling.manage_media_assigned",
+        "ecounseling.access_media_assigned",
     }
     assert user.has_capability("accounts.view")
     assert user.has_capability("accounts.manage")
@@ -200,8 +368,37 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     )
     assert revoke.reason == "Temporary separation of duties"
     assert user.has_capability("accounts.view")
-    assert user.has_capability("organization.view")
+    assert user.has_capability("organization.structure.view")
     assert user.has_capability("organization.manage")
+    assert user.has_capability("academic_years.view")
+    assert user.has_capability("academic_years.manage")
+    assert user.has_capability("institutional_forms.view")
+    assert not user.has_capability("institutional_forms.manage")
+    assert user.has_capability("services.catalog.view")
+    assert user.has_capability("services.manage")
+    assert user.has_capability("availability.view")
+    assert user.has_capability("availability.manage")
+    assert user.has_capability("availability.manage_self")
+    assert user.has_capability("appointments.view_self")
+    assert user.has_capability("appointments.manage")
+    assert user.has_capability("counseling.view_assigned")
+    assert user.has_capability("counseling.manage_assigned")
+    assert user.has_capability("shared_summaries.view_assigned")
+    assert user.has_capability("shared_summaries.manage_assigned")
+    assert user.has_capability("routine_interviews.view_assigned")
+    assert user.has_capability("routine_interviews.manage_assigned")
+    assert user.has_capability("referrals.view")
+    assert user.has_capability("referrals.manage")
+    assert user.has_capability("call_slips.view")
+    assert user.has_capability("call_slips.manage")
+    assert user.has_capability("good_moral.view")
+    assert user.has_capability("good_moral.manage")
+    assert user.has_capability("good_moral.issue")
+    assert user.has_capability("graduate_tracer.view")
+    assert user.has_capability("reports.view")
+    assert user.has_capability("ecounseling.view_assigned")
+    assert user.has_capability("ecounseling.join_assigned")
+    assert user.has_capability("ecounseling.manage_media_assigned")
     assert not user.has_capability("accounts.manage")
 
     grant = set_user_capability_override(
@@ -236,10 +433,33 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
 
 
 @pytest.mark.django_db
+def test_student_media_consent_capability_is_explicit():
+    sync_policy()
+    student = make_user(role="STUDENT")
+    assert student.has_capability("ecounseling.consent_self")
+    assert student.has_capability("call_slips.view_self")
+    assert student.has_capability("good_moral.view_self")
+    assert student.has_capability("good_moral.request_self")
+    assert student.has_capability("feedback.submit_customer_feedback")
+    assert student.has_capability("feedback.submit_csm")
+    assert student.has_capability("graduate_tracer.view_self")
+    assert student.has_capability("graduate_tracer.manage_self")
+    assert not student.has_capability("graduate_tracer.view")
+    assert not student.has_capability("reports.view")
+    assert not student.has_capability("feedback.view_customer_feedback")
+    assert not student.has_capability("feedback.view_csm")
+    assert not student.has_capability("good_moral.view")
+    assert not student.has_capability("good_moral.manage")
+    assert not student.has_capability("good_moral.issue")
+    assert not student.has_capability("call_slips.view")
+    assert not student.has_capability("call_slips.manage")
+    assert not student.has_capability("ecounseling.manage_media_assigned")
+
+
+@pytest.mark.django_db
 def test_override_requires_a_reason_and_known_capability():
     sync_policy()
     user = make_user()
-
     with pytest.raises(ValueError, match="reason is required"):
         set_user_capability_override(
             user=user,
@@ -325,3 +545,88 @@ def test_create_it_admin_requires_policy_sync():
 def test_django_admin_route_remains_unavailable(client):
     response = client.get("/admin/")
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_student_lifecycle_defaults_constraint_and_current_student_predicate():
+    sync_policy()
+    student = make_user(role="STUDENT", email="lifecycle-student@example.edu")
+    counselor = make_user(role="COUNSELOR", email="lifecycle-counselor@example.edu")
+
+    assert student.student_lifecycle_status == StudentLifecycleStatus.CURRENT
+    assert counselor.student_lifecycle_status is None
+    assert is_current_student(student)
+    assert not is_current_student(counselor)
+
+    student.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
+    student.save(update_fields=["student_lifecycle_status", "updated_at"])
+    assert not is_current_student(student)
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            User.objects.filter(pk=student.pk).update(student_lifecycle_status="NOT_VALID")
+
+
+@pytest.mark.django_db
+def test_student_lifecycle_migration_backfills_only_existing_students():
+    sync_policy()
+    student = make_user(role="STUDENT", email="legacy-student@example.edu")
+    counselor = make_user(role="COUNSELOR", email="legacy-counselor@example.edu")
+    User.objects.filter(pk=student.pk).update(student_lifecycle_status=None)
+
+    migration = import_module("compass.accounts.migrations.0003_user_student_lifecycle_status")
+    migration.backfill_student_lifecycle_status(apps, None)
+
+    student.refresh_from_db()
+    counselor.refresh_from_db()
+    assert student.student_lifecycle_status == StudentLifecycleStatus.CURRENT
+    assert counselor.student_lifecycle_status is None
+
+
+@pytest.mark.django_db
+def test_institutional_officer_is_neutral_and_dpo_adds_only_privacy_capabilities():
+    sync_policy()
+    officer = make_user(
+        role="INSTITUTIONAL_OFFICER",
+        email="dpo.officer@example.edu",
+    )
+    assert effective_capabilities(officer) == frozenset()
+
+    UserDesignation.objects.create(
+        user=officer,
+        designation=Designation.objects.get(code="DPO"),
+    )
+    assert effective_capabilities(officer) == frozenset(
+        {
+            "privacy_governance.view",
+            "privacy_governance.activity.export",
+            "privacy_governance.manage",
+            "privacy_governance.retention.view",
+            "privacy_governance.retention.manage",
+            "privacy_governance.retention.approve",
+        }
+    )
+    assert not officer.has_capability("accounts.manage")
+    assert not officer.has_capability("institutional_designations.manage")
+    assert not officer.has_capability("organization.manage")
+    assert not officer.has_capability("reports.view")
+    assert not officer.has_capability("student_support.view")
+
+
+def test_designation_role_compatibility_fails_closed_for_unknown_codes():
+    assert designation_role_compatible(
+        designation_code="DPO",
+        role_code="INSTITUTIONAL_OFFICER",
+    )
+    assert not designation_role_compatible(
+        designation_code="DPO",
+        role_code="IT_ADMIN",
+    )
+    assert not designation_role_compatible(
+        designation_code="UNKNOWN_DESIGNATION",
+        role_code="INSTITUTIONAL_OFFICER",
+    )
+    assert not designation_role_compatible(
+        designation_code="DPO",
+        role_code="UNKNOWN_ROLE",
+    )

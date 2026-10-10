@@ -263,6 +263,7 @@ class EmailOTPPurpose(models.TextChoices):
     EMAIL_VERIFICATION = "email_verification", "Email verification"
     RECOVERY = "recovery", "Recovery"
     SECURITY_CHALLENGE = "security_challenge", "Security challenge"
+    EMAIL_CHANGE = "email_change", "Email change"
 
 
 class EmailOTPChallenge(models.Model):
@@ -308,8 +309,66 @@ class EmailOTPChallenge(models.Model):
         return str(self.id)
 
 
+class EmailChangeRequest(models.Model):
+    """Pending verified-before-commit sign-in email transition for one account."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="email_change_requests",
+    )
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        related_name="initiated_email_change_requests",
+        blank=True,
+        null=True,
+    )
+    current_email_snapshot = models.EmailField(max_length=254)
+    new_email = models.EmailField(max_length=254)
+    email_otp_challenge = models.OneToOneField(
+        EmailOTPChallenge,
+        on_delete=models.PROTECT,
+        related_name="email_change_request",
+    )
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    expires_at = models.DateTimeField()
+    current_email_authorized_at = models.DateTimeField(blank=True, null=True)
+    confirmed_at = models.DateTimeField(blank=True, null=True)
+    cancelled_at = models.DateTimeField(blank=True, null=True)
+    old_email_alert_sent_at = models.DateTimeField(blank=True, null=True)
+    old_email_alert_attempt_count = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("-created_at", "-id")
+        indexes = [
+            models.Index(
+                fields=("user", "confirmed_at", "cancelled_at", "expires_at"),
+                name="auth_email_change_user_idx",
+            ),
+            models.Index(fields=("expires_at",), name="auth_email_change_expiry_idx"),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=("user",),
+                condition=Q(confirmed_at__isnull=True, cancelled_at__isnull=True),
+                name="auth_one_pending_email_change_per_user",
+            ),
+            models.CheckConstraint(
+                condition=Q(expires_at__gt=F("created_at")),
+                name="auth_email_change_expiry_after_creation",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return str(self.id)
+
+
 __all__ = [
     "AuthSession",
+    "EmailChangeRequest",
     "EmailOTPChallenge",
     "EmailOTPPurpose",
     "LoginChallenge",

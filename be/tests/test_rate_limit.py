@@ -50,6 +50,26 @@ def test_client_ip_only_honors_forwarded_headers_from_trusted_proxy():
         assert client_ip(untrusted) == "203.0.113.11"
 
 
+def test_client_ip_prefers_proxy_canonical_address_over_spoofed_cloudflare_header():
+    factory = RequestFactory()
+    forwarded = factory.get(
+        "/",
+        REMOTE_ADDR="10.0.0.5",
+        HTTP_X_REAL_IP="203.0.113.10",
+        HTTP_CF_CONNECTING_IP="198.51.100.8",
+    )
+    malformed = factory.get(
+        "/",
+        REMOTE_ADDR="10.0.0.5",
+        HTTP_X_REAL_IP="invalid",
+        HTTP_CF_CONNECTING_IP="198.51.100.8",
+    )
+
+    with override_settings(TRUSTED_PROXY_CIDRS=["10.0.0.0/8"]):
+        assert client_ip(forwarded) == "203.0.113.10"
+        assert client_ip(malformed) == "10.0.0.5"
+
+
 def test_rate_limiter_fails_closed_by_default_and_can_be_configured_open():
     class BrokenRedis:
         def eval(self, *args):

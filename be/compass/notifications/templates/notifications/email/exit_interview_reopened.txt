@@ -1,0 +1,4 @@
+{% extends "compass/email/base.txt" %}
+{% block content %}Your Exit Interview has been reopened for correction.
+
+Sign in to COMPASS to review it.{% endblock %}

@@ -1,0 +1,312 @@
+"use client";
+
+import { CalendarPlus } from "lucide-react";
+
+import { useQueryClient } from "@tanstack/react-query";
+import { useState, type FormEvent } from "react";
+
+import { PageAction } from "@/components/ui/page-action";
+import { Button } from "@/components/ui/button";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { InstitutionActionFeedback, InstitutionWorkspaceUnavailable } from "@/features/institution-configuration/institution-shared";
+import { canManageAcademicYears, canViewAcademicYears } from "@/features/institution-configuration/institution-access";
+import { useInstitutionConfigurationAction, institutionConfigurationErrorMessage } from "@/features/institution-configuration/institution-action";
+import { usePortalSession } from "@/features/portal/components/portal-session";
+import {
+  getAcademicYearsListQueryKey,
+  useAcademicYearsCreate,
+  useAcademicYearsList,
+  useAcademicYearsSetCurrent,
+} from "@/lib/api/generated/academic-years/academic-years";
+import type { AcademicYearResponse } from "@/lib/api/generated/model";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Notice } from "@/components/ui/notice";
+import { PageHeader } from "@/components/ui/page-header";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { RowsSkeleton } from "@/components/ui/rows-skeleton";
+
+export function AcademicYearsPage() {
+  const { user } = usePortalSession();
+
+  if (!canViewAcademicYears(user)) {
+    return <InstitutionWorkspaceUnavailable workspace="Academic Years" />;
+  }
+
+  return <AcademicYearsWorkspace canManage={canManageAcademicYears(user)} />;
+}
+
+function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
+  const queryClient = useQueryClient();
+  const years = useAcademicYearsList();
+  const createYear = useAcademicYearsCreate();
+  const setCurrentYear = useAcademicYearsSetCurrent();
+  const action = useInstitutionConfigurationAction();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [label, setLabel] = useState("");
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [confirmYear, setConfirmYear] = useState<AcademicYearResponse | null>(null);
+  const [pageNotice, setPageNotice] = useState<string | null>(null);
+
+  const items = years.data?.data.items ?? [];
+  const currentYear = items.find((year) => year.is_current);
+
+  async function submitCreate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const submittedLabel = label.trim();
+    if (!submittedLabel || submittedLabel.length > 32) {
+      action.setError("Enter an Academic Year label of up to 32 characters.");
+      return;
+    }
+
+    const created = await action.run(
+      () => createYear.mutateAsync({ data: { label: submittedLabel } }),
+      "The Academic Year could not be added.",
+      {
+        onStepUpRequired: () => setCreateOpen(false),
+        onStepUpVerified: () => setCreateOpen(true),
+      },
+    );
+    if (!created) return;
+
+    setCreateOpen(false);
+    setLabel("");
+    setPageNotice(
+      `${created.data.label} was added. Set it as current separately when appropriate.`,
+    );
+    await queryClient.invalidateQueries({
+      queryKey: getAcademicYearsListQueryKey(),
+    });
+  }
+
+  async function confirmSetCurrent() {
+    if (!confirmYear) return;
+    const target = confirmYear;
+    const updated = await action.run(
+      () => setCurrentYear.mutateAsync({ academicYearId: target.id }),
+      "The current Academic Year could not be changed.",
+      {
+        onStepUpRequired: () => setConfirmOpen(false),
+        onStepUpVerified: () => setConfirmOpen(true),
+      },
+    );
+    if (!updated) return;
+
+    setConfirmOpen(false);
+    setConfirmYear(null);
+    setPageNotice(`${updated.data.label} is now the current Academic Year.`);
+    await queryClient.invalidateQueries({
+      queryKey: getAcademicYearsListQueryKey(),
+    });
+  }
+
+  function openSetCurrent(year: AcademicYearResponse) {
+    setPageNotice(null);
+    action.resetFeedback();
+    setConfirmYear(year);
+    setConfirmOpen(true);
+  }
+
+  return (
+    <>
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (open) setPageNotice(null);
+          action.resetFeedback();
+        }}
+      >
+        <>
+          <PageHeader
+            title="Academic Years"
+            actions={
+              canManage ? (
+                <DialogTrigger asChild>
+                  <PageAction icon={CalendarPlus} label="Add" labelDetail="Academic Year" />
+                </DialogTrigger>
+              ) : null
+            }
+          />
+
+      {pageNotice ? (
+        <p role="status" className="mb-4 text-sm leading-6 text-success">
+          {pageNotice}
+        </p>
+      ) : null}
+      {years.isError && years.data ? (
+        <Notice role="alert" tone="warning" className="mb-4">
+          Academic Years could not be refreshed. The displayed data may be out of date.
+        </Notice>
+      ) : null}
+
+      {years.isError && !years.data ? (
+        <Notice
+          role="alert"
+          tone="danger"
+          action={
+            <Button variant="secondary" onClick={() => void years.refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {institutionConfigurationErrorMessage(
+            years.error,
+            "Academic Years could not be loaded.",
+          )}
+        </Notice>
+      ) : (
+        <Panel aria-labelledby="academic-year-list-heading">
+          <PanelHeader title="Academic years" titleId="academic-year-list-heading" />
+          <section
+            aria-labelledby="current-academic-year-heading"
+            className="border-b border-brand-line bg-brand-wash px-4 py-4 sm:px-5"
+          >
+            <h3
+              id="current-academic-year-heading"
+              className="text-sm font-semibold text-muted"
+            >
+              Current Academic Year
+            </h3>
+            {years.isPending ? (
+              <Skeleton className="mt-2 h-7 w-48" />
+            ) : currentYear ? (
+              <p className="mt-1 font-heading text-xl font-semibold text-ink">
+                {currentYear.label}
+              </p>
+            ) : (
+              <>
+                <p className="mt-2 font-semibold text-ink">
+                  No current Academic Year is configured.
+                </p>
+                {!canManage ? null : (
+                  <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
+                    Select an existing Academic Year or create one before workflows that require the current Academic Year can continue.
+                  </p>
+                )}
+              </>
+            )}
+          </section>
+
+            {years.isPending ? (
+              <RowsSkeleton label="Loading Academic Years…" rows={2} />
+            ) : items.length === 0 ? (
+              <PanelMessage>
+                No Academic Years have been configured yet.
+              </PanelMessage>
+            ) : (
+              <ul className="divide-y divide-border">
+                {items.map((year) => (
+                  <li
+                    key={year.id}
+                    className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-3.5 sm:px-5"
+                  >
+                    <div className="min-w-0">
+                      <p className="break-words font-semibold text-ink">
+                        {year.label}
+                      </p>
+                      {year.is_current ? (
+                        <p className="mt-1 text-sm font-semibold text-success">
+                          Current
+                        </p>
+                      ) : null}
+                    </div>
+                    {canManage && !year.is_current ? (
+                      <Button
+                        variant="secondary"
+                        disabled={setCurrentYear.isPending}
+                        onClick={() => openSetCurrent(year)}
+                      >
+                        Set as current
+                      </Button>
+                    ) : null}
+                  </li>
+                ))}
+              </ul>
+            )}
+        </Panel>
+      )}
+
+        <DialogContent dismissible={!createYear.isPending}>
+          <DialogTitle>Add Academic Year</DialogTitle>
+          <DialogDescription>
+            The new Academic Year will not become current automatically.
+          </DialogDescription>
+          <form className="mt-6 space-y-5" onSubmit={submitCreate}>
+            <div className="grid gap-2">
+              <Label htmlFor="academic-year-label">Label</Label>
+              <Input
+                id="academic-year-label"
+                autoComplete="off"
+                maxLength={32}
+                required
+                value={label}
+                onChange={(event) => setLabel(event.target.value)}
+                aria-invalid={action.error ? true : undefined}
+                aria-describedby={
+                  action.error
+                    ? "academic-year-label-help academic-year-create-error"
+                    : "academic-year-label-help"
+                }
+                disabled={createYear.isPending}
+              />
+              <p id="academic-year-label-help" className="text-sm text-muted">
+                Up to 32 characters. Example: 2026-2027. Leading and trailing spaces are removed when saved.
+              </p>
+            </div>
+            <InstitutionActionFeedback
+              error={action.error}
+              notice={action.notice}
+              errorId="academic-year-create-error"
+            />
+            <div className="flex flex-wrap justify-end gap-2">
+              <Button
+                variant="secondary"
+                disabled={createYear.isPending}
+                onClick={() => {
+                  setCreateOpen(false);
+                  action.resetFeedback();
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={createYear.isPending}>
+                {createYear.isPending ? "Adding…" : "Add Academic Year"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+        </>
+      </Dialog>
+
+      <ConsequentialActionDialog
+        open={confirmOpen}
+        title={`Set ${confirmYear?.label ?? "this Academic Year"} as the current Academic Year?`}
+        confirmLabel="Set as current"
+        pendingLabel="Setting as current…"
+        pending={setCurrentYear.isPending}
+        confirmDisabled={!confirmYear}
+        error={action.error}
+        onOpenChange={(open) => {
+          setConfirmOpen(open);
+          if (!open) {
+            setConfirmYear(null);
+            action.resetFeedback();
+          }
+        }}
+        onConfirm={() => void confirmSetCurrent()}
+      >
+        <p>
+          New annual workflows will resolve against this Academic Year.
+          Existing records remain associated with the Academic Year in which
+          they were created. Students may need to complete a new current-year
+          Individual Inventory before workflows that require it can continue.
+        </p>
+      </ConsequentialActionDialog>
+
+      {action.stepUpDialog}
+    </>
+  );
+}

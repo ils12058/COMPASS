@@ -1,0 +1,606 @@
+"use client";
+
+import { RefreshCw } from "lucide-react";
+
+import { useState, type FormEvent } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+
+import { PageAction } from "@/components/ui/page-action";
+import { Button } from "@/components/ui/button";
+import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
+import { canShowLastKnownData } from "@/features/freshness/query-freshness";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { useServerBoundary } from "@/features/freshness/use-server-boundary";
+import {
+  PlatformConfirmation,
+  usePlatformAction,
+} from "@/features/platform/platform-actions";
+import {
+  PlatformPageHeader,
+  PlatformQueryError,
+  PlatformRowsSkeleton,
+} from "@/features/platform/platform-presentation";
+import { hasPlatformManage } from "@/features/platform/platform-gate";
+import {
+  initialScheduleDraft,
+  ManualMaintenanceForm,
+  MaintenanceScheduleForm,
+  type MaintenanceDraft,
+  type ScheduleDraft,
+} from "@/features/platform/maintenance/maintenance-controls";
+import { refreshMaintenanceQueries } from "@/features/platform/maintenance/maintenance-queries";
+import { usePortalSession } from "@/features/portal/components/portal-session";
+import {
+  MaintenanceSource,
+  MaintenanceState,
+  type MaintenanceResponse,
+} from "@/lib/api/generated/model";
+import {
+  formatInstitutionalDateTime,
+  INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateTimeInputToISO,
+} from "@/lib/institutional-time";
+import {
+  usePlatformOperationsCancelMaintenanceSchedule,
+  usePlatformOperationsDisableMaintenance,
+  usePlatformOperationsEnableMaintenance,
+  usePlatformOperationsGetMaintenance,
+  usePlatformOperationsScheduleMaintenance,
+} from "@/lib/api/generated/platform-operations/platform-operations";
+
+type Confirmation = "enable" | "disable" | "schedule" | "cancel";
+
+const emptyManualDraft: MaintenanceDraft = { message: "", expectedEnd: "" };
+const emptyScheduleDraft: ScheduleDraft = {
+  message: "",
+  startsAt: "",
+  endsAt: "",
+};
+
+function effectiveStateLabel(maintenance: MaintenanceResponse): string {
+  if (maintenance.state === MaintenanceState.NORMAL) return "Operational";
+  if (maintenance.state === MaintenanceState.SCHEDULED) return "Maintenance scheduled";
+  return maintenance.source === MaintenanceSource.MANUAL
+    ? "Manual maintenance active"
+    : maintenance.source === MaintenanceSource.SCHEDULED
+      ? "Scheduled maintenance active"
+      : "Maintenance active";
+}
+
+const stateTones: Record<MaintenanceState, string> = {
+  [MaintenanceState.NORMAL]: "border-success/30 bg-success/10 text-success",
+  [MaintenanceState.SCHEDULED]: "border-info/30 bg-info/5 text-info",
+  [MaintenanceState.MAINTENANCE]: "border-warning/30 bg-warning/10 text-warning",
+};
+
+function stateTone(maintenance: MaintenanceResponse): string {
+  return stateTones[maintenance.state];
+}
+
+export function PlatformMaintenancePage() {
+  const { user } = usePortalSession();
+  const canManage = hasPlatformManage(user);
+  const queryClient = useQueryClient();
+  const maintenanceQuery = usePlatformOperationsGetMaintenance({
+    query: { retry: false, staleTime: 15_000 },
+  });
+  const enable = usePlatformOperationsEnableMaintenance();
+  const disable = usePlatformOperationsDisableMaintenance();
+  const schedule = usePlatformOperationsScheduleMaintenance();
+  const cancelSchedule = usePlatformOperationsCancelMaintenanceSchedule();
+  const action = usePlatformAction();
+  const [confirmation, setConfirmation] = useState<Confirmation | null>(null);
+  const [manualDraft, setManualDraft] = useState(emptyManualDraft);
+  const [scheduleDraft, setScheduleDraft] = useState(emptyScheduleDraft);
+  const [manualFormError, setManualFormError] = useState<string | null>(null);
+  const [scheduleFormError, setScheduleFormError] = useState<string | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState(false);
+  const [boundaryVerificationPending, setBoundaryVerificationPending] = useState(false);
+  const result = maintenanceQuery.isError && !canShowLastKnownData(maintenanceQuery) ? undefined : maintenanceQuery.data?.data;
+  const maintenanceStale = boundaryVerificationPending || (maintenanceQuery.isError && Boolean(result));
+  const transitionBoundary = result?.state === MaintenanceState.SCHEDULED
+    ? result.scheduled_start_at
+    : result?.state === MaintenanceState.MAINTENANCE && result.source === MaintenanceSource.SCHEDULED
+      ? result.scheduled_end_at
+      : null;
+  async function refreshStatus() {
+    const response = await maintenanceQuery.refetch();
+    if (response.isSuccess) setBoundaryVerificationPending(false);
+  }
+  useServerBoundary({
+    boundary: transitionBoundary,
+    serverDate: maintenanceQuery.data?.headers.date,
+    receivedAt: maintenanceQuery.dataUpdatedAt,
+    onBoundary: () => {
+      setBoundaryVerificationPending(true);
+      void refreshStatus();
+    },
+  });
+  const pending =
+    enable.isPending ||
+    disable.isPending ||
+    schedule.isPending ||
+    cancelSchedule.isPending;
+
+  function submitManual(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setManualFormError(null);
+    if (!manualDraft.message.trim()) {
+      setManualFormError("Enter the message that will be shown to COMPASS users.");
+      return;
+    }
+    if (manualDraft.expectedEnd) {
+      const expectedEnd = institutionalDateTimeInputToISO(
+        manualDraft.expectedEnd,
+      );
+      if (!expectedEnd || new Date(expectedEnd).getTime() <= Date.now()) {
+        setManualFormError("Choose a future expected end time or clear the field.");
+        return;
+      }
+    }
+    setConfirmation("enable");
+  }
+
+  function submitSchedule(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setScheduleFormError(null);
+    if (!scheduleDraft.message.trim()) {
+      setScheduleFormError("Enter the message that will be shown to COMPASS users.");
+      return;
+    }
+    const startsAtIso = institutionalDateTimeInputToISO(scheduleDraft.startsAt);
+    const endsAtIso = institutionalDateTimeInputToISO(scheduleDraft.endsAt);
+    if (!startsAtIso || !endsAtIso) {
+      setScheduleFormError("Enter both the start and end times.");
+      return;
+    }
+    if (new Date(startsAtIso).getTime() <= Date.now()) {
+      setScheduleFormError("The maintenance schedule must start in the future.");
+      return;
+    }
+    if (new Date(endsAtIso).getTime() <= new Date(startsAtIso).getTime()) {
+      setScheduleFormError("The end time must be after the start time.");
+      return;
+    }
+    setConfirmation("schedule");
+  }
+
+  async function confirmAction() {
+    if (!confirmation || !result) return;
+
+    if (confirmation === "enable") {
+      const expectedEnd = manualDraft.expectedEnd
+        ? institutionalDateTimeInputToISO(manualDraft.expectedEnd)
+        : undefined;
+      if (
+        manualDraft.expectedEnd &&
+        (!expectedEnd || new Date(expectedEnd).getTime() <= Date.now())
+      ) {
+        setManualFormError("Choose a future expected end time or clear the field.");
+        setConfirmation(null);
+        return;
+      }
+      const success = await action.run(
+        () =>
+          enable.mutateAsync({
+            data: {
+              message: manualDraft.message,
+              ...(expectedEnd ? { expected_end_at: expectedEnd } : {}),
+            },
+          }),
+        "Maintenance Mode could not be enabled.",
+        () => setConfirmation(null),
+      );
+      if (!success) return;
+      setConfirmation(null);
+      setManualDraft(emptyManualDraft);
+      action.setNotice("Maintenance Mode is active.");
+      refreshMaintenanceQueries(queryClient);
+      return;
+    }
+
+    if (confirmation === "disable") {
+      const success = await action.run(
+        () => disable.mutateAsync(),
+        "Manual Maintenance Mode could not be ended.",
+        () => setConfirmation(null),
+      );
+      if (!success) return;
+      setConfirmation(null);
+      action.setNotice("Manual Maintenance Mode has ended.");
+      refreshMaintenanceQueries(queryClient);
+      return;
+    }
+
+    if (confirmation === "schedule") {
+      const startsAtIso = institutionalDateTimeInputToISO(
+        scheduleDraft.startsAt,
+      );
+      const endsAtIso = institutionalDateTimeInputToISO(scheduleDraft.endsAt);
+      if (
+        !startsAtIso ||
+        !endsAtIso ||
+        new Date(startsAtIso).getTime() <= Date.now() ||
+        new Date(endsAtIso).getTime() <= new Date(startsAtIso).getTime()
+      ) {
+        setScheduleFormError(
+          "Review the schedule: start must be in the future and end must be after start.",
+        );
+        setConfirmation(null);
+        return;
+      }
+      const success = await action.run(
+        () =>
+          schedule.mutateAsync({
+            data: {
+              message: scheduleDraft.message,
+              starts_at: startsAtIso,
+              ends_at: endsAtIso,
+            },
+          }),
+        "The maintenance schedule could not be saved.",
+        () => setConfirmation(null),
+      );
+      if (!success) return;
+      setConfirmation(null);
+      setEditingSchedule(false);
+      setScheduleDraft(emptyScheduleDraft);
+      action.setNotice("The maintenance schedule has been saved.");
+      refreshMaintenanceQueries(queryClient);
+      return;
+    }
+
+    const success = await action.run(
+      () => cancelSchedule.mutateAsync(),
+      "The maintenance schedule could not be cancelled.",
+      () => setConfirmation(null),
+    );
+    if (!success) return;
+    setConfirmation(null);
+    setEditingSchedule(false);
+    action.setNotice("The maintenance schedule has been cancelled.");
+    refreshMaintenanceQueries(queryClient);
+  }
+
+  function confirmationCopy() {
+    if (confirmation === "enable") {
+      return (
+        <>
+          <p>
+            Ordinary application features will be unavailable while Maintenance
+            Mode is active. Sign-in and platform controls remain available.
+            Manual Maintenance Mode remains active until explicitly
+            disabled; the expected end does not turn it off automatically.
+          </p>
+          <p className="font-medium text-ink">Public message</p>
+          <p className="whitespace-pre-wrap break-words">{manualDraft.message}</p>
+          {manualDraft.expectedEnd ? (
+            <p>
+              Expected end:{" "}
+              {formatInstitutionalDateTime(
+                institutionalDateTimeInputToISO(manualDraft.expectedEnd),
+              )}{" "}
+              {INSTITUTION_TIME_ZONE_LABEL} (informational only)
+            </p>
+          ) : null}
+        </>
+      );
+    }
+    if (confirmation === "disable") {
+      return (
+        <p>
+          Ordinary COMPASS features will be available again after manual
+          Maintenance Mode ends.
+        </p>
+      );
+    }
+    if (confirmation === "schedule") {
+      return (
+        <>
+          <p>
+            {result?.schedule_upcoming
+              ? "Replace the upcoming maintenance schedule?"
+              : "Schedule Maintenance Mode for this future window?"}{" "}
+            The server will apply the configured time window.
+          </p>
+          <p className="font-medium text-ink">Public message</p>
+          <p className="whitespace-pre-wrap break-words">{scheduleDraft.message}</p>
+          <p>
+            Starts:{" "}
+            {formatInstitutionalDateTime(
+              institutionalDateTimeInputToISO(scheduleDraft.startsAt),
+            )}
+            <br />
+            Ends:{" "}
+            {formatInstitutionalDateTime(
+              institutionalDateTimeInputToISO(scheduleDraft.endsAt),
+            )}{" "}
+            {INSTITUTION_TIME_ZONE_LABEL}
+          </p>
+        </>
+      );
+    }
+    if (result?.schedule_active) {
+      return (
+        <p>
+          Cancel the active scheduled window? Maintenance Mode will end
+          immediately after the server confirms the cancellation.
+        </p>
+      );
+    }
+    return (
+      <p>
+        Cancel the upcoming scheduled window? Maintenance Mode will not start
+        during that window.
+      </p>
+    );
+  }
+
+  const isUpcomingSchedule =
+    Boolean(result?.schedule_upcoming) && !result?.schedule_active;
+  const canCancelSchedule =
+    Boolean(result?.schedule_upcoming) || Boolean(result?.schedule_active);
+
+  return (
+    <section aria-labelledby="platform-page-heading">
+      <PlatformPageHeader
+        title="Maintenance"
+        description={`Times use ${INSTITUTION_TIME_ZONE_LABEL}.`}
+        action={<PageAction icon={RefreshCw} variant="secondary" label={maintenanceQuery.isFetching ? "Refreshing…" : "Refresh"} labelDetail={maintenanceQuery.isFetching ? undefined : "status"} disabled={maintenanceQuery.isFetching} aria-busy={maintenanceQuery.isFetching} onClick={() => void refreshStatus()} />}
+      />
+
+      {maintenanceQuery.isPending ? <PlatformRowsSkeleton label="Loading maintenance status…" rows={3} /> : null}
+      {maintenanceQuery.isError && !result ? (
+        <PlatformQueryError
+          message="Maintenance status could not be loaded."
+          onRetry={() => void maintenanceQuery.refetch()}
+        />
+      ) : null}
+      {maintenanceStale && result ? <RefreshFailureNotice message="Maintenance status may have changed. Showing the last confirmed result; management controls are unavailable until status is verified." onRetry={() => void refreshStatus()} retrying={maintenanceQuery.isFetching} /> : null}
+
+      {result ? (
+        <>
+          <Panel aria-labelledby="maintenance-current-heading">
+            <PanelHeader
+              title="Current Maintenance Mode status"
+              titleId="maintenance-current-heading"
+            />
+            <PanelBody>
+            <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-[minmax(9rem,0.35fr)_minmax(0,1fr)]">
+              <dt className="text-sm font-semibold text-muted">Effective state</dt>
+              <dd>
+                <span
+                  className={`inline-flex min-h-8 items-center rounded-md border px-3 text-sm font-semibold ${stateTone(result)}`}
+                >
+                  {effectiveStateLabel(result)}
+                </span>
+                {result.source !== MaintenanceSource.NONE ? (
+                  <p className="mt-1 text-xs text-muted">
+                    Source: {result.source === MaintenanceSource.MANUAL ? "Manual" : "Scheduled"}
+                  </p>
+                ) : null}
+              </dd>
+              {result.state !== MaintenanceState.NORMAL ? (
+                <>
+                  <dt className="text-sm font-semibold text-muted">
+                    Public message
+                  </dt>
+                  <dd className="whitespace-pre-wrap break-words text-sm leading-6 text-ink">
+                    {result.message}
+                  </dd>
+                </>
+              ) : null}
+              {result.state === MaintenanceState.SCHEDULED || result.schedule_active ? (
+                <>
+                  <dt className="text-sm font-semibold text-muted">Starts</dt>
+                  <dd className="text-sm text-ink">
+                    <time dateTime={result.scheduled_start_at ?? undefined}>
+                      {formatInstitutionalDateTime(result.scheduled_start_at)}
+                    </time>
+                  </dd>
+                  <dt className="text-sm font-semibold text-muted">
+                    {result.schedule_active ? "Scheduled end" : "Ends"}
+                  </dt>
+                  <dd className="text-sm text-ink">
+                    <time dateTime={result.scheduled_end_at ?? undefined}>
+                      {formatInstitutionalDateTime(result.scheduled_end_at)}
+                    </time>
+                  </dd>
+                </>
+              ) : null}
+              {result.state === MaintenanceState.MAINTENANCE &&
+              result.source === MaintenanceSource.MANUAL &&
+              result.manual_expected_end_at ? (
+                <>
+                  <dt className="text-sm font-semibold text-muted">Expected end</dt>
+                  <dd className="text-sm text-ink">
+                    <time dateTime={result.manual_expected_end_at ?? undefined}>
+                      {formatInstitutionalDateTime(result.manual_expected_end_at)}
+                    </time>
+                    <p className="mt-1 text-xs text-muted">
+                      Informational only; Maintenance Mode remains active until
+                      explicitly disabled.
+                    </p>
+                  </dd>
+                </>
+              ) : null}
+            </dl>
+            </PanelBody>
+          </Panel>
+
+          {action.notice ? (
+            <p role="status" className="mt-4 text-sm text-success">
+              {action.notice}
+            </p>
+          ) : null}
+
+          {canManage && !maintenanceStale ? (
+            <section className="mt-7 space-y-5" aria-labelledby="maintenance-controls-heading">
+              <h2
+                id="maintenance-controls-heading"
+                className="font-heading text-xl font-semibold text-ink"
+              >
+                Maintenance controls
+              </h2>
+
+              {result.state === MaintenanceState.NORMAL ? (
+                <>
+                  <ManualMaintenanceForm
+                    draft={manualDraft}
+                    error={manualFormError}
+                    pending={pending}
+                    onChange={(draft) => {
+                      setManualDraft(draft);
+                      setManualFormError(null);
+                    }}
+                    onSubmit={submitManual}
+                  />
+                  <MaintenanceScheduleForm
+                    existing={null}
+                    open
+                    draft={scheduleDraft}
+                    error={scheduleFormError}
+                    pending={pending}
+                    onOpen={() => setEditingSchedule(true)}
+                    onClose={() => setEditingSchedule(false)}
+                    onChange={(draft) => {
+                      setScheduleDraft(draft);
+                      setScheduleFormError(null);
+                    }}
+                    onSubmit={submitSchedule}
+                  />
+                </>
+              ) : null}
+
+              {isUpcomingSchedule ? (
+                <MaintenanceScheduleForm
+                  existing={result}
+                  open={editingSchedule}
+                  draft={scheduleDraft}
+                  error={scheduleFormError}
+                  pending={pending}
+                  onOpen={() => {
+                    setScheduleDraft(initialScheduleDraft(result));
+                    setScheduleFormError(null);
+                    setEditingSchedule(true);
+                  }}
+                  onClose={() => {
+                    setEditingSchedule(false);
+                    setScheduleFormError(null);
+                  }}
+                  onChange={(draft) => {
+                    setScheduleDraft(draft);
+                    setScheduleFormError(null);
+                  }}
+                  onSubmit={submitSchedule}
+                />
+              ) : null}
+
+              {result.state === MaintenanceState.MAINTENANCE && result.source === MaintenanceSource.MANUAL ? (
+                <Panel aria-labelledby="maintenance-manual-active-heading">
+                  <PanelHeader
+                    title="Manual Maintenance Mode is active"
+                    titleId="maintenance-manual-active-heading"
+                    level={3}
+                    actions={
+                      <Button
+                        variant="danger"
+                        disabled={pending}
+                        onClick={() => {
+                          action.setError(null);
+                          setConfirmation("disable");
+                        }}
+                      >
+                        End Maintenance Mode
+                      </Button>
+                    }
+                  />
+                </Panel>
+              ) : null}
+
+              {canCancelSchedule ? (
+                <Panel aria-labelledby="maintenance-schedule-active-heading">
+                  <PanelHeader
+                    title={
+                      result.schedule_active
+                        ? "Scheduled Maintenance Mode is active"
+                        : "Upcoming maintenance is scheduled"
+                    }
+                    titleId="maintenance-schedule-active-heading"
+                    level={3}
+                    actions={
+                      <Button
+                        variant="danger"
+                        disabled={pending}
+                        onClick={() => {
+                          action.setError(null);
+                          setConfirmation("cancel");
+                        }}
+                      >
+                        Cancel scheduled maintenance
+                      </Button>
+                    }
+                  />
+                </Panel>
+              ) : null}
+
+            </section>
+          ) : null}
+
+          {action.stepUpDialog}
+          <PlatformConfirmation
+            open={confirmation !== null}
+            title={
+              confirmation === "enable"
+                ? "Enable Maintenance Mode?"
+                : confirmation === "disable"
+                  ? "End Maintenance Mode?"
+                  : confirmation === "schedule"
+                    ? "Confirm maintenance schedule"
+                    : result.schedule_active
+                      ? "Cancel the active scheduled window?"
+                      : "Cancel scheduled maintenance?"
+            }
+            confirmLabel={
+              confirmation === "enable"
+                ? "Enable Maintenance Mode"
+                : confirmation === "disable"
+                  ? "End Maintenance Mode"
+                  : confirmation === "schedule"
+                    ? result.schedule_upcoming
+                      ? "Change schedule"
+                      : "Schedule maintenance"
+                    : "Cancel schedule"
+            }
+            cancelLabel={confirmation === "cancel" ? "Keep schedule" : "Cancel"}
+            pendingLabel={
+              confirmation === "enable"
+                ? "Enabling…"
+                : confirmation === "disable"
+                  ? "Ending…"
+                  : confirmation === "schedule"
+                    ? "Saving schedule…"
+                    : "Cancelling…"
+            }
+            pending={pending}
+            error={action.error}
+            variant={
+              confirmation === "disable" || confirmation === "cancel"
+                ? "danger"
+                : "primary"
+            }
+            onOpenChange={(open) => {
+              if (!open && !pending) {
+                setConfirmation(null);
+                action.setError(null);
+              }
+            }}
+            onConfirm={() => void confirmAction()}
+          >
+            {confirmationCopy()}
+          </PlatformConfirmation>
+        </>
+      ) : null}
+    </section>
+  );
+}

@@ -1,0 +1,688 @@
+"""Django Ninja API for Guidance Call Slips and Student self-view."""
+
+from __future__ import annotations
+
+from datetime import date, datetime
+from enum import StrEnum
+from typing import NoReturn
+from uuid import UUID
+
+from django.http import HttpResponse
+from ninja import Header, Router, Schema, Status
+from pydantic import ConfigDict
+
+from compass.audit.context import AuditContext
+from compass.authentication.api import session_auth
+from compass.common.api import response_with_errors
+from compass.common.errors import APIError
+from compass.common.idempotency import request_fingerprint
+from compass.documents.filenames import institutional_pdf_content_disposition
+from compass.institutional_forms.filter_options import (
+    CollectionFilterOptions,
+    project_filter_options,
+)
+from compass.privacy_governance.releases import (
+    ReleaseAuditUnavailable,
+    record_call_slip_release,
+)
+from compass.referrals.confidential_content import ReferralConfidentialContentUnavailable
+
+from .models import CallSlipDestinationType, CallSlipIssuanceMode, CallSlipLifecycleState
+from .services import (
+    DEFAULT_PAGE_SIZE,
+    CallSlipConfigurationConflict,
+    CallSlipCreationConflict,
+    CallSlipDocumentUnavailable,
+    CallSlipError,
+    CallSlipInterviewEndConflict,
+    CallSlipNotFound,
+    CallSlipNotPermitted,
+    CallSlipOrdering,
+    CallSlipReferralConflict,
+    CallSlipVoidConflict,
+    InvalidCallSlipInput,
+    create_call_slip,
+    create_call_slip_from_referral,
+    get_call_slip,
+    get_my_call_slip,
+    list_call_slips,
+    list_eligible_students,
+    list_my_call_slips,
+    record_interview_ended,
+    render_call_slip_pdf,
+    void_call_slip,
+)
+
+router = Router(tags=["call-slips"])
+CREATE_ROUTE = "/api/v1/call-slips"
+CREATE_FROM_REFERRAL_ROUTE = "/api/v1/call-slips/from-referral"
+PDF_SUCCESS_OPENAPI = {
+    "responses": {
+        200: {
+            "content": {
+                "application/pdf": {
+                    "schema": {"type": "string", "format": "binary"},
+                }
+            }
+        }
+    }
+}
+
+
+class StrictSchema(Schema):
+    model_config = ConfigDict(extra="forbid")
+
+
+class CallSlipDestinationTypeValue(StrEnum):
+    GUIDANCE_OFFICE = CallSlipDestinationType.GUIDANCE_OFFICE
+    OTHER = CallSlipDestinationType.OTHER
+
+
+class CallSlipLifecycleStateValue(StrEnum):
+    ACTIVE = CallSlipLifecycleState.ACTIVE
+    COMPLETED = CallSlipLifecycleState.COMPLETED
+    VOIDED = CallSlipLifecycleState.VOIDED
+
+
+class CallSlipIssuanceModeValue(StrEnum):
+    LIVE = CallSlipIssuanceMode.LIVE
+    HISTORICAL = CallSlipIssuanceMode.HISTORICAL
+    LEGACY_UNKNOWN = CallSlipIssuanceMode.LEGACY_UNKNOWN
+
+
+class CallSlipCreateRequest(StrictSchema):
+    student_id: UUID
+    course_year: str
+    destination_type: CallSlipDestinationTypeValue
+    other_destination: str = ""
+    report_at: datetime
+    referral_id: UUID | None = None
+    notify_student: bool = True
+
+
+class CallSlipReferralActionInput(StrictSchema):
+    occurred_at: datetime
+    remarks: str = ""
+
+
+class CallSlipCreateFromReferralRequest(StrictSchema):
+    course_year: str
+    destination_type: CallSlipDestinationTypeValue
+    other_destination: str = ""
+    report_at: datetime
+    notify_student: bool = True
+    action: CallSlipReferralActionInput | None = None
+
+
+class CallSlipInterviewEndedRequest(StrictSchema):
+    interview_ended_at: datetime
+
+
+class CallSlipVoidRequest(StrictSchema):
+    reason: str
+
+
+class CallSlipPersonSummary(StrictSchema):
+    id: UUID
+    display_name: str
+
+
+class CallSlipFormRevisionSummary(StrictSchema):
+    id: UUID
+    official_code: str | None
+    official_revision: str | None
+    internal_schema_version: int
+
+
+class CallSlipReferralSummary(StrictSchema):
+    id: UUID
+    reference_code: str
+
+
+class CallSlipStudentCollegeResponse(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
+class CallSlipStudentOptionResponse(StrictSchema):
+    id: UUID
+    institutional_id: str | None
+    display_name: str
+    college: CallSlipStudentCollegeResponse | None
+
+
+class CallSlipStudentOptionPage(StrictSchema):
+    items: list[CallSlipStudentOptionResponse]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class CallSlipStudentResponse(StrictSchema):
+    id: UUID
+    student: CallSlipPersonSummary
+    student_name_snapshot: str
+    course_year_snapshot: str
+    destination_type: CallSlipDestinationTypeValue
+    other_destination: str
+    report_at: datetime
+    issued_by: CallSlipPersonSummary
+    issued_by_name_snapshot: str
+    form_revision: CallSlipFormRevisionSummary
+    interview_ended_at: datetime | None
+    state: CallSlipLifecycleStateValue
+    voided_at: datetime | None
+    created_at: datetime
+
+
+class CallSlipOperationalResponse(CallSlipStudentResponse):
+    student_institutional_id: str | None
+    referral: CallSlipReferralSummary | None
+    recorded_by: CallSlipPersonSummary | None
+    voided_by: CallSlipPersonSummary | None
+    issuance_mode: CallSlipIssuanceModeValue
+    void_notifies_student: bool
+    void_reason: str
+    updated_at: datetime
+
+
+class CallSlipStudentPageResponse(StrictSchema):
+    items: list[CallSlipStudentResponse]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class CallSlipOperationalPageResponse(StrictSchema):
+    items: list[CallSlipOperationalResponse]
+    page: int
+    page_size: int
+    has_next: bool
+    # The ordering applied: the requested one, or the default for the selected state.
+    ordering: CallSlipOrdering
+    filter_options: CollectionFilterOptions
+
+
+def _context(request) -> AuditContext:
+    return AuditContext.from_request(request, actor=request.auth_user)
+
+
+def _require_operational(request, capability: str) -> None:
+    user = request.auth_user
+    if (
+        not user.is_active
+        or user.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        or not user.has_capability(capability)
+    ):
+        raise APIError(403, "permission_denied", f"The {capability} capability is required.")
+
+
+def _require_student(request) -> None:
+    user = request.auth_user
+    if (
+        not user.is_active
+        or user.role.code != "STUDENT"
+        or not user.has_capability("call_slips.view_self")
+    ):
+        raise APIError(403, "permission_denied", "Call Slip self-view access is required.")
+
+
+def _raise(exc: CallSlipError) -> NoReturn:
+    if isinstance(exc, CallSlipNotFound):
+        raise APIError(404, "call_slip_not_found", str(exc)) from exc
+    if isinstance(exc, CallSlipNotPermitted):
+        raise APIError(403, "call_slip_not_permitted", str(exc)) from exc
+    if isinstance(exc, CallSlipDocumentUnavailable):
+        raise APIError(503, "call_slip_document_unavailable", str(exc)) from exc
+    if isinstance(exc, InvalidCallSlipInput):
+        raise APIError(422, "invalid_call_slip_request", str(exc)) from exc
+    if isinstance(
+        exc,
+        (
+            CallSlipConfigurationConflict,
+            CallSlipCreationConflict,
+            CallSlipReferralConflict,
+            CallSlipInterviewEndConflict,
+            CallSlipVoidConflict,
+        ),
+    ):
+        raise APIError(409, "call_slip_conflict", str(exc)) from exc
+    raise APIError(
+        500, "internal_error", "The Call Slip operation could not be completed."
+    ) from exc
+
+
+def _person(user) -> dict[str, object]:
+    return {"id": user.pk, "display_name": user.get_full_name()}
+
+
+def _revision(revision) -> dict[str, object]:
+    return {
+        "id": revision.pk,
+        "official_code": revision.official_code,
+        "official_revision": revision.official_revision,
+        "internal_schema_version": revision.internal_schema_version,
+    }
+
+
+def _student_option(item) -> dict[str, object]:
+    return {
+        "id": item.id,
+        "institutional_id": item.institutional_id,
+        "display_name": item.display_name,
+        "college": (
+            {
+                "id": item.college.id,
+                "code": item.college.code,
+                "name": item.college.name,
+            }
+            if item.college is not None
+            else None
+        ),
+    }
+
+
+def _pdf_response(
+    item,
+    *,
+    context: AuditContext,
+    access_mode: str,
+) -> HttpResponse:
+    try:
+        pdf_bytes = render_call_slip_pdf(item, access_mode=access_mode)
+    except CallSlipError as exc:
+        _raise(exc)
+    revision = item.form_revision
+    try:
+        record_call_slip_release(
+            context=context,
+            call_slip_id=item.pk,
+            access_mode=access_mode,
+            form_revision_id=revision.pk,
+            official_code=revision.official_code,
+            official_revision=revision.official_revision,
+        )
+    except ReleaseAuditUnavailable as exc:
+        raise APIError(
+            503,
+            "release_audit_unavailable",
+            (
+                "The Call Slip could not be released because its required "
+                "privacy audit is unavailable."
+            ),
+        ) from exc
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = institutional_pdf_content_disposition("call_slip", item.pk)
+    return response
+
+
+def _student_view(item) -> dict[str, object]:
+    return {
+        "id": item.pk,
+        "student": _person(item.student),
+        "student_name_snapshot": item.student_name_snapshot,
+        "course_year_snapshot": item.course_year_snapshot,
+        "destination_type": item.destination_type,
+        "other_destination": item.other_destination,
+        "report_at": item.report_at,
+        "issued_by": _person(item.issued_by),
+        "issued_by_name_snapshot": item.issued_by_name_snapshot,
+        "form_revision": _revision(item.form_revision),
+        "interview_ended_at": item.interview_ended_at,
+        "state": item.lifecycle_state,
+        "voided_at": item.voided_at,
+        "created_at": item.created_at,
+    }
+
+
+def _operational_view(item) -> dict[str, object]:
+    return {
+        **_student_view(item),
+        "student_institutional_id": item.student.institutional_id,
+        "referral": (
+            {"id": item.referral_id, "reference_code": item.referral.reference_code}
+            if item.referral_id
+            else None
+        ),
+        "recorded_by": _person(item.recorded_by) if item.recorded_by_id else None,
+        "voided_by": _person(item.voided_by) if item.voided_by_id else None,
+        "issuance_mode": item.issuance_mode,
+        "void_notifies_student": item.void_notifies_student,
+        "void_reason": item.void_reason,
+        "updated_at": item.updated_at,
+    }
+
+
+@router.get(
+    "/me",
+    response=response_with_errors(CallSlipStudentPageResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="callSlipsListMy",
+)
+def call_slips_list_my(
+    request,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    state: CallSlipLifecycleStateValue | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_student(request)
+    try:
+        result = list_my_call_slips(
+            actor=request.auth_user,
+            from_date=from_date,
+            to_date=to_date,
+            state=state.value if state is not None else None,
+            page=page,
+            page_size=page_size,
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return {
+        "items": [_student_view(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.get(
+    "/me/{call_slip_id}/pdf",
+    response=response_with_errors(None, 401, 403, 404, 503),
+    auth=session_auth,
+    operation_id="callSlipsDownloadMyPdf",
+    openapi_extra=PDF_SUCCESS_OPENAPI,
+)
+def call_slips_download_my_pdf(request, call_slip_id: UUID):
+    _require_student(request)
+    try:
+        item = get_my_call_slip(
+            actor=request.auth_user,
+            call_slip_id=call_slip_id,
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return _pdf_response(item, context=_context(request), access_mode="SELF")
+
+
+@router.get(
+    "/me/{call_slip_id}",
+    response=response_with_errors(CallSlipStudentResponse, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="callSlipsGetMy",
+)
+def call_slips_get_my(request, call_slip_id: UUID):
+    _require_student(request)
+    try:
+        item = get_my_call_slip(actor=request.auth_user, call_slip_id=call_slip_id)
+    except CallSlipError as exc:
+        _raise(exc)
+    return _student_view(item)
+
+
+@router.post(
+    "",
+    response=response_with_errors(
+        CallSlipOperationalResponse,
+        401,
+        403,
+        404,
+        409,
+        422,
+        success_status=201,
+    ),
+    auth=session_auth,
+    operation_id="callSlipsCreate",
+)
+def call_slips_create(
+    request,
+    payload: CallSlipCreateRequest,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
+    _require_operational(request, "call_slips.manage")
+    fingerprint = request_fingerprint(
+        method="POST",
+        route=CREATE_ROUTE,
+        query_string=request.META.get("QUERY_STRING", ""),
+        body=request.body,
+    )
+    try:
+        item = create_call_slip(
+            actor=request.auth_user,
+            student_id=payload.student_id,
+            course_year=payload.course_year,
+            destination_type=payload.destination_type.value,
+            other_destination=payload.other_destination,
+            report_at=payload.report_at,
+            referral_id=payload.referral_id,
+            notify_student=payload.notify_student,
+            idempotency_key=idempotency_key,
+            request_fingerprint=fingerprint,
+            context=_context(request),
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return Status(201, _operational_view(item))
+
+
+@router.get(
+    "",
+    response=response_with_errors(CallSlipOperationalPageResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="callSlipsList",
+)
+def call_slips_list(
+    request,
+    student_id: UUID | None = None,
+    issued_by_id: UUID | None = None,
+    destination_type: CallSlipDestinationTypeValue | None = None,
+    referral_id: UUID | None = None,
+    search: str | None = None,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    include_voided: bool = False,
+    state: CallSlipLifecycleStateValue | None = None,
+    form_revision_id: UUID | None = None,
+    ordering: CallSlipOrdering | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_operational(request, "call_slips.view")
+    try:
+        result = list_call_slips(
+            actor=request.auth_user,
+            student_id=student_id,
+            issued_by_id=issued_by_id,
+            destination_type=destination_type.value if destination_type else None,
+            referral_id=referral_id,
+            search=search,
+            from_date=from_date,
+            to_date=to_date,
+            include_voided=include_voided,
+            state=state.value if state is not None else None,
+            form_revision_id=form_revision_id,
+            ordering=ordering,
+            page=page,
+            page_size=page_size,
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return {
+        "items": [_operational_view(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+        "ordering": result.ordering,
+        "filter_options": project_filter_options(result.form_revisions),
+    }
+
+
+@router.get(
+    "/students",
+    response=response_with_errors(CallSlipStudentOptionPage, 401, 403, 422),
+    auth=session_auth,
+    operation_id="callSlipsListEligibleStudents",
+)
+def call_slips_list_eligible_students(
+    request,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_operational(request, "call_slips.manage")
+    try:
+        result = list_eligible_students(
+            actor=request.auth_user,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return {
+        "items": [_student_option(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.post(
+    "/from-referral/{referral_id}",
+    response=response_with_errors(
+        CallSlipOperationalResponse,
+        401,
+        403,
+        404,
+        409,
+        422,
+        success_status=201,
+    ),
+    auth=session_auth,
+    operation_id="callSlipsCreateFromReferral",
+)
+def call_slips_create_from_referral(
+    request,
+    referral_id: UUID,
+    payload: CallSlipCreateFromReferralRequest,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
+    _require_operational(request, "call_slips.manage")
+    fingerprint = request_fingerprint(
+        method="POST",
+        route=f"{CREATE_FROM_REFERRAL_ROUTE}/{referral_id}",
+        query_string=request.META.get("QUERY_STRING", ""),
+        body=request.body,
+    )
+    action = payload.action
+    try:
+        item = create_call_slip_from_referral(
+            actor=request.auth_user,
+            referral_id=referral_id,
+            course_year=payload.course_year,
+            destination_type=payload.destination_type.value,
+            other_destination=payload.other_destination,
+            report_at=payload.report_at,
+            notify_student=payload.notify_student,
+            action_occurred_at=action.occurred_at if action is not None else None,
+            action_remarks=action.remarks if action is not None else None,
+            idempotency_key=idempotency_key,
+            request_fingerprint=fingerprint,
+            context=_context(request),
+        )
+    except ReferralConfidentialContentUnavailable:
+        raise APIError(
+            500,
+            "referral_confidential_content_unavailable",
+            "The Referral confidential content is unavailable.",
+        ) from None
+    except CallSlipError as exc:
+        _raise(exc)
+    return Status(201, _operational_view(item))
+
+
+@router.get(
+    "/{call_slip_id}/pdf",
+    response=response_with_errors(None, 401, 403, 404, 503),
+    auth=session_auth,
+    operation_id="callSlipsDownloadPdf",
+    openapi_extra=PDF_SUCCESS_OPENAPI,
+)
+def call_slips_download_pdf(request, call_slip_id: UUID):
+    _require_operational(request, "call_slips.view")
+    try:
+        item = get_call_slip(
+            actor=request.auth_user,
+            call_slip_id=call_slip_id,
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return _pdf_response(item, context=_context(request), access_mode="GCO")
+
+
+@router.get(
+    "/{call_slip_id}",
+    response=response_with_errors(CallSlipOperationalResponse, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="callSlipsGet",
+)
+def call_slips_get(request, call_slip_id: UUID):
+    _require_operational(request, "call_slips.view")
+    try:
+        item = get_call_slip(actor=request.auth_user, call_slip_id=call_slip_id)
+    except CallSlipError as exc:
+        _raise(exc)
+    return _operational_view(item)
+
+
+@router.patch(
+    "/{call_slip_id}/interview-ended",
+    response=response_with_errors(
+        CallSlipOperationalResponse,
+        401,
+        403,
+        404,
+        409,
+        422,
+    ),
+    auth=session_auth,
+    operation_id="callSlipsRecordInterviewEnded",
+)
+def call_slips_record_interview_ended(
+    request,
+    call_slip_id: UUID,
+    payload: CallSlipInterviewEndedRequest,
+):
+    _require_operational(request, "call_slips.manage")
+    try:
+        item = record_interview_ended(
+            actor=request.auth_user,
+            call_slip_id=call_slip_id,
+            interview_ended_at=payload.interview_ended_at,
+            context=_context(request),
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return _operational_view(item)
+
+
+@router.post(
+    "/{call_slip_id}/void",
+    response=response_with_errors(CallSlipOperationalResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="callSlipsVoid",
+)
+def call_slips_void(request, call_slip_id: UUID, payload: CallSlipVoidRequest):
+    _require_operational(request, "call_slips.manage")
+    try:
+        item = void_call_slip(
+            actor=request.auth_user,
+            call_slip_id=call_slip_id,
+            reason=payload.reason,
+            context=_context(request),
+        )
+    except CallSlipError as exc:
+        _raise(exc)
+    return _operational_view(item)

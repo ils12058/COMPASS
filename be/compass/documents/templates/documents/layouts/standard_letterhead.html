@@ -1,0 +1,9 @@
+{% extends "documents/base.html" %}
+{% block document %}
+  {% include "documents/partials/institution_masthead.html" %}
+  {% include "documents/partials/office_heading.html" %}
+  <main class="document-body standard-letterhead-body">
+    {% block body %}{% endblock %}
+  </main>
+  {% include "documents/partials/accreditation_footer.html" %}
+{% endblock %}

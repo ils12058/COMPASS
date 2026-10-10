@@ -1,0 +1,164 @@
+"use client";
+
+import { useState, type FormEvent } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { LoadingRegion } from "@/components/ui/loading-region";
+import { Skeleton } from "@/components/ui/skeleton";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { organizationErrorMessage } from "@/features/organization/components/organization-action";
+import { useOrganizationListEligiblePeople } from "@/lib/api/generated/organization/organization";
+import type {
+  OrganizationListEligiblePeopleParams,
+  OrganizationPersonSummary,
+} from "@/lib/api/generated/model";
+
+export function PeoplePicker({
+  id,
+  label,
+  role,
+  enabled,
+  value,
+  selectedPerson,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  role: OrganizationListEligiblePeopleParams["role"];
+  enabled: boolean;
+  value: string;
+  selectedPerson?: OrganizationPersonSummary | null;
+  onChange: (id: string, person: OrganizationPersonSummary) => void;
+}) {
+  const [draft, setDraft] = useState("");
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const people = useOrganizationListEligiblePeople(
+    {
+      role,
+      page,
+      page_size: 8,
+      ...(search ? { search } : {}),
+    },
+    { query: { enabled, retry: false } },
+  );
+
+  function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPage(1);
+    setSearch(draft.trim());
+  }
+
+  const visibleSelected =
+    selectedPerson?.id === value
+      ? selectedPerson
+      : people.data?.data.items.find((person) => person.id === value);
+
+  return (
+    <fieldset className="min-w-0">
+      <legend className="text-sm font-semibold text-ink">{label}</legend>
+      {value && visibleSelected ? (
+        <div className="mt-3 rounded-sm border border-brand-line bg-brand-wash px-3 py-3 text-sm">
+          <p className="font-semibold text-ink">{visibleSelected.full_name}</p>
+          <p className="mt-1 break-words text-xs text-muted">
+            {visibleSelected.institutional_id
+              ? `${visibleSelected.institutional_id} · ${visibleSelected.email}`
+              : visibleSelected.email}
+          </p>
+          <p className="mt-1 text-xs text-muted">
+            {visibleSelected.is_active ? "Active" : "Inactive"}
+            {visibleSelected.responsibility_scope === "ASSIGNED_AND_FALLBACK_COLLEGES"
+              ? " · Assigned and fallback colleges"
+              : visibleSelected.responsibility_scope === "ASSIGNED_COLLEGES"
+                ? " · Assigned-college responsibilities"
+                : ""}
+          </p>
+        </div>
+      ) : null}
+      <form className="mt-3 flex gap-2" onSubmit={submit}>
+        <div className="min-w-0 flex-1">
+          <Label className="sr-only" htmlFor={id}>
+            Search by name or email
+          </Label>
+          <Input
+            id={id}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Search by name or email"
+            maxLength={200}
+          />
+        </div>
+        <Button variant="secondary" type="submit">
+          Search
+        </Button>
+      </form>
+
+      {people.isPending ? (
+        <LoadingRegion label="Loading eligible people…" className="mt-3 divide-y divide-border rounded-sm border border-border">
+          <div className="px-3 py-3"><Skeleton className="h-4 w-full max-w-xs" /></div>
+          <div className="px-3 py-3"><Skeleton className="h-4 w-full max-w-xs" /></div>
+        </LoadingRegion>
+      ) : people.isError ? (
+        <div role="alert" className="mt-3 text-sm text-danger">
+          <p>
+            {organizationErrorMessage(
+              people.error,
+              "People could not be loaded.",
+            )}
+          </p>
+          <Button
+            variant="secondary"
+            className="mt-3"
+            onClick={() => void people.refetch()}
+          >
+            Retry
+          </Button>
+        </div>
+      ) : people.data.data.items.length === 0 ? (
+        <p className="mt-3 text-sm text-muted">
+          No eligible people match this search.
+        </p>
+      ) : (
+        <>
+          <div className="mt-3 max-h-56 overflow-y-auto rounded-sm border border-border">
+            {people.data.data.items.map((person) => (
+              <label
+                key={person.id}
+                className="flex min-h-11 cursor-pointer items-center gap-3 border-t border-border px-3 py-2 first:border-t-0 has-checked:bg-brand-wash hover:bg-surface-subtle"
+              >
+                <input
+                  type="radio"
+                  name={id}
+                  value={person.id}
+                  checked={value === person.id}
+                  onChange={() => onChange(person.id, person)}
+                />
+                <span className="min-w-0">
+                  <span className="block truncate text-sm font-medium text-ink">
+                    {person.full_name}
+                  </span>
+                  <span className="block truncate text-xs text-muted">
+                    {person.institutional_id
+                      ? `${person.institutional_id} · ${person.email}`
+                      : person.email}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        </>
+      )}
+      {!people.isPending && !people.isError ? (
+        <CanonicalPagination
+          className="mt-3"
+          page={people.data.data.page}
+          hasNext={people.data.data.has_next}
+          label={`${label} results`}
+          onPageChange={setPage}
+        />
+      ) : null}
+    </fieldset>
+  );
+}

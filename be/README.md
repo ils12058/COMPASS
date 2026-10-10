@@ -1,12 +1,9 @@
-# COMPASS backend foundation
+# COMPASS backend
 
-This directory contains the backend foundation for COMPASS plus Accounts / Identity, Audit Trail,
-Authentication / Account Security, self-activity projections, and purpose-built Account Management.
-It intentionally stops before broader business workflows: configuration, health, error handling,
-request correlation, rate-limit and idempotency primitives, external-service adapters, account
-identity, capability policy, server-managed authentication, administrative account management, and
-local/live-staging container wiring are included. Organizational scope and service domains remain
-deferred.
+This directory contains the current COMPASS backend, including account security, Organization,
+Service Catalog, Availability, Appointments, Counseling, Student workflows, reporting,
+publications, platform operations, and Privacy Governance. Deployment-critical canonical
+configuration is synchronized explicitly after migrations; ordinary requests do not create it.
 
 ## Baseline
 
@@ -17,6 +14,8 @@ deferred.
 - Celery 5.6.3 with Redis broker and one Beat service
 - S3-compatible object storage through `django-storages` and boto3
 - Gunicorn behind Caddy 2.11.4
+- An optional, separate Django-free Uvicorn service for content-free realtime hints (ADR-100), off
+  by default
 - MinIO and Mailpit only in the local Compose profile
 - Custom UUID-based account identity with email as its canonical identifier
 - Explicit roles, designations, capabilities, and account-level capability overrides
@@ -30,7 +29,16 @@ deferred.
 - Capability-authorized administrative Account Management with recent-MFA step-up
 - Self-service initial password setup and password recovery through email OTP
 
-The dependency lockfile is committed with this foundation. The chosen Python version is 3.13
+## Institutional time
+
+Django and Celery runtime time remain controlled by `TIME_ZONE` (normally `UTC`) with
+`USE_TZ=true`. UCN civil/business time is a separate product invariant configured by
+`INSTITUTION_TIME_ZONE`, currently `Asia/Manila`. Scheduling code must use the bounded helpers
+in `compass.common.institutional_time` instead of treating `settings.TIME_ZONE` as the
+institutional timezone. API/storage datetimes remain timezone-aware instants; date-only values
+remain calendar dates rather than midnight timestamps.
+
+The dependency lockfile is committed with the backend. The chosen Python version is 3.13
 because the current Celery 5.6 support matrix lists CPython 3.9 through 3.13; host Python 3.14
 can still be used to install `uv`, but the project runtime remains pinned to 3.13.
 
@@ -41,11 +49,16 @@ Prerequisites: Podman, `podman-compose` (or a compatible `podman compose` provid
 ```sh
 cd /Users/reynantlntno/Projects/COMPASS/be
 cp .env.example .env
+# Set all eight independent content keyrings in .env first; see "Confidential-content keyrings".
 uv python install 3.13
 uv sync
 podman compose --profile local build web
 podman compose --profile local up -d
 podman compose --profile local run --rm web python manage.py migrate
+podman compose --profile local run --rm web python manage.py sync_identity_policy
+podman compose --profile local run --rm web python manage.py sync_canonical_services
+podman compose --profile local run --rm web python manage.py sync_institutional_forms
+podman compose --profile local run --rm web python manage.py sync_organization_catalog
 podman compose --profile local run --rm web python manage.py check
 ```
 
@@ -62,6 +75,36 @@ curl -i http://localhost:8080/api/v1/health/ready
 When `API_DOCS_ENABLED=true`, the versioned OpenAPI UI is at
 `http://localhost:8080/api/v1/docs`. Mailpit is at `http://localhost:8025`; MinIO's API is on
 port 9000 and its local console is on port 9001. Both are bound to loopback by default.
+
+## Operator command reference
+
+Deployment and diagnostic commands are operator tooling, not browser workflows. Run them from an
+authorized deployment environment; COMPASS does not expose an HTTP command catalog or command
+execution endpoint.
+
+```sh
+python manage.py create_it_admin --email <operator-email> --first-name <first-name> --last-name <last-name>
+python manage.py sync_identity_policy
+python manage.py migrate --noinput
+python manage.py check --deploy
+python manage.py export_openapi --check
+python manage.py compass_doctor
+python manage.py compass_doctor --configuration-only
+python manage.py compass_doctor --worker-smoke
+python manage.py seed_demo_staging
+python manage.py render_email_previews --output-dir <directory>
+```
+
+create_it_admin, sync_identity_policy, seed_demo_staging, and migrate change persisted state.
+seed_demo_staging loads the synthetic staging demo dataset; it runs only in local-staging or
+live-staging with `DEMO_SEEDING_ENABLED=true` and is documented in
+[`docs/staging-demo-seeding.md`](docs/staging-demo-seeding.md). The deployment
+check, OpenAPI check, and normal/configuration-only diagnostics are read-only. --worker-smoke
+explicitly sends the existing harmless diagnostic task so an operator can verify broker/worker/result
+execution; it is not a persistent heartbeat. Browser-based shell, arbitrary command execution,
+backup/restore, Redis manipulation, and Celery purge remain unsupported.
+render_email_previews writes every transactional email to local `.html` and `.txt` files for
+visual review; it sends nothing and reads no records.
 
 ## Authentication and account security development
 
@@ -99,11 +142,16 @@ GET  /api/v1/me/activity?page=1&page_size=20
 GET  /api/v1/me/security-activity?page=1&page_size=20
 ```
 
-TOTP setup is a two-step operation: call `setup`, scan the returned provisioning URI, then call
-`confirm`. Confirmation returns recovery codes once; PostgreSQL stores only the encrypted TOTP
-secret and one-way recovery-code hashes. The current default does not require MFA for every role,
-but an enrolled factor causes MFA at the next password login. Role-specific mandatory MFA can be
-configured with `AUTH_MFA_REQUIRED_ROLE_CODES`; the setting remains separate from capabilities.
+Authenticated optional TOTP setup is a two-step operation, but `setup` first requires the
+account's current password before returning a provisioning URI. The same independent proof is
+revalidated when the optional pending factor is confirmed, so a candidate TOTP code cannot
+authorize its own enrollment. Mandatory role-required enrollment remains separate: successful
+password authentication creates a purpose-restricted `LoginChallenge`, and that challenge may
+bootstrap TOTP without asking for the password a second time. `confirm` returns recovery codes
+once; PostgreSQL stores only the encrypted TOTP secret and one-way recovery-code hashes. The
+current default does not require MFA for every role, but an enrolled factor causes MFA at the next
+password login. Role-specific mandatory MFA can be configured with
+`AUTH_MFA_REQUIRED_ROLE_CODES`; the setting remains separate from capabilities.
 
 Email OTP challenge rows store only a hash, and delivery is queued through the existing Celery +
 SMTP adapter. `POST /api/v1/auth/password/request` returns the same `202` response shape for
@@ -114,9 +162,14 @@ challenge and sets the user-selected password atomically, without creating a ses
 setup/reset revokes reusable sessions, trusted sessions, login challenges, and other recovery
 challenges, while preserving TOTP and MFA recovery codes. Users must then sign in through the
 normal password + MFA flow. Passwords use Django's built-in validators and are never placed in
-responses, logs, or audit metadata. Trusted sessions are listed and revoked through the
-authenticated `/api/v1/auth/trusted-sessions` routes. MFA disable and recovery-code regeneration
-require recent MFA; `AUTH_RECENT_MFA_WINDOW_SECONDS` controls the window.
+responses, logs, or audit metadata. An authenticated password change revokes other reusable
+authentication state and rotates the current browser's opaque AuthSession credential in place, so
+the credential valid before the password change cannot authenticate afterward. Trusted sessions
+are listed and revoked through the authenticated `/api/v1/auth/trusted-sessions` routes. A valid
+trusted-browser credential may satisfy the login MFA prompt after correct password authentication,
+but it does not establish fresh recent-MFA state. Sensitive operations still require an
+interactive TOTP step-up. MFA disable and recovery-code regeneration require recent MFA;
+`AUTH_RECENT_MFA_WINDOW_SECONDS` controls the window.
 
 The `minio-init` service creates the configured bucket and explicitly keeps it private. Re-run
 it after the MinIO service is available if the bucket needs to be bootstrapped again:
@@ -125,10 +178,14 @@ it after the MinIO service is available if the bucket needs to be bootstrapped a
 podman compose --profile local run --rm minio-init
 ```
 
-Synchronize the version-controlled identity policy before creating an initial IT administrator:
+Synchronize required configuration before creating an initial IT administrator:
 
 ```sh
 uv run python manage.py sync_identity_policy
+uv run python manage.py sync_canonical_services
+uv run python manage.py sync_institutional_forms
+uv run python manage.py sync_organization_catalog
+uv run python manage.py check
 uv run python manage.py create_it_admin \
   --email it-admin@example.edu \
   --first-name IT \
@@ -138,13 +195,34 @@ uv run python manage.py create_it_admin \
 The bootstrap command prompts for the password and never accepts it as a command-line argument.
 Use `--password-stdin` for a controlled non-interactive deployment. Re-running policy sync is
 safe; it updates known definitions, adds missing baseline grants, and retains unknown database
-rows. `create_it_admin` refuses an existing account unless `--idempotent` is explicitly supplied.
+rows except capability codes that the canonical policy explicitly marks as retired. `create_it_admin` refuses an existing account unless `--idempotent` is explicitly supplied.
+Run migrations before identity policy synchronization: `accounts.0006` reconciles legacy
+capability codes first. Run `sync_identity_policy` before `sync_canonical_services` because the
+canonical Counseling Service requires the COUNSELOR Role. Canonical Service synchronization is
+idempotent: it creates the active IN_PERSON Counseling Service on a fresh installation and repairs
+required configuration in place while preserving valid institutional settings. It is an explicit
+deployment operation, not request-time or startup-time provisioning. Readiness remains failed
+until it succeeds.
+
+Canonical Institutional Forms synchronization is also explicit and idempotent. It reconciles the
+code-owned supported Form Family and Revision definitions into PostgreSQL while preserving stable
+row IDs and historical FormRevision references. It does not contact an external QMS and it is not
+a readiness gate; deployments must still run `sync_institutional_forms` after migrations.
+
+Canonical Organization synchronization is likewise explicit and idempotent. The current UCN Campus,
+College/top-level academic-unit, and base Program catalog is source-controlled and projected into
+PostgreSQL by `sync_organization_catalog`. Canonical rows keep stable UUIDs, drift is repaired, and
+historical/noncanonical rows are retained; unsafe live routing conflicts fail closed for operator
+reconciliation. This synchronization is deployment-owned, not a request-time/startup mutation or a
+readiness gate.
 
 ## Audit Trail development
 
 The Audit Trail records meaningful business and security actions for accountability. It is separate
-from structured operational logs, HTTP access logs, and domain records. There is no audit read API
-yet; future domains must record sensitive reads explicitly at their service/use-case boundary.
+from structured operational logs, HTTP access logs, and domain records. My Activity, Security
+Activity, Platform Activity, and Privacy Activity expose curated allowlisted projections; there is
+no general raw AuditEvent browser. Sensitive data releases record audit events at the domain
+boundary.
 
 Record an event directly and keep a successful state change and its `SUCCESS` event in the same
 `transaction.atomic()` block:
@@ -172,8 +250,10 @@ Use `AuditContext.system()` for management commands and internal processes, and
 `AuditContext.anonymous()` for meaningful unauthenticated security events. Metadata must be a
 small, explicit JSON object; never include passwords, hashes, tokens, credentials, request or
 response bodies, or confidential counseling content. Audit events cannot be edited or deleted
-through normal application ORM paths. Retention, tamper-proof storage, and capability-scoped
-audit viewing are deferred to later policy and domain work.
+through normal application ORM paths. COMPASS has no AuditEvent retention, archival, or deletion
+schedule; that and tamper-proof external storage remain separate policy and deployment decisions.
+Operational retention (see Privacy Governance) appends AuditEvents but never alters or removes
+them.
 
 ## My Activity and Security Activity
 
@@ -227,6 +307,114 @@ authentication state; the last active account with effective `accounts.manage` i
 PostgreSQL row-lock coordination point. Definitions remain code-controlled, while per-user
 overrides require a non-empty reason and optional future expiry.
 
+## Privacy Governance
+
+Privacy Governance is intentionally limited to implemented COMPASS system controls: versioned
+Privacy Notices, exact-revision acknowledgment, privacy-sensitive release auditing, curated
+Privacy & Security Activity, and operational retention and disposition. Processing Activity,
+Privacy Review/PIA, Privacy Incident, and the descriptive Retention Policy registry are not live
+COMPASS features (ADR-065, ADR-069). The removal migrations fail closed when obsolete tables
+contain rows; those rows require a separate institutional data-disposition decision before
+migration can proceed.
+
+Operational retention ([ADR-072](docs/decisions/ADR-072-operational-retention-and-disposition.md),
+refined for E-Counseling media by
+[ADR-092](docs/decisions/ADR-092-ecounseling-media-governance-v2.md)) treats a record only through
+a reviewed, approved case under an active, effective rule. Holders of the retention capabilities
+(by default the DPO) activate rules and approve cases with recent MFA; COMPASS never seeds a period
+or approves its own cases, so nothing is treated until a rule is active. Holds block treatment.
+Rules exist for exactly three categories:
+
+- **Graduate Tracer:** a submitted response is anonymized. The identifiable live row and its
+  detailed children are removed; only the documented analytical contribution remains, under an
+  independent identifier.
+- **E-Counseling recordings and stored transcripts:** the governed artifact is deleted and minimized
+  evidence is kept. Version-1 media deletes the Daily provider artifact. Version-2 media deletes the
+  COMPASS-stored object and any remaining Daily copy, and completes only after every live copy is
+  verified absent.
+
+AuditEvents are never removed, and disposition does not reach backups, exports, or downloaded
+copies. Operator procedures are in the
+[retention and disposition runbook](docs/retention-disposition-runbook.md).
+
+## Confidential-content keyrings
+
+Eight confidential-content domains are encrypted under independent, ordered Fernet keyrings: the
+first key encrypts new content and every listed key decrypts. Each keyring is required in every
+environment, including local-staging, and startup rejects a keyring that reuses `SECRET_KEY`,
+`AUTH_TOTP_ENCRYPTION_KEY`, or another domain's key. All eight use the shared primitive from
+[ADR-079](docs/decisions/ADR-079-shared-confidential-data-cryptographic-primitive.md); payload
+schemas, bindings, and rotation stay with each domain.
+
+| Domain | Keyring setting | Decision | Rotation command |
+| --- | --- | --- | --- |
+| Routine Interview | `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` | ADR-066 | `rotate_routine_interview_encryption` |
+| Counseling Shared Summary | `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS` | ADR-080 | `rotate_counseling_shared_summary_encryption` |
+| Referral | `REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-081 | `rotate_referral_confidential_content` |
+| Exit Interview | `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-082 | `rotate_exit_interview_confidential_content` |
+| Individual Inventory | `INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-083 | `rotate_inventory_confidential_content` |
+| Graduate Tracer | `GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-084 | `rotate_graduate_tracer_confidential_content` |
+| Account Profile | `ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-085 | `rotate_account_profile_confidential_content` |
+| Feedback | `FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-086 | `rotate_feedback_confidential_content` |
+
+The keyrings are only part of the deployment's runtime secrets, which also include database,
+Redis, object storage, SMTP, provider, TOTP, and Web Push credentials. The canonical list of
+runtime secret sources is `SECRET_FILES` in
+[`deploy/runtime-secrets/runtime_secrets.py`](deploy/runtime-secrets/runtime_secrets.py);
+[runtime-secrets.md](docs/runtime-secrets.md) covers provisioning and the current cutover gates.
+Count secret sources from that inventory, not from the number of keyrings.
+
+## Routine Interview content encryption
+
+Routine Interview Student Intake and Counselor Evaluation content is stored only as authenticated
+Fernet ciphertext bound to its record and section. Relationships, status, and timestamps remain
+queryable metadata (ADR-066). `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` is required in every environment.
+It is an ordered, comma-separated keyring: the first key encrypts new content and every listed key
+can decrypt. Generate each key without putting it in the repository, and never reuse `SECRET_KEY`
+or `AUTH_TOTP_ENCRYPTION_KEY`:
+
+```sh
+uv run python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())'
+```
+
+Content encrypted under a lost key cannot be recovered, including from backups. Deployments must
+therefore escrow every key away from the database host and its backups.
+
+```sh
+uv run python manage.py rotate_routine_interview_encryption --dry-run
+uv run python manage.py rotate_routine_interview_encryption
+```
+
+The dry run verifies every stored token and reports counts only. The real run re-encrypts older
+tokens under the primary key in row-locked batches without changing timestamps, and is safe to
+interrupt and repeat. To rotate:
+
+1. Configure `NEW,OLD` and restart web, worker, and beat.
+2. Run the command until nothing is left to re-encrypt.
+3. Retire `OLD` only after every backup that may hold content under it has expired.
+
+ADR-066 has the first-deployment runbook and the threat model.
+
+## Counseling Shared Summary content encryption
+
+Shared Summary bodies use `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS`, a required independent
+ordered Fernet keyring in every environment, including local-staging. Do not reuse any Routine,
+TOTP, Web Push storage or Django secret key. Keep a protected off-host recovery copy. Drafts and
+published bodies both remain encrypted; authorized responses still expose ordinary `content`.
+Encounter metadata remains queryable. See ADR-080 for the exact binding/schema and migration.
+
+```sh
+uv run python manage.py rotate_counseling_shared_summary_encryption --dry-run --batch-size 100
+```
+
+The command verifies every selected body and refuses legacy plaintext schema. Real rotation uses
+the primary key in bounded transactions, preserving publication/timestamps/Audit/notifications,
+and can resume after interruption. Live deployment requires a separate coordinated cutover:
+provision every absent required domain keyring from the current runtime-secret inventory (see
+"Confidential-content keyrings") and stop/drain old web/worker/Beat through the destructive
+migration and candidate activation. Follow [runtime-secrets.md](docs/runtime-secrets.md), including
+verified backups and controlled reverse migration; do not start the normal deployment prematurely.
+
 ## API Contract
 
 The committed [`../contracts/openapi.json`](../contracts/openapi.json) is the development contract
@@ -251,38 +439,44 @@ The same commands can run with the normal backend environment by omitting the
 route, so it remains usable when `API_DOCS_ENABLED=false`. When enabled, local Swagger is at
 `/api/v1/docs` and the raw schema is at `/api/v1/openapi.json`.
 
-Operation IDs are stable public identifiers (`health<Action>`, `auth<Action>`, `me<Action>`, and
-`accounts<Action>`), and tags are bounded domains rather than user roles. Intentional path, method,
-operation ID, parameter, schema, status-code, enum, or security changes must update the artifact
-in the same change. Future frontend work should use relative `/api/` requests through a same-origin
-proxy or ingress, preserve browser cookie credentials and Django CSRF behavior, and never read or
-store the HttpOnly authentication cookie. A future Next.js server adapter may need explicit
-request-scoped cookie forwarding for SSR; the backend contract does not weaken cookie security for
-that case. Orval configuration and generated TypeScript belong to the future `fe/` workspace.
+Operation IDs are stable public identifiers with domain-specific prefixes, and tags are bounded
+domains rather than user roles. Intentional path, method, operation ID, parameter, schema,
+status-code, enum, or security changes must update the artifact in the same change. The `fe/`
+client is generated from this contract. Browser requests use the same-origin `/api/` proxy,
+preserve cookie credentials and Django CSRF behavior, and never read or store the HttpOnly
+authentication cookie.
 
 ## Live-staging outline
 
-Create a deployment-only `.env` from the same settings contract and set:
+Follow [the host-managed runtime secret runbook](docs/runtime-secrets.md) (ADR-078) before
+deploying `compose.staging.yaml`. Keep long-lived values in `/opt/compass/secrets` and only ordinary
+configuration plus `_FILE` pointers in the deployment `.env`. In particular, set:
 
-- `APP_ENV=live-staging`, `DEBUG=false`, a generated `SECRET_KEY`, and explicit `ALLOWED_HOSTS`;
-- PostgreSQL credentials/host and Redis URLs that are reachable only on the private network;
-- `S3_ENDPOINT_URL` and credentials for the approved external S3-compatible service;
-- real SMTP host/credentials; do not use Mailpit;
+- `APP_ENV=live-staging`, `DEBUG=false`, `SECRET_KEY_FILE`, and explicit `ALLOWED_HOSTS`;
+- PostgreSQL password-file/host and `REDIS_PASSWORD_FILE`, `REDIS_HOST`, `REDIS_PORT` on the private
+  network; Redis/Celery URLs are derived rather than stored in live `.env`;
+- `S3_ENDPOINT_URL` and credential-file pointers for the approved external S3-compatible service;
+- real SMTP host and credential-file pointers; do not use Mailpit;
 - `TURNSTILE_ENABLED=true`, the server-only Turnstile secret, and expected hostname/action values;
 - a valid `AUTH_TOTP_ENCRYPTION_KEY` in deployment secret storage, `AUTH_COOKIE_SECURE=true`,
   and explicit auth cookie/origin policy;
+- all eight dedicated confidential-content keyrings (see "Confidential-content keyrings"), each
+  escrowed away from database backups. The first deployment that adds a domain's encryption
+  migration follows that domain's runbook, including a verified backup (for example ADR-066 before
+  `routine_interviews.0003`);
 - `CADDY_ADDRESS` and `CADDY_HEALTH_HOST` to the staging hostname,
-  `PROXY_BIND_ADDRESS=0.0.0.0`, and ports 80/443.
+  `PROXY_BIND_ADDRESS=0.0.0.0`, and ports 80/443;
+- optionally, realtime (`REALTIME_ENABLED`, `REALTIME_ALLOWED_ORIGINS`, and
+  `COMPOSE_PROFILES=realtime`), only after the prerequisites in
+  [`docs/realtime-deployment.md`](docs/realtime-deployment.md) are confirmed.
 
-Start only the non-local services on the droplet:
+Provision and compare exact existing values before the first file-backed deployment. Dispatch
+`Deploy staging backend` for the full current staging SHA; it runs host-secret metadata preflight,
+quiet Compose validation and the existing migration/synchronization checks before replacing the
+application containers. Repository correctness and live cutover are separate acceptance steps.
 
-```sh
-podman compose up -d
-podman compose run --rm web python manage.py migrate
-podman compose run --rm web python manage.py check --deploy
-```
-
-The same backend image is used by `web`, `worker`, and `beat`; only the command differs. Keep
+The same backend image is used by `web`, `worker`, `beat`, and the optional `realtime` service;
+only the command differs. `realtime` receives only Redis settings and allowed Origins. Keep
 exactly one Beat service per environment. Expose only Caddy publicly, keep PostgreSQL/Redis
 private, and allowlist Cloudflare's published IP ranges at the droplet firewall/security layer
 before relying on forwarded client-IP headers. The current Caddyfile includes the Cloudflare
@@ -309,7 +503,9 @@ the Compose services when deployment automation is introduced.
 ## API and infrastructure conventions
 
 - `GET /api/v1/health/live` is process-only liveness.
-- `GET /api/v1/health/ready` checks PostgreSQL with `SELECT 1` and returns 503 when unavailable.
+- `GET /api/v1/health/ready` checks PostgreSQL with `SELECT 1` and verifies read-only canonical
+  Counseling configuration; it returns 503 when either is unavailable or invalid. ONLINE delivery,
+  Daily, Counselor Availability, Academic Year, and Student Inventory are not readiness gates.
 - Every response receives a valid `X-Request-ID`; a supplied ID is reused only when it is a
   canonical UUID. Invalid values are replaced. Logs contain controlled JSON fields and never
   include request bodies, query strings, tokens, or credentials.
@@ -318,43 +514,296 @@ the Compose services when deployment automation is introduced.
 - Authentication failures are externally generic; opaque session and trusted-session credentials,
   passwords, MFA codes, OTP values, and Turnstile tokens are not placed in API JSON or audit
   metadata. Cookie-authenticated state changes require Django CSRF validation.
-- Redis rate limiting uses an atomic Lua `INCR`/`EXPIRE` operation, but no endpoint policy is
-  invented here. Turnstile verification is a separate server-side adapter and is not a rate limit.
+- Redis rate limiting uses an atomic Lua `INCR`/`EXPIRE` operation for the established
+  authentication abuse boundaries. Turnstile verification is a separate server-side adapter.
 - Idempotency is a reusable Redis reservation/replay boundary keyed by actor + method + route +
-  idempotency key and compared by request fingerprint. It is not a substitute for database
-  uniqueness constraints and is not attached to an endpoint yet.
+  idempotency key and compared by request fingerprint. Appointment booking is its first endpoint
+  consumer. It is not transactionally atomic with PostgreSQL and never replaces database locking
+  or conflict validation.
 - Storage and email calls go through app-facing adapters. Durable uploads are not written to the
   container filesystem.
+- Resource file replacement and removal delete the superseded object only after the database
+  change commits, outside row locks. If that delete fails, the change stands and a
+  `resource_file_cleanup_failed` warning records the Resource ID and cleanup kind (`replaced_file`,
+  `removed_file`, or `attach_rollback`). Any object under `resources/<resource_id>/` that is not
+  that Resource's current `storage_key` and predates the warning is an orphan an operator may
+  delete.
+- Structured logs keep only a reviewed allowlist of `extra` fields (`compass.common.json_logging`):
+  request/task context plus diagnostic identifiers, closed codes, counts, and exception class
+  names. Values that are not numbers, UUIDs, or short code-like strings are dropped.
 - Audit events are synchronous PostgreSQL writes through one explicit service. They carry the
   existing request ID, trusted client IP, bounded user-agent summary, actor, outcome, target, and
   small deliberate metadata; they do not replace operational logging.
+- Row locks use `select_for_update(of=("self",))` unless a joined parent row is deliberately part
+  of the serialization. External network calls, such as PSGC resolution, run before locks are
+  taken and are revalidated under the lock (ADR-062).
+- Database integrity and data errors map by PostgreSQL SQLSTATE: unique, foreign-key, and exclusion
+  violations return 409; check violations and data errors return 422; anything else is logged and
+  returns the generic 500. Error codes come from exception types, never from message text.
+- Realtime (ADR-100) is a hint layer, not an API: `POST /api/v1/realtime/tickets` mints a
+  single-use, 30-second ticket (Redis keeps only its SHA-256 digest in database 4), and the
+  separate `realtime_service` accepts `/api/realtime/v1/socket` only from exact allowlisted
+  Origins, authenticated by that ticket in the first frame. It never imports Django or reads
+  PostgreSQL. Publish only registered, content-free events through `compass.realtime.publish`
+  after commit; every AuthSession revocation closes that session's socket. See
+  [`docs/realtime-deployment.md`](docs/realtime-deployment.md).
+- Eligibility projections such as Appointment `actions`, `counseling_context_available`, email
+  `manual_retry_allowed`, and notice `publish_readiness` are advisory. Every mutation revalidates.
+
+## Transactional email
+
+Every COMPASS email is plain text plus a branded HTML alternative (ADR-074). Notification email
+and the authentication security email (Email OTP and the previous-address email-change alert) render
+`<name>.txt`/`<name>.html` pairs that extend the shared shells in
+`compass/common/templates/compass/email/`: `base` for ordinary messages and `security` for the
+"Security notice" variant. `compass.common.email.render_email` renders both bodies; `Mailer`
+remains the only SMTP transport. Templates are code-owned and receive no record data, so styling
+cannot widen what an email discloses. The shell uses no images, links, remote resources, or
+scripts; COMPASS has no verified public frontend URL, so messages say "Sign in to COMPASS" instead
+of linking. Preview changes with `render_email_previews`, or open them in local Mailpit.
 
 ## Decisions
 
-See [`docs/decisions/`](docs/decisions/) for the foundation ADRs, including the deliberate choices
+See [`docs/decisions/`](docs/decisions/) for the accepted ADRs, including the deliberate choices
 to use Django Ninja, omit admin, keep PostgreSQL authoritative, separate Redis concerns, abstract
-S3-compatible storage, separate capability from future scope, use one environment-driven settings
+S3-compatible storage, separate capability from resource scope, use one environment-driven settings
 module, propagate correlation IDs, define idempotency semantics, establish explicit account
 identity policy, keep Audit Trail recording explicit and separate from operational logs, use
 server-managed cookie sessions for authentication, and keep Account Management purpose-built with
 an explicit `accounts.manage` boundary. The API contract ADR establishes stable operation IDs,
-machine-friendly tags, shared error schemas, and the committed deterministic OpenAPI artifact for
-future frontend client generation.
+machine-friendly tags, shared error schemas, and the committed deterministic OpenAPI artifact used
+by the frontend generator.
+
+Accepted ADRs are not rewritten when later decisions refine them; follow the newer decision for
+current behavior. In particular, ADR-097 governs UCN civil time where ADR-019, ADR-020, and
+ADR-021 interpret it in `settings.TIME_ZONE`; ADR-089 governs Service booking and Counselor
+qualification over ADR-018 and the scheduling ADRs it lists; ADR-072 with ADR-092 govern
+operational retention after ADR-061, ADR-065, and ADR-069; and ADR-100 refines ADR-071's
+WebSocket remark with a separate realtime tier. Two documents share the number ADR-057
+and there is no ADR-077, so cite those by title.
 
 ## Known verification gaps
 
 The Compose files are designed for Podman; image pulls, Caddy validation, and a full multi-container
-smoke test require a running Podman machine and are listed as deployment checks. MinIO is
-appropriate for local S3 compatibility testing; live-staging should use the approved external
-provider after its lifecycle, retention, backup, and TLS policy are confirmed. The email OTP
-foundation has no user-facing recovery endpoint yet; password reset, organization/scope, Activity
-Log, and Audit read APIs remain separate follow-up slices. The current Account Management
-implementation does not provide onboarding/invitation, organizational responsibility, resource
-assignment, or role/designation/capability definition CRUD.
+smoke test require a running Podman machine and are deployment checks. MinIO is appropriate for
+local S3 compatibility testing; live-staging should use the approved external provider after its
+lifecycle, retention, backup, and TLS policy are confirmed. Account Management remains
+purpose-built and does not provide generic role, designation, or capability definition CRUD.
 
 
 ## Organization and default responsibility scope
 
-The Organization domain models an explicit Campus -> College structure, current student college affiliation, one default counselor per College, and Guidance Services Staff supervision. Effective organizational scope is default responsibility/routing context rather than a permanent authorization wall: future preferred-counselor and case-specific assignment rules may cross those boundaries. An active Counselor holding the HEAD_GUIDANCE_COUNSELOR designation has institution-wide responsibility over active Colleges under active Campuses and is the deterministic fallback only when exactly one valid Head exists.
+The Organization domain keeps Campus -> College/top-level academic unit -> Program as a relational
+projection of the current UCN institutional catalog. Campus, College, and Program are canonical
+reference structure synchronized by deployment; ordinary portal users do not create, edit, enable,
+or disable that institutional topology. PostgreSQL rows remain so Inventory, reporting, routing,
+and historical foreign keys retain stable relational identities.
 
-Organization management uses the scope-free capabilities `organization.view` and `organization.manage`; mutations reuse recent-MFA step-up and are audited synchronously. No Campus or College delete endpoints are exposed.
+Student affiliation, one default Counselor responsibility per College, and Guidance Services Staff
+supervision remain genuine GCO operational relationships. Effective organizational scope is default
+responsibility/routing context rather than a permanent authorization wall. An active Counselor
+holding the HEAD_GUIDANCE_COUNSELOR designation has institution-wide responsibility over active
+Colleges under active Campuses and is the deterministic fallback only when exactly one valid Head
+exists.
+
+Safe Campus, College, and Program reads use `organization.structure.view`. `organization.manage`
+continues to govern Counselor responsibility, staff supervision, Student affiliation, and eligible
+people discovery; consequential relationship mutations still require recent MFA and synchronous
+audit recording. No ordinary user capability mutates institutional topology.
+
+
+## Service Catalog
+
+The Service Catalog is the institution-wide configuration boundary for what the Guidance and
+Counseling Office offers. A Service is more fundamental than Appointment
+([ADR-089](docs/decisions/ADR-089-service-catalog-consolidation-and-counselor-qualification.md)
+refines ADR-018). Each Service stores:
+
+- `appointment_booking_enabled`, whether the Service can be newly booked through Appointments. An
+  enabled Service does not require every workflow to start from an Appointment: canonical
+  Counseling is bookable and still records walk-in, called-in, and referred sessions.
+- One or more supported delivery modes (`IN_PERSON` and/or `ONLINE`).
+- Appointment-only settings: `default_appointment_duration_minutes` (1–480), an optional
+  `cancellation_cutoff_minutes`, and `requires_current_inventory`. They are unset while booking is
+  off, and turning booking off clears them.
+- `provider_coverage`: `ALL_COUNSELORS`, or `SELECTED_COUNSELORS` with explicit Counselor rows.
+
+Counselor is the only provider class. A Counselor qualifies for new work on a Service when the
+account is active, its primary role is COUNSELOR, and coverage is all Counselors or selects them;
+Head Guidance Counselors qualify through their Counselor role. Legacy provider-role rows remain as
+history and are never used for eligibility. Guidance Services Staff can administer scoped
+Appointments but cannot act as providers. ONLINE Counseling is a delivery mode, not a separate
+E-Counseling Service.
+
+New Services are created inactive and are enabled explicitly only after the active configuration
+invariant is satisfied: an active bookable Service needs a duration, and an active
+`SELECTED_COUNSELORS` Service needs at least one active selected Counselor. Service codes are
+normalized stable identifiers and are not editable through the normal PATCH API. There is no
+delete endpoint.
+
+New work (booking, rescheduling, reassignment, and new direct Counseling or Routine Interviews)
+uses the current configuration. Existing Appointments keep their saved Service, delivery mode,
+duration, and cutoff, and stay fulfillable as booked. A change that would affect future SCHEDULED
+Appointments needs explicit acknowledgement (`service_scheduling_consequence_review_required`) and
+never modifies those Appointments.
+
+`services.catalog.view` permits authenticated active catalog reads. Inactive draft configuration additionally
+requires `services.manage`; all writes require `services.manage` plus recent MFA. IT Admin
+receives view/manage, Counselor/GSS/Student receive view, and the Head Guidance Counselor
+designation grants manage. Capability overrides remain authoritative.
+
+Provider qualification is intentionally narrow: it does not imply organization scope,
+availability, student preference, case/resource authorization, or record access. Head remains a
+COUNSELOR, while GSS organizational responsibility continues to come from the supervising
+Counselor.
+
+```text
+GET   /api/v1/services
+POST  /api/v1/services
+GET   /api/v1/services/provider-candidates
+GET   /api/v1/services/{service_id}
+GET   /api/v1/services/{service_id}/providers
+PATCH /api/v1/services/{service_id}
+POST  /api/v1/services/{service_id}/enable
+POST  /api/v1/services/{service_id}/disable
+```
+
+Service Catalog configuration emits `service.created`, `service.updated`, `service.enabled`,
+and `service.disabled` Audit Trail events. These are deliberately not projected into My Activity
+or Security Activity. Appointment, Counseling, Good Moral, Exit Interview, and Feedback workflows
+now consume this configuration through their own domain rules.
+
+
+## Availability
+
+Availability models recurring weekly GCO Office hours, recurring weekly Provider hours, and dated
+unavailability exceptions. Weekly rows are UCN wall-clock values interpreted in
+`INSTITUTION_TIME_ZONE`, never the runtime `TIME_ZONE` (see Institutional time and
+[ADR-097](docs/decisions/ADR-097-institutional-civil-time-independent-of-runtime-timezone.md),
+which refines ADR-019); exceptions are timezone-aware absolute datetime ranges. All interval
+calculation uses half-open `[start, end)` semantics. Empty schedules fail closed and semantic
+weekly overlaps are rejected for the same delivery-mode context.
+
+Provider and Office schedules are independent. A provider must be an active Counselor to receive
+new schedule configuration. Historical GSS schedule rows remain readable but do not confer live
+provider eligibility. Counselors may manage only their own Provider Availability through the
+`/availability/me/...` API using `availability.manage_self`. Head Guidance Counselors remain
+Counselors and receive separate administrative `availability.manage` authority through their
+Head designation. GSS has no self-management grant by default. Administrative Availability
+mutations require recent MFA; routine Counselor self-service does not.
+
+Effective/base Availability is computed from Provider weekly Availability intersected with Office
+weekly Availability, minus applicable Office and Provider exceptions. Service Catalog remains the
+source of truth for active Service state, delivery-mode support, Counselor qualification, and the
+Appointment duration. Effective Availability is not applicable to a Counselor who is not qualified
+for the Service. While booking is on, results shorter than the Appointment duration are discarded,
+but longer intervals are returned whole; no slots are persisted. Effective queries are bounded to
+31 days. Appointment booking additionally checks reservations and exposes bookable slots.
+
+```text
+GET    /api/v1/availability/office/weekly
+PUT    /api/v1/availability/office/weekly
+GET    /api/v1/availability/office/exceptions
+POST   /api/v1/availability/office/exceptions
+DELETE /api/v1/availability/office/exceptions/{exception_id}
+GET    /api/v1/availability/me/weekly
+PUT    /api/v1/availability/me/weekly
+GET    /api/v1/availability/me/exceptions
+POST   /api/v1/availability/me/exceptions
+DELETE /api/v1/availability/me/exceptions/{exception_id}
+GET    /api/v1/availability/providers/{provider_id}/weekly
+PUT    /api/v1/availability/providers/{provider_id}/weekly
+GET    /api/v1/availability/providers/{provider_id}/exceptions
+POST   /api/v1/availability/providers/{provider_id}/exceptions
+DELETE /api/v1/availability/providers/{provider_id}/exceptions/{exception_id}
+GET    /api/v1/availability/providers/{provider_id}/effective
+```
+
+Availability configuration is audited synchronously but is not projected into My Activity or
+Security Activity. Counseling's default one-hour duration and 30-minute cancellation cutoff are
+Service configuration and are enforced by Appointment booking and cancellation.
+
+
+## Appointments
+
+Appointments are shared reservation records, not Counseling encounters. Student self-booking
+derives the Student from the authenticated account, resolves either an explicitly selected active
+Counselor or the canonical Organization default Counselor, requires that Counselor to be qualified
+for the Service (an unqualified default fails with `appointment_default_provider_not_qualified`
+rather than being substituted), derives duration from the active bookable Service, validates the
+entire proposed interval through Availability, and prevents overlapping SCHEDULED reservations for
+both Student and Provider.
+
+Booking locks Student and Provider accounts in deterministic UUID order and then locks the Service
+row. Human references use `APT-YYYY-NNNNNN`, where YYYY is the booking year in UCN civil time
+(`INSTITUTION_TIME_ZONE`; ADR-097 refines ADR-020). Service cancellation cutoff is snapshotted into
+each Appointment so later catalog changes do not alter existing cancellation behavior.
+
+```text
+POST /api/v1/appointments
+GET  /api/v1/appointments/me
+GET  /api/v1/appointments
+GET  /api/v1/appointments/{appointment_id}
+POST /api/v1/appointments/{appointment_id}/cancel
+GET  /api/v1/appointments/booking/counselors
+```
+
+Student self-booking and self-cancellation use `appointments.manage_self`; assigned Students and
+Providers use `appointments.view_self`; operational management uses `appointments.manage` and
+administrative cancellation requires recent MFA. Head Guidance Counselor receives Appointment
+management through designation. IT Admin does not receive Appointment business-data authority by
+default.
+
+Appointments now support bounded slot discovery, rescheduling, reassignment, completion, no-show,
+notifications, and the related Counseling and E-Counseling workflows. There is no generic
+Appointment PATCH/DELETE or persisted slot table.
+
+Appointment detail projects the lifecycle `actions` available to the requesting actor, each with a
+closed `blocker` when unavailable, and `counseling_context_available` for the assigned Counselor.
+Both list routes accept `upcoming=true` (SCHEDULED and not yet started), which is the population
+counted on the Overview.
+
+
+## Referral confidential source content
+
+ADR-081 stores Referral reason/referrer/status/void reason together in ciphertext and each action's
+remarks in its own bound ciphertext under the dedicated required
+`REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`. First key encrypts; all ordered entries decrypt.
+Operational/searchable metadata remains queryable. Authorized API and Referral Slip PDF content
+stay compatible through explicit reads; Context history uses metadata only. See
+[ADR-081](docs/decisions/ADR-081-referral-confidential-source-content-encryption.md).
+
+For local setup, generate a separate local Fernet keyring and set it in `.env`; do not reuse Django,
+TOTP, Web Push, Routine or Shared Summary keys. The example intentionally contains no usable key.
+`python manage.py rotate_referral_confidential_content --dry-run --batch-size 100` verifies both
+Referral and action payloads without writing; real rotation rewraps previous-key tokens and retains
+business metadata. It refuses the legacy schema. Live staging is explicitly deferred: resolve the
+actual host state and both outstanding ADR-080/ADR-081 dependencies through the separate
+[runtime-secret cutover runbook](docs/runtime-secrets.md) before deploying.
+
+## Exit Interview confidential contact and narrative content
+
+ADR-082 selectively encrypts 13 direct-contact/narrative fields, opportunity notes and correction
+reasons in three independently bound envelopes under the one required ordered
+`EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`. Structured survey dimensions, both rating
+models, workflow/provenance and historical name search stay queryable. Authorized logical API/PDF
+fields remain unchanged; Head DRAFT and GSS response boundaries remain enforced before decrypt.
+Good Moral graduation eligibility requires metadata only.
+
+For local setup, provision a separate local keyring in `.env`; do not reuse Django, TOTP, Web Push
+storage or any Routine, Shared Summary or Referral entry. The example has no usable key. Preserve
+complete ordered keyrings in protected off-host recovery, including older keys for retained backups.
+
+```sh
+uv run python manage.py rotate_exit_interview_confidential_content --dry-run --batch-size 100
+uv run python manage.py rotate_exit_interview_confidential_content --batch-size 100
+```
+
+Rotation verifies all three families, refuses legacy plaintext schema, and rewraps previous-key
+tokens in row-locked bounded transactions without changing business metadata. Counts/errors remain
+content-free, and interrupted work resumes safely. Live activation is deferred: follow the current
+ADR-085/086 combined cutover in [runtime-secrets.md](docs/runtime-secrets.md) (older numbered
+sections, including ADR-082's, are historical) for actual starting-state discovery, the current
+runtime-secret inventory, each absent independent domain keyring, backup/recovery and maintenance
+with all old writers stopped/drained through destructive migrations and exact-SHA activation. Do
+not start ordinary deployment until that separately authorized cutover is ready.

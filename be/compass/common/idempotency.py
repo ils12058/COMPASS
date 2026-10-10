@@ -1,8 +1,8 @@
 """Reusable Redis boundary for idempotent state-changing operations.
 
 This layer reserves a request once, compares future requests by fingerprint, and stores the
-completed response for replay. It is intentionally not wired to any endpoint until a domain
-operation defines its actor identity and response semantics.
+completed response for replay. Domains remain responsible for actor scoping, response semantics,
+and authoritative database transactions.
 """
 
 from __future__ import annotations
@@ -10,12 +10,15 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import logging
 import secrets
 from dataclasses import dataclass
 from typing import Literal
 
 import redis
 from django.conf import settings
+
+logger = logging.getLogger("compass.idempotency")
 
 _COMPLETE_SCRIPT = """
 local raw = redis.call('GET', KEYS[1])
@@ -27,6 +30,16 @@ record.status_code = tonumber(ARGV[2])
 record.content_type = ARGV[3]
 record.body_b64 = ARGV[4]
 redis.call('SET', KEYS[1], cjson.encode(record), 'EX', ARGV[5])
+return 1
+"""
+
+_ABANDON_SCRIPT = """
+local raw = redis.call('GET', KEYS[1])
+if not raw then return -1 end
+local record = cjson.decode(raw)
+if record.owner_token ~= ARGV[1] then return 0 end
+if record.state ~= 'in_progress' then return -2 end
+redis.call('DEL', KEYS[1])
 return 1
 """
 
@@ -193,3 +206,40 @@ class RedisIdempotencyStore:
             raise IdempotencyOwnershipError("idempotency reservation is owned by another request")
         if result != 1:
             raise IdempotencyUnavailable("idempotency reservation no longer exists")
+
+    def abandon(self, reservation: IdempotencyReservation) -> None:
+        """Release an owned in-progress reservation after a rolled-back domain operation."""
+        try:
+            result = int(
+                self.client.eval(
+                    _ABANDON_SCRIPT,
+                    1,
+                    reservation.redis_key,
+                    reservation.owner_token,
+                )
+            )
+        except redis.exceptions.RedisError as exc:
+            raise IdempotencyUnavailable("idempotency Redis is unavailable") from exc
+        if result == 0:
+            raise IdempotencyOwnershipError("idempotency reservation is owned by another request")
+        if result != 1:
+            raise IdempotencyUnavailable("idempotency reservation cannot be abandoned")
+
+
+def abandon_after_unexpected_failure(
+    store: RedisIdempotencyStore,
+    reservation: IdempotencyReservation,
+) -> None:
+    """Best-effort release of a reservation whose domain transaction rolled back unexpectedly.
+
+    Without this, an unexpected error would leave the key ``in_progress`` for the full TTL and
+    block the client's safe retry of the same intent. The caller re-raises the original error.
+    """
+
+    try:
+        store.abandon(reservation)
+    except (IdempotencyUnavailable, IdempotencyOwnershipError):
+        logger.warning(
+            "idempotency reservation could not be released after an unexpected failure",
+            extra={"event": "idempotency_abandon_failed"},
+        )

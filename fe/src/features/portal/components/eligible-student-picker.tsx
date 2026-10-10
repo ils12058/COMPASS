@@ -1,0 +1,136 @@
+"use client";
+
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import type {
+  AssessmentStudentOption,
+  CallSlipStudentOptionResponse,
+  ExitInterviewStudentOptionResponse,
+  GuidanceStudentOption,
+  ReferralStudentOptionResponse,
+} from "@/lib/api/generated/model";
+
+export type EligibleStudentOption =
+  | AssessmentStudentOption
+  | ExitInterviewStudentOptionResponse
+  | CallSlipStudentOptionResponse
+  | ReferralStudentOptionResponse
+  | GuidanceStudentOption;
+
+export function EligibleStudentPicker({
+  search,
+  onSearchChange,
+  onSearch,
+  items,
+  selectedStudent,
+  selectedId,
+  onSelect,
+  page,
+  hasNext,
+  isLoading,
+  isError,
+  errorMessage,
+  onRetry,
+  onPageChange,
+  label = "Student",
+}: {
+  search: string;
+  onSearchChange: (value: string) => void;
+  onSearch: () => void;
+  items: EligibleStudentOption[];
+  selectedStudent: EligibleStudentOption | null;
+  selectedId: string | null;
+  onSelect: (student: EligibleStudentOption) => void;
+  page: number;
+  hasNext: boolean;
+  isLoading: boolean;
+  isError: boolean;
+  errorMessage: string;
+  onRetry: () => void;
+  onPageChange: (page: number) => void;
+  label?: string;
+}) {
+  return (
+    <fieldset className="min-w-0" aria-busy={isLoading}>
+      <legend className="text-sm font-semibold text-ink">{label}</legend>
+      <form
+        className="mt-3 flex flex-col gap-2 sm:flex-row"
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSearch();
+        }}
+      >
+        <div className="min-w-0 flex-1">
+          <Label htmlFor="eligible-student-search">Search eligible Students</Label>
+          <Input
+            id="eligible-student-search"
+            type="search"
+            autoComplete="off"
+            maxLength={160}
+            placeholder="Search name or Institutional ID"
+            value={search}
+            onChange={(event) => onSearchChange(event.target.value)}
+          />
+        </div>
+        <Button className="self-end" variant="secondary" type="submit">
+          Search
+        </Button>
+      </form>
+      {selectedStudent ? (
+        <p className="mt-3 rounded-sm bg-brand-wash px-3 py-2 text-sm text-ink">
+          Selected: <span className="font-semibold">{selectedStudent.display_name}</span>
+          {selectedStudent.institutional_id ? ` · ${selectedStudent.institutional_id}` : ""}
+        </p>
+      ) : null}
+      {isError ? (
+        <div role="alert" className="mt-4">
+          <p className="text-sm text-danger">{errorMessage}</p>
+          <Button className="mt-3" variant="secondary" onClick={onRetry}>
+            Retry Student search
+          </Button>
+        </div>
+      ) : isLoading ? (
+        <p role="status" className="mt-4 text-sm text-muted">Loading eligible Students…</p>
+      ) : items.length === 0 ? (
+        <p className="mt-4 rounded-sm bg-surface-subtle px-4 py-3 text-sm text-muted">
+          No eligible students match this search.
+        </p>
+      ) : (
+        <ul className="mt-3 divide-y divide-border rounded-sm border border-border">
+          {items.map((student) => (
+            <li key={student.id}>
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 px-3 py-3 text-sm text-ink transition-colors hover:bg-surface-subtle has-[:checked]:bg-brand-wash">
+                <input
+                  className="mt-1 h-4 w-4 shrink-0 accent-brand"
+                  type="radio"
+                  name="eligible-student"
+                  value={student.id}
+                  checked={selectedId === student.id}
+                  onChange={() => onSelect(student)}
+                />
+                <span className="min-w-0">
+                  <span className="block font-semibold">{student.display_name}</span>
+                  <span className="mt-1 block text-xs text-muted">
+                    {student.institutional_id ? `Institutional ID ${student.institutional_id}` : "Institutional ID not available"}
+                    {student.college ? ` · ${student.college.name}` : ""}
+                  </span>
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!isError && !isLoading ? (
+        <CanonicalPagination
+          className="mt-3 border-t-0 pb-0"
+          page={page}
+          hasNext={hasNext}
+          label="Eligible Student results"
+          onPageChange={onPageChange}
+        />
+      ) : null}
+    </fieldset>
+  );
+}

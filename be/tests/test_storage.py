@@ -13,10 +13,14 @@ def test_object_storage_delegates_to_configured_backend():
     storage.exists("example.txt")
     storage.open("example.txt")
     storage.url("example.txt")
+    storage.private_url("example.txt", expires_seconds=300)
     storage.delete("example.txt")
 
     backend.save.assert_called_once()
     backend.exists.assert_called_once_with("example.txt")
     backend.open.assert_called_once_with("example.txt", "rb")
-    backend.url.assert_called_once_with("example.txt")
+    assert backend.url.call_args_list == [
+        (("example.txt",), {}),
+        (("example.txt",), {"expire": 300}),
+    ]
     backend.delete.assert_called_once_with("example.txt")
