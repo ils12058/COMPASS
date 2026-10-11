@@ -27,11 +27,17 @@ from compass.assessment_records.errors import (
     AssessmentRecordNotFound,
     InvalidAssessmentRecordInput,
 )
-from compass.assessment_records.models import StudentAssessmentRecord
+from compass.assessment_records.models import AssessmentType, StudentAssessmentRecord
 from compass.audit.models import AuditEvent
 from compass.common.institutional_time import institution_today
 from compass.confidential_data import crypto
-from compass.organization.models import Campus, College, CounselorResponsibility, StudentAffiliation
+from compass.organization.models import (
+    Campus,
+    College,
+    CounselorResponsibility,
+    StaffSupervision,
+    StudentAffiliation,
+)
 from tests.test_notifications import auth_client
 
 pytestmark = pytest.mark.django_db
@@ -145,7 +151,7 @@ def test_inactive_stale_and_changed_identity_and_anonymous(world):
     assert Client().get(BASE).status_code == 401
 
 
-def test_ordinary_override_is_scoped_and_catalog_management_head_only(world):
+def test_ordinary_override_is_scoped_and_catalog_management_uses_capabilities(world):
     a, b = record(world), record(world, student_id=world.other_student.pk)
     grant(world.ordinary)
     client = auth_client(world.ordinary)
@@ -165,8 +171,34 @@ def test_ordinary_override_is_scoped_and_catalog_management_head_only(world):
     )
     with pytest.raises(AssessmentRecordNotFound):
         services.create_record(actor=world.ordinary, values=values(world, student_id=b.student_id))
-    with pytest.raises(AssessmentRecordAccessDenied):
-        services.create_type(actor=world.ordinary, values={"name": "Restricted catalog write"})
+    # Type mutations operate on the shared catalog, without expanding record scope.
+    created = services.create_type(
+        actor=world.ordinary, values={"name": "  Shared   Assessment  "}
+    )
+    assert created.name == "Shared Assessment"
+    changed = services.update_type(
+        actor=world.ordinary,
+        type_id=created.pk,
+        values={"description": "Catalog change", "is_active": False},
+    )
+    assert changed.description == "Catalog change" and not changed.is_active
+    services.update_type(actor=world.ordinary, type_id=created.pk, values={"is_active": True})
+    assert created.pk in {item.pk for item in services.list_types(actor=world.head)}
+    for action in (
+        "assessment_type.created",
+        "assessment_type.updated",
+        "assessment_type.deactivated",
+        "assessment_type.reactivated",
+    ):
+        event = AuditEvent.objects.filter(action=action, target_id=str(created.pk)).first()
+        assert event is not None
+        assert event.actor_user_id == world.ordinary.pk
+        assert event.metadata == {}
+    assert client.get(f"{BASE}/{b.pk}").status_code == 404
+    with pytest.raises(AssessmentRecordNotFound):
+        services.update_record(
+            actor=world.ordinary, record_id=b.pk, values={"score": "Denied correction"}
+        )
 
 
 @pytest.mark.parametrize("target", ["college", "campus", "responsibility"])
