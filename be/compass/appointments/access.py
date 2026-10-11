@@ -37,8 +37,7 @@ def _is_provider_relationship(actor: User, appointment) -> bool:
 
 
 def _student_in_organizational_scope(actor: User, student_id) -> bool:
-    if is_head_guidance(actor):
-        return True
+    """Non-Head delegated, non-Counseling responsibility access only."""
     scope = resolve_operational_responsibility_scope(actor)
     if not scope.college_ids:
         return False
@@ -63,6 +62,12 @@ def appointment_management_access_allowed(actor: User, appointment) -> bool:
     if _is_provider_relationship(actor, appointment):
         return True
 
+    # Head Guidance has institution-wide general Guidance College visibility,
+    # not institutional appointment ownership. Even explicit handled Colleges
+    # and the unique-Head fallback cannot authorize someone else's appointment.
+    if is_head_guidance(actor):
+        return False
+
     if (
         appointment_access_policy_for_service(appointment.service)
         == AppointmentAccessPolicy.RELATIONSHIP_ONLY
@@ -82,15 +87,18 @@ def scope_managed_appointments(queryset, actor: User):
     ):
         return queryset.none()
 
+    # Mirror the single-resource Head rule before considering handled workload.
+    # View-self remains a separate, provider/Student relationship capability.
+    if is_head_guidance(actor):
+        return queryset.filter(provider_id=actor.pk)
+
     allowed = Q(pk__in=[])
     if actor.role.code == "COUNSELOR":
         allowed |= Q(provider_id=actor.pk)
 
     scope = resolve_operational_responsibility_scope(actor)
     organizational = ~Q(service__code=COUNSELING_SERVICE_CODE)
-    if is_head_guidance(actor):
-        allowed |= organizational
-    elif scope.college_ids:
+    if scope.college_ids:
         allowed |= (
             organizational
             & Q(student__organization_student_affiliation__college_id__in=scope.college_ids)

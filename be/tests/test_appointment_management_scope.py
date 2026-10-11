@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
 from django.core.management import call_command
@@ -16,14 +17,24 @@ from compass.accounts.models import (
     UserCapabilityOverride,
     UserDesignation,
 )
-from compass.appointments.models import Appointment
+from compass.appointments.access import (
+    appointment_management_access_allowed,
+    scope_managed_appointments,
+)
+from compass.appointments.models import Appointment, AppointmentChangeEvent
 from compass.appointments.services import (
     AppointmentNotFound,
+    appointment_actions_for,
+    count_upcoming_managed_appointments,
     get_appointment_for_actor,
+    get_appointment_history,
     list_managed_appointments,
+    reassign_appointment,
 )
 from compass.audit.context import AuditContext
+from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.notifications.models import Notification
 from compass.organization.access_scope import resolve_general_guidance_college_scope
 from compass.organization.models import (
     Campus,
@@ -285,7 +296,7 @@ def test_gss_scope_fails_closed_for_broken_or_inactive_supervision_chain():
 
 
 @pytest.mark.django_db
-def test_head_oversight_and_gss_under_head_handled_workload_for_ordinary_appointments():
+def test_head_provider_only_and_gss_under_head_still_use_handled_non_counseling_workload():
     sync_policy()
     admin = make_user("headscope-admin@example.edu", "IT_ADMIN")
     provider = make_user("headscope-provider@example.edu", "COUNSELOR")
@@ -319,20 +330,35 @@ def test_head_oversight_and_gss_under_head_handled_workload_for_ordinary_appoint
         service=service,
     )
 
-    # General Guidance visibility is wider than managed Appointment workload;
-    # Head's pre-existing non-Counseling oversight is deferred to Slice 2.
+    # General Guidance College visibility does not grant Appointment ownership.
     assert set(resolve_general_guidance_college_scope(gss).college_ids) == {
         assigned_college.pk,
         other_college.pk,
     }
-    assert {row.pk for row in list_managed_appointments(actor=head).items} == {
+    assert list_managed_appointments(actor=head).items == ()
+    assert {row.pk for row in list_managed_appointments(actor=gss).items} == {inside.pk}
+    assert {row.pk for row in list_managed_appointments(actor=provider).items} == {
         inside.pk,
         outside.pk,
     }
-    assert {row.pk for row in list_managed_appointments(actor=gss).items} == {inside.pk}
-    assert get_appointment_for_actor(appointment_id=outside.pk, actor=head).pk == outside.pk
+    for item in (inside, outside):
+        with pytest.raises(AppointmentNotFound):
+            get_appointment_for_actor(appointment_id=item.pk, actor=head)
     with pytest.raises(AppointmentNotFound):
         get_appointment_for_actor(appointment_id=outside.pk, actor=gss)
+
+    # Head provider assignment, even in someone else's College, is sufficient.
+    head_student = make_user("headscope-own-student@example.edu", "STUDENT")
+    affiliate(head_student, other_college)
+    mine = appointment(
+        reference="APT-2099-300003",
+        student=head_student,
+        provider=head,
+        service=service,
+    )
+    assert [row.pk for row in list_managed_appointments(actor=head).items] == [mine.pk]
+    assert get_appointment_for_actor(appointment_id=mine.pk, actor=head).pk == mine.pk
+    assert not appointment_management_access_allowed(gss, mine)
 
 
 @pytest.mark.django_db
@@ -568,3 +594,319 @@ def test_counselor_baseline_management_is_limited_to_assigned_colleges():
     )
     assert cancelled.status_code == 200
     assert cancelled.json()["status"] == "CANCELLED"
+
+
+@pytest.mark.django_db
+def test_head_provider_scope_matches_single_resource_lists_filters_counts_and_gss_delegation():
+    sync_policy()
+    admin = make_user("provider-boundary-admin@example.edu", "IT_ADMIN")
+    carlo = make_user("provider-boundary-carlo@example.edu", "COUNSELOR")
+    head = make_user("provider-boundary-head@example.edu", "COUNSELOR")
+    head.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
+    head_staff = make_user("provider-boundary-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    StaffSupervision.objects.create(staff=head_staff, supervisor=head)
+
+    ccms = make_college("BEA-CCMS")
+    head_college = make_college("BEA-HEAD")
+    CounselorResponsibility.objects.create(college=ccms, counselor=carlo)
+    CounselorResponsibility.objects.create(college=head_college, counselor=head)
+    bea = make_user("provider-bea@example.edu", "STUDENT")
+    bea_counseling = make_user("provider-bea-counseling@example.edu", "STUDENT")
+    other = make_user("provider-other@example.edu", "STUDENT")
+    head_student = make_user("provider-head-student@example.edu", "STUDENT")
+    head_counseling_student = make_user("provider-head-counseling@example.edu", "STUDENT")
+    for student, college in (
+        (bea, ccms),
+        (bea_counseling, ccms),
+        (other, head_college),
+        (head_student, ccms),
+        (head_counseling_student, head_college),
+    ):
+        affiliate(student, college)
+    ordinary = make_service(admin)
+    counseling = make_counseling_service(admin)
+    carlo_ordinary = appointment(
+        reference="APT-2099-610001", student=bea, provider=carlo, service=ordinary
+    )
+    carlo_counseling = appointment(
+        reference="APT-2099-610002",
+        student=bea_counseling,
+        provider=carlo,
+        service=counseling,
+    )
+    # Even an explicitly Head-assigned College cannot authorize a different provider.
+    head_college_other = appointment(
+        reference="APT-2099-610003", student=other, provider=carlo, service=ordinary
+    )
+    head_ordinary = appointment(
+        reference="APT-2099-610004",
+        student=head_student,
+        provider=head,
+        service=ordinary,
+    )
+    head_counseling = appointment(
+        reference="APT-2099-610005",
+        student=head_counseling_student,
+        provider=head,
+        service=counseling,
+    )
+    all_items = (
+        carlo_ordinary,
+        carlo_counseling,
+        head_college_other,
+        head_ordinary,
+        head_counseling,
+    )
+    assert set(resolve_general_guidance_college_scope(head).college_ids) == {
+        ccms.pk,
+        head_college.pk,
+    }
+    assert set(resolve_general_guidance_college_scope(head_staff).college_ids) == {
+        ccms.pk,
+        head_college.pk,
+    }
+    assert {row.pk for row in list_managed_appointments(actor=head).items} == {
+        head_ordinary.pk,
+        head_counseling.pk,
+    }
+    assert {row.pk for row in list_managed_appointments(actor=head_staff).items} == {
+        head_college_other.pk,
+    }
+    assert count_upcoming_managed_appointments(actor=head) == 2
+    assert count_upcoming_managed_appointments(actor=head_staff) == 1
+    # Carlo also retains College-delegated management of Head's non-Counseling appointment.
+    assert count_upcoming_managed_appointments(actor=carlo) == 4
+
+    # Queryset, single-resource and action authorization must have identical ownership.
+    scoped = {row.pk for row in scope_managed_appointments(Appointment.objects.all(), head)}
+    for item in all_items:
+        expected = item.provider_id == head.pk
+        assert appointment_management_access_allowed(head, item) is expected
+        assert (item.pk in scoped) is expected
+        if not expected:
+            actions = appointment_actions_for(actor=head, item=item)
+            assert actions.cancel.blocker == "NOT_PERMITTED"
+            assert actions.reschedule.blocker == "NOT_PERMITTED"
+        if expected:
+            assert get_appointment_for_actor(appointment_id=item.pk, actor=head).pk == item.pk
+        else:
+            with pytest.raises(AppointmentNotFound):
+                get_appointment_for_actor(appointment_id=item.pk, actor=head)
+            with pytest.raises(AppointmentNotFound):
+                get_appointment_history(appointment_id=item.pk, actor=head)
+
+    head_client = auth_client(head, recent_mfa=True)
+    ids = {str(head_ordinary.pk), str(head_counseling.pk)}
+    for query in (
+        {},
+        {"provider_id": str(carlo.pk)},
+        {"student_id": str(bea.pk)},
+        {"service_id": str(ordinary.pk)},
+        {"delivery_mode": "IN_PERSON"},
+        {"status": "SCHEDULED"},
+        {"search": "610001"},
+        {"upcoming": "true"},
+        {"page": "1", "page_size": "1"},
+    ):
+        response = head_client.get("/api/v1/appointments", query)
+        assert response.status_code == 200
+        assert {row["id"] for row in response.json()["items"]} <= ids
+    assert (
+        head_client.get("/api/v1/appointments", {"search": carlo_ordinary.reference_code}).json()[
+            "items"
+        ]
+        == []
+    )
+    for item in (carlo_ordinary, carlo_counseling, head_college_other):
+        assert head_client.get(f"/api/v1/appointments/{item.pk}").status_code == 404
+        assert head_client.get(f"/api/v1/appointments/{item.pk}/history").status_code == 404
+    assert head_client.get(f"/api/v1/appointments/{head_ordinary.pk}").status_code == 200
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("service_type", ["NON_COUNSELING", "COUNSELING"])
+def test_head_unowned_appointment_all_actions_denied_before_mutation(service_type):
+    sync_policy()
+    admin = make_user(f"denied-admin-{service_type}@example.edu", "IT_ADMIN")
+    carlo = make_user(f"denied-carlo-{service_type}@example.edu", "COUNSELOR")
+    head = make_user(f"denied-head-{service_type}@example.edu", "COUNSELOR")
+    head.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
+    college = make_college(f"DENIED-{service_type}")
+    CounselorResponsibility.objects.create(college=college, counselor=head)
+    bea = make_user(f"denied-bea-{service_type}@example.edu", "STUDENT")
+    affiliate(bea, college)
+    service = (
+        make_counseling_service(admin) if service_type == "COUNSELING" else make_service(admin)
+    )
+    item = appointment(
+        reference=f"APT-2099-{620001 if service_type == 'COUNSELING' else 620002}",
+        student=bea,
+        provider=carlo,
+        service=service,
+    )
+    assert not appointment_management_access_allowed(head, item)
+    assert all(
+        state.blocker == "NOT_PERMITTED"
+        for state in (
+            appointment_actions_for(actor=head, item=item).cancel,
+            appointment_actions_for(actor=head, item=item).reschedule,
+            appointment_actions_for(actor=head, item=item).reassign,
+            appointment_actions_for(actor=head, item=item).complete,
+            appointment_actions_for(actor=head, item=item).mark_no_show,
+        )
+    )
+    client = auth_client(head, recent_mfa=True)
+    headers = csrf(client)
+    baseline_audit = AuditEvent.objects.count()
+    baseline_notifications = Notification.objects.count()
+    baseline_history = AppointmentChangeEvent.objects.count()
+    base = f"/api/v1/appointments/{item.pk}"
+    for path in (
+        base,
+        base + "/history",
+        base + "/reschedule-slots?date=" + item.starts_at.date().isoformat(),
+        base + "/reassignment-candidates",
+    ):
+        assert client.get(path).status_code == 404
+    for route, data in (
+        ("cancel", {}),
+        ("reschedule", {"starts_at": (item.starts_at + timedelta(days=1)).isoformat()}),
+        ("reassign", {"provider_id": str(head.pk), "reason": "Synthetic reassignment"}),
+        ("complete", {}),
+        ("no-show", {}),
+    ):
+        response = client.post(
+            base + "/" + route,
+            data=json.dumps(data),
+            content_type="application/json",
+            **headers,
+        )
+        assert response.status_code == 404, (route, response.content)
+    item.refresh_from_db()
+    assert item.status == "SCHEDULED"
+    assert item.provider_id == carlo.pk
+    assert AppointmentChangeEvent.objects.count() == baseline_history
+    assert AuditEvent.objects.count() == baseline_audit
+    assert Notification.objects.count() == baseline_notifications
+    # Valid provider and Student self access are unaffected.
+    assert get_appointment_for_actor(appointment_id=item.pk, actor=carlo).pk == item.pk
+    assert get_appointment_for_actor(appointment_id=item.pk, actor=bea).pk == item.pk
+
+
+@pytest.mark.django_db
+def test_head_revoked_manage_capability_allows_self_view_but_no_management():
+    sync_policy()
+    admin = make_user("revoked-head-admin@example.edu", "IT_ADMIN")
+    head = make_user("revoked-head@example.edu", "COUNSELOR")
+    head.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
+    student = make_user("revoked-head-student@example.edu", "STUDENT")
+    affiliate(student, make_college("REVOKED-HEAD"))
+    item = appointment(
+        reference="APT-2099-630001",
+        student=student,
+        provider=head,
+        service=make_service(admin),
+    )
+    revoke = UserCapabilityOverride.objects.create(
+        user=head,
+        capability=Capability.objects.get(code="appointments.manage"),
+        effect="REVOKE",
+        reason="Synthetic management restriction",
+    )
+    assert head.has_capability("appointments.view_self")
+    assert not appointment_management_access_allowed(head, item)
+    assert list_managed_appointments(actor=head).items == ()
+    assert count_upcoming_managed_appointments(actor=head) is None
+    assert get_appointment_for_actor(appointment_id=item.pk, actor=head).pk == item.pk
+    assert get_appointment_history(appointment_id=item.pk, actor=head)
+    assert all(
+        state.blocker == "NOT_PERMITTED"
+        for state in (
+            appointment_actions_for(actor=head, item=item).cancel,
+            appointment_actions_for(actor=head, item=item).reassign,
+        )
+    )
+    assert auth_client(head).get(f"/api/v1/appointments/{item.pk}").status_code == 200
+    revoke.delete()
+    assert appointment_management_access_allowed(head, item)
+
+
+@pytest.mark.django_db
+def test_multiple_heads_have_independent_provider_ownership():
+    sync_policy()
+    admin = make_user("heads-admin@example.edu", "IT_ADMIN")
+    head_a = make_user("heads-a@example.edu", "COUNSELOR")
+    head_b = make_user("heads-b@example.edu", "COUNSELOR")
+    designation = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    head_a.designations.add(designation)
+    head_b.designations.add(designation)
+    college = make_college("HEADS-INSTITUTION")
+    student_a = make_user("heads-student-a@example.edu", "STUDENT")
+    student_b = make_user("heads-student-b@example.edu", "STUDENT")
+    affiliate(student_a, college)
+    affiliate(student_b, college)
+    service = make_service(admin)
+    appointment_a = appointment(
+        reference="APT-2099-640001", student=student_a, provider=head_a, service=service
+    )
+    appointment_b = appointment(
+        reference="APT-2099-640002", student=student_b, provider=head_b, service=service
+    )
+    assert set(resolve_general_guidance_college_scope(head_a).college_ids) == {college.pk}
+    assert set(resolve_general_guidance_college_scope(head_b).college_ids) == {college.pk}
+    assert [row.pk for row in list_managed_appointments(actor=head_a).items] == [appointment_a.pk]
+    assert [row.pk for row in list_managed_appointments(actor=head_b).items] == [appointment_b.pk]
+    with pytest.raises(AppointmentNotFound):
+        get_appointment_for_actor(appointment_id=appointment_b.pk, actor=head_a)
+    with pytest.raises(AppointmentNotFound):
+        get_appointment_for_actor(appointment_id=appointment_a.pk, actor=head_b)
+
+
+@pytest.mark.django_db
+def test_reassignment_immediately_transfers_head_provider_authorization():
+    sync_policy()
+    admin = make_user("transfer-admin@example.edu", "IT_ADMIN")
+    head = make_user("transfer-head@example.edu", "COUNSELOR")
+    carlo = make_user("transfer-carlo@example.edu", "COUNSELOR")
+    head.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
+    student = make_user("transfer-student@example.edu", "STUDENT")
+    college = make_college("TRANSFER")
+    CounselorResponsibility.objects.create(college=college, counselor=carlo)
+    affiliate(student, college)
+    item = appointment(
+        reference="APT-2099-650001",
+        student=student,
+        provider=head,
+        service=make_service(admin),
+    )
+    assert get_appointment_for_actor(appointment_id=item.pk, actor=head).pk == item.pk
+    # This test isolates ownership transfer from the independent availability
+    # and service-qualification engines, which have their own regression suites.
+    with (
+        patch("compass.appointments.services._validate_existing_service"),
+        patch("compass.appointments.services._interval_is_available", return_value=True),
+        patch("compass.appointments.services._has_overlap", return_value=False),
+    ):
+        reassign_appointment(
+            appointment_id=item.pk,
+            actor=head,
+            provider_id=carlo.pk,
+            reason="Synthetic provider transfer",
+            context=context(head),
+        )
+        with pytest.raises(AppointmentNotFound):
+            get_appointment_for_actor(appointment_id=item.pk, actor=head)
+        assert list_managed_appointments(actor=head).items == ()
+        assert get_appointment_for_actor(appointment_id=item.pk, actor=carlo).pk == item.pk
+        assert get_appointment_history(appointment_id=item.pk, actor=carlo)
+        reassign_appointment(
+            appointment_id=item.pk,
+            actor=carlo,
+            provider_id=head.pk,
+            reason="Synthetic return transfer",
+            context=context(carlo),
+        )
+    item.refresh_from_db()
+    assert item.provider_id == head.pk
+    assert get_appointment_for_actor(appointment_id=item.pk, actor=head).pk == item.pk
+    assert AppointmentChangeEvent.objects.filter(appointment=item).count() == 2

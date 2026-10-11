@@ -1,5 +1,29 @@
 # ADR-020: Appointment foundation
 
+> **Backend Slice 2 appointment authorization alignment (2026-10-11).** Head Guidance
+> has institution-wide eligible College visibility for **general Guidance / Office Messages**
+> (Backend Slice 1), but **managed Appointment access is assigned-provider-only**, for
+> *every* Service including non-Counseling. The former Head-only organizational bypass
+> in `appointments.access` has been removed from both single-resource and queryset checks.
+> No institution-wide appointment grant follows the designation, a College assignment,
+> or the unique-Head routing fallback.
+>
+> Ordinary Counselors retain provider access and existing handled-College
+> non-Counseling management; GSS retains current-supervisor handled-workload
+> delegation for non-Counseling appointments subject to their **own**
+> `appointments.manage` capability. Counseling appointments are provider/Student
+> relationship-only. Appointment detail, history, upcoming counts, action availability,
+> cancel/reschedule/reassign/complete/no-show and their lookup endpoints share these
+> canonical resource gates. A provider reassignment changes this authority immediately.
+> Student `view_self`/`manage_self` and Counselor provider `view_self` stay distinct
+> from staff-management rights. These rules neither change routing nor authorize any
+> Counseling encounter, E-Counseling room, Routine Interview, Shared Summary or
+> Counseling Message without its own relationship check.
+>
+> The original ADR below documents the booking foundation, not an exception to the
+> current provider boundary. Assessment Type capability alignment is **Slice 3**.
+
+
 ## Status
 
 Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md) makes booking use two-state booking capability and Service-specific Counselor qualification, keeps College responsibility out of explicit Counselor choice, and lets existing Appointments be fulfilled as booked after later Catalog changes; rescheduling and reassignment follow current rules. Where this decision interprets UCN civil time in `settings.TIME_ZONE`, [ADR-097](ADR-097-institutional-civil-time-independent-of-runtime-timezone.md) uses `INSTITUTION_TIME_ZONE`.

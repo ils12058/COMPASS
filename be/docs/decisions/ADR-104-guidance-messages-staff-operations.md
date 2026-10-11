@@ -152,3 +152,14 @@ recipients** by the separate
 This addendum changes Office **visibility**, not Appointment ownership,
 Counseling participation, encrypted message content, migration state, or
 WebSocket transport.
+
+## Slice 2 supersession (2026-10-11)
+
+The earlier Slice 1 statement deferring the Head non-Counseling Appointment
+exception is historical. **Backend Slice 2 removes that exception:** a Head
+Guidance Counselor may now manage only their **own provider-assigned**
+Appointments, whether Counseling or non-Counseling. Ordinary Counselor and
+GSS handled-workload administration is intentionally preserved. See
+[ADR-020](ADR-020-appointments.md) for the current Appointment authority
+contract. Office Messages still uses general Guidance College visibility and
+remains separate from confidential Counseling participation.
