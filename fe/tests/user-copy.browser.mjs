@@ -179,5 +179,38 @@ for (const width of [320, 1440]) {
         assert.equal(requests.filter(r => r.method === 'POST' && r.pathname === '/api/v1/auth/login').length, 1);
         await screenshot(page, `auth-expired-security-${width}`);
     });
+    // Reviewer authority is capability-based: copy names the API-provided actor or authorized reviewers.
+    const exitStudent = { ...currentStudent, exit_interview_workspace_available: true };
+    const reopened = { id: 'exit-reopened', academic_year: year, can_edit: true, status: 'DRAFT', inventory_id: 'inventory', student, student_name: 'Maria Santos', self_assessment_ratings: [], college_feedback_ratings: [], created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-02T00:00:00Z', first_submitted_at: '2026-10-01T06:00:00Z', last_submitted_at: '2026-10-01T06:00:00Z', reopen_events: [{ id: 'reopen', reason: 'Clarify the synthetic second answer.', reopened_at: '2026-10-02T00:00:00Z', reopened_by: { id: 'carlo', display_name: 'Carlo Counselor' } }] };
+    await check(`exit-correction-reviewer-${width}`, '/portal/exit-interviews/exit-reopened', { viewport, overrides: { '/api/v1/auth/session': session(exitStudent), 'GET /api/v1/exit-interviews/me/exit-reopened': reopened } }, async (page) => {
+        await shown(page.getByText('Carlo Counselor reopened this Exit Interview for correction.', { exact: true }));
+        await shown(page.getByText('Clarify the synthetic second answer.'));
+        assert.ok(!(await page.locator('main').innerText()).includes('Head Guidance'));
+        // Also guards the ratings tables: their sr-only header labels must not widen the page at 320px.
+        await safe(page);
+    });
+    const submittedRecord = { id: 'exit-submitted', student, student_name: 'Maria Santos', academic_year: year, status: 'SUBMITTED', first_submitted_at: '2026-10-01T06:00:00Z', last_submitted_at: '2026-10-01T06:00:00Z', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T06:00:00Z' };
+    const submittedStatus = { academic_year: year, opportunity: { id: 'opportunity', academic_year: year, source: 'MANUAL', status: 'COMPLETED', opened_at: '2026-10-01T00:00:00Z', completed_at: '2026-10-01T06:00:00Z', revoked_at: null }, current_record: submittedRecord, has_records: true, inventory_submitted: true, can_start: false, can_edit_current: false, graduation_good_moral_blocked: false };
+    await check(`exit-submitted-reviewers-${width}`, '/portal/exit-interviews', { viewport, overrides: { '/api/v1/auth/session': session(exitStudent), '/api/v1/exit-interviews/me/status': submittedStatus, '/api/v1/exit-interviews/me': { items: [submittedRecord] } } }, async (page) => {
+        await shown(page.getByText('Your submitted answers are available only to authorized Guidance and Counseling Office reviewers.', { exact: true }));
+        assert.ok(!(await page.locator('main').innerText()).includes('Head Guidance'));
+        await safe(page);
+    });
+    const graduate = { ...user('STUDENT'), student_lifecycle_status: 'GRADUATED', capabilities: ['graduate_tracer.view_self', 'graduate_tracer.manage_self'] };
+    await check(`graduate-tracer-confidentiality-${width}`, '/portal/graduate-tracer', { viewport, overrides: { '/api/v1/auth/session': session(graduate), '/api/v1/graduate-tracer/me': error('graduate_tracer_not_found', 404) } }, async (page, { requests }) => {
+        await shown(page.getByText(/^Your response is confidential and will be available only to authorized Guidance and Counseling Office reviewers after submission\./));
+        await shown(page.getByRole('button', { name: 'Start Graduate Tracer Survey', exact: true }));
+        assert.ok(!(await page.locator('main').innerText()).includes('Head Guidance'));
+        assert.equal(requests.filter(r => r.method !== 'GET' && r.pathname.startsWith('/api/v1/graduate-tracer')).length, 0);
+        await safe(page);
+    });
+    // A Guidance Services Staff account with reviewer authority is labeled by that action, not its role.
+    const reviewerStaff = { ...user('GUIDANCE_SERVICES_STAFF'), capabilities: ['exit_interviews.view', 'exit_interviews.manage_opportunities'] };
+    await check(`exit-reviewer-staff-navigation-${width}`, '/portal/exit-interviews', { viewport, overrides: { ...worlds, '/api/v1/auth/session': session(reviewerStaff) } }, async (page) => {
+        if (width < 1024) await page.getByRole('button', { name: 'Open portal navigation' }).click();
+        const nav = page.getByRole('navigation', { name: 'Portal navigation' });
+        await shown(nav.getByRole('link', { name: 'Exit Interviews', exact: true }));
+        assert.equal(await nav.getByRole('link', { name: 'Exit Interview access', exact: true }).count(), 0);
+    });
 }
 await finish();

@@ -208,16 +208,19 @@ function RatingMatrix({
     : scale;
 
   return (
-    <div className="mt-4 overflow-x-auto rounded-sm border border-border">
-      <table className="min-w-[42rem] w-full border-collapse text-sm">
+    // relative: the header cells' sr-only labels are absolutely positioned and must stay inside the
+    // horizontal scroll area instead of widening the page on narrow screens. On phones the pinned
+    // Item column is narrowed so rating columns can scroll into view beside it.
+    <div className="relative mt-4 overflow-x-auto rounded-sm border border-border">
+      <table className="w-full border-collapse text-sm sm:min-w-[42rem]">
         <caption className="sr-only">{title} rating matrix</caption>
         <thead className="bg-brand-wash text-xs text-brand-strong">
           <tr>
-            <th scope="col" className="sticky left-0 z-10 min-w-64 bg-brand-wash px-3 py-3 text-left font-semibold">
+            <th scope="col" className="sticky left-0 z-10 w-36 bg-brand-wash px-3 py-3 text-left font-semibold sm:w-auto sm:min-w-64">
               Item
             </th>
             {options.map((option) => (
-              <th key={option.value} scope="col" className="min-w-16 px-2 py-3 text-center font-semibold">
+              <th key={option.value} scope="col" className="min-w-12 px-2 py-3 text-center font-semibold sm:min-w-16">
                 <span>{option.value}</span>
                 {option.label ? <span className="sr-only"> — {option.label}</span> : null}
               </th>

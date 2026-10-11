@@ -263,8 +263,8 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
                 onConfirm={() => void submitDraft()}
               >
                 <p>
-                  Your response will be finalized and made available to
-                  authorized Head Guidance reviewers. You will
+                  Your response will be finalized and made available only to
+                  authorized Guidance and Counseling Office reviewers. You will
                   not be able to edit it after submission.
                 </p>
                 {needsSubmissionCheck ? (

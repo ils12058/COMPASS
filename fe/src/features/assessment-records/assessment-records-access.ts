@@ -1,6 +1,7 @@
 import type { UserSummary } from "@/lib/api/generated/model";
 
-// The confirmed portal session supplies active identity; backend rechecks it on every request.
+// The confirmed portal session supplies active identity and resolved effective capabilities;
+// backend rechecks both on every request. Head Guidance is a default grantee, not a gate.
 export function getAssessmentRecordsAccess(user: UserSummary) {
   const canView =
     user.role === "COUNSELOR" &&
@@ -10,7 +11,7 @@ export function getAssessmentRecordsAccess(user: UserSummary) {
   return {
     canView,
     canManage,
-    canManageTypes:
-      canManage && user.designations.includes("HEAD_GUIDANCE_COUNSELOR"),
+    // The Assessment Type catalog shares the effective manage capability with records.
+    canManageTypes: canManage,
   };
 }

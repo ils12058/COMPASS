@@ -141,8 +141,12 @@ def _type_values(values):
 
 
 def _audit(actor, context, action, item, *, record=False):
+    context = context or AuditContext.user(actor)
+    # Every mutation has a verified Counselor; an unattributed context rolls it back instead.
+    if getattr(context.actor_user, "pk", None) != actor.pk:
+        raise ValueError("Assessment audit context must identify the authorized actor.")
     record_event(
-        context=context or AuditContext.user(actor),
+        context=context,
         action=action,
         outcome="SUCCESS",
         target_type="assessment.record" if record else "assessment.type",

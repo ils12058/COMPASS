@@ -3,8 +3,8 @@ import assert from "node:assert/strict";
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
-import { worlds, auth, account, empty, longEmail } from "./support/ux-hardening-fixtures.mjs";
-import { service, serviceId, user } from "./support/ui-hierarchy-fixtures.mjs";
+import { worlds, auth, account, empty, longEmail, student, year } from "./support/ux-hardening-fixtures.mjs";
+import { service, serviceId, slip, user } from "./support/ui-hierarchy-fixtures.mjs";
 
 const engine = process.env.COMPASS_UI_BROWSER ?? "chromium";
 const { check, finish, shown, noHorizontalOverflow, artifacts } = await createBrowserHarness(`ux-hardening-${engine}`);
@@ -157,6 +157,42 @@ for (const width of [320, 393, 1440]) {
 for (const [name, capabilities, visible] of [["responses-only", ["exit_interviews.view"], false], ["access-only", ["exit_interviews.manage_opportunities"], true], ["neither", [], false]]) {
   await check(`exit-capability-${name}`, "/portal/exit-interviews", { overrides: { ...worlds, "/api/v1/auth/session": { ...auth["/api/v1/auth/session"], user: { ...user(), capabilities } } } }, async (page) => {
     await shown(page.getByRole("heading", { level: 1 }).first()); assert.equal(await page.getByRole("navigation", { name: "Exit Interview navigation", exact: true }).count(), 0); assert.equal(await page.getByRole("button", { name: "Open Exit Interview access", exact: true }).count(), visible ? 1 : 0);
+  });
+}
+// Pinned-label answer tables (Exit Interview ratings, Graduate Tracer comparisons): on phones every
+// answer column must scroll fully into view beside the pinned label column without widening the page.
+async function unreachableAnswerColumns(page) {
+  return page.evaluate(async () => {
+    const hidden = [];
+    for (const table of document.querySelectorAll("table")) {
+      const [pinned, ...columns] = table.querySelector("thead tr").children;
+      if (getComputedStyle(pinned).position !== "sticky") continue;
+      for (const column of columns) {
+        table.parentElement.scrollLeft = column.offsetLeft - pinned.offsetWidth;
+        await new Promise((resolve) => requestAnimationFrame(resolve));
+        const area = table.parentElement.getBoundingClientRect(), cell = column.getBoundingClientRect();
+        if (cell.left < pinned.getBoundingClientRect().right - 1 || cell.right > area.right + 1) hidden.push(`${table.caption?.textContent}: ${column.textContent}`);
+      }
+      table.parentElement.scrollLeft = 0;
+    }
+    return hidden;
+  });
+}
+const surveySession = (capabilities, extra) => ({ user: { ...user("STUDENT"), capabilities, ...extra }, session: { id: "survey", expires_at: "2099-01-01T00:00:00Z", is_current: true } });
+const exitDraft = { id: "exit-draft", academic_year: year, can_edit: true, status: "DRAFT", inventory_id: "inventory", student, student_name: "Maria Santos", self_assessment_ratings: [], college_feedback_ratings: [], reopen_events: [], created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z", first_submitted_at: null, last_submitted_at: null };
+const tracerDraft = { id: "tracer", status: "DRAFT", name: "Synthetic Graduate", student: slip.student, submitted_at: null, created_at: "2026-10-08T00:00:00Z", updated_at: "2026-10-08T00:00:00Z", educational_attainments: [], professional_exams: [], trainings: [], current_employment_state: "EMPLOYED" };
+for (const width of [320, 390]) {
+  await check(`exit-rating-columns-reachable-${width}`, "/portal/exit-interviews/exit-draft", { viewport: viewport(width), overrides: { "/api/v1/auth/session": surveySession(["exit_interviews.view_self", "exit_interviews.manage_self"], { exit_interview_workspace_available: true }), "GET /api/v1/exit-interviews/me/exit-draft": exitDraft } }, async (page) => {
+    await shown(page.getByRole("table").first());
+    assert.ok((await page.getByRole("table").count()) >= 2);
+    assert.deepEqual(await unreachableAnswerColumns(page), []);
+    await noHorizontalOverflow(page);
+  });
+  await check(`tracer-answer-columns-reachable-${width}`, "/portal/graduate-tracer", { viewport: viewport(width), overrides: { "/api/v1/auth/session": surveySession(["graduate_tracer.view_self", "graduate_tracer.manage_self"], { student_lifecycle_status: "GRADUATED" }), "/api/v1/graduate-tracer/me": tracerDraft } }, async (page) => {
+    await shown(page.getByRole("table", { name: /Compare job level/ }));
+    assert.equal(await page.getByRole("table").count(), 2);
+    assert.deepEqual(await unreachableAnswerColumns(page), []);
+    await noHorizontalOverflow(page);
   });
 }
 await writeFile(join(artifacts, "measurements.json"), `${JSON.stringify({ engine, measurements }, null, 2)}\n`);

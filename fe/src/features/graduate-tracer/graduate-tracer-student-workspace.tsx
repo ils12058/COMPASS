@@ -121,7 +121,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
         description="This survey collects information about graduate education and employment experiences to support graduate employability research and curriculum improvement."
       />
       <div className="max-w-3xl rounded-sm border border-brand-line bg-surface-raised px-4 py-5 sm:px-5">
-        <p className="text-sm leading-6 text-muted">Your response is treated confidentially. Only authorized Head Guidance reviewers can access it after you submit. Starting creates a private draft; it does not submit answers.</p>
+        <p className="text-sm leading-6 text-muted">Your response is confidential and will be available only to authorized Guidance and Counseling Office reviewers after submission. Starting creates a private draft; it does not submit answers.</p>
         {access.canManageSelf ? (
           <>
             <Button className="mt-4" disabled={start.isPending || needsStatusCheck} onClick={() => void beginSurvey()}>

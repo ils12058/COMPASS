@@ -89,7 +89,16 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
   // Students who can submit Feedback reach the same entry page as the reviewing staff.
   const hasFeedback = getFeedbackAccess(user).canOpenFeedback;
   const hasGoodMoral = getGoodMoralAccess(user).hasWorkspace;
-  const hasExitInterviews = getExitInterviewAccess(user).hasWorkspace;
+  const exitInterviews = getExitInterviewAccess(user);
+  const hasExitInterviews = exitInterviews.hasWorkspace;
+  // Label by the account's resolved actions, never its role: reviewers and Students see their
+  // Exit Interviews; access management without review authority is named for what it manages.
+  const exitInterviewsLabel =
+    exitInterviews.canManageOpportunities &&
+    !exitInterviews.canViewOperational &&
+    !exitInterviews.hasStudentWorkspace
+      ? "Exit Interview access"
+      : "Exit Interviews";
   const hasGraduateTracer = getGraduateTracerAccess(user).hasWorkspace;
   const hasPlatformOperations = user.capabilities.includes(
     "platform_operations.view",
@@ -136,7 +145,7 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
       label: "Requests and surveys",
       links: [
         { href: "/portal/good-moral", label: "Good Moral", icon: Award, visible: hasGoodMoral },
-        { href: "/portal/exit-interviews", label: user.role === "GUIDANCE_SERVICES_STAFF" ? "Exit Interview access" : "Exit Interviews", icon: DoorOpen, visible: hasExitInterviews },
+        { href: "/portal/exit-interviews", label: exitInterviewsLabel, icon: DoorOpen, visible: hasExitInterviews },
         { href: "/portal/graduate-tracer", label: "Graduate Tracer", icon: GraduationCap, visible: hasGraduateTracer },
         { href: "/portal/feedback", label: "Feedback", icon: MessageSquareText, visible: hasFeedback },
       ],

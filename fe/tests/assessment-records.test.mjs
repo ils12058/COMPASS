@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { getAssessmentRecordsAccess } from "../src/features/assessment-records/assessment-records-access.ts";
 import { safeAssessmentDetail, assessmentErrorMessage } from "../src/features/assessment-records/assessment-records-shared.tsx";
@@ -21,9 +22,41 @@ test("Records navigation and catalog commands respect both role and effective ca
   const viewer = account("COUNSELOR", ["assessment_records.view"], false);
   assert.deepEqual(getAssessmentRecordsAccess(viewer), { canView: true, canManage: false, canManageTypes: false });
   assert.equal(portalCommandDestinations(viewer).filter((item) => item.href.startsWith("/portal/assessment-records")).length, 1);
-  assert.equal(getAssessmentRecordsAccess(account("COUNSELOR", capabilities, false)).canManageTypes, false);
-  assert.equal(getAssessmentRecordsAccess(account()).canManageTypes, true);
   assert.equal(getAssessmentRecordsAccess(account("COUNSELOR", ["assessment_records.manage"])).canManage, false);
+});
+
+test("Assessment Type management follows effective capabilities, not the Head designation", () => {
+  const commandHrefs = (user) => portalCommandDestinations(user).map((item) => item.href).filter((href) => href.startsWith("/portal/assessment-records"));
+  const full = { canView: true, canManage: true, canManageTypes: true };
+  const denied = { canView: false, canManage: false, canManageTypes: false };
+  // Head is a default grantee; an ordinary Counselor with the same effective capabilities matches.
+  for (const head of [true, false]) {
+    const user = account("COUNSELOR", capabilities, head);
+    assert.deepEqual(getAssessmentRecordsAccess(user), full);
+    assert.deepEqual(commandHrefs(user), ["/portal/assessment-records", "/portal/assessment-records/new", "/portal/assessment-records/types"]);
+  }
+  // Manage listed without the effective view dependency (e.g. view revoked) grants nothing.
+  for (const head of [true, false]) assert.deepEqual(getAssessmentRecordsAccess(account("COUNSELOR", ["assessment_records.manage"], head)), denied);
+  assert.deepEqual(getAssessmentRecordsAccess(account("COUNSELOR", [], false)), denied);
+  // A removed effective manage capability removes record and catalog management together.
+  const revoked = account("COUNSELOR", ["assessment_records.view"], true);
+  assert.deepEqual(getAssessmentRecordsAccess(revoked), { canView: true, canManage: false, canManageTypes: false });
+  assert.deepEqual(commandHrefs(revoked), ["/portal/assessment-records"]);
+  // Supervision is not visible to the client and capability strings never widen the role fence.
+  for (const role of ["GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+    assert.deepEqual(getAssessmentRecordsAccess(account(role, capabilities, false)), denied);
+    assert.deepEqual(commandHrefs(account(role, capabilities, false)), []);
+  }
+});
+
+test("Assessment Records copy is authority-neutral and keeps catalog lifecycle facts", () => {
+  const typesPage = readFileSync(new URL("../src/features/assessment-records/assessment-types-page.tsx", import.meta.url), "utf8");
+  const editor = readFileSync(new URL("../src/features/assessment-records/assessment-record-editor.tsx", import.meta.url), "utf8");
+  for (const source of [typesPage, editor]) assert.doesNotMatch(source, /Head Guidance/);
+  assert.match(typesPage, /Manage the Assessment Types used by the Guidance and Counseling Office\./);
+  assert.match(typesPage, /Deactivated types remain on existing records but cannot be selected for new results\./);
+  assert.match(editor, /No active Assessment Types are available\./);
+  assert.match(editor, /href="\/portal\/assessment-records\/types"/);
 });
 
 test("Detail conceals a cached confidential result after authorization, scope or envelope rejection", () => {

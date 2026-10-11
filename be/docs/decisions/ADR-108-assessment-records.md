@@ -83,6 +83,16 @@ timestamps, ciphertext or audits.
 > catalog controls from otherwise authorized ordinary Counselors.
 > A separate frontend slice must align this to eligible Counselor
 > effective `canManage`. No frontend behavior is changed here.
+>
+> **Frontend alignment and audit attribution (2026-10-11):** The frontend
+> follow-up is resolved: `canManageTypes` now equals the eligible Counselor's
+> effective `canManage`, so catalog navigation, commands, and the Assessment
+> Types page follow the same capabilities as the backend. Separately, the HTTP
+> mutations had recorded Assessment audit events with no actor, because
+> `AuditContext.from_request` read Django's `request.user` instead of the
+> COMPASS session actor. They now pass `request.auth_user` explicitly, and the
+> service refuses to commit a mutation whose audit context does not identify
+> the authorized actor.
 
 
 `assessment_records.manage` depends on `assessment_records.view`. Both are granted through the
