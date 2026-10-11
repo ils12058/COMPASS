@@ -1,4 +1,4 @@
-"""Messages owns its narrow content policy; Head designation never grants content access."""
+"""Office visibility composes College scope and capability; Counseling stays relationship-only."""
 
 from django.db.models import Q
 
@@ -6,7 +6,7 @@ from compass.accounts.models import StudentLifecycleStatus, User
 from compass.appointments.models import AppointmentStatus
 from compass.organization.access_scope import (
     HEAD_GUIDANCE_DESIGNATION,
-    resolve_operational_responsibility_scope,
+    resolve_general_guidance_college_scope,
 )
 from compass.organization.models import CounselorResponsibility, StaffSupervision
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
@@ -45,7 +45,7 @@ def authorized_threads(actor, *, manage=False):
     query = GuidanceThread.objects.all()
     if actor.role.code == "STUDENT":
         return query.filter(student_id=actor.pk)
-    scope = resolve_operational_responsibility_scope(actor)
+    scope = resolve_general_guidance_college_scope(actor)
     allowed = Q(kind=ThreadKind.OFFICE, routing_college_id__in=scope.college_ids)
     if actor.role.code == "COUNSELOR":
         allowed |= Q(kind=ThreadKind.COUNSELING, counselor_id=actor.pk)
@@ -63,7 +63,7 @@ def require_thread(actor, thread, *, manage=False, staff_only=False):
         allowed = actor.role.code == "COUNSELOR" and thread.counselor_id == actor.pk
     else:
         allowed = (
-            thread.routing_college_id in resolve_operational_responsibility_scope(actor).college_ids
+            thread.routing_college_id in resolve_general_guidance_college_scope(actor).college_ids
         )
     if not allowed:
         raise ThreadNotFound()
@@ -99,8 +99,9 @@ def current_student(student):
 def office_staff_candidates(thread):
     """A finite superset of staff who could handle an Office thread's College right now.
 
-    Explicit College Counselors, every Head (for the unique-Head fallback) and the staff they
-    supervise. Callers must still apply the canonical workload check to each candidate.
+    Explicit College Counselors, every valid Head (including across assigned Colleges),
+    and their supervised staff. Callers must still apply current College visibility,
+    effective capabilities and actor eligibility to each candidate.
     """
     counselors = (
         User.objects.filter(is_active=True, role__code="COUNSELOR")
@@ -120,7 +121,7 @@ def office_staff_candidates(thread):
 
 
 def eligible_handler(user, thread):
-    """Whether `user` may be assigned an Office thread: they can manage it under current workload.
+    """Whether `user` may manage an Office thread through current college visibility.
 
     Assignment is workflow ownership only. It never grants access; this check only keeps it from
     pointing at someone who could not act on the thread.

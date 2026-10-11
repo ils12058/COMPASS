@@ -72,7 +72,7 @@ def test_commit_targets_current_authorized_recipients_only(world, publications, 
         thread, _ = office(world) if kind == "OFFICE" else counseling(world)
         assert publications == []
     expected = (
-        [world.student, world.counselor, world.gss]
+        [world.student, world.counselor, world.gss, world.head, world.head_gss]
         if kind == "OFFICE"
         else [world.student, world.counselor]
     )
@@ -194,11 +194,12 @@ def test_real_sockets_authenticated_http_commits_and_private_read_freshness(worl
             assert response.status_code == 200, response.content
             thread_id = response.json()["thread"]["id"]
             frame = {"v": 1, "type": "messages.thread_changed", "thread_id": thread_id}
-            recipients = 4 if kind == "OFFICE" else 3
-            for socket in sockets[:recipients]:
-                assert json.loads((await socket.next())["text"]) == frame
-            for socket in sockets[recipients:]:
-                await socket.nothing()
+            recipient_indices = {0, 1, 2, 3, 5, 6} if kind == "OFFICE" else {0, 1, 2}
+            for index, socket in enumerate(sockets):
+                if index in recipient_indices:
+                    assert json.loads((await socket.next())["text"]) == frame
+                else:
+                    await socket.nothing()
             assert set(idempotency.scan_iter()) == before
             reply = await database_call(
                 post,
@@ -207,10 +208,11 @@ def test_real_sockets_authenticated_http_commits_and_private_read_freshness(worl
                 {"body": "Synthetic staff reply", "client_message_id": str(uuid4())},
             )
             assert reply.status_code == 200, reply.content
-            for socket in sockets[:recipients]:
-                assert json.loads((await socket.next())["text"]) == frame
-            for socket in sockets[recipients:]:
-                await socket.nothing()
+            for index, socket in enumerate(sockets):
+                if index in recipient_indices:
+                    assert json.loads((await socket.next())["text"]) == frame
+                else:
+                    await socket.nothing()
             history = await database_call(clients[0].get, f"{BASE}/threads/{thread_id}/messages")
             assert [item["body"] for item in history.json()["items"]] == [
                 BODY,
@@ -246,5 +248,7 @@ def test_commit_time_supervision_changes_do_not_signal_revoked_staff(world, publ
     assert {channel for channel, _ in publications} == {
         protocol.user_channel(world.student.pk),
         protocol.user_channel(world.counselor.pk),
+        protocol.user_channel(world.head.pk),
+        protocol.user_channel(world.head_gss.pk),
     }
     assert all(frame["thread_id"] == str(thread.pk) for _, frame in publications)
