@@ -25,6 +25,7 @@ from compass.appointments.services import (
     AppointmentCurrentStudentRequired,
     AppointmentDefaultProviderUnresolved,
     AppointmentListOrdering,
+    AppointmentNotFound,
     AppointmentNotSchedulable,
     AppointmentTimeConflict,
     AppointmentTimeUnavailable,
@@ -699,11 +700,20 @@ def test_cancellation_boundary_admin_bypass_and_repeat_are_safe():
             context=context(student),
             now=start - timedelta(minutes=29),
         )
+    # Head designation is not authority over another provider's appointment.
+    with pytest.raises(AppointmentNotFound):
+        cancel_appointment(
+            appointment_id=item.pk,
+            actor=head,
+            administrative=True,
+            context=context(head),
+            now=start - timedelta(minutes=1),
+        )
     cancelled = cancel_appointment(
         appointment_id=item.pk,
-        actor=head,
+        actor=provider,
         administrative=True,
-        context=context(head),
+        context=context(provider),
         now=start - timedelta(minutes=1),
     )
     assert cancelled.status == "CANCELLED"
@@ -719,9 +729,9 @@ def test_cancellation_boundary_admin_bypass_and_repeat_are_safe():
     notification_count = cancelled_notifications.count()
     repeated = cancel_appointment(
         appointment_id=item.pk,
-        actor=head,
+        actor=provider,
         administrative=True,
-        context=context(head),
+        context=context(provider),
         now=start + timedelta(hours=1),
     )
     assert repeated.status == "CANCELLED"
@@ -958,12 +968,20 @@ def test_self_provider_manager_views_and_cancel_authorization_are_resource_scope
     assert outsider_client.get(f"/api/v1/appointments/{item.pk}").status_code == 404
     assert head_client.get("/api/v1/appointments").status_code == 200
 
-    # Cancelling is routine operational work: capability and scope decide it, not step-up.
-    cancelled = head_client.post(
+    # A Head does not manage a different provider's appointment.
+    denied = head_client.post(
         f"/api/v1/appointments/{item.pk}/cancel",
         data=json.dumps({}),
         content_type="application/json",
         **csrf(head_client),
+    )
+    assert denied.status_code == 404
+    # Cancelling by the assigned provider remains routine operational work.
+    cancelled = provider_client.post(
+        f"/api/v1/appointments/{item.pk}/cancel",
+        data=json.dumps({}),
+        content_type="application/json",
+        **csrf(provider_client),
     )
     assert cancelled.status_code == 200
     assert cancelled.json()["status"] == "CANCELLED"
@@ -1107,8 +1125,10 @@ def test_appointment_responses_expose_narrow_student_projection_consistently():
         "display_name": "Reynan Santos Tolentino",
     }
     provider_rows = auth_client(provider).get("/api/v1/appointments/me").json()["items"]
-    managed_rows = auth_client(head).get("/api/v1/appointments").json()["items"]
-    detail = auth_client(head).get(f"/api/v1/appointments/{item.pk}").json()
+    managed_rows = auth_client(provider).get("/api/v1/appointments").json()["items"]
+    detail = auth_client(provider).get(f"/api/v1/appointments/{item.pk}").json()
+    assert auth_client(head).get("/api/v1/appointments").json()["items"] == []
+    assert auth_client(head).get(f"/api/v1/appointments/{item.pk}").status_code == 404
 
     provider_row = next(row for row in provider_rows if row["id"] == str(item.pk))
     managed_row = next(row for row in managed_rows if row["id"] == str(item.pk))
@@ -1174,6 +1194,10 @@ def test_managed_appointment_search_is_student_aware_composable_and_scope_preser
     )
 
     head_client = auth_client(head)
+    provider_client = auth_client(provider)
+    assert head_client.get("/api/v1/appointments", {"search": target.reference_code}).json()[
+        "items"
+    ] == []
     for search in (
         target.reference_code,
         "2023-54321",
@@ -1182,27 +1206,35 @@ def test_managed_appointment_search_is_student_aware_composable_and_scope_preser
         "Tolentino",
         "Reynan Tolentino",
     ):
-        rows = head_client.get("/api/v1/appointments", {"search": search}).json()["items"]
+        rows = provider_client.get("/api/v1/appointments", {"search": search}).json()["items"]
         assert str(target.pk) in {row["id"] for row in rows}
 
-    unmatched = head_client.get("/api/v1/appointments", {"search": "No Such Student"})
+    unmatched = provider_client.get("/api/v1/appointments", {"search": "No Such Student"})
     assert unmatched.status_code == 200
     assert unmatched.json()["items"] == []
 
     cancel_appointment(
         appointment_id=target.pk,
-        actor=head,
+        actor=provider,
         administrative=True,
-        context=context(head),
+        context=context(provider),
     )
-    composed = head_client.get(
+    composed = provider_client.get(
         "/api/v1/appointments",
         {"search": "Tolentino", "status": "SCHEDULED"},
     )
     assert composed.status_code == 200
     assert composed.json()["items"] == []
 
-    first_page = head_client.get(
+    # Preserve the pagination test with a second authorized provider appointment.
+    create_list_appointment(
+        reference_code="APT-MANAGED-SEARCH-2",
+        student=student,
+        provider=provider,
+        service=service,
+        starts_at=start + timedelta(hours=4),
+    )
+    first_page = provider_client.get(
         "/api/v1/appointments",
         {"search": "Reynan", "page": 1, "page_size": 1},
     ).json()
