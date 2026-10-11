@@ -1,0 +1,36 @@
+<section class="sp-table-block{% if table.keep_together %} sp-keep{% endif %}">
+  {% if show_heading %}
+    <div class="sp-table-heading">
+      <h4 class="sp-table-title">{% if table.number %}<span class="sp-table-number">{{ table.number }}</span> {% endif %}{{ table.title }}</h4>
+      {% if table.population_note %}<p class="sp-population">{{ table.population_note }}</p>{% endif %}
+    </div>
+  {% endif %}
+  <table class="sp-table">
+    <colgroup>
+      {% for column in table.columns %}<col style="width: {{ column.width }}">{% endfor %}
+    </colgroup>
+    <thead>
+      <tr>
+        {% for column in table.columns %}
+          <th scope="col"{% if column.numeric %} class="sp-num"{% endif %}>{{ column.label }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    {% for block in table.row_blocks %}
+      <tbody{% if table.row_blocks|length > 1 %} class="sp-block"{% endif %}>
+        {% for row in block %}
+          <tr class="sp-row-{{ row.kind }}">
+            {% for cell in row.cells %}
+              {% if forloop.first %}
+                <th scope="row">{{ cell.text }}</th>
+              {% else %}
+                <td{% if cell.numeric %} class="sp-num"{% endif %}>{{ cell.text }}</td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+        {% endfor %}
+      </tbody>
+    {% endfor %}
+  </table>
+  {% for note in table.notes %}<p class="sp-table-note">{{ note }}</p>{% endfor %}
+</section>

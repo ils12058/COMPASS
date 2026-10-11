@@ -34,6 +34,7 @@ from compass.inventory.models import (
     Sex,
     StudentInventory,
 )
+from compass.inventory.services import PARENT_INCOME_BRACKETS
 from compass.organization.models import (
     AcademicYear,
     Campus,
@@ -42,7 +43,11 @@ from compass.organization.models import (
     Program,
     StudentAffiliation,
 )
-from compass.reports.services import calculate_percentage, year_level_label
+from compass.reports.services import (
+    calculate_percentage,
+    parent_income_bracket_legend,
+    year_level_label,
+)
 from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
 from tests.inventory_encryption_helpers import create_inventory_row
 
@@ -434,10 +439,25 @@ def test_student_profile_enforces_current_counselor_college_scope_across_filters
     assert unfiltered_body["report_context"]["submitted_inventory_count"] == 1
     assert [column["college"]["code"] for column in unfiltered_body["program_columns"]] == ["A1"]
     assert unfiltered_body["inventory_coverage"]["eligible_student_count"] == 1
-    assert (
-        "Counselor-assigned Colleges" in unfiltered_body["methodology"]["profile_population_note"]
-    )
-    assert "A1" in unfiltered_body["methodology"]["profile_population_note"]
+    methodology = unfiltered_body["methodology"]
+    assert "Counselor-assigned Colleges" in methodology["access_scope_note"]
+    assert "A1 (College A1)" in methodology["access_scope_note"]
+    # The scope is stated once; the population note no longer repeats it.
+    assert "Reporting scope" not in methodology["profile_population_note"]
+    assert unfiltered_body["report_context"]["reporting_scope"] == {
+        "is_global": False,
+        "colleges": [
+            {
+                "id": str(college_a1.pk),
+                "code": "A1",
+                "name": "College A1",
+                "campus": {"id": str(campus_a.pk), "code": "C-A", "name": "Campus A"},
+            }
+        ],
+    }
+    assert [
+        column["submitted_inventory_count"] for column in unfiltered_body["program_columns"]
+    ] == [1]
 
     assert (
         client.get(
@@ -483,6 +503,13 @@ def test_student_profile_enforces_current_counselor_college_scope_across_filters
     head_report = auth_client(head).get("/api/v1/reports/student-profile")
     assert head_report.status_code == 200
     assert head_report.json()["report_context"]["submitted_inventory_count"] == 3
+    assert head_report.json()["report_context"]["reporting_scope"] == {
+        "is_global": True,
+        "colleges": [],
+    }
+    assert head_report.json()["methodology"]["access_scope_note"] == (
+        "Reporting scope: institution-wide."
+    )
 
     assert auth_client(zero_scope).get("/api/v1/reports/student-profile").status_code == 403
 
@@ -504,3 +531,21 @@ def test_percentage_rounding_and_applicability_are_explicit():
     assert calculate_percentage(0, 0) is None
     assert calculate_percentage(5, 0) is None
     assert calculate_percentage(7, 7) == Decimal("100.00")
+
+
+def test_parent_income_legend_is_derived_from_the_canonical_brackets():
+    maxima = [bracket.maximum for bracket in PARENT_INCOME_BRACKETS[:-1]]
+    assert maxima == sorted(maxima)
+    assert PARENT_INCOME_BRACKETS[-1].maximum is None
+    assert parent_income_bracket_legend() == [
+        ("Poor", "Below ₱131,484"),
+        ("Low Income", "₱131,484 to below ₱262,968"),
+        ("Lower Middle Income", "₱262,968 to below ₱525,936"),
+        ("Middle Middle Income", "₱525,936 to below ₱920,388"),
+        ("Upper Middle Income", "₱920,388 to below ₱1,577,808"),
+        ("Upper Income", "₱1,577,808 through ₱2,626,680"),
+        ("Rich", "Above ₱2,626,680"),
+        ("None", "Both parents reported no annual income (combined ₱0)."),
+        ("Not specified", "At least one parent's annual income was marked Not specified."),
+        ("Not recorded / legacy", "Structured parent income is not available for the Inventory."),
+    ]

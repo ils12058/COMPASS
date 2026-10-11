@@ -39,6 +39,9 @@ export function StudentProfileProgramLegend({
         {columns.map((program) => (
           <li key={program.key} className="min-w-0">
             <span className="font-semibold text-ink">{programName(program)}</span>
+            <span className="ml-1 text-xs tabular-nums text-muted">
+              n = {program.submitted_inventory_count}
+            </span>
             {programContext(program) ? (
               <span className="mt-0.5 block break-words text-xs text-muted">
                 {programContext(program)}

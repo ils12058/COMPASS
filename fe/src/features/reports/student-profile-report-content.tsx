@@ -114,15 +114,28 @@ export function StudentProfileReportContent({
         </summary>
         <dl className={reportDetails.body}>
           <div>
-            <dt className="font-semibold text-ink">Profile population</dt>
+            <dt className="font-semibold text-ink">Submitted Inventory Profile Population</dt>
             <dd className="mt-1 text-muted">
               {report.methodology.profile_population_note}
             </dd>
           </div>
           <div>
-            <dt className="font-semibold text-ink">Inventory Coverage</dt>
+            <dt className="font-semibold text-ink">
+              {report.inventory_coverage.mode === "CURRENT"
+                ? "Current Student Inventory Coverage"
+                : "Inventory Coverage (historical)"}
+            </dt>
             <dd className="mt-1 text-muted">
-              {report.methodology.coverage_note}
+              {report.inventory_coverage.mode === "CURRENT"
+                ? report.methodology.coverage_note
+                : (report.methodology.historical_coverage_note ??
+                  report.inventory_coverage.scope_note)}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-ink">Reporting scope</dt>
+            <dd className="mt-1 text-muted">
+              {report.methodology.access_scope_note}
             </dd>
           </div>
         </dl>

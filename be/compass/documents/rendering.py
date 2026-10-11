@@ -57,13 +57,22 @@ def _safe_template_spec(key: str, version: int) -> DocumentTemplateSpec:
         raise DocumentTemplateError("The requested document template is not available.") from exc
 
 
-def _page_footer_template() -> str:
+def _page_footer_template(label: str | None = None) -> str:
+    if not label:
+        return (
+            '<div style="width:100%;font-family:Arial,Helvetica,sans-serif;'
+            'font-size:8px;color:#333;padding:0 7mm;">'
+            '<div style="text-align:right;margin-top:2mm;">'
+            'Page <span class="pageNumber"></span> of <span class="totalPages"></span>'
+            "</div></div>"
+        )
     return (
         '<div style="width:100%;font-family:Arial,Helvetica,sans-serif;'
-        'font-size:8px;color:#333;padding:0 7mm;">'
-        '<div style="text-align:right;margin-top:2mm;">'
-        'Page <span class="pageNumber"></span> of <span class="totalPages"></span>'
-        "</div></div>"
+        "font-size:8px;color:#333;padding:0 7mm;display:flex;"
+        'justify-content:space-between;gap:6mm;margin-top:2mm;">'
+        f"<div>{escape(label)}</div>"
+        '<div style="white-space:nowrap;">Page <span class="pageNumber"></span> of '
+        '<span class="totalPages"></span></div></div>'
     )
 
 
@@ -421,7 +430,9 @@ def render_document_pdf(
                         footer_template=(
                             _referral_footer_template((context or {}).get("controlled_form") or {})
                             if show_referral_pagination
-                            else _page_footer_template()
+                            else _page_footer_template(
+                                (context or {}).get("document_pdf_footer_label")
+                            )
                             if show_report_pagination
                             else "<span></span>"
                         ),

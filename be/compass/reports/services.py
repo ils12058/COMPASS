@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from decimal import ROUND_HALF_UP, Decimal
 from uuid import UUID
 
-from django.db.models import Count, Q
+from django.db.models import Count
 from django.utils import timezone
 
 from compass.accounts.models import StudentLifecycleStatus, User
@@ -26,6 +26,7 @@ from compass.inventory.models import (
     StudentInventory,
 )
 from compass.inventory.services import (
+    PARENT_INCOME_BRACKETS,
     InvalidInventoryInput,
     ParentIncomeBand,
     classify_parent_annual_income,
@@ -48,24 +49,84 @@ LEGACY_PROGRAM_KEY = "legacy:not-recorded"
 NOT_SPECIFIED_KEY = "NOT_SPECIFIED"
 
 PROFILE_METHODOLOGY = (
-    "Student profile statistics are derived from submitted Individual Inventories for the "
-    "selected Academic Year and applied profile filters. Students without a submitted Individual "
-    "Inventory may not have sufficient Inventory-based academic context, such as Program or Year "
-    "Level, to be attributed to those filters. Without Individual Inventory is presented "
-    "separately "
-    "as a coverage indicator and must not be interpreted as Program- or Year-Level-specific unless "
-    "an authoritative source for that classification exists."
+    "Student profile statistics describe the Submitted Inventory Profile Population: submitted "
+    "Individual Inventories for the selected Academic Year. Campus, College, Program, and Year "
+    "Level profile filters use the Program and Year Level recorded on each Inventory. Each "
+    "submitted Inventory is counted once, and every distribution uses this population as its "
+    "denominator. Draft Inventories are not included. Students without a submitted Individual "
+    "Inventory have no Inventory-based Program or Year Level, so Without Individual Inventory is "
+    "presented separately in Inventory Coverage and must not be interpreted as Program- or "
+    "Year-Level-specific unless an authoritative source for that classification exists."
 )
 CURRENT_COVERAGE_NOTE = (
-    "Current-Academic-Year coverage compares active CURRENT Student accounts with their Inventory "
-    "state. Campus and College coverage filters, when supplied, use current Guidance "
-    "StudentAffiliation; Program and Year Level do not classify MISSING Students."
+    "Current Student Inventory Coverage compares active Student accounts with a Current "
+    "lifecycle status against their Inventory state for the selected Academic Year. Campus and "
+    "College coverage filters, when supplied, use each Student's current Guidance College "
+    "affiliation rather than the Program recorded on the Inventory, so coverage and the profile "
+    "population can count different Students. Program and Year Level do not classify Students "
+    "without an Individual Inventory."
 )
 HISTORICAL_COVERAGE_NOTE = (
-    "Historical Academic Years can report existing submitted and draft Inventories, but "
-    "authoritative "
-    "MISSING coverage cannot be reconstructed because COMPASS has no historical enrollment or "
-    "eligibility roster for that Academic Year."
+    "Historical Academic Years can report existing submitted and draft Inventories within the "
+    "reporting scope, but authoritative Without Individual Inventory coverage cannot be "
+    "reconstructed because COMPASS has no historical enrollment or eligibility roster for that "
+    "Academic Year. Today's Current Students are never used as a historical denominator."
+)
+
+PARENT_INCOME_BAND_LABELS = {
+    ParentIncomeBand.POOR: "Poor",
+    ParentIncomeBand.LOW_INCOME: "Low Income",
+    ParentIncomeBand.LOWER_MIDDLE_INCOME: "Lower Middle Income",
+    ParentIncomeBand.MIDDLE_MIDDLE_INCOME: "Middle Middle Income",
+    ParentIncomeBand.UPPER_MIDDLE_INCOME: "Upper Middle Income",
+    ParentIncomeBand.UPPER_INCOME: "Upper Income",
+    ParentIncomeBand.RICH: "Rich",
+    ParentIncomeBand.NONE: "None",
+    ParentIncomeBand.NOT_SPECIFIED: "Not specified",
+}
+
+
+def parent_income_bracket_legend() -> list[tuple[str, str]]:
+    """Describe the canonical income brackets for presentation without restating thresholds."""
+
+    legend: list[tuple[str, str]] = []
+    previous = None
+    for bracket in PARENT_INCOME_BRACKETS:
+        if previous is None:
+            description = f"Below ₱{bracket.maximum:,}"
+        elif bracket.maximum is None:
+            description = (
+                f"Above ₱{previous.maximum:,}"
+                if previous.maximum_inclusive
+                else f"₱{previous.maximum:,} and above"
+            )
+        elif bracket.maximum_inclusive:
+            description = f"₱{previous.maximum:,} through ₱{bracket.maximum:,}"
+        else:
+            description = f"₱{previous.maximum:,} to below ₱{bracket.maximum:,}"
+        legend.append((PARENT_INCOME_BAND_LABELS[bracket.band], description))
+        previous = bracket
+    legend.extend(
+        [
+            (
+                PARENT_INCOME_BAND_LABELS[ParentIncomeBand.NONE],
+                "Both parents reported no annual income (combined ₱0).",
+            ),
+            (
+                PARENT_INCOME_BAND_LABELS[ParentIncomeBand.NOT_SPECIFIED],
+                "At least one parent's annual income was marked Not specified.",
+            ),
+            (LEGACY_LABEL, "Structured parent income is not available for the Inventory."),
+        ]
+    )
+    return legend
+
+
+PARENT_INCOME_LEGEND_NOTE = (
+    "Combined annual income is the Father's plus the Mother's reported annual income for the "
+    "previous year; Spouse income is excluded and a parent with no income contributes ₱0. The "
+    "brackets follow the existing Guidance and Counseling Office Student Profiling reference and "
+    "are applied exactly as defined there."
 )
 
 
@@ -152,7 +213,29 @@ def resolve_report_access_scope(actor: User) -> ReportAccessScope:
 
 
 def get_report_scope_projection(actor: User) -> ReportScopeProjection:
-    access_scope = resolve_report_access_scope(actor)
+    return _scope_projection(resolve_report_access_scope(actor))
+
+
+def report_scope_payload(projection: ReportScopeProjection) -> dict[str, object]:
+    return {
+        "is_global": projection.is_global,
+        "colleges": [
+            {
+                "id": college.id,
+                "code": college.code,
+                "name": college.name,
+                "campus": {
+                    "id": college.campus_id,
+                    "code": college.campus_code,
+                    "name": college.campus_name,
+                },
+            }
+            for college in projection.colleges
+        ],
+    }
+
+
+def _scope_projection(access_scope: ReportAccessScope) -> ReportScopeProjection:
     active_college_ids = _active_scope_college_ids(access_scope)
     if active_college_ids is None:
         return ReportScopeProjection(is_global=True)
@@ -185,14 +268,17 @@ def get_report_scope_projection(actor: User) -> ReportScopeProjection:
 def _report_access_scope_note(access_scope: ReportAccessScope) -> str:
     college_ids = _active_scope_college_ids(access_scope)
     if college_ids is None:
-        return "Access scope: institution-wide."
+        return "Reporting scope: institution-wide."
     labels = list(
         College.objects.filter(pk__in=college_ids)
         .order_by("campus__code", "code")
         .values_list("code", "name")
     )
-    return "Access scope: Counselor-assigned Colleges — " + ", ".join(
-        f"{code} — {name}" for code, name in labels
+    return (
+        "Reporting scope: limited to Counselor-assigned Colleges — "
+        + "; ".join(f"{code} ({name})" for code, name in labels)
+        + ". Inventories recorded under other Colleges, or without a recorded Program, are "
+        "outside this scope."
     )
 
 
@@ -388,6 +474,7 @@ def _program_columns(base_queryset) -> tuple[list[dict[str, object]], dict[str, 
                 "program_id": program_id,
                 "code": row["program__code"],
                 "name": row["program__name"],
+                "submitted_inventory_count": total,
                 "college": {
                     "id": row["program__college_id"],
                     "code": row["program__college__code"],
@@ -409,6 +496,7 @@ def _program_columns(base_queryset) -> tuple[list[dict[str, object]], dict[str, 
                 "program_id": None,
                 "code": None,
                 "name": LEGACY_LABEL,
+                "submitted_inventory_count": legacy_total,
                 "college": None,
                 "campus": None,
                 "is_legacy": True,
@@ -824,17 +912,7 @@ def _income_section(
         ParentIncomeBand.NONE,
         ParentIncomeBand.NOT_SPECIFIED,
     ]
-    labels = {
-        ParentIncomeBand.POOR: "Poor",
-        ParentIncomeBand.LOW_INCOME: "Low Income",
-        ParentIncomeBand.LOWER_MIDDLE_INCOME: "Lower Middle Income",
-        ParentIncomeBand.MIDDLE_MIDDLE_INCOME: "Middle Middle Income",
-        ParentIncomeBand.UPPER_MIDDLE_INCOME: "Upper Middle Income",
-        ParentIncomeBand.UPPER_INCOME: "Upper Income",
-        ParentIncomeBand.RICH: "Rich",
-        ParentIncomeBand.NONE: "None",
-        ParentIncomeBand.NOT_SPECIFIED: "Not specified",
-    }
+    labels = PARENT_INCOME_BAND_LABELS
     counts: dict[str, dict[str, int]] = {str(band): {} for band in ordered_bands}
     counts[LEGACY_KEY] = {}
     for inventory_id, program_id in inventory_program.items():
@@ -885,10 +963,32 @@ def _income_section(
     }
 
 
+def _reconciliation(
+    *,
+    profile_ids: set[UUID],
+    coverage_submitted_ids: set[UUID],
+) -> dict[str, int]:
+    """Relate the two populations by the identity each one actually counts.
+
+    Both sets hold the same kind of identity (Student IDs for CURRENT coverage, Inventory IDs for
+    HISTORICAL_LIMITED coverage), so every count is exact set arithmetic, not an estimate.
+    """
+
+    in_both = len(profile_ids & coverage_submitted_ids)
+    return {
+        "profile_submitted_count": len(profile_ids),
+        "coverage_submitted_count": len(coverage_submitted_ids),
+        "in_both_count": in_both,
+        "profile_only_count": len(profile_ids) - in_both,
+        "coverage_only_count": len(coverage_submitted_ids) - in_both,
+    }
+
+
 def _coverage(
     filters: ResolvedReportFilters,
     *,
     access_scope: ReportAccessScope,
+    population_ids: list[UUID],
 ) -> dict[str, object]:
     ignored = []
     if filters.program is not None:
@@ -941,6 +1041,11 @@ def _coverage(
         submitted_count = len(submitted_student_ids)
         draft_count = len(draft_student_ids)
         covered_student_ids = submitted_student_ids | draft_student_ids
+        profile_student_ids = set(
+            StudentInventory.objects.filter(pk__in=population_ids).values_list(
+                "student_id", flat=True
+            )
+        )
         return {
             "mode": "CURRENT",
             "eligible_student_count": eligible_count,
@@ -950,6 +1055,10 @@ def _coverage(
             "applied_filters": applied,
             "ignored_filters": ignored,
             "scope_note": f"{CURRENT_COVERAGE_NOTE} {scope_note}",
+            "reconciliation": _reconciliation(
+                profile_ids=profile_student_ids,
+                coverage_submitted_ids=submitted_student_ids,
+            ),
         }
 
     inventory_queryset = StudentInventory.objects.filter(academic_year_id=filters.academic_year.pk)
@@ -957,10 +1066,10 @@ def _coverage(
     if college_ids is not None:
         inventory_queryset = inventory_queryset.filter(program__college_id__in=college_ids)
         applied.append("access_scope")
-    inventory_counts = inventory_queryset.aggregate(
-        submitted=Count("id", filter=Q(submitted_at__isnull=False)),
-        draft=Count("id", filter=Q(submitted_at__isnull=True)),
+    submitted_inventory_ids = set(
+        inventory_queryset.filter(submitted_at__isnull=False).values_list("id", flat=True)
     )
+    draft_count = inventory_queryset.filter(submitted_at__isnull=True).count()
     historical_ignored = ignored[:]
     if filters.campus is not None:
         historical_ignored.append("campus_id")
@@ -969,12 +1078,17 @@ def _coverage(
     return {
         "mode": "HISTORICAL_LIMITED",
         "eligible_student_count": None,
-        "submitted_count": int(inventory_counts["submitted"] or 0),
-        "draft_count": int(inventory_counts["draft"] or 0),
+        "submitted_count": len(submitted_inventory_ids),
+        "draft_count": draft_count,
         "missing_count": None,
         "applied_filters": applied,
         "ignored_filters": historical_ignored,
         "scope_note": f"{HISTORICAL_COVERAGE_NOTE} {scope_note}",
+        # Historical coverage counts Inventories, so the profile is compared by Inventory ID.
+        "reconciliation": _reconciliation(
+            profile_ids=set(population_ids),
+            coverage_submitted_ids=submitted_inventory_ids,
+        ),
     }
 
 
@@ -1012,6 +1126,12 @@ def _student_profiling_released_counts(
         value = coverage.get(key)
         if isinstance(value, int):
             yield value
+
+    reconciliation = coverage.get("reconciliation")
+    if isinstance(reconciliation, dict):
+        for value in reconciliation.values():
+            if isinstance(value, int):
+                yield value
 
 
 def build_student_profiling_report(
@@ -1156,7 +1276,7 @@ def build_student_profiling_report(
     }
 
     historical_note = None if filters.academic_year.is_current else HISTORICAL_COVERAGE_NOTE
-    coverage = _coverage(filters, access_scope=access_scope)
+    coverage = _coverage(filters, access_scope=access_scope, population_ids=population_ids)
     disclosure_warnings = build_disclosure_warnings(
         population=denominator,
         released_counts=_student_profiling_released_counts(
@@ -1179,14 +1299,15 @@ def build_student_profiling_report(
                 year_level_label(filters.year_level) if filters.year_level is not None else None
             ),
             "submitted_inventory_count": denominator,
+            "reporting_scope": report_scope_payload(_scope_projection(access_scope)),
             "generated_at": timezone.now(),
         },
         "methodology": {
-            "profile_population_note": (
-                f"{PROFILE_METHODOLOGY} {_report_access_scope_note(access_scope)}"
-            ),
+            "profile_population_note": PROFILE_METHODOLOGY,
             "coverage_note": CURRENT_COVERAGE_NOTE,
             "historical_coverage_note": historical_note,
+            # Stated once here; presentations print it once instead of after every note.
+            "access_scope_note": _report_access_scope_note(access_scope),
         },
         "disclosure_warnings": disclosure_warnings,
         "program_columns": columns,

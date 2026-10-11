@@ -4,6 +4,11 @@
 - Date: 2026-09-19
 - Scope: small reusable XLSX plumbing and Student Profiling XLSX export
 
+> **Amended (2026-10-11):** [ADR-109](ADR-109-student-profiling-reporting-accuracy-and-table-first-pdf.md)
+> adds the Summary reconciliation, a single reporting-scope statement, Program n in the legend,
+> a population Total row below every category sheet, and the Parent Income bracket legend. The
+> fifth sheet has been named PWD Status since ADR-048.
+
 ## Context
 
 COMPASS analytical reports need a tabular export that remains useful outside the web application.

@@ -4,6 +4,12 @@
 - Date: 2026-09-19
 - Scope: printable/downloadable representation of the canonical Student Profiling aggregate
 
+> **Presentation superseded (2026-10-11):** [ADR-109](ADR-109-student-profiling-reporting-accuracy-and-table-first-pdf.md)
+> retires the two-Program column chunks, the repeated institution-wide Total/Percentage beside
+> partial chunks, and "(continued)" tables. The PDF now prints overall tables plus a College /
+> Program appendix, verifies every canonical invariant before printing, and states the reporting
+> scope once. The recognition strip has been enabled on every page since #116.
+
 ## Context
 
 ADR-038 established build_student_profiling_report(...) as the single Student Profiling source of

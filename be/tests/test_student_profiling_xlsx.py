@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import copy
+from datetime import date
 from decimal import Decimal
 from io import BytesIO
 from uuid import uuid4
@@ -9,16 +11,27 @@ from django.test import Client
 from openpyxl import load_workbook
 
 from compass.accounts.models import Designation, UserDesignation
-from compass.organization.models import Campus, College, CounselorResponsibility
+from compass.inventory.models import CivilStatusCategory, Sex
+from compass.organization.models import (
+    AcademicYear,
+    Campus,
+    College,
+    CounselorResponsibility,
+    Program,
+)
 from compass.reports import api as reports_api
 from compass.reports import xlsx as report_xlsx
-from compass.reports.pdf import student_profiling_pdf_filename
+from compass.reports.pdf import (
+    build_student_profiling_print_context,
+    student_profiling_pdf_filename,
+)
 from compass.reports.services import (
     GLOBAL_REPORT_ACCESS_SCOPE,
     InvalidReportFilter,
     ReportAccessScope,
     ReportConfigurationConflict,
     ReportNotFound,
+    build_student_profiling_report,
 )
 from compass.reports.xlsx import (
     EMPTY_REPORT_MESSAGE,
@@ -28,6 +41,7 @@ from compass.reports.xlsx import (
     StudentProfilingWorkbookUnavailable,
     StudentProfilingXlsxResult,
     _validate_excel_column_limit,
+    build_student_profiling_workbook,
     render_student_profiling_xlsx,
     student_profiling_xlsx_filename,
 )
@@ -38,6 +52,8 @@ from tests.test_student_profiling_pdf import (
     sync_policy,
     synthetic_report,
 )
+from tests.test_student_profiling_reports import make_inventory, make_organization, make_revision
+from tests.test_student_profiling_reports import make_user as make_profile_student
 
 EXPECTED_SHEETS = [
     "Summary",
@@ -323,44 +339,56 @@ def test_workbook_is_valid_deterministic_visible_and_formula_free(monkeypatch):
 def test_summary_preserves_timezone_context_current_coverage_and_methodology(monkeypatch):
     report = synthetic_report(program_count=2, submitted_count=2, mode="CURRENT")
     report["report_context"]["year_level_label"] = "3rd Year"
-    expected_timestamp = report["report_context"]["generated_at"].isoformat(timespec="seconds")
+    report["inventory_coverage"]["ignored_filters"] = ["program_id", "year_level"]
+    report["methodology"]["profile_population_note"] = "PROFILE POPULATION NOTE. " * 20
+    # 07:00 UTC is 15:00 institutional time; the offset stays explicit.
+    expected_timestamp = "2026-10-11T15:00:00+08:00"
     workbook = workbook_from_report(monkeypatch, report)
     values = workbook_values(workbook)
 
     for expected in (
-        "Students' Profile",
+        "Student Profile Report",
+        "Individual Inventory-Based Student Profiling",
         "Academic Year",
         "2026-2027",
         "All Campuses",
         "All Colleges",
         "All Programs",
         "3rd Year",
+        "Reporting Scope",
+        "Institution-wide",
         "Generated At",
         expected_timestamp,
-        "Submitted Inventory Count",
-        "Inventory Coverage",
+        "Submitted Inventory Profile Population (n)",
+        "Current Student Inventory Coverage",
         "CURRENT",
         "Eligible Students",
         "Submitted",
         "Draft",
         "Without Individual Inventory",
-        "PROFILE POPULATION NOTE.",
-        "CANONICAL CURRENT COVERAGE SCOPE NOTE.",
+        "Reconciliation of Coverage and Profile Population",
+        "Submitted in coverage but outside the profile population",
+        "CANONICAL CURRENT COVERAGE NOTE.",
         "Coverage filters not applicable to missing-Inventory classification: Program, Year Level",
         "Program Legend / Program Columns",
     ):
         assert expected in values
 
-    assert "DUPLICATE GENERIC COVERAGE NOTE SHOULD NOT PRINT." not in values
-    assert expected_timestamp.endswith("+00:00") or expected_timestamp[-6] in {"+", "-"}
+    # The reporting scope is stated once, not appended to every methodology note.
+    assert values.count("Institution-wide") == 1
+    assert "ACCESS SCOPE NOTE SHOULD NOT PRINT." not in values
+    assert "CANONICAL CURRENT COVERAGE SCOPE NOTE." not in values
 
+    summary = workbook["Summary"]
     methodology_cell = next(
         cell
-        for row in workbook["Summary"].iter_rows()
+        for row in summary.iter_rows()
         for cell in row
-        if cell.value == "PROFILE POPULATION NOTE."
+        if isinstance(cell.value, str) and cell.value.startswith("PROFILE POPULATION NOTE.")
     )
     assert methodology_cell.alignment.wrap_text is True
+    # A long merged note gets an explicit height so it is readable without resizing rows.
+    assert summary.row_dimensions[methodology_cell.row].height > 15
 
 
 def test_historical_summary_does_not_fabricate_eligible_or_missing_counts(monkeypatch):
@@ -369,11 +397,11 @@ def test_historical_summary_does_not_fabricate_eligible_or_missing_counts(monkey
     values = workbook_values(workbook)
 
     assert "HISTORICAL_LIMITED" in values
+    assert "Inventory Coverage — Historical Academic Year (limited)" in values
     assert "Eligible Students" not in values
     assert "Not available from current COMPASS data" in values
-    assert "CANONICAL HISTORICAL COVERAGE SCOPE NOTE." in values
-    assert "DUPLICATE GENERIC COVERAGE NOTE SHOULD NOT PRINT." not in values
-    assert "DUPLICATE HISTORICAL METHODOLOGY NOTE SHOULD NOT PRINT." not in values
+    assert "CANONICAL HISTORICAL METHODOLOGY NOTE." in values
+    assert "CANONICAL CURRENT COVERAGE NOTE." not in values
 
 
 def test_section_sheet_uses_all_programs_key_lookup_and_canonical_percentage(monkeypatch):
@@ -396,10 +424,10 @@ def test_section_sheet_uses_all_programs_key_lookup_and_canonical_percentage(mon
 
     assert headers == [
         "Category",
-        "P-01",
-        "P-02",
-        "P-03",
-        "P-04",
+        "CCMS-P01",
+        "CCMS-P02",
+        "CCMS-P03",
+        "CCMS-P04",
         "Total",
         "Percentage (%)",
     ]
@@ -407,6 +435,42 @@ def test_section_sheet_uses_all_programs_key_lookup_and_canonical_percentage(mon
     assert exported[5] == 777
     assert Decimal(str(exported[6])).quantize(Decimal("0.01")) == Decimal("32.72")
     assert worksheet.cell(row=2, column=7).number_format == "0.00"
+
+
+def test_section_sheets_end_with_population_total_outside_the_filter(monkeypatch):
+    report = synthetic_report(colleges=[("CCMS", 3)], submitted_count=11, legacy_inventories=2)
+    workbook = workbook_from_report(monkeypatch, report)
+    programs = report["program_columns"]
+
+    for section_key, sheet_name, _ in SECTION_SPECS:
+        worksheet = workbook[sheet_name]
+        data_rows = len(report["sections"][section_key]["rows"])
+        assert worksheet.auto_filter.ref.endswith(str(1 + data_rows))
+        total_row = data_rows + 3
+        offset = 3 if section_key == "city_municipality" else 1
+        values = [cell.value for cell in worksheet[total_row]]
+        assert values[0] == "Total (profile population)"
+        assert values[offset : offset + len(programs)] == [
+            program["submitted_inventory_count"] for program in programs
+        ]
+        assert values[offset + len(programs)] == 11
+        assert Decimal(str(values[offset + len(programs) + 1])) == Decimal("100.00")
+        assert str(worksheet.cell(row=total_row + 1, column=1).value).startswith(
+            "Denominator: n = 11 submitted Individual Inventories."
+        )
+        # Every exported Program column sums to its canonical Program population.
+        for index, program in enumerate(programs):
+            column = offset + index + 1
+            column_sum = sum(
+                worksheet.cell(row=row, column=column).value for row in range(2, 2 + data_rows)
+            )
+            assert column_sum == program["submitted_inventory_count"]
+
+    income = workbook["Parent Income"]
+    income_values = [cell.value for row in income.iter_rows() for cell in row]
+    assert "Parent Annual Income Brackets" in income_values
+    assert "Below ₱131,484" in income_values
+    assert "Above ₱2,626,680" in income_values
 
 
 def test_duplicate_program_codes_are_disambiguated_and_legend_keeps_identity(monkeypatch):
@@ -432,27 +496,16 @@ def test_duplicate_program_codes_are_disambiguated_and_legend_keeps_identity(mon
 
 
 def test_legacy_program_column_is_retained(monkeypatch):
-    report = synthetic_report(program_count=2, submitted_count=2)
-    legacy = {
-        "key": "legacy:not-recorded",
-        "program_id": None,
-        "code": None,
-        "name": "Not recorded / legacy",
-        "college": None,
-        "campus": None,
-        "is_legacy": True,
-    }
-    report["program_columns"].append(legacy)
-    for section in report["sections"].values():
-        for row in section["rows"]:
-            row["program_counts"] = [
-                *row["program_counts"],
-                {"program_key": "legacy:not-recorded", "count": 0},
-            ]
-
+    report = synthetic_report(program_count=2, submitted_count=6, legacy_inventories=2)
     workbook = workbook_from_report(monkeypatch, report)
     assert "Not recorded / legacy" in [cell.value for cell in workbook["Sex"][1]]
-    assert "Not recorded / legacy" in workbook_values(workbook)
+    summary = workbook["Summary"]
+    legend_rows = [
+        [cell.value for cell in row]
+        for row in summary.iter_rows()
+        if row[0].value == "Not recorded / legacy"
+    ]
+    assert legend_rows[0][5:7] == ["Yes", 2]
 
 
 def test_geography_sheet_preserves_canonical_city_province_region_context(monkeypatch):
@@ -484,9 +537,9 @@ def test_geography_sheet_preserves_canonical_city_province_region_context(monkey
         "Region",
     ]
     assert [cell.value for cell in worksheet[2]][:3] == [
-        "Synthetic City",
+        "Synthetic Municipality 01",
         "Synthetic Province",
-        "Bicol Region",
+        "Synthetic Region",
     ]
     labels = [worksheet.cell(row=row, column=1).value for row in range(2, worksheet.max_row + 1)]
     assert "Not specified" in labels
@@ -597,6 +650,92 @@ def test_xlsx_includes_privacy_warning_and_na_without_suppressing_data(monkeypat
         isinstance(value, str) and "Use and share these results carefully" in value
         for value in values
     )
-    assert sex.cell(row=2, column=1).value == "Synthetic category"
+    assert sex.cell(row=2, column=1).value == "Male"
     assert sex.cell(row=2, column=3).value == 1
     assert sex.cell(row=2, column=4).value == "N/A"
+
+
+@pytest.mark.django_db
+def test_pdf_and_xlsx_present_identical_canonical_numbers_from_one_frozen_report():
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision("parity")
+    _, college_a, program_a1 = make_organization("PAR-A")
+    program_a2 = Program.objects.create(college=college_a, code="P-PAR-A2", name="Program A2")
+    _, _, program_b = make_organization("PAR-B")
+    plan = [
+        (program_a1, Sex.MALE, CivilStatusCategory.SINGLE),
+        (program_a1, Sex.FEMALE, CivilStatusCategory.SINGLE),
+        (program_a1, Sex.FEMALE, CivilStatusCategory.NOT_SPECIFIED),
+        (program_a2, Sex.MALE, CivilStatusCategory.MARRIED),
+        (program_a2, Sex.MALE, CivilStatusCategory.SINGLE),
+        (program_b, Sex.FEMALE, CivilStatusCategory.SINGLE),
+        (program_b, Sex.MALE, None),
+        (None, Sex.FEMALE, None),
+    ]
+    for index, (program, sex, civil_status) in enumerate(plan):
+        make_inventory(
+            student=make_profile_student(f"parity-{index}@example.edu"),
+            academic_year=year,
+            revision=revision,
+            program=program,
+            sex=sex,
+            civil_status_category=civil_status,
+            date_of_birth=date(2007, 1, 1 + index),
+            with_location=index % 2 == 0,
+        )
+
+    report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
+    frozen = copy.deepcopy(report)
+    profile = build_student_profiling_print_context(report)["student_profile"]
+    workbook = build_student_profiling_workbook(report)
+    assert report == frozen, "presentation must never mutate the canonical report"
+
+    pdf_tables = {table["key"]: table for part in profile["parts"] for table in part["tables"]}
+    columns = report["program_columns"]
+    for section_key, sheet_name, _ in SECTION_SPECS:
+        worksheet = workbook[sheet_name]
+        offset = 3 if section_key == "city_municipality" else 1
+        total_column = offset + len(columns) + 1
+        xlsx_rows = {}
+        for row in range(2, 2 + len(report["sections"][section_key]["rows"])):
+            label = worksheet.cell(row=row, column=1).value
+            count = worksheet.cell(row=row, column=total_column).value
+            percentage = worksheet.cell(row=row, column=total_column + 1).value
+            xlsx_rows[label] = (count, f"{Decimal(str(percentage)):.2f}%")
+        pdf_rows = {}
+        for row in pdf_tables[section_key]["rows"][:-1]:
+            cells = [cell["text"] for cell in row["cells"]]
+            pdf_rows[cells[0]] = (int(cells[-2]), cells[-1])
+        assert all(xlsx_rows[label] == value for label, value in pdf_rows.items()), section_key
+        # Only zero-count Not recorded / legacy rows are left out of the printed table.
+        for label in set(xlsx_rows) - set(pdf_rows):
+            assert label == "Not recorded / legacy" and xlsx_rows[label][0] == 0
+        footer = [cell.value for cell in worksheet[len(xlsx_rows) + 3]]
+        pdf_total = [cell["text"] for cell in pdf_tables[section_key]["rows"][-1]["cells"]]
+        assert footer[total_column - 1] == int(pdf_total[-2]) == len(plan)
+
+    # College cross-tabs reconcile to the workbook's Program columns.
+    sex_sheet = workbook["Sex"]
+    headers = [cell.value for cell in sex_sheet[1]]
+    for group in profile["appendix"]:
+        table = group["tables"][0]
+        program_headers = [
+            column["label"]
+            for column in table["columns"][1:]
+            if column["label"] in headers and column["label"] != "Total"
+        ]
+        for row in table["rows"][:-1]:
+            cells = [cell["text"] for cell in row["cells"]]
+            sheet_row = next(
+                index
+                for index in range(2, sex_sheet.max_row + 1)
+                if sex_sheet.cell(row=index, column=1).value == cells[0]
+            )
+            expected = [
+                sex_sheet.cell(row=sheet_row, column=headers.index(label) + 1).value
+                for label in program_headers
+            ]
+            assert [int(value) for value in cells[1 : 1 + len(program_headers)]] == expected
+            if len(program_headers) > 1:
+                assert int(cells[1 + len(program_headers)]) == sum(expected)

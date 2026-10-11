@@ -37,6 +37,11 @@ export function StudentProfileContext({
         : "All authorized Programs");
   const yearLevel =
     context.year_level_label ?? "All Year Levels";
+  const reportingScope = context.reporting_scope.is_global
+    ? "Institution-wide"
+    : context.reporting_scope.colleges
+        .map((scopeCollege) => scopeCollege.code + " — " + scopeCollege.name)
+        .join("; ");
 
   const values = [
     { label: "Academic Year", value: context.academic_year.label },
@@ -44,8 +49,9 @@ export function StudentProfileContext({
     { label: "College", value: college },
     { label: "Program", value: program },
     { label: "Year Level", value: yearLevel },
+    { label: "Reporting scope", value: reportingScope },
     {
-      label: "Submitted Inventory Count",
+      label: "Submitted Inventory Profile Population",
       value: String(context.submitted_inventory_count),
     },
     { label: "Generated At", value: reportGeneratedAt(context.generated_at) },
