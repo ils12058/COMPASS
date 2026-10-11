@@ -14,11 +14,15 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.worksheet import Worksheet
 
+from compass.common.institutional_time import to_institution_time
+
 from .filenames import safe_report_filename_part
 from .services import (
+    PARENT_INCOME_LEGEND_NOTE,
     ReportAccessScope,
     ReportError,
     build_student_profiling_report,
+    parent_income_bracket_legend,
     student_profiling_release_context,
 )
 
@@ -58,8 +62,14 @@ _TABLE_BORDER = Border(
     bottom=_THIN_SIDE,
 )
 _HEADER_FILL = PatternFill(fill_type="solid", fgColor="E7E6E6")
+_TOTAL_FILL = PatternFill(fill_type="solid", fgColor="F2F2F2")
 _BOLD = Font(bold=True)
 _WRAP = Alignment(wrap_text=True, vertical="top")
+# Summary notes span columns A:G. Merged cells do not grow automatically, so note rows get an
+# explicit height from their length: about this many characters fit on one line of the merge.
+_NOTE_CHARACTERS_PER_LINE = 120
+_NOTE_LINE_HEIGHT = 15
+SUMMARY_WIDTH = 7
 _CENTER = Alignment(horizontal="center", vertical="center")
 _RIGHT = Alignment(horizontal="right", vertical="center")
 
@@ -214,10 +224,16 @@ def _program_display_columns(program_columns: object) -> list[dict[str, object]]
         else:
             display_label = name or "Program"
 
+        submitted = column.get("submitted_inventory_count")
+        if type(submitted) is not int or submitted < 0:
+            raise StudentProfilingWorkbookUnavailable(
+                "The Student Profiling Program population is invalid."
+            )
         display_columns.append(
             {
                 "key": key,
                 "display_label": display_label,
+                "submitted_inventory_count": submitted,
                 "code": code,
                 "name": name or ("Not recorded / legacy" if is_legacy else "Program"),
                 "college": _organization_display(college_dict, "") if college_dict else "",
@@ -256,7 +272,8 @@ def _generated_at_text(value: object) -> str:
         raise StudentProfilingWorkbookUnavailable(
             "The Student Profiling generated timestamp must include timezone information."
         )
-    return value.isoformat(timespec="seconds")
+    # Same institutional civil time as the PDF, kept as ISO-8601 with its offset.
+    return to_institution_time(value).isoformat(timespec="seconds")
 
 
 def _percentage_value(value: object) -> Decimal | None:
@@ -267,6 +284,15 @@ def _percentage_value(value: object) -> Decimal | None:
     if isinstance(value, int | float):
         return Decimal(str(value))
     raise StudentProfilingWorkbookUnavailable("The Student Profiling percentage value is invalid.")
+
+
+def _coverage_heading(coverage: dict[str, object]) -> str:
+    mode = str(coverage.get("mode") or "")
+    if mode == "CURRENT":
+        return "Current Student Inventory Coverage"
+    if mode == "HISTORICAL_LIMITED":
+        return "Inventory Coverage — Historical Academic Year (limited)"
+    raise StudentProfilingWorkbookUnavailable("The Student Profiling coverage mode is unsupported.")
 
 
 def _coverage_rows(coverage: dict[str, object]) -> list[tuple[str, object]]:
@@ -292,6 +318,31 @@ def _coverage_rows(coverage: dict[str, object]) -> list[tuple[str, object]]:
     raise StudentProfilingWorkbookUnavailable("The Student Profiling coverage mode is unsupported.")
 
 
+def _reconciliation_rows(coverage: dict[str, object]) -> list[tuple[str, int]]:
+    raw = _require_dict(coverage.get("reconciliation"), "population reconciliation")
+    values: dict[str, int] = {}
+    for key in (
+        "profile_submitted_count",
+        "coverage_submitted_count",
+        "in_both_count",
+        "profile_only_count",
+        "coverage_only_count",
+    ):
+        value = raw.get(key)
+        if type(value) is not int or value < 0:
+            raise StudentProfilingWorkbookUnavailable(
+                "The Student Profiling population reconciliation is invalid."
+            )
+        values[key] = value
+    return [
+        ("Submitted Inventories in the profile population", values["profile_submitted_count"]),
+        ("Also counted as Submitted in coverage", values["in_both_count"]),
+        ("Not counted as Submitted in coverage", values["profile_only_count"]),
+        ("Counted as Submitted in coverage", values["coverage_submitted_count"]),
+        ("Submitted in coverage but outside the profile population", values["coverage_only_count"]),
+    ]
+
+
 def _coverage_ignored_note(coverage: dict[str, object]) -> str | None:
     raw_filters = coverage.get("ignored_filters", [])
     if not isinstance(raw_filters, list):
@@ -314,6 +365,30 @@ def _validate_excel_column_limit(program_columns: list[dict[str, object]]) -> No
         )
 
 
+def _write_note(worksheet: Worksheet, row: int, text: object, *, bold: bool = False) -> None:
+    value = "" if text is None else str(text)
+    _write_text(worksheet, row, 1, value, bold=bold, wrap=True)
+    worksheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=SUMMARY_WIDTH)
+    lines = max(1, -(-len(value) // _NOTE_CHARACTERS_PER_LINE))
+    if lines > 1:
+        worksheet.row_dimensions[row].height = lines * _NOTE_LINE_HEIGHT
+
+
+def _reporting_scope_text(report_context: dict[str, object]) -> str:
+    scope = _require_dict(report_context.get("reporting_scope"), "reporting scope")
+    if scope.get("is_global") is True:
+        return "Institution-wide"
+    labels = []
+    for raw in _require_list(scope.get("colleges", []), "reporting scope Colleges"):
+        college = _require_dict(raw, "reporting scope College")
+        labels.append(_organization_display(college, "College"))
+    if not labels:
+        raise StudentProfilingWorkbookUnavailable(
+            "The Student Profiling reporting scope has no authorized College."
+        )
+    return "Limited to assigned Colleges: " + "; ".join(labels)
+
+
 def _build_summary_sheet(
     worksheet: Worksheet,
     report_context: dict[str, object],
@@ -325,24 +400,31 @@ def _build_summary_sheet(
     worksheet.title = "Summary"
     worksheet.sheet_view.showGridLines = False
 
-    _write_text(worksheet, 1, 1, "Students' Profile", bold=True)
-    worksheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=6)
+    _write_text(worksheet, 1, 1, "Student Profile Report", bold=True)
+    worksheet.merge_cells(start_row=1, start_column=1, end_row=1, end_column=SUMMARY_WIDTH)
     worksheet["A1"].alignment = Alignment(horizontal="center", vertical="center")
     worksheet["A1"].font = Font(bold=True, size=14)
+    _write_text(worksheet, 2, 1, "Individual Inventory-Based Student Profiling")
+    worksheet.merge_cells(start_row=2, start_column=1, end_row=2, end_column=SUMMARY_WIDTH)
+    worksheet["A2"].alignment = Alignment(horizontal="center", vertical="center")
 
     academic_year = _require_dict(report_context.get("academic_year"), "Academic Year context")
     context_rows = [
         ("Academic Year", academic_year.get("label")),
-        ("Campus", _organization_display(report_context.get("campus"), "All Campuses")),
-        ("College", _organization_display(report_context.get("college"), "All Colleges")),
-        ("Program", _organization_display(report_context.get("program"), "All Programs")),
-        ("Year Level", report_context.get("year_level_label") or "All Year Levels"),
+        ("Campus filter", _organization_display(report_context.get("campus"), "All Campuses")),
+        ("College filter", _organization_display(report_context.get("college"), "All Colleges")),
+        ("Program filter", _organization_display(report_context.get("program"), "All Programs")),
+        ("Year Level filter", report_context.get("year_level_label") or "All Year Levels"),
+        ("Reporting Scope", _reporting_scope_text(report_context)),
         ("Generated At", _generated_at_text(report_context.get("generated_at"))),
-        ("Submitted Inventory Count", int(report_context.get("submitted_inventory_count") or 0)),
+        (
+            "Submitted Inventory Profile Population (n)",
+            int(report_context.get("submitted_inventory_count") or 0),
+        ),
     ]
 
-    _write_text(worksheet, 3, 1, "Report Context", bold=True)
-    row = 4
+    _write_text(worksheet, 4, 1, "Report Context", bold=True)
+    row = 5
     for label, value in context_rows:
         _write_text(worksheet, row, 1, label, bold=True, wrap=True)
         if isinstance(value, int):
@@ -352,7 +434,7 @@ def _build_summary_sheet(
         row += 1
 
     row += 1
-    _write_text(worksheet, row, 1, "Inventory Coverage", bold=True)
+    _write_text(worksheet, row, 1, _coverage_heading(coverage), bold=True)
     row += 1
     for label, value in _coverage_rows(coverage):
         _write_text(worksheet, row, 1, label, bold=True, wrap=True)
@@ -362,6 +444,23 @@ def _build_summary_sheet(
             _write_text(worksheet, row, 2, value, wrap=True)
         row += 1
 
+    row += 1
+    _write_text(worksheet, row, 1, "Reconciliation of Coverage and Profile Population", bold=True)
+    row += 1
+    for label, value in _reconciliation_rows(coverage):
+        _write_text(worksheet, row, 1, label, bold=True, wrap=True)
+        worksheet.cell(row=row, column=2, value=value)
+        row += 1
+    _write_note(
+        worksheet,
+        row,
+        "The two populations are counted on different bases, so no submission rate is "
+        "calculated from them. Profile Inventories outside coverage belong to Students who are no "
+        "longer active Current Students or are currently affiliated outside the coverage scope; "
+        "coverage Inventories outside the profile record a Program, College, Campus, or Year "
+        "Level outside the selected profile filters, or no Program.",
+    )
+
     warning_messages: list[str] = []
     for warning in disclosure_warnings:
         item = _require_dict(warning, "disclosure warning")
@@ -369,39 +468,42 @@ def _build_summary_sheet(
         if message and message not in warning_messages:
             warning_messages.append(message)
     if warning_messages:
-        row += 1
-        _write_text(worksheet, row, 1, "Small-population privacy notice", bold=True)
-        worksheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        row += 2
+        _write_note(worksheet, row, "Small-population privacy notice", bold=True)
         for message in warning_messages:
             row += 1
-            _write_text(worksheet, row, 1, message, wrap=True)
-            worksheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+            _write_note(worksheet, row, message)
+        row += 1
+        _write_note(worksheet, row, "Exact counts are exported; no value is suppressed.")
 
+    row += 2
+    _write_note(worksheet, row, "Methodology / Coverage Scope", bold=True)
     row += 1
-    _write_text(worksheet, row, 1, "Methodology / Coverage Scope", bold=True)
+    _write_note(worksheet, row, methodology.get("profile_population_note"))
     row += 1
-    _write_text(
-        worksheet,
-        row,
-        1,
-        methodology.get("profile_population_note"),
-        wrap=True,
+    coverage_note = (
+        methodology.get("historical_coverage_note")
+        if coverage.get("mode") == "HISTORICAL_LIMITED"
+        else methodology.get("coverage_note")
     )
-    worksheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
-    row += 1
-    _write_text(worksheet, row, 1, coverage.get("scope_note"), wrap=True)
-    worksheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+    _write_note(worksheet, row, coverage_note or coverage.get("scope_note"))
 
     ignored_note = _coverage_ignored_note(coverage)
     if ignored_note:
         row += 1
-        _write_text(worksheet, row, 1, ignored_note, wrap=True)
-        worksheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        _write_note(worksheet, row, ignored_note)
+    row += 1
+    _write_note(
+        worksheet,
+        row,
+        "Category sheets use the profile population as the denominator. Percentages are rounded "
+        "half-up to two decimals independently, so a column may add up to 99.99 or 100.01. Each "
+        "sheet ends with a Total row giving every Program's submitted Inventories.",
+    )
 
     if int(report_context.get("submitted_inventory_count") or 0) == 0:
         row += 2
-        _write_text(worksheet, row, 1, EMPTY_REPORT_MESSAGE, bold=True, wrap=True)
-        worksheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=6)
+        _write_note(worksheet, row, EMPTY_REPORT_MESSAGE, bold=True)
 
     row += 2
     _write_text(worksheet, row, 1, "Program Legend / Program Columns", bold=True)
@@ -413,6 +515,7 @@ def _build_summary_sheet(
         "College",
         "Campus",
         "Legacy",
+        "Submitted Inventories",
     ]
     _write_table_header(worksheet, row, legend_headers)
     for program in program_columns:
@@ -427,10 +530,11 @@ def _build_summary_sheet(
         ]
         for column, value in enumerate(values, start=1):
             _write_table_text(worksheet, row, column, value)
+        _write_table_number(worksheet, row, 7, int(program["submitted_inventory_count"]))
 
     _set_capped_width(worksheet, 1, minimum=24, maximum=38)
     _set_capped_width(worksheet, 2, minimum=20, maximum=72)
-    for column in range(3, 7):
+    for column in range(3, SUMMARY_WIDTH + 1):
         _set_capped_width(worksheet, column, minimum=12, maximum=32)
 
 
@@ -513,6 +617,17 @@ def _build_section_sheet(
     last_column = get_column_letter(len(headers))
     worksheet.auto_filter.ref = f"A1:{last_column}{max(1, worksheet.max_row)}"
 
+    if not empty_report:
+        _write_section_footer(
+            worksheet,
+            row_number=worksheet.max_row + 2,
+            is_geography=is_geography,
+            denominator=int(section.get("denominator") or 0),
+            program_columns=program_columns,
+        )
+        if section_key == "parent_annual_income":
+            _write_income_legend(worksheet, worksheet.max_row + 2)
+
     base_offset = 3 if is_geography else 1
     _set_capped_width(worksheet, 1, minimum=25, maximum=35)
     if is_geography:
@@ -537,6 +652,78 @@ def _build_section_sheet(
         minimum=14,
         maximum=16,
     )
+
+
+def _write_section_footer(
+    worksheet: Worksheet,
+    *,
+    row_number: int,
+    is_geography: bool,
+    denominator: int,
+    program_columns: list[dict[str, object]],
+) -> None:
+    """Write the population total below the filtered rows so every column can be verified."""
+
+    if sum(int(program["submitted_inventory_count"]) for program in program_columns) != (
+        denominator
+    ):
+        raise StudentProfilingWorkbookUnavailable(
+            "The Student Profiling Program populations do not reconcile to the denominator."
+        )
+    column_number = 1
+    label = _write_table_text(worksheet, row_number, column_number, "Total (profile population)")
+    label.font = _BOLD
+    cells = [label]
+    column_number += 1
+    if is_geography:
+        cells.append(_write_table_text(worksheet, row_number, column_number, ""))
+        cells.append(_write_table_text(worksheet, row_number, column_number + 1, ""))
+        column_number += 2
+    for program in program_columns:
+        cells.append(
+            _write_table_number(
+                worksheet,
+                row_number,
+                column_number,
+                int(program["submitted_inventory_count"]),
+            )
+        )
+        column_number += 1
+    cells.append(_write_table_number(worksheet, row_number, column_number, denominator))
+    column_number += 1
+    if denominator > 0:
+        cells.append(
+            _write_table_number(
+                worksheet,
+                row_number,
+                column_number,
+                Decimal("100.00"),
+                number_format="0.00",
+            )
+        )
+    else:
+        cells.append(_write_table_text(worksheet, row_number, column_number, "N/A"))
+    for cell in cells:
+        cell.font = _BOLD
+        cell.fill = _TOTAL_FILL
+    _write_text(
+        worksheet,
+        row_number + 1,
+        1,
+        f"Denominator: n = {denominator} submitted Individual Inventories. Program columns sum "
+        "to the Total row; percentages are of the profile population.",
+    )
+
+
+def _write_income_legend(worksheet: Worksheet, row_number: int) -> None:
+    _write_text(worksheet, row_number, 1, "Parent Annual Income Brackets", bold=True)
+    _write_table_header(worksheet, row_number + 1, ["Bracket", "Combined annual income"])
+    row = row_number + 1
+    for label, description in parent_income_bracket_legend():
+        row += 1
+        _write_table_text(worksheet, row, 1, label)
+        _write_table_text(worksheet, row, 2, description)
+    _write_text(worksheet, row + 1, 1, PARENT_INCOME_LEGEND_NOTE)
 
 
 def build_student_profiling_workbook(report: dict[str, object]) -> Workbook:

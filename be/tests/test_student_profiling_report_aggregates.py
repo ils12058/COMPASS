@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import UTC, datetime
 from decimal import Decimal
 from unittest.mock import patch
 
@@ -10,13 +10,15 @@ import pytest
 import compass.reports.services as profiling_report
 from compass.accounts.models import StudentLifecycleStatus
 from compass.inventory.models import (
+    AnnualIncomeStatus,
     CivilStatusCategory,
     CurrentReligionCategory,
+    FamilyMemberKind,
     ParentStatusCategory,
     PWDStatus,
     Sex,
 )
-from compass.organization.models import AcademicYear
+from compass.organization.models import AcademicYear, Program
 from compass.reports.services import (
     GLOBAL_REPORT_ACCESS_SCOPE,
     LEGACY_KEY,
@@ -458,3 +460,199 @@ def test_empty_student_profile_has_no_disclosure_warning_and_null_percentages():
     assert report["report_context"]["submitted_inventory_count"] == 0
     assert report["disclosure_warnings"] == []
     assert report_row(report["sections"]["sex"], Sex.MALE)["percentage"] is None
+
+
+def assert_report_reconciles(report: dict[str, object]) -> None:
+    """Every invariant the printed and exported representations rely on."""
+
+    population = report["report_context"]["submitted_inventory_count"]
+    columns = report["program_columns"]
+    totals = {column["key"]: column["submitted_inventory_count"] for column in columns}
+    assert sum(totals.values()) == population
+    assert len(totals) == len(columns)
+    for key, section in report["sections"].items():
+        assert section["denominator"] == population, key
+        assert sum(row["total_count"] for row in section["rows"]) == population, key
+        program_sums = dict.fromkeys(totals, 0)
+        for row in section["rows"]:
+            counts = {item["program_key"]: item["count"] for item in row["program_counts"]}
+            assert set(counts) == set(totals), key
+            assert sum(counts.values()) == row["total_count"], (key, row["key"])
+            assert row["percentage"] == profiling_report.calculate_percentage(
+                row["total_count"], population
+            )
+            for program_key, count in counts.items():
+                program_sums[program_key] += count
+        assert program_sums == totals, key
+    reconciliation = report["inventory_coverage"]["reconciliation"]
+    assert reconciliation["profile_submitted_count"] == population
+    assert (
+        reconciliation["in_both_count"] + reconciliation["profile_only_count"]
+        == reconciliation["profile_submitted_count"]
+    )
+    assert (
+        reconciliation["in_both_count"] + reconciliation["coverage_only_count"]
+        == reconciliation["coverage_submitted_count"]
+        == report["inventory_coverage"]["submitted_count"]
+    )
+
+
+@pytest.mark.django_db
+def test_every_section_reconciles_across_colleges_campuses_programs_and_legacy():
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision("reconcile-all")
+    _, college_a, program_a1 = make_organization("REC-A")
+    program_a2 = Program.objects.create(college=college_a, code="P-REC-A2", name="Program A2")
+    program_a3 = Program.objects.create(
+        college=college_a, code="P-REC-A3", name="Program A3", is_active=False
+    )
+    _, college_b, program_b = make_organization("REC-B")
+    variations = [
+        {"program": program_a1, "sex": Sex.MALE},
+        {"program": program_a1, "sex": Sex.FEMALE, "civil_status_category": None},
+        {"program": program_a2, "religion": CurrentReligionCategory.NOT_SPECIFIED},
+        {"program": program_a2, "with_parents": False},
+        {"program": program_a3, "with_location": False, "physical": PWDStatus.PWD},
+        {"program": program_b, "parent_status": ParentStatusCategory.WIDOWED},
+        {"program": program_b, "date_of_birth": datetime(2007, 1, 5).date()},
+        {"program": None, "year_level": None, "with_parents": False, "with_location": False},
+    ]
+    for index, values in enumerate(variations):
+        make_inventory(
+            student=make_user(f"reconcile-all-{index}@example.edu"),
+            academic_year=year,
+            revision=revision,
+            **values,
+        )
+    make_inventory(
+        student=make_user("reconcile-all-draft@example.edu"),
+        academic_year=year,
+        revision=revision,
+        program=program_a1,
+        submitted=False,
+    )
+
+    report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
+    assert report["report_context"]["submitted_inventory_count"] == len(variations)
+    assert_report_reconciles(report)
+    by_key = {column["key"]: column for column in report["program_columns"]}
+    assert by_key[f"program:{program_a3.pk}"]["submitted_inventory_count"] == 1
+    assert by_key[profiling_report.LEGACY_PROGRAM_KEY]["submitted_inventory_count"] == 1
+
+    for filters in (
+        {"college_id": college_a.pk},
+        {"college_id": college_b.pk},
+        {"program_id": program_a3.pk},
+        {"year_level": 1},
+    ):
+        filtered = build_student_profiling_report(
+            access_scope=GLOBAL_REPORT_ACCESS_SCOPE, **filters
+        )
+        assert_report_reconciles(filtered)
+        # College and Program filters never pull unclassified legacy Inventories into a College.
+        assert all(not column["is_legacy"] for column in filtered["program_columns"])
+
+    scoped = build_student_profiling_report(
+        access_scope=profiling_report.ReportAccessScope(
+            is_global=False, college_ids=(college_b.pk,)
+        )
+    )
+    assert_report_reconciles(scoped)
+    assert scoped["report_context"]["submitted_inventory_count"] == 2
+
+
+@pytest.mark.django_db
+def test_single_submitted_inventory_reconciles_and_zero_population_has_no_percentages():
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision("one-inventory")
+    _, _, program = make_organization("ONE")
+
+    empty = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
+    assert_report_reconciles(empty)
+    assert all(
+        row["percentage"] is None
+        for section in empty["sections"].values()
+        for row in section["rows"]
+    )
+
+    make_inventory(
+        student=make_user("one-inventory@example.edu"),
+        academic_year=year,
+        revision=revision,
+        program=program,
+    )
+    single = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
+    assert_report_reconciles(single)
+    assert report_row(single["sections"]["sex"], Sex.MALE)["percentage"] == Decimal("100.00")
+
+
+@pytest.mark.django_db
+def test_age_uses_the_institutional_submission_date_not_the_utc_date():
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision("age-institutional")
+    _, _, program = make_organization("AGE-INST")
+    # 2026-08-29 17:30 UTC is 2026-08-30 01:30 in Asia/Manila: the 21st birthday has arrived.
+    make_inventory(
+        student=make_user("age-institutional@example.edu"),
+        academic_year=year,
+        revision=revision,
+        program=program,
+        date_of_birth=datetime(2005, 8, 30).date(),
+        submitted_time=datetime(2026, 8, 29, 17, 30, tzinfo=UTC),
+    )
+
+    rows = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)["sections"][
+        "age"
+    ]["rows"]
+    assert [(row["key"], row["total_count"]) for row in rows] == [("21", 1)]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("father", "mother", "expected"),
+    [
+        ((AnnualIncomeStatus.REPORTED, "131483"), (AnnualIncomeStatus.NONE, "0"), "POOR"),
+        ((AnnualIncomeStatus.REPORTED, "131484"), (AnnualIncomeStatus.NONE, "0"), "LOW_INCOME"),
+        (
+            (AnnualIncomeStatus.REPORTED, "100000"),
+            (AnnualIncomeStatus.REPORTED, "31484"),
+            "LOW_INCOME",
+        ),
+        ((AnnualIncomeStatus.REPORTED, "2626680"), (AnnualIncomeStatus.NONE, "0"), "UPPER_INCOME"),
+        ((AnnualIncomeStatus.REPORTED, "2626681"), (AnnualIncomeStatus.NONE, "0"), "RICH"),
+        ((AnnualIncomeStatus.NONE, "0"), (AnnualIncomeStatus.NONE, "0"), "NONE"),
+        (
+            (AnnualIncomeStatus.NOT_SPECIFIED, None),
+            (AnnualIncomeStatus.REPORTED, "50000"),
+            "NOT_SPECIFIED",
+        ),
+    ],
+)
+def test_report_income_brackets_follow_canonical_boundaries(father, mother, expected):
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision(f"income-{expected.lower()}")
+    _, _, program = make_organization(f"INC-{expected}")
+    item = make_inventory(
+        student=make_user(f"income-{expected.lower()}@example.edu"),
+        academic_year=year,
+        revision=revision,
+        program=program,
+    )
+    for kind, (status, amount) in (
+        (FamilyMemberKind.FATHER, father),
+        (FamilyMemberKind.MOTHER, mother),
+    ):
+        item.family_members.filter(kind=kind).update(
+            annual_income_status=status,
+            annual_income_previous_year=None if amount is None else Decimal(amount),
+        )
+
+    section = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)["sections"][
+        "parent_annual_income"
+    ]
+    assert report_row(section, expected)["total_count"] == 1
+    assert sum(row["total_count"] for row in section["rows"]) == 1

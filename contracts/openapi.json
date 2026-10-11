@@ -14395,6 +14395,9 @@
           "mode": {
             "$ref": "#/components/schemas/CoverageModeValue"
           },
+          "reconciliation": {
+            "$ref": "#/components/schemas/PopulationReconciliation"
+          },
           "scope_note": {
             "title": "Scope Note",
             "type": "string"
@@ -14412,7 +14415,8 @@
           "missing_count",
           "applied_filters",
           "ignored_filters",
-          "scope_note"
+          "scope_note",
+          "reconciliation"
         ],
         "title": "InventoryCoverage",
         "type": "object"
@@ -16604,6 +16608,10 @@
       "Methodology": {
         "additionalProperties": false,
         "properties": {
+          "access_scope_note": {
+            "title": "Access Scope Note",
+            "type": "string"
+          },
           "coverage_note": {
             "title": "Coverage Note",
             "type": "string"
@@ -16627,7 +16635,8 @@
         "required": [
           "profile_population_note",
           "coverage_note",
-          "historical_coverage_note"
+          "historical_coverage_note",
+          "access_scope_note"
         ],
         "title": "Methodology",
         "type": "object"
@@ -18211,6 +18220,40 @@
         "title": "PlatformPublicStatusResponse",
         "type": "object"
       },
+      "PopulationReconciliation": {
+        "additionalProperties": false,
+        "properties": {
+          "coverage_only_count": {
+            "title": "Coverage Only Count",
+            "type": "integer"
+          },
+          "coverage_submitted_count": {
+            "title": "Coverage Submitted Count",
+            "type": "integer"
+          },
+          "in_both_count": {
+            "title": "In Both Count",
+            "type": "integer"
+          },
+          "profile_only_count": {
+            "title": "Profile Only Count",
+            "type": "integer"
+          },
+          "profile_submitted_count": {
+            "title": "Profile Submitted Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "profile_submitted_count",
+          "coverage_submitted_count",
+          "in_both_count",
+          "profile_only_count",
+          "coverage_only_count"
+        ],
+        "title": "PopulationReconciliation",
+        "type": "object"
+      },
       "PostGraduationFieldValue": {
         "enum": [
           "PROFESSIONAL",
@@ -18489,6 +18532,10 @@
               }
             ],
             "title": "Program Id"
+          },
+          "submitted_inventory_count": {
+            "title": "Submitted Inventory Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -18496,6 +18543,7 @@
           "program_id",
           "code",
           "name",
+          "submitted_inventory_count",
           "college",
           "campus",
           "is_legacy"
@@ -19579,6 +19627,9 @@
               }
             ]
           },
+          "reporting_scope": {
+            "$ref": "#/components/schemas/ReportScopeResponse"
+          },
           "submitted_inventory_count": {
             "title": "Submitted Inventory Count",
             "type": "integer"
@@ -19614,6 +19665,7 @@
           "year_level",
           "year_level_label",
           "submitted_inventory_count",
+          "reporting_scope",
           "generated_at"
         ],
         "title": "ReportContext",

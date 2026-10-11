@@ -4,6 +4,12 @@
 - Date: 2026-09-19
 - Scope: read-only Student Profiling aggregate reporting
 
+> **Amended (2026-10-11):** [ADR-109](ADR-109-student-profiling-reporting-accuracy-and-table-first-pdf.md)
+> names the Submitted Inventory Profile Population and Current Student Inventory Coverage,
+> adds the exact coverage reconciliation, canonical Program populations, `reporting_scope`, and
+> a single `access_scope_note`. A zero denominator yields `None` (printed and exported as N/A),
+> not 0.00 as stated below.
+
 ## Context
 
 The Guidance and Counseling Office historical reference is titled *Students' Profile — First Year

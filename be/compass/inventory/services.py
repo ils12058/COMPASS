@@ -124,6 +124,29 @@ class CombinedParentIncome:
     amount: Decimal | None
 
 
+@dataclass(frozen=True, slots=True)
+class ParentIncomeBracket:
+    """One reported-income band; its lower bound is the previous bracket's upper bound."""
+
+    band: ParentIncomeBand
+    maximum: Decimal | None
+    maximum_inclusive: bool = False
+
+
+# Combined Father + Mother annual-income brackets from the Guidance and Counseling Office Student
+# Profiling reference. Ordered ascending; a positive amount belongs to the first bracket whose upper
+# bound contains it. Reports read this table for presentation and never restate the thresholds.
+PARENT_INCOME_BRACKETS: tuple[ParentIncomeBracket, ...] = (
+    ParentIncomeBracket(ParentIncomeBand.POOR, Decimal("131484")),
+    ParentIncomeBracket(ParentIncomeBand.LOW_INCOME, Decimal("262968")),
+    ParentIncomeBracket(ParentIncomeBand.LOWER_MIDDLE_INCOME, Decimal("525936")),
+    ParentIncomeBracket(ParentIncomeBand.MIDDLE_MIDDLE_INCOME, Decimal("920388")),
+    ParentIncomeBracket(ParentIncomeBand.UPPER_MIDDLE_INCOME, Decimal("1577808")),
+    ParentIncomeBracket(ParentIncomeBand.UPPER_INCOME, Decimal("2626680"), maximum_inclusive=True),
+    ParentIncomeBracket(ParentIncomeBand.RICH, None),
+)
+
+
 def combine_parent_annual_income(
     *,
     father_status: str,
@@ -153,19 +176,12 @@ def classify_parent_annual_income(combined: CombinedParentIncome) -> ParentIncom
     amount = combined.amount
     if amount == 0:
         return ParentIncomeBand.NONE
-    if amount < Decimal("131484"):
-        return ParentIncomeBand.POOR
-    if amount < Decimal("262968"):
-        return ParentIncomeBand.LOW_INCOME
-    if amount < Decimal("525936"):
-        return ParentIncomeBand.LOWER_MIDDLE_INCOME
-    if amount < Decimal("920388"):
-        return ParentIncomeBand.MIDDLE_MIDDLE_INCOME
-    if amount < Decimal("1577808"):
-        return ParentIncomeBand.UPPER_MIDDLE_INCOME
-    if amount <= Decimal("2626680"):
-        return ParentIncomeBand.UPPER_INCOME
-    return ParentIncomeBand.RICH
+    for bracket in PARENT_INCOME_BRACKETS:
+        if bracket.maximum is None:
+            return bracket.band
+        if amount < bracket.maximum or (bracket.maximum_inclusive and amount == bracket.maximum):
+            return bracket.band
+    raise InvalidInventoryInput("Parent annual-income brackets must end without an upper bound.")
 
 
 def _reject_future_birth_date(value: object, field_name: str) -> None:

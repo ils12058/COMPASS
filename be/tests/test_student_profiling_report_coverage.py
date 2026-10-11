@@ -358,10 +358,172 @@ def test_scoped_report_sees_assigned_colleges_and_only_explicit_global_sees_all(
     institution_wide = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
 
     assert scoped["report_context"]["submitted_inventory_count"] == 2
-    assert "Counselor-assigned Colleges" in scoped["methodology"]["profile_population_note"]
+    assert "Counselor-assigned Colleges" in scoped["methodology"]["access_scope_note"]
+    assert "without a recorded Program" in scoped["methodology"]["access_scope_note"]
     assert institution_wide["report_context"]["submitted_inventory_count"] == 3
-    assert "institution-wide" in institution_wide["methodology"]["profile_population_note"]
+    assert "institution-wide" in institution_wide["methodology"]["access_scope_note"]
+    assert (
+        scoped["methodology"]["profile_population_note"]
+        == (institution_wide["methodology"]["profile_population_note"])
+    )
     with pytest.raises(ReportAccessDenied):
         build_student_profiling_report(access_scope=college_a_scope, college_id=college_b.pk)
     with pytest.raises(ReportAccessDenied):
         build_student_profiling_report(access_scope=ReportAccessScope(is_global=False))
+
+
+@pytest.mark.django_db
+def test_reconciliation_exposes_current_affiliation_that_differs_from_inventory_program():
+    """A Student affiliated with one College whose Inventory records another College's Program."""
+
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision("reconcile-affiliation")
+    _, ccms, ccms_program = make_organization("RC-CCMS")
+    _, cas, cas_program = make_organization("RC-CAS")
+    bea = make_user("reconcile-bea@example.edu")
+    StudentAffiliation.objects.create(student=bea, college=ccms)
+    make_inventory(student=bea, academic_year=year, revision=revision, program=cas_program)
+    matched = make_user("reconcile-matched@example.edu")
+    StudentAffiliation.objects.create(student=matched, college=ccms)
+    make_inventory(student=matched, academic_year=year, revision=revision, program=ccms_program)
+    graduated = make_user("reconcile-graduated@example.edu")
+    StudentAffiliation.objects.create(student=graduated, college=ccms)
+    make_inventory(student=graduated, academic_year=year, revision=revision, program=ccms_program)
+    graduated.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
+    graduated.save(update_fields=["student_lifecycle_status", "updated_at"])
+
+    report = build_student_profiling_report(
+        access_scope=GLOBAL_REPORT_ACCESS_SCOPE, college_id=ccms.pk
+    )
+    coverage = report["inventory_coverage"]
+
+    # CCMS profile: matched + graduated (recorded CCMS Program). Bea's Inventory records CAS.
+    assert report["report_context"]["submitted_inventory_count"] == 2
+    # CCMS coverage: Bea + matched are CURRENT and affiliated with CCMS; both submitted.
+    assert coverage["eligible_student_count"] == 2
+    assert coverage["submitted_count"] == 2
+    assert coverage["reconciliation"] == {
+        "profile_submitted_count": 2,
+        "coverage_submitted_count": 2,
+        "in_both_count": 1,
+        "profile_only_count": 1,
+        "coverage_only_count": 1,
+    }
+    assert "rather than the Program recorded on the Inventory" in coverage["scope_note"]
+
+    cas_report = build_student_profiling_report(
+        access_scope=GLOBAL_REPORT_ACCESS_SCOPE, college_id=cas.pk
+    )
+    assert cas_report["report_context"]["submitted_inventory_count"] == 1
+    assert cas_report["inventory_coverage"]["eligible_student_count"] == 0
+    assert cas_report["inventory_coverage"]["reconciliation"]["profile_only_count"] == 1
+
+
+@pytest.mark.django_db
+def test_reconciliation_counts_profile_filters_outside_current_coverage_classification():
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision("reconcile-filters")
+    _, college, program = make_organization("RC-FILTER")
+    for index, level in enumerate((1, 1, 2)):
+        student = make_user(f"reconcile-filter-{index}@example.edu")
+        StudentAffiliation.objects.create(student=student, college=college)
+        make_inventory(
+            student=student,
+            academic_year=year,
+            revision=revision,
+            program=program,
+            year_level=level,
+        )
+
+    report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE, year_level=1)
+    assert report["report_context"]["submitted_inventory_count"] == 2
+    assert report["inventory_coverage"]["submitted_count"] == 3
+    assert report["inventory_coverage"]["reconciliation"] == {
+        "profile_submitted_count": 2,
+        "coverage_submitted_count": 3,
+        "in_both_count": 2,
+        "profile_only_count": 0,
+        "coverage_only_count": 1,
+    }
+
+
+@pytest.mark.django_db
+def test_historical_reconciliation_compares_inventories_without_a_roster():
+    sync_policy()
+    AcademicYear.objects.create(label="2026-2027", is_current=True)
+    historical = AcademicYear.objects.create(label="2025-2026")
+    revision = make_revision("reconcile-historical")
+    _, college_a, program_a = make_organization("RC-HA")
+    _, _, program_b = make_organization("RC-HB")
+    for index, program in enumerate((program_a, program_a, program_b, None)):
+        make_inventory(
+            student=make_user(f"reconcile-historical-{index}@example.edu"),
+            academic_year=historical,
+            revision=revision,
+            program=program,
+        )
+    make_inventory(
+        student=make_user("reconcile-historical-draft@example.edu"),
+        academic_year=historical,
+        revision=revision,
+        program=program_a,
+        submitted=False,
+    )
+
+    report = build_student_profiling_report(
+        access_scope=GLOBAL_REPORT_ACCESS_SCOPE,
+        academic_year_id=historical.pk,
+        college_id=college_a.pk,
+    )
+    coverage = report["inventory_coverage"]
+    assert coverage["mode"] == "HISTORICAL_LIMITED"
+    assert coverage["eligible_student_count"] is None
+    assert coverage["missing_count"] is None
+    assert coverage["submitted_count"] == 4
+    assert coverage["draft_count"] == 1
+    assert set(coverage["ignored_filters"]) == {"college_id"}
+    assert coverage["reconciliation"] == {
+        "profile_submitted_count": 2,
+        "coverage_submitted_count": 4,
+        "in_both_count": 2,
+        "profile_only_count": 0,
+        "coverage_only_count": 2,
+    }
+
+
+@pytest.mark.django_db
+def test_scoped_counselor_and_head_reconciliation_follow_their_own_scope():
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision("reconcile-scope")
+    _, college_a, program_a = make_organization("RC-SA")
+    _, college_b, program_b = make_organization("RC-SB")
+    for index, (college, program) in enumerate(
+        ((college_a, program_a), (college_a, program_b), (college_b, program_b))
+    ):
+        student = make_user(f"reconcile-scope-{index}@example.edu")
+        StudentAffiliation.objects.create(student=student, college=college)
+        make_inventory(student=student, academic_year=year, revision=revision, program=program)
+
+    scoped = build_student_profiling_report(
+        access_scope=ReportAccessScope(is_global=False, college_ids=(college_a.pk,))
+    )
+    head = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
+
+    assert scoped["report_context"]["submitted_inventory_count"] == 1
+    assert scoped["inventory_coverage"]["reconciliation"] == {
+        "profile_submitted_count": 1,
+        "coverage_submitted_count": 2,
+        "in_both_count": 1,
+        "profile_only_count": 0,
+        "coverage_only_count": 1,
+    }
+    assert head["inventory_coverage"]["reconciliation"] == {
+        "profile_submitted_count": 3,
+        "coverage_submitted_count": 3,
+        "in_both_count": 3,
+        "profile_only_count": 0,
+        "coverage_only_count": 0,
+    }

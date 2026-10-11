@@ -24,10 +24,12 @@ export function StudentProfileCoverage({
   coverage: InventoryCoverage;
   methodology: Methodology;
 }) {
+  const isCurrent = coverage.mode === "CURRENT";
+  const reconciliation = coverage.reconciliation;
   const values =
-    coverage.mode === "CURRENT"
+    isCurrent
       ? [
-          { label: "Current student accounts included", value: countValue(coverage.eligible_student_count) },
+          { label: "Eligible current Students", value: countValue(coverage.eligible_student_count) },
           { label: "Submitted", value: String(coverage.submitted_count) },
           { label: "Draft", value: String(coverage.draft_count) },
           {
@@ -43,6 +45,16 @@ export function StudentProfileCoverage({
             value: "Unavailable for historical Academic Years",
           },
         ];
+  const comparison = isCurrent
+    ? [
+        { label: "Profile Inventories counted here", value: reconciliation.in_both_count },
+        { label: "Profile Inventories not counted here", value: reconciliation.profile_only_count },
+        { label: "Submitted here, outside profile filters", value: reconciliation.coverage_only_count },
+      ]
+    : [
+        { label: "In the profile population", value: reconciliation.in_both_count },
+        { label: "Outside the profile filters", value: reconciliation.coverage_only_count },
+      ];
   const ignored = coverage.ignored_filters.map(
     (filter) => FILTER_LABELS[filter] ?? filter,
   );
@@ -50,7 +62,7 @@ export function StudentProfileCoverage({
   return (
     <Panel className="overflow-hidden" aria-labelledby="inventory-coverage-heading">
       <PanelHeader
-        title="Inventory Coverage"
+        title={isCurrent ? "Current Student Inventory Coverage" : "Inventory Coverage (historical)"}
         titleId="inventory-coverage-heading"
         description={coverage.scope_note}
       />
@@ -70,6 +82,22 @@ export function StudentProfileCoverage({
             "Historical missing-Inventory coverage cannot be reconstructed from current COMPASS data."}
         </p>
       ) : null}
+      <div className="border-t border-brand-line">
+        <p className="px-4 pt-3 text-sm font-semibold text-ink sm:px-5">
+          Compared with the Submitted Inventory Profile Population
+        </p>
+        <dl className="grid grid-cols-1 gap-x-6 gap-y-2 px-4 pb-3 pt-2 sm:grid-cols-3 sm:px-5">
+          {comparison.map((item) => (
+            <div key={item.label} className="min-w-0">
+              <dt className="text-sm text-muted">{item.label}</dt>
+              <dd className="mt-0.5 font-semibold tabular-nums text-ink">{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+        <p className="px-4 pb-3 text-sm text-muted sm:px-5">
+          The populations are counted differently, so no submission rate is calculated.
+        </p>
+      </div>
       {ignored.length > 0 ? (
         <p className={coverageNote}>
           Inventory Coverage does not use these selected filters: {ignored.join(", ")}.

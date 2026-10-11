@@ -50,6 +50,7 @@ class ProgramColumn(StrictSchema):
     program_id: UUID | None
     code: str | None
     name: str
+    submitted_inventory_count: int
     college: OrganizationReference | None
     campus: OrganizationReference | None
     is_legacy: bool
@@ -103,7 +104,16 @@ class ReportContext(StrictSchema):
     year_level: int | None
     year_level_label: str | None
     submitted_inventory_count: int
+    reporting_scope: ReportScopeResponse
     generated_at: datetime
+
+
+class PopulationReconciliation(StrictSchema):
+    profile_submitted_count: int
+    coverage_submitted_count: int
+    in_both_count: int
+    profile_only_count: int
+    coverage_only_count: int
 
 
 class InventoryCoverage(StrictSchema):
@@ -115,12 +125,14 @@ class InventoryCoverage(StrictSchema):
     applied_filters: list[str]
     ignored_filters: list[str]
     scope_note: str
+    reconciliation: PopulationReconciliation
 
 
 class Methodology(StrictSchema):
     profile_population_note: str
     coverage_note: str
     historical_coverage_note: str | None
+    access_scope_note: str
 
 
 class StudentProfilingSections(StrictSchema):

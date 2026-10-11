@@ -43,6 +43,7 @@ from .services import (
     ReportNotFound,
     build_student_profiling_report,
     get_report_scope_projection,
+    report_scope_payload,
     resolve_report_access_scope,
 )
 from .xlsx import (
@@ -150,22 +151,7 @@ def report_scope(request):
     except ReportAccessDenied as exc:
         raise APIError(403, "permission_denied", str(exc)) from exc
 
-    return {
-        "is_global": scope.is_global,
-        "colleges": [
-            {
-                "id": college.id,
-                "code": college.code,
-                "name": college.name,
-                "campus": {
-                    "id": college.campus_id,
-                    "code": college.campus_code,
-                    "name": college.campus_name,
-                },
-            }
-            for college in scope.colleges
-        ],
-    }
+    return report_scope_payload(scope)
 
 
 @router.get(
