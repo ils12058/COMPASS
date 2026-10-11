@@ -82,7 +82,7 @@ export function ExitInterviewStudentHome({ access }: { access: ExitInterviewAcce
         ) : record ? (
           <div className="px-4 py-4 sm:px-5">
             <ExitInterviewStatus status={record.status} />
-            <p className="mt-2 text-sm text-muted">{record.status === "SUBMITTED" ? "Head Guidance can review your submitted answers." : state?.can_edit_current ? "Your answers stay private until you submit." : "You can view this draft. Contact the Guidance and Counseling Office if you need to continue it."}</p>
+            <p className="mt-2 text-sm text-muted">{record.status === "SUBMITTED" ? "Your submitted answers are available only to authorized Guidance and Counseling Office reviewers." : state?.can_edit_current ? "Your answers stay private until you submit." : "You can view this draft. Contact the Guidance and Counseling Office if you need to continue it."}</p>
             <Link href={`/portal/exit-interviews/${record.id}`} className={buttonVariants({ variant: state?.can_edit_current ? "primary" : "secondary", className: "mt-4" })}>
               {state?.can_edit_current ? "Continue Exit Interview" : record.status === "SUBMITTED" ? "View submitted Exit Interview" : "View draft Exit Interview"}
             </Link>

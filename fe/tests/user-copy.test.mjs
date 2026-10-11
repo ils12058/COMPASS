@@ -203,3 +203,23 @@ test('Actual assessment commands render natural complete names and visible label
         assert.deepEqual(pairs, expected);
     }
 });
+test('Graduate Tracer confidentiality copy names authorized Office reviewers and keeps submission final', async () => {
+    const { QueryClient, QueryClientProvider } = await import('@tanstack/react-query');
+    const { GraduateTracerStudentWorkspace } = await import('../src/features/graduate-tracer/graduate-tracer-student-workspace.tsx');
+    const { getGraduateTracerAccess } = await import('../src/features/graduate-tracer/graduate-tracer-access.ts');
+    const { getGraduateTracerGetMyResponseQueryKey } = await import('../src/lib/api/generated/graduate-tracer/graduate-tracer.ts');
+    const graduate = { id: 'graduate', role: 'STUDENT', student_lifecycle_status: 'GRADUATED', designations: [], capabilities: ['graduate_tracer.view_self', 'graduate_tracer.manage_self'] };
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false, retryOnMount: false, staleTime: Infinity } } });
+    // The canonical not-started state is a 404 for the caller's own response.
+    client.getQueryCache().build(client, { queryKey: getGraduateTracerGetMyResponseQueryKey() }).setState({ status: 'error', fetchStatus: 'idle', error: api('graduate_tracer_not_found', 404), errorUpdatedAt: Date.now() });
+    const html = renderToStaticMarkup(h(QueryClientProvider, { client }, h(GraduateTracerStudentWorkspace, { access: getGraduateTracerAccess(graduate) })));
+    client.clear();
+    assert.match(html, /Your response is confidential and will be available only to authorized Guidance and Counseling Office reviewers after submission\./);
+    assert.match(html, /Starting creates a private draft; it does not submit answers\./);
+    assert.match(html, /Start Graduate Tracer Survey/);
+    assert.doesNotMatch(html, /Head Guidance|PRIVATE-DIAGNOSTIC-SENTINEL/);
+    const form = readFileSync(new URL('../src/features/graduate-tracer/graduate-tracer-form.tsx', import.meta.url), 'utf8');
+    assert.match(form.replace(/\s+/g, ' '), /Your response will be finalized and made available only to authorized Guidance and Counseling Office reviewers\. You will not be able to edit it after submission\./);
+    for (const file of readdirSync(new URL('../src/features/graduate-tracer/', import.meta.url)))
+        assert.doesNotMatch(readFileSync(new URL(`../src/features/graduate-tracer/${file}`, import.meta.url), 'utf8'), /Head Guidance/, file);
+});

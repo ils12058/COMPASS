@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
 import { test } from "node:test";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -7,6 +8,9 @@ import { withNextRouter } from "./support/next-router.mjs";
 import { getExitInterviewAccess } from "../src/features/exit-interviews/exit-interviews-access.ts";
 import { useOverviewAttention } from "../src/features/portal/home/overview-work.ts";
 import { ExitInterviewStudentHome } from "../src/features/exit-interviews/exit-interview-student-home.tsx";
+import { ExitInterviewCorrectionHistory } from "../src/features/exit-interviews/exit-interview-correction-history.tsx";
+import { exitInterviewErrorMessage } from "../src/features/exit-interviews/exit-interview-shared.tsx";
+import { CompassApiError } from "../src/lib/api/errors.ts";
 import { GoodMoralRequestPage } from "../src/features/good-moral/good-moral-request-page.tsx";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
 import { portalWorkspaceGroups } from "../src/features/portal/components/portal-workspaces.ts";
@@ -89,4 +93,41 @@ test("Overview uses canonical Student Actions rather than reinterpreting the cur
   assert.doesNotMatch(render(h(Attention, { user }), state, user), /Continue Exit Interview/);
   const action = { id: "exit-interview-continue:interview", kind: "EXIT_INTERVIEW_CONTINUE", priority: "ACTION_REQUIRED", source_id: "interview", due_at: null, waiting_since: record.created_at };
   assert.match(render(h(Attention, { user }), empty, user, [], [action]), /Continue Exit Interview/);
+});
+
+const reopen = (id, name, reason, at) => ({ id, reason, reopened_at: at, reopened_by: { id: `reviewer-${id}`, display_name: name } });
+test("correction banner names the actual API-provided reviewer, not a designation", () => {
+  const events = [reopen("first", "Head Example", "Earlier synthetic reason.", "2026-10-05T02:00:00Z"), reopen("latest", "Carlo Counselor", "Clarify the second answer.", "2026-10-06T03:00:00Z")];
+  const html = renderToStaticMarkup(h(ExitInterviewCorrectionHistory, { events, emphasizeLatest: true }));
+  assert.match(html, /Correction requested/);
+  assert.match(html, /Carlo Counselor reopened this Exit Interview for correction\./);
+  assert.match(html, /Clarify the second answer\./);
+  assert.match(html, /Requested /);
+  assert.doesNotMatch(html, /Head Guidance/);
+  // The history list keeps each event's own actor.
+  assert.match(html, /Head Example · /);
+  assert.match(html, /Carlo Counselor · /);
+  const single = renderToStaticMarkup(h(ExitInterviewCorrectionHistory, { events: [events[1]], emphasizeLatest: true }));
+  assert.match(single, /Carlo Counselor reopened this Exit Interview/);
+  assert.doesNotMatch(single, /Correction history/);
+});
+test("an unexpectedly incomplete reopening actor falls back to a generic reviewer label", () => {
+  for (const reopened_by of [undefined, null, { id: "reviewer" }, { id: "reviewer", display_name: "  " }]) {
+    const event = { ...reopen("partial", "", "Synthetic reason.", "2026-10-06T03:00:00Z"), reopened_by };
+    const html = renderToStaticMarkup(h(ExitInterviewCorrectionHistory, { events: [reopen("earlier", "Carlo Counselor", "Earlier.", "2026-10-05T03:00:00Z"), event], emphasizeLatest: true }));
+    assert.match(html, /An authorized reviewer reopened this Exit Interview for correction\./);
+    assert.match(html, /Authorized reviewer · /);
+    assert.match(html, /Synthetic reason\./);
+  }
+});
+test("Student and reviewer Exit Interview copy names authorized reviewers without implying Head-only review", () => {
+  const submitted = home({ ...empty, opportunity: { ...opportunity, status: "COMPLETED" }, current_record: record, has_records: true });
+  assert.match(submitted, /available only to authorized Guidance and Counseling Office reviewers/);
+  const notSubmitted = exitInterviewErrorMessage(new CompassApiError({ status: 409, body: { error: { code: "exit_interview_not_submitted", message: "PRIVATE" } }, headers: {}, method: "GET", url: "/api/v1/exit-interviews/x" }), "fallback");
+  assert.equal(notSubmitted, "This Exit Interview is currently a draft and is not available for review until the Student submits it.");
+  const directory = new URL("../src/features/exit-interviews/", import.meta.url);
+  for (const file of readdirSync(directory)) assert.doesNotMatch(readFileSync(new URL(file, directory), "utf8"), /Head Guidance|HeadExitInterview/, file);
+  const form = readFileSync(new URL("exit-interview-form.tsx", directory), "utf8");
+  // Submission remains final except through the controlled reopen process.
+  assert.match(form, /available only to authorized Guidance and Counseling Office reviewers\. You will not be able to edit it after submission unless it is reopened for correction\./);
 });

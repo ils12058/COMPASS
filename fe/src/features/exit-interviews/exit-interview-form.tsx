@@ -410,7 +410,7 @@ export function ExitInterviewForm({
         onConfirm={() => void submitDraft()}
       >
         <p>
-          Your response will be available to Head Guidance for review. You will not be able to edit it after submission unless it is reopened for correction.
+          Your response will be available only to authorized Guidance and Counseling Office reviewers. You will not be able to edit it after submission unless it is reopened for correction.
         </p>
       </ConsequentialActionDialog>
     </section>

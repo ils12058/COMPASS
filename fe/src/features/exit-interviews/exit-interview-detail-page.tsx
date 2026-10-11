@@ -136,7 +136,7 @@ function StudentExitInterviewDetail({
   );
 }
 
-function HeadExitInterviewDetail({
+function ReviewerExitInterviewDetail({
   exitInterviewId,
   canReopen,
 }: {
@@ -161,7 +161,7 @@ function HeadExitInterviewDetail({
         <section className="max-w-3xl space-y-5">
           <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview responses</Link>
           <Notice role="status" title={<h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview is not available for review</h1>}>
-            This Exit Interview is currently a draft and is not available for Head Guidance review until the Student submits it.
+            This Exit Interview is currently a draft and is not available for review until the Student submits it.
           </Notice>
         </section>
       );
@@ -195,7 +195,7 @@ function HeadExitInterviewDetail({
         ) : null}
         <Link href="/portal/exit-interviews" className={pageBackLinkClass}>Back to Exit Interview responses</Link>
         <Notice role="status" title={<h1 className="font-heading text-2xl font-semibold text-ink">Exit Interview is not available for review</h1>}>
-          This Exit Interview is currently a draft and is not available for Head Guidance review until the Student submits it.
+          This Exit Interview is currently a draft and is not available for review until the Student submits it.
         </Notice>
       </section>
     );
@@ -246,7 +246,7 @@ export function ExitInterviewDetailPage({
   }
 
   if (access.canViewOperational) {
-    return <HeadExitInterviewDetail exitInterviewId={exitInterviewId} canReopen={access.canReopen} />;
+    return <ReviewerExitInterviewDetail exitInterviewId={exitInterviewId} canReopen={access.canReopen} />;
   }
 
   return <ExitInterviewUnavailable title="Exit Interview unavailable" message="You don’t have access to review Exit Interviews." />;

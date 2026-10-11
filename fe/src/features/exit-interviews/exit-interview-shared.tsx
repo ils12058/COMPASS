@@ -51,7 +51,7 @@ export function exitInterviewErrorMessage(
     case "current_academic_year_not_configured":
       return "The current academic year has not been set up. Contact the institutional administrator.";
     case "exit_interview_not_submitted":
-      return "This Exit Interview is currently a draft and is not available for Head Guidance review until the Student submits it.";
+      return "This Exit Interview is currently a draft and is not available for review until the Student submits it.";
     case "exit_interview_opportunity_required":
       return "The Guidance and Counseling Office needs to open an Exit Interview for you first.";
     case "exit_interview_opportunity_not_open":
