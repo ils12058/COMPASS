@@ -121,26 +121,20 @@ def test_inactive_staff_are_excluded(world):
     thread, _ = office(world)
     world.gss.is_active = False
     world.gss.save(update_fields=("is_active",))
-    assert set(eligible(world, thread)) == {
-        world.counselor.pk, world.head.pk, world.head_gss.pk
-    }
+    assert set(eligible(world, thread)) == {world.counselor.pk, world.head.pk, world.head_gss.pk}
 
 
 @pytest.mark.parametrize("code", ["guidance_messages.manage", "guidance_messages.view"])
 def test_capability_override_removing_manage_makes_a_candidate_ineligible(world, code):
     thread, _ = office(world)
     deny(world.gss, code)
-    assert set(eligible(world, thread)) == {
-        world.counselor.pk, world.head.pk, world.head_gss.pk
-    }
+    assert set(eligible(world, thread)) == {world.counselor.pk, world.head.pk, world.head_gss.pk}
     with pytest.raises(InvalidMessageInput):
         services.assign_handler(actor=world.counselor, thread_id=thread.pk, handler_id=world.gss.pk)
 
 
 # H. Unauthorized requesters and I. Counseling threads are concealed.
-@pytest.mark.parametrize(
-    "actor", ["student", "other_student", "other", "admin", "dpo"]
-)
+@pytest.mark.parametrize("actor", ["student", "other_student", "other", "admin", "dpo"])
 def test_unauthorized_requesters_are_concealed(world, actor):
     thread, _ = office(world)
     response = auth_client(getattr(world, actor)).get(
@@ -151,15 +145,14 @@ def test_unauthorized_requesters_are_concealed(world, actor):
     assert "Synthetic" not in response.content.decode()
 
 
-
-
 def test_head_and_supervised_staff_can_manage_and_be_assigned_across_colleges(world):
     thread, _ = office(world)
     for actor in [world.head, world.head_gss]:
         response = auth_client(actor).get(f"{BASE}/threads/{thread.pk}/eligible-handlers")
         assert response.status_code == 200
         assert {row["id"] for row in response.json()["items"]} >= {
-            str(world.head.pk), str(world.head_gss.pk)
+            str(world.head.pk),
+            str(world.head_gss.pk),
         }
     assigned = assign(auth_client(world.counselor), thread, world.head_gss)
     assert assigned.status_code == 200
@@ -233,9 +226,7 @@ def test_response_is_bounded_and_private(world):
 
 def test_search_matches_display_name_only_and_pages_deterministically(world):
     thread, _ = office(world)
-    assert set(eligible(world, thread, search="  GSS ")) == {
-        world.gss.pk, world.head_gss.pk
-    }
+    assert set(eligible(world, thread, search="  GSS ")) == {world.gss.pk, world.head_gss.pk}
     assert eligible(world, thread, search="synthetic counselor") == [world.counselor.pk]
     assert eligible(world, thread, search=world.gss.email) == []
     assert eligible(world, thread, search="example.edu") == []
@@ -302,7 +293,9 @@ def test_responsibility_change_moves_eligibility_with_the_college(world):
     thread, _ = office(world)
     CounselorResponsibility.objects.filter(college=world.colleges[0]).update(counselor=world.other)
     assert set(eligible(world, thread, actor=world.other)) == {
-        world.other.pk, world.head.pk, world.head_gss.pk
+        world.other.pk,
+        world.head.pk,
+        world.head_gss.pk,
     }
     assert not policy.eligible_handler(world.counselor, thread)
     assert not policy.eligible_handler(world.gss, thread)
