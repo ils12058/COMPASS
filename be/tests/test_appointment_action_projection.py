@@ -46,7 +46,8 @@ def setup_participants(prefix: str):
     student.student_lifecycle_status = "CURRENT"
     student.save(update_fields=["student_lifecycle_status", "updated_at"])
     manager = make_user(f"{prefix}-manager@example.edu", "COUNSELOR")
-    service = active_service(admin, code=f"{prefix.upper()}_SERVICE")
+    # Service codes allow only A-Z, 0-9, and underscore; email-style prefixes may contain hyphens.
+    service = active_service(admin, code=f"{prefix.upper().replace('-', '_')}_SERVICE")
     create_affiliation(student, manager)
     return student, manager, service
 
@@ -301,11 +302,28 @@ def test_head_appointment_actions_are_provider_owned_even_with_institutional_col
     assert own_states["reassign"] is None
 
     client = auth_client(head)
+    headers = csrf(client)
     assert client.get(f"/api/v1/appointments/{carlos.pk}").status_code == 404
     mine = client.get(f"/api/v1/appointments/{heads.pk}")
     assert mine.status_code == 200
     assert mine.json()["actions"]["cancel"]["allowed"] is True
     assert mine.json()["actions"]["reassign"]["allowed"] is True
+
+    # Projected availability matches the real mutation boundary in both directions.
+    assert client.post(f"/api/v1/appointments/{carlos.pk}/cancel", **headers).status_code == 404
+    carlos.refresh_from_db()
+    assert carlos.status == "SCHEDULED"
+    disposable = create_list_appointment(
+        reference_code="APT-2099-900053",
+        student=student,
+        provider=head,
+        service=service,
+        starts_at=now + timedelta(days=4),
+    )
+    assert states(appointment_actions_for(actor=head, item=disposable, now=now))["cancel"] is None
+    cancelled = client.post(f"/api/v1/appointments/{disposable.pk}/cancel", **headers)
+    assert cancelled.status_code == 200
+    assert cancelled.json()["status"] == "CANCELLED"
 
     # appointments.view_self still permits viewing the assigned provider's
     # appointment; revoked appointments.manage cannot authorize an action.
@@ -325,3 +343,6 @@ def test_head_appointment_actions_are_provider_owned_even_with_institutional_col
     self_view = client.get(f"/api/v1/appointments/{heads.pk}")
     assert self_view.status_code == 200
     assert {item["blocker"] for item in self_view.json()["actions"].values()} == {"NOT_PERMITTED"}
+    assert client.post(f"/api/v1/appointments/{heads.pk}/cancel", **headers).status_code == 403
+    heads.refresh_from_db()
+    assert heads.status == "SCHEDULED"
