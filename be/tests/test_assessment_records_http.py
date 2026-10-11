@@ -119,9 +119,7 @@ def test_six_local_http_scenarios(world, live_server, settings):
     assert status == 200 and active_ordinary["is_active"]
     assert ordinary_type["id"] in {row["id"] for row in head.call("GET", BASE + "/types")[1]}
     assert ordinary.call("GET", BASE + "/" + second["id"])[0] == 404
-    events = AuditEvent.objects.filter(
-        target_type="assessment.type", target_id=ordinary_type["id"]
-    )
+    events = AuditEvent.objects.filter(target_type="assessment.type", target_id=ordinary_type["id"])
     assert {event.action for event in events} == {
         "assessment_type.created",
         "assessment_type.updated",
