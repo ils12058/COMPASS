@@ -116,3 +116,39 @@ category. No Notification is sent per Message or template. One migration adds th
 staff Work Queue and Messages operational hardening. This decision remains the historical
 foundation; ADR-105 defines the current host-key gate, template version requirement and shared
 Guidance actionable projection.
+
+## Backend Slice 1 addendum (2026-10-11): General Guidance College visibility
+
+The original Office handler wording above records the narrower, pre-Slice-1
+operational responsibility rule. **It is superseded for Office thread access,
+Office initiation, eligible Student search, eligible handlers and realtime hint
+recipients** by the separate
+`resolve_general_guidance_college_scope(actor)` resolver.
+
+- An active, valid Head Guidance Counselor can see all active Colleges on active
+  Campuses, including Colleges explicitly handled by other Counselors. Head
+  visibility does not require the Head to be unique.
+- Ordinary Counselors see only their current valid explicit assignments. An
+  active GSS inherits the general visibility of their *currently valid*
+  supervising Counselor, which can be institution-wide when supervised by
+  Head. Supervision is queried at authorization time. It never conveys Head
+  designation, capabilities, Counselor/provider relationships, or access to
+  confidential Counseling threads.
+- `guidance_messages.view` and `guidance_messages.manage` remain effective
+  capability checks. `require_thread` continues to distinguish Office
+  (College visibility) from Counseling (exact Student and provider only).
+  Handler assignment remains independent of content authorization. Realtime
+  recipients are recalculated after commit using this same current policy.
+- `resolve_operational_responsibility_scope` remains the handled-workload
+  API for Appointments, Referrals and other scoped operational workflows.
+  Default routing remains an explicit eligible College Counselor first,
+  otherwise the unique active Head fallback. Multiple Heads can all see
+  Office threads but cannot produce an arbitrary routing fallback.
+- The existing Head non-Counseling Appointment oversight exception and narrower
+  delegated GSS Appointment access are **not changed** here. Full
+  assigned-provider-only Appointment policy is **Backend Slice 2**.
+  Assessment Type capability alignment is **Backend Slice 3**.
+
+This addendum changes Office **visibility**, not Appointment ownership,
+Counseling participation, encrypted message content, migration state, or
+WebSocket transport.
