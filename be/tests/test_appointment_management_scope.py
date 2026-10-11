@@ -20,20 +20,18 @@ from compass.accounts.models import (
 from compass.appointments.access import appointment_management_access_allowed, scope_managed_appointments
 from compass.appointments.models import Appointment, AppointmentChangeEvent
 from compass.appointments.services import (
+    AppointmentNotFound,
     appointment_actions_for,
     count_upcoming_managed_appointments,
+    get_appointment_for_actor,
     get_appointment_history,
+    list_managed_appointments,
     reassign_appointment,
 )
-from compass.audit.models import AuditEvent
-from compass.notifications.models import Notification
-from compass.appointments.services import (
-    AppointmentNotFound,
-    get_appointment_for_actor,
-    list_managed_appointments,
-)
 from compass.audit.context import AuditContext
+from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.notifications.models import Notification
 from compass.organization.access_scope import resolve_general_guidance_college_scope
 from compass.organization.models import (
     Campus,
