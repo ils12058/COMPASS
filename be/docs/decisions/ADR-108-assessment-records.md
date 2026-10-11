@@ -55,6 +55,36 @@ timestamps, ciphertext or audits.
 
 ## Authority
 
+> **Backend Slice 3 authority alignment (2026-10-11):** The historical
+> Head-only Assessment Type mutation condition described later in this
+> section is superseded. `require_actor` now authorizes active canonical
+> Counselors through **effective capabilities**, without an additional
+> `HEAD_GUIDANCE_COUNSELOR` designation gate for the institution-wide
+> shared Assessment Type catalog. `assessment_records.view` authorizes
+> catalog/record reads; `assessment_records.manage` (which depends on
+> effective view) authorizes catalog create/update/deactivate/reactivate and
+> scoped record create/correction. Head designation **still grants both
+> capabilities by default**; an ordinary Counselor may obtain them through
+> approved capability overrides. Explicit REVOKE remains authoritative.
+>
+> The shared catalog has no per-College ownership or confidentiality
+> entitlement. **Individual Assessment Records remain confidential and
+> within the currently handled active College/Campus scope for ordinary
+> Counselors**, whereas Head retains the existing domain-specific
+> institution-wide record scope when effectively authorized. No GSS,
+> Student, IT Administrator, or Institutional Officer receives Assessment
+> authority through role, supervision, or unusual capability overrides.
+> This change does not touch encryption, persistence, audit, API schemas,
+> or resource-ownership rules.
+>
+> **Frontend follow-up:** The current
+> `fe/src/features/assessment-records/assessment-records-access.ts` still
+> requires Head designation for `canManageTypes` and therefore hides
+> catalog controls from otherwise authorized ordinary Counselors.
+> A separate frontend slice must align this to eligible Counselor
+> effective `canManage`. No frontend behavior is changed here.
+
+
 `assessment_records.manage` depends on `assessment_records.view`. Both are granted through the
 HEAD_GUIDANCE_COUNSELOR designation only, never any baseline role. All operations require a current
 active canonical COUNSELOR plus effective capability. GSS, Students, IT Admin and DPO/Institutional
