@@ -102,6 +102,34 @@ def test_six_local_http_scenarios(world, live_server, settings):
     assert ordinary.call("GET", record_path)[0] == 200
     assert ordinary.call("GET", BASE + "/" + second["id"])[0] == 404
     assert len(head.call("GET", BASE)[1]["items"]) == 2
+    # Capability-authorized non-Head Counselor manages the shared catalog through
+    # an actual authenticated HTTP session without acquiring broader record scope.
+    assert not world.ordinary.designations.filter(code="HEAD_GUIDANCE_COUNSELOR").exists()
+    status, ordinary_type = ordinary.call(
+        "POST", BASE + "/types", {"name": "Ordinary Counselor Shared Type"}
+    )
+    assert status == 201 and ordinary_type["is_active"]
+    status, inactive_ordinary = ordinary.call(
+        "PATCH", BASE + "/types/" + ordinary_type["id"], {"is_active": False}
+    )
+    assert status == 200 and not inactive_ordinary["is_active"]
+    status, active_ordinary = ordinary.call(
+        "PATCH", BASE + "/types/" + ordinary_type["id"], {"is_active": True}
+    )
+    assert status == 200 and active_ordinary["is_active"]
+    assert ordinary_type["id"] in {row["id"] for row in head.call("GET", BASE + "/types")[1]}
+    assert ordinary.call("GET", BASE + "/" + second["id"])[0] == 404
+    events = AuditEvent.objects.filter(
+        target_type="assessment.type", target_id=ordinary_type["id"]
+    )
+    assert {event.action for event in events} == {
+        "assessment_type.created",
+        "assessment_type.updated",
+        "assessment_type.deactivated",
+        "assessment_type.reactivated",
+    }
+    assert {event.actor_user_id for event in events} == {world.ordinary.pk}
+
     # D: copying an otherwise valid envelope across Student/record/type fails closed.
     target = StudentAssessmentRecord.objects.get(pk=second["id"])
     StudentAssessmentRecord.objects.filter(pk=target.pk).update(
