@@ -220,7 +220,7 @@ def test_view_only_counselor_can_read_shared_catalog_but_not_mutate(world):
     for method, path, data in (
         ("post", BASE + "/types", {"name": "Denied Type"}),
         ("patch", BASE + f"/types/{world.assessment_type.pk}", {"name": "Denied Update"}),
-        ("post", BASE, {"student_id": str(world.student.pk)}),
+        ("post", BASE, {**{key: str(value) for key, value in values(world).items()}}),
         ("patch", f"{BASE}/{item.pk}", {"score": "Denied"}),
     ):
         response = getattr(client, method)(path, data=json.dumps(data), content_type="application/json")
@@ -249,7 +249,7 @@ def test_effective_manage_and_view_revocation_rechecks_fresh_requests(world, act
     assert not actor.has_capability("assessment_records.manage")
     assert client.get(BASE + "/types").status_code == 200
     assert client.get(BASE).status_code == 200
-    assert client.get(f"{BASE}/{item.pk}").status_code == (200 if actor_name == "head" else 200)
+    assert client.get(f"{BASE}/{item.pk}").status_code == 200
     baseline = AuditEvent.objects.count()
     for method, path, data in (
         ("post", BASE + "/types", {"name": "Should Not Exist"}),
