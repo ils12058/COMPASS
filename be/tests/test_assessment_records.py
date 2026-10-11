@@ -254,7 +254,7 @@ def test_effective_manage_and_view_revocation_rechecks_fresh_requests(world, act
     for method, path, data in (
         ("post", BASE + "/types", {"name": "Should Not Exist"}),
         ("patch", BASE + f"/types/{created.pk}", {"is_active": False}),
-        ("post", BASE, {"student_id": str(world.student.pk)}),
+        ("post", BASE, {key: str(value) for key, value in values(world).items()}),
         ("patch", f"{BASE}/{item.pk}", {"score": "Not authorized"}),
     ):
         response = getattr(client, method)(path, data=json.dumps(data), content_type="application/json")
