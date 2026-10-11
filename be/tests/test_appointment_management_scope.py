@@ -671,7 +671,8 @@ def test_head_provider_scope_matches_single_resource_lists_filters_counts_and_gs
     }
     assert count_upcoming_managed_appointments(actor=head) == 2
     assert count_upcoming_managed_appointments(actor=head_staff) == 1
-    assert count_upcoming_managed_appointments(actor=carlo) == 3
+    # Carlo also retains College-delegated management of Head's non-Counseling appointment.
+    assert count_upcoming_managed_appointments(actor=carlo) == 4
 
     # Queryset, single-resource and action authorization must have identical ownership.
     scoped = {row.pk for row in scope_managed_appointments(Appointment.objects.all(), head)}
@@ -679,13 +680,10 @@ def test_head_provider_scope_matches_single_resource_lists_filters_counts_and_gs
         expected = item.provider_id == head.pk
         assert appointment_management_access_allowed(head, item) is expected
         assert (item.pk in scoped) is expected
-        assert all(
-            state.blocker == "NOT_PERMITTED"
-            for state in (
-                appointment_actions_for(actor=head, item=item).cancel,
-                appointment_actions_for(actor=head, item=item).reschedule,
-            )
-        ) if not expected else True
+        if not expected:
+            actions = appointment_actions_for(actor=head, item=item)
+            assert actions.cancel.blocker == "NOT_PERMITTED"
+            assert actions.reschedule.blocker == "NOT_PERMITTED"
         if expected:
             assert get_appointment_for_actor(appointment_id=item.pk, actor=head).pk == item.pk
         else:
