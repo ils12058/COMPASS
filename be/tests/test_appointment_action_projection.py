@@ -8,7 +8,6 @@ import pytest
 from django.utils import timezone
 
 from compass.accounts.models import Capability, Designation, UserCapabilityOverride
-
 from compass.appointments.services import (
     AppointmentActionBlocker,
     appointment_actions_for,
