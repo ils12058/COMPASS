@@ -20,7 +20,10 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.operational_students import list_scoped_operational_students
-from compass.organization.access_scope import resolve_operational_responsibility_scope
+from compass.organization.access_scope import (
+    resolve_general_guidance_college_scope,
+    resolve_operational_responsibility_scope,
+)
 from compass.organization.models import StudentAffiliation
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.realtime.publish import publish_to_user_on_commit
@@ -200,7 +203,7 @@ def open_office_thread(*, actor, client_message_id, body, student_id=None, conte
     if actor.role.code == "STUDENT":
         student = actor
     else:
-        scope = resolve_operational_responsibility_scope(actor)
+        scope = resolve_general_guidance_college_scope(actor)
         student = (
             User.objects.select_related("role")
             .select_for_update(of=("self",), no_key=True)
@@ -453,7 +456,7 @@ def eligible_students(*, actor, **query):
     actor = policy.current_actor(actor)
     policy.require_actor(actor, manage=True, staff_only=True)
     return list_scoped_operational_students(
-        college_ids=resolve_operational_responsibility_scope(actor).college_ids, **query
+        college_ids=resolve_general_guidance_college_scope(actor).college_ids, **query
     )
 
 
