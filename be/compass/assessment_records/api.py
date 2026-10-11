@@ -104,7 +104,7 @@ def create_type(request, payload: AssessmentTypeCreate):
     return 201, services.create_type(
         actor=request.auth_user,
         values=payload.model_dump(),
-        context=AuditContext.from_request(request),
+        context=AuditContext.from_request(request, actor=request.auth_user),
     )
 
 
@@ -119,7 +119,7 @@ def update_type(request, type_id: UUID, payload: AssessmentTypeUpdate):
         actor=request.auth_user,
         type_id=type_id,
         values=payload.model_dump(exclude_unset=True),
-        context=AuditContext.from_request(request),
+        context=AuditContext.from_request(request, actor=request.auth_user),
     )
 
 
@@ -173,7 +173,7 @@ def create_record(request, payload: AssessmentRecordCreate):
         services.create_record(
             actor=request.auth_user,
             values=payload.model_dump(),
-            context=AuditContext.from_request(request),
+            context=AuditContext.from_request(request, actor=request.auth_user),
         )
     )
 
@@ -200,6 +200,6 @@ def update_record(request, record_id: UUID, payload: AssessmentRecordUpdate):
             actor=request.auth_user,
             record_id=record_id,
             values=payload.model_dump(exclude_unset=True),
-            context=AuditContext.from_request(request),
+            context=AuditContext.from_request(request, actor=request.auth_user),
         )
     )

@@ -6,6 +6,7 @@ from dataclasses import asdict
 from datetime import timedelta
 from io import StringIO
 from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 from cryptography.fernet import Fernet, InvalidToken
@@ -28,6 +29,7 @@ from compass.assessment_records.errors import (
     InvalidAssessmentRecordInput,
 )
 from compass.assessment_records.models import AssessmentType, StudentAssessmentRecord
+from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.common.institutional_time import institution_today
 from compass.confidential_data import crypto
@@ -858,6 +860,121 @@ def test_persistence_and_correction_roll_back_when_audit_fails(world, monkeypatc
         services.update_record(actor=world.head, record_id=item.pk, values={"score": "corrected"})
     item.refresh_from_db()
     assert (item.confidential_content_ciphertext, item.updated_at) == original
+
+
+@pytest.mark.parametrize("actor_name", ["head", "ordinary"])
+def test_http_mutations_attribute_audit_to_the_authenticated_counselor(world, actor_name):
+    actor = getattr(world, actor_name)
+    if actor_name == "ordinary":
+        grant(actor)
+    client = auth_client(actor)
+    expected = {}
+
+    def call(method, path, data, *actions):
+        request_id = str(uuid4())
+        response = getattr(client, method)(
+            path,
+            data=json.dumps(data),
+            content_type="application/json",
+            HTTP_X_REQUEST_ID=request_id,
+            HTTP_USER_AGENT="Synthetic Audit Browser",
+        )
+        assert response.status_code in {200, 201}, response.content
+        body = response.json()
+        expected[request_id] = {(action, body["id"]) for action in actions}
+        return body
+
+    type_id = call("post", BASE + "/types", {"name": "Attributed"}, "assessment_type.created")["id"]
+    type_path = BASE + "/types/" + type_id
+    call("patch", type_path, {"description": "Attributed change"}, "assessment_type.updated")
+    # A lifecycle PATCH records the update and the lifecycle transition under one request.
+    for active, transition in ((False, "deactivated"), (True, "reactivated")):
+        call(
+            "patch",
+            type_path,
+            {"is_active": active},
+            "assessment_type.updated",
+            "assessment_type." + transition,
+        )
+    payload = {key: str(value) for key, value in values(world).items()}
+    record_id = call("post", BASE, payload, "assessment_record.created")["id"]
+    correction = {"score": "ATTRIBUTED_CORRECTED_SCORE"}
+    call("patch", f"{BASE}/{record_id}", correction, "assessment_record.updated")
+
+    events = list(AuditEvent.objects.filter(request_id__in=expected))
+    assert {
+        request_id: {
+            (event.action, event.target_id)
+            for event in events
+            if str(event.request_id) == request_id
+        }
+        for request_id in expected
+    } == expected
+    for event in events:
+        assert event.actor_type == "USER"
+        assert event.actor_user_id == actor.pk
+        assert event.outcome == "SUCCESS"
+        assert event.ip_address == "127.0.0.1"
+        assert event.user_agent_summary == "Synthetic Audit Browser"
+        assert not any(
+            value in json.dumps(event.metadata)
+            for value in (*PAYLOAD.values(), *correction.values())
+        )
+    assert not AuditEvent.objects.filter(
+        target_type__in={"assessment.type", "assessment.record"}, actor_user__isnull=True
+    ).exists()
+
+
+@pytest.mark.parametrize(
+    "context_name", ["anonymous", "system", "different_user", "anonymous_with_request_metadata"]
+)
+def test_unattributed_audit_context_rolls_back_every_mutation(world, context_name):
+    item = record(world)
+    context = {
+        "anonymous": lambda: AuditContext.anonymous(),
+        "system": lambda: AuditContext.system(),
+        "different_user": lambda: AuditContext.user(world.ordinary),
+        "anonymous_with_request_metadata": lambda: AuditContext.anonymous(
+            ip_address="127.0.0.1", user_agent_summary="Unattributed"
+        ),
+    }[context_name]()
+    original = (
+        world.assessment_type.name,
+        world.assessment_type.is_active,
+        item.confidential_content_ciphertext,
+        item.updated_at,
+    )
+    types, records, audits = (
+        AssessmentType.objects.count(),
+        StudentAssessmentRecord.objects.count(),
+        AuditEvent.objects.count(),
+    )
+    with pytest.raises(ValueError, match="authorized actor"):
+        services.create_type(actor=world.head, values={"name": "Unattributed"}, context=context)
+    with pytest.raises(ValueError, match="authorized actor"):
+        services.update_type(
+            actor=world.head,
+            type_id=world.assessment_type.pk,
+            values={"name": "Unattributed Rename", "is_active": False},
+            context=context,
+        )
+    with pytest.raises(ValueError, match="authorized actor"):
+        services.create_record(actor=world.head, values=values(world), context=context)
+    with pytest.raises(ValueError, match="authorized actor"):
+        services.update_record(
+            actor=world.head, record_id=item.pk, values={"score": "Unattributed"}, context=context
+        )
+    world.assessment_type.refresh_from_db()
+    item.refresh_from_db()
+    assert (
+        world.assessment_type.name,
+        world.assessment_type.is_active,
+        item.confidential_content_ciphertext,
+        item.updated_at,
+    ) == original
+    assert AssessmentType.objects.count() == types
+    assert StudentAssessmentRecord.objects.count() == records
+    assert AuditEvent.objects.count() == audits
 
 
 def test_rotation_rejects_invalid_payload_even_when_token_uses_primary_key(world):
