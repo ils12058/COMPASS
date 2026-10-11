@@ -294,6 +294,7 @@ def test_head_office_visibility_never_extends_to_counseling_messages(world):
         }
     assert set(policy.recipient_ids(counseling_thread)) == {world.student.pk, world.counselor.pk}
 
+
 def test_multiple_heads_fail_closed_without_implicit_fallback(world):
     world.other.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
     StudentAffiliation.objects.filter(student=world.student).update(college=world.colleges[3])
