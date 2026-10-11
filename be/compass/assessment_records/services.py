@@ -62,14 +62,13 @@ ORDER_BY = {
 }
 
 
-def require_actor(actor, capability="assessment_records.view", *, catalog=False):
+def require_actor(actor, capability="assessment_records.view"):
     actor = User.objects.select_related("role").filter(pk=getattr(actor, "pk", None)).first()
     if (
         actor is None
         or not actor.is_active
         or actor.role.code != "COUNSELOR"
         or not actor.has_capability(capability)
-        or (catalog and not is_head_guidance(actor))
     ):
         raise AssessmentRecordAccessDenied("Assessment Records access is required.")
     return actor
@@ -153,7 +152,7 @@ def _audit(actor, context, action, item, *, record=False):
 
 
 def create_type(*, actor, values, context=None):
-    actor = require_actor(actor, "assessment_records.manage", catalog=True)
+    actor = require_actor(actor, "assessment_records.manage")
     values = _type_values(values)
     try:
         with transaction.atomic():
@@ -167,7 +166,7 @@ def create_type(*, actor, values, context=None):
 
 
 def update_type(*, actor, type_id, values, context=None):
-    actor = require_actor(actor, "assessment_records.manage", catalog=True)
+    actor = require_actor(actor, "assessment_records.manage")
     values = _type_values(values)
     try:
         with transaction.atomic():
