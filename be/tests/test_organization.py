@@ -252,9 +252,7 @@ def test_operational_scope_is_canonical_and_fail_closed():
 def test_general_guidance_college_scope_separates_head_visibility_from_handled_workload():
     sync_policy()
     campus = Campus.objects.create(code="VISIBLE", name="Active Campus")
-    inactive_campus = Campus.objects.create(
-        code="HIDDEN", name="Inactive Campus", is_active=False
-    )
+    inactive_campus = Campus.objects.create(code="HIDDEN", name="Inactive Campus", is_active=False)
     assigned_a = College.objects.create(campus=campus, code="A", name="Assigned A")
     assigned_b = College.objects.create(campus=campus, code="B", name="Assigned B")
     unassigned = College.objects.create(campus=campus, code="C", name="Unassigned")
@@ -289,12 +287,8 @@ def test_general_guidance_college_scope_separates_head_visibility_from_handled_w
     assert visible(admin) == set()
     assert not head_gss.designations.filter(pk=designation.pk).exists()
     # Handled assignment/fallback is intentionally a different contract.
-    assert set(resolve_operational_responsibility_scope(head).college_ids) == {
-        unassigned.pk
-    }
-    assert set(resolve_operational_responsibility_scope(head_gss).college_ids) == {
-        unassigned.pk
-    }
+    assert set(resolve_operational_responsibility_scope(head).college_ids) == {unassigned.pk}
+    assert set(resolve_operational_responsibility_scope(head_gss).college_ids) == {unassigned.pk}
     # Each Head sees every eligible College, but multiple Heads invalidate
     # the unique-Head handled fallback instead of selecting one arbitrarily.
     other.designations.add(designation)
