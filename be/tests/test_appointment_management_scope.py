@@ -17,7 +17,10 @@ from compass.accounts.models import (
     UserCapabilityOverride,
     UserDesignation,
 )
-from compass.appointments.access import appointment_management_access_allowed, scope_managed_appointments
+from compass.appointments.access import (
+    appointment_management_access_allowed,
+    scope_managed_appointments,
+)
 from compass.appointments.models import Appointment, AppointmentChangeEvent
 from compass.appointments.services import (
     AppointmentNotFound,
@@ -708,9 +711,12 @@ def test_head_provider_scope_matches_single_resource_lists_filters_counts_and_gs
         response = head_client.get("/api/v1/appointments", query)
         assert response.status_code == 200
         assert {row["id"] for row in response.json()["items"]} <= ids
-    assert head_client.get(
-        "/api/v1/appointments", {"search": carlo_ordinary.reference_code}
-    ).json()["items"] == []
+    assert (
+        head_client.get("/api/v1/appointments", {"search": carlo_ordinary.reference_code}).json()[
+            "items"
+        ]
+        == []
+    )
     for item in (carlo_ordinary, carlo_counseling, head_college_other):
         assert head_client.get(f"/api/v1/appointments/{item.pk}").status_code == 404
         assert head_client.get(f"/api/v1/appointments/{item.pk}/history").status_code == 404
@@ -730,9 +736,7 @@ def test_head_unowned_appointment_all_actions_denied_before_mutation(service_typ
     bea = make_user(f"denied-bea-{service_type}@example.edu", "STUDENT")
     affiliate(bea, college)
     service = (
-        make_counseling_service(admin)
-        if service_type == "COUNSELING"
-        else make_service(admin)
+        make_counseling_service(admin) if service_type == "COUNSELING" else make_service(admin)
     )
     item = appointment(
         reference=f"APT-2099-{620001 if service_type == 'COUNSELING' else 620002}",
@@ -906,5 +910,3 @@ def test_reassignment_immediately_transfers_head_provider_authorization():
     assert item.provider_id == head.pk
     assert get_appointment_for_actor(appointment_id=item.pk, actor=head).pk == item.pk
     assert AppointmentChangeEvent.objects.filter(appointment=item).count() == 2
-
-
