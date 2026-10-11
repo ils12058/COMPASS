@@ -222,6 +222,28 @@ def test_bea_office_stays_routed_to_carlo_while_head_and_staff_have_general_visi
     assert thread.assigned_to_id == world.counselor.pk
 
 
+def test_head_can_open_office_thread_in_another_counselors_assigned_college(world):
+    # The Head may start Office work for a Student from another assigned College;
+    # the explicit College Counselor must still receive the default handling.
+    thread, _ = services.open_office_thread(
+        actor=world.head,
+        student_id=world.other_student.pk,
+        client_message_id=uuid4(),
+        body=BODY,
+    )
+    assert thread.student_id == world.other_student.pk
+    assert thread.routing_college_id == world.colleges[1].pk
+    assert thread.assigned_to_id == world.other.pk
+    for actor in (world.head, world.head_gss, world.other):
+        assert services.get_thread(actor=actor, thread_id=thread.pk).pk == thread.pk
+    for actor in (world.counselor, world.gss):
+        with pytest.raises(ThreadNotFound):
+            services.get_thread(actor=actor, thread_id=thread.pk)
+    assert set(policy.recipient_ids(thread)) == {
+        world.other_student.pk, world.other.pk, world.head.pk, world.head_gss.pk
+    }
+
+
 def test_current_head_supervision_visibility_is_revoked_without_handler_changes(world):
     thread, _ = office(world)
     services.assign_handler(actor=world.head, thread_id=thread.pk, handler_id=world.head_gss.pk)
