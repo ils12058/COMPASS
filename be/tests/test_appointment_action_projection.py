@@ -325,6 +325,4 @@ def test_head_appointment_actions_are_provider_owned_even_with_institutional_col
     }
     self_view = client.get(f"/api/v1/appointments/{heads.pk}")
     assert self_view.status_code == 200
-    assert {item["blocker"] for item in self_view.json()["actions"].values()} == {
-        "NOT_PERMITTED"
-    }
+    assert {item["blocker"] for item in self_view.json()["actions"].values()} == {"NOT_PERMITTED"}
