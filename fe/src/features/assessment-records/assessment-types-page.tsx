@@ -164,7 +164,7 @@ function AssessmentTypeCatalog({
             Back to Assessment Records
           </Link>
         }
-        description="Institutional catalog managed by Head Guidance. Deactivating a type prevents new use and preserves historical records."
+        description="Manage the Assessment Types used by the Guidance and Counseling Office. Deactivated types remain on existing records but cannot be selected for new results."
       />
       {refreshError ? (
         <RefreshFailureNotice onRetry={retry} retrying={refreshing} />

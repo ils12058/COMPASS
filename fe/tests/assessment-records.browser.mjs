@@ -81,10 +81,35 @@ for (const path of [root, root + "/new", root + "/types", detail]) {
   });
 }
 {
-  const world = assessmentWorld({ account: { ...head(), designations: [] } });
-  await check("Overridden Counselor manager cannot open Head catalog", root + "/types", world.options(), async (page, { requests }) => {
+  // Head is a default grantee, not the only actor: effective view + manage opens the shared catalog.
+  const world = assessmentWorld({ account: { ...head(), id: "assessment-counselor", designations: [] } });
+  await check("Non-Head Counselor with effective manage reaches and uses the shared catalog", root, world.options(), async (page) => {
+    await page.getByRole("link", { name: /Manage assessment types/ }).click();
+    await shown(page.getByRole("heading", { name: "Assessment Types", exact: true }));
+    await shown(page.getByText("Manage the Assessment Types used by the Guidance and Counseling Office. Deactivated types remain on existing records but cannot be selected for new results."));
+    assert.ok(!(await text(page)).includes("Head Guidance"));
+    await page.getByLabel("Name", { exact: true }).fill("Counselor Managed Assessment");
+    await page.getByRole("button", { name: "Create type", exact: true }).click();
+    await shown(page.getByRole("button", { name: "Edit Counselor Managed Assessment", exact: true }));
+    assert.deepEqual(world.mutations.map((item) => [item.method, item.pathname]), [["POST", "/api/v1/assessment-records/types"]]);
+  });
+}
+{
+  const world = assessmentWorld({ account: { ...head(), designations: [], capabilities: ["assessment_records.manage"] } });
+  await check("Manage without effective view cannot open the catalog by direct route", root + "/types", world.options(), async (page, { requests }) => {
     await shown(page.getByRole("heading", { name: "Assessment Records unavailable" }));
-    assert.ok(!requests.some((item) => item.pathname.endsWith("/types")));
+    assert.ok(!requests.some((item) => item.pathname.startsWith("/api/v1/assessment-records")));
+  });
+}
+{
+  const world = assessmentWorld({ account: { ...head(), id: "assessment-counselor", designations: [] } });
+  await check("Revoked manage removes stale record and catalog actions after a fresh session", root, world.options({ beforeNavigate: async ({ page }) => { await page.clock.install(); } }), async (page) => {
+    await shown(page.getByRole("link", { name: /Manage assessment types/ }));
+    await shown(page.getByRole("link", { name: /Record assessment result/ }));
+    world.account = { ...world.account, capabilities: ["assessment_records.view"] }; await refreshSession(page);
+    await hidden(page.getByRole("link", { name: /Manage assessment types/ }));
+    await hidden(page.getByRole("link", { name: /Record assessment result/ }));
+    await shown(page.getByRole("link", { name: "Maria Assessment Student" }));
   });
 }
 {
@@ -92,7 +117,10 @@ for (const path of [root, root + "/new", root + "/types", detail]) {
   await check("Empty catalog and empty record list remain usable", root, world.options(), async (page) => {
     await shown(page.getByText("No assessment results have been recorded."));
     world.types = []; await page.reload(); await shown(page.getByText("No assessment results have been recorded.")); await page.getByRole("link", { name: /Record assessment result/ }).click();
-    await shown(page.getByText(/No active Assessment Types/));
+    await shown(page.getByText(/No active Assessment Types are available\./));
+    assert.ok(!(await text(page)).includes("Head Guidance"));
+    await shown(page.getByRole("link", { name: "Assessment Types", exact: true }));
+    assert.equal(await page.getByRole("link", { name: "Assessment Types", exact: true }).getAttribute("href"), root + "/types");
     await page.getByLabel("Score / rating", { exact: true }).fill("draft source");
     assert.equal(await page.getByLabel("Score / rating", { exact: true }).getAttribute("type"), null);
   });
@@ -190,7 +218,7 @@ for (const status of [403, 404, 500]) {
 }
 {
   const world = assessmentWorld();
-  await check("Head catalog creates updates deactivates and reactivates without delete", root + "/types", world.options(), async (page) => {
+  await check("Catalog creates updates deactivates and reactivates without delete", root + "/types", world.options(), async (page) => {
     await shown(page.getByRole("button", { name: "Create type", exact: true }));
     await page.getByLabel("Name", { exact: true }).fill("Source Ability Assessment");
     await page.getByLabel("Description (optional)").fill("Institutional catalog description");

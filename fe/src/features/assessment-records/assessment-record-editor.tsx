@@ -103,12 +103,24 @@ export function AssessmentRecordEditorPage({
           pending={query.isFetching}
         />
       );
-    return <AssessmentRecordForm key={recordId} record={record} />;
+    return (
+      <AssessmentRecordForm
+        key={recordId}
+        record={record}
+        canManageTypes={access.canManageTypes}
+      />
+    );
   }
-  return <AssessmentRecordForm />;
+  return <AssessmentRecordForm canManageTypes={access.canManageTypes} />;
 }
 
-function AssessmentRecordForm({ record }: { record?: AssessmentRecordDetail }) {
+function AssessmentRecordForm({
+  record,
+  canManageTypes,
+}: {
+  record?: AssessmentRecordDetail;
+  canManageTypes: boolean;
+}) {
   const router = useRouter();
   const refresh = useAssessmentRefresh();
   const initial: AssessmentDraft = {
@@ -294,8 +306,21 @@ function AssessmentRecordForm({ record }: { record?: AssessmentRecordDetail }) {
                     </p>
                   ) : catalog?.every((type) => !type.is_active) ? (
                     <p className="mt-2 text-sm text-muted">
-                      No active Assessment Types. Ask Head Guidance to configure
-                      the catalog.
+                      No active Assessment Types are available.{" "}
+                      {canManageTypes ? (
+                        <>
+                          Add or reactivate one in{" "}
+                          <Link
+                            href="/portal/assessment-records/types"
+                            className="font-semibold text-brand underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                          >
+                            Assessment Types
+                          </Link>
+                          .
+                        </>
+                      ) : (
+                        "An authorized staff member can add or reactivate one in Assessment Types."
+                      )}
                     </p>
                   ) : null}
                 </div>
