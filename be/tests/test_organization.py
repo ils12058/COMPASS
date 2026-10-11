@@ -18,7 +18,10 @@ from compass.accounts.models import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
-from compass.organization.access_scope import resolve_operational_responsibility_scope
+from compass.organization.access_scope import (
+    resolve_general_guidance_college_scope,
+    resolve_operational_responsibility_scope,
+)
 from compass.organization.models import (
     Campus,
     College,
@@ -243,6 +246,109 @@ def test_operational_scope_is_canonical_and_fail_closed():
     for actor in (unsupervised, inactive_staff, unsupported):
         scope = resolve_operational_responsibility_scope(actor)
         assert scope.college_ids == ()
+
+
+@pytest.mark.django_db
+def test_general_guidance_college_scope_separates_head_visibility_from_handled_workload():
+    sync_policy()
+    campus = Campus.objects.create(code="VISIBLE", name="Active Campus")
+    inactive_campus = Campus.objects.create(
+        code="HIDDEN", name="Inactive Campus", is_active=False
+    )
+    assigned_a = College.objects.create(campus=campus, code="A", name="Assigned A")
+    assigned_b = College.objects.create(campus=campus, code="B", name="Assigned B")
+    unassigned = College.objects.create(campus=campus, code="C", name="Unassigned")
+    inactive_college = College.objects.create(
+        campus=campus, code="D", name="Inactive College", is_active=False
+    )
+    inactive_campus_college = College.objects.create(
+        campus=inactive_campus, code="E", name="Inactive Campus College"
+    )
+    carlo = make_user("scope-carlo@example.edu", "COUNSELOR")
+    other = make_user("scope-other@example.edu", "COUNSELOR")
+    head = make_user("scope-head@example.edu", "COUNSELOR")
+    gss = make_user("scope-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    head_gss = make_user("scope-head-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    admin = make_user("scope-admin@example.edu", "IT_ADMIN")
+    designation = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    head.designations.add(designation)
+    CounselorResponsibility.objects.create(college=assigned_a, counselor=carlo)
+    CounselorResponsibility.objects.create(college=assigned_b, counselor=other)
+    CounselorResponsibility.objects.create(college=inactive_college, counselor=carlo)
+    CounselorResponsibility.objects.create(college=inactive_campus_college, counselor=carlo)
+    StaffSupervision.objects.create(staff=gss, supervisor=carlo)
+    StaffSupervision.objects.create(staff=head_gss, supervisor=head)
+
+    def visible(actor):
+        return set(resolve_general_guidance_college_scope(actor).college_ids)
+
+    eligible = {assigned_a.pk, assigned_b.pk, unassigned.pk}
+    assert visible(head) == visible(head_gss) == eligible
+    assert visible(carlo) == visible(gss) == {assigned_a.pk}
+    assert visible(other) == {assigned_b.pk}
+    assert visible(admin) == set()
+    assert not head_gss.designations.filter(pk=designation.pk).exists()
+    # Handled assignment/fallback is intentionally a different contract.
+    assert set(resolve_operational_responsibility_scope(head).college_ids) == {
+        unassigned.pk
+    }
+    assert set(resolve_operational_responsibility_scope(head_gss).college_ids) == {
+        unassigned.pk
+    }
+    # Each Head sees every eligible College, but multiple Heads invalidate
+    # the unique-Head handled fallback instead of selecting one arbitrarily.
+    other.designations.add(designation)
+    assert visible(head) == visible(other) == visible(head_gss) == eligible
+    assert resolve_operational_responsibility_scope(head).college_ids == ()
+    assert resolve_operational_responsibility_scope(head_gss).college_ids == ()
+
+
+@pytest.mark.django_db
+def test_general_guidance_gss_scope_rechecks_current_supervision_designation_and_identity():
+    sync_policy()
+    campus = Campus.objects.create(code="DYNAMIC", name="Current Campus")
+    college_a = College.objects.create(campus=campus, code="A", name="College A")
+    college_b = College.objects.create(campus=campus, code="B", name="College B")
+    carlo = make_user("dynamic-carlo@example.edu", "COUNSELOR")
+    head = make_user("dynamic-head@example.edu", "COUNSELOR")
+    staff = make_user("dynamic-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    unsupervised = make_user("dynamic-unsupervised@example.edu", "GUIDANCE_SERVICES_STAFF")
+    head.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
+    CounselorResponsibility.objects.create(college=college_a, counselor=carlo)
+    StaffSupervision.objects.create(staff=staff, supervisor=carlo)
+
+    def visible(actor):
+        return set(resolve_general_guidance_college_scope(actor).college_ids)
+
+    assert visible(staff) == {college_a.pk}
+    assert visible(unsupervised) == set()
+    StaffSupervision.objects.filter(staff=staff).update(supervisor=head)
+    assert visible(staff) == {college_a.pk, college_b.pk}
+    # Losing Head status immediately narrows the inherited visibility.
+    head.designations.clear()
+    assert visible(head) == visible(staff) == set()
+    head.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
+    assert visible(staff) == {college_a.pk, college_b.pk}
+
+    StaffSupervision.objects.filter(staff=staff).update(supervisor=carlo)
+    assert visible(staff) == {college_a.pk}
+    StaffSupervision.objects.filter(staff=staff).update(supervisor=head)
+    User.objects.filter(pk=head.pk).update(is_active=False)
+    assert visible(head) == visible(staff) == set()
+    User.objects.filter(pk=head.pk).update(is_active=True)
+    assert visible(staff) == {college_a.pk, college_b.pk}
+    User.objects.filter(pk=head.pk).update(role=Role.objects.get(code="IT_ADMIN"))
+    assert visible(head) == visible(staff) == set()
+    StaffSupervision.objects.filter(staff=staff).delete()
+    assert visible(staff) == set()
+
+    StaffSupervision.objects.create(staff=staff, supervisor=carlo)
+    assert visible(staff) == {college_a.pk}
+    User.objects.filter(pk=staff.pk).update(is_active=False)
+    assert visible(staff) == set()
+    User.objects.filter(pk=staff.pk).update(is_active=True)
+    User.objects.filter(pk=staff.pk).update(role=Role.objects.get(code="IT_ADMIN"))
+    assert visible(staff) == set()
 
 
 @pytest.mark.django_db
