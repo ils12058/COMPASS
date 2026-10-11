@@ -1195,9 +1195,10 @@ def test_managed_appointment_search_is_student_aware_composable_and_scope_preser
 
     head_client = auth_client(head)
     provider_client = auth_client(provider)
-    assert head_client.get("/api/v1/appointments", {"search": target.reference_code}).json()[
-        "items"
-    ] == []
+    assert (
+        head_client.get("/api/v1/appointments", {"search": target.reference_code}).json()["items"]
+        == []
+    )
     for search in (
         target.reference_code,
         "2023-54321",
