@@ -7,6 +7,8 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
+from compass.accounts.models import Capability, Designation, UserCapabilityOverride
+
 from compass.appointments.services import (
     AppointmentActionBlocker,
     appointment_actions_for,
@@ -265,3 +267,64 @@ def test_cancellation_error_codes_come_from_exception_types_not_message_text():
     lifecycle = client.post(f"/api/v1/appointments/{started.pk}/cancel", **headers)
     assert lifecycle.status_code == 409
     assert lifecycle.json()["error"]["code"] == "appointment_cancellation_conflict"
+
+
+@pytest.mark.django_db
+def test_head_appointment_actions_are_provider_owned_even_with_institutional_college_visibility():
+    sync_policy()
+    student, carlo, service = setup_participants("head-projection")
+    head = make_user("head-projection-head@example.edu", "COUNSELOR")
+    head.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
+    now = timezone.now()
+    carlos = create_list_appointment(
+        reference_code="APT-2099-900051",
+        student=student,
+        provider=carlo,
+        service=service,
+        starts_at=now + timedelta(days=2),
+    )
+    heads = create_list_appointment(
+        reference_code="APT-2099-900052",
+        student=student,
+        provider=head,
+        service=service,
+        starts_at=now + timedelta(days=3),
+    )
+    assert states(appointment_actions_for(actor=head, item=carlos, now=now)) == {
+        "cancel": "NOT_PERMITTED",
+        "reschedule": "NOT_PERMITTED",
+        "reassign": "NOT_PERMITTED",
+        "complete": "NOT_PERMITTED",
+        "mark_no_show": "NOT_PERMITTED",
+    }
+    own_states = states(appointment_actions_for(actor=head, item=heads, now=now))
+    assert own_states["cancel"] is None
+    assert own_states["reassign"] is None
+
+    client = auth_client(head)
+    assert client.get(f"/api/v1/appointments/{carlos.pk}").status_code == 404
+    mine = client.get(f"/api/v1/appointments/{heads.pk}")
+    assert mine.status_code == 200
+    assert mine.json()["actions"]["cancel"]["allowed"] is True
+    assert mine.json()["actions"]["reassign"]["allowed"] is True
+
+    # appointments.view_self still permits viewing the assigned provider's
+    # appointment; revoked appointments.manage cannot authorize an action.
+    UserCapabilityOverride.objects.create(
+        user=head,
+        capability=Capability.objects.get(code="appointments.manage"),
+        effect="REVOKE",
+        reason="Synthetic provider view-only proof",
+    )
+    assert states(appointment_actions_for(actor=head, item=heads, now=now)) == {
+        "cancel": "NOT_PERMITTED",
+        "reschedule": "NOT_PERMITTED",
+        "reassign": "NOT_PERMITTED",
+        "complete": "NOT_PERMITTED",
+        "mark_no_show": "NOT_PERMITTED",
+    }
+    self_view = client.get(f"/api/v1/appointments/{heads.pk}")
+    assert self_view.status_code == 200
+    assert {item["blocker"] for item in self_view.json()["actions"].values()} == {
+        "NOT_PERMITTED"
+    }
