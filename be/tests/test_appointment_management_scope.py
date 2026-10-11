@@ -24,6 +24,7 @@ from compass.appointments.services import (
 )
 from compass.audit.context import AuditContext
 from compass.authentication.sessions import create_auth_session
+from compass.organization.access_scope import resolve_general_guidance_college_scope
 from compass.organization.models import (
     Campus,
     College,
@@ -318,6 +319,12 @@ def test_head_oversight_and_gss_under_head_handled_workload_for_ordinary_appoint
         service=service,
     )
 
+    # General Guidance visibility is wider than managed Appointment workload;
+    # Head's pre-existing non-Counseling oversight is deferred to Slice 2.
+    assert set(resolve_general_guidance_college_scope(gss).college_ids) == {
+        assigned_college.pk,
+        other_college.pk,
+    }
     assert {row.pk for row in list_managed_appointments(actor=head).items} == {
         inside.pk,
         outside.pk,
