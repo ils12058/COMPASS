@@ -1,4 +1,16 @@
-"""Current handled College workload, separate from domain-owned Head oversight."""
+"""Two distinct College scopes; neither grants capabilities or confidential relationships.
+
+resolve_operational_responsibility_scope is the historical handled workload contract:
+explicit Counselor assignments and the unique-Head unassigned fallback, inherited by
+GSS. Appointment management, Referrals and other specialized consumers retain it.
+
+resolve_general_guidance_college_scope is the general Guidance *visibility* contract:
+any active Head sees all active Colleges, ordinary Counselors their explicit Colleges,
+and GSS their current valid supervisor's visibility. Only Office Messages opts into
+this resolver in Slice 1; the domain's capability, actor and resource checks still
+apply. Default Counselor routing is owned by organization.services, not by either
+visibility calculation. The Head appointment exception is deferred to Slice 2.
+"""
 
 from __future__ import annotations
 
