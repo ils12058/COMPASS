@@ -4,6 +4,7 @@ import re
 from datetime import date, timedelta
 from types import SimpleNamespace
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 from django.db import connection
@@ -20,6 +21,7 @@ from compass.counseling.models import CounselingEncounter
 from compass.good_moral.models import GoodMoralRequest
 from compass.good_moral.services import issue_request, prepare_request
 from compass.guidance_messages import services as messages
+from compass.guidance_messages.errors import MessagesConflict, ThreadNotFound
 from compass.guidance_messages.models import GuidanceThread
 from compass.guidance_operations import services
 from compass.guidance_operations.schemas import DueMetric, WaitingMetric
@@ -31,7 +33,14 @@ from compass.routine_interviews.models import RoutineInterview
 from compass.routine_interviews.services import finalize_assigned_evaluation
 from compass.service_catalog.models import Service
 from compass.work_queue import services as work
-from tests.test_guidance_messages import counseling, deny, office, send, world  # noqa: F401
+from tests.test_guidance_messages import (  # noqa: F401
+    BODY,
+    counseling,
+    deny,
+    office,
+    send,
+    world,
+)
 from tests.test_notifications import auth_client
 from tests.test_work_queue import assign, call_slip, good_moral, routine
 
@@ -168,14 +177,61 @@ def test_counseling_exact_persisted_provider_and_no_gss_or_head_broadening(world
     assert thread.counselor_id == world.counselor.pk
 
 
-def test_multiple_heads_fail_closed_for_message_fallback(world):
+def test_second_head_keeps_existing_office_backlog_with_its_saved_handler(world):
+    head_designation = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     StudentAffiliation.objects.filter(student=world.student).update(college=world.colleges[3])
     thread, _ = office(world)
     assert thread.assigned_to_id == world.head.pk
     assert summary(world, world.head).backlog.guidance_messages.count == 1
-    world.other.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
+    world.other.designations.add(head_designation)
+    # A later ambiguous fallback never reroutes or hides an existing Office thread: its saved
+    # handler still owns the reply, while the second Head and Head-supervised staff only see it.
+    assert summary(world, world.head).backlog.guidance_messages.count == 1
+    for actor in (world.other, world.head_gss):
+        assert messages.get_thread(actor=actor, thread_id=thread.pk).pk == thread.pk
+        assert summary(world, actor).backlog.guidance_messages.count == 0
+    with pytest.raises(ThreadNotFound):
+        messages.get_thread(actor=world.gss, thread_id=thread.pk)
+    assert summary(world, world.gss).backlog.guidance_messages.count == 0
+    thread.refresh_from_db()
+    assert thread.assigned_to_id == world.head.pk
+    # Ownership never substitutes for the current capability or College visibility.
+    deny(world.head, "guidance_messages.manage")
+    assert summary(world, world.head).backlog.guidance_messages is None
+    UserCapabilityOverride.objects.filter(user=world.head).delete()
+    assert summary(world, world.head).backlog.guidance_messages.count == 1
+    world.head.designations.remove(head_designation)
+    with pytest.raises(ThreadNotFound):
+        messages.get_thread(actor=world.head, thread_id=thread.pk)
     assert summary(world, world.head).backlog.guidance_messages.count == 0
-    assert summary(world, world.head_gss).backlog.guidance_messages.count == 0
+
+
+def test_multiple_heads_fail_closed_for_message_fallback(world):
+    head_designation = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    world.other.designations.add(head_designation)
+
+    def open_for_other_student():
+        return messages.open_office_thread(
+            actor=world.other_student, client_message_id=uuid4(), body=BODY
+        )[0]
+
+    # A new thread for an unassigned College needs exactly one active Head; none is guessed.
+    StudentAffiliation.objects.filter(student=world.other_student).update(college=world.colleges[3])
+    with pytest.raises(MessagesConflict, match="routing"):
+        open_for_other_student()
+    assert not GuidanceThread.objects.filter(student=world.other_student).exists()
+    for actor in (world.head, world.other, world.head_gss):
+        assert summary(world, actor).backlog.guidance_messages.count == 0
+    # An explicit College Counselor assignment still wins over any Head fallback.
+    StudentAffiliation.objects.filter(student=world.other_student).update(college=world.colleges[0])
+    assert open_for_other_student().assigned_to_id == world.counselor.pk
+    assert summary(world).backlog.guidance_messages.count == 1
+    for actor in (world.head, world.other, world.head_gss):
+        assert summary(world, actor).backlog.guidance_messages.count == 0
+    # With one active Head again, the unassigned College falls back to that Head.
+    world.other.designations.remove(head_designation)
+    StudentAffiliation.objects.filter(student=world.student).update(college=world.colleges[3])
+    assert office(world)[0].assigned_to_id == world.head.pk
 
 
 @pytest.mark.parametrize("status", ["CANCELLED", "NO_SHOW"])
