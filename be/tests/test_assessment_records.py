@@ -201,6 +201,176 @@ def test_ordinary_override_is_scoped_and_catalog_management_uses_capabilities(wo
         )
 
 
+
+def test_view_only_counselor_can_read_shared_catalog_but_not_mutate(world):
+    item = record(world)
+    UserCapabilityOverride.objects.create(
+        user=world.ordinary,
+        capability=Capability.objects.get(code="assessment_records.view"),
+        effect="GRANT",
+        reason="Read-only synthetic exception",
+    )
+    client = auth_client(world.ordinary)
+    assert world.ordinary.has_capability("assessment_records.view")
+    assert not world.ordinary.has_capability("assessment_records.manage")
+    assert client.get(BASE + "/types").status_code == 200
+    assert [row["id"] for row in client.get(BASE).json()["items"]] == [str(item.pk)]
+    assert client.get(f"{BASE}/{item.pk}").status_code == 200
+    before = AuditEvent.objects.count()
+    for method, path, data in (
+        ("post", BASE + "/types", {"name": "Denied Type"}),
+        ("patch", BASE + f"/types/{world.assessment_type.pk}", {"name": "Denied Update"}),
+        ("post", BASE, {"student_id": str(world.student.pk)}),
+        ("patch", f"{BASE}/{item.pk}", {"score": "Denied"}),
+    ):
+        response = getattr(client, method)(path, data=json.dumps(data), content_type="application/json")
+        assert response.status_code == 403
+    assert AuditEvent.objects.count() == before
+    assert not AssessmentType.objects.filter(name="Denied Type").exists()
+
+
+@pytest.mark.parametrize("actor_name", ["head", "ordinary"])
+def test_effective_manage_and_view_revocation_rechecks_fresh_requests(world, actor_name):
+    item = record(world)
+    actor = getattr(world, actor_name)
+    if actor_name == "ordinary":
+        grant(actor)
+    client = auth_client(actor)
+    created = services.create_type(actor=actor, values={"name": "Revocation Proof"})
+    view = Capability.objects.get(code="assessment_records.view")
+    manage = Capability.objects.get(code="assessment_records.manage")
+    assert actor.has_capability("assessment_records.view")
+    assert actor.has_capability("assessment_records.manage")
+    UserCapabilityOverride.objects.update_or_create(
+        user=actor,
+        capability=manage,
+        defaults={"effect": "REVOKE", "reason": "Synthetic manage revocation"},
+    )
+    assert not actor.has_capability("assessment_records.manage")
+    assert client.get(BASE + "/types").status_code == 200
+    assert client.get(BASE).status_code == 200
+    assert client.get(f"{BASE}/{item.pk}").status_code == (200 if actor_name == "head" else 200)
+    baseline = AuditEvent.objects.count()
+    for method, path, data in (
+        ("post", BASE + "/types", {"name": "Should Not Exist"}),
+        ("patch", BASE + f"/types/{created.pk}", {"is_active": False}),
+        ("post", BASE, {"student_id": str(world.student.pk)}),
+        ("patch", f"{BASE}/{item.pk}", {"score": "Not authorized"}),
+    ):
+        response = getattr(client, method)(path, data=json.dumps(data), content_type="application/json")
+        assert response.status_code == 403
+    assert AuditEvent.objects.count() == baseline
+    created.refresh_from_db()
+    assert created.is_active
+    UserCapabilityOverride.objects.update_or_create(
+        user=actor,
+        capability=view,
+        defaults={"effect": "REVOKE", "reason": "Synthetic view revocation"},
+    )
+    assert not actor.has_capability("assessment_records.view")
+    assert not actor.has_capability("assessment_records.manage")
+    for path in (BASE, BASE + "/types", f"{BASE}/{item.pk}"):
+        assert client.get(path).status_code == 403
+    assert client.post(
+        BASE + "/types",
+        data=json.dumps({"name": "Revoked Type"}),
+        content_type="application/json",
+    ).status_code == 403
+    assert client.patch(
+        BASE + f"/types/{created.pk}",
+        data=json.dumps({"is_active": False}),
+        content_type="application/json",
+    ).status_code == 403
+    assert AuditEvent.objects.count() == baseline
+
+
+@pytest.mark.parametrize("supervisor_name", ["head", "ordinary"])
+def test_staff_with_override_and_supervision_never_manages_assessment_types(world, supervisor_name):
+    StaffSupervision.objects.create(
+        staff=world.gss, supervisor=getattr(world, supervisor_name)
+    )
+    grant(world.gss)
+    # Head-supervised GSS may inherit college visibility, but not Counselor actor eligibility.
+    assert world.gss.has_capability("assessment_records.manage")
+    before = AuditEvent.objects.count()
+    client = auth_client(world.gss)
+    assert client.get(BASE + "/types").status_code == 403
+    assert client.post(
+        BASE + "/types",
+        data=json.dumps({"name": "Staff Forbidden"}),
+        content_type="application/json",
+    ).status_code == 403
+    assert client.patch(
+        BASE + f"/types/{world.assessment_type.pk}",
+        data=json.dumps({"is_active": False}),
+        content_type="application/json",
+    ).status_code == 403
+    with pytest.raises(AssessmentRecordAccessDenied):
+        services.create_type(actor=world.gss, values={"name": "Forbidden"})
+    with pytest.raises(AssessmentRecordAccessDenied):
+        services.update_type(
+            actor=world.gss, type_id=world.assessment_type.pk, values={"is_active": False}
+        )
+    assert AuditEvent.objects.count() == before
+    world.assessment_type.refresh_from_db()
+    assert world.assessment_type.is_active
+
+
+@pytest.mark.parametrize("actor_name", ["student", "admin", "dpo"])
+def test_unsupported_roles_cannot_mutate_types_even_with_direct_grants(world, actor_name):
+    actor = getattr(world, actor_name)
+    grant(actor)
+    client = auth_client(actor)
+    assert client.get(BASE + "/types").status_code == 403
+    before = AuditEvent.objects.count()
+    for method, path, data in (
+        ("post", BASE + "/types", {"name": "Unsupported Type"}),
+        ("patch", BASE + f"/types/{world.assessment_type.pk}", {"is_active": False}),
+    ):
+        assert getattr(client, method)(
+            path, data=json.dumps(data), content_type="application/json"
+        ).status_code == 403
+    assert AuditEvent.objects.count() == before
+
+
+def test_shared_catalog_remains_manageable_after_counselor_loses_college_scope(world):
+    grant(world.ordinary)
+    item = record(world)
+    CounselorResponsibility.objects.filter(counselor=world.ordinary).delete()
+    assert services.list_records(actor=world.ordinary)["items"] == []
+    with pytest.raises(AssessmentRecordNotFound):
+        services.get_record(actor=world.ordinary, record_id=item.pk)
+    with pytest.raises(AssessmentRecordNotFound):
+        services.create_record(actor=world.ordinary, values=values(world))
+    created = services.create_type(actor=world.ordinary, values={"name": "Shared Unscoped Catalog"})
+    assert created.pk in {row.pk for row in services.list_types(actor=world.head)}
+    assert services.eligible_students(actor=world.ordinary).items == ()
+
+
+def test_catalog_type_mutations_roll_back_on_audit_failure(world, monkeypatch):
+    grant(world.ordinary)
+    original = (world.assessment_type.name, world.assessment_type.updated_at)
+    initial_type_count = AssessmentType.objects.count()
+    initial_audit_count = AuditEvent.objects.count()
+
+    def fail_audit(*args, **kwargs):
+        raise RuntimeError("Synthetic catalog audit failure")
+
+    monkeypatch.setattr(services, "record_event", fail_audit)
+    with pytest.raises(RuntimeError, match="catalog audit"):
+        services.create_type(actor=world.ordinary, values={"name": "Never Saved"})
+    with pytest.raises(RuntimeError, match="catalog audit"):
+        services.update_type(
+            actor=world.ordinary,
+            type_id=world.assessment_type.pk,
+            values={"name": "Never Renamed"},
+        )
+    world.assessment_type.refresh_from_db()
+    assert (world.assessment_type.name, world.assessment_type.updated_at) == original
+    assert AssessmentType.objects.count() == initial_type_count
+    assert AuditEvent.objects.count() == initial_audit_count
+
+
 @pytest.mark.parametrize("target", ["college", "campus", "responsibility"])
 def test_inactive_or_removed_responsibility_conceals_record(world, target):
     item = record(world)
