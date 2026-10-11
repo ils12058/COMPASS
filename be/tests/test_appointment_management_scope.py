@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from datetime import timedelta
+from unittest.mock import patch
 
 import pytest
 from django.core.management import call_command
@@ -16,7 +17,16 @@ from compass.accounts.models import (
     UserCapabilityOverride,
     UserDesignation,
 )
-from compass.appointments.models import Appointment
+from compass.appointments.access import appointment_management_access_allowed, scope_managed_appointments
+from compass.appointments.models import Appointment, AppointmentChangeEvent
+from compass.appointments.services import (
+    appointment_actions_for,
+    count_upcoming_managed_appointments,
+    get_appointment_history,
+    reassign_appointment,
+)
+from compass.audit.models import AuditEvent
+from compass.notifications.models import Notification
 from compass.appointments.services import (
     AppointmentNotFound,
     get_appointment_for_actor,
@@ -285,7 +295,7 @@ def test_gss_scope_fails_closed_for_broken_or_inactive_supervision_chain():
 
 
 @pytest.mark.django_db
-def test_head_oversight_and_gss_under_head_handled_workload_for_ordinary_appointments():
+def test_head_provider_only_and_gss_under_head_still_use_handled_non_counseling_workload():
     sync_policy()
     admin = make_user("headscope-admin@example.edu", "IT_ADMIN")
     provider = make_user("headscope-provider@example.edu", "COUNSELOR")
@@ -319,20 +329,35 @@ def test_head_oversight_and_gss_under_head_handled_workload_for_ordinary_appoint
         service=service,
     )
 
-    # General Guidance visibility is wider than managed Appointment workload;
-    # Head's pre-existing non-Counseling oversight is deferred to Slice 2.
+    # General Guidance College visibility does not grant Appointment ownership.
     assert set(resolve_general_guidance_college_scope(gss).college_ids) == {
         assigned_college.pk,
         other_college.pk,
     }
-    assert {row.pk for row in list_managed_appointments(actor=head).items} == {
+    assert list_managed_appointments(actor=head).items == ()
+    assert {row.pk for row in list_managed_appointments(actor=gss).items} == {inside.pk}
+    assert {row.pk for row in list_managed_appointments(actor=provider).items} == {
         inside.pk,
         outside.pk,
     }
-    assert {row.pk for row in list_managed_appointments(actor=gss).items} == {inside.pk}
-    assert get_appointment_for_actor(appointment_id=outside.pk, actor=head).pk == outside.pk
+    for item in (inside, outside):
+        with pytest.raises(AppointmentNotFound):
+            get_appointment_for_actor(appointment_id=item.pk, actor=head)
     with pytest.raises(AppointmentNotFound):
         get_appointment_for_actor(appointment_id=outside.pk, actor=gss)
+
+    # Head provider assignment, even in someone else's College, is sufficient.
+    head_student = make_user("headscope-own-student@example.edu", "STUDENT")
+    affiliate(head_student, other_college)
+    mine = appointment(
+        reference="APT-2099-300003",
+        student=head_student,
+        provider=head,
+        service=service,
+    )
+    assert [row.pk for row in list_managed_appointments(actor=head).items] == [mine.pk]
+    assert get_appointment_for_actor(appointment_id=mine.pk, actor=head).pk == mine.pk
+    assert not appointment_management_access_allowed(gss, mine)
 
 
 @pytest.mark.django_db
