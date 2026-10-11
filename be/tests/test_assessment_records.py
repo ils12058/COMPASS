@@ -172,9 +172,7 @@ def test_ordinary_override_is_scoped_and_catalog_management_uses_capabilities(wo
     with pytest.raises(AssessmentRecordNotFound):
         services.create_record(actor=world.ordinary, values=values(world, student_id=b.student_id))
     # Type mutations operate on the shared catalog, without expanding record scope.
-    created = services.create_type(
-        actor=world.ordinary, values={"name": "  Shared   Assessment  "}
-    )
+    created = services.create_type(actor=world.ordinary, values={"name": "  Shared   Assessment  "})
     assert created.name == "Shared Assessment"
     changed = services.update_type(
         actor=world.ordinary,
@@ -201,7 +199,6 @@ def test_ordinary_override_is_scoped_and_catalog_management_uses_capabilities(wo
         )
 
 
-
 def test_view_only_counselor_can_read_shared_catalog_but_not_mutate(world):
     item = record(world)
     UserCapabilityOverride.objects.create(
@@ -223,7 +220,9 @@ def test_view_only_counselor_can_read_shared_catalog_but_not_mutate(world):
         ("post", BASE, {**{key: str(value) for key, value in values(world).items()}}),
         ("patch", f"{BASE}/{item.pk}", {"score": "Denied"}),
     ):
-        response = getattr(client, method)(path, data=json.dumps(data), content_type="application/json")
+        response = getattr(client, method)(
+            path, data=json.dumps(data), content_type="application/json"
+        )
         assert response.status_code == 403
     assert AuditEvent.objects.count() == before
     assert not AssessmentType.objects.filter(name="Denied Type").exists()
@@ -257,7 +256,9 @@ def test_effective_manage_and_view_revocation_rechecks_fresh_requests(world, act
         ("post", BASE, {key: str(value) for key, value in values(world).items()}),
         ("patch", f"{BASE}/{item.pk}", {"score": "Not authorized"}),
     ):
-        response = getattr(client, method)(path, data=json.dumps(data), content_type="application/json")
+        response = getattr(client, method)(
+            path, data=json.dumps(data), content_type="application/json"
+        )
         assert response.status_code == 403
     assert AuditEvent.objects.count() == baseline
     created.refresh_from_db()
@@ -271,40 +272,50 @@ def test_effective_manage_and_view_revocation_rechecks_fresh_requests(world, act
     assert not actor.has_capability("assessment_records.manage")
     for path in (BASE, BASE + "/types", f"{BASE}/{item.pk}"):
         assert client.get(path).status_code == 403
-    assert client.post(
-        BASE + "/types",
-        data=json.dumps({"name": "Revoked Type"}),
-        content_type="application/json",
-    ).status_code == 403
-    assert client.patch(
-        BASE + f"/types/{created.pk}",
-        data=json.dumps({"is_active": False}),
-        content_type="application/json",
-    ).status_code == 403
+    assert (
+        client.post(
+            BASE + "/types",
+            data=json.dumps({"name": "Revoked Type"}),
+            content_type="application/json",
+        ).status_code
+        == 403
+    )
+    assert (
+        client.patch(
+            BASE + f"/types/{created.pk}",
+            data=json.dumps({"is_active": False}),
+            content_type="application/json",
+        ).status_code
+        == 403
+    )
     assert AuditEvent.objects.count() == baseline
 
 
 @pytest.mark.parametrize("supervisor_name", ["head", "ordinary"])
 def test_staff_with_override_and_supervision_never_manages_assessment_types(world, supervisor_name):
-    StaffSupervision.objects.create(
-        staff=world.gss, supervisor=getattr(world, supervisor_name)
-    )
+    StaffSupervision.objects.create(staff=world.gss, supervisor=getattr(world, supervisor_name))
     grant(world.gss)
     # Head-supervised GSS may inherit college visibility, but not Counselor actor eligibility.
     assert world.gss.has_capability("assessment_records.manage")
     before = AuditEvent.objects.count()
     client = auth_client(world.gss)
     assert client.get(BASE + "/types").status_code == 403
-    assert client.post(
-        BASE + "/types",
-        data=json.dumps({"name": "Staff Forbidden"}),
-        content_type="application/json",
-    ).status_code == 403
-    assert client.patch(
-        BASE + f"/types/{world.assessment_type.pk}",
-        data=json.dumps({"is_active": False}),
-        content_type="application/json",
-    ).status_code == 403
+    assert (
+        client.post(
+            BASE + "/types",
+            data=json.dumps({"name": "Staff Forbidden"}),
+            content_type="application/json",
+        ).status_code
+        == 403
+    )
+    assert (
+        client.patch(
+            BASE + f"/types/{world.assessment_type.pk}",
+            data=json.dumps({"is_active": False}),
+            content_type="application/json",
+        ).status_code
+        == 403
+    )
     with pytest.raises(AssessmentRecordAccessDenied):
         services.create_type(actor=world.gss, values={"name": "Forbidden"})
     with pytest.raises(AssessmentRecordAccessDenied):
@@ -327,9 +338,12 @@ def test_unsupported_roles_cannot_mutate_types_even_with_direct_grants(world, ac
         ("post", BASE + "/types", {"name": "Unsupported Type"}),
         ("patch", BASE + f"/types/{world.assessment_type.pk}", {"is_active": False}),
     ):
-        assert getattr(client, method)(
-            path, data=json.dumps(data), content_type="application/json"
-        ).status_code == 403
+        assert (
+            getattr(client, method)(
+                path, data=json.dumps(data), content_type="application/json"
+            ).status_code
+            == 403
+        )
     assert AuditEvent.objects.count() == before
 
 
