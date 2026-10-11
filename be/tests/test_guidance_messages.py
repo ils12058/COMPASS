@@ -37,6 +37,7 @@ from compass.guidance_messages.models import (
     GuidanceThread,
     GuidanceThreadReadState,
 )
+from compass.organization.access_scope import resolve_general_guidance_college_scope
 from compass.organization.models import (
     Campus,
     College,
@@ -183,9 +184,72 @@ def test_head_and_supervised_gss_see_assigned_and_unassigned_colleges(world, col
     for actor in [world.student, world.head, world.head_gss]:
         assert services.get_thread(actor=actor, thread_id=thread.pk).pk == thread.pk
     assert set(policy.recipient_ids(thread)) == {world.student.pk, world.head.pk, world.head_gss.pk}
-    assert [item.id for item in services.eligible_students(actor=world.head_gss).items] == [
-        world.student.pk
-    ]
+    # Head-supervised staff inherit the Head's institution-wide general visibility, so the
+    # directory also includes Students of Colleges assigned to other Counselors.
+    directory = services.eligible_students(actor=world.head_gss).items
+    returned = {item.id for item in directory}
+    assert {world.student.pk, world.other_student.pk} <= returned
+    scope = set(resolve_general_guidance_college_scope(world.head_gss).college_ids)
+    assert scope == set(
+        College.objects.filter(is_active=True, campus__is_active=True).values_list("pk", flat=True)
+    )
+    assert returned == set(
+        StudentAffiliation.objects.filter(
+            college_id__in=scope,
+            student__is_active=True,
+            student__student_lifecycle_status="CURRENT",
+        ).values_list("student_id", flat=True)
+    )
+    for item in directory:
+        affiliation = StudentAffiliation.objects.select_related("college__campus").get(
+            student_id=item.id
+        )
+        assert affiliation.college_id in scope
+        assert affiliation.college.is_active and affiliation.college.campus.is_active
+
+
+@pytest.mark.parametrize(
+    "fault", ["ordinary_supervisor", "no_supervision", "inactive_supervisor", "revoked_manage"]
+)
+def test_supervised_staff_student_directory_fails_closed(world, fault):
+    if fault == "ordinary_supervisor":
+        # An ordinary supervisor bounds staff to that Counselor's own College visibility.
+        StaffSupervision.objects.filter(staff=world.head_gss).update(supervisor=world.other)
+        assert {item.id for item in services.eligible_students(actor=world.head_gss).items} == {
+            world.other_student.pk
+        }
+        return
+    if fault == "no_supervision":
+        StaffSupervision.objects.filter(staff=world.head_gss).delete()
+    elif fault == "inactive_supervisor":
+        User.objects.filter(pk=world.head.pk).update(is_active=False)
+    if fault == "revoked_manage":
+        deny(world.head_gss, "guidance_messages.manage")
+        with pytest.raises(MessagesPermissionDenied):
+            services.eligible_students(actor=world.head_gss)
+        response = auth_client(world.head_gss).get(BASE + "/eligible-students")
+        assert response.status_code == 403
+        return
+    assert services.eligible_students(actor=world.head_gss).items == ()
+    with pytest.raises(ThreadNotFound):
+        services.open_office_thread(
+            actor=world.head_gss,
+            student_id=world.other_student.pk,
+            client_message_id=uuid4(),
+            body=BODY,
+        )
+
+
+@pytest.mark.parametrize("target", ["college", "campus"])
+def test_institution_wide_student_directory_excludes_inactive_colleges(world, target):
+    if target == "college":
+        College.objects.filter(pk=world.colleges[1].pk).update(is_active=False)
+        expected = {world.student.pk}
+    else:
+        Campus.objects.filter(pk=world.campus.pk).update(is_active=False)
+        expected = set()
+    for actor in (world.head, world.head_gss):
+        assert {item.id for item in services.eligible_students(actor=actor).items} == expected
 
 
 def test_bea_office_stays_routed_to_carlo_while_head_and_staff_have_general_visibility(world):
