@@ -22,6 +22,16 @@ class OperationalResponsibilityScope:
 EMPTY_OPERATIONAL_RESPONSIBILITY_SCOPE = OperationalResponsibilityScope()
 
 
+@dataclass(frozen=True, slots=True)
+class GeneralGuidanceCollegeScope:
+    """Eligible College visibility, without capability or provider authority."""
+
+    college_ids: tuple[UUID, ...] = ()
+
+
+EMPTY_GENERAL_GUIDANCE_COLLEGE_SCOPE = GeneralGuidanceCollegeScope()
+
+
 def is_head_guidance(actor: User) -> bool:
     """Check the actor's own designation; never resolve it through supervision."""
     return (
@@ -81,4 +91,52 @@ def resolve_operational_responsibility_scope(actor: User) -> OperationalResponsi
             .order_by("pk")
             .values_list("pk", flat=True)
         )
+    )
+
+
+def resolve_general_guidance_college_scope(actor: User) -> GeneralGuidanceCollegeScope:
+    """General Guidance College visibility, distinct from handled responsibility.
+
+    Heads can see all active Colleges (even those assigned to other Counselors).
+    Ordinary Counselors see only valid explicit assignments. GSS inherits only
+    the currently valid supervising Counselor's College visibility, never the
+    designation, capability or provider relationship. Callers enforce their own
+    capabilities and resource policy; routing still uses the handled resolver.
+    """
+    actor_id = getattr(actor, "pk", None)
+    if not actor_id:
+        return EMPTY_GENERAL_GUIDANCE_COLLEGE_SCOPE
+    # Never trust a stale actor role or active flag from an earlier request.
+    current = User.objects.select_related("role").filter(pk=actor_id, is_active=True).first()
+    if current is None:
+        return EMPTY_GENERAL_GUIDANCE_COLLEGE_SCOPE
+
+    if current.role.code == "GUIDANCE_SERVICES_STAFF":
+        supervision = (
+            StaffSupervision.objects.select_related("supervisor__role")
+            .filter(staff_id=current.pk)
+            .first()
+        )
+        if (
+            supervision is None
+            or not supervision.supervisor.is_active
+            or supervision.supervisor.role.code != "COUNSELOR"
+        ):
+            return EMPTY_GENERAL_GUIDANCE_COLLEGE_SCOPE
+        return resolve_general_guidance_college_scope(supervision.supervisor)
+
+    if current.role.code != "COUNSELOR":
+        return EMPTY_GENERAL_GUIDANCE_COLLEGE_SCOPE
+
+    eligible = College.objects.filter(is_active=True, campus__is_active=True)
+    if not is_head_guidance(current):
+        eligible = eligible.filter(
+            pk__in=CounselorResponsibility.objects.filter(
+                counselor_id=current.pk,
+                counselor__is_active=True,
+                counselor__role__code="COUNSELOR",
+            ).values("college_id")
+        )
+    return GeneralGuidanceCollegeScope(
+        college_ids=tuple(eligible.order_by("pk").values_list("pk", flat=True))
     )
