@@ -193,14 +193,15 @@ export function GraduateTracerEmploymentSection({
 
           <div className="border-t border-border pt-6">
             <h3 className="font-semibold text-ink">Job level position</h3>
-            <div className="mt-4 overflow-x-auto rounded-sm border border-border">
-              <table className="min-w-[38rem] w-full border-collapse text-sm">
+            {/* On phones the pinned Job Level column is narrowed so both answer columns can scroll beside it. */}
+            <div className="relative mt-4 overflow-x-auto rounded-sm border border-border">
+              <table className="w-full border-collapse text-sm sm:min-w-[38rem]">
                 <caption className="sr-only">Compare job level in the first job and current or present job</caption>
                 <thead className="bg-brand-wash text-left text-xs uppercase tracking-wide text-brand-strong">
                   <tr>
-                    <th scope="col" className="sticky left-0 z-10 min-w-[18rem] bg-brand-wash px-3 py-3 font-semibold">Job Level</th>
-                    <th scope="col" className="min-w-36 px-3 py-3 font-semibold">First Job <span aria-hidden="true" className="text-danger">*</span></th>
-                    <th scope="col" className="min-w-36 px-3 py-3 font-semibold">Current or Present Job <span aria-hidden="true" className="text-danger">*</span></th>
+                    <th scope="col" className="sticky left-0 z-10 w-36 bg-brand-wash px-3 py-3 font-semibold sm:w-auto sm:min-w-[18rem]">Job Level</th>
+                    <th scope="col" className="min-w-28 px-3 py-3 font-semibold sm:min-w-36">First Job <span aria-hidden="true" className="text-danger">*</span></th>
+                    <th scope="col" className="min-w-28 px-3 py-3 font-semibold sm:min-w-36">Current or Present Job <span aria-hidden="true" className="text-danger">*</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">

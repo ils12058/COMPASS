@@ -134,24 +134,25 @@ export function GraduateTracerEducationSection({
       <div className="border-t border-border pt-6">
         <h3 className="font-semibold text-ink">Q14. Reasons for taking degree(s)</h3>
         <p id="gts-degree-reasons-help" className="mt-1 text-sm leading-6 text-muted">Select any reasons that apply. The two columns are independent; the shared “Others, please specify” line is below the comparison.</p>
-        <div className="mt-4 overflow-x-auto rounded-sm border border-border">
-          <table className="min-w-[42rem] w-full border-collapse text-sm">
+        {/* On phones the pinned Reason column is narrowed so both answer columns can scroll beside it. */}
+        <div className="relative mt-4 overflow-x-auto rounded-sm border border-border">
+          <table className="w-full border-collapse text-sm sm:min-w-[42rem]">
             <caption className="sr-only">Reasons for taking undergraduate and graduate degree programs</caption>
             <thead className="bg-brand-wash text-left text-xs uppercase tracking-wide text-brand-strong">
               <tr>
-                <th scope="col" className="sticky left-0 z-10 min-w-[20rem] bg-brand-wash px-3 py-3 font-semibold">Reason</th>
-                <th scope="col" className="min-w-44 px-3 py-3 font-semibold">Undergraduate / AB / BS</th>
-                <th scope="col" className="min-w-44 px-3 py-3 font-semibold">Graduate / MS / MA / PhD</th>
+                <th scope="col" className="sticky left-0 z-10 w-36 bg-brand-wash px-3 py-3 font-semibold sm:w-auto sm:min-w-[20rem]">Reason</th>
+                <th scope="col" className="min-w-28 px-2 py-3 font-semibold sm:min-w-44 sm:px-3">Undergraduate / AB / BS</th>
+                <th scope="col" className="min-w-28 px-2 py-3 font-semibold sm:min-w-44 sm:px-3">Graduate / MS / MA / PhD</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
               {DEGREE_REASON_CHOICES.map((choice) => (
                 <tr key={choice.value}>
                   <th scope="row" className="sticky left-0 z-10 bg-surface-raised px-3 py-3 text-left font-medium text-ink">{choice.label}</th>
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-3 sm:px-3">
                     <input type="checkbox" aria-label={`${choice.label} — Undergraduate / AB / BS`} checked={draft.undergraduate_degree_reasons?.includes(choice.value) ?? false} onChange={() => onChange("undergraduate_degree_reasons", toggle(draft.undergraduate_degree_reasons, choice.value))} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" />
                   </td>
-                  <td className="px-3 py-3">
+                  <td className="px-2 py-3 sm:px-3">
                     <input type="checkbox" aria-label={`${choice.label} — Graduate / MS / MA / PhD`} checked={draft.graduate_study_reasons?.includes(choice.value) ?? false} onChange={() => onChange("graduate_study_reasons", toggle(draft.graduate_study_reasons, choice.value))} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" />
                   </td>
                 </tr>
