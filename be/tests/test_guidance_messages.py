@@ -164,7 +164,7 @@ def test_office_current_handled_scope_allows(world, actor):
     assert services.get_thread(actor=getattr(world, actor), thread_id=thread.pk).pk == thread.pk
 
 
-@pytest.mark.parametrize("actor", ["other_student", "other", "head", "head_gss", "admin", "dpo"])
+@pytest.mark.parametrize("actor", ["other_student", "other", "admin", "dpo"])
 def test_office_conceals_other_workload_and_role(world, actor):
     thread, _ = office(world)
     with pytest.raises(ThreadNotFound):
@@ -175,7 +175,7 @@ def test_office_conceals_other_workload_and_role(world, actor):
 
 
 @pytest.mark.parametrize("college_index", [2, 3])
-def test_head_and_supervised_gss_only_explicit_or_unique_fallback(world, college_index):
+def test_head_and_supervised_gss_see_assigned_and_unassigned_colleges(world, college_index):
     StudentAffiliation.objects.filter(student=world.student).update(
         college=world.colleges[college_index]
     )
@@ -188,17 +188,100 @@ def test_head_and_supervised_gss_only_explicit_or_unique_fallback(world, college
     ]
 
 
+
+
+def test_bea_office_stays_routed_to_carlo_while_head_and_staff_have_general_visibility(world):
+    # Synthetic analogue: Bea (CCMS Student), Carlo (assigned Counselor), separate Head.
+    thread, _ = office(world)
+    assert thread.assigned_to_id == world.counselor.pk
+    assert CounselorResponsibility.objects.get(college=world.colleges[0]).counselor_id == (
+        world.counselor.pk
+    )
+    for actor in (world.head, world.head_gss):
+        assert services.get_thread(actor=actor, thread_id=thread.pk).pk == thread.pk
+        assert [row.pk for row in services.list_threads(actor=actor)[0]] == [thread.pk]
+        assert world.student.pk in {
+            item.id for item in services.eligible_students(actor=actor).items
+        }
+        assert [item.body_ciphertext for item in services.list_messages(
+            actor=actor, thread_id=thread.pk
+        )[0]]
+        assert auth_client(actor).get(f"{BASE}/threads/{thread.pk}/messages").status_code == 200
+    assert set(policy.recipient_ids(thread)) == {
+        world.student.pk,
+        world.counselor.pk,
+        world.gss.pk,
+        world.head.pk,
+        world.head_gss.pk,
+    }
+    # The Head may participate but visibility must never silently replace Carlo.
+    services.send_message(
+        actor=world.head, thread_id=thread.pk, client_message_id=uuid4(), body=BODY
+    )
+    thread.refresh_from_db()
+    assert thread.assigned_to_id == world.counselor.pk
+
+
+def test_current_head_supervision_visibility_is_revoked_without_handler_changes(world):
+    thread, _ = office(world)
+    services.assign_handler(actor=world.head, thread_id=thread.pk, handler_id=world.head_gss.pk)
+    assert world.head_gss.pk in policy.recipient_ids(thread)
+    # Move to an ordinary Counselor with only another College.
+    StaffSupervision.objects.filter(staff=world.head_gss).update(supervisor=world.other)
+    with pytest.raises(ThreadNotFound):
+        services.get_thread(actor=world.head_gss, thread_id=thread.pk)
+    assert auth_client(world.head_gss).get(f"{BASE}/threads/{thread.pk}").status_code == 404
+    assert world.head_gss.pk not in policy.recipient_ids(thread)
+    thread.refresh_from_db()
+    assert thread.assigned_to_id == world.head_gss.pk
+    # Inherited visibility is dynamic and separate from handler assignment.
+    StaffSupervision.objects.filter(staff=world.head_gss).update(supervisor=world.head)
+    assert services.get_thread(actor=world.head_gss, thread_id=thread.pk).pk == thread.pk
+    deny(world.head_gss, "guidance_messages.view")
+    with pytest.raises(ThreadNotFound):
+        services.get_thread(actor=world.head_gss, thread_id=thread.pk)
+    assert world.head_gss.pk not in policy.recipient_ids(thread)
+
+
+def test_head_designation_removal_revokes_office_even_if_other_counselor_is_assigned(world):
+    thread, _ = office(world)
+    world.head.designations.remove(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
+    with pytest.raises(ThreadNotFound):
+        services.get_thread(actor=world.head, thread_id=thread.pk)
+    with pytest.raises(ThreadNotFound):
+        services.get_thread(actor=world.head_gss, thread_id=thread.pk)
+    assert world.head.pk not in policy.recipient_ids(thread)
+    assert world.head_gss.pk not in policy.recipient_ids(thread)
+
+
+def test_head_office_visibility_never_extends_to_counseling_messages(world):
+    office_thread, _ = office(world)
+    counseling_thread, _ = counseling(world)
+    for actor in (world.head, world.head_gss):
+        assert services.get_thread(actor=actor, thread_id=office_thread.pk).pk == office_thread.pk
+        with pytest.raises(ThreadNotFound):
+            services.get_thread(actor=actor, thread_id=counseling_thread.pk)
+        assert auth_client(actor).get(
+            f"{BASE}/threads/{counseling_thread.pk}/messages"
+        ).status_code == 404
+        assert counseling_thread.pk not in {
+            item.pk for item in services.list_threads(actor=actor)[0]
+        }
+    assert set(policy.recipient_ids(counseling_thread)) == {
+        world.student.pk, world.counselor.pk
+    }
+
 def test_multiple_heads_fail_closed_without_implicit_fallback(world):
     world.other.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
     StudentAffiliation.objects.filter(student=world.student).update(college=world.colleges[3])
     with pytest.raises(MessagesConflict, match="routing"):
         office(world)
     assert not GuidanceThread.objects.exists()
-    for actor in [world.head, world.head_gss]:
-        assert world.student.pk not in [
+    for actor in [world.head, world.head_gss, world.other]:
+        assert world.student.pk in {
             item.id for item in services.eligible_students(actor=actor).items
-        ]
-    # Explicit handled workload remains valid when Head fallback is ambiguous.
+        }
+    # General visibility survives multiple Heads; routing still needs an explicit handler.
     StudentAffiliation.objects.filter(student=world.student).update(college=world.colleges[2])
     assert office(world)[0].assigned_to_id == world.head.pk
 
@@ -501,7 +584,7 @@ def test_assignment_transfer_provenance_is_not_ownership(world, handler):
 
 
 @pytest.mark.parametrize(
-    "handler", ["student", "other", "head", "head_gss", "admin", "dpo", "inactive"]
+    "handler", ["student", "other", "admin", "dpo", "inactive"]
 )
 def test_invalid_handlers_rejected(world, handler):
     thread, _ = office(world)
