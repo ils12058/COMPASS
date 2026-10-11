@@ -1412,8 +1412,22 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "year_level",
         "year_level_label",
         "submitted_inventory_count",
+        "reporting_scope",
         "generated_at",
     } == set(report_context)
+    assert report_context["reporting_scope"]["$ref"].endswith("/ReportScopeResponse")
+    assert set(schemas["PopulationReconciliation"]["required"]) == {
+        "profile_submitted_count",
+        "coverage_submitted_count",
+        "in_both_count",
+        "profile_only_count",
+        "coverage_only_count",
+    }
+    assert schemas["InventoryCoverage"]["properties"]["reconciliation"]["$ref"].endswith(
+        "/PopulationReconciliation"
+    )
+    assert "submitted_inventory_count" in schemas["ProgramColumn"]["required"]
+    assert "access_scope_note" in schemas["Methodology"]["required"]
     assert schemas["PWDStatusValue"]["enum"] == ["PWD", "NON_PWD", "NOT_SPECIFIED"]
     assert schemas["FourPsStatusValue"]["enum"] == [
         "BENEFICIARY",
