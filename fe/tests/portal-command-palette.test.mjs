@@ -49,11 +49,29 @@ for (const [name, account] of Object.entries({ student, staff, counselor, head, 
   });
 }
 
-test("Exit Interviews uses access wording for staff without changing workspace visibility", () => {
+test("Exit Interviews label follows effective actions, not the role, in the dock and command palette", () => {
   const root = (account) => portalWorkspaceGroups(account).flatMap((group) => group.links).find((link) => link.href === "/portal/exit-interviews");
-  assert.equal(root(staff)?.label, "Exit Interview access");
-  assert.equal(root(head)?.label, "Exit Interviews");
-  assert.equal(root({ ...staff, capabilities: [] }), undefined);
+  const command = (account) => commands.portalCommandDestinations(account).find((item) => item.href === "/portal/exit-interviews");
+  const label = (account) => {
+    assert.equal(command(account)?.label, root(account)?.label);
+    return root(account)?.label;
+  };
+  // Access management without review authority, whatever the role.
+  assert.equal(label(staff), "Exit Interview access");
+  assert.equal(label(user("COUNSELOR", ["exit_interviews.manage_opportunities"])), "Exit Interview access");
+  // Reviewers see Exit Interviews, including staff granted reviewer authority.
+  assert.equal(label(head), "Exit Interviews");
+  assert.equal(label({ ...staff, capabilities: [...staff.capabilities, "exit_interviews.view"] }), "Exit Interviews");
+  assert.equal(label(user("GUIDANCE_SERVICES_STAFF", ["exit_interviews.view"])), "Exit Interviews");
+  // A revoked review capability falls back to access wording on the next session state.
+  assert.equal(label({ ...head, capabilities: head.capabilities.filter((code) => code !== "exit_interviews.view") }), "Exit Interview access");
+  // Students with a self-service workspace.
+  assert.equal(label({ ...student, exit_interview_workspace_available: true }), "Exit Interviews");
+  // No workspace: no destination for any role.
+  for (const account of [student, counselor, it, dpo, { ...staff, capabilities: [] }]) {
+    assert.equal(root(account), undefined);
+    assert.equal(command(account), undefined);
+  }
 });
 
 test("Students get self destinations and never staff/admin/DPO destinations", () => {
