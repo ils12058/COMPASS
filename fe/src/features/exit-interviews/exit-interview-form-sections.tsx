@@ -208,7 +208,9 @@ function RatingMatrix({
     : scale;
 
   return (
-    <div className="mt-4 overflow-x-auto rounded-sm border border-border">
+    // relative: the header cells' sr-only labels are absolutely positioned and must stay inside the
+    // horizontal scroll area instead of widening the page on narrow screens.
+    <div className="relative mt-4 overflow-x-auto rounded-sm border border-border">
       <table className="min-w-[42rem] w-full border-collapse text-sm">
         <caption className="sr-only">{title} rating matrix</caption>
         <thead className="bg-brand-wash text-xs text-brand-strong">

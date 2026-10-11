@@ -186,10 +186,8 @@ for (const width of [320, 1440]) {
         await shown(page.getByText('Carlo Counselor reopened this Exit Interview for correction.', { exact: true }));
         await shown(page.getByText('Clarify the synthetic second answer.'));
         assert.ok(!(await page.locator('main').innerText()).includes('Head Guidance'));
-        assert.ok(!(await page.locator('body').innerText()).includes(diagnostic));
-        // Known pre-existing defect, tracked separately: below 42rem the ratings table's sr-only header
-        // labels escape its overflow-x-auto wrapper (exit-interview-form-sections.tsx), unrelated to this banner.
-        if (width >= 1024) await noHorizontalOverflow(page);
+        // Also guards the ratings tables: their sr-only header labels must not widen the page at 320px.
+        await safe(page);
     });
     const submittedRecord = { id: 'exit-submitted', student, student_name: 'Maria Santos', academic_year: year, status: 'SUBMITTED', first_submitted_at: '2026-10-01T06:00:00Z', last_submitted_at: '2026-10-01T06:00:00Z', created_at: '2026-10-01T00:00:00Z', updated_at: '2026-10-01T06:00:00Z' };
     const submittedStatus = { academic_year: year, opportunity: { id: 'opportunity', academic_year: year, source: 'MANUAL', status: 'COMPLETED', opened_at: '2026-10-01T00:00:00Z', completed_at: '2026-10-01T06:00:00Z', revoked_at: null }, current_record: submittedRecord, has_records: true, inventory_submitted: true, can_start: false, can_edit_current: false, graduation_good_moral_blocked: false };
