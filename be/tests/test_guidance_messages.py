@@ -188,8 +188,6 @@ def test_head_and_supervised_gss_see_assigned_and_unassigned_colleges(world, col
     ]
 
 
-
-
 def test_bea_office_stays_routed_to_carlo_while_head_and_staff_have_general_visibility(world):
     # Synthetic analogue: Bea (CCMS Student), Carlo (assigned Counselor), separate Head.
     thread, _ = office(world)
@@ -203,9 +201,10 @@ def test_bea_office_stays_routed_to_carlo_while_head_and_staff_have_general_visi
         assert world.student.pk in {
             item.id for item in services.eligible_students(actor=actor).items
         }
-        assert [item.body_ciphertext for item in services.list_messages(
-            actor=actor, thread_id=thread.pk
-        )[0]]
+        assert [
+            item.body_ciphertext
+            for item in services.list_messages(actor=actor, thread_id=thread.pk)[0]
+        ]
         assert auth_client(actor).get(f"{BASE}/threads/{thread.pk}/messages").status_code == 200
     assert set(policy.recipient_ids(thread)) == {
         world.student.pk,
@@ -240,7 +239,10 @@ def test_head_can_open_office_thread_in_another_counselors_assigned_college(worl
         with pytest.raises(ThreadNotFound):
             services.get_thread(actor=actor, thread_id=thread.pk)
     assert set(policy.recipient_ids(thread)) == {
-        world.other_student.pk, world.other.pk, world.head.pk, world.head_gss.pk
+        world.other_student.pk,
+        world.other.pk,
+        world.head.pk,
+        world.head_gss.pk,
     }
 
 
@@ -283,15 +285,14 @@ def test_head_office_visibility_never_extends_to_counseling_messages(world):
         assert services.get_thread(actor=actor, thread_id=office_thread.pk).pk == office_thread.pk
         with pytest.raises(ThreadNotFound):
             services.get_thread(actor=actor, thread_id=counseling_thread.pk)
-        assert auth_client(actor).get(
-            f"{BASE}/threads/{counseling_thread.pk}/messages"
-        ).status_code == 404
+        assert (
+            auth_client(actor).get(f"{BASE}/threads/{counseling_thread.pk}/messages").status_code
+            == 404
+        )
         assert counseling_thread.pk not in {
             item.pk for item in services.list_threads(actor=actor)[0]
         }
-    assert set(policy.recipient_ids(counseling_thread)) == {
-        world.student.pk, world.counselor.pk
-    }
+    assert set(policy.recipient_ids(counseling_thread)) == {world.student.pk, world.counselor.pk}
 
 def test_multiple_heads_fail_closed_without_implicit_fallback(world):
     world.other.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
@@ -605,9 +606,7 @@ def test_assignment_transfer_provenance_is_not_ownership(world, handler):
     assert services.get_thread(actor=world.student, thread_id=thread.pk).pk == thread.pk
 
 
-@pytest.mark.parametrize(
-    "handler", ["student", "other", "admin", "dpo", "inactive"]
-)
+@pytest.mark.parametrize("handler", ["student", "other", "admin", "dpo", "inactive"])
 def test_invalid_handlers_rejected(world, handler):
     thread, _ = office(world)
     candidate = world.other if handler == "inactive" else getattr(world, handler)
