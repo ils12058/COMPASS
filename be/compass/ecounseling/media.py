@@ -31,8 +31,10 @@ from compass.integrations.daily import (
     DailyClient,
     DailyConfigurationError,
     DailyHTTPError,
+    DailyInvalidAcknowledgment,
     DailyInvalidResponse,
     DailyUnavailable,
+    safe_daily_failure_code,
 )
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
@@ -446,9 +448,17 @@ def _daily_client(daily_client: DailyClient | None) -> DailyClient:
 
 
 def _provider_ack(payload: dict[str, object]) -> None:
-    if payload.get("status") == "sent" or payload.get("sent") in {True, "true"}:
-        return
-    raise DailyInvalidResponse("Daily did not acknowledge the media command.")
+    if isinstance(payload, dict):
+        status_ok = payload.get("status") == "sent"
+        sent_ok = payload.get("sent") is True or payload.get("sent") == "true"
+        if (
+            (status_ok or sent_ok)
+            and ("status" not in payload or status_ok)
+            and ("sent" not in payload or sent_ok)
+            and payload.get("error") is None
+        ):
+            return
+    raise DailyInvalidAcknowledgment("Daily did not acknowledge the media command.")
 
 
 def _set_provider_uncertain(capture_id: UUID, *, code: str) -> None:
@@ -458,21 +468,22 @@ def _set_provider_uncertain(capture_id: UUID, *, code: str) -> None:
         capture.save(update_fields=["error_code", "updated_at"])
 
 
-def _set_known_start_failure(capture_id: UUID) -> None:
+def _set_known_start_failure(capture_id: UUID, *, code: str) -> None:
     with transaction.atomic():
         capture = ECounselingMediaCapture.objects.select_for_update().get(pk=capture_id)
         if capture.status == MediaCaptureStatus.START_REQUESTED:
             capture.status = MediaCaptureStatus.ERROR
             capture.failed_at = timezone.now()
-            capture.error_code = "PROVIDER_REJECTED"
+            capture.error_code = code
             capture.save(update_fields=["status", "failed_at", "error_code", "updated_at"])
 
 
 def _handle_start_provider_failure(capture_id: UUID, exc: Exception) -> None:
+    code = f"START_PROVIDER_{safe_daily_failure_code(exc)}"
     if isinstance(exc, DailyHTTPError):
-        _set_known_start_failure(capture_id)
+        _set_known_start_failure(capture_id, code=code)
     else:
-        _set_provider_uncertain(capture_id, code="PROVIDER_STATE_UNCERTAIN")
+        _set_provider_uncertain(capture_id, code=code)
     raise _provider_failure(exc) from exc
 
 
@@ -780,11 +791,11 @@ def _prepare_stop_locked(
     return capture, True
 
 
-def _mark_stop_failed(capture_id: UUID) -> None:
+def _mark_stop_failed(capture_id: UUID, *, code: str) -> None:
     with transaction.atomic():
         capture = ECounselingMediaCapture.objects.select_for_update().get(pk=capture_id)
         if capture.status == MediaCaptureStatus.STOP_REQUESTED:
-            capture.error_code = "STOP_PROVIDER_FAILED"
+            capture.error_code = code
             capture.save(update_fields=["error_code", "updated_at"])
 
 
@@ -817,7 +828,7 @@ def _execute_provider_stop(
                     locked.error_code = None
                     locked.save(update_fields=["status", "ended_at", "error_code", "updated_at"])
     except (DailyConfigurationError, DailyUnavailable, DailyHTTPError, DailyInvalidResponse) as exc:
-        _mark_stop_failed(capture.pk)
+        _mark_stop_failed(capture.pk, code=f"STOP_PROVIDER_{safe_daily_failure_code(exc)}")
         raise _provider_failure(exc) from exc
     return ECounselingMediaCapture.objects.get(pk=capture.pk)
 

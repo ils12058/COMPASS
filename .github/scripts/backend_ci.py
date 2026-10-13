@@ -196,6 +196,8 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_ecounseling_media_v2.py",
             "test_ecounseling_media_v2_migration.py",
             "test_daily_integration.py",
+            "test_daily_diagnostics.py",
+            "test_ecounseling_diagnostics.py",
             "test_sensitive_media_storage.py",
         ),
     ),

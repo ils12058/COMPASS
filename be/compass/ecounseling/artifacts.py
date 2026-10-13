@@ -1,5 +1,6 @@
 """Durable V2 custody and assigned access. Locations and provider links stay internal."""
 
+import time
 import uuid
 from contextlib import contextmanager
 from datetime import timedelta
@@ -16,9 +17,15 @@ from compass.audit.services import record_event
 from compass.common.errors import APIError
 from compass.common.institutional_time import institution_date
 from compass.integrations.daily import DailyClient
-from compass.integrations.media_download import stream_daily_media, validate_daily_link
+from compass.integrations.media_download import (
+    MediaDownloadError,
+    MediaDownloadFailure,
+    stream_daily_media,
+    validate_daily_link,
+)
 from compass.integrations.storage import ObjectStorage
 
+from .diagnostics import ArtifactStage, ArtifactTaskError, log_artifact_diagnostic
 from .media import _load_session_appointment
 from .models import (
     ECounselingMediaArtifact,
@@ -78,7 +85,10 @@ def enqueue_artifact(artifact_id):
         ingest_media_artifact.delay(str(artifact_id))
     except Exception:
         # The row is the outbox. Beat finds it even when Redis dispatch failed.
-        pass
+        log_artifact_diagnostic(stage=ArtifactStage.DISPATCH)
+    else:
+        # Dispatch acceptance is not proof that a worker started or a provider operation ran.
+        log_artifact_diagnostic(stage=ArtifactStage.DISPATCH, outcome_code="DISPATCHED")
 
 
 def custody_audit(action, artifact):
@@ -151,16 +161,23 @@ def _retry(artifact_id, token, code):
             artifact.status = MediaArtifactStatus.FAILED
         artifact.claim_token, artifact.claimed_at = None, None
         artifact.error_code = code
-        artifact.next_attempt_at = timezone.now() + timedelta(
-            seconds=min(3600, 60 * 2 ** min(artifact.attempts, 6))
-        )
+        delay = min(3600, 60 * 2 ** min(artifact.attempts, 6))
+        artifact.next_attempt_at = timezone.now() + timedelta(seconds=delay)
         artifact.save()
+        return {
+            "attempt_number": artifact.attempts,
+            "retry_scheduled": True,
+            "next_attempt_in_seconds": delay,
+            "custody_committed": artifact.status == MediaArtifactStatus.STORED,
+        }
 
 
 def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
     """At-least-once delivery converges on one precommitted UUID key; no network under atomic()."""
+    started = time.monotonic()
     with artifact_guard(artifact_id) as acquired:
         if not acquired:
+            log_artifact_diagnostic(stage=ArtifactStage.CLAIM, outcome_code="LOCK_BUSY")
             return
         token = uuid.uuid4()
         with transaction.atomic():
@@ -173,15 +190,37 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
             from compass.privacy_governance.retention_models import DispositionCase
 
             if DispositionCase.objects.filter(source_id=source.pk, state="PROCESSING").exists():
+                log_artifact_diagnostic(stage=ArtifactStage.CLAIM, outcome_code="INELIGIBLE")
                 return
             if not artifact_eligible(source) or artifact.status == MediaArtifactStatus.DISPOSED:
+                log_artifact_diagnostic(stage=ArtifactStage.CLAIM, outcome_code="INELIGIBLE")
                 return
             if artifact.next_attempt_at and artifact.next_attempt_at > timezone.now():
+                log_artifact_diagnostic(
+                    stage=ArtifactStage.CLAIM,
+                    outcome_code="RETRY_NOT_DUE",
+                    attempt_number=artifact.attempts,
+                    retry_scheduled=True,
+                    next_attempt_in_seconds=max(
+                        0, int((artifact.next_attempt_at - timezone.now()).total_seconds())
+                    ),
+                    custody_committed=artifact.status == MediaArtifactStatus.STORED,
+                )
                 return
             if artifact.status == MediaArtifactStatus.STORED and not source.provider_artifact_id:
+                log_artifact_diagnostic(
+                    stage=ArtifactStage.CLAIM,
+                    outcome_code="ALREADY_CLEANED",
+                    custody_committed=True,
+                )
                 return
             # A PROCESSING row whose old session lock vanished is safely reclaimable. Its stable
             # key and precommitted digest allow adoption after upload/DB acknowledgement loss.
+            stale_claim = (
+                artifact.status == MediaArtifactStatus.PROCESSING
+                and artifact.claimed_at
+                and artifact.claimed_at < timezone.now() - timedelta(minutes=30)
+            )
             artifact.claim_token, artifact.claimed_at = token, timezone.now()
             artifact.attempts += 1
             if artifact.status != MediaArtifactStatus.STORED:
@@ -192,9 +231,18 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
             artifact.save()
             provider_id = source.provider_artifact_id
 
+        log_artifact_diagnostic(
+            stage=ArtifactStage.CLAIM,
+            outcome_code="STALE_CLAIM_RECLAIMED" if stale_claim else "PROCESSING",
+            attempt_number=artifact.attempts,
+            retry_scheduled=False,
+            custody_committed=artifact.status == MediaArtifactStatus.STORED,
+        )
+        stage = ArtifactStage.STORAGE_POLICY
         try:
             storage = storage or ObjectStorage(alias="ecounseling_media")
             storage.validate_sensitive_policy()
+            stage = ArtifactStage.BINDING
             binding = storage.binding_identity()
             if artifact.storage_binding and artifact.storage_binding != binding:
                 raise ArtifactVerificationError("Media storage namespace changed.")
@@ -209,25 +257,31 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
                     current.save(update_fields=["storage_binding", "updated_at"])
                     artifact = current
             if artifact.status != MediaArtifactStatus.STORED:
+                stage = ArtifactStage.INTEGRITY
                 if artifact.size and artifact.sha256 and storage.exists(artifact.object_key):
                     if not storage.verify(
                         artifact.object_key, size=artifact.size, sha256=artifact.sha256
                     ):
                         raise ArtifactVerificationError("Stored media integrity is unverified.")
                 else:
+                    stage = ArtifactStage.PROVIDER_METADATA
                     client = client or DailyClient.from_settings()
                     provider_metadata(source, client)
+                    stage = ArtifactStage.ACCESS_LINK
                     link_payload = (
                         client.recording_access_link(artifact_id=provider_id)
                         if source.kind == "RECORDING"
                         else client.transcript_access_link(artifact_id=provider_id)
                     )
+                    stage = ArtifactStage.LINK_VALIDATION
                     url = validate_daily_link(
                         link_payload, kind=source.kind, artifact_id=provider_id
                     )
                     downloader = download or stream_daily_media
+                    stage = ArtifactStage.TRANSFER
                     with downloader(url, kind=source.kind) as (spool, content_type, size, digest):
                         del url, link_payload
+                        stage = ArtifactStage.PRECOMMIT
                         with transaction.atomic():
                             current = ECounselingMediaArtifact.objects.select_for_update().get(
                                 pk=artifact_id
@@ -243,6 +297,7 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
                                 digest,
                             )
                             current.save()
+                        stage = ArtifactStage.UPLOAD
                         file = File(spool)
                         file.content_type = content_type
                         saved_key = storage.save(artifact.object_key, file)
@@ -250,8 +305,12 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
                             # This backend violates deterministic custody; minimize its stray copy.
                             storage.delete(saved_key)
                             raise ArtifactVerificationError("Storage identity is unverified.")
+                        stage = ArtifactStage.INTEGRITY
                         if not storage.verify(saved_key, size=size, sha256=digest):
                             raise ArtifactVerificationError("Stored media integrity is unverified.")
+                        # Finalizing the protected download/spool context is its own IO boundary.
+                        stage = ArtifactStage.TRANSFER
+                stage = ArtifactStage.CUSTODY_COMMIT
                 with transaction.atomic():
                     capture = ECounselingMediaCapture.objects.select_for_update().get(pk=source.pk)
                     current = ECounselingMediaArtifact.objects.select_for_update().get(
@@ -269,10 +328,13 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
                     custody_audit(actions.ECOUNSELING_MEDIA_ARTIFACT_STORED, current)
                     artifact = current
             # Canonical custody committed and reverified before provider cleanup, including retries.
+            stage = ArtifactStage.INTEGRITY
             if not storage.verify(artifact.object_key, size=artifact.size, sha256=artifact.sha256):
                 raise ArtifactVerificationError("Stored media integrity is unverified.")
             if provider_id:
+                stage = ArtifactStage.PROVIDER_CLEANUP
                 delete_v2_provider(source, client or DailyClient.from_settings())
+            stage = ArtifactStage.CLEANUP_COMMIT
             with transaction.atomic():
                 capture = ECounselingMediaCapture.objects.select_for_update().get(pk=source.pk)
                 current = ECounselingMediaArtifact.objects.select_for_update().get(pk=artifact_id)
@@ -289,9 +351,43 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
                 current.next_attempt_at, current.error_code = None, None
                 current.save()
                 custody_audit(actions.ECOUNSELING_MEDIA_PROVIDER_CLEANED, current)
-        except Exception:
+            log_artifact_diagnostic(
+                stage=stage,
+                outcome_code="PROVIDER_CLEANED",
+                attempt_number=artifact.attempts,
+                retry_scheduled=False,
+                duration_ms=max(0, int((time.monotonic() - started) * 1000)),
+                custody_committed=True,
+            )
+        except Exception as error:
             # Never include upstream exceptions or signed locations in logs/Celery results.
-            _retry(artifact_id, token, "CUSTODY_OR_CLEANUP_UNVERIFIED")
+            if stage == ArtifactStage.PROVIDER_METADATA and isinstance(
+                error, ArtifactVerificationError
+            ):
+                stage = ArtifactStage.PROVIDER_IDENTITY
+            elif (
+                stage == ArtifactStage.TRANSFER
+                and isinstance(error, MediaDownloadError)
+                and error.failure == MediaDownloadFailure.VALIDATION
+            ):
+                stage = ArtifactStage.DOWNLOAD_VALIDATION
+            try:
+                retry = _retry(artifact_id, token, stage.value)
+            except Exception:
+                # A failed retry-state transaction cannot truthfully promise its schedule/custody.
+                log_artifact_diagnostic(
+                    stage=ArtifactStage.RETRY_COMMIT,
+                    attempt_number=artifact.attempts,
+                    duration_ms=max(0, int((time.monotonic() - started) * 1000)),
+                )
+                raise ArtifactTaskError(ArtifactStage.RETRY_COMMIT) from None
+            log_artifact_diagnostic(
+                stage=stage,
+                outcome_code=stage.value if retry else "SUPERSEDED",
+                duration_ms=max(0, int((time.monotonic() - started) * 1000)),
+                provider_error=error,
+                **(retry or {}),
+            )
 
 
 def access_artifact(*, counselor, appointment_id, kind, context):
