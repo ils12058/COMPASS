@@ -1304,7 +1304,9 @@ def process_media_webhook_event(
             recording_id = payload.get("recording_id")
             if isinstance(recording_id, str) and recording_id:
                 capture.provider_artifact_id = recording_id[:160]
-            capture.started_at = capture.started_at or _event_time(payload.get("start_ts"))
+            # Readiness supplies the documented recording start time, which can correct a prior
+            # webhook-send-time fallback. Repeated terminal events are already fenced above.
+            capture.started_at = _event_time(payload.get("start_ts")) or capture.started_at
             capture.duration_seconds = _safe_duration(payload.get("duration"))
             capture.ready_at = capture.ready_at or occurred_at or timezone.now()
             if capture.started_at and capture.duration_seconds is not None:

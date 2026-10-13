@@ -308,6 +308,20 @@ def test_duplicate_deliveries_and_repeated_completion_preserve_original_evidence
     assert ECounselingMediaArtifact.objects.filter(capture=capture).count() == (kind == "RECORDING")
 
 
+def test_recording_completion_corrects_delivery_time_fallback_with_provider_start_timestamp():
+    _, _, _, _, capture = begin(kind="RECORDING")
+    actual_start = timezone.now().replace(microsecond=0) - timedelta(minutes=2)
+    deliver(capture, "started", start_ts=None)
+    assert capture.started_at > actual_start  # Existing send-time fallback, not physical start.
+    deliver(capture, "ready-to-download", start_ts=actual_start.timestamp(), duration=5)
+    assert capture.status == "READY" and capture.started_at == actual_start
+    assert capture.ended_at == actual_start + timedelta(seconds=5)
+    deliver(capture, "started", start_ts=(actual_start + timedelta(minutes=1)).timestamp())
+    assert capture.started_at == actual_start and capture.ended_at == actual_start + timedelta(
+        seconds=5
+    )
+
+
 @pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 @pytest.mark.parametrize("mismatch", ["unbound", "artifact", "session", "room", "nonterminal"])
 def test_uncorrelated_or_contradictory_completion_is_not_stop_proof(kind, mismatch):
