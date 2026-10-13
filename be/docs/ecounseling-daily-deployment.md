@@ -134,6 +134,10 @@ slice.
 
 ## Operational behavior
 
+For backend-only provider categories, artifact failure stages, retry/claim interpretation and safe
+incident handling, use the [media diagnostics runbook](ecounseling-media-diagnostics.md). These
+diagnostics do not authorize live operations or establish capture cessation.
+
 An eligible workspace is an existing `SCHEDULED`, `ONLINE`, canonical `COUNSELING` Appointment with
 the authenticated Student or its assigned active Counselor. A Counselor consent request may create a
 local opaque `ECounselingRoom` binding before anyone joins so consent has a stable session anchor.

@@ -4,6 +4,7 @@ import hashlib
 import re
 import time
 from contextlib import contextmanager
+from enum import StrEnum
 from tempfile import TemporaryFile
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -11,8 +12,16 @@ from urllib.request import HTTPRedirectHandler, Request, build_opener
 from django.conf import settings
 
 
+class MediaDownloadFailure(StrEnum):
+    TRANSFER = "TRANSFER"
+    VALIDATION = "VALIDATION"
+    TIMEOUT = "TIMEOUT"
+
+
 class MediaDownloadError(RuntimeError):
-    pass
+    def __init__(self, message, *, failure=MediaDownloadFailure.TRANSFER):
+        super().__init__(message)
+        self.failure = failure
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -69,29 +78,43 @@ def stream_daily_media(url, *, kind):
                 not expected.isdecimal()
                 or not 0 < int(expected) <= settings.ECOUNSELING_MEDIA_MAX_BYTES
             ):
-                raise MediaDownloadError("Provider media size is invalid.")
+                raise MediaDownloadError(
+                    "Provider media size is invalid.", failure=MediaDownloadFailure.VALIDATION
+                )
             with TemporaryFile(mode="w+b") as spool:
                 digest, size, first = hashlib.sha256(), 0, b""
                 deadline = time.monotonic() + 900
                 while chunk := response.read(64 * 1024):
                     if time.monotonic() > deadline:
-                        raise MediaDownloadError("Provider media download timed out.")
+                        raise MediaDownloadError(
+                            "Provider media download timed out.",
+                            failure=MediaDownloadFailure.TIMEOUT,
+                        )
                     size += len(chunk)
                     if size > settings.ECOUNSELING_MEDIA_MAX_BYTES:
-                        raise MediaDownloadError("Provider media exceeds the allowed size.")
+                        raise MediaDownloadError(
+                            "Provider media exceeds the allowed size.",
+                            failure=MediaDownloadFailure.VALIDATION,
+                        )
                     if not first:
                         first = chunk[:32]
                     digest.update(chunk)
                     spool.write(chunk)
                 if size == 0 or expected is not None and int(expected) != size:
-                    raise MediaDownloadError("Provider media download is incomplete.")
+                    raise MediaDownloadError(
+                        "Provider media download is incomplete.",
+                        failure=MediaDownloadFailure.VALIDATION,
+                    )
                 if kind == "TRANSCRIPTION":
                     if raw_type not in {
                         "text/vtt",
                         "text/plain",
                         "application/octet-stream",
                     } or not first.lstrip(b"\xef\xbb\xbf").startswith(b"WEBVTT"):
-                        raise MediaDownloadError("Provider transcript format is invalid.")
+                        raise MediaDownloadError(
+                            "Provider transcript format is invalid.",
+                            failure=MediaDownloadFailure.VALIDATION,
+                        )
                     content_type = "text/vtt"
                 elif first[4:8] == b"ftyp" and raw_type in {
                     "video/mp4",
@@ -104,10 +127,17 @@ def stream_daily_media(url, *, kind):
                 }:
                     content_type = "video/webm"
                 else:
-                    raise MediaDownloadError("Provider recording format is invalid.")
+                    raise MediaDownloadError(
+                        "Provider recording format is invalid.",
+                        failure=MediaDownloadFailure.VALIDATION,
+                    )
                 spool.seek(0)
                 yield spool, content_type, size, digest.hexdigest()
     except MediaDownloadError:
         raise
+    except TimeoutError:
+        raise MediaDownloadError(
+            "Provider media download timed out.", failure=MediaDownloadFailure.TIMEOUT
+        ) from None
     except Exception:
         raise MediaDownloadError("Provider media download failed.") from None

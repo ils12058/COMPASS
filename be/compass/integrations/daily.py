@@ -9,6 +9,7 @@ import json
 import logging
 import math
 import time
+from enum import StrEnum
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -18,26 +19,111 @@ from django.conf import settings
 logger = logging.getLogger("compass.daily")
 
 
+class DailyFailureCode(StrEnum):
+    NOT_CONFIGURED = "NOT_CONFIGURED"
+    NO_ACTIVE_RECORDING = "NO_ACTIVE_RECORDING"
+    INVALID_REQUEST = "INVALID_REQUEST"
+    AUTHORIZATION_REJECTED = "AUTHORIZATION_REJECTED"
+    RATE_LIMITED = "RATE_LIMITED"
+    SERVER_FAILURE = "SERVER_FAILURE"
+    TRANSPORT_FAILURE = "TRANSPORT_FAILURE"
+    TIMEOUT = "TIMEOUT"
+    INVALID_RESPONSE = "INVALID_RESPONSE"
+    INVALID_ACKNOWLEDGMENT = "INVALID_ACKNOWLEDGMENT"
+    UNCLASSIFIED = "UNCLASSIFIED"
+
+
+def _http_failure_code(status_code, raw=b"", *, recording_stop=False):
+    if status_code == 400:
+        # Daily documents error/info, but not a stable no-active machine code. Match only these
+        # short exact reason hints at recording Stop. Other prose/variants fall back to HTTP 400;
+        # never retain the body/info or infer recording cessation from this rejection.
+        if recording_stop and len(raw) <= 4096:
+            try:
+                payload = json.loads(raw)
+            except (ValueError, TypeError, UnicodeDecodeError):
+                payload = None
+            if isinstance(payload, dict) and payload.get("error") == "invalid-request-error":
+                info = payload.get("info")
+                if isinstance(info, str) and info.casefold().strip().removesuffix(".") in {
+                    "no active recording",
+                    "no active recording found",
+                    "no active recording to stop",
+                    "no recording is active",
+                }:
+                    return DailyFailureCode.NO_ACTIVE_RECORDING
+        return DailyFailureCode.INVALID_REQUEST
+    if status_code in {401, 403}:
+        return DailyFailureCode.AUTHORIZATION_REJECTED
+    if status_code == 429:
+        return DailyFailureCode.RATE_LIMITED
+    if 500 <= status_code <= 599:
+        return DailyFailureCode.SERVER_FAILURE
+    return DailyFailureCode.UNCLASSIFIED
+
+
 class DailyError(RuntimeError):
     """Base error for sanitized Daily integration failures."""
 
+    diagnostic_code = DailyFailureCode.UNCLASSIFIED
+
 
 class DailyConfigurationError(DailyError):
-    pass
+    diagnostic_code = DailyFailureCode.NOT_CONFIGURED
 
 
 class DailyUnavailable(DailyError):
-    pass
+    diagnostic_code = DailyFailureCode.TRANSPORT_FAILURE
+
+
+class DailyTimeout(DailyUnavailable):
+    diagnostic_code = DailyFailureCode.TIMEOUT
 
 
 class DailyHTTPError(DailyError):
-    def __init__(self, status_code: int) -> None:
-        super().__init__(f"Daily returned HTTP {status_code}.")
-        self.status_code = status_code
+    def __init__(self, status_code: int, *, diagnostic_code=None) -> None:
+        self.status_code = (
+            status_code if isinstance(status_code, int) and 100 <= status_code <= 599 else 0
+        )
+        super().__init__(f"Daily returned HTTP {self.status_code}.")
+        try:
+            self.diagnostic_code = (
+                _http_failure_code(self.status_code)
+                if diagnostic_code is None
+                else DailyFailureCode(diagnostic_code)
+            )
+        except (ValueError, TypeError):
+            self.diagnostic_code = DailyFailureCode.UNCLASSIFIED
 
 
 class DailyInvalidResponse(DailyError):
-    pass
+    diagnostic_code = DailyFailureCode.INVALID_RESPONSE
+
+
+class DailyInvalidAcknowledgment(DailyInvalidResponse):
+    diagnostic_code = DailyFailureCode.INVALID_ACKNOWLEDGMENT
+
+
+def safe_daily_failure_code(error: Exception) -> DailyFailureCode:
+    """Only closed codes cross the diagnostic boundary, including injected adapter errors."""
+    if isinstance(error, DailyError):
+        try:
+            return DailyFailureCode(error.diagnostic_code)
+        except (ValueError, TypeError):
+            pass
+    return DailyFailureCode.UNCLASSIFIED
+
+
+def _log_request_failure(method, code, status_code=None):
+    logger.warning(
+        "Daily request failed",
+        extra={
+            "event": "daily_request_failed",
+            "operation": method if method in {"GET", "POST", "DELETE"} else "UNKNOWN",
+            "failure_code": code.value,
+            "status_code": status_code,
+        },
+    )
 
 
 class DailyWebhookSignatureInvalid(DailyError):
@@ -90,19 +176,42 @@ class DailyClient:
             with urlopen(request, timeout=self.timeout_seconds) as response:
                 raw = response.read()
         except HTTPError as exc:
-            raise DailyHTTPError(int(exc.code)) from exc
-        except (URLError, TimeoutError, OSError) as exc:
-            logger.warning(
-                "Daily transport failure",
-                extra={"event": "daily_transport_failure", "operation": method},
+            raw = b""
+            recording_stop = method == "POST" and path.endswith("/recordings/stop")
+            try:
+                if exc.code == 400 and recording_stop:
+                    raw = exc.read(4097)
+            except Exception:
+                # Failure to inspect a bounded reason does not erase the received HTTP status.
+                pass
+            finally:
+                try:
+                    exc.close()
+                except Exception:
+                    pass
+            error = DailyHTTPError(
+                exc.code,
+                diagnostic_code=_http_failure_code(exc.code, raw, recording_stop=recording_stop),
             )
-            raise DailyUnavailable("Daily is temporarily unavailable.") from exc
+            _log_request_failure(method, safe_daily_failure_code(error), error.status_code)
+            raise error from None
+        except (URLError, TimeoutError, OSError) as exc:
+            reason = exc.reason if isinstance(exc, URLError) else exc
+            error = (
+                DailyTimeout("Daily request timed out; the operation outcome is unknown.")
+                if isinstance(reason, TimeoutError)
+                else DailyUnavailable("Daily is temporarily unavailable.")
+            )
+            _log_request_failure(method, safe_daily_failure_code(error))
+            raise error from None
 
         try:
             decoded = json.loads(raw)
-        except (UnicodeDecodeError, json.JSONDecodeError, TypeError) as exc:
-            raise DailyInvalidResponse("Daily returned an invalid JSON response.") from exc
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError):
+            _log_request_failure(method, DailyFailureCode.INVALID_RESPONSE)
+            raise DailyInvalidResponse("Daily returned an invalid JSON response.") from None
         if not isinstance(decoded, dict):
+            _log_request_failure(method, DailyFailureCode.INVALID_RESPONSE)
             raise DailyInvalidResponse("Daily returned an unexpected response shape.")
         return decoded
 

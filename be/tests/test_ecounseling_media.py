@@ -628,7 +628,7 @@ def test_withdrawal_persists_when_recording_stop_fails():
     assert consent.withdrawn_at is not None
     assert not consent.is_effectively_approved
     assert capture.status == MediaCaptureStatus.STOP_REQUESTED
-    assert capture.error_code == "STOP_PROVIDER_FAILED"
+    assert capture.error_code == "STOP_PROVIDER_TRANSPORT_FAILURE"
     assert AuditEvent.objects.filter(action="ecounseling.consent_withdrawn").count() == 1
     assert AuditEvent.objects.filter(action="ecounseling.recording_stop_requested").count() == 1
 
@@ -686,7 +686,7 @@ def test_transcript_storage_withdrawal_disables_storage_even_when_stop_fails():
     assert consent.withdrawn_at is not None
     assert not consent.is_effectively_approved
     assert capture.status == MediaCaptureStatus.STOP_REQUESTED
-    assert capture.error_code == "STOP_PROVIDER_FAILED"
+    assert capture.error_code == "STOP_PROVIDER_TRANSPORT_FAILURE"
     assert capture.transcript_storage_enabled is False
     assert fake.transcription_stops
     assert fake.room_updates[-1][1] == {"enable_transcription_storage": False}

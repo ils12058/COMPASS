@@ -50,6 +50,13 @@ _DIAGNOSTIC_FIELDS = (
     "operation",
     "version",
     "check_code",
+    # E-Counseling's closed stage/outcome codes and numeric/boolean attempt metadata.
+    "pipeline_stage",
+    "outcome_code",
+    "retry_scheduled",
+    "next_attempt_in_seconds",
+    "custody_committed",
+    "provider_failure_code",
     "truncated_field_count",
     # Exception class names only; messages are never logged.
     "error_type",
