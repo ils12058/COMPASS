@@ -48,8 +48,9 @@ timestamp comparison decides whether a capture may become ACTIVE.
 
 Webhook receipts remain idempotent. A delayed started event can fill absent historical start
 metadata without reactivating stopping/terminal capture. Ineffective consent keeps nonterminal
-capture stop-required, using the existing best-effort policy Stop; it never restores consent or
-authorizes a second start. Terminal evidence is preserved even when consent was later withdrawn.
+capture stop-required. [Slice 1C.3](ecounseling-webhook-security.md) durably records anomalies
+and permits only the verified targeted transcription backstop; the room-scoped recording backstop
+is withheld. It never restores consent or authorizes a second start. Terminal evidence is preserved even when consent was later withdrawn.
 
 ## Storage meanings and durable Start intent
 
@@ -106,11 +107,11 @@ bounded metadata recovery for already bound captures and durable escalation when
 be established. It does not replay Start or infer cessation from a timeout, disconnect, room expiry
 or no-active HTTP rejection.
 
-The transition correlation guard is intentionally limited to existing bindings. Full EC-04 identity
-validation, malformed payload/schema rejection, missing/foreign event anomaly records and unexpected
-capture management (EC-06/EC-09) remain Slice 1C.3. In particular, unbound completion may be received
-before its started event; the current receipt is accepted without terminal adoption, and this slice
-adds no buffered event replay. Missing completion webhooks do not automatically become STOPPED.
+[Slice 1C.3](ecounseling-webhook-security.md) extends this reducer with event-specific validation,
+strong binding verification and quarantine, durable EC-04/06/09 anomaly outcomes, and bounded replay
+of validated early completion evidence. It neither adopts foreign artifacts nor resets exhausted
+capture reconciliation. Missing completion evidence never automatically becomes STOPPED. No
+webhook-send/receipt-time fallback is used for a missing or malformed provider media-start time.
 
 The recording Stop HTTP 400 reason `room does not have an active recording` joins the exact semantic
 allowlist. Matching remains recording-Stop-only, `invalid-request-error`, bounded to 4 KiB, and uses

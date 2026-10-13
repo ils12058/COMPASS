@@ -26,7 +26,11 @@ The GET contracts do not return a guaranteed instance identifier. Recovery there
 the existing artifact binding established by the current signed webhook path. Known session
 identity is mandatory in the response when present locally; its absence cannot relax that check.
 Capture kind is fixed by the endpoint and expected artifact identifier field. No provider
-identity is assigned or changed by this worker. Full upstream webhook provenance remains 1C.3.
+identity is assigned or changed by this worker. [Slice 1C.3](ecounseling-webhook-security.md) adds
+a positive binding-verification timestamp and quarantine fence. Metadata cannot certify an
+unverified historical binding and performs no HTTP check for it; migration never infers trust.
+The webhook and metadata paths use the same narrow identity predicate, and terminal webhook
+evidence supersedes a claim without resetting its lifetime budget or historical escalation.
 
 The reviewed [room presence contract](https://docs.daily.co/reference/rest-api/rooms/get-room-presence)
 returns participant/session snapshots, not recording or transcription instance state. It cannot
@@ -116,9 +120,11 @@ after an explicitly approved protected export; it would delete reconciliation ev
 erase consent, audit, capture history or institutional media, reset attempts, or replay commands
 as rollback. Migration tests verify fresh upgrade, repeat application and disposable reversal.
 
-## Deferred 1C.3
+## Webhook security follow-up
 
-EC-04 full webhook identity/provenance, EC-06 unexpected/unauthorized provider capture handling,
-and EC-09 malformed webhook validation remain separate. Existing binding correctness is a
-prerequisite; metadata recovery neither fixes foreign bindings nor buffers/replays old webhook
-receipts. Missing identity and ambiguous provider outcomes stay unresolved with escalation.
+EC-04 webhook identity/provenance, EC-06 durable anomaly handling and safe mitigation evidence,
+and EC-09 payload validation are implemented separately in
+[Slice 1C.3](ecounseling-webhook-security.md). Metadata recovery still does not discover/adopt
+foreign media or replay provider commands. The separate bounded webhook completion outbox
+retains only approved evidence and revalidates the binding; missing identity and ambiguous
+provider outcomes remain unresolved with operator review.

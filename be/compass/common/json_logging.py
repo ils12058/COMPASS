@@ -61,6 +61,9 @@ _DIAGNOSTIC_FIELDS = (
     "provider_evidence",
     "terminal_evidence_confirmed",
     "escalation_required",
+    # Signed media webhook diagnostics supply only closed mitigation and verified-identity flags.
+    "mitigation_state",
+    "identity_verified",
     "truncated_field_count",
     # Exception class names only; messages are never logged.
     "error_type",

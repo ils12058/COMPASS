@@ -367,6 +367,7 @@ def ready_artifact(kind="RECORDING", *, pending=True):
         kind=kind,
         status="READY",
         provider_artifact_id="opaque-artifact",
+        provider_binding_verified_at=timezone.now() - timedelta(days=32),
         ready_at=timezone.now() - timedelta(days=31),
         media_authorized_at=timezone.now() - timedelta(days=32),
         transcript_storage_authorized=kind == "TRANSCRIPTION",

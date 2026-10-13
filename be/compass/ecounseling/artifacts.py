@@ -61,6 +61,8 @@ def artifact_eligible(capture):
         capture.room.media_policy_version == MediaPolicyVersion.V2
         and capture.status == MediaCaptureStatus.READY
         and not capture.artifact_disposed_at
+        and not capture.provider_binding_quarantined_at
+        and capture.provider_binding_verified_at is not None
         and capture.media_authorized_at is not None
         and (capture.kind == "RECORDING" or capture.transcript_storage_authorized)
     )
@@ -104,6 +106,14 @@ def custody_audit(action, artifact):
 
 def provider_metadata(source, client, *, allow_deleted=False):
     """Exact artifact/room/session identity; reject customer-managed transcript storage."""
+    if (
+        not source.provider_binding_verified_at
+        or source.provider_binding_quarantined_at
+        or ECounselingMediaCapture.objects.filter(
+            pk=source.pk, provider_binding_quarantined_at__isnull=False
+        ).exists()
+    ):
+        raise ArtifactVerificationError("Provider media binding requires protected review.")
     artifact_id = source.provider_artifact_id
     if source.kind == "RECORDING":
         item = client.get_recording(artifact_id=artifact_id)
@@ -126,7 +136,12 @@ def provider_metadata(source, client, *, allow_deleted=False):
         )
     if source.provider_session_id:
         valid = valid and item.get("mtgSessionId") == source.provider_session_id
-    if not valid:
+    if (
+        not valid
+        or ECounselingMediaCapture.objects.filter(
+            pk=source.pk, provider_binding_quarantined_at__isnull=False
+        ).exists()
+    ):
         raise ArtifactVerificationError("Provider media identity could not be verified.")
     return item
 
@@ -319,6 +334,7 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
                     if (
                         current.claim_token != token
                         or capture.artifact_disposed_at
+                        or capture.provider_binding_quarantined_at
                         or capture.provider_artifact_id != provider_id
                     ):
                         raise ArtifactVerificationError("Media custody changed during preparation.")
@@ -342,6 +358,7 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
                     current.claim_token != token
                     or current.status != MediaArtifactStatus.STORED
                     or capture.provider_artifact_id != provider_id
+                    or capture.provider_binding_quarantined_at
                 ):
                     raise ArtifactVerificationError("Media custody changed during cleanup.")
                 capture.provider_artifact_id = None

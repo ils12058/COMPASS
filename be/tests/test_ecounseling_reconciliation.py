@@ -107,6 +107,9 @@ def pending_capture(
             capture, "started", **{"recording_id" if kind == "RECORDING" else "id": str(uuid4())}
         )
         capture.provider_session_id = str(uuid4())
+        # Synthetic provider media time, independent of webhook dispatch. Transcript started
+        # has no documented media-start timestamp after Slice 1C.3 removes the old fallback.
+        capture.started_at = capture.started_at or timezone.now() - timedelta(seconds=120)
     capture.status = state
     capture.media_authorized_at = timezone.now() - timedelta(seconds=120)
     if stop_intent is True or (stop_intent is None and state == "STOP_REQUESTED"):

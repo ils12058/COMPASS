@@ -87,3 +87,21 @@ def reconcile_media_captures():
         duration_ms=max(0, int((monotonic() - started) * 1000)),
     )
     return counts
+
+
+@shared_task(
+    name="compass.ecounseling.replay_media_webhooks",
+    base=CorrelationTask,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    soft_time_limit=30,
+    time_limit=45,
+)
+def replay_media_webhooks():
+    from .diagnostics import WebhookReplayTaskError
+    from .webhooks import replay_due_events
+
+    try:
+        return replay_due_events()
+    except Exception:
+        raise WebhookReplayTaskError() from None

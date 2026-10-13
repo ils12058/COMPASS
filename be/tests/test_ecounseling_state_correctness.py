@@ -115,14 +115,18 @@ def deliver(capture, observation, *, event_id=None, **overrides):
     }
     if recording:
         payload.update(
-            instance_id=capture.provider_instance_id, start_ts=timezone.now().timestamp()
+            instance_id=capture.provider_instance_id, start_ts=int(timezone.now().timestamp())
         )
     else:
         payload.update(
             info={"instanceId": capture.provider_instance_id},
             mtg_session_id=capture.provider_session_id or "synthetic-meeting",
             room_id=capture.room.daily_room_id,
-            status="t_finished" if observation == "ready-to-download" else "t_in_progress",
+            status="t_finished"
+            if observation == "ready-to-download"
+            else "t_error"
+            if observation == "error"
+            else "t_in_progress",
         )
     payload.update(overrides)
     result = process_media_webhook_event(
@@ -308,15 +312,23 @@ def test_duplicate_deliveries_and_repeated_completion_preserve_original_evidence
     assert ECounselingMediaArtifact.objects.filter(capture=capture).count() == (kind == "RECORDING")
 
 
-def test_recording_completion_corrects_delivery_time_fallback_with_provider_start_timestamp():
+def test_recording_completion_uses_provider_start_without_malformed_dispatch_fallback():
     _, _, _, _, capture = begin(kind="RECORDING")
     actual_start = timezone.now().replace(microsecond=0) - timedelta(minutes=2)
     deliver(capture, "started", start_ts=None)
-    assert capture.started_at > actual_start  # Existing send-time fallback, not physical start.
-    deliver(capture, "ready-to-download", start_ts=actual_start.timestamp(), duration=5)
+    assert capture.started_at is None and capture.provider_artifact_id is None
+    process_media_webhook_event(
+        event_type="recording.started",
+        event_id=str(uuid4()),
+        event_ts=timezone.now().timestamp(),
+        payload={"instance_id": capture.provider_instance_id, "recording_id": "synthetic-artifact"},
+    )
+    capture.refresh_from_db()
+    assert capture.started_at is None and capture.status == "ACTIVE"
+    deliver(capture, "ready-to-download", start_ts=int(actual_start.timestamp()), duration=5)
     assert capture.status == "READY" and capture.started_at == actual_start
     assert capture.ended_at == actual_start + timedelta(seconds=5)
-    deliver(capture, "started", start_ts=(actual_start + timedelta(minutes=1)).timestamp())
+    deliver(capture, "started", start_ts=int((actual_start + timedelta(minutes=1)).timestamp()))
     assert capture.started_at == actual_start and capture.ended_at == actual_start + timedelta(
         seconds=5
     )
