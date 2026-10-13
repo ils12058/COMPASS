@@ -9,6 +9,7 @@ from django.db import models
 from django.db.models import Q
 
 from compass.appointments.models import Appointment
+from compass.integrations.daily import DailyFailureCode
 
 
 class MediaPolicyVersion(models.IntegerChoices):
@@ -246,6 +247,120 @@ class ECounselingMediaArtifact(models.Model):
         ]
         indexes = [
             models.Index(fields=("status", "next_attempt_at"), name="ec_artifact_dispatch_idx")
+        ]
+
+
+class CaptureReconciliationState(models.TextChoices):
+    PENDING = "PENDING", "Pending"
+    CLAIMED = "CLAIMED", "Claimed"
+    RESOLVED = "RESOLVED", "Resolved"
+    ESCALATED = "ESCALATED", "Operational review required"
+    SUPERSEDED = "SUPERSEDED", "Superseded by protected evidence"
+
+
+class CaptureEvidence(models.TextChoices):
+    UNKNOWN = "UNKNOWN", "Unknown"
+    ACTIVE = "ACTIVE", "Active snapshot"
+    COMPLETED = "COMPLETED", "Provider completion confirmed"
+
+
+class CaptureReconciliationOutcome(models.TextChoices):
+    PENDING = "RECONCILIATION_PENDING", "Pending"
+    ACTIVE = "PROVIDER_ACTIVE_CONFIRMED", "Active snapshot confirmed"
+    COMPLETED = "PROVIDER_COMPLETION_CONFIRMED", "Completion confirmed"
+    IDENTITY = "PROVIDER_IDENTITY_INSUFFICIENT", "Identity insufficient"
+    UNAVAILABLE = "PROVIDER_METADATA_UNAVAILABLE", "Metadata unavailable"
+    UNKNOWN = "PROVIDER_OUTCOME_UNKNOWN", "Outcome unknown"
+    EXHAUSTED = "RECONCILIATION_EXHAUSTED", "Automatic budget exhausted"
+    PRIVACY = "PRIVACY_REVIEW_REQUIRED", "Urgent privacy review required"
+    SUPERSEDED = "RECONCILIATION_SUPERSEDED", "Observation superseded"
+
+
+class ECounselingCaptureReconciliation(models.Model):
+    """Independent, bounded metadata recovery; never a command or custody outbox."""
+
+    capture = models.OneToOneField(
+        ECounselingMediaCapture,
+        primary_key=True,
+        on_delete=models.PROTECT,
+        related_name="reconciliation",
+    )
+    state = models.CharField(
+        max_length=16, choices=CaptureReconciliationState.choices, default="PENDING"
+    )
+    attempts = models.PositiveIntegerField(default=0)
+    uncertainty_since = models.DateTimeField()
+    next_attempt_at = models.DateTimeField(null=True)
+    claim_token = models.UUIDField(null=True)
+    claim_expires_at = models.DateTimeField(null=True)
+    last_checked_at = models.DateTimeField(null=True)
+    outcome_code = models.CharField(
+        max_length=40,
+        choices=CaptureReconciliationOutcome.choices,
+        default=CaptureReconciliationOutcome.PENDING,
+    )
+    provider_evidence = models.CharField(
+        max_length=16, choices=CaptureEvidence.choices, default=CaptureEvidence.UNKNOWN
+    )
+    provider_failure_code = models.CharField(
+        max_length=32, choices=[(code.value, code.value) for code in DailyFailureCode], null=True
+    )
+    completion_confirmed_at = models.DateTimeField(null=True)
+    escalation_code = models.CharField(
+        max_length=40,
+        choices=[
+            (CaptureReconciliationOutcome.EXHAUSTED, "Automatic budget exhausted"),
+            (CaptureReconciliationOutcome.PRIVACY, "Urgent privacy review required"),
+        ],
+        null=True,
+    )
+    escalated_at = models.DateTimeField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        indexes = [
+            models.Index(fields=("state", "next_attempt_at"), name="ec_capture_reconcile_due")
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(state__in=CaptureReconciliationState.values),
+                name="ec_reconcile_state_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(outcome_code__in=CaptureReconciliationOutcome.values),
+                name="ec_reconcile_outcome_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(provider_evidence__in=CaptureEvidence.values),
+                name="ec_reconcile_evidence_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(provider_failure_code__isnull=True)
+                | Q(provider_failure_code__in=[code.value for code in DailyFailureCode]),
+                name="ec_reconcile_failure_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(escalation_code__isnull=True, escalated_at__isnull=True)
+                | Q(
+                    escalation_code__in=[
+                        CaptureReconciliationOutcome.EXHAUSTED,
+                        CaptureReconciliationOutcome.PRIVACY,
+                    ],
+                    escalated_at__isnull=False,
+                ),
+                name="ec_reconcile_escalation_valid",
+            ),
+            models.CheckConstraint(
+                condition=Q(
+                    state="CLAIMED", claim_token__isnull=False, claim_expires_at__isnull=False
+                )
+                | (
+                    ~Q(state="CLAIMED") & Q(claim_token__isnull=True, claim_expires_at__isnull=True)
+                ),
+                name="ec_reconcile_claim_shape",
+            ),
         ]
 
 

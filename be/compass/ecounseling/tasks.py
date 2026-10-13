@@ -1,6 +1,7 @@
 """The same worker/Beat deployment owns ingestion and custody-transfer recovery."""
 
 from datetime import timedelta
+from time import monotonic
 
 from celery import shared_task
 from django.db.models import Q
@@ -57,3 +58,32 @@ def recover_media_artifacts():
     except Exception:
         log_artifact_diagnostic(stage=ArtifactStage.RECOVERY, task_name=RECOVERY_TASK)
         raise ArtifactTaskError(ArtifactStage.RECOVERY) from None
+
+
+@shared_task(
+    name="compass.ecounseling.reconcile_media_captures",
+    base=CorrelationTask,
+    acks_late=True,
+    reject_on_worker_lost=True,
+    soft_time_limit=120,
+    time_limit=150,
+)
+def reconcile_media_captures():
+    from .diagnostics import (
+        CaptureReconciliationTaskError,
+        CaptureStage,
+        log_capture_reconciliation,
+    )
+    from .reconciliation import reconcile_captures
+
+    started = monotonic()
+    try:
+        counts = reconcile_captures()
+    except Exception:
+        log_capture_reconciliation(stage=CaptureStage.UNKNOWN)
+        raise CaptureReconciliationTaskError() from None
+    log_capture_reconciliation(
+        stage=CaptureStage.SCAN,
+        duration_ms=max(0, int((monotonic() - started) * 1000)),
+    )
+    return counts

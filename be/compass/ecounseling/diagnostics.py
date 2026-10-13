@@ -5,8 +5,11 @@ from enum import StrEnum
 
 from compass.integrations.daily import DailyError, safe_daily_failure_code
 
+from .models import CaptureEvidence, CaptureReconciliationOutcome, MediaCaptureKind
+
 INGEST_TASK = "compass.ecounseling.ingest_media_artifact"
 RECOVERY_TASK = "compass.ecounseling.recover_media_artifacts"
+CAPTURE_RECONCILIATION_TASK = "compass.ecounseling.reconcile_media_captures"
 logger = logging.getLogger("compass.ecounseling.diagnostics")
 
 
@@ -66,6 +69,79 @@ _OUTCOMES = _SUCCESS_OUTCOMES | frozenset(ArtifactStage)
 
 def _count(value):
     return value if type(value) is int and value >= 0 else None
+
+
+class CaptureStage(StrEnum):
+    UNKNOWN = "INTERNAL_UNVERIFIED"
+    SCAN = "SCAN"
+    DISCOVERY = "DISCOVERY"
+    CLAIM = "CLAIM"
+    METADATA = "METADATA"
+    APPLY = "APPLY"
+
+
+class CaptureReconciliationTaskError(RuntimeError):
+    def __init__(self, stage=CaptureStage.UNKNOWN):
+        if isinstance(stage, str) and stage.startswith("Capture reconciliation failed: "):
+            stage = stage.removeprefix("Capture reconciliation failed: ")
+        try:
+            self.diagnostic_stage = CaptureStage(stage)
+        except (ValueError, TypeError):
+            self.diagnostic_stage = CaptureStage.UNKNOWN
+        super().__init__(f"Capture reconciliation failed: {self.diagnostic_stage.value}")
+
+
+def log_capture_reconciliation(
+    *,
+    stage=CaptureStage.UNKNOWN,
+    kind=None,
+    outcome=CaptureReconciliationOutcome.UNKNOWN,
+    attempts=None,
+    evidence=CaptureEvidence.UNKNOWN,
+    retry_scheduled=None,
+    delay_seconds=None,
+    duration_ms=None,
+    terminal_confirmed=None,
+    escalation_required=None,
+):
+    stage = stage if isinstance(stage, CaptureStage) else CaptureStage.UNKNOWN
+    outcome = (
+        outcome
+        if isinstance(outcome, str) and outcome in CaptureReconciliationOutcome.values
+        else CaptureReconciliationOutcome.UNKNOWN
+    )
+    logger.log(
+        logging.ERROR
+        if outcome == CaptureReconciliationOutcome.PRIVACY
+        else logging.WARNING
+        if escalation_required is True or stage == CaptureStage.UNKNOWN
+        else logging.INFO,
+        "E-Counseling capture reconciliation diagnostic",
+        extra={
+            "event": "ecounseling_capture_reconciliation",
+            "task_name": CAPTURE_RECONCILIATION_TASK,
+            "pipeline_stage": stage.value,
+            "media_kind": kind
+            if isinstance(kind, str) and kind in MediaCaptureKind.values
+            else None,
+            "outcome_code": outcome,
+            "attempt_number": _count(attempts),
+            "provider_evidence": (
+                evidence
+                if isinstance(evidence, str) and evidence in CaptureEvidence.values
+                else CaptureEvidence.UNKNOWN
+            ),
+            "retry_scheduled": retry_scheduled if type(retry_scheduled) is bool else None,
+            "next_attempt_in_seconds": _count(delay_seconds),
+            "duration_ms": _count(duration_ms),
+            "terminal_evidence_confirmed": (
+                terminal_confirmed if type(terminal_confirmed) is bool else None
+            ),
+            "escalation_required": (
+                escalation_required if type(escalation_required) is bool else None
+            ),
+        },
+    )
 
 
 def log_artifact_diagnostic(

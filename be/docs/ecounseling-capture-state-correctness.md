@@ -101,8 +101,10 @@ an unissued Start, a sent Start with an unknown outcome, or an accepted Start wh
 lost. A process crash or configuration acknowledgment/persistence failure can leave the last stored
 configuration flag behind the actual room setting. This slice adds no durable command-dispatch/ACK
 journal, outbox executor, provider command retry, metadata polling or liveness alert. Those cases stay
-unresolved for the separately approved Slice 1C.2 reconciliation design; do not replay Start or infer
-cessation from a timeout, disconnect, room expiry or no-active HTTP rejection.
+unresolved without independent evidence. [Slice 1C.2](ecounseling-capture-reconciliation.md) adds
+bounded metadata recovery for already bound captures and durable escalation when certainty cannot
+be established. It does not replay Start or infer cessation from a timeout, disconnect, room expiry
+or no-active HTTP rejection.
 
 The transition correlation guard is intentionally limited to existing bindings. Full EC-04 identity
 validation, malformed payload/schema rejection, missing/foreign event anomaly records and unexpected

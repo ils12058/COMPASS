@@ -136,4 +136,5 @@ def test_upgrade_preserves_mixed_consent_capture_and_frozen_case_truth():
             == 2
         )
     finally:
-        MigrationExecutor(connection).migrate(AFTER)
+        executor = MigrationExecutor(connection)
+        executor.migrate(executor.loader.graph.leaf_nodes())

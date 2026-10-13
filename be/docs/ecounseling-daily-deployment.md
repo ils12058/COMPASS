@@ -173,6 +173,14 @@ Verify the registered tasks `compass.ecounseling.ingest_media_artifact` and
 `compass.ecounseling.recover_media_artifacts`; Beat recovery runs every 60 seconds. A webhook row is
 the durable outbox when broker dispatch fails. No startup or migration ingests historical V1 files.
 
+Slice 1C.2 adds the separate task `compass.ecounseling.reconcile_media_captures` and additive
+migration `0005_capture_reconciliation`. It is disabled by default. Apply the migration and
+upgrade/drain every old worker before enabling `ECOUNSELING_CAPTURE_RECONCILIATION_ENABLED`;
+only an enabled configuration registers its separate 60-second Beat entry. Preserve the existing
+artifact task schedule. See [capture reconciliation](ecounseling-capture-reconciliation.md) for
+bounded defaults, the read-only operator command, evidence limitations and rollback that retains
+the new table. These are deployment instructions for separate owner approval, not a PR-time action.
+
 Deployment-owned configuration extends the existing S3 adapter:
 
 ```text
