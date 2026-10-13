@@ -724,7 +724,7 @@ def test_recording_webhooks_reconcile_without_persisting_temporary_access_values
         payload={
             "recording_id": "recording-1",
             "instance_id": capture.provider_instance_id,
-            "start_ts": timezone.now().timestamp(),
+            "start_ts": int(timezone.now().timestamp()),
         },
     )
     assert started.accepted and started.supported
@@ -738,7 +738,7 @@ def test_recording_webhooks_reconcile_without_persisting_temporary_access_values
         payload={
             "recording_id": "recording-1",
             "room_name": capture.room.daily_room_name,
-            "start_ts": timezone.now().timestamp() - 5,
+            "start_ts": int(timezone.now().timestamp()) - 5,
             "duration": 5,
             "share_token": "must-not-persist",
             "s3_key": "must/not/persist",
@@ -809,7 +809,7 @@ def test_late_recording_started_webhook_does_not_regress_stopping_or_finished_ca
         payload={
             "recording_id": "recording-late",
             "instance_id": capture.provider_instance_id,
-            "start_ts": timezone.now().timestamp(),
+            "start_ts": int(timezone.now().timestamp()),
         },
     )
 
@@ -820,7 +820,7 @@ def test_late_recording_started_webhook_does_not_regress_stopping_or_finished_ca
 
 
 @pytest.mark.django_db
-def test_unexpected_transcription_without_consent_is_marked_stop_required_and_best_effort_stopped():
+def test_unreserved_transcription_is_durably_escalated_without_adoption_or_unsafe_stop():
     _, student, _, appointment = setup_session()
     fake = FakeMediaDailyClient()
     with override_settings(DAILY_ENABLED=True):
@@ -844,15 +844,13 @@ def test_unexpected_transcription_without_consent_is_marked_stop_required_and_be
                 },
             )
     assert result.accepted and result.supported
-    capture = ECounselingMediaCapture.objects.get(
-        room=credential.room,
-        kind=MediaCaptureKind.TRANSCRIPTION,
-    )
-    assert capture.status == MediaCaptureStatus.STOP_REQUESTED
-    assert capture.error_code == "CONSENT_NOT_EFFECTIVE"
-    assert fake.transcription_stops == [
-        (credential.room.daily_room_name, "transcription-instance-1")
-    ]
+    from compass.ecounseling.models import DailyWebhookReceipt
+
+    assert not ECounselingMediaCapture.objects.filter(room=credential.room).exists()
+    receipt = DailyWebhookReceipt.objects.get(provider_event_id="tra-start-unexpected")
+    assert receipt.anomaly_code == "RESERVATION_MISSING"
+    assert receipt.operator_review_required and receipt.mitigation_state == "REVIEW_REQUIRED"
+    assert receipt.mitigation_attempted_at is None and fake.transcription_stops == []
 
 
 @pytest.mark.django_db

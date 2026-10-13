@@ -46,6 +46,8 @@ from .models import (
 from .models import (
     ECounselingMediaCapture as Capture,
 )
+from .provider_identity import ProviderIdentity, identity_conflict
+from .webhook_events import MAX_DURATION_SECONDS, InvalidEvent, finite_number
 
 _UNRESOLVED = ("START_REQUESTED", "STOP_REQUESTED", "ERROR")
 _INITIAL_GRACE_SECONDS = 60
@@ -75,7 +77,11 @@ def _policy(name):
 
 def _eligible_captures():
     return (
-        Capture.objects.filter(status__in=_UNRESOLVED, artifact_disposed_at__isnull=True)
+        Capture.objects.filter(
+            status__in=_UNRESOLVED,
+            artifact_disposed_at__isnull=True,
+            provider_binding_quarantined_at__isnull=True,
+        )
         .filter(
             Q(media_authorized_at__isnull=False)
             | Q(provider_instance_id__isnull=False)
@@ -138,6 +144,7 @@ def _locked_rows(capture_id):
 def _protected(capture, artifact):
     return bool(
         capture.status in _TERMINAL_CAPTURE_STATES
+        or capture.provider_binding_quarantined_at
         or capture.artifact_disposed_at
         or (
             artifact
@@ -164,6 +171,7 @@ def _identity(capture):
         capture.provider_session_id,
         capture.media_authorized_at,
         capture.transcript_storage_authorized,
+        capture.provider_binding_verified_at,
     )
 
 
@@ -270,15 +278,9 @@ def observe_metadata(claim, item):
     """Reduce an untrusted response to closed evidence; persist no response/body/location."""
     if not isinstance(item, dict):
         return Observation(Outcome.IDENTITY)
-    _, room_name, room_id, kind, instance, artifact_id, session, _, _ = claim.identity
+    _, room_name, room_id, kind, instance, artifact_id, session, _, _, verified_at = claim.identity
     recording = kind == "RECORDING"
-    if (
-        not artifact_id
-        or item.get("id" if recording else "transcriptId") != artifact_id
-        or (recording and item.get("room_name") != room_name)
-        or (not recording and (not room_id or item.get("roomId") != room_id))
-        or (session and item.get("mtgSessionId") != session)
-    ):
+    if not instance or not claim.identity[7] or not verified_at:
         return Observation(Outcome.IDENTITY)
     # No guaranteed instance field exists in these GET contracts. A conflicting supplied value
     # cannot override the existing binding, even when it appears as an undocumented extra.
@@ -286,13 +288,37 @@ def observe_metadata(claim, item):
     instances = [item[k] for k in ("instanceId", "instance_id") if k in item]
     if isinstance(info, dict) and "instanceId" in info:
         instances.append(info["instanceId"])
-    if instance and any(value != instance for value in instances):
-        return Observation(Outcome.IDENTITY)
-    # Reject supplied contradictory room/kind identity; absence is not invented as a guarantee.
     if (
-        ("room_name" in item and item["room_name"] != room_name)
-        or ("roomId" in item and room_id and item["roomId"] != room_id)
-        or ("kind" in item and item["kind"] != kind)
+        ("info" in item and not isinstance(info, dict))
+        or any(not isinstance(value, str) or not 1 <= len(value) <= 160 for value in instances)
+        or (instances and any(value != instances[0] for value in instances))
+    ):
+        return Observation(Outcome.IDENTITY)
+    if any(
+        key in item and (not isinstance(item[key], str) or not 1 <= len(item[key]) <= maximum)
+        for key, maximum in (("room_name", 128), ("roomId", 128), ("mtgSessionId", 160))
+    ):
+        return Observation(Outcome.IDENTITY)
+    identity = ProviderIdentity(
+        item.get("kind", kind),
+        item.get("id" if recording else "transcriptId"),
+        instances[0] if instances else None,
+        item.get("room_name"),
+        item.get("roomId"),
+        item.get("mtgSessionId"),
+    )
+    if identity_conflict(
+        identity,
+        kind=kind,
+        room_name=room_name,
+        room_id=room_id,
+        instance_id=instance,
+        artifact_id=artifact_id,
+        session_id=session,
+        require_artifact=True,
+        require_room_name=recording,
+        require_room_id=not recording,
+        require_known_session=True,
     ):
         return Observation(Outcome.IDENTITY)
     status = item.get("status")
@@ -300,7 +326,9 @@ def observe_metadata(claim, item):
     if status not in (active, complete):
         return Observation(Outcome.UNKNOWN)
     duration = item.get("duration")
-    if type(duration) not in (int, float) or not math.isfinite(duration) or duration < 0:
+    try:
+        duration = finite_number(duration, maximum=MAX_DURATION_SECONDS)
+    except InvalidEvent:
         duration = None
     return Observation(
         Outcome.ACTIVE if status == active else Outcome.COMPLETED,
@@ -432,7 +460,7 @@ def reconcile_captures(*, client=None):
         if claim is None:
             continue
         counts["claimed"] += 1
-        if not claim.artifact_id:
+        if not claim.artifact_id or not claim.identity[9]:
             observation = Observation(Outcome.IDENTITY)
         else:
             try:

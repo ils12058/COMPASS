@@ -5,12 +5,57 @@ from enum import StrEnum
 
 from compass.integrations.daily import DailyError, safe_daily_failure_code
 
-from .models import CaptureEvidence, CaptureReconciliationOutcome, MediaCaptureKind
+from .models import (
+    CaptureEvidence,
+    CaptureReconciliationOutcome,
+    MediaCaptureKind,
+    WebhookAnomaly,
+    WebhookMitigation,
+    WebhookOutcome,
+    WebhookSeverity,
+)
 
 INGEST_TASK = "compass.ecounseling.ingest_media_artifact"
 RECOVERY_TASK = "compass.ecounseling.recover_media_artifacts"
 CAPTURE_RECONCILIATION_TASK = "compass.ecounseling.reconcile_media_captures"
 logger = logging.getLogger("compass.ecounseling.diagnostics")
+
+
+class WebhookReplayTaskError(RuntimeError):
+    def __init__(self, *_):
+        super().__init__("Media webhook replay failed: INTERNAL_UNVERIFIED")
+
+
+def log_media_webhook(receipt):
+    outcome = (
+        receipt.processing_outcome
+        if receipt.processing_outcome in WebhookOutcome.values
+        else WebhookOutcome.MALFORMED
+    )
+    code = receipt.anomaly_code if receipt.anomaly_code in WebhookAnomaly.values else None
+    mitigation = (
+        receipt.mitigation_state if receipt.mitigation_state in WebhookMitigation.values else None
+    )
+    logger.log(
+        logging.ERROR
+        if receipt.severity == WebhookSeverity.PRIVACY
+        else logging.WARNING
+        if code
+        else logging.INFO,
+        "E-Counseling media webhook diagnostic",
+        extra={
+            "event": "ecounseling_media_webhook",
+            "pipeline_stage": "WEBHOOK",
+            "outcome_code": code or outcome,
+            "mitigation_state": mitigation,
+            "attempt_number": _count(receipt.processing_attempts),
+            "identity_verified": type(receipt.identity_verified) is bool
+            and receipt.identity_verified,
+            "retry_scheduled": receipt.next_attempt_at is not None,
+            "escalation_required": type(receipt.operator_review_required) is bool
+            and receipt.operator_review_required,
+        },
+    )
 
 
 class ArtifactStage(StrEnum):

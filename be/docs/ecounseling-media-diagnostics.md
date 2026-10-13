@@ -151,5 +151,14 @@ needed. Historical `PROVIDER_REJECTED`, `PROVIDER_STATE_UNCERTAIN`, `STOP_PROVID
 `PROVIDER_ERROR`, `CONSENT_CLEANUP_UNCERTAIN` and `CUSTODY_OR_CLEANUP_UNVERIFIED` remain interpretable
 as generic evidence, with no backfill. Slice 1C.1 addresses EC-01/05/08 and the exact no-active phrase;
 EC-02 is implemented by [Slice 1C.2 capture reconciliation](ecounseling-capture-reconciliation.md),
-with its own bounded schedule and durable operator escalation. EC-04/06/09 identity/anomaly work
-remains Slice 1C.3.
+with its own bounded schedule and durable operator escalation. EC-04/06/09 are covered by
+[Slice 1C.3 webhook security](ecounseling-webhook-security.md).
+
+## Slice 1C.3 webhook outcomes
+
+The [webhook security runbook](ecounseling-webhook-security.md) covers EC-04, EC-06 and EC-09.
+The protected capture-reconciliation operator command also shows bounded webhook anomalies,
+replay schedules and unverified/quarantined binding counts. Original evidence remains durable;
+current capture risk is distinguished from historical escalation. A room-scoped recording
+backstop is withheld; authorized consent withdrawal remains unchanged, and the existing
+targeted transcription backstop records one attempt with an unverified ACK/failure outcome.

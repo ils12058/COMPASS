@@ -302,6 +302,8 @@ ECOUNSELING_MEDIA_MAX_BYTES = env_int("ECOUNSELING_MEDIA_MAX_BYTES", 10 * 1024**
 ECOUNSELING_CAPTURE_RECONCILIATION_ENABLED = env_bool(
     "ECOUNSELING_CAPTURE_RECONCILIATION_ENABLED", False
 )
+# Upgrade migration and all workers before activating this DB-only completion replay task.
+ECOUNSELING_WEBHOOK_REPLAY_ENABLED = env_bool("ECOUNSELING_WEBHOOK_REPLAY_ENABLED", False)
 ECOUNSELING_CAPTURE_RECONCILIATION_INTERVAL_SECONDS = env_int(
     "ECOUNSELING_CAPTURE_RECONCILIATION_INTERVAL_SECONDS", 60
 )
@@ -794,6 +796,11 @@ if ECOUNSELING_CAPTURE_RECONCILIATION_ENABLED:
     CELERY_BEAT_SCHEDULE["ecounseling-capture-reconciliation"] = {
         "task": "compass.ecounseling.reconcile_media_captures",
         "schedule": ECOUNSELING_CAPTURE_RECONCILIATION_INTERVAL_SECONDS,
+    }
+if ECOUNSELING_WEBHOOK_REPLAY_ENABLED:
+    CELERY_BEAT_SCHEDULE["ecounseling-media-webhook-replay"] = {
+        "task": "compass.ecounseling.replay_media_webhooks",
+        "schedule": 60,
     }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

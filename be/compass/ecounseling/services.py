@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import uuid
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from enum import StrEnum
 from uuid import UUID
 
@@ -37,7 +37,7 @@ from compass.integrations.daily import (
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.models import DeliveryMode
 
-from .models import DailyWebhookReceipt, ECounselingRoom
+from .models import ECounselingRoom
 
 
 class ECounselingError(RuntimeError):
@@ -589,17 +589,6 @@ def create_join_credential(
     )
 
 
-def _provider_event_time(event_type: str, payload: dict[str, object]) -> datetime:
-    field = "start_ts" if event_type == "meeting.started" else "end_ts"
-    value = payload.get(field)
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ECounselingInvalidWebhook("Daily webhook event timestamp is invalid.")
-    try:
-        return datetime.fromtimestamp(float(value), tz=UTC)
-    except (OverflowError, OSError, ValueError) as exc:
-        raise ECounselingInvalidWebhook("Daily webhook event timestamp is invalid.") from exc
-
-
 def process_daily_webhook(
     *,
     raw_body: bytes,
@@ -618,60 +607,42 @@ def process_daily_webhook(
         now_epoch=now_epoch,
     )
 
+    from .webhook_events import MAX_WEBHOOK_BYTES
+
+    if len(raw_body) > MAX_WEBHOOK_BYTES:
+        raise ECounselingInvalidWebhook("Daily webhook payload exceeds the allowed size.")
+
+    def unique_fields(pairs):
+        value = {}
+        for key, item in pairs:
+            if key in value:
+                raise ValueError()
+            value[key] = item
+        return value
+
     try:
-        event = json.loads(raw_body.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise ECounselingInvalidWebhook("Daily webhook payload is invalid JSON.") from exc
+        event = json.loads(raw_body.decode("utf-8"), object_pairs_hook=unique_fields)
+    except (UnicodeDecodeError, ValueError, RecursionError):
+        raise ECounselingInvalidWebhook("Daily webhook payload is invalid JSON.") from None
     if not isinstance(event, dict):
         raise ECounselingInvalidWebhook("Daily webhook payload must be an object.")
-    if event.get("test") == "test":
+    if event.get("test") == "test" and "type" not in event:
         return WebhookProcessingResult(accepted=True)
 
     event_type = event.get("type")
     if not isinstance(event_type, str) or not event_type:
         raise ECounselingInvalidWebhook("Daily webhook event type is missing.")
 
-    from .media import MEDIA_WEBHOOK_TYPES, process_media_webhook_event
+    from .webhook_events import MEDIA_WEBHOOK_TYPES, MEETING_WEBHOOK_TYPES
+    from .webhooks import process_event
 
-    supported_types = {"meeting.started", "meeting.ended"} | set(MEDIA_WEBHOOK_TYPES)
-    if event_type not in supported_types:
+    if len(event_type) > 80:
+        raise ECounselingInvalidWebhook("Daily webhook event type is invalid.")
+    if event_type not in MEDIA_WEBHOOK_TYPES | MEETING_WEBHOOK_TYPES:
         return WebhookProcessingResult(accepted=True)
-
-    event_id = event.get("id")
-    payload = event.get("payload")
-    if not isinstance(event_id, str) or not event_id or len(event_id) > 160:
-        raise ECounselingInvalidWebhook("Daily webhook event ID is invalid.")
-    if not isinstance(payload, dict):
-        raise ECounselingInvalidWebhook("Daily webhook event payload is invalid.")
-
-    if event_type in MEDIA_WEBHOOK_TYPES:
-        return process_media_webhook_event(
-            event_type=event_type,
-            event_id=event_id,
-            event_ts=event.get("event_ts"),
-            payload=payload,
-        )
-
-    room_name = payload.get("room")
-    meeting_id = payload.get("meeting_id")
-    if not isinstance(room_name, str) or not room_name or len(room_name) > 128:
-        raise ECounselingInvalidWebhook("Daily webhook room is invalid.")
-    if not isinstance(meeting_id, str) or not meeting_id or len(meeting_id) > 160:
-        raise ECounselingInvalidWebhook("Daily webhook meeting ID is invalid.")
-    occurred_at = _provider_event_time(event_type, payload)
-    room = ECounselingRoom.objects.filter(daily_room_name=room_name).first()
-
-    _, created = DailyWebhookReceipt.objects.get_or_create(
-        provider_event_id=event_id,
-        defaults={
-            "event_type": event_type,
-            "ecounseling_room": room,
-            "provider_session_id": meeting_id,
-            "provider_occurred_at": occurred_at,
-        },
-    )
-    return WebhookProcessingResult(
-        accepted=True,
-        duplicate=not created,
-        supported=True,
+    return process_event(
+        event_type=event_type,
+        event_id=event.get("id"),
+        event_ts=event.get("event_ts"),
+        payload=event.get("payload"),
     )

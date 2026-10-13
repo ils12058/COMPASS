@@ -195,3 +195,12 @@ future decisions.
 live-transcription permission plus separate transcript persistence. It adds private COMPASS artifact
 custody and assigned downloads. This ADR's granular V1 decisions and historical evidence retain their
 original meaning. Capture controls remain independent, and Daily Prebuilt/browser authority is unchanged.
+## Webhook provenance and anomaly boundary (Slice 1C.3)
+
+[Webhook security](../ecounseling-webhook-security.md) requires exact reserved-instance Start
+evidence before provider binding verification and keeps old rows unverified. Unsupported or
+conflicting provider evidence cannot change consent, storage selection, Stop intent, terminal
+custody or disposition. The existing explicit consent-withdrawal operations remain unchanged.
+The automatic recording webhook backstop is withheld because it is room-scoped; a verified
+targeted transcription backstop reserves at most one attempt and never treats its ACK as cessation.
+Unexpected or unverified activity remains durably available for urgent protected operator review.

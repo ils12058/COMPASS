@@ -232,3 +232,13 @@ rotation is supported; changing the live-copy namespace fails closed for ingesti
 disposition. Keep the original namespace configured while governed files exist. Reconcile any
 separately authorized move before switching configuration; do not use absence in a new bucket as
 evidence that the original copy was deleted.
+## Slice 1C.3 webhook rollout
+
+See [webhook security](ecounseling-webhook-security.md) for the validated event contracts,
+historical unverified bindings, bounded completion replay and operator evidence. Migration
+`0006_webhook_provenance` is additive and does not verify old captures/receipts. Pause media
+webhook ingress and drain media workers during rollout; all web/worker instances must honor
+the new binding-verification/quarantine fences before processing resumes. Background replay
+is separately opted in with `ECOUNSELING_WEBHOOK_REPLAY_ENABLED`; it does not enable capture
+reconciliation. Do not run an older worker against quarantined work during rollback. Retain
+operational evidence and follow the runbook's protected rollback procedure.

@@ -9,12 +9,6 @@ from django.db.migrations.executor import MigrationExecutor
 from django.utils import timezone
 
 from compass.audit.models import AuditEvent
-from compass.ecounseling.models import (
-    ECounselingConsent,
-    ECounselingMediaArtifact,
-    ECounselingMediaCapture,
-    ECounselingRoom,
-)
 from compass.service_catalog.models import Service
 from tests import test_ecounseling_media as media_fixtures
 from tests.test_ecounseling_media import setup_session
@@ -39,6 +33,12 @@ def test_additive_upgrade_reapplication_and_disposable_reversal_preserve_old_evi
     )
     executor = MigrationExecutor(connection)
     executor.migrate(BEFORE)
+    # Historical model classes match the downgraded schema as later slices add columns.
+    historical = executor.loader.project_state(BEFORE).apps
+    ECounselingRoom = historical.get_model("ecounseling", "ECounselingRoom")
+    ECounselingConsent = historical.get_model("ecounseling", "ECounselingConsent")
+    ECounselingMediaCapture = historical.get_model("ecounseling", "ECounselingMediaCapture")
+    ECounselingMediaArtifact = historical.get_model("ecounseling", "ECounselingMediaArtifact")
     now = timezone.now()
     try:
         for state in (
@@ -51,7 +51,7 @@ def test_additive_upgrade_reapplication_and_disposable_reversal_preserve_old_evi
             "READY",
         ):
             *_, appointment = setup_session()
-            room = ECounselingRoom.objects.get(appointment=appointment)
+            room = ECounselingRoom.objects.get(appointment_id=appointment.pk)
             for kind in ("RECORDING", "TRANSCRIPTION"):
                 capture = ECounselingMediaCapture.objects.create(
                     room=room,
