@@ -128,7 +128,7 @@ for (const path of [root, root + "/new", root + "/types", detail]) {
 for (const status of [403, 404, 500]) {
   const world = assessmentWorld({ detailFailure: { status, code: status === 500 ? "assessment_record_content_unavailable" : "permission_denied" } });
   await check(`Detail ${status} safe error and retry`, detail, world.options(), async (page) => {
-    await shown(page.getByRole("alert")); assert.ok(!(await text(page)).includes("PRIVATE-ERROR-SENTINEL"));
+    await shown(page.getByRole("main").getByRole("alert")); assert.ok(!(await text(page)).includes("PRIVATE-ERROR-SENTINEL"));
     assert.ok(!(await text(page)).includes(content.score));
     await shown(page.getByRole("button", { name: "Retry", exact: true }));
     world.detailFailure = null; await page.getByRole("button", { name: "Retry", exact: true }).click();
@@ -195,7 +195,7 @@ for (const status of [403, 404, 500]) {
 {
   const world = assessmentWorld({ saveFailure: { status: 422 } });
   await check("Create validation failure keeps draft and unsaved navigation guard", root + "/new", world.options(), async (page) => {
-    await fill(page); await save(page).click(); await shown(page.getByRole("alert"));
+    await fill(page); await save(page).click(); await shown(page.getByRole("main").getByRole("alert"));
     assert.equal(await page.getByLabel("Score / rating", { exact: true }).inputValue(), "88/100");
     let warned = false;
     page.once("dialog", async (dialog) => { warned = true; assert.match(dialog.message(), /not been saved/); await dialog.dismiss(); });
