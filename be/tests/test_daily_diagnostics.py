@@ -169,6 +169,150 @@ def test_no_active_hint_is_stop_specific_exact_and_bounded(monkeypatch):
 
 
 @pytest.mark.parametrize(
+    "method,info,error,expected",
+    [
+        (
+            "stop_recording",
+            "room does not have an active recording",
+            "invalid-request-error",
+            "NO_ACTIVE_RECORDING",
+        ),
+        (
+            "stop_recording",
+            "  ROOM DOES NOT HAVE AN ACTIVE RECORDING.  ",
+            "invalid-request-error",
+            "NO_ACTIVE_RECORDING",
+        ),
+        ("stop_recording", "no active recording", "invalid-request-error", "NO_ACTIVE_RECORDING"),
+        (
+            "stop_recording",
+            "no active recording found",
+            "invalid-request-error",
+            "NO_ACTIVE_RECORDING",
+        ),
+        (
+            "stop_recording",
+            "no active recording to stop",
+            "invalid-request-error",
+            "NO_ACTIVE_RECORDING",
+        ),
+        (
+            "stop_recording",
+            "no recording is active",
+            "invalid-request-error",
+            "NO_ACTIVE_RECORDING",
+        ),
+        (
+            "start_recording",
+            "room does not have an active recording",
+            "invalid-request-error",
+            "INVALID_REQUEST",
+        ),
+        (
+            "stop_transcription",
+            "room does not have an active recording",
+            "invalid-request-error",
+            "INVALID_REQUEST",
+        ),
+        (
+            "stop_recording",
+            "room does not have an active recording",
+            "different-error",
+            "INVALID_REQUEST",
+        ),
+        (
+            "stop_recording",
+            "room does not have an active recording yet",
+            "invalid-request-error",
+            "INVALID_REQUEST",
+        ),
+        (
+            "stop_recording",
+            "prefix room does not have an active recording",
+            "invalid-request-error",
+            "INVALID_REQUEST",
+        ),
+        (
+            "stop_recording",
+            "room does not have an active recording..",
+            "invalid-request-error",
+            "INVALID_REQUEST",
+        ),
+    ],
+)
+def test_confirmed_no_active_phrase_and_existing_hints_remain_exact_and_private(
+    method, info, error, expected, monkeypatch, caplog
+):
+    raw = json.dumps({"error": error, "info": info, "private": PRIVATE_TEXT}).encode()
+
+    def reject(*_args, **_kwargs):
+        raise HTTPError(PRIVATE_VALUES[1], 400, PRIVATE_TEXT, {}, BytesIO(raw))
+
+    monkeypatch.setattr("compass.integrations.daily.urlopen", reject)
+    args = {"room_name": "opaque-room"}
+    if method != "stop_recording":
+        args["instance_id"] = "opaque-instance"
+    with pytest.raises(DailyHTTPError) as caught:
+        getattr(daily_client(), method)(**args)
+    assert safe_daily_failure_code(caught.value).value == expected
+    assert_private_absent(visible_errors(caught.value, caplog), (*PRIVATE_VALUES, info))
+
+
+@pytest.mark.parametrize(
+    "raw", [b"{broken", b"[]", b'{"error":"invalid-request-error","info":null}']
+)
+def test_malformed_no_active_envelopes_fail_closed(raw, monkeypatch):
+    def reject(*_args, **_kwargs):
+        raise HTTPError("https://provider.invalid", 400, "synthetic", {}, BytesIO(raw))
+
+    monkeypatch.setattr("compass.integrations.daily.urlopen", reject)
+    with pytest.raises(DailyHTTPError) as caught:
+        daily_client().stop_recording(room_name="opaque-room")
+    assert caught.value.diagnostic_code == DailyFailureCode.INVALID_REQUEST
+
+
+@pytest.mark.django_db
+def test_observed_no_active_http_rejection_retains_stop_intent_and_safe_audit(monkeypatch, caplog):
+    from compass.audit.models import AuditEvent
+
+    with override_settings(DAILY_ENABLED=True):
+        counselor, appointment, fake = provision_recording()
+        capture = start_recording(
+            counselor=counselor,
+            appointment_id=appointment.pk,
+            context=context(counselor),
+            daily_client=fake,
+        )
+
+        def reject(*_args, **_kwargs):
+            raw = json.dumps(
+                {
+                    "error": "invalid-request-error",
+                    "info": "room does not have an active recording",
+                    "private": PRIVATE_TEXT,
+                }
+            ).encode()
+            raise HTTPError(PRIVATE_VALUES[1], 400, PRIVATE_TEXT, {}, BytesIO(raw))
+
+        monkeypatch.setattr("compass.integrations.daily.urlopen", reject)
+        with pytest.raises(ECounselingError) as caught:
+            stop_media_capture(
+                counselor=counselor,
+                appointment_id=appointment.pk,
+                kind="RECORDING",
+                context=context(counselor),
+                daily_client=daily_client(),
+            )
+    capture.refresh_from_db()
+    assert capture.status == "STOP_REQUESTED" and capture.stop_requested_at
+    assert capture.error_code == "STOP_PROVIDER_NO_ACTIVE_RECORDING"
+    assert capture.ended_at is None and capture.ready_at is None and len(fake.recording_starts) == 1
+    assert_private_absent(visible_errors(caught.value, caplog))
+    for event in AuditEvent.objects.filter(target_id=str(capture.pk)):
+        assert_private_absent(json.dumps(event.metadata))
+
+
+@pytest.mark.parametrize(
     ("error", "expected"),
     [
         (URLError(PRIVATE_TEXT), "TRANSPORT_FAILURE"),

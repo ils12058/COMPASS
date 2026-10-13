@@ -582,7 +582,8 @@ def test_storage_withdrawal_supersedes_pending_transcription_storage_start():
         kind=MediaCaptureKind.TRANSCRIPTION,
     )
     assert storage_consent.withdrawn_at is not None
-    assert capture.status == MediaCaptureStatus.STOPPED
+    assert capture.status == MediaCaptureStatus.STOP_REQUESTED
+    assert capture.stop_requested_at is not None and capture.ended_at is None
     assert not fake.transcription_starts
     assert fake.room_updates[-1][1] == {"enable_transcription_storage": False}
 
