@@ -31,13 +31,15 @@ export type ActiveECounselingCall = {
   otherTabActive: boolean;
   availabilityFor: (appointmentId: string) => JoinAvailability;
   join: (target: { appointmentId: string; participantName: string }) => Promise<void>;
-  // Leave, with the Counselor's warning when capture is still running.
+  // Leave, with either participant's warning when capture cessation is unresolved.
   requestLeave: () => void;
   // Ends the call without a warning, for sign-out and other confirmed endings.
   end: () => Promise<void>;
   audio: { blocked: boolean; resume: () => void };
   // The latest COMPASS session state for the call, and whether the last refresh confirmed it.
   canonical: { media: MediaWorkspaceState | undefined; current: boolean };
+  // Capture types only, also retained after resource denial; never protected session details.
+  captureWarnings: CaptureKind[];
   // The Counselor's protective stop, through the COMPASS backend.
   capture: {
     canStop: Record<CaptureKind, boolean>;

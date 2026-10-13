@@ -63,16 +63,16 @@ test("a V2 media permission that was never requested offers one request; V1 keep
 
 for (const state of ["PENDING", "PROCESSING", "FAILED", "DISPOSED"]) test(`artifact ${state} has a truthful outcome without a download action`, () => {
   const value = { artifact_status: state, artifact_available: false, artifact_disposed_at: null };
-  assert.equal(renderToStaticMarkup(h(MediaArtifactDownload, { appointmentId, kind: "RECORDING", state: value, canAccess: true })), "");
+  assert.equal(render(h(MediaArtifactDownload, { appointmentId, kind: "RECORDING", state: value, canAccess: true })), "");
   assert.match(artifactOutcome("RECORDING", value).text, state === "DISPOSED" ? /Deleted under an approved retention rule/ : state === "FAILED" ? /isn't available/ : /Preparing file…/);
 });
 
 test("stored files require the dedicated capability and never embed a URL", () => {
   const props = { appointmentId, kind: "TRANSCRIPTION", state: { artifact_status: "STORED", artifact_available: true, artifact_disposed_at: null } };
-  const html = renderToStaticMarkup(h(MediaArtifactDownload, { ...props, canAccess: true }));
+  const html = render(h(MediaArtifactDownload, { ...props, canAccess: true }));
   assert.match(html, /aria-label="Download transcript"/);
   assert.doesNotMatch(html, /href=|https?:\/\/(?!www\.w3\.org\/)/);
-  assert.equal(renderToStaticMarkup(h(MediaArtifactDownload, { ...props, canAccess: false })), "");
+  assert.equal(render(h(MediaArtifactDownload, { ...props, canAccess: false })), "");
   assert.equal(getECounselingAccess(user()).canAccessMediaAssigned, true);
   assert.equal(getECounselingAccess(user("STUDENT")).canAccessMediaAssigned, false);
   assert.equal(getECounselingAccess({ ...user(), capabilities: ["ecounseling.access_media_assigned"] }).canAccessMediaAssigned, false);
@@ -81,7 +81,7 @@ test("stored files require the dedicated capability and never embed a URL", () =
 test("session files describe the outcome, not the storage setting", () => {
   const stopped = workspace(); stopped.media.media_policy_version = 2;
   stopped.media.recording = { ...stopped.media.recording, capture_status: "READY", artifact_status: "STORED", artifact_available: true };
-  stopped.media.transcription = { ...stopped.media.transcription, capture_status: "STOPPED", storage_enabled: false };
+  stopped.media.transcription = { ...stopped.media.transcription, capture_status: "READY", storage_enabled: false };
   assert.deepEqual(sessionFileRows(stopped.media).map((row) => [row.label, row.outcome.text]), [["Recording", "Ready"], ["Transcript", "No transcript saved."]]);
   const saved = workspace(); saved.media.media_policy_version = 2;
   saved.media.transcription = { ...saved.media.transcription, capture_status: "READY", artifact_status: "STORED", artifact_available: true, storage_enabled: false };

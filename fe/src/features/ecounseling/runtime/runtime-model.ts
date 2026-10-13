@@ -94,15 +94,37 @@ export const joinBlockedCopy: Record<"other-session" | "other-tab", string> = {
   "other-tab": "Another COMPASS tab has an active E-Counseling session.",
 };
 
-const liveCapture: ReadonlySet<ECounselingCaptureStatus> = new Set([
-  ECounselingCaptureStatus.START_REQUESTED,
-  ECounselingCaptureStatus.ACTIVE,
-]);
+export type CaptureSafetyState = "starting" | "active" | "stopping" | "uncertain" | "terminal";
 
-// Capture the Counselor would leave running by leaving the call or signing out.
+// The workspace has no error certainty/cessation projection. ERROR therefore remains uncertain.
+// Until EC-01 changes the backend, transcription STOPPED can mean only a REST acknowledgment.
+export function captureSafetyState(kind: "recording" | "transcription", status: ECounselingCaptureStatus): CaptureSafetyState {
+  switch (status) {
+    case ECounselingCaptureStatus.START_REQUESTED: return "starting";
+    case ECounselingCaptureStatus.ACTIVE: return "active";
+    case ECounselingCaptureStatus.STOP_REQUESTED: return "stopping";
+    case ECounselingCaptureStatus.ERROR: return "uncertain";
+    case ECounselingCaptureStatus.STOPPED: return kind === "transcription" ? "uncertain" : "terminal";
+    case ECounselingCaptureStatus.NOT_STARTED:
+    case ECounselingCaptureStatus.READY: return "terminal";
+    default: return "uncertain";
+  }
+}
+
+// Only capture types, without names, references or other protected session details. Safe to retain
+// as a warning when access is lost; local call cleanup is never evidence of capture cessation.
 export function activeCaptureKinds(media: MediaWorkspaceState | undefined): Array<"recording" | "transcription"> {
   if (!media) return [];
-  return (["recording", "transcription"] as const).filter((kind) => liveCapture.has(media[kind].capture_status));
+  return (["recording", "transcription"] as const).filter((kind) => captureSafetyState(kind, media[kind].capture_status) !== "terminal");
+}
+
+export function captureCessationWarning(kinds: ReadonlyArray<"recording" | "transcription">, action: "leave" | "sign-out" | "access-loss"): string | null {
+  if (!kinds.length) return null;
+  const both = kinds.length > 1;
+  const subject = both ? "Recording and transcription have" : kinds[0] === "recording" ? "Recording has" : "Transcription has";
+  const capture = both ? "recording or transcription" : kinds[0];
+  const consequence = action === "leave" ? "Leaving the call may not stop" : action === "sign-out" ? "Signing out may not stop" : "Ending your local call may not stop";
+  return `${subject} not been confirmed as stopped. ${consequence} ${capture}. Please confirm ${both ? "their" : "its"} status.`;
 }
 
 // A decision the Student still has to make, from the COMPASS session state. The dock only points to

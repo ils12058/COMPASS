@@ -282,8 +282,8 @@ await check("leave-warning-during-capture", ePath, { fakeDaily: true, overrides:
   await shown(stage(page).getByText("Transcription on", { exact: true }));
   await tray(page).getByRole("button", { name: "Leave session", exact: true }).click();
   const dialog = page.getByRole("alertdialog", { name: "Leave this session?", exact: true });
-  assert.match(await dialog.innerText(), /Recording and transcription are still active\./);
-  assert.match(await dialog.innerText(), /doesn’t confirm that they have stopped/);
+  assert.match(await dialog.innerText(), /Recording and transcription have not been confirmed as stopped\./);
+  assert.match(await dialog.innerText(), /Leaving the call may not stop recording or transcription/);
   await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
   await shown(tray(page));
   await tray(page).getByRole("button", { name: "Leave session", exact: true }).click();
@@ -553,7 +553,7 @@ await check("v2-session-files-preparing", ePath, { overrides: liveSession({ reco
   await shown(page.getByRole("dialog").getByRole("heading", { name: "Private files", exact: true }));
 });
 
-await check("v2-no-transcript-saved-copy", ePath, { overrides: liveSession({ recording: "READY", transcription: "STOPPED", artifact: null }).overrides }, async (page) => {
+await check("v2-no-transcript-saved-copy", ePath, { overrides: liveSession({ recording: "READY", transcription: "READY", artifact: null }).overrides }, async (page) => {
   await shown(page.getByText("No transcript saved.", { exact: true }));
   assert.doesNotMatch(await page.locator("main").innerText(), /Transcript storage\s*Off/);
 });
