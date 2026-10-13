@@ -57,6 +57,10 @@ _DIAGNOSTIC_FIELDS = (
     "next_attempt_in_seconds",
     "custody_committed",
     "provider_failure_code",
+    # Capture reconciliation emits only a closed evidence category and two booleans.
+    "provider_evidence",
+    "terminal_evidence_confirmed",
+    "escalation_required",
     "truncated_field_count",
     # Exception class names only; messages are never logged.
     "error_type",

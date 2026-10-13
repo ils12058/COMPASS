@@ -159,6 +159,8 @@ class DailyClient:
         path: str,
         *,
         payload: dict[str, object] | None = None,
+        response_byte_limit: int | None = None,
+        timeout_seconds: float | None = None,
     ) -> dict[str, object]:
         body = (
             None if payload is None else json.dumps(payload, separators=(",", ":")).encode("utf-8")
@@ -174,8 +176,19 @@ class DailyClient:
             method=method,
         )
         try:
-            with urlopen(request, timeout=self.timeout_seconds) as response:
-                raw = response.read()
+            with urlopen(
+                request,
+                timeout=(
+                    self.timeout_seconds
+                    if timeout_seconds is None
+                    else min(self.timeout_seconds, timeout_seconds)
+                ),
+            ) as response:
+                raw = (
+                    response.read()
+                    if response_byte_limit is None
+                    else response.read(response_byte_limit + 1)
+                )
         except HTTPError as exc:
             raw = b""
             recording_stop = method == "POST" and path.endswith("/recordings/stop")
@@ -206,6 +219,9 @@ class DailyClient:
             _log_request_failure(method, safe_daily_failure_code(error))
             raise error from None
 
+        if response_byte_limit is not None and len(raw) > response_byte_limit:
+            _log_request_failure(method, DailyFailureCode.INVALID_RESPONSE)
+            raise DailyInvalidResponse("Daily metadata exceeded the response limit.")
         try:
             decoded = json.loads(raw)
         except (UnicodeDecodeError, json.JSONDecodeError, TypeError):
@@ -314,6 +330,28 @@ class DailyClient:
 
     def get_recording(self, *, artifact_id: str) -> dict[str, object]:
         return self._request("GET", f"/recordings/{quote(artifact_id, safe='')}")
+
+    def get_capture_metadata(
+        self, *, kind: str, artifact_id: str, timeout_seconds: float
+    ) -> dict[str, object]:
+        """Only a bound-ID metadata GET, with a small body and timeout; no list/link/media API."""
+        if (
+            not isinstance(kind, str)
+            or kind not in {"RECORDING", "TRANSCRIPTION"}
+            or not isinstance(artifact_id, str)
+            or not artifact_id
+            or len(artifact_id) > 160
+            or type(timeout_seconds) not in (int, float)
+            or not 0 < timeout_seconds <= 5
+        ):
+            raise DailyInvalidResponse("Capture metadata request is invalid.")
+        collection = "recordings" if kind == "RECORDING" else "transcript"
+        return self._request(
+            "GET",
+            f"/{collection}/{quote(artifact_id, safe='')}",
+            response_byte_limit=64 * 1024,
+            timeout_seconds=timeout_seconds,
+        )
 
     def recording_access_link(self, *, artifact_id: str) -> dict[str, object]:
         return self._request(

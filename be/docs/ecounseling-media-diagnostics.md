@@ -150,4 +150,6 @@ codes; no capture reset, artifact deletion, consent change, migration or storage
 needed. Historical `PROVIDER_REJECTED`, `PROVIDER_STATE_UNCERTAIN`, `STOP_PROVIDER_FAILED`,
 `PROVIDER_ERROR`, `CONSENT_CLEANUP_UNCERTAIN` and `CUSTODY_OR_CLEANUP_UNVERIFIED` remain interpretable
 as generic evidence, with no backfill. Slice 1C.1 addresses EC-01/05/08 and the exact no-active phrase;
-EC-02 reconciliation and EC-04/06/09 identity/anomaly work remain separate follow-up slices.
+EC-02 is implemented by [Slice 1C.2 capture reconciliation](ecounseling-capture-reconciliation.md),
+with its own bounded schedule and durable operator escalation. EC-04/06/09 identity/anomaly work
+remains Slice 1C.3.
