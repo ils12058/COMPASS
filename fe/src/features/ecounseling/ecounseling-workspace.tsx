@@ -24,6 +24,9 @@ import { ECounselingHelp } from "@/features/ecounseling/session-help";
 import { SessionFiles } from "@/features/ecounseling/session-files";
 import { LayoutPresetControl, phoneBleed, sessionGrid, sessionStageClass, useWideWorkspace, type LayoutPreset } from "@/features/ecounseling/session-layout";
 import { StudentConsentPanel } from "@/features/ecounseling/student-consent-panel";
+import { useECounselingResourceDenial } from "@/features/ecounseling/use-ecounseling-resource-access";
+import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { canShowLastKnownData, safeQueryData } from "@/features/freshness/query-freshness";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { GuidanceContextualMessages, GuidanceMessagesTrigger } from "@/features/guidance-messages/guidance-contextual-messages";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -91,8 +94,8 @@ function SessionDetails({ appointment, routine, media }: {
 }) {
   const captured = media
     ? ([
-        ["Recording", media.recording.capture_status, media.recording.artifact_disposed_at],
-        ["Transcription", media.transcription.capture_status, media.transcription.artifact_disposed_at],
+        ["Recording", media.recording.capture_status, media.recording.artifact_disposed_at, "recording"],
+        ["Transcription", media.transcription.capture_status, media.transcription.artifact_disposed_at, "transcription"],
       ] as const).filter(([, status]) => status !== ECounselingCaptureStatus.NOT_STARTED)
     : [];
   return (
@@ -110,10 +113,10 @@ function SessionDetails({ appointment, routine, media }: {
             </dd>
           </>
         ) : null}
-        {captured.map(([label, status, disposedAt]) => (
+        {captured.map(([label, status, disposedAt, kind]) => (
           <div key={label} className="contents">
             <dt className="text-muted">{label}</dt>
-            <dd className="text-ink">{disposedAt ? "Deleted under an approved retention rule" : captureStatusLabel(status)}</dd>
+            <dd className="text-ink">{disposedAt ? "Deleted under an approved retention rule" : captureStatusLabel(status, kind)}</dd>
           </div>
         ))}
       </dl>
@@ -223,18 +226,25 @@ function usePagePolling(appointmentId: string) {
 }
 
 function StudentWorkspace({ appointmentId, access }: { appointmentId: string; access: ECounselingAccess }) {
+  const denial = useECounselingResourceDenial(appointmentId);
   const refreshInterval = usePagePolling(appointmentId);
   const workspace = useECounselingGetMyWorkspace(appointmentId, { query: {
     retry: false,
+    enabled: !denial,
     refetchInterval: (query) => refreshInterval(query.state.data?.data.media),
   } });
-  const data = workspace.data?.data;
+  const data = denial ? undefined : safeQueryData(workspace)?.data;
   useECounselingBoundaryRefresh(appointmentId, data?.provider_readiness, workspace.refetch);
 
   if (!data) {
-    return workspace.isPending ? <WorkspaceSkeleton /> : <WorkspaceLoadError error={workspace.error} retry={() => void workspace.refetch()} />;
+    return !denial && workspace.isPending ? <WorkspaceSkeleton /> : <WorkspaceLoadError error={denial?.error ?? workspace.error} retry={() => void workspace.refetch()} />;
   }
-  return <StudentSession appointmentId={appointmentId} access={access} data={data} />;
+  return (
+    <>
+      {canShowLastKnownData(workspace) ? <RefreshFailureNotice onRetry={() => void workspace.refetch()} retrying={workspace.isFetching} /> : null}
+      <StudentSession appointmentId={appointmentId} access={access} data={data} />
+    </>
+  );
 }
 
 function StudentSession({ appointmentId, access, data }: {
@@ -282,24 +292,29 @@ function StudentSession({ appointmentId, access, data }: {
 }
 
 function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; access: ECounselingAccess }) {
+  const denial = useECounselingResourceDenial(appointmentId);
   const refreshInterval = usePagePolling(appointmentId);
   const workspace = useECounselingGetAssignedWorkspace(appointmentId, { query: {
     retry: false,
+    enabled: !denial,
     refetchInterval: (query) => refreshInterval(query.state.data?.data.media),
   } });
-  const data = workspace.data?.data;
+  const data = denial ? undefined : safeQueryData(workspace)?.data;
   useECounselingBoundaryRefresh(appointmentId, data?.provider_readiness, workspace.refetch);
 
   if (!data) {
-    return workspace.isPending ? <WorkspaceSkeleton /> : <WorkspaceLoadError error={workspace.error} retry={() => void workspace.refetch()} />;
+    return !denial && workspace.isPending ? <WorkspaceSkeleton /> : <WorkspaceLoadError error={denial?.error ?? workspace.error} retry={() => void workspace.refetch()} />;
   }
   return (
-    <CounselorSession
-      appointmentId={appointmentId}
-      access={access}
-      data={data}
-      sessionStateCurrent={!workspace.isRefetchError}
-    />
+    <>
+      {canShowLastKnownData(workspace) ? <RefreshFailureNotice onRetry={() => void workspace.refetch()} retrying={workspace.isFetching} /> : null}
+      <CounselorSession
+        appointmentId={appointmentId}
+        access={access}
+        data={data}
+        sessionStateCurrent={!workspace.isRefetchError}
+      />
+    </>
   );
 }
 
@@ -352,6 +367,7 @@ function StudentInformation({ appointmentId, available, defaultOpen }: { appoint
   const context = useCounselingContextGetOverview(CounselingContextAnchorType.APPOINTMENT, appointmentId, {
     query: { enabled: available, retry: false },
   });
+  const data = safeQueryData(context)?.data;
   if (!available) {
     return (
       <DisclosureSection title="Student information" status="Unavailable right now">
@@ -359,22 +375,25 @@ function StudentInformation({ appointmentId, available, defaultOpen }: { appoint
       </DisclosureSection>
     );
   }
-  const status = context.isPending ? "Loading…" : context.isError && !context.data ? "Couldn’t load" : null;
+  const status = context.isPending ? "Loading…" : context.isError && !data ? "Couldn’t load" : null;
   return (
     <DisclosureSection title="Student information" status={status} defaultOpen={defaultOpen}>
       {context.isPending ? (
         <div aria-busy="true"><span className="sr-only">Loading student information…</span><Skeleton className="h-10 w-full" /><Skeleton className="mt-3 h-40 w-full" /></div>
-      ) : !context.data?.data ? (
+      ) : !data ? (
         <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Student information couldn’t be loaded. Try again.</Notice>
       ) : (
-        <CounselingContextPanel
-          anchorType={CounselingContextAnchorType.APPOINTMENT}
-          anchorId={appointmentId}
-          overview={context.data.data}
-          access={counselingAccess}
-          showHeading={false}
-          onPublished={() => void queryClient.invalidateQueries({ queryKey: getCounselingContextGetOverviewQueryKey(CounselingContextAnchorType.APPOINTMENT, appointmentId) })}
-        />
+        <>
+          {canShowLastKnownData(context) ? <RefreshFailureNotice onRetry={() => void context.refetch()} retrying={context.isFetching} /> : null}
+          <CounselingContextPanel
+            anchorType={CounselingContextAnchorType.APPOINTMENT}
+            anchorId={appointmentId}
+            overview={data}
+            access={counselingAccess}
+            showHeading={false}
+            onPublished={() => void queryClient.invalidateQueries({ queryKey: getCounselingContextGetOverviewQueryKey(CounselingContextAnchorType.APPOINTMENT, appointmentId) })}
+          />
+        </>
       )}
     </DisclosureSection>
   );

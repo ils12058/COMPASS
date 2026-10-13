@@ -2,12 +2,17 @@
 
 import { Download } from "lucide-react";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { eCounselingAccessAssignedMedia } from "@/lib/api/generated/e-counseling/e-counseling";
 import type { ECounselingMediaKind, RecordingWorkspaceState } from "@/lib/api/generated/model";
 
 import { ecounselingErrorMessage } from "./ecounseling-shared";
+import { ecounselingResourceAccess } from "./ecounseling-resource-access";
+import { useECounselingResourceDenial } from "./use-ecounseling-resource-access";
+import { isSessionEndedError } from "@/features/freshness/query-freshness";
+import { requestSessionRevalidation } from "@/lib/auth/session-revalidation";
 
 type ArtifactState = Pick<RecordingWorkspaceState, "artifact_status" | "artifact_available" | "artifact_disposed_at">;
 
@@ -34,14 +39,18 @@ export function MediaArtifactDownload({ appointmentId, kind, state, canAccess }:
 }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const resourceAccess = ecounselingResourceAccess(useQueryClient());
+  const denial = useECounselingResourceDenial(appointmentId);
   const subject = kind === "RECORDING" ? "recording" : "transcript";
 
   async function download() {
-    if (pending) return;
+    if (pending || resourceAccess.getDenial(appointmentId)) return;
+    const epoch = resourceAccess.epoch(appointmentId);
     setPending(true);
     setError(null);
     try {
       const result = await eCounselingAccessAssignedMedia(appointmentId, kind, { cache: "no-store" });
+      resourceAccess.assertAuthorized(appointmentId, epoch);
       const link = document.createElement("a");
       link.href = result.data.url;
       link.target = "_blank";
@@ -50,13 +59,15 @@ export function MediaArtifactDownload({ appointmentId, kind, state, canAccess }:
       link.click();
       link.remove();
     } catch (caught) {
+      resourceAccess.requestFailed(caught);
+      if (isSessionEndedError(caught)) requestSessionRevalidation("session");
       setError(ecounselingErrorMessage(caught, "The file isn't available right now. Try again."));
     } finally {
       setPending(false);
     }
   }
 
-  if (!(state.artifact_status === "STORED" && state.artifact_available && !state.artifact_disposed_at && canAccess)) return null;
+  if (denial || !(state.artifact_status === "STORED" && state.artifact_available && !state.artifact_disposed_at && canAccess)) return null;
   return (
     <div className="flex flex-col items-end gap-1">
       <Button variant="secondary" className="min-h-10" disabled={pending} aria-label={`Download ${subject}`} onClick={() => void download()}>

@@ -110,10 +110,10 @@ test("governed media controls keep specific blockers and failed states visible a
   const html = render(h(CounselorMediaProbe, { appointmentId, access: { canManageMediaAssigned: true }, workspace: data, inCall: true, sessionStateCurrent: true }), (client) => {
     client.setQueryData(getECounselingListAssignedConsentsQueryKey(appointmentId), { data: { items: consents("DENIED") }, status: 200, headers: {} });
   });
-  assert.match(html, /Needs attention/);
+  assert.match(html, /Status uncertain\. Stopping has not been confirmed/);
   assert.match(html, /Recording permission declined/);
   assert.doesNotMatch(html, /aria-label="Start recording"/, "A capture needing attention offers no start");
-  assert.match(html, /<button type="button" disabled=""(?:(?!<\/button>).)*>Record<\/span>/);
+  assert.match(html, /<button type="button" aria-label="Recording status uncertain" disabled=""(?:(?!<\/button>).)*>Status uncertain<\/span>/);
 });
 
 test("starting capture fails closed when the latest session state couldn’t be confirmed, while stop stays available", () => {

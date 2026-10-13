@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -10,6 +10,9 @@ import { useRemoteAudioPlayback } from "@/features/ecounseling/call/participant-
 import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
 import { ecounselingErrorMessage, isLiveOrTransitionalCapture, SESSION_REFRESH_MS } from "@/features/ecounseling/ecounseling-shared";
 import { useCaptureStop } from "@/features/ecounseling/use-capture-stop";
+import { ecounselingResourceAccess, type ResourceDenial } from "@/features/ecounseling/ecounseling-resource-access";
+import { useECounselingResourceDenial } from "@/features/ecounseling/use-ecounseling-resource-access";
+import { safeQueryData, shouldHideProtectedData } from "@/features/freshness/query-freshness";
 import {
   eCounselingCreateJoinCredential,
   getECounselingGetAssignedWorkspaceQueryKey,
@@ -22,7 +25,7 @@ import type { UserSummary } from "@/lib/api/generated/model";
 import { ActiveECounselingCallContext, type ActiveECounselingCall, type CallControls } from "./active-call-context";
 import { CrossTabCallCoordinator } from "./cross-tab-call-coordinator";
 import { GlobalCallDock } from "./global-call-dock";
-import { activeCaptureKinds, isLiveRuntime, joinAvailability, runtimeState } from "./runtime-model";
+import { activeCaptureKinds, captureCessationWarning, isLiveRuntime, joinAvailability, runtimeState } from "./runtime-model";
 
 // The portal's authentication as PortalBoundary knows it. Only "signed-out" (the server answered that
 // the session is gone) ends the call; "unverified" (the session couldn't be checked) keeps a working
@@ -31,27 +34,17 @@ export type PortalAuthState = "pending" | "confirmed" | "unverified" | "signed-o
 
 type Activation = { appointmentId: string; participantName: string };
 
-function leaveWarning(active: ReadonlyArray<"recording" | "transcription">) {
-  const both = active.length > 1;
-  const subject = both ? "Recording and transcription are" : active[0] === "recording" ? "Recording is" : "Transcription is";
-  return (
-    <>
-      <p>{subject} still active.</p>
-      <p>Leaving the call doesn’t confirm that {both ? "they have" : "it has"} stopped. Stop {both ? "them" : "it"} first if {both ? "they’re" : "it’s"} no longer needed.</p>
-    </>
-  );
-}
-
 // The one E-Counseling call of an authenticated portal session (ADR-094). It owns the Daily Call
 // Object for as long as the portal is open, so moving between portal pages never leaves or rejoins
 // the call; the session page's full stage and the call dock are two views of it. It also owns:
 //   - the session state COMPASS reports for the call, refreshed while the call lasts, through the
 //     same generated query (and cache) the session page uses;
 //   - the one element that plays the other person's audio;
-//   - the leave warning while the Counselor's capture is running, and the protective stop;
+//   - either participant's unresolved capture warning, and the Counselor's protective stop;
 //   - a tab's advisory lease, so a second COMPASS tab doesn't start another call.
 // It ends the call on Leave, when the call itself ends, on sign-out, when the server confirms the
-// session is gone, and when the portal unmounts. Nothing restores a call after a reload.
+// session is gone, on confirmed resource denial, and when the portal unmounts. Nothing restores a
+// call after a reload or access recovery.
 export function ActiveECounselingRuntimeProvider({
   user,
   authState,
@@ -63,6 +56,8 @@ export function ActiveECounselingRuntimeProvider({
   children: ReactNode;
 }) {
   const queryClient = useQueryClient();
+  const resourceAccess = ecounselingResourceAccess(queryClient);
+  const joinAttempt = useRef(0);
   const [session] = useState(() => new DailyCallSession());
   const [coordinator] = useState(() => new CrossTabCallCoordinator());
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
@@ -72,13 +67,15 @@ export function ActiveECounselingRuntimeProvider({
   const [stageCounts, setStageCounts] = useState<Record<string, number>>({});
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [endedNotice, setEndedNotice] = useState<string | null>(null);
+  const [dismissedDenial, setDismissedDenial] = useState<ResourceDenial | null>(null);
+  const appointmentId = activation?.appointmentId ?? null;
+  const denial = useECounselingResourceDenial(appointmentId);
   const access = user ? getECounselingAccess(user) : null;
   const role = access?.isStudent ? "STUDENT" : access?.isCounselor ? "COUNSELOR" : null;
   // A session the server confirmed is gone has no call, whatever was active a moment ago.
-  const activated = activation !== null && authState !== "signed-out";
+  const activated = activation !== null && authState !== "signed-out" && !denial;
   const state = runtimeState({ activated, claiming, phase: snapshot.phase });
   const live = isLiveRuntime(state);
-  const appointmentId = activation?.appointmentId ?? null;
 
   // COMPASS's own view of the call's session, kept fresh while the call lasts, wherever the person
   // is in the portal. The session page reads the same query, so both show one truth.
@@ -94,15 +91,16 @@ export function ActiveECounselingRuntimeProvider({
     refetchInterval: live ? SESSION_REFRESH_MS : false,
   } });
   const observed = role === "STUDENT" ? studentSession : counselorSession;
-  const media = role === "STUDENT" ? studentSession.data?.data.media : counselorSession.data?.data.media;
-  const sessionParticipant = role === "STUDENT" ? studentSession.data?.data.counselor.display_name : counselorSession.data?.data.student.display_name;
-  const canonicalCurrent = observed.isSuccess;
+  const protectedUnavailable = Boolean(denial) || shouldHideProtectedData(observed.error);
+  const media = protectedUnavailable ? undefined : role === "STUDENT" ? safeQueryData(studentSession)?.data.media : safeQueryData(counselorSession)?.data.media;
+  const sessionParticipant = protectedUnavailable ? null : role === "STUDENT" ? safeQueryData(studentSession)?.data.counselor.display_name : safeQueryData(counselorSession)?.data.student.display_name;
+  const canonicalCurrent = !protectedUnavailable && observed.isSuccess;
 
   const refreshSession = useCallback(async () => {
-    if (!appointmentId || !role) return;
+    if (!appointmentId || !role || resourceAccess.getDenial(appointmentId)) return;
     const queryKey = role === "STUDENT" ? getECounselingGetMyWorkspaceQueryKey(appointmentId) : getECounselingGetAssignedWorkspaceQueryKey(appointmentId);
     await queryClient.invalidateQueries({ queryKey });
-  }, [appointmentId, queryClient, role]);
+  }, [appointmentId, queryClient, resourceAccess, role]);
 
   // Daily's recording and transcription events only ask COMPASS to re-read the session.
   useEffect(() => {
@@ -113,8 +111,8 @@ export function ActiveECounselingRuntimeProvider({
   const canManageMedia = Boolean(access?.canManageMediaAssigned);
   // Students never get a stop: capture is the assigned Counselor's governed action.
   const canStop = {
-    recording: canManageMedia && Boolean(media && isLiveOrTransitionalCapture(media.recording.capture_status)),
-    transcription: canManageMedia && Boolean(media && isLiveOrTransitionalCapture(media.transcription.capture_status)),
+    recording: !protectedUnavailable && canManageMedia && Boolean(media && isLiveOrTransitionalCapture(media.recording.capture_status)),
+    transcription: !protectedUnavailable && canManageMedia && Boolean(media && isLiveOrTransitionalCapture(media.transcription.capture_status)),
   };
 
   const { ref: audioRef, blocked: audioBlocked, resume: resumeAudio } = useRemoteAudioPlayback(live ? snapshot.remote?.audio.track ?? null : null, snapshot.devices.speaker);
@@ -127,6 +125,7 @@ export function ActiveECounselingRuntimeProvider({
     return () => {
       window.removeEventListener("pagehide", release);
       coordinator.stop();
+      joinAttempt.current += 1;
       void session.dispose();
     };
   }, [coordinator, session]);
@@ -134,9 +133,28 @@ export function ActiveECounselingRuntimeProvider({
   // A session the server confirmed is gone ends the call before the portal clears its data.
   useEffect(() => {
     if (authState !== "signed-out") return;
+    joinAttempt.current += 1;
     coordinator.release();
     void session.dispose();
   }, [authState, coordinator, session]);
+
+  // A resource denial is independent of the account session. dispose() immediately supersedes
+  // pending credentials/Daily callbacks and clears local tracks; destruction finishes asynchronously.
+  useEffect(() => {
+    if (!denial) return;
+    joinAttempt.current += 1;
+    coordinator.release();
+    void session.dispose();
+  }, [coordinator, denial, session]);
+
+  useEffect(() => resourceAccess.subscribe(() => {
+    if (!resourceAccess.getDenial(appointmentId)) return;
+    joinAttempt.current += 1;
+    coordinator.release();
+    setLeaveOpen(false);
+    setActivation((current) => current ? { ...current, participantName: "Your session" } : null);
+    void session.dispose();
+  }), [appointmentId, coordinator, resourceAccess, session]);
 
   // The tab's lease follows the call; a call that ended or never connected releases it.
   useEffect(() => {
@@ -165,11 +183,19 @@ export function ActiveECounselingRuntimeProvider({
   }
 
   const join = useCallback(async (target: Activation) => {
+    if (authState === "signed-out" || resourceAccess.getDenial(target.appointmentId)) return;
     if (isLiveRuntime(runtimeState({ activated, claiming, phase: session.getSnapshot().phase }))) return;
+    const attempt = ++joinAttempt.current;
+    const epoch = resourceAccess.epoch(target.appointmentId);
     setEndedNotice(null);
     setActivation(target);
     setClaiming(true);
     const acquired = await coordinator.acquire();
+    if (attempt !== joinAttempt.current || resourceAccess.getDenial(target.appointmentId)) {
+      if (acquired) coordinator.release();
+      setClaiming(false);
+      return;
+    }
     setClaiming(false);
     if (!acquired) {
       setActivation(null);
@@ -178,28 +204,37 @@ export function ActiveECounselingRuntimeProvider({
     const studentRole = role === "STUDENT";
     await session.join({
       fetchCredential: async () => {
+        resourceAccess.assertAuthorized(target.appointmentId, epoch);
         // The credential is fetched without caching and used once by this join; it never enters
         // query caches, browser storage, the URL, logs or the other tabs.
-        const result = await eCounselingCreateJoinCredential(target.appointmentId, { cache: "no-store" });
+        let result;
+        try {
+          result = await eCounselingCreateJoinCredential(target.appointmentId, { cache: "no-store" });
+        } catch (error) {
+          resourceAccess.requestFailed(error);
+          throw error;
+        }
+        resourceAccess.assertAuthorized(target.appointmentId, epoch);
         return { roomUrl: result.data.room_url, token: result.data.meeting_token, expiresAt: result.data.token_expires_at };
       },
       describeCredentialError: (error) => ecounselingErrorMessage(error, "Couldn’t open the video session. Try again."),
     });
     const after = session.getSnapshot();
     if (!activeCallPhases.has(after.phase)) coordinator.release();
-    if (after.failure?.kind === "credential") {
+    if (after.failure?.kind === "credential" && !resourceAccess.getDenial(target.appointmentId)) {
       const queryKey = studentRole ? getECounselingGetMyWorkspaceQueryKey(target.appointmentId) : getECounselingGetAssignedWorkspaceQueryKey(target.appointmentId);
       void queryClient.invalidateQueries({ queryKey });
     }
-  }, [activated, claiming, coordinator, queryClient, role, session]);
+  }, [activated, authState, claiming, coordinator, queryClient, resourceAccess, role, session]);
 
-  const activeCapture = role === "COUNSELOR" ? activeCaptureKinds(media) : [];
+  const activeCapture = denial?.captureKinds ?? (media ? activeCaptureKinds(media) : resourceAccess.captureWarnings(appointmentId));
   const requestLeave = useCallback(() => {
     if (activeCapture.length) setLeaveOpen(true);
     else void session.leave();
   }, [activeCapture.length, session]);
 
   const end = useCallback(async () => {
+    joinAttempt.current += 1;
     coordinator.release();
     await session.dispose();
   }, [coordinator, session]);
@@ -225,7 +260,7 @@ export function ActiveECounselingRuntimeProvider({
     state,
     live,
     appointmentId,
-    participantName: sessionParticipant ?? activation?.participantName ?? null,
+    participantName: protectedUnavailable ? null : sessionParticipant ?? activation?.participantName ?? null,
     call,
     otherTabActive,
     availabilityFor: (target) => joinAvailability({ appointmentId: target, activeAppointmentId: appointmentId, state, otherTabActive }),
@@ -234,10 +269,14 @@ export function ActiveECounselingRuntimeProvider({
     end,
     audio: { blocked: audioBlocked, resume: () => void resumeAudio() },
     canonical: { media, current: canonicalCurrent },
+    captureWarnings: activeCapture,
     capture: { canStop, stopping: capture.stopping, error: capture.error, stop: capture.stop },
     presentStage,
   };
   const stagePresented = appointmentId !== null && (stageCounts[appointmentId] ?? 0) > 0;
+  const denialNotice = denial && dismissedDenial !== denial
+    ? `This E-Counseling session is unavailable. ${captureCessationWarning(activeCapture, "access-loss") ?? ""}`.trim()
+    : null;
   // The full stage already shows how the call ended; the dock area doesn't repeat it later.
   if (stagePresented && endedNotice) setEndedNotice(null);
 
@@ -246,9 +285,13 @@ export function ActiveECounselingRuntimeProvider({
       {children}
       {/* The one element that plays the other person, mounted for the whole portal session. */}
       <audio ref={audioRef} autoPlay className="hidden" />
-      <GlobalCallDock hidden={stagePresented} endedNotice={stagePresented ? null : endedNotice} onDismissEnded={() => setEndedNotice(null)} />
+      <GlobalCallDock
+        hidden={!denial && stagePresented}
+        endedNotice={denial ? denialNotice : stagePresented ? null : endedNotice}
+        onDismissEnded={() => { setEndedNotice(null); setDismissedDenial(denial); }}
+      />
       <ConsequentialActionDialog
-        open={leaveOpen}
+        open={leaveOpen && !denial}
         title="Leave this session?"
         confirmLabel="Leave session"
         pendingLabel="Leaving…"
@@ -261,7 +304,7 @@ export function ActiveECounselingRuntimeProvider({
           void session.leave();
         }}
       >
-        {leaveWarning(activeCapture)}
+        <p>{captureCessationWarning(activeCapture, "leave")}</p>
       </ConsequentialActionDialog>
     </ActiveECounselingCallContext.Provider>
   );

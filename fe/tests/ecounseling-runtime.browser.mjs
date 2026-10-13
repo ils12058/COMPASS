@@ -194,7 +194,7 @@ async function openRoutineFromSession(page) {
     await shown(call.getByText("Recording", { exact: true }));
     await call.getByRole("button", { name: "Leave session", exact: true }).click();
     const warning = page.getByRole("alertdialog", { name: "Leave this session?", exact: true });
-    assert.match(await warning.innerText(), /Recording is still active\.[\s\S]*doesn’t confirm that it has stopped/);
+    assert.match(await warning.innerText(), /Recording has not been confirmed as stopped\.[\s\S]*Leaving the call may not stop recording/);
     await warning.getByRole("button", { name: "Leave session", exact: true }).click();
     await hidden(call);
     assert.equal(await fakeCount(page, "destroy"), 1);
@@ -306,7 +306,7 @@ async function openRoutineFromSession(page) {
     await page.getByRole("button", { name: /Account menu|Example User/ }).first().click();
     await page.getByRole("menuitem", { name: "Sign out", exact: true }).click();
     const confirm = page.getByRole("alertdialog", { name: "Sign out and end this call?", exact: true });
-    assert.match(await confirm.innerText(), /Signing out ends your E-Counseling call\.[\s\S]*Recording is still[\s\S]*active\. Ending your call doesn’t confirm that it has stopped\./);
+    assert.match(await confirm.innerText(), /Signing out ends your E-Counseling call\.[\s\S]*Recording has not been confirmed as stopped\.[\s\S]*Signing out may not stop recording/);
     await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
     await shown(dock(page));
     assert.equal(await fakeCount(page, "destroy"), 0, "Cancelling keeps the call");

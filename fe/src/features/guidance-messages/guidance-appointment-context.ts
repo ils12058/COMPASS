@@ -106,6 +106,7 @@ export function useSendAppointmentMessage(
 ) {
   const queryClient = useQueryClient();
   return useMutation({
+    meta: { ecounselingAppointmentId: appointmentId },
     mutationFn: (intent: SendIntent) =>
       guidanceMessagesOpenCounselingThread(appointmentId, {
         client_message_id: intent.clientMessageId,

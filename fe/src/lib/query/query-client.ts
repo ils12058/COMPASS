@@ -1,4 +1,5 @@
 import { MutationCache, QueryCache, QueryClient } from "@tanstack/react-query";
+import { ecounselingResourceAccess } from "@/features/ecounseling/ecounseling-resource-access";
 
 import { isAuthorityError, isMutationAuthorityError, isSessionEndedError } from "@/features/freshness/query-freshness";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
@@ -37,13 +38,16 @@ export function createQueryClient() {
       },
     }),
     mutationCache: new MutationCache({
-      onMutate(_variables, mutation) {
+      onMutate(variables, mutation) {
         ownership.mutationStarted(mutation);
+        ecounselingResourceAccess(client).mutationStarted(mutation, variables);
       },
       onSuccess(_data, _variables, _onMutateResult, mutation) {
         ownership.assertMutationOwner(mutation);
+        ecounselingResourceAccess(client).assertMutationOwner(mutation);
       },
       onError(error) {
+        ecounselingResourceAccess(client).requestFailed(error);
         if (isMaintenanceRefusal(error)) refreshMaintenanceStatus();
         else if (isSessionEndedError(error)) requestSessionRevalidation("session");
         else if (isMutationAuthorityError(error)) requestSessionRevalidation("authority");
@@ -70,5 +74,6 @@ export function createQueryClient() {
     },
   });
   ownership.attach(client);
+  ecounselingResourceAccess(client);
   return client;
 }

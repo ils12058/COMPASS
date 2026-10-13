@@ -66,7 +66,7 @@ test("the Student's cue and the Counselor's notices come from COMPASS session st
   assert.equal(consentEndedNotice(media("READY")), null);
   assert.deepEqual(activeCaptureKinds(media("ACTIVE")), ["recording", "transcription"]);
   assert.deepEqual(activeCaptureKinds(media("START_REQUESTED")), ["recording", "transcription"]);
-  assert.deepEqual(activeCaptureKinds(media("STOP_REQUESTED")), []);
+  assert.deepEqual(activeCaptureKinds(media("STOP_REQUESTED")), ["recording", "transcription"]);
 });
 
 // An in-memory BroadcastChannel and clock shared by simulated tabs.

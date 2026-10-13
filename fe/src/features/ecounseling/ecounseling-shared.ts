@@ -1,5 +1,6 @@
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
+import { activeCaptureKinds, captureSafetyState } from "./runtime/runtime-model";
 import {
   ECounselingCaptureStatus,
   ECounselingConsentDecision,
@@ -68,7 +69,8 @@ const captureStatusLabels: Record<ECounselingCaptureStatus, string> = {
   [ECounselingCaptureStatus.ERROR]: "Needs attention",
 };
 
-export function captureStatusLabel(status: ECounselingCaptureStatus): string {
+export function captureStatusLabel(status: ECounselingCaptureStatus, kind?: "recording" | "transcription"): string {
+  if (kind && captureSafetyState(kind, status) === "uncertain") return "Status uncertain";
   return captureStatusLabels[status];
 }
 
@@ -105,5 +107,5 @@ export function formatECounselingDateTime(value: string | null | undefined): str
 export const SESSION_REFRESH_MS = 7000;
 
 export function sessionRefreshInterval(inCall: boolean, media: MediaWorkspaceState | undefined): number | false {
-  return inCall || hasLiveOrTransitionalMedia(media) || hasPreparingMediaFile(media) ? SESSION_REFRESH_MS : false;
+  return inCall || activeCaptureKinds(media).length > 0 || hasPreparingMediaFile(media) ? SESSION_REFRESH_MS : false;
 }

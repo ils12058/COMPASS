@@ -34,10 +34,11 @@ function transcriptOutcome(media: MediaWorkspaceState): Outcome | null {
   if (media.media_policy_version !== 2) {
     if (transcription.artifact_disposed_at) return deleted;
     if (transcription.capture_status === ECounselingCaptureStatus.READY) return { text: "Transcription completed. The transcript was stored by the video service.", short: "completed" };
-    return transcription.capture_status === ECounselingCaptureStatus.STOPPED ? { text: "Transcription completed. No transcript was stored.", short: "not stored" } : null;
+    return transcription.capture_status === ECounselingCaptureStatus.STOPPED ? { text: "Transcription stop has not been confirmed.", short: "stop unconfirmed" } : null;
   }
   const file = artifactOutcome("TRANSCRIPTION", transcription);
   if (file) return file;
+  if (transcription.capture_status === ECounselingCaptureStatus.STOPPED) return { text: "Transcription stop has not been confirmed.", short: "stop unconfirmed" };
   if (!ended.has(transcription.capture_status)) return null;
   // Live transcription without saving ends without a file; that is the outcome to state, not a
   // storage setting.

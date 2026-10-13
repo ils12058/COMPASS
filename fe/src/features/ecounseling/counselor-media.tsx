@@ -35,6 +35,7 @@ import {
   type ECounselingConsentStatus,
 } from "@/lib/api/generated/model";
 import { cn } from "@/lib/utils/cn";
+import { captureSafetyState } from "./runtime/runtime-model";
 
 
 function latestConsent(rows: ConsentResponse[], scope: ECounselingConsentScope): ConsentResponse | undefined {
@@ -307,6 +308,9 @@ function captureTile(media: CounselorMedia, kind: CaptureKind): Tile {
   if (media.canStop[kind]) {
     return { label: stopLabel(kind), accessibleName: kind === "recording" ? "Stop recording" : "Stop transcription", icon: kind === "recording" ? Square : copy.icon, tone: "live", disabled: false, onClick: () => void media.stop(kind) };
   }
+  if (captureSafetyState(kind, status) === "uncertain") {
+    return { label: "Status uncertain", accessibleName: kind === "recording" ? "Recording status uncertain" : "Transcription stop not confirmed", icon: copy.icon, tone: "default", disabled: true, problem: true };
+  }
   if (status === ECounselingCaptureStatus.STOPPED || status === ECounselingCaptureStatus.READY) {
     return { label: copy.done, icon: Check, tone: "default", disabled: true };
   }
@@ -377,7 +381,7 @@ export function CounselorMediaStrip({ media }: { media: CounselorMedia }) {
     return <p className="px-3 py-2.5 text-sm text-muted sm:px-4">Media controls are unavailable to this account.</p>;
   }
   const { consentQuery } = media;
-  const problems = (["recording", "transcription"] as const).filter((kind) => media.status[kind] === ECounselingCaptureStatus.ERROR);
+  const problems = (["recording", "transcription"] as const).filter((kind) => captureSafetyState(kind, media.status[kind]) === "uncertain");
   const stopOutsideCall = media.inCall ? [] : (["recording", "transcription"] as const).filter((kind) => media.canStop[kind]);
   const withTimes = media.permissions.filter((permission) => permission.row);
   return (
@@ -399,11 +403,11 @@ export function CounselorMediaStrip({ media }: { media: CounselorMedia }) {
         <p role="status" className="text-sm text-muted">Session status couldn’t be refreshed. Starting recording or transcription is paused until it’s back.</p>
       ) : null}
       {problems.map((kind) => (
-        <p key={kind} className="text-sm font-medium text-danger">{kind === "recording" ? "Recording" : "Transcription"} · {captureStatusLabel(ECounselingCaptureStatus.ERROR)}</p>
+        <p key={kind} className="text-sm font-medium text-danger">{kind === "recording" ? "Recording" : "Transcription"} · {captureStatusLabel(media.status[kind], kind)}. Stopping has not been confirmed.</p>
       ))}
       {stopOutsideCall.length ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-ink">Still running while you’re out of the call:</span>
+          <span className="text-sm text-ink">Stopping has not been confirmed:</span>
           {stopOutsideCall.map((kind) => (
             <Button key={kind} variant="secondary" className="min-h-9 px-3 py-1" disabled={media.stopping[kind]} onClick={() => void media.stop(kind)}>
               {media.stopping[kind] ? "Stopping…" : kind === "recording" ? "Stop recording" : "Stop transcription"}
