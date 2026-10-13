@@ -47,16 +47,19 @@ diagnostic. Classification never selects a lifecycle transition or automatically
 
 The no-active hint is a conservative compatibility allowlist, not a versioned Daily machine code.
 Only a bounded 4 KiB error envelope's documented `error`/`info` fields are considered, and only at
-recording Stop with HTTP 400 / `invalid-request-error`. Four exact short phrases (case/outer-space
+recording Stop with HTTP 400 / `invalid-request-error`. Five exact short phrases (case/outer-space
 and final-period normalization only) are recognized; longer or unknown variants remain
-`INVALID_REQUEST`. The raw envelope and `info` are never retained or logged. This cannot establish
+`INVALID_REQUEST`. The added phrase is `room does not have an active recording`. The raw envelope
+and `info` are never retained or logged. This cannot establish
 the exact message/category of any historical incident response that was not safely recorded.
 
 Valid acknowledgments remain `status: sent`, or `sent: true` (documented string form and existing
 boolean compatibility). Numeric truthiness, unhashable fields, contradictory fields and a response
 with an error are now controlled invalid acknowledgments instead of accidental acceptance or an
-unclassified type error. This validation adjustment does not repair EC-01 or alter valid-response
-transitions. See the current official [recording Start](https://docs.daily.co/reference/rest-api/rooms/recordings/start),
+unclassified type error. The validation adjustment does not establish capture completion. Slice 1C.1
+now keeps both accepted Stop commands unresolved until correlated positive completion; see
+[capture state correctness](ecounseling-capture-state-correctness.md). See the current official
+[recording Start](https://docs.daily.co/reference/rest-api/rooms/recordings/start),
 [recording Stop](https://docs.daily.co/reference/rest-api/rooms/recordings/stop),
 [transcription Start](https://docs.daily.co/reference/rest-api/rooms/transcription/start) and
 [transcription Stop](https://docs.daily.co/reference/rest-api/rooms/transcription/stop) references.
@@ -146,4 +149,5 @@ Rollback is a reviewed code revert. Existing unconstrained diagnostic string fie
 codes; no capture reset, artifact deletion, consent change, migration or storage-policy weakening is
 needed. Historical `PROVIDER_REJECTED`, `PROVIDER_STATE_UNCERTAIN`, `STOP_PROVIDER_FAILED`,
 `PROVIDER_ERROR`, `CONSENT_CLEANUP_UNCERTAIN` and `CUSTODY_OR_CLEANUP_UNVERIFIED` remain interpretable
-as generic evidence, with no backfill. EC-01/02/04/05/06/08 remain separate follow-up work.
+as generic evidence, with no backfill. Slice 1C.1 addresses EC-01/05/08 and the exact no-active phrase;
+EC-02 reconciliation and EC-04/06/09 identity/anomaly work remain separate follow-up slices.

@@ -84,15 +84,23 @@ MEDIA_WEBHOOK_TYPES = frozenset(
 )
 
 
-# A late or duplicate "started" delivery must not regress a capture that is already stopping,
-# stopped, or finished (ADR-026). STOP_REQUESTED stays pending until provider reconciliation.
-_NO_REGRESSION_TO_ACTIVE = frozenset(
-    {
-        MediaCaptureStatus.STOP_REQUESTED,
-        MediaCaptureStatus.STOPPED,
-        MediaCaptureStatus.READY,
-    }
-)
+_TERMINAL_CAPTURE_STATES = frozenset({MediaCaptureStatus.STOPPED, MediaCaptureStatus.READY})
+
+
+def _has_stop_intent(capture: ECounselingMediaCapture) -> bool:
+    # The timestamp also protects older ERROR rows whose Stop intent was obscured by telemetry.
+    return bool(capture.stop_requested_at or capture.status == MediaCaptureStatus.STOP_REQUESTED)
+
+
+def _capture_status_for_event(capture: ECounselingMediaCapture, observation: str) -> str:
+    """Intent outranks nonterminal observations; only correlated completion advances it."""
+    if observation == "ready":
+        return MediaCaptureStatus.READY
+    if capture.status in _TERMINAL_CAPTURE_STATES:
+        return capture.status
+    if _has_stop_intent(capture):
+        return MediaCaptureStatus.STOP_REQUESTED
+    return MediaCaptureStatus.ERROR if observation == "error" else MediaCaptureStatus.ACTIVE
 
 
 class ECounselingConsentScopeIncompatible(ECounselingError):
@@ -522,18 +530,22 @@ def _audit_media_request(
     room: ECounselingRoom,
     capture: ECounselingMediaCapture,
 ) -> None:
+    metadata = {
+        "appointment_id": str(appointment.pk),
+        "room_id": str(room.pk),
+        "media_kind": capture.kind,
+        "provider": "DAILY",
+    }
+    if action == ECOUNSELING_TRANSCRIPTION_START_REQUESTED:
+        # Historical selection/consent evidence, not proof of provider configuration or custody.
+        metadata["storage_selected"] = capture.transcript_storage_authorized
     record_event(
         context=context,
         action=action,
         outcome=AuditOutcome.SUCCESS,
         target_type="ecounseling.mediacapture",
         target_id=capture.pk,
-        metadata={
-            "appointment_id": str(appointment.pk),
-            "room_id": str(room.pk),
-            "media_kind": capture.kind,
-            "provider": "DAILY",
-        },
+        metadata=metadata,
     )
 
 
@@ -564,7 +576,7 @@ def start_recording(
             room=locked_room,
             kind=MediaCaptureKind.RECORDING,
         )
-        if capture.status != MediaCaptureStatus.NOT_STARTED:
+        if capture.status != MediaCaptureStatus.NOT_STARTED or _has_stop_intent(capture):
             raise ECounselingMediaConflict(
                 "This session recording has already been started or requires reconciliation."
             )
@@ -614,6 +626,7 @@ def start_recording(
             if (
                 capture.status != MediaCaptureStatus.START_REQUESTED
                 or capture.provider_instance_id != instance_id
+                or _has_stop_intent(capture)
             ):
                 raise ECounselingMediaConflict(
                     "Recording start was superseded by a consent or media-state transition."
@@ -647,7 +660,10 @@ def start_transcription(
         raise ECounselingMediaConflict("Transcription can start only during the session window.")
     room = _require_provisioned_room(appointment)
 
-    with transaction.atomic():
+    # Refuse an enclosing application transaction: intent must commit before external side effects.
+    # Django's TestCase wrapper is exempt from the durable-block guard; production requests are
+    # autocommit (ATOMIC_REQUESTS is disabled).
+    with transaction.atomic(durable=True):
         locked_room = ECounselingRoom.objects.select_for_update().get(pk=room.pk)
         _require_effective_consent_locked(
             room=locked_room,
@@ -662,13 +678,14 @@ def start_transcription(
             room=locked_room,
             kind=MediaCaptureKind.TRANSCRIPTION,
         )
-        if capture.status != MediaCaptureStatus.NOT_STARTED:
+        if capture.status != MediaCaptureStatus.NOT_STARTED or _has_stop_intent(capture):
             raise ECounselingMediaConflict(
                 "This session transcription has already been started or requires reconciliation."
             )
         capture.status = MediaCaptureStatus.START_REQUESTED
         capture.media_authorized_at = timezone.now()
         capture.provider_instance_id = str(uuid.uuid4())
+        capture.transcript_storage_authorized = store_transcript
         capture.error_code = None
         capture.failed_at = None
         capture.save(
@@ -676,6 +693,7 @@ def start_transcription(
                 "status",
                 "media_authorized_at",
                 "provider_instance_id",
+                "transcript_storage_authorized",
                 "error_code",
                 "failed_at",
                 "updated_at",
@@ -699,10 +717,35 @@ def start_transcription(
             properties={"enable_transcription_storage": store_transcript},
         )
 
-        # Re-enter the same room/capture lock boundary before the provider start. Withdrawal uses
-        # these locks too, so whichever transition wins is serialized. A withdrawal that commits
-        # first makes the pending start ineligible; a start that wins first is visible to withdrawal
-        # and is immediately stopped/cleaned up by that path.
+        # Commit the acknowledged room setting independently of the external Start transaction.
+        # Selection/authorization was already committed with the original intent above. Withdrawal
+        # uses the same locks and can supersede either boundary; it never regains authorization.
+        with transaction.atomic(durable=True):
+            locked_room = ECounselingRoom.objects.select_for_update().get(pk=room.pk)
+            _require_effective_consent_locked(
+                room=locked_room,
+                scope=media_scope(locked_room, MediaCaptureKind.TRANSCRIPTION),
+            )
+            if store_transcript:
+                _require_effective_consent_locked(
+                    room=locked_room,
+                    scope=ConsentScope.TRANSCRIPT_STORAGE,
+                )
+            capture = ECounselingMediaCapture.objects.select_for_update().get(pk=capture_id)
+            if (
+                capture.status != MediaCaptureStatus.START_REQUESTED
+                or capture.provider_instance_id != instance_id
+                or _has_stop_intent(capture)
+            ):
+                raise ECounselingMediaConflict(
+                    "Transcription start was superseded by a consent or media-state transition."
+                )
+            capture.transcript_storage_enabled = store_transcript
+            capture.save(update_fields=["transcript_storage_enabled", "updated_at"])
+
+        # Keep provider Start under the original consent serialization locks. Recheck after the
+        # preceding commit: a withdrawal in that gap prevents Start; one blocked behind Start sees
+        # its durable reservation and requests Stop. No new command retry is introduced.
         with transaction.atomic():
             locked_room = ECounselingRoom.objects.select_for_update().get(pk=room.pk)
             _require_effective_consent_locked(
@@ -718,19 +761,11 @@ def start_transcription(
             if (
                 capture.status != MediaCaptureStatus.START_REQUESTED
                 or capture.provider_instance_id != instance_id
+                or _has_stop_intent(capture)
             ):
                 raise ECounselingMediaConflict(
                     "Transcription start was superseded by a consent or media-state transition."
                 )
-            capture.transcript_storage_enabled = store_transcript
-            capture.transcript_storage_authorized = store_transcript
-            capture.save(
-                update_fields=[
-                    "transcript_storage_enabled",
-                    "transcript_storage_authorized",
-                    "updated_at",
-                ]
-            )
             _provider_ack(
                 client.start_transcription(
                     room_name=room.daily_room_name,
@@ -752,6 +787,14 @@ def start_transcription(
             ) as cleanup_exc:
                 _set_provider_uncertain(capture_id, code="CONSENT_CLEANUP_UNCERTAIN")
                 raise _provider_failure(cleanup_exc) from cleanup_exc
+            else:
+                # A manual Stop can supersede Start after the configuration flag committed.
+                # Persist this existing cleanup's acknowledgment without erasing historical choice.
+                with transaction.atomic():
+                    ECounselingRoom.objects.select_for_update().get(pk=room.pk)
+                    capture = ECounselingMediaCapture.objects.select_for_update().get(pk=capture_id)
+                    capture.transcript_storage_enabled = False
+                    capture.save(update_fields=["transcript_storage_enabled", "updated_at"])
         raise
     except (DailyConfigurationError, DailyUnavailable, DailyHTTPError, DailyInvalidResponse) as exc:
         _handle_start_provider_failure(capture_id, exc)
@@ -774,20 +817,22 @@ def _prepare_stop_locked(
         return capture, False
     if capture.status == MediaCaptureStatus.STOP_REQUESTED:
         return capture, True
+    already_requested = _has_stop_intent(capture)
     capture.status = MediaCaptureStatus.STOP_REQUESTED
-    capture.stop_requested_at = timezone.now()
+    capture.stop_requested_at = capture.stop_requested_at or timezone.now()
     capture.save(update_fields=["status", "stop_requested_at", "updated_at"])
-    _audit_media_request(
-        context=context,
-        action=(
-            ECOUNSELING_RECORDING_STOP_REQUESTED
-            if kind == MediaCaptureKind.RECORDING
-            else ECOUNSELING_TRANSCRIPTION_STOP_REQUESTED
-        ),
-        appointment=appointment,
-        room=room,
-        capture=capture,
-    )
+    if not already_requested:
+        _audit_media_request(
+            context=context,
+            action=(
+                ECOUNSELING_RECORDING_STOP_REQUESTED
+                if kind == MediaCaptureKind.RECORDING
+                else ECOUNSELING_TRANSCRIPTION_STOP_REQUESTED
+            ),
+            appointment=appointment,
+            room=room,
+            capture=capture,
+        )
     return capture, True
 
 
@@ -820,13 +865,8 @@ def _execute_provider_stop(
                     instance_id=capture.provider_instance_id,
                 )
             )
-            with transaction.atomic():
-                locked = ECounselingMediaCapture.objects.select_for_update().get(pk=capture.pk)
-                if locked.status == MediaCaptureStatus.STOP_REQUESTED:
-                    locked.status = MediaCaptureStatus.STOPPED
-                    locked.ended_at = timezone.now()
-                    locked.error_code = None
-                    locked.save(update_fields=["status", "ended_at", "error_code", "updated_at"])
+            # "sent" acknowledges the command only. It supplies no finished-job evidence or
+            # end timestamp, so retain Stop intent and any uncertainty until correlated completion.
     except (DailyConfigurationError, DailyUnavailable, DailyHTTPError, DailyInvalidResponse) as exc:
         _mark_stop_failed(capture.pk, code=f"STOP_PROVIDER_{safe_daily_failure_code(exc)}")
         raise _provider_failure(exc) from exc
@@ -1108,6 +1148,67 @@ def _resolve_event_room(
     return _room_by_name(payload.get("room_name"))
 
 
+def _event_correlates_with_capture(capture, *, event_type, payload, provider_session_id):
+    """Protect existing bindings; completion needs an already associated artifact.
+
+    This is the local transition boundary, not full webhook provenance/anomaly reconciliation.
+    Unbound completion remains unresolved rather than adopting a room-only artifact as Stop proof.
+    """
+    recording = capture.kind == MediaCaptureKind.RECORDING
+    incoming_id = payload.get("recording_id" if recording else "id")
+    info = payload.get("info")
+    instance_id = (
+        payload.get("instance_id")
+        if recording
+        else info.get("instanceId")
+        if isinstance(info, dict)
+        else None
+    )
+    if (
+        capture.provider_instance_id
+        and isinstance(instance_id, str)
+        and instance_id != capture.provider_instance_id
+    ):
+        return False
+    if (
+        event_type.endswith(".started")
+        and capture.provider_instance_id
+        and instance_id != capture.provider_instance_id
+    ):
+        return False
+    if (
+        capture.provider_artifact_id
+        and isinstance(incoming_id, str)
+        and incoming_id != capture.provider_artifact_id
+    ):
+        return False
+    if (
+        capture.provider_session_id
+        and provider_session_id
+        and provider_session_id != capture.provider_session_id
+    ):
+        return False
+    incoming_room_id = payload.get("room_id")
+    if (
+        capture.room.daily_room_id
+        and isinstance(incoming_room_id, str)
+        and incoming_room_id != capture.room.daily_room_id
+    ):
+        return False
+    if event_type.endswith(".ready-to-download"):
+        terminal = "finished" if recording else "t_finished"
+        return bool(
+            capture.provider_artifact_id
+            and incoming_id == capture.provider_artifact_id
+            and (
+                not capture.provider_session_id
+                or provider_session_id == capture.provider_session_id
+            )
+            and payload.get("status", terminal) == terminal
+        )
+    return True
+
+
 def process_media_webhook_event(
     *,
     event_type: str,
@@ -1152,25 +1253,30 @@ def process_media_webhook_event(
             # Late telemetry must never restore a disposed provider reference or regress evidence.
             return WebhookProcessingResult(accepted=True, supported=True)
 
-        stored_artifact = ECounselingMediaArtifact.objects.filter(
-            capture=capture, status="STORED"
-        ).first()
-        if stored_artifact and stored_artifact.provider_deleted_at:
-            # A delayed provider receipt cannot resurrect the copy already cleaned up.
+        existing_artifact = ECounselingMediaArtifact.objects.filter(capture=capture).first()
+        if existing_artifact and (
+            existing_artifact.status == MediaArtifactStatus.DISPOSED
+            or existing_artifact.disposed_at
+            or existing_artifact.provider_deleted_at
+        ):
+            # Disposition/verified cleanup are permanent fences, including an artifact tombstone
+            # whose capture-side mirror is temporarily unavailable.
             return WebhookProcessingResult(accepted=True, supported=True)
 
-        if locked_room.media_policy_version == MediaPolicyVersion.V2:
-            incoming_id = payload.get(
-                "recording_id" if kind == MediaCaptureKind.RECORDING else "id"
-            )
-            if (
-                capture.provider_artifact_id
-                and isinstance(incoming_id, str)
-                and incoming_id != capture.provider_artifact_id
-            ):
-                # One capture owns one provider artifact; delayed conflicting telemetry cannot
-                # substitute another file underneath an existing custody claim.
-                return WebhookProcessingResult(accepted=True, supported=True)
+        if not _event_correlates_with_capture(
+            capture,
+            event_type=event_type,
+            payload=payload,
+            provider_session_id=provider_session_id,
+        ):
+            return WebhookProcessingResult(accepted=True, supported=True)
+
+        # Terminal observations are stable, including their timing, bindings and error evidence.
+        # A late started event may fill missing historical metadata, but cannot revive capture.
+        if capture.status in _TERMINAL_CAPTURE_STATES and event_type.endswith(".error"):
+            return WebhookProcessingResult(accepted=True, supported=True)
+        if capture.status == MediaCaptureStatus.READY and event_type.endswith(".ready-to-download"):
+            return WebhookProcessingResult(accepted=True, supported=True)
 
         if event_type == "recording.started":
             instance_id = payload.get("instance_id")
@@ -1179,34 +1285,33 @@ def process_media_webhook_event(
                 capture.provider_instance_id = instance_id[:160]
             if isinstance(recording_id, str) and recording_id:
                 capture.provider_artifact_id = recording_id[:160]
-            capture.started_at = (
+            capture.started_at = capture.started_at or (
                 _event_time(payload.get("start_ts")) or occurred_at or timezone.now()
             )
-            if not _effective_scope_for_room(
+            if capture.status not in _TERMINAL_CAPTURE_STATES and not _effective_scope_for_room(
                 locked_room, media_scope(locked_room, MediaCaptureKind.RECORDING)
             ):
                 capture.status = MediaCaptureStatus.STOP_REQUESTED
-                capture.stop_requested_at = timezone.now()
+                capture.stop_requested_at = capture.stop_requested_at or timezone.now()
                 capture.error_code = "CONSENT_NOT_EFFECTIVE"
                 stop_for_policy = True
-            elif capture.status not in _NO_REGRESSION_TO_ACTIVE:
-                capture.status = MediaCaptureStatus.ACTIVE
-                capture.error_code = None
+            else:
+                capture.status = _capture_status_for_event(capture, "started")
+                if capture.status == MediaCaptureStatus.ACTIVE:
+                    capture.error_code = None
 
         elif event_type == "recording.ready-to-download":
             recording_id = payload.get("recording_id")
             if isinstance(recording_id, str) and recording_id:
                 capture.provider_artifact_id = recording_id[:160]
+            # Readiness supplies the documented recording start time, which can correct a prior
+            # webhook-send-time fallback. Repeated terminal events are already fenced above.
             capture.started_at = _event_time(payload.get("start_ts")) or capture.started_at
             capture.duration_seconds = _safe_duration(payload.get("duration"))
-            capture.ready_at = (
-                capture.ready_at or occurred_at or timezone.now()
-                if locked_room.media_policy_version == MediaPolicyVersion.V2
-                else occurred_at or timezone.now()
-            )
+            capture.ready_at = capture.ready_at or occurred_at or timezone.now()
             if capture.started_at and capture.duration_seconds is not None:
                 capture.ended_at = capture.started_at + timedelta(seconds=capture.duration_seconds)
-            capture.status = MediaCaptureStatus.READY
+            capture.status = _capture_status_for_event(capture, "ready")
             if not _effective_scope_for_room(
                 locked_room, media_scope(locked_room, MediaCaptureKind.RECORDING)
             ):
@@ -1216,12 +1321,11 @@ def process_media_webhook_event(
             instance_id = payload.get("instance_id")
             if isinstance(instance_id, str) and instance_id:
                 capture.provider_instance_id = instance_id[:160]
-            if capture.status != MediaCaptureStatus.READY:
-                capture.status = MediaCaptureStatus.ERROR
-                capture.failed_at = (
-                    _event_time(payload.get("timestamp")) or occurred_at or timezone.now()
-                )
-                capture.error_code = "PROVIDER_ERROR"
+            capture.status = _capture_status_for_event(capture, "error")
+            capture.failed_at = capture.failed_at or (
+                _event_time(payload.get("timestamp")) or occurred_at or timezone.now()
+            )
+            capture.error_code = "PROVIDER_ERROR"
 
         elif event_type == "transcript.started":
             transcript_id = payload.get("id")
@@ -1231,42 +1335,41 @@ def process_media_webhook_event(
                 capture.provider_instance_id = instance_id[:160]
             if isinstance(transcript_id, str) and transcript_id:
                 capture.provider_artifact_id = transcript_id[:160]
-            capture.provider_session_id = provider_session_id
-            capture.started_at = occurred_at or timezone.now()
+            capture.provider_session_id = capture.provider_session_id or provider_session_id
+            capture.started_at = capture.started_at or occurred_at or timezone.now()
             live_ok = _effective_scope_for_room(
                 locked_room, media_scope(locked_room, MediaCaptureKind.TRANSCRIPTION)
             )
             storage_ok = _effective_scope_for_room(locked_room, ConsentScope.TRANSCRIPT_STORAGE)
-            if not live_ok or (capture.transcript_storage_enabled and not storage_ok):
+            if capture.status not in _TERMINAL_CAPTURE_STATES and (
+                not live_ok or (capture.transcript_storage_enabled and not storage_ok)
+            ):
                 capture.status = MediaCaptureStatus.STOP_REQUESTED
-                capture.stop_requested_at = timezone.now()
+                capture.stop_requested_at = capture.stop_requested_at or timezone.now()
                 capture.error_code = (
                     "CONSENT_NOT_EFFECTIVE" if not live_ok else "STORAGE_CONSENT_NOT_EFFECTIVE"
                 )
                 stop_for_policy = True
-            elif capture.status not in _NO_REGRESSION_TO_ACTIVE:
-                capture.status = MediaCaptureStatus.ACTIVE
-                capture.error_code = None
+            else:
+                capture.status = _capture_status_for_event(capture, "started")
+                if capture.status == MediaCaptureStatus.ACTIVE:
+                    capture.error_code = None
 
         elif event_type == "transcript.ready-to-download":
             transcript_id = payload.get("id")
             if isinstance(transcript_id, str) and transcript_id:
                 capture.provider_artifact_id = transcript_id[:160]
-            capture.provider_session_id = provider_session_id
+            capture.provider_session_id = capture.provider_session_id or provider_session_id
             capture.duration_seconds = _safe_duration(payload.get("duration"))
-            capture.ready_at = (
-                capture.ready_at or occurred_at or timezone.now()
-                if locked_room.media_policy_version == MediaPolicyVersion.V2
-                else occurred_at or timezone.now()
-            )
-            capture.ended_at = occurred_at or capture.ended_at
-            capture.status = MediaCaptureStatus.READY
-            capture.transcript_storage_enabled = True
+            capture.ready_at = capture.ready_at or occurred_at or timezone.now()
+            # This correlated event confirms a finished job, not storage enablement or a VTT copy.
+            # event_ts is webhook delivery time, not media end time; do not manufacture ended_at.
+            capture.status = _capture_status_for_event(capture, "ready")
             live_ok = _effective_scope_for_room(
                 locked_room, media_scope(locked_room, MediaCaptureKind.TRANSCRIPTION)
             )
             storage_ok = _effective_scope_for_room(locked_room, ConsentScope.TRANSCRIPT_STORAGE)
-            if not live_ok or not storage_ok:
+            if not live_ok or (capture.transcript_storage_authorized and not storage_ok):
                 capture.error_code = (
                     "CONSENT_NOT_EFFECTIVE" if not live_ok else "STORAGE_CONSENT_NOT_EFFECTIVE"
                 )
@@ -1279,12 +1382,11 @@ def process_media_webhook_event(
                 capture.provider_instance_id = instance_id[:160]
             if isinstance(transcript_id, str) and transcript_id:
                 capture.provider_artifact_id = transcript_id[:160]
-            capture.provider_session_id = provider_session_id
+            capture.provider_session_id = capture.provider_session_id or provider_session_id
             capture.duration_seconds = _safe_duration(payload.get("duration"))
-            if capture.status != MediaCaptureStatus.READY:
-                capture.status = MediaCaptureStatus.ERROR
-                capture.failed_at = occurred_at or timezone.now()
-                capture.error_code = "PROVIDER_ERROR"
+            capture.status = _capture_status_for_event(capture, "error")
+            capture.failed_at = capture.failed_at or occurred_at or timezone.now()
+            capture.error_code = "PROVIDER_ERROR"
 
         capture.save()
         if (

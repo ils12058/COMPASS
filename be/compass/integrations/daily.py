@@ -50,6 +50,7 @@ def _http_failure_code(status_code, raw=b"", *, recording_stop=False):
                     "no active recording found",
                     "no active recording to stop",
                     "no recording is active",
+                    "room does not have an active recording",
                 }:
                     return DailyFailureCode.NO_ACTIVE_RECORDING
         return DailyFailureCode.INVALID_REQUEST
