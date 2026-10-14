@@ -17,7 +17,6 @@ import { FeedbackFormSkeleton, FeedbackAccessUnavailable, FeedbackDate, Feedback
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { feedbackSubmitCustomerFeedback, useFeedbackGetMyOpportunity } from "@/lib/api/generated/feedback/feedback";
 import { CustomerFeedbackAccommodatedByValue, CustomerFeedbackRatingValue, CustomerFeedbackServiceValue, type CustomerFeedbackSubmitRequest } from "@/lib/api/generated/model";
-import { useProfileGetMyProfile } from "@/lib/api/generated/profile/profile";
 
 const serviceChoices: { value: CustomerFeedbackServiceValue; label: string }[] = [
   { value: CustomerFeedbackServiceValue.COUNSELING, label: "Counseling" },
@@ -66,7 +65,7 @@ type Draft = {
   courseYear: string;
 };
 
-type RespondentOverrides = { name?: string; address?: string; mobile?: string };
+type Respondent = { name: string; address: string; mobile: string };
 type SubmissionIntent = { fingerprint: string; key: string; body: CustomerFeedbackSubmitRequest };
 
 const emptyDraft: Draft = {
@@ -77,7 +76,7 @@ const emptyDraft: Draft = {
 
 function makeBody(
   draft: Draft,
-  respondent: { name: string; address: string; mobile: string },
+  respondent: Respondent,
   opportunityId: string,
 ): CustomerFeedbackSubmitRequest {
   const body: CustomerFeedbackSubmitRequest = {
@@ -111,10 +110,9 @@ export function CustomerFeedbackForm() {
       enabled: access.canSubmitCustomerFeedback && Boolean(opportunityId),
     },
   });
-  const profile = useProfileGetMyProfile({ query: { retry: false, enabled: access.canSubmitCustomerFeedback && Boolean(opportunityId) } });
   const create = useMutation({ mutationFn: ({ body, key }: { body: CustomerFeedbackSubmitRequest; key: string }) => feedbackSubmitCustomerFeedback(body, { headers: { "Idempotency-Key": key } }), retry: false });
   const [draft, setDraft] = useState<Draft>(emptyDraft);
-  const [respondentOverrides, setRespondentOverrides] = useState<RespondentOverrides>({});
+  const [respondent, setRespondent] = useState<Respondent>({ name: "", address: "", mobile: "" });
   const [confirmationOpen, setConfirmationOpen] = useState(false);
   const [preparedBody, setPreparedBody] = useState<CustomerFeedbackSubmitRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -129,24 +127,8 @@ export function CustomerFeedbackForm() {
     requiredService && !draft.services.includes(requiredService)
       ? [requiredService, ...draft.services]
       : draft.services;
-  const profileData = profile.data?.data;
-  const initialRespondent = {
-    name: profileData?.full_name ?? "",
-    address: profileData?.current_address.trim()
-      ? profileData.current_address
-      : profileData?.permanent_address ?? "",
-    mobile: profileData?.contact_number ?? "",
-  };
-  const respondent = {
-    name: respondentOverrides.name ?? initialRespondent.name,
-    address: respondentOverrides.address ?? initialRespondent.address,
-    mobile: respondentOverrides.mobile ?? initialRespondent.mobile,
-  };
   const responseDirty = JSON.stringify(draft) !== JSON.stringify(emptyDraft);
-  const respondentDirty =
-    respondent.name !== initialRespondent.name ||
-    respondent.address !== initialRespondent.address ||
-    respondent.mobile !== initialRespondent.mobile;
+  const respondentDirty = Boolean(respondent.name || respondent.address || respondent.mobile);
 
   useUnsavedChangesGuard({
     dirty: !success && (responseDirty || respondentDirty),
@@ -378,13 +360,13 @@ export function CustomerFeedbackForm() {
           </FeedbackSection>
 
           <FeedbackSection title="IX. Respondent information">
-            <p className="max-w-3xl text-sm leading-6 text-muted">Changes made here apply only to this feedback response and do not update your account profile.</p>
-            {profile.isError ? <p role="status" className="text-sm text-muted">Your profile details could not be loaded. You can enter them manually.</p> : null}
+            <p className="max-w-3xl text-sm leading-6 text-muted">Providing your name, address, and mobile number is optional. If you leave these fields blank, COMPASS will not automatically add them from your account profile.</p>
+            <p className="max-w-3xl text-sm leading-6 text-muted">Your response is submitted through your COMPASS account. Submission activity is recorded separately for security and accountability.</p>
             <div className="grid gap-5 sm:grid-cols-2">
-              <div><FeedbackFieldLabel htmlFor="feedback-respondent-name">Name</FeedbackFieldLabel><Input id="feedback-respondent-name" className="mt-2" value={respondent.name} onChange={(event) => setRespondentOverrides((current) => ({ ...current, name: event.target.value }))} /></div>
+              <div><FeedbackFieldLabel htmlFor="feedback-respondent-name">Name</FeedbackFieldLabel><Input id="feedback-respondent-name" className="mt-2" value={respondent.name} onChange={(event) => setRespondent((current) => ({ ...current, name: event.target.value }))} /></div>
               <div><FeedbackFieldLabel htmlFor="feedback-course-year" required>Course/Year</FeedbackFieldLabel><Input id="feedback-course-year" className="mt-2" required value={draft.courseYear} onChange={(event) => setDraft((current) => ({ ...current, courseYear: event.target.value }))} /></div>
-              <div><FeedbackFieldLabel htmlFor="feedback-address">Address</FeedbackFieldLabel><Input id="feedback-address" className="mt-2" value={respondent.address} onChange={(event) => setRespondentOverrides((current) => ({ ...current, address: event.target.value }))} /></div>
-              <div><FeedbackFieldLabel htmlFor="feedback-mobile">Mobile Number</FeedbackFieldLabel><Input id="feedback-mobile" className="mt-2" inputMode="tel" value={respondent.mobile} onChange={(event) => setRespondentOverrides((current) => ({ ...current, mobile: event.target.value }))} /></div>
+              <div><FeedbackFieldLabel htmlFor="feedback-address">Address</FeedbackFieldLabel><Input id="feedback-address" className="mt-2" value={respondent.address} onChange={(event) => setRespondent((current) => ({ ...current, address: event.target.value }))} /></div>
+              <div><FeedbackFieldLabel htmlFor="feedback-mobile">Mobile Number</FeedbackFieldLabel><Input id="feedback-mobile" className="mt-2" inputMode="tel" value={respondent.mobile} onChange={(event) => setRespondent((current) => ({ ...current, mobile: event.target.value }))} /></div>
             </div>
           </FeedbackSection>
         </fieldset>
