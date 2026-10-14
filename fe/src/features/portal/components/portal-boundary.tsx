@@ -131,11 +131,11 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
   return (
     <UnsavedChangesProvider>
       <RealtimeProvider account={realtimeAccount(authState, confirmedUser?.id)}>
-        <ActiveECounselingRuntimeProvider key={callUser?.id ?? "anonymous"} user={callUser} authState={authState}>
-          <ECounselingConsentFreshnessProvider user={authState === "confirmed" ? confirmedUser : null}>
+        <ECounselingConsentFreshnessProvider user={authState === "confirmed" ? confirmedUser : null}>
+          <ActiveECounselingRuntimeProvider key={callUser?.id ?? "anonymous"} user={callUser} authState={authState}>
             {content}
-          </ECounselingConsentFreshnessProvider>
-        </ActiveECounselingRuntimeProvider>
+          </ActiveECounselingRuntimeProvider>
+        </ECounselingConsentFreshnessProvider>
       </RealtimeProvider>
     </UnsavedChangesProvider>
   );

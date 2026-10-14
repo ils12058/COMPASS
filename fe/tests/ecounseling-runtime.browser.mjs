@@ -5,12 +5,14 @@ import assert from "node:assert/strict";
 
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { fakeDailyInitScript } from "./support/fake-daily.mjs";
-import { appointmentId, consents, user, workspace } from "./support/ui-hierarchy-fixtures.mjs";
+import { consents, user, workspace } from "./support/ui-hierarchy-fixtures.mjs";
 
 const { check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("ecounseling-runtime");
+// The shared freshness coordinator selects canonical backend appointment UUIDs.
+const appointmentId = "11111111-1111-4111-8111-111111111111";
 const ePath = `/portal/e-counseling/${appointmentId}`;
 const ROUTINE = "routine-runtime-test";
-const OTHER = "appointment-other-session";
+const OTHER = "22222222-2222-4222-8222-222222222222";
 const STUDENT = "Maria Santos";
 const COUNSELOR = "Maria Reyes";
 

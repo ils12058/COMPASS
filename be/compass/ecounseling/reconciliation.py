@@ -358,6 +358,8 @@ def _consent_checks(capture, consents):
 
 def apply_observation(claim, observation):
     with _locked_rows(claim.capture_id) as (capture, artifact, recovery, consents):
+        previous_status = capture.status
+        pending_created = False
         now = timezone.now()
         if recovery.state != State.CLAIMED or recovery.claim_token != claim.token:
             return  # A newer owner/evidence wins; do not rewrite even scheduling metadata.
@@ -395,7 +397,8 @@ def apply_observation(claim, observation):
                 _clear_claim(recovery)
                 # Preserve the existing custody policy for historically authorized media.
                 # This eligibility path restores neither consent nor the provider storage switch.
-                ensure_pending_artifact(capture)
+                pending = ensure_pending_artifact(capture, publish_hint=False)
+                pending_created = artifact is None and pending is not None
             elif observation.evidence == Evidence.ACTIVE:
                 if _has_stop_intent(capture) or applicable_ok:
                     capture.status = _capture_status_for_event(capture, "started")
@@ -411,6 +414,10 @@ def apply_observation(claim, observation):
             else:
                 _retry(recovery, now)
         recovery.save()
+        if previous_status != capture.status or pending_created:
+            from .media_realtime import media_changed_on_commit
+
+            media_changed_on_commit(capture.room.appointment_id)
     log_capture_reconciliation(
         stage=CaptureStage.APPLY,
         kind=claim.kind,

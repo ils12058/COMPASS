@@ -627,6 +627,7 @@ def test_public_registry_allows_only_registered_content_free_hints():
         "notifications.changed": frozenset(),
         "messages.thread_changed": frozenset({"thread_id"}),
         "ecounseling.consent.changed": frozenset({"appointment_id"}),
+        "ecounseling.media.changed": frozenset({"appointment_id"}),
     }
     assert json.loads(protocol.READY_FRAME) == {"v": 1, "type": "ready"}
 

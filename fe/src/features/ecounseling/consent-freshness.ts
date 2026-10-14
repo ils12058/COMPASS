@@ -2,6 +2,7 @@ import type { QueryClient, QueryKey } from "@tanstack/react-query";
 
 import type { ECounselingAccess } from "./ecounseling-access";
 import { ecounselingResourceAccess } from "./ecounseling-resource-access";
+import { sessionRefreshInterval } from "./ecounseling-shared";
 import { isOpaqueRealtimeId } from "@/features/realtime/realtime-protocol";
 import type { RealtimeSnapshot } from "@/features/realtime/realtime-runtime";
 import {
@@ -11,6 +12,7 @@ import {
   getECounselingListMyConsentsQueryKey,
 } from "@/lib/api/generated/e-counseling/e-counseling";
 import type { eCounselingListMyConsentsResponseSuccess } from "@/lib/api/generated/e-counseling/e-counseling";
+import type { StudentWorkspaceResponse } from "@/lib/api/generated/model";
 
 export const CONSENT_FALLBACK_REFRESH_MS = 7_000;
 export const CONSENT_LIVE_SAFETY_REFRESH_MS = 60_000;
@@ -20,17 +22,26 @@ type Environment = {
   window: Pick<Window, "setInterval" | "clearInterval" | "addEventListener" | "removeEventListener">;
   navigator: Pick<Navigator, "onLine">;
 };
+type Selection = "all" | "consent" | "workspace";
 type Family = { key: (id: string) => QueryKey; consent: boolean };
-type Refresh = { pending: boolean; running: boolean; queued: boolean; includeWorkspace: boolean; needsFreshRead: boolean };
+type Refresh = {
+  consent: boolean; workspace: boolean; running: boolean; queued: boolean;
+  fenceConsent: boolean; fenceWorkspace: boolean; freshConsent: boolean; freshWorkspace: boolean;
+};
+type WorkspaceData = { data?: Pick<StudentWorkspaceResponse, "media" | "provider_readiness"> };
 
-// No socket, data copy, durable queue or browser-global appointment ownership. The one portal
-// consumer operates on canonical queries already known to this account's QueryClient (RT-1A).
+// RT-1B extends RT-1A's one account-owned engine. Consent and media have separate work/fence
+// bits and polling policies, sharing canonical selection, coalescing, recovery and disposal.
 export class ECounselingConsentFreshness {
   private families: Family[];
   private environment: Environment | null = null;
   private refreshes = new Map<string, Refresh>();
   private listeners = new Set<() => void>();
   private timer: number | null = null;
+  private mediaTimers = new Map<string, { timer: number; interval: number }>();
+  private unsubscribeCache: (() => void) | null = null;
+  private activeCall: string | null = null;
+  private live = false;
   private interval = CONSENT_FALLBACK_REFRESH_MS;
   private generation = 0;
 
@@ -42,23 +53,25 @@ export class ECounselingConsentFreshness {
       ...(access.canManageMediaAssigned ? [{ key: getECounselingListAssignedConsentsQueryKey, consent: true }] : []),
     ];
   }
-
   subscribe = (listener: () => void) => {
     this.listeners.add(listener);
     return () => { this.listeners.delete(listener); };
   };
-  isPending = (id: string) => this.refreshes.has(id);
+  isPending = (id: string) => this.refreshes.get(id)?.fenceConsent ?? false;
+  isWorkspacePending = (id: string) => this.refreshes.get(id)?.fenceWorkspace ?? false;
   private notify() { for (const listener of this.listeners) listener(); }
   private canRefresh() {
     return this.environment?.document.visibilityState === "visible" && this.environment.navigator.onLine;
   }
-  private appointment(key: QueryKey, consentOnly = false): string | null {
+  private selected(family: Family, selection: Selection) {
+    return selection === "all" || family.consent === (selection === "consent");
+  }
+  private appointment(key: QueryKey, selection: Selection = "all"): string | null {
     if (key.length !== 1 || typeof key[0] !== "string") return null;
     for (const family of this.families) {
-      if (consentOnly && !family.consent) continue;
+      if (!this.selected(family, selection)) continue;
       const root = family.key("")[0];
       if (typeof root !== "string") continue;
-      // Consent keys have a suffix; use the generated function to check the exact full key.
       const prefix = root.split("/consents")[0];
       if (!key[0].startsWith(prefix)) continue;
       const id: string = key[0].slice(prefix.length).split("/")[0];
@@ -66,112 +79,168 @@ export class ECounselingConsentFreshness {
     }
     return null;
   }
-  private keys(id: string, consentOnly = false) {
-    return this.families.filter((family) => !consentOnly || family.consent).map((family) => family.key(id)).filter((key) => this.client.getQueryState(key) !== undefined);
+  private keys(id: string, selection: Selection = "all") {
+    return this.families.filter((family) => this.selected(family, selection)).map((family) => family.key(id)).filter((key) => this.client.getQueryState(key) !== undefined);
   }
-  private markStale(id: string, consentOnly = false) {
-    for (const key of this.keys(id, consentOnly)) {
-      void this.client.invalidateQueries({ queryKey: key, exact: true, refetchType: "none" });
+  private markStale(id: string, selection: Selection) {
+    for (const key of this.keys(id, selection)) void this.client.invalidateQueries({ queryKey: key, exact: true, refetchType: "none" });
+  }
+  private schedule(id: string, refresh: Refresh) {
+    if (refresh.running || refresh.queued) return;
+    refresh.queued = true;
+    queueMicrotask(() => { refresh.queued = false; void this.flush(id, refresh); });
+  }
+  private queue(id: unknown, selection: Selection) {
+    if (!this.environment || !isOpaqueRealtimeId(id) || !this.keys(id, selection).length || ecounselingResourceAccess(this.client).getDenial(id)) return;
+    const refresh = this.refreshes.get(id) ?? {
+      consent: false, workspace: false, running: false, queued: false,
+      fenceConsent: false, fenceWorkspace: false, freshConsent: false, freshWorkspace: false,
+    };
+    for (const kind of ["consent", "workspace"] as const) {
+      if (selection !== "all" && selection !== kind) continue;
+      if (!this.keys(id, kind).length) continue;
+      // A request begun before this hint cannot establish post-hint truth. Reuse it,
+      // then queue one fresh read. Hints during our own read already set a trailing bit.
+      if (!refresh.running && this.keys(id, kind).some((key) => this.client.getQueryState(key)?.fetchStatus === "fetching")) {
+        if (kind === "consent") refresh.freshConsent = true;
+        else refresh.freshWorkspace = true;
+      }
+      refresh[kind] = true;
+      if (kind === "consent") refresh.fenceConsent = true;
+      else refresh.fenceWorkspace = true;
     }
-  }
-
-  requestRefresh = (id: unknown, consentOnly = false) => {
-    if (!this.environment || !isOpaqueRealtimeId(id) || !this.keys(id).length || ecounselingResourceAccess(this.client).getDenial(id)) return;
-    const refresh = this.refreshes.get(id) ?? { pending: false, running: false, queued: false, includeWorkspace: false, needsFreshRead: false };
-    if (!consentOnly && !refresh.running && !refresh.queued && this.keys(id).some((key) => this.client.getQueryState(key)?.fetchStatus === "fetching")) {
-      // A read started before this hint may return the pre-change permission. Reuse it,
-      // then obtain one post-hint read before lifting the Start fence.
-      refresh.needsFreshRead = true;
+    if (selection === "all" && (refresh.freshConsent || refresh.freshWorkspace)) {
+      // Preserve RT-1A's complete post-hint consent/workspace reconciliation if either
+      // authoritative read predates the consent hint. Media-only hints remain workspace-only.
+      refresh.freshConsent = this.keys(id, "consent").length > 0;
+      refresh.freshWorkspace = this.keys(id, "workspace").length > 0;
     }
     this.refreshes.set(id, refresh);
-    refresh.pending = true;
-    refresh.includeWorkspace ||= !consentOnly;
-    // Fence an old APPROVED result immediately, including hidden/offline or in-flight reads.
-    this.markStale(id, consentOnly);
+    this.markStale(id, selection);
     this.notify();
-    if (!refresh.running && !refresh.queued) {
-      refresh.queued = true;
-      queueMicrotask(() => { refresh.queued = false; void this.flush(id, refresh); });
-    }
-  };
+    this.schedule(id, refresh);
+  }
+  requestRefresh = (id: unknown, consentOnly = false) => this.queue(id, consentOnly ? "consent" : "all");
+  requestMediaRefresh = (id: unknown) => this.queue(id, "workspace");
 
+  async refreshWorkspace(id: string) {
+    this.requestMediaRefresh(id);
+    if (!this.isWorkspacePending(id)) return;
+    await new Promise<void>((resolve) => {
+      const unsubscribe = this.subscribe(() => {
+        if (!this.environment || !this.isWorkspacePending(id)) { unsubscribe(); resolve(); }
+      });
+    });
+  }
+  private read(keys: QueryKey[]) {
+    return Promise.allSettled(keys.map((key) => this.client.refetchQueries(
+      { queryKey: key, exact: true, type: "active" }, { cancelRefetch: false },
+    )));
+  }
   private async flush(id: string, refresh: Refresh) {
     if (refresh.running || !this.canRefresh() || this.refreshes.get(id) !== refresh) return;
     refresh.running = true;
     try {
-      while (refresh.pending && this.canRefresh() && this.refreshes.get(id) === refresh) {
+      // One leading pass plus one trailing pass. Further changes retain one pending bit
+      // for a later microtask, rather than keeping an unbounded loop in this invocation.
+      for (let pass = 0; pass < 2 && (refresh.consent || refresh.workspace) && this.canRefresh() && this.refreshes.get(id) === refresh; pass++) {
         if (ecounselingResourceAccess(this.client).getDenial(id)) break;
-        refresh.pending = false;
-        const consentOnly = !refresh.includeWorkspace;
-        refresh.includeWorkspace = false;
-        const needsFreshRead = refresh.needsFreshRead;
-        refresh.needsFreshRead = false;
-        const consentKeys = this.keys(id, true);
+        const consent = refresh.consent;
+        const workspace = refresh.workspace;
+        const freshConsent = refresh.freshConsent;
+        const freshWorkspace = refresh.freshWorkspace;
+        refresh.consent = refresh.workspace = refresh.freshConsent = refresh.freshWorkspace = false;
+        const consentKeys = consent ? this.keys(id, "consent") : [];
         const previous = consentKeys.map((key) => this.client.getQueryData<eCounselingListMyConsentsResponseSuccess>(key)?.data?.items);
-        await Promise.allSettled(this.keys(id, consentOnly).map((key) => this.client.refetchQueries(
-          { queryKey: key, exact: true, type: "active" },
-          { cancelRefetch: false },
-        )));
+        await this.read([...consentKeys, ...(workspace ? this.keys(id, "workspace") : [])]);
         if (!this.environment || this.refreshes.get(id) !== refresh) return;
-        // Normal polling reads consent only. TanStack structural sharing preserves unchanged
-        // item references; a confirmed change also refreshes the existing workspace projection.
-        if (consentOnly && this.canRefresh() && this.refreshes.get(id) === refresh && consentKeys.some((key, index) =>
+        if (consent && !workspace && this.canRefresh() && consentKeys.some((key, index) =>
           this.client.getQueryState(key)?.status === "success" && previous[index] !== this.client.getQueryData<eCounselingListMyConsentsResponseSuccess>(key)?.data?.items,
         )) {
-          const workspaceKeys = this.keys(id).filter((key) => !consentKeys.some((consent) => consent[0] === key[0]));
-          for (const key of workspaceKeys) void this.client.invalidateQueries({ queryKey: key, exact: true, refetchType: "none" });
-          await Promise.allSettled(workspaceKeys.map((key) => this.client.refetchQueries({ queryKey: key, exact: true, type: "active" }, { cancelRefetch: false })));
+          refresh.fenceWorkspace = true;
+          const workspaceKeys = this.keys(id, "workspace");
+          const oldRead = workspaceKeys.some((key) => this.client.getQueryState(key)?.fetchStatus === "fetching");
+          this.markStale(id, "workspace");
+          this.notify();
+          await this.read(workspaceKeys);
           if (!this.environment || this.refreshes.get(id) !== refresh) return;
+          refresh.workspace ||= oldRead;
         }
-        if (needsFreshRead) {
-          refresh.pending = true;
-          refresh.includeWorkspace ||= !consentOnly;
-        }
-        // A hint received during a read requires one trailing read. Keep the safety fence up
-        // throughout, even if that older request temporarily returned an APPROVED result.
-        if (refresh.pending) this.markStale(id, !refresh.includeWorkspace);
+        refresh.consent ||= freshConsent;
+        refresh.workspace ||= freshWorkspace;
+        if (refresh.consent) this.markStale(id, "consent");
+        if (refresh.workspace) this.markStale(id, "workspace");
       }
     } finally {
       refresh.running = false;
-      if (this.refreshes.get(id) === refresh && (!refresh.pending || ecounselingResourceAccess(this.client).getDenial(id))) this.refreshes.delete(id);
+      if (this.refreshes.get(id) === refresh) {
+        if ((!refresh.consent && !refresh.workspace) || ecounselingResourceAccess(this.client).getDenial(id)) this.refreshes.delete(id);
+        else if (this.canRefresh()) this.schedule(id, refresh);
+      }
       this.notify();
     }
   }
-
   reconcile = (consentOnly = false) => {
     if (!this.canRefresh()) return;
     const ids = new Set(this.client.getQueryCache().getAll().flatMap((query) => {
-      const id = query.isActive() ? this.appointment(query.queryKey, consentOnly) : null;
+      const id = query.isActive() ? this.appointment(query.queryKey, consentOnly ? "consent" : "all") : null;
       return id ? [id] : [];
     }));
-    // Foreground recovery also drains hints received while hidden/offline.
-    for (const id of new Set([...ids, ...this.refreshes.keys()])) this.requestRefresh(id, consentOnly);
+    for (const id of new Set([...ids, ...this.refreshes.keys()])) {
+      // A safety clock is redundant while this appointment already has a canonical read.
+      // Events and foreground recovery still retain the necessary trailing reconciliation.
+      if (!consentOnly || !this.refreshes.has(id)) this.requestRefresh(id, consentOnly);
+    }
   };
-
+  setActiveCall(id: string | null) {
+    this.activeCall = isOpaqueRealtimeId(id) ? id : null;
+    this.updateMediaTimers();
+  }
+  private updateMediaTimers = () => {
+    if (!this.environment) return;
+    const wanted = new Map<string, number>();
+    for (const query of this.client.getQueryCache().getAll()) {
+      if (!query.isActive()) continue;
+      const id = this.appointment(query.queryKey, "workspace");
+      if (!id || ecounselingResourceAccess(this.client).getDenial(id)) continue;
+      const data = this.client.getQueryData<WorkspaceData>(query.queryKey)?.data;
+      const interval = sessionRefreshInterval(id === this.activeCall, data?.media, this.live)
+        || (data?.provider_readiness?.join_allowed ? (this.live ? CONSENT_LIVE_SAFETY_REFRESH_MS : CONSENT_FALLBACK_REFRESH_MS) : false);
+      if (interval) wanted.set(id, interval);
+    }
+    for (const [id, current] of this.mediaTimers) {
+      if (wanted.get(id) !== current.interval) {
+        this.environment.window.clearInterval(current.timer);
+        this.mediaTimers.delete(id);
+      }
+    }
+    for (const [id, interval] of wanted) {
+      if (!this.mediaTimers.has(id)) this.mediaTimers.set(id, {
+        // A consent-only poll must not starve a simultaneously due workspace poll.
+        interval, timer: this.environment.window.setInterval(() => { if (this.canRefresh() && !this.isWorkspacePending(id)) this.requestMediaRefresh(id); }, interval),
+      });
+    }
+  };
   setRealtimeStatus(snapshot: RealtimeSnapshot) {
     if (!this.environment) return;
-    const interval = snapshot.state === "live" ? CONSENT_LIVE_SAFETY_REFRESH_MS : CONSENT_FALLBACK_REFRESH_MS;
-    if (interval !== this.interval) {
-      this.interval = interval;
-      this.resetTimer();
-    }
-    if (snapshot.generation > this.generation) {
-      this.generation = snapshot.generation;
-      this.reconcile();
-    }
+    this.live = snapshot.state === "live";
+    const interval = this.live ? CONSENT_LIVE_SAFETY_REFRESH_MS : CONSENT_FALLBACK_REFRESH_MS;
+    if (interval !== this.interval) { this.interval = interval; this.resetTimer(); }
+    this.updateMediaTimers();
+    if (snapshot.generation > this.generation) { this.generation = snapshot.generation; this.reconcile(); }
   }
   private resetTimer() {
     if (!this.environment) return;
     if (this.timer !== null) this.environment.window.clearInterval(this.timer);
-    // Only consent lists receive the new safety cadence. Media workspace polling is unchanged.
     this.timer = this.environment.window.setInterval(() => this.reconcile(true), this.interval);
   }
   private onForeground = () => this.reconcile();
-
   start(environment: Environment) {
     this.environment = environment;
     this.generation = 0;
     this.resetTimer();
+    this.unsubscribeCache = this.client.getQueryCache().subscribe(this.updateMediaTimers);
+    this.updateMediaTimers();
     environment.document.addEventListener("visibilitychange", this.onForeground);
     environment.window.addEventListener("focus", this.onForeground);
     environment.window.addEventListener("online", this.onForeground);
@@ -179,10 +248,15 @@ export class ECounselingConsentFreshness {
   stop() {
     if (!this.environment) return;
     if (this.timer !== null) this.environment.window.clearInterval(this.timer);
+    for (const current of this.mediaTimers.values()) this.environment.window.clearInterval(current.timer);
+    this.mediaTimers.clear();
+    this.unsubscribeCache?.();
+    this.unsubscribeCache = null;
     this.environment.document.removeEventListener("visibilitychange", this.onForeground);
     this.environment.window.removeEventListener("focus", this.onForeground);
     this.environment.window.removeEventListener("online", this.onForeground);
     this.environment = null;
+    this.activeCall = null;
     this.refreshes.clear();
     this.notify();
   }

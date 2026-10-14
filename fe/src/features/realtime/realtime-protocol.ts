@@ -29,6 +29,7 @@ const PUBLIC_EVENT_FIELDS: Readonly<Record<string, readonly string[]>> = {
   "notifications.changed": [],
   "messages.thread_changed": ["thread_id"],
   "ecounseling.consent.changed": ["appointment_id"],
+  "ecounseling.media.changed": ["appointment_id"],
 };
 
 /** The one frame a client sends: protocol authentication, not a command. */

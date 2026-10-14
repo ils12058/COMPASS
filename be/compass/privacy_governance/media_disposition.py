@@ -6,6 +6,7 @@ from django.utils import timezone
 from compass.audit import actions
 from compass.audit.context import AuditContext
 from compass.ecounseling.artifacts import artifact_guard, delete_v2_provider
+from compass.ecounseling.media_realtime import media_changed_on_commit
 from compass.ecounseling.models import ECounselingMediaArtifact, ECounselingMediaCapture
 from compass.integrations.daily import DailyClient
 from compass.integrations.storage import ObjectStorage
@@ -98,3 +99,4 @@ def execute_media_disposition(case_id, token, *, source_version, provider_id):
             case.revision += 1
             case.save()
             audit(AuditContext.system(), actions.DISPOSITION_COMPLETED, case)
+            media_changed_on_commit(source.room.appointment_id)

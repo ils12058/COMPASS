@@ -15,11 +15,10 @@ import { CounselingContextPanel } from "@/features/counseling/counseling-workspa
 import { RecordEncounterDialog } from "@/features/counseling/record-encounter-dialog";
 import { type EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
 import { CallStage } from "@/features/ecounseling/call/call-stage";
-import { useActiveECounselingCall } from "@/features/ecounseling/runtime/active-call-context";
 import { useSessionCallView } from "@/features/ecounseling/runtime/use-session-call-view";
 import { CaptureStartDialogs, CounselorMediaStrip, GovernedCaptureControls, useCounselorMedia } from "@/features/ecounseling/counselor-media";
 import { getECounselingAccess, type ECounselingAccess } from "@/features/ecounseling/ecounseling-access";
-import { captureStatusLabel, ecounselingErrorMessage, sessionRefreshInterval } from "@/features/ecounseling/ecounseling-shared";
+import { captureStatusLabel, ecounselingErrorMessage } from "@/features/ecounseling/ecounseling-shared";
 import { ECounselingHelp } from "@/features/ecounseling/session-help";
 import { SessionFiles } from "@/features/ecounseling/session-files";
 import { LayoutPresetControl, phoneBleed, sessionGrid, sessionStageClass, useWideWorkspace, type LayoutPreset } from "@/features/ecounseling/session-layout";
@@ -215,23 +214,14 @@ export function ECounselingWorkspace({ appointmentId }: { appointmentId: string 
     : <CounselorWorkspace appointmentId={appointmentId} access={access} />;
 }
 
-// While this Appointment has the portal's live call, the portal runtime keeps its session state
-// fresh through the same query, so the page adds no second poll (ADR-094). Otherwise the page
-// refreshes while something is being captured or prepared. A failed refresh keeps the last confirmed
-// session on screen.
-function usePagePolling(appointmentId: string) {
-  const runtime = useActiveECounselingCall();
-  const runtimePolls = runtime.appointmentId === appointmentId && runtime.live;
-  return (media: MediaWorkspaceState | undefined) => (runtimePolls ? false : sessionRefreshInterval(false, media));
-}
-
+// The portal freshness coordinator owns the one workspace safety poll per appointment.
+// Page and persistent-call observers continue sharing the same canonical query.
 function StudentWorkspace({ appointmentId, access }: { appointmentId: string; access: ECounselingAccess }) {
   const denial = useECounselingResourceDenial(appointmentId);
-  const refreshInterval = usePagePolling(appointmentId);
   const workspace = useECounselingGetMyWorkspace(appointmentId, { query: {
     retry: false,
     enabled: !denial,
-    refetchInterval: (query) => refreshInterval(query.state.data?.data.media),
+    refetchInterval: false,
   } });
   const data = denial ? undefined : safeQueryData(workspace)?.data;
   useECounselingBoundaryRefresh(appointmentId, data?.provider_readiness, workspace.refetch);
@@ -293,11 +283,10 @@ function StudentSession({ appointmentId, access, data }: {
 
 function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; access: ECounselingAccess }) {
   const denial = useECounselingResourceDenial(appointmentId);
-  const refreshInterval = usePagePolling(appointmentId);
   const workspace = useECounselingGetAssignedWorkspace(appointmentId, { query: {
     retry: false,
     enabled: !denial,
-    refetchInterval: (query) => refreshInterval(query.state.data?.data.media),
+    refetchInterval: false,
   } });
   const data = denial ? undefined : safeQueryData(workspace)?.data;
   useECounselingBoundaryRefresh(appointmentId, data?.provider_readiness, workspace.refetch);
@@ -312,7 +301,7 @@ function CounselorWorkspace({ appointmentId, access }: { appointmentId: string; 
         appointmentId={appointmentId}
         access={access}
         data={data}
-        sessionStateCurrent={!workspace.isRefetchError}
+        sessionStateCurrent={!workspace.isRefetchError && !workspace.isFetching}
       />
     </>
   );
