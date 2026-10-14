@@ -12,7 +12,6 @@ from django.http import HttpResponse, JsonResponse
 from ninja import Header, Router, Schema
 from pydantic import ConfigDict, Field
 
-from compass.accounts.confidential_profile import AccountProfileConfidentialContentUnavailable
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
@@ -315,14 +314,8 @@ def _require_viewer(request, capability: str) -> None:
         )
 
 
-def _raise(
-    exc: FeedbackError
-    | FeedbackConfidentialContentUnavailable
-    | AccountProfileConfidentialContentUnavailable,
-) -> NoReturn:
-    if isinstance(
-        exc, (FeedbackConfidentialContentUnavailable, AccountProfileConfidentialContentUnavailable)
-    ):
+def _raise(exc: FeedbackError | FeedbackConfidentialContentUnavailable) -> NoReturn:
+    if isinstance(exc, FeedbackConfidentialContentUnavailable):
         raise APIError(
             500, "feedback_confidential_content_unavailable", "The Feedback content is unavailable."
         ) from None
@@ -601,7 +594,7 @@ def feedback_submit_customer_feedback(
             values=values,
             context=_context(request),
         )
-    except (FeedbackError, AccountProfileConfidentialContentUnavailable) as exc:
+    except FeedbackError as exc:
         _abandon_submission_or_503(store, decision.reservation)
         _raise(exc)
     except Exception:

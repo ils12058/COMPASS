@@ -152,3 +152,37 @@ separate evidence and design decisions.
 ADR-086 supersedes only the ordinary plaintext representation of the selected Feedback private prose/contact
 values. Ownership, canonical identity, lifecycle, disclosure and logical API contracts above
 remain authoritative; historical design context is preserved.
+
+
+## Optional respondent identity supersession (2026-10-15, FB-1)
+
+For new Customer Feedback submissions, respondent-supplied optional identity only; no implicit
+profile fallback. This supersedes the initial digital-channel fallback decision above. Name,
+address and mobile number each start blank, may independently be omitted or cleared, and are saved
+as normalized supplied text or an empty string. Course/year remains required. The form does not
+request the Account Profile for these fields. Ordinary reviewer list/detail serializers and name
+search use only response-local values; they do not reconstruct the authenticated Student identity.
+
+The existing non-null respondent-name string column accepts an empty string through the supported
+API/service save path; no schema migration or nullable representation is needed. Validation stays in
+the submission service (this path does not use Django ModelForm or `full_clean()`). Text type, UTF-8,
+NUL and length checks remain. Address/mobile continue in the validated ADR-086 encrypted payload,
+including when blank; no plaintext contact columns or encryption changes are introduced.
+
+This corrects the mismatch between optional disclosure and implicit profile recovery. It does not
+provide anonymous submission: active Student authentication/capabilities, owned completed-service
+Feedback Opportunities, service/revision checks, one submission per opportunity, transactions,
+idempotency and attributed Audit Events remain authoritative. Restricted audit/provenance data
+may identify the submitter under existing access policies; this addendum neither expands that
+access to ordinary Feedback reviewers nor copies actor identifiers into response fields.
+
+The change is prospective. Existing rows may contain implicitly derived details, and their original
+voluntary disclosure intent cannot reliably be inferred. This slice does not rewrite snapshots,
+reencrypt historical content, alter opportunities or accounts, or remove audits. Before deployment,
+the GCO/institutional owner should approve the digital-channel privacy wording and optional-disclosure
+policy; the GCO/DPO should separately determine whether historical notice, access restriction,
+correction or other remediation requires an approved procedure.
+
+F14 remains `CNSC-OP-GTA-01F14`, Revision `0`, schema version `1`; no approved replacement F14
+specimen has been established. CSM behavior and the ADR-086 confidentiality architecture remain
+unchanged.

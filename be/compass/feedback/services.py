@@ -14,7 +14,6 @@ from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
-from compass.accounts.profiles import get_person_profile_context
 from compass.audit.actions import CSM_SUBMITTED, CUSTOMER_FEEDBACK_SUBMITTED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
@@ -403,7 +402,7 @@ def _normalize_services(raw: object) -> list[str]:
     return normalized
 
 
-def _normalize_customer_feedback(values: dict[str, object], student) -> dict[str, object]:
+def _normalize_customer_feedback(values: dict[str, object]) -> dict[str, object]:
     services = _normalize_services(values.get("services_received"))
     other_service = _clean_text(
         values.get("other_service", ""), "other_service", 255, required=False
@@ -480,24 +479,15 @@ def _normalize_customer_feedback(values: dict[str, object], student) -> dict[str
             values.get(field_name), set(CustomerFeedbackRating.values), field_name
         )
 
-    supplied_name = _clean_text(
+    normalized["respondent_name_snapshot"] = _clean_text(
         values.get("respondent_name", ""), "respondent_name", 200, required=False
     )
-    normalized["respondent_name_snapshot"] = supplied_name or student.get_full_name().strip()
-    if not normalized["respondent_name_snapshot"]:
-        raise InvalidFeedbackInput("respondent_name is required.")
-
-    supplied_address = _clean_text(values.get("address", ""), "address", 2000, required=False)
-    supplied_mobile = _clean_text(
+    normalized["address_snapshot"] = _clean_text(
+        values.get("address", ""), "address", 2000, required=False
+    )
+    normalized["mobile_number_snapshot"] = _clean_text(
         values.get("mobile_number", ""), "mobile_number", 64, required=False
     )
-    profile = (
-        get_person_profile_context(student) if not supplied_address or not supplied_mobile else None
-    )
-    normalized["address_snapshot"] = (
-        supplied_address or profile.current_address.strip() or profile.permanent_address.strip()
-    )
-    normalized["mobile_number_snapshot"] = supplied_mobile or profile.contact_number.strip()
     return normalized
 
 
@@ -531,7 +521,7 @@ def create_customer_feedback(
             revision = require_active_supported_form_revision("customer_feedback")
         except InstitutionalFormConflict as exc:
             raise FeedbackConfigurationConflict(str(exc)) from exc
-        normalized = _normalize_customer_feedback(values, locked)
+        normalized = _normalize_customer_feedback(values)
         if opportunity.service_kind not in normalized["services_received"]:
             raise InvalidFeedbackInput(
                 "services_received must include the service for this Feedback opportunity."

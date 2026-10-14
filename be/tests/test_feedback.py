@@ -349,31 +349,182 @@ def test_inactive_student_and_non_student_cannot_submit():
 
 
 @pytest.mark.django_db
-def test_f14_prefills_profile_snapshots_once_and_does_not_store_user_fk():
+@pytest.mark.parametrize(
+    "optional",
+    [
+        {},
+        {"respondent_name": "", "address": "", "mobile_number": ""},
+        {"respondent_name": " \t ", "address": " \n ", "mobile_number": " \t "},
+        *[
+            {
+                key: value
+                for bit, (key, value) in enumerate(
+                    [
+                        ("respondent_name", "  Voluntary Respondent  "),
+                        ("address", "  Supplied Address 雪  "),
+                        ("mobile_number", "  +63 912 345 6789  "),
+                    ]
+                )
+                if mask & (1 << bit)
+            }
+            for mask in range(1, 8)
+        ],
+    ],
+)
+def test_f14_optional_identity_uses_only_submitted_values(optional, monkeypatch):
+    from compass.accounts import confidential_profile, profiles
+
     sync_policy()
-    student = make_user("profile-feedback@example.edu")
-    set_profile(student, current_address="Initial Address")
-    set_profile(student, contact_number="09171234567")
-    student.save(update_fields=["updated_at"])
+    student = make_user("optional-feedback@example.edu")
+    set_profile(
+        student,
+        current_address="Account Current Address",
+        permanent_address="Account Permanent Address",
+        contact_number="Account Contact Number",
+    )
     client = auth_client(student)
 
-    response = post_json(client, "/api/v1/feedback/customer-feedback", valid_f14_payload())
-    assert response.status_code == 201
-    item = CustomerFeedbackResponse.objects.get()
-    assert item.respondent_name_snapshot == "Feedback Student"
-    assert read_feedback_confidential_content(item).address_snapshot == "Initial Address"
-    assert read_feedback_confidential_content(item).mobile_number_snapshot == "09171234567"
-    assert item.course_year_snapshot == "BS Information Systems / 4th Year"
-    assert not any(field.name in {"user", "student", "respondent"} for field in item._meta.fields)
+    def no_account_identity(*args, **kwargs):
+        pytest.fail("Feedback must not read account identity or profile contact details")
 
+    monkeypatch.setattr(profiles, "get_person_profile_context", no_account_identity)
+    monkeypatch.setattr(
+        confidential_profile, "read_account_profile_confidential_content", no_account_identity
+    )
+    monkeypatch.setattr(User, "get_full_name", no_account_identity)
+    payload = valid_f14_payload()
+    for key in ("respondent_name", "address", "mobile_number"):
+        payload.pop(key)
+    payload.update(optional)
+    key = "optional-identity-intent"
+    response = post_json(client, "/api/v1/feedback/customer-feedback", payload, idempotency_key=key)
+    assert response.status_code == 201, response.content
+    replay = post_json(client, "/api/v1/feedback/customer-feedback", payload, idempotency_key=key)
+    assert replay.content == response.content and replay.status_code == 201
+    item = CustomerFeedbackResponse.objects.get()
+    private = read_feedback_confidential_content(item)
+    expected = {
+        key: optional.get(key, "").strip()
+        for key in ("respondent_name", "address", "mobile_number")
+    }
+    assert item.respondent_name_snapshot == expected["respondent_name"]
+    assert private.address_snapshot == expected["address"]
+    assert private.mobile_number_snapshot == expected["mobile_number"]
+    assert item.course_year_snapshot == payload["course_year"]
+    assert item.confidential_content_ciphertext
+    assert not any(field.name in {"user", "student", "respondent"} for field in item._meta.fields)
+    event = AuditEvent.objects.get(action="feedback.customer_feedback_submitted")
+    assert event.actor_user_id == student.pk and event.actor_type == "USER"
+    assert event.target_id == str(item.pk)
+    opportunity = FeedbackOpportunity.objects.get(pk=event.metadata["opportunity_id"])
+    assert opportunity.student_id == student.pk
+    assert opportunity.customer_feedback_submitted_at == item.submitted_at
+
+    head = auth_client(make_head())
+    detail = head.get(f"/api/v1/feedback/customer-feedback/responses/{item.pk}")
+    assert detail.status_code == 200
+    for field, value in expected.items():
+        assert detail.json()[field] == value
+    assert not {"student", "student_id", "user", "user_id", "email", "actor", "opportunity_id"} & (
+        detail.json().keys()
+    )
+    assert student.email not in detail.content.decode()
+    assert str(student.pk) not in detail.content.decode()
+
+
+@pytest.mark.django_db
+def test_f14_supplied_snapshots_and_existing_rows_survive_later_profile_changes():
+    sync_policy()
+    student = make_user("profile-feedback@example.edu")
+    payload = valid_f14_payload()
+    payload.update(
+        respondent_name="Voluntary Name", address="Voluntary Address", mobile_number="09171234567"
+    )
+    assert (
+        post_json(auth_client(student), "/api/v1/feedback/customer-feedback", payload).status_code
+        == 201
+    )
+    item = CustomerFeedbackResponse.objects.get()
+    ciphertext = item.confidential_content_ciphertext
     student.first_name = "Changed"
-    set_profile(student, current_address="Changed Address")
-    set_profile(student, contact_number="09999999999")
+    set_profile(student, current_address="Changed Address", contact_number="09999999999")
     student.save(update_fields=["first_name", "updated_at"])
+    assert (
+        post_json(
+            auth_client(student), "/api/v1/feedback/customer-feedback", valid_f14_payload()
+        ).status_code
+        == 201
+    )
     item.refresh_from_db()
-    assert item.respondent_name_snapshot == "Feedback Student"
-    assert read_feedback_confidential_content(item).address_snapshot == "Initial Address"
+    assert item.respondent_name_snapshot == "Voluntary Name"
+    assert item.confidential_content_ciphertext == ciphertext
+    assert read_feedback_confidential_content(item).address_snapshot == "Voluntary Address"
     assert read_feedback_confidential_content(item).mobile_number_snapshot == "09171234567"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "field,limit", [("respondent_name", 200), ("address", 2000), ("mobile_number", 64)]
+)
+@pytest.mark.parametrize("invalid", [None, 12, [], "nul", "utf8", "oversized"])
+def test_f14_optional_identity_rejects_invalid_text(field, limit, invalid):
+    sync_policy()
+    payload = valid_f14_payload()
+    payload[field] = (
+        {"nul": "x\x00y", "utf8": "x\ud800y", "oversized": "x" * (limit + 1)}.get(invalid, invalid)
+        if isinstance(invalid, str)
+        else invalid
+    )
+    response = post_json(
+        auth_client(make_user("invalid-identity@example.edu")),
+        "/api/v1/feedback/customer-feedback",
+        payload,
+    )
+    assert response.status_code == 422
+    assert not CustomerFeedbackResponse.objects.exists()
+    assert not FeedbackOpportunity.objects.exclude(customer_feedback_submitted_at=None).exists()
+    assert not AuditEvent.objects.filter(action="feedback.customer_feedback_submitted").exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("course_year", [None, "", " \t "])
+def test_f14_course_year_still_required_with_optional_identity_absent(course_year):
+    sync_policy()
+    payload = valid_f14_payload()
+    for field in ("respondent_name", "address", "mobile_number", "course_year"):
+        payload.pop(field)
+    if course_year is not None:
+        payload["course_year"] = course_year
+    response = post_json(
+        auth_client(make_user("course-required@example.edu")),
+        "/api/v1/feedback/customer-feedback",
+        payload,
+    )
+    assert response.status_code == 422
+    assert not CustomerFeedbackResponse.objects.exists()
+
+
+@pytest.mark.django_db
+def test_f14_unnamed_submission_rolls_back_if_audit_fails(monkeypatch):
+    from compass.feedback import services
+
+    sync_policy()
+    student = make_user("audit-rollback-feedback@example.edu")
+    opportunity = make_feedback_opportunity(student)
+    store = ControlledIdempotencyStore()
+    use_idempotency_store(monkeypatch, store)
+
+    def fail_audit(**kwargs):
+        raise RuntimeError("Synthetic audit failure")
+
+    monkeypatch.setattr(services, "record_event", fail_audit)
+    payload = {**valid_f14_payload(), "opportunity_id": str(opportunity.pk)}
+    response = post_json(auth_client(student), "/api/v1/feedback/customer-feedback", payload)
+    assert response.status_code == 500
+    assert store.abandon_calls == 1
+    assert not CustomerFeedbackResponse.objects.exists()
+    opportunity.refresh_from_db()
+    assert opportunity.customer_feedback_submitted_at is None
 
 
 @pytest.mark.django_db
@@ -629,6 +780,9 @@ def test_only_head_guidance_has_raw_feedback_review_by_default():
         designation=Designation.objects.get(code="DPO"),
     )
     dpo = auth_client(dpo_user)
+    officer = auth_client(
+        make_user("officer-feedback@example.edu", role="INSTITUTIONAL_OFFICER", lifecycle=None)
+    )
 
     assert head.get("/api/v1/feedback/customer-feedback/responses").status_code == 200
     assert head.get(f"/api/v1/feedback/customer-feedback/responses/{f14_id}").status_code == 200
@@ -637,8 +791,11 @@ def test_only_head_guidance_has_raw_feedback_review_by_default():
     assert detail.status_code == 200
     assert detail.json()["sqd5"] == 0
 
-    for denied in (counselor, admin, gss, dpo):
+    for denied in (client, counselor, admin, gss, dpo, officer):
         assert denied.get("/api/v1/feedback/customer-feedback/responses").status_code == 403
+        assert (
+            denied.get(f"/api/v1/feedback/customer-feedback/responses/{f14_id}").status_code == 403
+        )
         assert denied.get("/api/v1/feedback/csm/responses").status_code == 403
 
 
@@ -702,7 +859,7 @@ def test_customer_feedback_review_filters_name_service_dates_and_pagination():
     alpha_id = post_json(
         alpha_client,
         "/api/v1/feedback/customer-feedback",
-        valid_f14_payload(),
+        {**valid_f14_payload(), "respondent_name": "Alice Voluntary"},
     ).json()["id"]
 
     beta = make_user("review-beta-feedback@example.edu")
@@ -734,6 +891,13 @@ def test_customer_feedback_review_filters_name_service_dates_and_pagination():
     assert searched.status_code == 200
     assert [row["id"] for row in searched.json()["items"]] == [alpha_id]
 
+    unnamed_search = head.get("/api/v1/feedback/customer-feedback/responses", {"search": "Bruno"})
+    assert unnamed_search.status_code == 200 and unnamed_search.json()["items"] == []
+    unnamed = head.get(f"/api/v1/feedback/customer-feedback/responses/{beta_id}")
+    assert unnamed.status_code == 200
+    assert unnamed.json()["respondent_name"] == ""
+    assert unnamed.json()["address"] == unnamed.json()["mobile_number"] == ""
+
     service = head.get(
         "/api/v1/feedback/customer-feedback/responses",
         {"service": "REQUEST_FOR_CERTIFICATION"},
@@ -760,6 +924,13 @@ def test_customer_feedback_review_filters_name_service_dates_and_pagination():
     assert paged.status_code == 200
     assert len(paged.json()["items"]) == 1
     assert paged.json()["has_next"] is True
+    assert paged.json()["items"][0]["id"] == beta_id
+    assert paged.json()["items"][0]["respondent_name"] == ""
+    next_page = head.get(
+        "/api/v1/feedback/customer-feedback/responses", {"page_size": 1, "page": 2}
+    )
+    assert next_page.json()["items"][0]["id"] == alpha_id
+    assert next_page.json()["has_next"] is False
 
     reversed_range = head.get(
         "/api/v1/feedback/customer-feedback/responses",
@@ -831,7 +1002,6 @@ def test_csm_review_filters_service_dates_and_preserves_client_type_contract():
     assert paged.status_code == 200
     assert len(paged.json()["items"]) == 1
     assert paged.json()["has_next"] is True
-
     reversed_range = head.get(
         "/api/v1/feedback/csm/responses",
         {"submitted_from": "2026-09-22", "submitted_to": "2026-09-21"},

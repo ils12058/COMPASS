@@ -40,12 +40,14 @@ from tests.residual_encryption_helpers import (
     state,
 )
 from tests.test_feedback import (
+    ControlledIdempotencyStore,
     auth_client,
     make_feedback_opportunity,
     make_head,
     make_user,
     post_json,
     sync_policy,
+    use_idempotency_store,
     valid_csm_payload,
     valid_f14_payload,
 )
@@ -189,6 +191,7 @@ def submitted(world, family):
     values = valid_f14_payload() if family == NAMES[0] else valid_csm_payload()
     if family == NAMES[0]:
         values.update(
+            respondent_name="Voluntary Feedback Respondent",
             additional_feedback=PRIVATE[family]["additional_feedback"],
             future_service_improvement=PRIVATE[family]["future_service_improvement"],
             address=PRIVATE[family]["address_snapshot"],
@@ -264,28 +267,27 @@ def test_corrupt_head_detail_generic500_no_partial_or_leak(world, family, caplog
     assert raw(type(item)) == before
 
 
-def test_f14_blank_fallback_once_independent_snapshot_and_explicit_contacts_skip_profile(
-    world, monkeypatch
-):
+def test_f14_blank_contacts_have_valid_envelope_and_no_profile_dependency(world, monkeypatch):
     student, _ = world
-    client = auth_client(student)
-    response = post_json(client, "/api/v1/feedback/customer-feedback", valid_f14_payload())
+    monkeypatch.setattr(account_content, "read_account_profile_confidential_content", forbid)
+    response = post_json(
+        auth_client(student), "/api/v1/feedback/customer-feedback", valid_f14_payload()
+    )
     assert response.status_code == 201
     item = CustomerFeedbackResponse.objects.get()
     token = item.confidential_content_ciphertext
-    assert (
-        content.read_feedback_confidential_content(item).address_snapshot
-        == "PRIVATE-profile address"
-    )
-    set_profile(student, current_address="changed", contact_number="changed")
+    private = content.read_feedback_confidential_content(item)
+    assert item.respondent_name_snapshot == ""
+    assert private.address_snapshot == private.mobile_number_snapshot == ""
+    data = envelope(token)
+    assert data["schema_version"] == 1
+    assert data["payload"]["address_snapshot"] == data["payload"]["mobile_number_snapshot"] == ""
+    assert frozen.decrypt((K1,), item, token, NAMES[0]) == asdict(private)
+    assert set(content.FIELDS[NAMES[0]]).isdisjoint(columns(CustomerFeedbackResponse))
     assert CustomerFeedbackResponse.objects.get().confidential_content_ciphertext == token
-    monkeypatch.setattr(services, "get_person_profile_context", forbid)
-    payload = valid_f14_payload()
-    payload.update(address="explicit", mobile_number="explicit")
-    assert post_json(client, "/api/v1/feedback/customer-feedback", payload).status_code == 201
 
 
-def test_f14_required_unreadable_fallback_is_generic500_without_marker_or_row(world):
+def test_f14_unreadable_account_profile_does_not_block_optional_identity(world):
     student, _ = world
     User.objects.filter(pk=student.pk).update(
         profile_confidential_content_ciphertext="PRIVATE-corrupt"
@@ -293,12 +295,36 @@ def test_f14_required_unreadable_fallback_is_generic500_without_marker_or_row(wo
     response = post_json(
         auth_client(student), "/api/v1/feedback/customer-feedback", valid_f14_payload()
     )
+    assert response.status_code == 201
+    item = CustomerFeedbackResponse.objects.get()
+    private = content.read_feedback_confidential_content(item)
     assert (
-        response.status_code == 500
-        and response.json()["error"]["code"] == "feedback_confidential_content_unavailable"
+        item.respondent_name_snapshot
+        == private.address_snapshot
+        == private.mobile_number_snapshot
+        == ""
     )
+
+
+@pytest.mark.parametrize("provided", [False, True])
+def test_f14_missing_feedback_keys_fail_closed_even_with_optional_identity(
+    world, settings, provided, monkeypatch
+):
+    use_idempotency_store(monkeypatch, ControlledIdempotencyStore())
+    payload = valid_f14_payload()
+    if provided:
+        payload.update(
+            respondent_name="Voluntary Name",
+            address="Supplied Address",
+            mobile_number="09171234567",
+        )
+    settings.FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS = ()
+    response = post_json(auth_client(world[0]), "/api/v1/feedback/customer-feedback", payload)
+    assert response.status_code == 500
+    assert response.json()["error"]["code"] == "internal_error"
     assert not CustomerFeedbackResponse.objects.exists()
-    assert not student.feedback_opportunities.exclude(customer_feedback_submitted_at=None).exists()
+    assert not world[0].feedback_opportunities.exclude(customer_feedback_submitted_at=None).exists()
+    assert not AuditEvent.objects.filter(action="feedback.customer_feedback_submitted").exists()
 
 
 @pytest.mark.parametrize("family", NAMES)
