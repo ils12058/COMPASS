@@ -17,6 +17,7 @@ from .media import (
     effective_consent,
     media_scope,
 )
+from .media_realtime import media_changed_on_commit
 from .models import (
     CaptureReconciliationOutcome,
     CaptureReconciliationState,
@@ -268,6 +269,7 @@ def _apply(receipt, event):
         _outcome(receipt, Outcome.ANOMALY, Anomaly.RESERVATION, urgent=event.started)
         return None
     capture.room = room
+    previous_status = capture.status
     artifact = ECounselingMediaArtifact.objects.select_for_update().filter(capture=capture).first()
     if _protected(capture, artifact):
         _outcome(receipt, Outcome.PROTECTED, Anomaly.CLEANUP, urgent=event.started)
@@ -386,10 +388,13 @@ def _apply(receipt, event):
         capture.error_code = capture.error_code or "PROVIDER_ERROR"
     capture.save()
     receipt.applied_at = now
+    pending = None
     if event.completion:
         from .artifacts import ensure_pending_artifact
 
-        ensure_pending_artifact(capture)
+        pending = ensure_pending_artifact(capture, publish_hint=False)
+    if previous_status != capture.status or (artifact is None and pending is not None):
+        media_changed_on_commit(room.appointment_id)
     return mitigation
 
 

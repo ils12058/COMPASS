@@ -106,6 +106,11 @@ export function formatECounselingDateTime(value: string | null | undefined): str
 // so capture and file states stay current. Provider events in the call only ask for an extra refresh.
 export const SESSION_REFRESH_MS = 7000;
 
-export function sessionRefreshInterval(inCall: boolean, media: MediaWorkspaceState | undefined): number | false {
-  return inCall || activeCaptureKinds(media).length > 0 || hasPreparingMediaFile(media) ? SESSION_REFRESH_MS : false;
+export function sessionRefreshInterval(inCall: boolean, media: MediaWorkspaceState | undefined, realtimeLive = false): number | false {
+  if (!inCall && activeCaptureKinds(media).length === 0 && !hasPreparingMediaFile(media)) return false;
+  // Unresolved Start/Stop or ERROR remains a fast safety check, even while hints are live.
+  const unresolved = media && (media.transcription.capture_status === "STOPPED" || [media.recording, media.transcription].some(
+    (item) => ["START_REQUESTED", "STOP_REQUESTED", "ERROR"].includes(item.capture_status),
+  ));
+  return realtimeLive && !unresolved ? 60_000 : SESSION_REFRESH_MS;
 }

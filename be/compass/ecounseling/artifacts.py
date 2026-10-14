@@ -27,6 +27,7 @@ from compass.integrations.storage import ObjectStorage
 
 from .diagnostics import ArtifactStage, ArtifactTaskError, log_artifact_diagnostic
 from .media import _load_session_appointment
+from .media_realtime import media_changed_on_commit
 from .models import (
     ECounselingMediaArtifact,
     ECounselingMediaCapture,
@@ -68,13 +69,15 @@ def artifact_eligible(capture):
     )
 
 
-def ensure_pending_artifact(capture):
+def ensure_pending_artifact(capture, *, publish_hint=True):
     if not artifact_eligible(capture):
         return None
-    artifact, _ = ECounselingMediaArtifact.objects.get_or_create(
+    artifact, created = ECounselingMediaArtifact.objects.get_or_create(
         capture=capture,
         defaults={"next_attempt_at": timezone.now()},
     )
+    if created and publish_hint:
+        media_changed_on_commit(capture.room.appointment_id)
     if artifact.status != MediaArtifactStatus.DISPOSED:
         transaction.on_commit(lambda: enqueue_artifact(artifact.pk))
     return artifact
@@ -172,6 +175,7 @@ def _retry(artifact_id, token, code):
         artifact = ECounselingMediaArtifact.objects.select_for_update().get(pk=artifact_id)
         if artifact.claim_token != token or artifact.status == MediaArtifactStatus.DISPOSED:
             return
+        previous_status = artifact.status
         if artifact.status != MediaArtifactStatus.STORED:
             artifact.status = MediaArtifactStatus.FAILED
         artifact.claim_token, artifact.claimed_at = None, None
@@ -179,6 +183,8 @@ def _retry(artifact_id, token, code):
         delay = min(3600, 60 * 2 ** min(artifact.attempts, 6))
         artifact.next_attempt_at = timezone.now() + timedelta(seconds=delay)
         artifact.save()
+        if previous_status != artifact.status:
+            media_changed_on_commit(artifact.capture.room.appointment_id)
         return {
             "attempt_number": artifact.attempts,
             "retry_scheduled": True,
@@ -238,12 +244,15 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
             )
             artifact.claim_token, artifact.claimed_at = token, timezone.now()
             artifact.attempts += 1
+            previous_status = artifact.status
             if artifact.status != MediaArtifactStatus.STORED:
                 artifact.status = MediaArtifactStatus.PROCESSING
                 artifact.object_key = (
                     artifact.object_key or f"{source.room_id}/{source.pk}/{artifact.pk}"
                 )
             artifact.save()
+            if previous_status != artifact.status:
+                media_changed_on_commit(source.room.appointment_id)
             provider_id = source.provider_artifact_id
 
         log_artifact_diagnostic(
@@ -338,10 +347,13 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
                         or capture.provider_artifact_id != provider_id
                     ):
                         raise ArtifactVerificationError("Media custody changed during preparation.")
+                    previous_status = current.status
                     current.status, current.stored_at = MediaArtifactStatus.STORED, timezone.now()
                     current.error_code = None
                     current.save()
                     custody_audit(actions.ECOUNSELING_MEDIA_ARTIFACT_STORED, current)
+                    if previous_status != current.status:
+                        media_changed_on_commit(source.room.appointment_id)
                     artifact = current
             # Canonical custody committed and reverified before provider cleanup, including retries.
             stage = ArtifactStage.INTEGRITY

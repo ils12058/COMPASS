@@ -11,13 +11,7 @@ from django.db import transaction
 
 from compass.realtime.publish import publish_to_user_on_commit
 
-from .services import (
-    ECounselingError,
-    ECounselingNotPermitted,
-    _load_workspace_appointment,
-    _require_counselor_relationship,
-    _require_student_relationship,
-)
+from .realtime_recipients import workspace_participant_id
 
 logger = logging.getLogger("compass.realtime")
 
@@ -26,23 +20,7 @@ def _recipient_id(appointment_id: UUID, *, student: bool) -> UUID | None:
     # The same eligibility/relationship gates as the canonical read APIs, with both the
     # workspace and consent-list capabilities. Reload at commit; never trust the mutator's
     # earlier assignment or user objects. Historical rooms retain their existing read policy.
-    try:
-        appointment = _load_workspace_appointment(appointment_id)
-    except ECounselingError:
-        return None
-    actor = appointment.student if student else appointment.provider
-    check = _require_student_relationship if student else _require_counselor_relationship
-    capabilities = (
-        ("ecounseling.view_self", "ecounseling.consent_self")
-        if student
-        else ("ecounseling.view_assigned", "ecounseling.manage_media_assigned")
-    )
-    try:
-        for capability in capabilities:
-            check(actor=actor, appointment=appointment, capability=capability)
-    except ECounselingNotPermitted:
-        return None
-    return actor.pk
+    return workspace_participant_id(appointment_id, student=student, consent=True)
 
 
 def _publish_current(appointment_id: UUID) -> None:

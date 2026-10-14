@@ -40,6 +40,7 @@ from compass.notifications.services import create_notification_for_event
 from compass.service_catalog.models import DeliveryMode
 
 from .consent_realtime import consent_changed_on_commit
+from .media_realtime import media_changed_on_commit
 from .models import (
     ConsentDecision,
     ConsentScope,
@@ -475,6 +476,7 @@ def _set_known_start_failure(capture_id: UUID, *, code: str) -> None:
             capture.failed_at = timezone.now()
             capture.error_code = code
             capture.save(update_fields=["status", "failed_at", "error_code", "updated_at"])
+            media_changed_on_commit(capture.room.appointment_id)
 
 
 def _handle_start_provider_failure(capture_id: UUID, exc: Exception) -> None:
@@ -595,6 +597,7 @@ def start_recording(
         )
         capture_id = capture.pk
         instance_id = capture.provider_instance_id
+        media_changed_on_commit(appointment.pk)
 
     client = _daily_client(daily_client)
     assert instance_id is not None
@@ -699,6 +702,7 @@ def start_transcription(
         )
         capture_id = capture.pk
         instance_id = capture.provider_instance_id
+        media_changed_on_commit(appointment.pk)
 
     client = _daily_client(daily_client)
     assert instance_id is not None
@@ -731,8 +735,11 @@ def start_transcription(
                 raise ECounselingMediaConflict(
                     "Transcription start was superseded by a consent or media-state transition."
                 )
+            storage_changed = capture.transcript_storage_enabled != store_transcript
             capture.transcript_storage_enabled = store_transcript
             capture.save(update_fields=["transcript_storage_enabled", "updated_at"])
+            if storage_changed:
+                media_changed_on_commit(appointment.pk)
 
         # Keep provider Start under the original consent serialization locks. Recheck after the
         # preceding commit: a withdrawal in that gap prevents Start; one blocked behind Start sees
@@ -784,8 +791,11 @@ def start_transcription(
                 with transaction.atomic():
                     ECounselingRoom.objects.select_for_update().get(pk=room.pk)
                     capture = ECounselingMediaCapture.objects.select_for_update().get(pk=capture_id)
+                    storage_changed = capture.transcript_storage_enabled
                     capture.transcript_storage_enabled = False
                     capture.save(update_fields=["transcript_storage_enabled", "updated_at"])
+                    if storage_changed:
+                        media_changed_on_commit(appointment.pk)
         raise
     except (DailyConfigurationError, DailyUnavailable, DailyHTTPError, DailyInvalidResponse) as exc:
         _handle_start_provider_failure(capture_id, exc)
@@ -798,6 +808,7 @@ def _prepare_stop_locked(
     room: ECounselingRoom,
     kind: str,
     context: AuditContext,
+    publish_hint: bool = True,
 ) -> tuple[ECounselingMediaCapture, bool]:
     capture = (
         ECounselingMediaCapture.objects.select_for_update().filter(room=room, kind=kind).first()
@@ -812,6 +823,8 @@ def _prepare_stop_locked(
     capture.status = MediaCaptureStatus.STOP_REQUESTED
     capture.stop_requested_at = capture.stop_requested_at or timezone.now()
     capture.save(update_fields=["status", "stop_requested_at", "updated_at"])
+    if publish_hint:
+        media_changed_on_commit(appointment.pk)
     if not already_requested:
         _audit_media_request(
             context=context,
@@ -945,6 +958,7 @@ def withdraw_my_consent(
     room = _require_room_for_appointment(appointment)
     captures_to_stop: list[ECounselingMediaCapture] = []
     disable_storage = False
+    media_changed = False
 
     with transaction.atomic():
         locked_room = ECounselingRoom.objects.select_for_update().get(pk=room.pk)
@@ -1003,15 +1017,19 @@ def withdraw_my_consent(
                 consent.scope != ConsentScope.TRANSCRIPT_STORAGE or disable_storage
             )
             if should_stop:
+                media_changed |= capture.status != MediaCaptureStatus.STOP_REQUESTED
                 capture, _ = _prepare_stop_locked(
                     appointment=appointment,
                     room=locked_room,
                     kind=kind,
                     context=context,
+                    publish_hint=False,
                 )
                 captures_to_stop.append(capture)
 
         consent_changed_on_commit(appointment.pk)
+        if media_changed:
+            media_changed_on_commit(appointment.pk)
 
     # Withdrawal is already durable before any provider call. Provider failure never rolls it back.
     # Stop capture and disable transcript storage are independent mitigations: failure of one must
@@ -1053,8 +1071,11 @@ def withdraw_my_consent(
                     .first()
                 )
                 if capture is not None:
+                    storage_changed = capture.transcript_storage_enabled
                     capture.transcript_storage_enabled = False
                     capture.save(update_fields=["transcript_storage_enabled", "updated_at"])
+                    if storage_changed:
+                        media_changed_on_commit(appointment.pk)
 
     if provider_error is not None:
         raise provider_error

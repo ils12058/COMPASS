@@ -1,6 +1,6 @@
 "use client";
 
-import { useConfirmedECounselingConsent } from "./consent-freshness-provider";
+import { useConfirmedECounselingConsent, usePendingECounselingMedia } from "./consent-freshness-provider";
 
 import { Check, Circle, Clock, LoaderCircle, ScrollText, Square, X, type LucideIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
@@ -99,7 +99,7 @@ export function useCounselorMedia({
   access,
   workspace,
   inCall,
-  sessionStateCurrent,
+  sessionStateCurrent: suppliedSessionStateCurrent,
 }: {
   appointmentId: string;
   access: ECounselingAccess;
@@ -109,6 +109,8 @@ export function useCounselorMedia({
   sessionStateCurrent: boolean;
 }) {
   const queryClient = useQueryClient();
+  const workspacePending = usePendingECounselingMedia(appointmentId);
+  const sessionStateCurrent = suppliedSessionStateCurrent && !workspacePending;
   const consentQuery = useECounselingListAssignedConsents(appointmentId, {
     // One portal coordinator refreshes consent both before and during the call.
     query: { enabled: access.canManageMediaAssigned, retry: false, refetchInterval: false },

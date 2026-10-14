@@ -8,7 +8,8 @@ import { activeCallPhases, type CallPhase } from "@/features/ecounseling/call/ca
 import { DailyCallSession } from "@/features/ecounseling/call/daily-call-session";
 import { useRemoteAudioPlayback } from "@/features/ecounseling/call/participant-media";
 import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
-import { ecounselingErrorMessage, isLiveOrTransitionalCapture, SESSION_REFRESH_MS } from "@/features/ecounseling/ecounseling-shared";
+import { ecounselingErrorMessage, isLiveOrTransitionalCapture } from "@/features/ecounseling/ecounseling-shared";
+import { useECounselingFreshness } from "@/features/ecounseling/consent-freshness-provider";
 import { useCaptureStop } from "@/features/ecounseling/use-capture-stop";
 import { ecounselingResourceAccess, type ResourceDenial } from "@/features/ecounseling/ecounseling-resource-access";
 import { useECounselingResourceDenial } from "@/features/ecounseling/use-ecounseling-resource-access";
@@ -56,6 +57,7 @@ export function ActiveECounselingRuntimeProvider({
   children: ReactNode;
 }) {
   const queryClient = useQueryClient();
+  const freshness = useECounselingFreshness();
   const resourceAccess = ecounselingResourceAccess(queryClient);
   const joinAttempt = useRef(0);
   const [session] = useState(() => new DailyCallSession());
@@ -76,6 +78,10 @@ export function ActiveECounselingRuntimeProvider({
   const activated = activation !== null && authState !== "signed-out" && !denial;
   const state = runtimeState({ activated, claiming, phase: snapshot.phase });
   const live = isLiveRuntime(state);
+  useEffect(() => {
+    freshness?.setActiveCall(live ? appointmentId : null);
+    return () => freshness?.setActiveCall(null);
+  }, [freshness, live, appointmentId]);
 
   // COMPASS's own view of the call's session, kept fresh while the call lasts, wherever the person
   // is in the portal. The session page reads the same query, so both show one truth.
@@ -83,12 +89,12 @@ export function ActiveECounselingRuntimeProvider({
   const studentSession = useECounselingGetMyWorkspace(observedId, { query: {
     enabled: live && role === "STUDENT" && appointmentId !== null,
     retry: false,
-    refetchInterval: live ? SESSION_REFRESH_MS : false,
+    refetchInterval: false,
   } });
   const counselorSession = useECounselingGetAssignedWorkspace(observedId, { query: {
     enabled: live && role === "COUNSELOR" && appointmentId !== null,
     retry: false,
-    refetchInterval: live ? SESSION_REFRESH_MS : false,
+    refetchInterval: false,
   } });
   const observed = role === "STUDENT" ? studentSession : counselorSession;
   const protectedUnavailable = Boolean(denial) || shouldHideProtectedData(observed.error);
@@ -99,8 +105,9 @@ export function ActiveECounselingRuntimeProvider({
   const refreshSession = useCallback(async () => {
     if (!appointmentId || !role || resourceAccess.getDenial(appointmentId)) return;
     const queryKey = role === "STUDENT" ? getECounselingGetMyWorkspaceQueryKey(appointmentId) : getECounselingGetAssignedWorkspaceQueryKey(appointmentId);
-    await queryClient.invalidateQueries({ queryKey });
-  }, [appointmentId, queryClient, resourceAccess, role]);
+    if (freshness) await freshness.refreshWorkspace(appointmentId);
+    else await queryClient.invalidateQueries({ queryKey, exact: true }, { cancelRefetch: false });
+  }, [appointmentId, freshness, queryClient, resourceAccess, role]);
 
   // Daily's recording and transcription events only ask COMPASS to re-read the session.
   useEffect(() => {

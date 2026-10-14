@@ -27,7 +27,15 @@ export function ECounselingConsentFreshnessProvider({ user, children }: { user: 
   }, [consumer]);
   useEffect(() => { consumer?.setRealtimeStatus({ state, generation }); }, [consumer, state, generation]);
   useRealtimeEvent("ecounseling.consent.changed", (event) => consumer?.requestRefresh(event.appointment_id));
+  useRealtimeEvent("ecounseling.media.changed", (event) => consumer?.requestMediaRefresh(event.appointment_id));
   return <Context.Provider value={consumer}>{children}</Context.Provider>;
+}
+
+export function useECounselingFreshness() { return useContext(Context); }
+
+export function usePendingECounselingMedia(appointmentId: string): boolean {
+  const consumer = useContext(Context);
+  return useSyncExternalStore(consumer?.subscribe ?? noSubscription, () => consumer?.isWorkspacePending(appointmentId) ?? false, notPending);
 }
 
 /** A successful previous response is not Start permission while a hint/refetch is unresolved. */

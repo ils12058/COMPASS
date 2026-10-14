@@ -494,6 +494,9 @@ def _ensure_provider_room(
                 "provider": "DAILY",
             },
         )
+        from .media_realtime import media_changed_on_commit
+
+        media_changed_on_commit(appointment.pk)
         return locked
 
 

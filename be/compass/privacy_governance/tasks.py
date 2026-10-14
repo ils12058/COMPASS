@@ -221,6 +221,9 @@ def execute_disposition(case_id):
         case.revision += 1
         case.save()
         audit(AuditContext.system(), actions.DISPOSITION_COMPLETED, case)
+        from compass.ecounseling.media_realtime import media_changed_on_commit
+
+        media_changed_on_commit(capture.room.appointment_id)
 
 
 @shared_task(base=CorrelationTask, name="compass.privacy_governance.discover_retention")
