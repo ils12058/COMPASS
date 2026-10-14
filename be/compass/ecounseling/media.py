@@ -39,6 +39,7 @@ from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.service_catalog.models import DeliveryMode
 
+from .consent_realtime import consent_changed_on_commit
 from .models import (
     ConsentDecision,
     ConsentScope,
@@ -372,6 +373,7 @@ def request_consents(
                 target_type="E_COUNSELING",
                 target_id=appointment.pk,
             )
+            consent_changed_on_commit(appointment.pk)
         return [_consent_dict(item) for item in result]
 
 
@@ -429,6 +431,7 @@ def decide_my_consent(
                 "decision": decision,
             },
         )
+        consent_changed_on_commit(appointment.pk)
         return _consent_dict(consent)
 
 
@@ -1007,6 +1010,8 @@ def withdraw_my_consent(
                     context=context,
                 )
                 captures_to_stop.append(capture)
+
+        consent_changed_on_commit(appointment.pk)
 
     # Withdrawal is already durable before any provider call. Provider failure never rolls it back.
     # Stop capture and disable transcript storage are independent mitigations: failure of one must

@@ -150,6 +150,7 @@ export async function createBrowserHarness(suite) {
     baseURL,
     artifacts,
     check,
+    openPage,
     finish,
     async shown(locator) { await locator.waitFor({ state: "visible" }); },
     async hidden(locator) { await locator.waitFor({ state: "hidden" }); },

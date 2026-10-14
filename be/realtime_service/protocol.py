@@ -44,7 +44,11 @@ _FIELD_NAME = re.compile(r"[a-z][a-z_]*")
 # Public server-to-client hints form a closed registry. Notification freshness (ADR-101)
 # carries no fields. Guidance Messages (ADR-102) carries only an opaque thread UUID.
 PUBLIC_EVENT_FIELDS: Mapping[str, frozenset[str]] = MappingProxyType(
-    {"notifications.changed": frozenset(), "messages.thread_changed": frozenset({"thread_id"})}
+    {
+        "notifications.changed": frozenset(),
+        "messages.thread_changed": frozenset({"thread_id"}),
+        "ecounseling.consent.changed": frozenset({"appointment_id"}),
+    }
 )
 
 

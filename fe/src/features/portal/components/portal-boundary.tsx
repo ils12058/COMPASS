@@ -15,6 +15,7 @@ import { PortalShell } from "@/features/portal/components/portal-shell";
 import { PortalUserMenu } from "@/features/portal/components/portal-user-menu";
 import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
 import { ActiveECounselingRuntimeProvider, type PortalAuthState } from "@/features/ecounseling/runtime/active-call-runtime";
+import { ECounselingConsentFreshnessProvider } from "@/features/ecounseling/consent-freshness-provider";
 import { PortalMaintenanceGate } from "@/features/platform/maintenance-presentation";
 import { RealtimeProvider } from "@/features/realtime/realtime-provider";
 import { realtimeAccount } from "@/features/realtime/realtime-runtime";
@@ -131,7 +132,9 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
     <UnsavedChangesProvider>
       <RealtimeProvider account={realtimeAccount(authState, confirmedUser?.id)}>
         <ActiveECounselingRuntimeProvider key={callUser?.id ?? "anonymous"} user={callUser} authState={authState}>
-          {content}
+          <ECounselingConsentFreshnessProvider user={authState === "confirmed" ? confirmedUser : null}>
+            {content}
+          </ECounselingConsentFreshnessProvider>
         </ActiveECounselingRuntimeProvider>
       </RealtimeProvider>
     </UnsavedChangesProvider>
