@@ -622,10 +622,11 @@ def test_public_events_are_registered_and_carry_only_opaque_identifiers(test_eve
             protocol.encode_event(event_type, fields)
 
 
-def test_phase_two_registers_only_the_fieldless_notification_hint():
+def test_public_registry_allows_only_registered_content_free_hints():
     assert dict(protocol.PUBLIC_EVENT_FIELDS) == {
         "notifications.changed": frozenset(),
         "messages.thread_changed": frozenset({"thread_id"}),
+        "ecounseling.consent.changed": frozenset({"appointment_id"}),
     }
     assert json.loads(protocol.READY_FRAME) == {"v": 1, "type": "ready"}
 

@@ -61,6 +61,17 @@ test("a V2 media permission that was never requested offers one request; V1 keep
   for (const subject of ["Recording permission · Waiting for Student", "Transcription permission · Waiting for Student", "Transcript storage not requested"]) assert.match(v1, new RegExp(subject));
 });
 
+test("an old approved consent list cannot authorize Start against a withdrawn workspace projection", () => {
+  const data = workspace(); data.media.media_policy_version = 2;
+  data.media.recording.consent_status = "WITHDRAWN";
+  data.media.transcription.consent_status = "WITHDRAWN";
+  const html = render(h(CounselorMediaProbe, { appointmentId, workspace: data, access: { canManageMediaAssigned: true }, inCall: true, sessionStateCurrent: true }), getECounselingListAssignedConsentsQueryKey(appointmentId), v2Rows("APPROVED"));
+  assert.match(html, /<button[^>]*aria-label="Start recording"[^>]*disabled=""/);
+  assert.match(html, /<button[^>]*aria-label="Start transcription"[^>]*disabled=""/);
+  assert.match(html, /Media permission withdrawn/);
+  assert.doesNotMatch(html, /Media permission approved/);
+});
+
 for (const state of ["PENDING", "PROCESSING", "FAILED", "DISPOSED"]) test(`artifact ${state} has a truthful outcome without a download action`, () => {
   const value = { artifact_status: state, artifact_available: false, artifact_disposed_at: null };
   assert.equal(render(h(MediaArtifactDownload, { appointmentId, kind: "RECORDING", state: value, canAccess: true })), "");

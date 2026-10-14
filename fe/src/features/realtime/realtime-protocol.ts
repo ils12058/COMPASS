@@ -21,6 +21,16 @@ const EVENT_TYPE = /^[a-z][a-z_]*(?:\.[a-z][a-z_]*)+$/;
 const FIELD_NAME = /^[a-z][a-z_]*$/;
 const OPAQUE_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
+export function isOpaqueRealtimeId(value: unknown): value is string {
+  return typeof value === "string" && OPAQUE_ID.test(value);
+}
+
+const PUBLIC_EVENT_FIELDS: Readonly<Record<string, readonly string[]>> = {
+  "notifications.changed": [],
+  "messages.thread_changed": ["thread_id"],
+  "ecounseling.consent.changed": ["appointment_id"],
+};
+
 /** The one frame a client sends: protocol authentication, not a command. */
 export function authenticateFrame(ticket: string): string {
   return JSON.stringify({ type: "authenticate", ticket });
@@ -39,11 +49,10 @@ export function parseServerFrame(data: unknown): ServerFrame | null {
   if (frame.v !== 1 || typeof frame.type !== "string") return null;
   const fields = Object.entries(frame).filter(([name]) => name !== "v" && name !== "type");
   if (frame.type === "ready") return fields.length === 0 ? { kind: "ready" } : null;
-  if (frame.type === "notifications.changed" && fields.length !== 0) return null;
-  // Mirrors the backend's closed registry (ADR-102): exactly one opaque thread ID.
-  if (frame.type === "messages.thread_changed" && (fields.length !== 1 || fields[0][0] !== "thread_id")) return null;
   if (!EVENT_TYPE.test(frame.type)) return null;
-  if (!fields.every(([name, field]) => FIELD_NAME.test(name) && typeof field === "string" && OPAQUE_ID.test(field))) {
+  const allowed = PUBLIC_EVENT_FIELDS[frame.type];
+  if (!allowed || fields.length !== allowed.length || !fields.every(([name]) => allowed.includes(name))) return null;
+  if (!fields.every(([name, field]) => FIELD_NAME.test(name) && isOpaqueRealtimeId(field))) {
     return null;
   }
   return { kind: "event", event: frame as RealtimeEvent };

@@ -126,7 +126,6 @@ export function StudentConsentPanel({
   appointmentId,
   access,
   media,
-  inCall = false,
 }: {
   appointmentId: string;
   access: Pick<ECounselingAccess, "canConsentSelf">;
@@ -135,8 +134,8 @@ export function StudentConsentPanel({
 }) {
   const queryClient = useQueryClient();
   const consents = useECounselingListMyConsents(appointmentId, {
-    // A counselor's request made during the call appears without reloading.
-    query: { enabled: access.canConsentSelf, retry: false, refetchInterval: inCall ? 7000 : false },
+    // The single portal consent coordinator owns event/fallback freshness before and during calls.
+    query: { enabled: access.canConsentSelf, retry: false, refetchInterval: false },
   });
   const decide = useECounselingDecideMyConsent({ mutation: { retry: false } });
   const withdraw = useECounselingWithdrawMyConsent({ mutation: { retry: false } });
@@ -156,8 +155,8 @@ export function StudentConsentPanel({
   async function refreshCanonicalState() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() }),
-      queryClient.invalidateQueries({ queryKey: getECounselingListMyConsentsQueryKey(appointmentId) }),
-      queryClient.invalidateQueries({ queryKey: getECounselingGetMyWorkspaceQueryKey(appointmentId) }),
+      queryClient.invalidateQueries({ queryKey: getECounselingListMyConsentsQueryKey(appointmentId) }, { cancelRefetch: false }),
+      queryClient.invalidateQueries({ queryKey: getECounselingGetMyWorkspaceQueryKey(appointmentId) }, { cancelRefetch: false }),
     ]);
     return queryClient.getQueryData<eCounselingListMyConsentsResponseSuccess>(getECounselingListMyConsentsQueryKey(appointmentId))?.data.items ?? [];
   }

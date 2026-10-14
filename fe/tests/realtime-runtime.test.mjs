@@ -446,24 +446,24 @@ test("consumers share the one socket and receive only valid hints after ready", 
   const h = createHarness();
   const first = [];
   const second = [];
-  h.runtime.subscribeEvent("test.thread_changed", (event) => first.push(event));
-  const unsubscribe = h.runtime.subscribeEvent("test.thread_changed", (event) => second.push(event));
-  h.runtime.subscribeEvent("test.thread_changed", () => {
+  h.runtime.subscribeEvent("messages.thread_changed", (event) => first.push(event));
+  const unsubscribe = h.runtime.subscribeEvent("messages.thread_changed", (event) => second.push(event));
+  h.runtime.subscribeEvent("messages.thread_changed", () => {
     throw new Error("A consumer failure");
   });
   h.runtime.setAccount("a");
   const socket = await h.grant("a");
   socket.serverOpen();
-  const event = `{"v":1,"type":"test.thread_changed","thread_id":"${THREAD}"}`;
+  const event = `{"v":1,"type":"messages.thread_changed","thread_id":"${THREAD}"}`;
   socket.serverSend(event);
   assert.equal(first.length, 0, "Nothing is delivered before ready");
   socket.serverSend(READY);
   socket.serverSend(event);
   for (const invalid of [
     "not json",
-    '{"v":2,"type":"test.thread_changed"}',
-    '{"v":1,"type":"test.thread_changed","body":"Counseling notes"}',
-    `{"v":1,"type":"test.thread_changed","thread_id":"${THREAD}","title":"x"}`,
+    '{"v":2,"type":"messages.thread_changed"}',
+    '{"v":1,"type":"messages.thread_changed","body":"Counseling notes"}',
+    `{"v":1,"type":"messages.thread_changed","thread_id":"${THREAD}","title":"x"}`,
     '{"v":1,"type":"ready","user_id":"x"}',
   ]) {
     socket.serverSend(invalid);

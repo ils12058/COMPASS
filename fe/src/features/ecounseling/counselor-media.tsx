@@ -1,5 +1,7 @@
 "use client";
 
+import { useConfirmedECounselingConsent } from "./consent-freshness-provider";
+
 import { Check, Circle, Clock, LoaderCircle, ScrollText, Square, X, type LucideIcon } from "lucide-react";
 import { useId, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -32,7 +34,7 @@ import {
   ECounselingConsentScope,
   type ConsentResponse,
   type CounselorWorkspaceResponse,
-  type ECounselingConsentStatus,
+  ECounselingConsentStatus,
 } from "@/lib/api/generated/model";
 import { cn } from "@/lib/utils/cn";
 import { captureSafetyState } from "./runtime/runtime-model";
@@ -108,8 +110,8 @@ export function useCounselorMedia({
 }) {
   const queryClient = useQueryClient();
   const consentQuery = useECounselingListAssignedConsents(appointmentId, {
-    // While in the call, a Student's answer to a request appears without reloading.
-    query: { enabled: access.canManageMediaAssigned, retry: false, refetchInterval: inCall ? 7000 : false },
+    // One portal coordinator refreshes consent both before and during the call.
+    query: { enabled: access.canManageMediaAssigned, retry: false, refetchInterval: false },
   });
   const request = useECounselingRequestConsent({ mutation: { retry: false } });
   const startRecording = useECounselingStartAssignedRecording({ mutation: { retry: false } });
@@ -123,13 +125,13 @@ export function useCounselorMedia({
   const media = workspace.media;
   const isV2 = media.media_policy_version === 2;
   const rows = consentQuery.data?.data.items ?? [];
-  const consentsKnown = consentQuery.isSuccess;
+  const consentsKnown = useConfirmedECounselingConsent(appointmentId, getECounselingListAssignedConsentsQueryKey(appointmentId));
   const recordingScope = isV2 ? ECounselingConsentScope.SESSION_MEDIA_CAPTURE : ECounselingConsentScope.AUDIO_VIDEO_RECORDING;
   const transcriptionScope = isV2 ? ECounselingConsentScope.SESSION_MEDIA_CAPTURE : ECounselingConsentScope.LIVE_TRANSCRIPTION;
   const recordingConsent = latestConsent(rows, recordingScope);
   const transcriptionConsent = latestConsent(rows, transcriptionScope);
   const storageConsent = latestConsent(rows, ECounselingConsentScope.TRANSCRIPT_STORAGE);
-  const storageApproved = consentsKnown && isEffectivelyApproved(storageConsent);
+  const storageApproved = consentsKnown && media.transcription.storage_consent_status === ECounselingConsentStatus.APPROVED && isEffectivelyApproved(storageConsent);
   const readiness = workspace.provider_readiness;
   const canOperate = access.canManageMediaAssigned && sessionStateCurrent && readiness.daily_enabled && readiness.room_provisioned && readiness.join_allowed;
   const status: Record<CaptureKind, ECounselingCaptureStatus> = {
@@ -137,8 +139,8 @@ export function useCounselorMedia({
     transcription: media.transcription.capture_status,
   };
   const canStart: Record<CaptureKind, boolean> = {
-    recording: consentsKnown && canOperate && isEffectivelyApproved(recordingConsent) && status.recording === ECounselingCaptureStatus.NOT_STARTED,
-    transcription: consentsKnown && canOperate && isEffectivelyApproved(transcriptionConsent) && status.transcription === ECounselingCaptureStatus.NOT_STARTED,
+    recording: consentsKnown && canOperate && media.recording.consent_status === ECounselingConsentStatus.APPROVED && isEffectivelyApproved(recordingConsent) && status.recording === ECounselingCaptureStatus.NOT_STARTED,
+    transcription: consentsKnown && canOperate && media.transcription.consent_status === ECounselingConsentStatus.APPROVED && isEffectivelyApproved(transcriptionConsent) && status.transcription === ECounselingCaptureStatus.NOT_STARTED,
   };
   const canStop: Record<CaptureKind, boolean> = {
     recording: access.canManageMediaAssigned && isLiveOrTransitionalCapture(status.recording),
@@ -156,8 +158,8 @@ export function useCounselorMedia({
 
   async function refreshCanonicalState() {
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: getECounselingGetAssignedWorkspaceQueryKey(appointmentId) }),
-      queryClient.invalidateQueries({ queryKey: getECounselingListAssignedConsentsQueryKey(appointmentId) }),
+      queryClient.invalidateQueries({ queryKey: getECounselingGetAssignedWorkspaceQueryKey(appointmentId) }, { cancelRefetch: false }),
+      queryClient.invalidateQueries({ queryKey: getECounselingListAssignedConsentsQueryKey(appointmentId) }, { cancelRefetch: false }),
     ]);
   }
 
@@ -208,7 +210,13 @@ export function useCounselorMedia({
   // their three separate historical permissions; V2 sessions have one media permission plus
   // transcript storage.
   const projected = (projection: ECounselingConsentStatus) => projectedStates[projection];
-  const state = (row: ConsentResponse | undefined, projection: ECounselingConsentStatus) => (consentsKnown ? permissionState(row) : projected(projection));
+  // Denial/withdrawal cannot be reopened. A terminal workspace projection must not be
+  // presented as valid permission just because an older consent-list read said APPROVED.
+  const state = (row: ConsentResponse | undefined, projection: ECounselingConsentStatus) => (
+    !consentsKnown || projection === ECounselingConsentStatus.DENIED || projection === ECounselingConsentStatus.WITHDRAWN
+      ? projected(projection)
+      : permissionState(row)
+  );
   const canRequest = consentsKnown && access.canManageMediaAssigned && sessionStateCurrent;
   const permissions: PermissionRow[] = isV2
     ? [
