@@ -616,4 +616,31 @@ async function refreshReferral(page, state) {
   });
 }
 
+// FORM-ID-1: the saved F9 answer contract controls the editor and its submitted answers.
+const formIdContract = JSON.parse(await (await import("node:fs/promises")).readFile(new URL("../../contracts/openapi.json", import.meta.url), "utf8"));
+const feedbackCodes = formIdContract.components.schemas.CollegeFeedbackItemValue.enum;
+const selfCodes = formIdContract.components.schemas.SelfAssessmentItemValue.enum;
+for (const device of ["desktop", "phone"]) for (const legacy of [false, true]) {
+  const codes = feedbackCodes.filter(code => legacy || !code.startsWith("PROGRAM_CHAIR_"));
+  const detail = { ...exitDetail,
+    form_revision: legacy ? null : { id: "ucn-f9", official_code: "UCN-OP-GCO-01F9", official_revision: "1", internal_schema_version: 2 },
+    college_feedback_item_codes: codes,
+    self_assessment_ratings: selfCodes.map(item_code => ({ item_code, rating: 5 })),
+    college_feedback_ratings: codes.map(item_code => ({ item_code, rating: 0 })),
+  };
+  const state = { read: 200 };
+  const overrides = exitInterviewOverrides(state);
+  overrides[`GET /api/v1/exit-interviews/me/${exitInterviewId}`] = detail;
+  await check(`form-id1-${legacy ? "legacy" : "ucn"}-${device}-saved-contract`, `/portal/exit-interviews/${exitInterviewId}`, { overrides, device }, async page => {
+    await shown(page.getByRole("heading", { name: "Section III — College Feedback", exact: true }));
+    const chair = page.getByRole("heading", { name: "Program Chair", exact: true });
+    if (legacy) await shown(chair); else await hidden(chair);
+    assert.equal(await page.locator('[id^="exit-rating-college-"]').count(), codes.length);
+    await shown(page.getByText("The source form includes 0 as a response option but does not specify its meaning.", { exact: true }));
+    const submit = page.getByRole("button", { name: "Submit Exit Interview", exact: true });
+    await shown(submit);
+    assert.equal(await submit.isEnabled(), true, "Zero ratings are answered responses");
+  });
+}
+
 await finish();

@@ -249,6 +249,7 @@ def build_inventory_render_context(
     }
     return {
         "inventory_form": form,
+        "ucn_inventory": revision.official_code == "UCN-OP-GCO-01F5",
         "controlled_form": {
             "official_code": revision.official_code,
             "official_revision": revision.official_revision,

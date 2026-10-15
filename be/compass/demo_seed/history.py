@@ -17,6 +17,7 @@ from django.db import transaction
 
 from compass.accounts.profiles import update_my_profile
 from compass.exit_interviews.confidential_content import read_exit_interview_confidential_content
+from compass.exit_interviews.form_contract import college_feedback_codes
 from compass.exit_interviews.opportunities import open_opportunity
 from compass.exit_interviews.services import (
     ensure_my_current,
@@ -213,12 +214,12 @@ def seed_exit_interview(
         "contact_number_snapshot": content.contact_number_snapshot,
         **narrative,
     }
+    allowed = set(college_feedback_codes(item))
     values["college_feedback_ratings"] = [
-        row
-        for row in values["college_feedback_ratings"]
-        if not row["item_code"].startswith("PROGRAM_CHAIR_")
+        row for row in values["college_feedback_ratings"] if row["item_code"] in allowed
     ]
-    values["program_chair_comments"] = ""
+    if not any(code.startswith("PROGRAM_CHAIR_") for code in allowed):
+        values["program_chair_comments"] = ""
     replace_my_current(student=student, values=values)
     if submitted is not None:
         submit_my_current(student=student, context=context, now=submitted)

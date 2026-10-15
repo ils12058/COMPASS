@@ -163,14 +163,14 @@ def test_individual_inventory_html_and_chromium_pdf_are_source_shaped_and_three_
         "PERSONAL DATA",
         "FAMILY DATA",
         "PERSON TO CONTACT IN CASE OF EMERGENCY",
-        "UNIQUE",
+        "UNIQUE FEATURES",
         "LIVING CONDITIONS",
         "HEALTH CONDITIONS",
         "EDUCATIONAL BACKGROUND",
         "INTEREST",
         "MEMBERSHIP IN ORGANIZATIONS",
         "MODE OF TRANSPORTATION TO AND FROM CNSC",
-        "PERCEPTION",
+        "PERCEPTIONS",
     ):
         assert label in html
     assert html.count('class="individual-inventory-page') == 3

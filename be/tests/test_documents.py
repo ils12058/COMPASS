@@ -588,3 +588,34 @@ def test_good_moral_receipt_fields_keep_short_rules_for_blank_and_filled_values(
                 assert lines.all_inner_texts() == ["", "", ""]
         finally:
             browser.close()
+
+
+def test_repeated_artwork_is_visible_above_opaque_page_backgrounds():
+    from pypdf import PdfWriter
+    from pypdf.generic import DecodedStreamObject, NameObject
+
+    from compass.documents.rendering import _repeat_page_artwork
+
+    # Model Chromium's opaque white page paint and artwork confined to a reserved margin.
+    body = PdfWriter()
+    for _ in range(3):
+        page = body.add_blank_page(width=595, height=842)
+        content = DecodedStreamObject()
+        content.set_data(b"1 1 1 rg 0 0 595 842 re f\n")
+        page[NameObject("/Contents")] = body._add_object(content)
+    source = BytesIO()
+    body.write(source)
+    art = PdfWriter()
+    page = art.add_blank_page(width=595, height=842)
+    content = DecodedStreamObject()
+    content.set_data(b"0 0 0 rg 0 800 595 42 re f\n")
+    page[NameObject("/Contents")] = art._add_object(content)
+    overlay = BytesIO()
+    art.write(overlay)
+    result = PdfReader(BytesIO(_repeat_page_artwork(source.getvalue(), overlay.getvalue())))
+    assert len(result.pages) == 3
+    for page in result.pages:
+        operations = page.get_contents().operations
+        colors = [tuple(operands) for operands, operator in operations if operator == b"rg"]
+        # Later painting is visible: the black artwork must follow the white background.
+        assert colors == [(1, 1, 1), (0, 0, 0)]

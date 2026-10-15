@@ -1288,3 +1288,57 @@ def test_head_review_list_supports_identity_search_exact_student_filter_and_snap
     overlong = head.get("/api/v1/exit-interviews", {"search": "x" * 161})
     assert overlong.status_code == 422
     assert overlong.json()["error"]["code"] == "invalid_exit_interview_request"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_revision_migration_preserves_unlabelled_submitted_history_without_backfill():
+    from django.db import connection
+    from django.db.migrations.executor import MigrationExecutor
+
+    sync_policy()
+    student = make_user("pre-cutover-migration@example.edu")
+    year = make_year()
+    inventory = make_inventory(student, year, admit=False)
+    now = timezone.now()
+    draft = ExitInterview(student=student, academic_year=year, inventory=inventory)
+    write_exit_interview_confidential_content(
+        draft,
+        ExitInterviewConfidentialContent(
+            suggestions_recommendations="Preserve this historical response"
+        ),
+    )
+    before = [("exit_interviews", "0004_remove_plaintext_confidential_content")]
+    after = [("exit_interviews", "0005_saved_form_revision")]
+    executor = MigrationExecutor(connection)
+    executor.migrate(before)
+    try:
+        old = executor.loader.project_state(before).apps
+        row = old.get_model("exit_interviews", "ExitInterview").objects.create(
+            id=draft.pk,
+            student_id=student.pk,
+            academic_year_id=year.pk,
+            inventory_id=inventory.pk,
+            status="SUBMITTED",
+            first_submitted_at=now,
+            last_submitted_at=now,
+            student_name_snapshot="Historical Student",
+            confidential_content_ciphertext=draft.confidential_content_ciphertext,
+        )
+        Rating = old.get_model("exit_interviews", "ExitInterviewCollegeFeedbackRating")
+        Rating.objects.bulk_create(
+            [
+                Rating(exit_interview_id=row.pk, item_code=code, rating=0)
+                for code in CollegeFeedbackItem.values
+            ]
+        )
+        MigrationExecutor(connection).migrate(after)
+        saved = ExitInterview.objects.get(pk=row.pk)
+        assert saved.form_revision_id is None
+        assert saved.status == "SUBMITTED"
+        assert saved.first_submitted_at == now and saved.last_submitted_at == now
+        assert saved.confidential_content_ciphertext == draft.confidential_content_ciphertext
+        assert saved.student_name_snapshot == "Historical Student"
+        assert saved.college_feedback_ratings.count() == 26
+        assert saved.college_feedback_ratings.filter(rating=0).count() == 26
+    finally:
+        MigrationExecutor(connection).migrate(after)

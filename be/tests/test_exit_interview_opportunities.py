@@ -286,7 +286,7 @@ def test_legacy_draft_without_opportunity_remains_editable_submittable_and_histo
     item = make_exit_interview(student=student, academic_year=year, inventory=inventory)
     client = auth_client(student)
     assert ensure_api(client).json()["id"] == str(item.pk)
-    assert put_api(client, valid_payload()).status_code == 200
+    assert put_api(client, valid_payload(legacy=True)).status_code == 200
     assert submit_api(client).status_code == 200
     for lifecycle in [StudentLifecycleStatus.GRADUATED, StudentLifecycleStatus.FORMER]:
         student.student_lifecycle_status = lifecycle

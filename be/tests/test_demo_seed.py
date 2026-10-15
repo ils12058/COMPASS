@@ -1240,3 +1240,38 @@ def test_semester_follows_the_dataset_academic_calendar():
     assert academic_semester(date(2027, 5, 31)) == "Second"
     with pytest.raises(ValueError, match="midyear"):
         academic_semester(date(2027, 6, 15))
+
+
+@pytest.mark.django_db
+def test_exit_seed_uses_the_saved_ucn_answer_contract_without_program_chair():
+    from compass.demo_seed.history import seed_exit_interview
+    from compass.demo_seed.narratives import ALUMNI_EXIT_INTERVIEW
+    from compass.demo_seed.support import SeedSession
+    from compass.exit_interviews.confidential_content import (
+        read_exit_interview_confidential_content,
+    )
+    from tests.test_exit_interviews import (
+        make_head,
+        make_inventory,
+        make_user,
+        make_year,
+        sync_policy,
+    )
+
+    sync_policy()
+    student = make_user("form-id-seed-student@example.edu")
+    head = make_head("form-id-seed-head@example.edu")
+    year = make_year("2026-2027")
+    make_inventory(student, year, admit=False)
+    session = SeedSession(timeline=resolve_timeline(anchor=ANCHOR), app_env="local-staging")
+    session.users = {GRADUATING.key: student, "head_guidance": head}
+    now = timezone.now()
+    seed_exit_interview(
+        session, GRADUATING, started=now, saved=now, submitted=now, narrative=ALUMNI_EXIT_INTERVIEW
+    )
+    item = ExitInterview.objects.get(student=student)
+    assert item.status == "SUBMITTED"
+    assert item.form_revision.official_code == "UCN-OP-GCO-01F9"
+    assert item.college_feedback_ratings.count() == 23
+    assert not item.college_feedback_ratings.filter(item_code__startswith="PROGRAM_CHAIR_").exists()
+    assert read_exit_interview_confidential_content(item).program_chair_comments == ""
