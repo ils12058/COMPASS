@@ -1,0 +1,208 @@
+{
+  "key": "individual_inventory",
+  "version": 1,
+  "context": {
+    "inventory_form": {
+      "name": "Alex Student",
+      "nickname": "Alex",
+      "student_number": "2026-001",
+      "age": 19,
+      "date_of_birth": "January 1, 2007",
+      "place_of_birth": "Daet, Camarines Norte",
+      "nationality": "Filipino",
+      "sex": "MALE",
+      "birth_order": "2nd",
+      "civil_status": "",
+      "current_address": "Daet, Camarines Norte",
+      "permanent_address": "Basud, Camarines Norte",
+      "contact_number": "09170000000",
+      "email_address": "alex@example.edu",
+      "languages_home": "",
+      "languages_fluent": "",
+      "religion_birth": "",
+      "current_religion": "",
+      "father": {
+        "name": "",
+        "date_of_birth": "",
+        "place_of_birth": "",
+        "current_address": "",
+        "permanent_address": "",
+        "contact_number": "",
+        "email_address": "",
+        "educational_attainment": "",
+        "occupation": "",
+        "business_address": "",
+        "business_telephone": "",
+        "annual_income": "",
+        "languages_spoken": "",
+        "religion_raised_with": "",
+        "current_religion": ""
+      },
+      "mother": {
+        "name": "",
+        "date_of_birth": "",
+        "place_of_birth": "",
+        "current_address": "",
+        "permanent_address": "",
+        "contact_number": "",
+        "email_address": "",
+        "educational_attainment": "",
+        "occupation": "",
+        "business_address": "",
+        "business_telephone": "",
+        "annual_income": "",
+        "languages_spoken": "",
+        "religion_raised_with": "",
+        "current_religion": ""
+      },
+      "spouse": {},
+      "parent_statuses": [],
+      "guardian_name": "",
+      "guardian_relationship": "",
+      "guardian_address": "",
+      "guardian_contact": "",
+      "emergency_name": "",
+      "emergency_contact": "",
+      "sibling_rows": [
+        [
+          {
+            "name": "Alex Student",
+            "sex": "Male",
+            "age": 19,
+            "educational_attainment": "",
+            "occupation": "",
+            "is_self": true
+          },
+          {}
+        ],
+        [
+          {},
+          {}
+        ],
+        [
+          {},
+          {}
+        ],
+        [
+          {},
+          {}
+        ],
+        [
+          {},
+          {}
+        ],
+        [
+          {},
+          {}
+        ]
+      ],
+      "friends_school": "Jamie Cruz",
+      "friends_outside": "",
+      "special_interest": "Reading",
+      "special_skills": "",
+      "hobbies": "",
+      "ambition": "",
+      "characteristics": "",
+      "living_arrangement": "BOARDING_HOUSE",
+      "boarding_exclusive": true,
+      "landlord": "Maria Reyes",
+      "boarding_address": "Daet, Camarines Norte",
+      "people_in_place": null,
+      "room_sharers": null,
+      "accidents": "None",
+      "accidents_effect": "",
+      "operations": "",
+      "operations_effect": "",
+      "immunizations": [],
+      "immunization_other": "",
+      "height": "160 cm",
+      "weight": "55 kg",
+      "physical_disadvantage": "",
+      "illness_this_year": "",
+      "previous_illness": "",
+      "education": {
+        "PREPARATORY": {},
+        "ELEMENTARY": {},
+        "JUNIOR_HIGH": {},
+        "SENIOR_HIGH": {
+          "school": "Camarines Norte Senior High School, Daet",
+          "years": "2022-2024",
+          "awards": "With Honors"
+        },
+        "TECHNICAL_VOCATIONAL": {},
+        "COLLEGIATE": {}
+      },
+      "course": "BS Information Systems",
+      "major": "",
+      "schedule_satisfied": null,
+      "schedule_why": "",
+      "first_choice": true,
+      "choice_reasons": [
+        "INTEREST_APTITUDE"
+      ],
+      "choice_other": "",
+      "lowest_grades": "",
+      "highest_grades": "",
+      "performing_arts": "",
+      "sports": "",
+      "leadership": "",
+      "interests": [
+        "PAINTING",
+        "SINGING"
+      ],
+      "other_skills": "",
+      "desired_activities": "",
+      "reading": "",
+      "handedness": "RIGHT",
+      "daily_hours": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ],
+      "organizations": [
+        [
+          {
+            "name": "Student Council",
+            "position": "Member"
+          },
+          {}
+        ],
+        [
+          {},
+          {}
+        ],
+        [
+          {},
+          {}
+        ]
+      ],
+      "transport": {
+        "TRICYCLE": {
+          "frequency": "Daily",
+          "fare": "20.00"
+        },
+        "BUS": {},
+        "JEEPNEY": {},
+        "VAN": {},
+        "BOAT": {}
+      },
+      "allowance": "FROM_100_TO_499",
+      "work_field": "PROFESSIONAL",
+      "work_other": "",
+      "prior_counseling": false,
+      "prior_counselor": "",
+      "prior_when": "",
+      "prior_where": "",
+      "concerns": "A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. ",
+      "fears": "A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. A lengthy answer that should wrap before truncation. ",
+      "submitted_date": "October 15, 2026"
+    },
+    "controlled_form": {
+      "official_code": "CNSC-OP-GCO-01F5",
+      "official_revision": "0"
+    }
+  }
+}

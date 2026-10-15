@@ -7,9 +7,8 @@ from importlib.resources import files
 from pathlib import PurePosixPath
 
 BRANDING_ASSETS = {
-    "ucn_logo": "static/documents/branding/ucn-logo.png",
-    "bagong_pilipinas_logo": "static/documents/branding/bagong-pilipinas.png",
-    "accreditation_footer": "static/documents/branding/footer.png",
+    "institution_header": "static/documents/branding/header.png",
+    "accreditation_footer": "static/documents/branding/footer-logos.png",
 }
 PRINT_CSS_PATH = "static/documents/css/print.css"
 
@@ -43,8 +42,7 @@ def get_asset_data_uri(asset_key: str) -> str:
 
 def get_document_assets(*, include_accreditation_footer: bool) -> dict[str, str | None]:
     return {
-        "ucn_logo": get_asset_data_uri("ucn_logo"),
-        "bagong_pilipinas_logo": get_asset_data_uri("bagong_pilipinas_logo"),
+        "institution_header": get_asset_data_uri("institution_header"),
         "accreditation_footer": (
             get_asset_data_uri("accreditation_footer") if include_accreditation_footer else None
         ),

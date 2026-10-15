@@ -1,6 +1,5 @@
 <section class="individual-inventory-page inventory-page-one">
   {% include "documents/partials/institution_masthead.html" %}
-  {% include "documents/partials/office_heading.html" %}
   <main class="inventory-source-body">
     <h1 class="inventory-title">INDIVIDUAL INVENTORY</h1>
     <div class="inventory-instructions"><strong>TO THE STUDENTS:</strong><br>
@@ -72,5 +71,6 @@
     <div class="inventory-emergency-title"><strong>PERSON TO CONTACT IN CASE OF EMERGENCY:</strong></div>
     <div class="inventory-row inventory-contact-row"><span>Name</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.emergency_name }}</span></span><span>Contact Number</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.emergency_contact }}</span></span></div>
   </main>
+  {% include "documents/partials/accreditation_footer.html" %}
   {% include "documents/partials/controlled_form_metadata.html" with page_label="Page 1 of 3" %}
 </section>

@@ -181,8 +181,8 @@ def test_individual_inventory_html_and_chromium_pdf_are_source_shaped_and_three_
     assert "Alex" in html
     assert ".inventory-source-body .generated-value" in html
     assert ".generated-value {\n  color: #0000ff;" in html
-    assert spec.include_accreditation_footer is False
-    assert '<footer class="accreditation-footer">' not in html
+    assert spec.include_accreditation_footer is True
+    assert '<footer class="accreditation-footer">' in html
 
     pdf_bytes = render_inventory_pdf(item)
     pages = PdfReader(BytesIO(pdf_bytes)).pages

@@ -1,4 +1,4 @@
-{% if controlled_form %}
+{% if controlled_form and not document_pdf_shell %}
 <footer class="controlled-form-metadata">
   <div>
     {% if controlled_form.official_code %}<span class="controlled-form-code">{{ controlled_form.official_code }}</span>{% endif %}

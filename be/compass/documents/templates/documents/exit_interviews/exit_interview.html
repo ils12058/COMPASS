@@ -3,7 +3,6 @@
 {% block document %}
 <style>
   .exit-interview-form { font-size: 8pt; line-height: 1.2; }
-  .exit-interview-form .office-heading { margin-bottom: 4mm; }
   .exit-title { margin: 0 0 4mm; text-align: center; font-size: 12pt; letter-spacing: .15mm; }
   .exit-source-fields { display: grid; grid-template-columns: 1.4fr .45fr 1fr; gap: 1.4mm 3mm; }
   .exit-source-field { display: flex; align-items: baseline; min-width: 0; gap: 1mm; }
@@ -34,7 +33,10 @@
   .exit-rating-table tbody tr { break-inside: avoid; page-break-inside: avoid; }
   .exit-selected { display: inline-flex; width: 3.5mm; height: 3.5mm; border: .25mm solid #0000ff; border-radius: 50%; align-items: center; justify-content: center; color: #0000ff; font-weight: 700; }
   .exit-feedback-page { break-before: page; page-break-before: always; }
-  .exit-feedback-category { margin: 1.6mm 0 0; break-inside: avoid; page-break-inside: avoid; }
+  .exit-feedback-category { margin: 1.6mm 0 0; }
+  .exit-feedback-category h3, .exit-feedback-page > p, .exit-feedback-page > .exit-scale { break-after: avoid; page-break-after: avoid; }
+  .exit-feedback-category .exit-rating-table { break-inside: avoid; page-break-inside: avoid; break-after: avoid; page-break-after: avoid; }
+  .exit-comments { break-before: avoid; page-break-before: avoid; }
   .exit-feedback-category h3 { margin: 0 0 .5mm; font-size: 8pt; }
   .exit-comments { margin: .3mm 0 .5mm; min-height: 2.7mm; border-bottom: .2mm solid #777; overflow-wrap: anywhere; white-space: pre-wrap; }
   .exit-suggestions { margin-top: 2mm; }
@@ -42,7 +44,6 @@
 </style>
 <div class="exit-interview-form">
   {% include "documents/partials/institution_masthead.html" %}
-  {% include "documents/partials/office_heading.html" %}
   <main class="document-body">
     <h1 class="exit-title">EXIT INTERVIEW FORM</h1>
     <div class="exit-source-fields">
@@ -113,5 +114,6 @@
       <div class="exit-suggestions"><strong>SUGGESTIONS/RECOMMENDATIONS (if any):</strong><div class="exit-comments generated-value">{{ exit_form.suggestions }}</div></div>
     </section>
   </main>
+  {% include "documents/partials/accreditation_footer.html" %}
 </div>
 {% endblock %}

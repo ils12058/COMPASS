@@ -1,0 +1,27 @@
+{
+  "key": "good_moral_graduate",
+  "version": 1,
+  "context": {
+    "certificate": {
+      "applicant_name": "Alexandra Maria Rosario de la Cruz Villanueva-Santos",
+      "year_level": "",
+      "college": "College of Computing, Multimedia, Information Systems and Digital Technology",
+      "course": "Bachelor of Science in Information Systems and Digital Transformation",
+      "major": "Enterprise Architecture and Community Information Management",
+      "semester": "",
+      "academic_year": "",
+      "degree": "Bachelor of Science in Information Systems and Digital Transformation",
+      "graduation_date": "2026-06-30",
+      "issued_on": "2026-10-15",
+      "issuer_name": "Chromium Counselor User",
+      "official_receipt_number": "OR-2026-002",
+      "official_receipt_date": "2026-10-15",
+      "official_receipt_amount": "50.00"
+    },
+    "controlled_form": {
+      "official_code": "CNSC-OP-GCO-01F6",
+      "official_revision": "0",
+      "page_label": "Page 1 of 1"
+    }
+  }
+}

@@ -1,0 +1,375 @@
+{
+  "key": "foundation_test",
+  "version": 1,
+  "context": {
+    "title": "Multipage report-capability fixture",
+    "sample_body": "Local deterministic HTML and packaged assets only.",
+    "rows": [
+      {
+        "label": "Row 001",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 002",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 003",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 004",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 005",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 006",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 007",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 008",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 009",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 010",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 011",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 012",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 013",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 014",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 015",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 016",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 017",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 018",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 019",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 020",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 021",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 022",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 023",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 024",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 025",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 026",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 027",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 028",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 029",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 030",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 031",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 032",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 033",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 034",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 035",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 036",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 037",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 038",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 039",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 040",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 041",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 042",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 043",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 044",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 045",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 046",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 047",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 048",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 049",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 050",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 051",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 052",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 053",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 054",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 055",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 056",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 057",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 058",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 059",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 060",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 061",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 062",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 063",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 064",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 065",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 066",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 067",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 068",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 069",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 070",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 071",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 072",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 073",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 074",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 075",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 076",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 077",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 078",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 079",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 080",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 081",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 082",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 083",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 084",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 085",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 086",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 087",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 088",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 089",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      },
+      {
+        "label": "Row 090",
+        "value": "Deterministic report fixture content for print-safe table behavior."
+      }
+    ],
+    "controlled_form": {
+      "official_code": "CNSC-OP-GTA-01F8",
+      "official_revision": "0",
+      "page_label": "Historical metadata fixture"
+    }
+  }
+}

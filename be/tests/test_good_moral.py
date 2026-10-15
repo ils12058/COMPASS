@@ -1001,7 +1001,7 @@ def test_saved_render_provenance_drives_html_after_current_data_and_revision_cha
         issued.document_template_version,
         context=context,
     )
-    assert spec.show_page_numbers is False
+    assert spec.show_page_numbers is True
     assert "University of Camarines Norte" in html
     assert "GOOD MORAL CHARACTER" in html
     assert saved_name in html
@@ -1010,18 +1010,20 @@ def test_saved_render_provenance_drives_html_after_current_data_and_revision_cha
     assert "CNSC-OP-GCO-01F4" in html
     assert "Revision: 0" in html
     assert "Page 1 of 1" in html
-    assert saved_issuer in html
-    assert counselor.get_full_name() not in html
+    assert saved_issuer.upper() in html
+    assert counselor.get_full_name().upper() not in html
     signature_area = html.split('<div class="good-moral-signature">', 1)[1].split(
         '<div class="good-moral-receipt">', 1
     )[0]
-    assert '<div class="good-moral-signature-line" aria-hidden="true"></div>' in signature_area
+    assert '<div class="good-moral-signature-line"><span class="generated-value">' in signature_area
+    assert saved_issuer.upper() in signature_area
+    assert context["certificate"]["issuer_name"] == saved_issuer
     assert "<img" not in signature_area
     pdf_pages = PdfReader(BytesIO(render_certificate_pdf(issued))).pages
     assert len(pdf_pages) == 1
     pdf_text = "\n".join(page.extract_text() for page in pdf_pages)
-    assert saved_issuer in pdf_text
-    assert counselor.get_full_name() not in pdf_text
+    assert saved_issuer.upper() in pdf_text
+    assert counselor.get_full_name().upper() not in pdf_text
 
 
 @pytest.mark.django_db
@@ -1219,9 +1221,9 @@ def test_real_chromium_smoke_renders_issued_graduate_certificate():
         issued.document_template_version,
         context=build_certificate_render_context(issued),
     )
-    assert '<div class="good-moral-signature-line" aria-hidden="true"></div>' in html
-    assert saved_issuer in html
-    assert counselor.get_full_name() not in html
+    assert '<div class="good-moral-signature-line"><span class="generated-value">' in html
+    assert saved_issuer.upper() in html
+    assert counselor.get_full_name().upper() not in html
     pdf = render_certificate_pdf(issued)
 
     assert pdf.startswith(b"%PDF-")
@@ -1229,8 +1231,8 @@ def test_real_chromium_smoke_renders_issued_graduate_certificate():
     pdf_pages = PdfReader(BytesIO(pdf)).pages
     assert len(pdf_pages) == 1
     pdf_text = "\n".join(page.extract_text() for page in pdf_pages)
-    assert saved_issuer in pdf_text
-    assert counselor.get_full_name() not in pdf_text
+    assert saved_issuer.upper() in pdf_text
+    assert counselor.get_full_name().upper() not in pdf_text
 
 
 @pytest.mark.django_db

@@ -1,0 +1,27 @@
+{
+  "key": "good_moral_current_student",
+  "version": 1,
+  "context": {
+    "certificate": {
+      "applicant_name": "Render Student User",
+      "year_level": "Fourth",
+      "college": "CCMS College",
+      "course": "Bachelor of Science in Information Systems",
+      "major": "Information Systems",
+      "semester": "First",
+      "academic_year": "2026-2027",
+      "degree": "",
+      "graduation_date": null,
+      "issued_on": "2026-10-15",
+      "issuer_name": "Render Counselor User",
+      "official_receipt_number": "",
+      "official_receipt_date": null,
+      "official_receipt_amount": null
+    },
+    "controlled_form": {
+      "official_code": "CNSC-OP-GCO-01F4",
+      "official_revision": "0",
+      "page_label": "Page 1 of 1"
+    }
+  }
+}
