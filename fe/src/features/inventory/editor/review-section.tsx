@@ -48,14 +48,10 @@ export function ReviewSection({
         </dl>
       </FieldGroup>
 
-      <FieldGroup legend="Submission readiness">
-        {issues.length === 0 ? (
-          <InventoryNotice tone="success">
-            No required-field issues were found. Your Inventory is checked again when you submit.
-          </InventoryNotice>
-        ) : (
-          <InventoryNotice title="Needs attention before submission" tone="warning">
-            <p>Complete the required details below. Selecting an item takes you to the field that needs attention.</p>
+      <FieldGroup legend="Before you submit">
+        {issues.length > 0 ? (
+          <InventoryNotice title="Complete these answers" tone="warning">
+            <p>Select an item below to go to the question.</p>
             <ul className="mt-3 space-y-2">
               {issues.map((issue, index) => (
                 <li key={`${issue.section}-${index}`}>
@@ -70,14 +66,14 @@ export function ReviewSection({
               ))}
             </ul>
           </InventoryNotice>
-        )}
+        ) : null}
         {!programLookupReady ? (
           <p role="status" className="mt-4 text-sm leading-6 text-muted">
-            Active Program choices could not be verified just now. The saved selection is preserved; final submission is still checked by COMPASS.
+            Couldn’t load the program choices. Your saved program is unchanged.
           </p>
         ) : null}
         <p className="mt-4 text-sm leading-6 text-muted">
-          Submitting makes this annual record read-only. An authorized counselor may reopen the current-year record if you need to make a correction.
+          You can’t edit your answers after submitting. Ask a counselor if you need to make a correction.
         </p>
       </FieldGroup>
 

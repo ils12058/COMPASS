@@ -369,7 +369,8 @@ test("Exit Interview contact number shows the same example and keeps multiple nu
   const input = tag(html, "exit-contact-number");
   assert.match(input, /aria-describedby="exit-contact-number-hint"/);
   assert.match(input, /value="0917 123 4567; \(054\) 440 1234"/);
-  assert.doesNotMatch(input, /pattern=|maxlength/i);
+  assert.doesNotMatch(input, /pattern=/i);
+  assert.match(input, /maxLength="64"/i);
   assert.match(html, /id="exit-contact-number-hint"[^>]*>For example, 0917 123 4567\./);
 });
 

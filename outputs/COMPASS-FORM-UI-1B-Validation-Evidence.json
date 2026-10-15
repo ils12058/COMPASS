@@ -1,0 +1,177 @@
+{
+  "workstream": "FORM-UI-1B",
+  "date": "2026-10-15",
+  "baseline": "b49407e6b478ab256dc87404f8893798d4eb1e8b",
+  "branch": "fix/form-ui-1b-form-guidance",
+  "initial_working_tree": "clean",
+  "merged_dependencies": [
+    232,
+    233,
+    234
+  ],
+  "final_scope": {
+    "exit_interview_limits": "mirror existing verified server bounds; preserve complete saved values and current/legacy contract",
+    "inventory_review": "plain copy; remove the no-issues success notice; preserve required-question links and focus",
+    "inventory_pdf_capacity_guidance": false,
+    "capacity_guidance_exclusion": "Owner explicitly requested its removal; no replacement note or banner"
+  },
+  "commands": [
+    {
+      "cwd": "fe",
+      "command": "pnpm api:generate",
+      "exit_code": 0,
+      "outcome": "Passed; generated files remain uncommitted"
+    },
+    {
+      "cwd": "fe",
+      "command": "pnpm test",
+      "exit_code": 0,
+      "outcome": "718 passed, 0 failed; before final wording polish"
+    },
+    {
+      "cwd": "fe",
+      "command": "node --import ./tests/support/register-tsx.mjs --test tests/form-ui-1b.test.mjs tests/form-input-standardization.test.mjs tests/exit-interview-workflow.test.mjs",
+      "exit_code": 0,
+      "outcome": "40 passed, 0 failed after final wording polish"
+    },
+    {
+      "cwd": "fe",
+      "command": "COMPASS_UI_ARTIFACTS=<local-artifacts>/final-copy pnpm test:ui:form-guidance",
+      "exit_code": 0,
+      "outcome": "Chromium 6/6; WebKit 6/6 after final wording polish"
+    },
+    {
+      "cwd": "fe",
+      "command": "pnpm lint",
+      "exit_code": 0,
+      "outcome": "0 errors; 4 inherited unused-variable warnings in unchanged portal-navigation-attention.browser.mjs"
+    },
+    {
+      "cwd": "fe",
+      "command": "pnpm typecheck",
+      "exit_code": 0,
+      "outcome": "Passed after final wording polish"
+    },
+    {
+      "cwd": "fe",
+      "command": "pnpm build",
+      "exit_code": 0,
+      "outcome": "Passed after final wording polish"
+    },
+    {
+      "cwd": "be",
+      "command": "uv run pytest tests/test_inventory_documents.py tests/test_exit_interview_documents.py tests/test_inventory_confidential_content_encryption.py::test_all_unauthorized_or_draft_raw_reads_fail_before_decrypt tests/test_exit_interview_confidential_content_encryption.py::test_unauthorized_detail_pdf_and_draft_edits_fail_before_decryption tests/test_exit_interview_confidential_content_encryption.py::test_exact_text_schema_preserves_limits_and_postgresql_input_boundary --reuse-db -q --junitxml=<local-artifacts>/backend.xml",
+      "exit_code": 0,
+      "outcome": "81 passed in 46.58s"
+    },
+    {
+      "cwd": ".",
+      "command": "git diff --check",
+      "exit_code": 0,
+      "outcome": "Passed"
+    }
+  ],
+  "browser_results": [
+    {
+      "engine": "chromium",
+      "results": [
+        {
+          "name": "Exit UCN desktop limits labels draft save and submission",
+          "passed": true
+        },
+        {
+          "name": "Exit legacy desktop limits labels draft save and submission",
+          "passed": true
+        },
+        {
+          "name": "Exit UCN phone limits labels draft save and submission",
+          "passed": true
+        },
+        {
+          "name": "Exit legacy phone limits labels draft save and submission",
+          "passed": true
+        },
+        {
+          "name": "Exit overlong saved legacy comment stays whole after an unrelated edit and failed save",
+          "passed": true
+        },
+        {
+          "name": "Inventory review uses plain copy and still focuses unanswered questions",
+          "passed": true
+        }
+      ]
+    },
+    {
+      "engine": "webkit",
+      "results": [
+        {
+          "name": "Exit UCN desktop limits labels draft save and submission",
+          "passed": true
+        },
+        {
+          "name": "Exit legacy desktop limits labels draft save and submission",
+          "passed": true
+        },
+        {
+          "name": "Exit UCN phone limits labels draft save and submission",
+          "passed": true
+        },
+        {
+          "name": "Exit legacy phone limits labels draft save and submission",
+          "passed": true
+        },
+        {
+          "name": "Exit overlong saved legacy comment stays whole after an unrelated edit and failed save",
+          "passed": true
+        },
+        {
+          "name": "Inventory review uses plain copy and still focuses unanswered questions",
+          "passed": true
+        }
+      ]
+    }
+  ],
+  "known_layout_evidence": {
+    "siblings": 12,
+    "organizations_per_scope": 3,
+    "source": "be/compass/inventory/documents.py",
+    "final_implementation": "No capacity logic or presentation added; findings remain deferred"
+  },
+  "compatibility": {
+    "backend_api_changed": false,
+    "database_migrations": false,
+    "encryption_changed": false,
+    "form_revision_changed": false,
+    "pdf_template_or_renderer_changed": false,
+    "submission_requirements_changed": false,
+    "accepted_rows_removed": false,
+    "historical_rewrite": false,
+    "permission_grants_changed": false
+  },
+  "review": "Complete diff and desktop/phone screenshots reviewed locally; no independent human approval claimed",
+  "limitations": [
+    "Full repository browser/backend suites were not run.",
+    "Known Guidance Operations and prior backend CI shard-registration failures remain separate.",
+    "Native maxLength preserves pre-existing overlong control values; unchanged server validation may reject a later write."
+  ],
+  "source_sha256": {
+    "fe/package.json": "72434fc0d9022fa95d14d4b02c6e43f7a239a05076f9684c4b77937ff957fe64",
+    "fe/src/features/inventory/editor/review-section.tsx": "6f14103ef703e5fb3f272cc692a144fd260a108fc02cff843af84c95586574e8",
+    "fe/src/features/exit-interviews/exit-interview-field-limits.ts": "0a1d71601091a0147c6d34adad2f61e5289aa95aff99d0baa914cb530bd9d5a0",
+    "fe/src/features/exit-interviews/exit-interview-form-sections.tsx": "6dd979c8d2bdee7783f70073f9569f76bf49205b9771d5a3cdbf4e407ca6d4a8",
+    "fe/tests/form-input-standardization.test.mjs": "08da028ed424e03b11471057e77a8251cbd5ff127ea830c4936e2adab8ea0e3c",
+    "fe/tests/form-ui-1b.test.mjs": "d5cc3b36558f275d83a5ce8324e5e7657c771591e224a6c3e6571d7c96a84ff5",
+    "fe/tests/form-ui-1b.browser.mjs": "3a6b5b61f72043fce2343eb47fe67cd6a0c82b59a943e9905ca38ef460e17346",
+    "fe/tests/support/form-ui-1b-fixtures.mjs": "2d3afc16d6466f58a4e2c1cb063c19f11894a689c07f1c1716dea32deda11911"
+  },
+  "raw_log_sha256": {
+    "api-generate.log": "2f9ae383302598b86b7836d76c0666c11db19b18de0ecfb29bbe14ae28b4098a",
+    "final-unit.log": "2f18f522f3cea0305c36be1fb93479866d019c696ca2317724536982bbfc987f",
+    "final-copy-focused.log": "ed56a938dc0c6ff7205817eb0c2caa73d8961b0c429f186230e8f9b2ff828378",
+    "final-copy-browser.log": "2b044f942d8c64e2a404c588d67a4a205d64f853796f1515edb5aa5724ba193e",
+    "final-lint.log": "56a9bbcfa6adfc624915f9165c7b3c65b7a6133ab0cdaf9d3afeab67970de666",
+    "final-copy-typecheck.log": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+    "final-copy-build.log": "52d0684968edea942de2913ceda016c57c60ada7d146553cfd1315b948cf1233",
+    "backend.log": "c539fe66378171b283c8548da93969f10df07ff31a2f8028ba53e32adcf163fb"
+  }
+}
