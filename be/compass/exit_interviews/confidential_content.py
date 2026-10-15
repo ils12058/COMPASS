@@ -1,5 +1,7 @@
 """Explicit ADR-082 projections; authorization belongs to the selecting service/API."""
 
+import re
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 
 from django.conf import settings
@@ -58,8 +60,15 @@ class ReopenReason:
     reason: str
 
 
+TARGETS_CONTENT = "correction_targets"
+# Readers accept any well-formed code list: codes outside this build's catalog are filtered by the
+# API, not treated as corruption. Writers are limited by the catalog to far fewer entries.
+_STORED_TARGET_CODE = re.compile(r"[A-Za-z0-9_.-]{1,128}")
+MAX_STORED_TARGETS = 256
+
+
 class ExitInterviewConfidentialContentUnavailable(ExitInterviewError):
-    def __init__(self, item, *, reason):
+    def __init__(self, item, *, reason, content=None):
         super().__init__("The Exit Interview confidential content is unavailable.")
         # These are identifiers from typed model columns, never envelope content.
         self.exit_interview_id = (
@@ -68,6 +77,8 @@ class ExitInterviewConfidentialContentUnavailable(ExitInterviewError):
         self.opportunity_id = item.pk if isinstance(item, ExitInterviewOpportunity) else None
         self.reopen_event_id = item.pk if isinstance(item, ExitInterviewReopenEvent) else None
         self.reason = ConfidentialDataUnavailable(reason=reason).reason
+        # Names which envelope failed when one record holds more than one: None or TARGETS_CONTENT.
+        self.content = content
 
 
 def validate_text(value, name, maximum, *, required=False):
@@ -205,6 +216,81 @@ def read_reopen_reason(item) -> str:
 
 def write_reopen_reason(item, reason: str):
     _write(item, ReopenReason(reason))
+
+
+# Correction targets are a separate envelope in their own column on ExitInterviewReopenEvent. The
+# reason envelope is unchanged, so older readers never meet this payload.
+def _targets_binding(event) -> dict[str, str]:
+    # "content" keeps this envelope's key set distinct from the reason envelope's, so neither
+    # ciphertext can be read from the other column.
+    return {
+        "exit_interview_id": str(event.exit_interview_id),
+        "reopen_event_id": str(event.pk),
+        "content": TARGETS_CONTENT,
+    }
+
+
+def _validate_targets_payload(payload) -> tuple[str, ...]:
+    if not isinstance(payload, dict) or set(payload) != {"targets"}:
+        raise ValueError("Invalid correction-target payload")
+    targets = payload["targets"]
+    if (
+        not isinstance(targets, list)
+        or not 1 <= len(targets) <= MAX_STORED_TARGETS
+        or any(
+            not isinstance(code, str) or not _STORED_TARGET_CODE.fullmatch(code) for code in targets
+        )
+        or len(set(targets)) != len(targets)
+    ):
+        raise ValueError("Invalid correction targets")
+    return tuple(targets)
+
+
+def write_reopen_targets(event, targets: Sequence[str]) -> None:
+    """Encrypt a non-empty target list; an empty list keeps the column empty."""
+
+    codes = [str(code) for code in targets]
+    if not codes:
+        event.targets_ciphertext = ""
+        return
+    try:
+        _validate_targets_payload({"targets": codes})
+    except ValueError:
+        raise InvalidExitInterviewInput("The correction targets are invalid.") from None
+    event.targets_ciphertext = crypto.encrypt_bound_json(
+        keyring=_keyring(),
+        schema_version=SCHEMA_VERSION,
+        binding=_targets_binding(event),
+        payload={"targets": codes},
+    )
+
+
+def read_reopen_targets(event) -> tuple[str, ...]:
+    """Stored codes in stored order. Only an empty column means "no targets"."""
+
+    token = event.targets_ciphertext
+    if token == "":
+        return ()
+    try:
+        payload = crypto.decrypt_bound_json(
+            token,
+            keyring=_keyring(),
+            schema_version=SCHEMA_VERSION,
+            binding=_targets_binding(event),
+        )
+        try:
+            return _validate_targets_payload(payload)
+        except (ValueError, TypeError):
+            raise ConfidentialDataUnavailable(reason="malformed") from None
+    except ConfidentialDataUnavailable as exc:
+        raise ExitInterviewConfidentialContentUnavailable(
+            event, reason=exc.reason, content=TARGETS_CONTENT
+        ) from None
+
+
+def reencrypt_reopen_targets(event) -> str:
+    read_reopen_targets(event)
+    return crypto.reencrypt_with_primary_key(event.targets_ciphertext, keyring=_keyring())
 
 
 def encrypted_with_primary_key(token):

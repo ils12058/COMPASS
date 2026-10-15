@@ -608,9 +608,9 @@ def test_rotation_all_seven_families_bytes_timestamp_metadata_idempotent(world, 
     event(world, item)
     before, counts = snapshots(), effects()
     settings.INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS = (K2, K1)
-    assert rotate(dry_run=True, batch_size=1).count("failures 0") == 7
+    assert rotate(dry_run=True, batch_size=1).count("failures 0") == 8
     assert snapshots() == before
-    assert rotate(batch_size=1).count("failures 0") == 7
+    assert rotate(batch_size=1).count("failures 0") == 8
     after = snapshots()
     for (family, pk), row in before.items():
         col = column(family)

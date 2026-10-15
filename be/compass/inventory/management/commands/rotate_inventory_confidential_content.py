@@ -1,4 +1,4 @@
-"""Verify and rewrap all seven Inventory envelopes; preserve business metadata (ADR-083)."""
+"""Verify and rewrap all eight Inventory envelopes; preserve business metadata (ADR-083)."""
 
 from django.apps import apps
 from django.core.management.base import BaseCommand, CommandError
@@ -7,10 +7,14 @@ from django.db import connection, transaction
 from compass.inventory.confidential_content import (
     FAMILIES,
     FIELDS,
+    TARGETS_COLUMN,
+    TARGETS_FAMILY,
     InventoryConfidentialContentUnavailable,
     encrypted_with_primary_key,
     read_confidential_content,
+    read_reopen_targets,
     reencrypt_confidential_content,
+    reencrypt_reopen_targets,
 )
 
 MAX_LISTED_FAILURES = 20
@@ -40,10 +44,28 @@ class Command(BaseCommand):
         if _legacy_plaintext_exists():
             raise CommandError("Legacy plaintext Inventory columns remain; apply migrations first.")
         failures, failed_total = [], 0
-        for name, column, _relation in FAMILIES:
-            model = apps.get_model("inventory", name)
-            label = name
-            scanned = current = needing_rotation = failed = 0
+        envelopes = [
+            (
+                apps.get_model("inventory", name),
+                name,
+                column,
+                read_confidential_content,
+                reencrypt_confidential_content,
+            )
+            for name, column, _relation in FAMILIES
+        ]
+        # Correction targets share the reopen-event row but are a separate, optional envelope.
+        envelopes.append(
+            (
+                apps.get_model("inventory", "InventoryReopenEvent"),
+                TARGETS_FAMILY,
+                TARGETS_COLUMN,
+                read_reopen_targets,
+                reencrypt_reopen_targets,
+            )
+        )
+        for model, label, column, read, reencrypt in envelopes:
+            scanned = empty = current = needing_rotation = failed = 0
             last_pk = None
             while True:
                 with transaction.atomic():
@@ -54,8 +76,11 @@ class Command(BaseCommand):
                         rows = rows.filter(pk__gt=last_pk)
                     batch = list(rows[:batch_size])
                     for item in batch:
+                        if column == TARGETS_COLUMN and not getattr(item, column):
+                            empty += 1
+                            continue
                         try:
-                            read_confidential_content(item)
+                            read(item)
                         except InventoryConfidentialContentUnavailable as exc:
                             failed += 1
                             if len(failures) < MAX_LISTED_FAILURES:
@@ -66,17 +91,16 @@ class Command(BaseCommand):
                             continue
                         needing_rotation += 1
                         if not dry_run:
-                            model.objects.filter(pk=item.pk).update(
-                                **{column: reencrypt_confidential_content(item)}
-                            )
+                            model.objects.filter(pk=item.pk).update(**{column: reencrypt(item)})
                 if not batch:
                     break
                 scanned += len(batch)
                 last_pk = batch[-1].pk
             failed_total += failed
             action = "needing rotation" if dry_run else "rotated"
+            empty_note = f"empty {empty}; " if column == TARGETS_COLUMN else ""
             self.stdout.write(
-                f"{label}: scanned {scanned}; current {current}; "
+                f"{label}: scanned {scanned}; {empty_note}current {current}; "
                 f"{action} {needing_rotation}; failures {failed}"
             )
         for exc in failures:

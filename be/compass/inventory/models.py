@@ -396,6 +396,8 @@ class InventoryReopenEvent(models.Model):
     reopened_at = models.DateTimeField()
 
     reason_ciphertext = models.TextField(editable=False)
+    # Encrypted correction targets (FORM-CORR-1); empty when the request named none.
+    targets_ciphertext = models.TextField(blank=True, default="", editable=False)
 
     class Meta:
         default_permissions = ()

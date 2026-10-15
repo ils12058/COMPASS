@@ -200,7 +200,12 @@ def test_inventory_reopen_resubmit_preserves_history_and_hides_draft_from_guidan
     assert student_status.json()["latest_correction"]["message"] == (
         "Please correct the annual record."
     )
-    assert set(student_status.json()["latest_correction"]) == {"requested_at", "message"}
+    assert set(student_status.json()["latest_correction"]) == {
+        "requested_at",
+        "message",
+        "targets",
+    }
+    assert student_status.json()["latest_correction"]["targets"] == []
 
     student_current = student_client.get("/api/v1/inventory/me/current")
     assert student_current.status_code == 200

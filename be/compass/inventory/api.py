@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
@@ -36,6 +37,12 @@ from .confidential_content import (
     InventoryConfidentialContentUnavailable,
     read_inventory_private_projection,
     read_reopen_reason,
+    read_reopen_targets,
+)
+from .correction_targets import (
+    MAX_CORRECTION_TARGETS,
+    InventoryCorrectionTarget,
+    project_stored_targets,
 )
 from .documents import InventoryDocumentUnavailable, render_inventory_pdf
 from .models import (
@@ -89,6 +96,7 @@ from .services import (
 )
 
 router = Router(tags=["inventory"])
+logger = logging.getLogger(__name__)
 PDF_SUCCESS_OPENAPI = {
     "responses": {
         200: {"content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}}}
@@ -499,6 +507,12 @@ class FormRevisionSummary(StrictSchema):
 class InventoryCorrectionSummary(StrictSchema):
     requested_at: datetime
     message: str
+    targets: list[InventoryCorrectionTarget] = Field(
+        description=(
+            "Parts of the Inventory the Counselor asked the Student to review, in catalog order. "
+            "Empty when the request named none."
+        )
+    )
 
 
 class InventoryStatusResponse(StrictSchema):
@@ -596,6 +610,14 @@ class InventoryReopenRequest(StrictSchema):
         description=(
             "Student-visible correction guidance explaining what must be corrected before "
             "resubmission."
+        ),
+    )
+    targets: list[InventoryCorrectionTarget] = Field(
+        default_factory=list,
+        max_length=MAX_CORRECTION_TARGETS,
+        description=(
+            "Optional parts of the Inventory for the Student to review. Advisory only; repeats "
+            "are dropped and the stored order follows the catalog."
         ),
     )
 
@@ -704,6 +726,25 @@ def _optional_choice(value):
     return value or None
 
 
+def _correction_targets(event) -> list[InventoryCorrectionTarget]:
+    try:
+        stored = read_reopen_targets(event)
+    except InventoryConfidentialContentUnavailable as exc:
+        _raise(exc)
+    # Codes from a newer build are left in storage and omitted here; never logged.
+    targets, omitted = project_stored_targets(stored)
+    if omitted:
+        logger.warning(
+            "Unrecognized Inventory correction targets were omitted.",
+            extra={
+                "event": "inventory_correction_targets_omitted",
+                "target_type": "inventory.inventoryreopenevent",
+                "target_id": event.pk,
+            },
+        )
+    return list(targets)
+
+
 def _correction(item) -> tuple[bool, dict[str, object] | None]:
     event = get_pending_correction(item)
     if event is None:
@@ -712,7 +753,11 @@ def _correction(item) -> tuple[bool, dict[str, object] | None]:
         reason = read_reopen_reason(event)
     except InventoryConfidentialContentUnavailable as exc:
         _raise(exc)
-    return True, {"requested_at": event.reopened_at, "message": reason}
+    return True, {
+        "requested_at": event.reopened_at,
+        "message": reason,
+        "targets": _correction_targets(event),
+    }
 
 
 def _child_rows(
@@ -1283,6 +1328,7 @@ def inventory_reopen_record(request, inventory_id: UUID, payload: InventoryReope
             actor=request.auth_user,
             inventory_id=inventory_id,
             reason=payload.reason,
+            targets=payload.targets,
             context=_context(request),
         )
     except InventoryError as exc:

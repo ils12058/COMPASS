@@ -762,7 +762,7 @@ def test_rotation_all_families_preserves_exact_bytes_timestamps_and_business_met
                     Fernet(K1).decrypt(new[column].encode())
                 read(row)
         out, _ = rotate(batch_size=1)
-        assert out.count("rotated 0; failures 0") == 3 and snapshots() == after
+        assert out.count("rotated 0; failures 0") == 4 and snapshots() == after
     assert effects() == counts
 
 
@@ -827,7 +827,7 @@ def test_interrupted_rotation_commits_one_batch_then_resumes_without_rewrapping(
             content.encrypted_with_primary_key(getattr(row, column)) for row in model.objects.all()
         )
         out, _ = rotate(batch_size=1)
-        assert out.count("rotated 0; failures 0") == 3
+        assert out.count("rotated 0; failures 0") == 4
 
 
 def test_rotation_corruption_is_bounded_safe_nonzero_and_never_repaired(world):

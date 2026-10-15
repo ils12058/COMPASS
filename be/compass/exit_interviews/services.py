@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import asdict, dataclass
 from datetime import date, datetime
 from enum import StrEnum
@@ -48,7 +49,9 @@ from .confidential_content import (
     validate_text,
     write_exit_interview_confidential_content,
     write_reopen_reason,
+    write_reopen_targets,
 )
+from .correction_targets import allowed_correction_targets, normalize_correction_targets
 from .errors import ExitInterviewError, InvalidExitInterviewInput
 from .form_contract import college_feedback_codes
 from .models import (
@@ -1105,6 +1108,7 @@ def reopen_for_correction(
     exit_interview_id: UUID,
     reason: str,
     context: AuditContext,
+    targets: Sequence[str] | None = None,
     now: datetime | None = None,
 ) -> ExitInterview:
     _validate_head(actor, "exit_interviews.reopen")
@@ -1126,7 +1130,7 @@ def reopen_for_correction(
         owner = User.objects.select_for_update(of=("self",)).select_related("role").get(pk=owner_id)
         item = (
             ExitInterview.objects.select_for_update(of=("self",))
-            .select_related("academic_year", "student__role")
+            .select_related("academic_year", "student__role", "form_revision__family")
             .filter(pk=exit_interview_id)
             .first()
         )
@@ -1138,6 +1142,10 @@ def reopen_for_correction(
             raise ExitInterviewCurrentStudentRequired(
                 "Current Student lifecycle is required before reopening for Student correction."
             )
+        # The Student edits under the saved answer contract. An unsupported saved Form Revision
+        # raises here, before the record becomes a draft the Student could not save or submit.
+        allowed_targets = allowed_correction_targets(item)
+        selected_targets = normalize_correction_targets(targets, allowed=allowed_targets)
 
         event = ExitInterviewReopenEvent(
             exit_interview=item,
@@ -1145,6 +1153,7 @@ def reopen_for_correction(
             reopened_by=actor,
         )
         write_reopen_reason(event, cleaned_reason)
+        write_reopen_targets(event, selected_targets)
         event.save(force_insert=True)
         item.status = ExitInterviewStatus.DRAFT
         item.save(update_fields=["status", "updated_at"])

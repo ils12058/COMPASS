@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
@@ -63,7 +64,9 @@ from .confidential_content import (
     project_confidential_input,
     read_inventory_private_projection,
     write_confidential_content,
+    write_reopen_targets,
 )
+from .correction_targets import normalize_correction_targets
 from .errors import InvalidInventoryInput, InventoryError
 from .models import (
     AnnualIncomeStatus,
@@ -1627,6 +1630,7 @@ def reopen_inventory_for_correction(
     inventory_id: UUID,
     reason: str,
     context: AuditContext,
+    targets: Sequence[str] | None = None,
     now: datetime | None = None,
 ) -> StudentInventory:
     _validate_counselor(actor, "inventory.reopen")
@@ -1664,6 +1668,7 @@ def reopen_inventory_for_correction(
             raise InventoryCurrentStudentRequired(
                 "Current Student lifecycle is required before reopening for Student correction."
             )
+        selected_targets = normalize_correction_targets(targets)
 
         event = InventoryReopenEvent(
             inventory=item,
@@ -1671,6 +1676,7 @@ def reopen_inventory_for_correction(
             reopened_at=reopened_at,
         )
         write_confidential_content(event, {"reason": cleaned_reason})
+        write_reopen_targets(event, selected_targets)
         event.save()
         item.submitted_at = None
         item.save(update_fields=["submitted_at", "updated_at"])
