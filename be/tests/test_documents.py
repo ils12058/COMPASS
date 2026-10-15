@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import inspect
+from hashlib import sha256
 from io import BytesIO
 from uuid import UUID
 
 import pytest
 from django.apps import apps
 from django.test import Client
+from PIL import Image
 from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
@@ -14,7 +16,12 @@ from pypdf import PdfReader
 
 from compass.audit.actions import DOCUMENT_BRANDING_UPDATED
 from compass.documents import rendering
-from compass.documents.assets import get_asset_data_uri, get_document_assets
+from compass.documents.assets import (
+    DocumentAssetError,
+    get_asset_bytes,
+    get_asset_data_uri,
+    get_document_assets,
+)
 from compass.documents.filenames import institutional_pdf_content_disposition
 from compass.documents.rendering import (
     DocumentRenderError,
@@ -23,7 +30,6 @@ from compass.documents.rendering import (
     render_document_html,
     render_document_pdf,
 )
-from compass.documents.services import CANONICAL_DOCUMENT_BRANDING, get_document_branding
 from compass.documents.template_specs import (
     LayoutFamily,
     UnknownDocumentTemplate,
@@ -85,7 +91,7 @@ def test_referral_pdf_footer_uses_rendered_page_count_and_preserves_content(long
     text = "\n".join(page.extract_text() for page in pages)
     for marker in (
         "Historical Student",
-        "Source Referrer",
+        "SOURCE REFERRER",
         "STARTREASON",
         "ENDREASON",
         "STARTREMARKS",
@@ -100,29 +106,9 @@ def test_referral_pdf_footer_uses_rendered_page_count_and_preserves_content(long
         assert "Revision: 1" in page_text
 
 
-def test_canonical_branding_contains_only_confirmed_identity():
-    branding = get_document_branding()
-    assert branding is CANONICAL_DOCUMENT_BRANDING
-    assert branding.country_line == "Republic of the Philippines"
-    assert branding.institution_name == "University of Camarines Norte"
-    assert branding.institution_short_name == "UCN"
-    assert branding.former_institution_name == "Camarines Norte State College"
-    assert branding.office_name == "Guidance and Counseling Office"
-
-    assert branding.institution_address == (
-        "F. Pimentel Ave., Brgy. II, Daet, Camarines Norte – 4600, Philippines"
-    )
-    assert branding.institution_website_url == "https://www.ucn.edu.ph"
-    assert branding.institution_contact_email == "president@ucn.edu.ph"
-    assert branding.institution_social_url == "https://www.facebook.com/UCNofficial"
-    assert branding.office_parent_unit_name is None
-    assert branding.office_email == "guidance@compass-gco.com"
-    assert branding.office_phone is None
-    assert branding.office_location is None
-
-
-def test_accreditation_footer_stays_opt_in_for_real_documents():
+def test_official_documents_enable_optional_accreditation_footer():
     for key in (
+        "exit_interview",
         "good_moral_current_student",
         "good_moral_graduate",
         "referral_slip",
@@ -131,8 +117,8 @@ def test_accreditation_footer_stays_opt_in_for_real_documents():
     ):
         spec = get_template_spec(key, 1)
         html, _ = render_document_html(key, 1)
-        assert spec.include_accreditation_footer is False
-        assert '<footer class="accreditation-footer">' not in html
+        assert spec.include_accreditation_footer is True
+        assert '<footer class="accreditation-footer">' in html
 
     spec = get_template_spec("foundation_test", 1)
     html, _ = render_document_html("foundation_test", 1)
@@ -206,7 +192,7 @@ def test_historical_branding_audit_action_remains_stable():
 
 
 @pytest.mark.django_db
-def test_html_uses_canonical_branding_partials_local_assets_and_autoescaping():
+def test_html_uses_static_branding_local_assets_and_autoescaping():
     html, spec = render_document_html(
         "foundation_test",
         1,
@@ -225,16 +211,16 @@ def test_html_uses_canonical_branding_partials_local_assets_and_autoescaping():
 
     assert spec.layout_family is LayoutFamily.REPORT
     assert '<header class="institution-masthead">' in html
-    assert '<section class="office-heading">' in html
+    assert '<section class="office-heading">' not in html
     assert '<footer class="accreditation-footer">' in html
     assert "data:image/png;base64," in html
     assert "University of Camarines Norte" in html
-    assert "Guidance and Counseling Office" in html
-    assert "F. Pimentel Ave., Brgy. II, Daet, Camarines Norte – 4600, Philippines" in html
-    assert "https://www.ucn.edu.ph" in html
-    assert "president@ucn.edu.ph" in html
-    assert "https://www.facebook.com/UCNofficial" in html
-    assert "guidance@compass-gco.com" in html
+    assert "Guidance and Counseling Office" not in html
+    assert "F. Pimentel Ave., Brgy. II, Daet, Camarines Norte – 4600, Philippines" not in html
+    assert "https://www.ucn.edu.ph" not in html
+    assert "president@ucn.edu.ph" not in html
+    assert "https://www.facebook.com/UCNofficial" not in html
+    assert "guidance@compass-gco.com" not in html
     assert "<script>caller override</script>" not in html
     assert "CNSC-OP-GTA-01F8" in html
     assert "Revision: 0" in html
@@ -272,7 +258,7 @@ def test_code_owned_layout_can_omit_accreditation_footer_and_spec_rejects_unknow
 
 
 def test_supplied_packaged_assets_resolve_locally_without_static_storage_urls():
-    for key in ("ucn_logo", "bagong_pilipinas_logo", "accreditation_footer"):
+    for key in ("institution_header", "accreditation_footer"):
         data_uri = get_asset_data_uri(key)
         assert data_uri.startswith("data:image/png;base64,")
         assert "http://" not in data_uri
@@ -370,3 +356,235 @@ def test_renderer_never_uses_caller_url_navigation():
     source = inspect.getsource(rendering.render_document_pdf)
     assert ".goto(" not in source
     assert "page.set_content(" in source
+
+
+@pytest.mark.parametrize(
+    ("key", "dimensions"),
+    [("institution_header", (6473, 1083)), ("accreditation_footer", (6614, 500))],
+)
+def test_official_artwork_is_valid_original_png(key, dimensions):
+    payload = get_asset_bytes(key)
+    assert payload.startswith(b"\x89PNG\r\n\x1a\n")
+    expected_hashes = {
+        "institution_header": "daba7f6bc9cfd03814debe00cb180a642447a5f7209734deac2a223c9b0ffad2",
+        "accreditation_footer": "86ba43c33f19c3b9e478de28cce48851a093023b9adc103b14297bb0aab2e8b0",
+    }
+    assert sha256(payload).hexdigest() == expected_hashes[key]
+    with Image.open(BytesIO(payload)) as image:
+        assert image.format == "PNG"
+        assert image.size == dimensions
+        assert image.mode == "RGBA"
+        image.verify()
+
+
+def test_asset_errors_reject_unknown_and_missing_packaged_files(monkeypatch, tmp_path):
+    from compass.documents import assets
+
+    with pytest.raises(DocumentAssetError, match="Unknown document asset"):
+        get_asset_bytes("../../private-student-record")
+    monkeypatch.setattr(assets, "_resource", lambda name: tmp_path / "missing")
+    with pytest.raises(DocumentAssetError, match="institution_header"):
+        get_asset_bytes("institution_header")
+    with pytest.raises(DocumentTemplateError, match="presentation resources"):
+        render_document_html("foundation_test", 1)
+
+
+def _image_placements(page):
+    placements = []
+    resources = page["/Resources"]["/XObject"]
+
+    def visit(operator, operands, cm, tm):
+        if operator == b"Do":
+            obj = resources[operands[0]].get_object()
+            if obj.get("/Subtype") == "/Image":
+                placements.append(((int(obj["/Width"]), int(obj["/Height"])), cm[:]))
+
+    page.extract_text(visitor_operand_before=visit)
+    return placements
+
+
+@pytest.mark.parametrize(
+    "key",
+    [
+        "individual_inventory",
+        "exit_interview",
+        "referral_slip",
+        "call_slip",
+        "good_moral_current_student",
+        "good_moral_graduate",
+        "student_profiling_report",
+        "foundation_test",
+        "foundation_test_no_footer",
+    ],
+)
+def test_every_registered_pdf_repeats_full_width_artwork_and_dynamic_metadata(key):
+    # Source consumers have dedicated populated/provenance tests. This checks the
+    # shared physical-page contract, including continuation pages and opt-out.
+    controlled = (
+        {}
+        if key in {"exit_interview", "student_profiling_report"}
+        else {
+            "official_code": "HISTORICAL-CODE",
+            "official_revision": "0",
+            "page_label": "Page 1 of 1",
+        }
+    )
+    context = {
+        "title": "Synthetic branding regression",
+        "rows": sample_rows(100),
+        "controlled_form": controlled,
+        "document_branding": {"institution_name": "UNTRUSTED-MASTHEAD"},
+        "document_assets": {"institution_header": "https://example.invalid/override"},
+    }
+    pdf = render_document_pdf(key, 1, context=context).pdf_bytes
+    pages = PdfReader(BytesIO(pdf)).pages
+    if key == "individual_inventory":
+        assert len(pages) == 3
+    if key.startswith("foundation_test"):
+        assert len(pages) > 1
+    for number, page in enumerate(pages, 1):
+        width, height = float(page.mediabox.width), float(page.mediabox.height)
+        assert width == pytest.approx(210 * 72 / 25.4, abs=0.8)
+        assert height == pytest.approx(297 * 72 / 25.4, abs=0.8)
+        images = _image_placements(page)
+        header = [cm for dims, cm in images if dims == (6473, 1083)]
+        footer = [cm for dims, cm in images if dims == (6614, 500)]
+        assert len(header) == 1
+        assert len(footer) == (0 if key == "foundation_test_no_footer" else 1)
+        for cm, ratio in [(header[0], 1083 / 6473)] + ([(footer[0], 500 / 6614)] if footer else []):
+            assert abs(cm[0]) == pytest.approx(width, abs=0.8)
+            assert abs(cm[3] / cm[0]) == pytest.approx(ratio, abs=0.001)
+            assert cm[4] == pytest.approx(0, abs=0.8)
+        assert header[0][5] + abs(header[0][3]) == pytest.approx(height - 5 * 72 / 25.4, abs=0.8)
+        if footer:
+            assert footer[0][5] == pytest.approx(14 * 72 / 25.4, abs=0.8)
+        text_positions = []
+
+        def visit_text(text, cm, tm, font, font_size, positions=text_positions):
+            if text.strip():
+                y = tm[4] * cm[1] + tm[5] * cm[3] + cm[5]
+                positions.append((text, y))
+
+        text = page.extract_text(visitor_text=visit_text)
+        for fragment, y in text_positions:
+            # Body baselines stay above the 34 mm bottom reserve. Metadata
+            # sits below the artwork (which starts 14 mm above the page edge).
+            if y > 20 * 72 / 25.4:
+                assert y >= 34 * 72 / 25.4 - 2, (fragment, y)
+                assert y <= height - 45 * 72 / 25.4 + 2, (fragment, y)
+            else:
+                assert y < 14 * 72 / 25.4, (fragment, y)
+        assert text.count(f"Page {number} of {len(pages)}") == 1
+        if len(pages) > 1:
+            assert "Page 1 of 1" not in text
+        assert "UNTRUSTED-MASTHEAD" not in text
+        assert "University of Camarines Norte" not in text  # embedded artwork only
+        if controlled:
+            assert text.count("HISTORICAL-CODE") == 1
+            assert "Revision: 0" in text
+        else:
+            assert "Revision:" not in text
+
+
+def test_optional_footer_does_not_require_the_footer_asset(monkeypatch):
+    from compass.documents import assets
+
+    monkeypatch.setitem(assets.BRANDING_ASSETS, "accreditation_footer", "missing-footer.png")
+    html, _ = render_document_html("foundation_test_no_footer", 1)
+    assert '<header class="institution-masthead">' in html
+    assert '<footer class="accreditation-footer">' not in html
+    with pytest.raises(DocumentTemplateError, match="presentation resources"):
+        render_document_html("foundation_test", 1)
+
+
+def test_native_page_metadata_escapes_identity_and_report_labels():
+    footer = rendering._page_footer_template(
+        {
+            "official_code": '<img src="https://example.invalid/code">',
+            "official_revision": "<script>revision</script>",
+        },
+        label=None,
+        show_page_numbers=True,
+    )
+    assert "<img" not in footer and "<script>" not in footer
+    assert "&lt;img" in footer and "&lt;script&gt;" in footer
+    report = rendering._page_footer_template(
+        {},
+        label="<script>report</script>",
+        show_page_numbers=True,
+    )
+    assert "<script>" not in report and "&lt;script&gt;" in report
+    assert 'class="pageNumber"' in footer and 'class="totalPages"' in footer
+    assert "</strong><br>Revision:" in footer
+
+
+@pytest.mark.parametrize(
+    ("template_key", "context_key", "field", "selector"),
+    [
+        ("good_moral_current_student", "certificate", "issuer_name", ".good-moral-signature-line"),
+        ("good_moral_graduate", "certificate", "issuer_name", ".good-moral-signature-line"),
+        ("referral_slip", "referral", "referrer_name", ".signature-line"),
+        ("call_slip", "call_slip", "issued_by_name", ".signature-line"),
+    ],
+)
+def test_printed_signature_names_are_uppercase_and_above_the_rule(
+    template_key, context_key, field, selector
+):
+    original_name = "Dr. Lea de la Cruz"
+    context = {context_key: {field: original_name}}
+    html, _ = render_document_html(template_key, 1, context=context)
+    assert context[context_key][field] == original_name
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            page.set_content(html)
+            line = page.locator(selector).first
+            assert line.inner_text() == original_name.upper()
+            assert (
+                line.evaluate("element => parseFloat(getComputedStyle(element).borderBottomWidth)")
+                > 0
+            )
+            name_box = line.locator(".generated-value").bounding_box()
+            line_box = line.bounding_box()
+            assert name_box["y"] + name_box["height"] <= line_box["y"] + line_box["height"]
+        finally:
+            browser.close()
+
+
+@pytest.mark.parametrize("key", ["good_moral_current_student", "good_moral_graduate"])
+@pytest.mark.parametrize("filled", [False, True])
+def test_good_moral_receipt_fields_keep_short_rules_for_blank_and_filled_values(key, filled):
+    from datetime import date
+
+    certificate = {
+        "official_receipt_number": "OR-001" if filled else "",
+        "official_receipt_date": date(2026, 10, 15) if filled else None,
+        "official_receipt_amount": 0 if filled else None,
+    }
+    html, _ = render_document_html(key, 1, context={"certificate": certificate})
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(headless=True)
+        try:
+            page = browser.new_page()
+            page.set_content(html)
+            lines = page.locator(".good-moral-receipt-value")
+            assert lines.count() == 3
+            boxes = [line.bounding_box() for line in lines.all()]
+            assert max(box["x"] for box in boxes) - min(box["x"] for box in boxes) < 0.5
+            assert max(box["width"] for box in boxes) - min(box["width"] for box in boxes) < 0.5
+            for line in lines.all():
+                metrics = line.evaluate("""element => ({
+                    width: element.getBoundingClientRect().width,
+                    border: parseFloat(getComputedStyle(element).borderBottomWidth),
+                })""")
+                assert metrics["width"] >= 30 * 96 / 25.4 - 1
+                assert metrics["border"] > 0
+            if filled:
+                assert lines.nth(0).inner_text() == "OR-001"
+                assert lines.nth(1).inner_text() == "October 15, 2026"
+                assert lines.nth(2).inner_text() == "0.00"
+            else:
+                assert lines.all_inner_texts() == ["", "", ""]
+        finally:
+            browser.close()

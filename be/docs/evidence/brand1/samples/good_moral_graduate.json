@@ -1,0 +1,27 @@
+{
+  "key": "good_moral_graduate",
+  "version": 1,
+  "context": {
+    "certificate": {
+      "applicant_name": "Chromium Student User",
+      "year_level": "",
+      "college": "",
+      "course": "",
+      "major": "Information Systems",
+      "semester": "",
+      "academic_year": "",
+      "degree": "Bachelor of Science in Information Systems",
+      "graduation_date": "2026-06-30",
+      "issued_on": "2026-10-15",
+      "issuer_name": "Chromium Counselor User",
+      "official_receipt_number": "",
+      "official_receipt_date": null,
+      "official_receipt_amount": null
+    },
+    "controlled_form": {
+      "official_code": "CNSC-OP-GCO-01F6",
+      "official_revision": "0",
+      "page_label": "Page 1 of 1"
+    }
+  }
+}

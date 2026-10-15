@@ -24,25 +24,17 @@
   </p>
 
   <div class="good-moral-signature">
-    <div class="good-moral-signature-line" aria-hidden="true"></div>
-    <div class="good-moral-signature-name"><span class="generated-value">{{ certificate.issuer_name }}</span></div>
+    <div class="good-moral-signature-line"><span class="generated-value">{{ certificate.issuer_name|upper }}</span></div>
     <div>Guidance Counselor</div>
   </div>
 
   <div class="good-moral-receipt">
-    <div>Official Receipt No.: <span class="generated-value">{{ certificate.official_receipt_number }}</span></div>
-    <div>
-      Date:
-      {% if certificate.official_receipt_date %}
-        <span class="generated-value">{{ certificate.official_receipt_date|date:"F j, Y" }}</span>
-      {% endif %}
-    </div>
-    <div>
-      Amount:
-      {% if certificate.official_receipt_amount != None %}
-        <span class="generated-value">{{ certificate.official_receipt_amount|floatformat:2 }}</span>
-      {% endif %}
-    </div>
+    <span>Official Receipt No.:</span>
+    <span class="good-moral-receipt-value generated-value">{{ certificate.official_receipt_number }}</span>
+    <span>Date:</span>
+    <span class="good-moral-receipt-value generated-value">{% if certificate.official_receipt_date %}{{ certificate.official_receipt_date|date:"F j, Y" }}{% endif %}</span>
+    <span>Amount:</span>
+    <span class="good-moral-receipt-value generated-value">{% if certificate.official_receipt_amount != None %}{{ certificate.official_receipt_amount|floatformat:2 }}{% endif %}</span>
   </div>
 
   <div class="good-moral-controlled-footer">

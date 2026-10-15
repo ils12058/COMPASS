@@ -1,6 +1,5 @@
 <section class="individual-inventory-page inventory-page-three">
   {% include "documents/partials/institution_masthead.html" %}
-  {% include "documents/partials/office_heading.html" %}
   <main class="inventory-source-body">
     <div class="inventory-row inventory-first-choice"><span>Is the course you have enrolled, the first choice you wrote in your application form?</span><span><span class="inventory-checkbox">{% if inventory_form.first_choice == True %}<span class="generated-value">X</span>{% endif %}</span> Yes</span><span><span class="inventory-checkbox">{% if inventory_form.first_choice == False %}<span class="generated-value">X</span>{% endif %}</span> No</span></div>
     <div>State your reason. You may check more than one of the choices below:</div>
@@ -40,5 +39,6 @@
     <div class="inventory-signature"><span class="inventory-line"></span><span>Signature</span></div>
     <div class="inventory-row inventory-date-row"><span>Date:</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.submitted_date }}</span></span></div>
   </main>
+  {% include "documents/partials/accreditation_footer.html" %}
   {% include "documents/partials/controlled_form_metadata.html" with page_label="Page 3 of 3" %}
 </section>

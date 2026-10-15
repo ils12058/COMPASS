@@ -1,0 +1,140 @@
+{
+  "date": "2026-10-15",
+  "timezone": "Asia/Manila",
+  "base_sha": "ea2e5b80bd9356ec343198f2725128b0ce4602d3",
+  "final_affected_tests": {
+    "passed": 53,
+    "failed": 0,
+    "elapsed_seconds": 613.45,
+    "database": "fresh isolated PostgreSQL (--create-db)"
+  },
+  "final_receipt_alignment_tests": {
+    "passed": 4,
+    "failed": 0,
+    "elapsed_seconds": 32.26
+  },
+  "broader_regression_run": {
+    "passed": 216,
+    "failed": 2,
+    "elapsed_seconds": 945.05,
+    "failures": "Two outdated display expectations (Exit Interview page count and Good Moral page-number flag). Both corrected and passed in the final affected run."
+  },
+  "test_database_note": "Migration tests flush seeded Form Revisions; use a freshly created test database for isolated rendering rechecks rather than reusing that flushed database.",
+  "static_checks": {
+    "ruff_check": "passed",
+    "ruff_format_check": "717 files passed",
+    "uv_lock_check": "passed",
+    "compileall": "passed",
+    "django_check": "passed; no issues",
+    "makemigrations_check": "passed; no changes detected",
+    "git_diff_check": "passed"
+  },
+  "pdf_evidence": {
+    "synthetic_samples": 16,
+    "a4_pages": 79,
+    "all_pages_converted_to_png": true,
+    "visual_review": "All three Inventory pages; normal forms; blank/filled aligned receipts; uppercase signatures; long cases; first/middle/final profiling pages; footer opt-out. No clipping, footer/body overlap, blank or footer-only pages found.",
+    "samples": [
+      {
+        "sample": "call_slip-long-values",
+        "pages": 1,
+        "bytes": 1662979
+      },
+      {
+        "sample": "call_slip",
+        "pages": 1,
+        "bytes": 1656563
+      },
+      {
+        "sample": "exit-long-comments",
+        "pages": 5,
+        "bytes": 1899814
+      },
+      {
+        "sample": "exit_interview",
+        "pages": 3,
+        "bytes": 1837827
+      },
+      {
+        "sample": "foundation_test",
+        "pages": 4,
+        "bytes": 1820970
+      },
+      {
+        "sample": "foundation_test_no_footer",
+        "pages": 4,
+        "bytes": 923535
+      },
+      {
+        "sample": "good_moral_current_student-long-values",
+        "pages": 1,
+        "bytes": 1638034
+      },
+      {
+        "sample": "good_moral_current_student",
+        "pages": 1,
+        "bytes": 1632048
+      },
+      {
+        "sample": "good_moral_graduate-long-values",
+        "pages": 1,
+        "bytes": 1635806
+      },
+      {
+        "sample": "good_moral_graduate",
+        "pages": 1,
+        "bytes": 1630828
+      },
+      {
+        "sample": "individual_inventory",
+        "pages": 3,
+        "bytes": 1970583
+      },
+      {
+        "sample": "inventory-long-narrative",
+        "pages": 3,
+        "bytes": 1990784
+      },
+      {
+        "sample": "inventory-long-school",
+        "pages": 3,
+        "bytes": 1983369
+      },
+      {
+        "sample": "referral-long-content",
+        "pages": 5,
+        "bytes": 1889347
+      },
+      {
+        "sample": "referral_slip",
+        "pages": 1,
+        "bytes": 1656501
+      },
+      {
+        "sample": "student_profiling_report",
+        "pages": 42,
+        "bytes": 2979369
+      }
+    ]
+  },
+  "geometry_mm": {
+    "page": [
+      210,
+      297
+    ],
+    "header_width": 210,
+    "header_top_padding": 5,
+    "footer_width": 210,
+    "footer_bottom": 14,
+    "body_top": 45,
+    "body_bottom": 34
+  },
+  "artwork_sha256": {
+    "footer-logos.png": "86ba43c33f19c3b9e478de28cce48851a093023b9adc103b14297bb0aab2e8b0",
+    "header.png": "daba7f6bc9cfd03814debe00cb180a642447a5f7209734deac2a223c9b0ffad2"
+  },
+  "no_migration_or_form_identity_changes": true,
+  "no_frontend_changes": true,
+  "merged": false,
+  "deployed": false
+}

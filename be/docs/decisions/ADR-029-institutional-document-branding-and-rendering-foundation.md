@@ -1,5 +1,7 @@
 # ADR-029: Institutional Document Branding and PDF Rendering Foundation
 
+> Branding presentation is superseded by [BRAND-1 static UCN document branding](../evidence/brand1/README.md). The local rendering foundation, optional-footer registry, and historical migration/audit compatibility remain in use.
+
 ## Context
 
 COMPASS needs a shared foundation for future institutional outputs such as controlled forms,

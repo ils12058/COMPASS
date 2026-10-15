@@ -1,7 +1,7 @@
 @page {
   size: A4;
-  /* The 7 mm page edge admits the wide recognition strip. Shell content adds 18 mm. */
-  margin: 13mm 7mm 7mm;
+  /* 5 mm top space + 35.13 mm header + gap; footer + stacked metadata + gap. */
+  margin: 45mm 25mm 34mm;
 }
 
 * {
@@ -19,173 +19,21 @@ body {
   background: #fff;
 }
 
+/* Artwork spans the physical page; document text retains inner margins. */
 .document {
+  --document-body-margin: 25mm;
   width: 100%;
-  padding: 0 18mm;
 }
 
-.institution-masthead {
-  display: grid;
-  grid-template-columns: 28mm minmax(0, 1fr) 22mm;
-  align-items: start;
-  gap: 2mm;
-  min-height: 26mm;
+.institution-masthead,
+.accreditation-footer {
+  width: 210mm;
+  margin-left: calc(-1 * var(--document-body-margin));
 }
 
-.masthead-logo {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  height: 26mm;
-  margin-top: -4mm;
-}
-
-.masthead-logo img {
-  width: 27mm;
-  height: 27mm;
-  object-fit: contain;
-}
-
-.masthead-logo-right img {
-  width: 26mm;
-  height: 26mm;
-}
-
-.masthead-copy {
-  text-align: center;
-}
-
-.country-line {
-  font-size: 10.5pt;
-  line-height: 1.1;
-}
-
-.institution-name {
-  color: #750000;
-  font-size: 15pt;
-  line-height: 1.06;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.former-institution-name {
-  font-size: 9.5pt;
-  line-height: 1.1;
-  font-style: italic;
-}
-
-.institution-address {
-  margin-top: 0.5mm;
-  font-size: 8.5pt;
-  line-height: 1.1;
-  white-space: nowrap;
-}
-
-.institution-contact {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 1.8mm;
-  margin-top: 3.3mm;
-  font-size: 6.7pt;
-  line-height: 1;
-  white-space: nowrap;
-}
-
-.contact-item {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5mm;
-}
-
-.contact-icon {
-  display: inline-flex;
-  position: relative;
-  align-items: center;
-  justify-content: center;
-  width: 3.3mm;
-  height: 3.3mm;
-  flex: none;
-  color: #750000;
-}
-
-.contact-icon-web {
-  border: 0.45mm solid currentColor;
-  border-radius: 50%;
-}
-
-.contact-icon-web::before,
-.contact-icon-web::after {
-  content: "";
-  position: absolute;
-  inset: -0.4mm 0.7mm;
-  border-left: 0.3mm solid currentColor;
-  border-right: 0.3mm solid currentColor;
-  border-radius: 50%;
-}
-
-.contact-icon-web::after {
-  inset: 1.2mm -0.25mm auto;
-  border: 0;
-  border-top: 0.3mm solid currentColor;
-  border-radius: 0;
-}
-
-.contact-icon-mail {
-  height: 2.5mm;
-  border: 0.4mm solid currentColor;
-  border-radius: 0.2mm;
-}
-
-.contact-icon-mail::after {
-  content: "";
-  position: absolute;
-  top: -0.5mm;
-  width: 2mm;
-  height: 2mm;
-  transform: rotate(45deg);
-  border-right: 0.3mm solid currentColor;
-  border-bottom: 0.3mm solid currentColor;
-}
-
-.contact-icon-social {
-  border-radius: 50%;
-  background: #750000;
-  color: white;
-  font-family: Arial, Helvetica, sans-serif;
-  font-size: 9pt;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.institution-separator {
-  height: 0.75mm;
-  margin-top: 1.5mm;
-  background: #750000;
-}
-
-.office-heading {
-  margin: 2mm 0 10mm;
-  text-align: center;
-  color: #750000;
-  line-height: 1.1;
-}
-
-.office-parent-unit,
-.office-name {
-  font-size: 11.5pt;
-  text-transform: uppercase;
-}
-
-.office-name {
-  font-weight: 400;
-}
-
-.office-email {
-  margin-top: 0.5mm;
-  color: #111;
-  font-size: 10.5pt;
-}
+.institution-masthead { margin-bottom: 4mm; }
+.institution-masthead img,
+.accreditation-footer img { display: block; width: 210mm; height: auto; }
 
 .document-body {
   min-height: 30mm;
@@ -233,60 +81,13 @@ body {
   font-size: 8pt;
 }
 
-.layout-certificate .controlled-form-metadata,
-.layout-compact_form .controlled-form-metadata,
-.layout-report .controlled-form-metadata {
-  position: fixed;
-  bottom: -1.5mm;
-  left: 0;
-  width: 176mm;
-  margin: 0;
-  margin-left: 1mm;
-  padding: 0;
-  border: 0;
-}
-
 .controlled-form-metadata > div:first-child {
   display: flex;
   flex-direction: column;
 }
 
-.controlled-form-code {
-  font-weight: 700;
-}
-
-.accreditation-footer {
-  margin-top: 8mm;
-  break-inside: avoid;
-  page-break-inside: avoid;
-}
-
-.accreditation-footer img {
-  display: block;
-  width: 100%;
-  max-height: 18mm;
-  object-fit: contain;
-}
-
-.layout-certificate .accreditation-footer,
-.layout-compact_form .accreditation-footer,
-.layout-report .accreditation-footer {
-  position: fixed;
-  bottom: 10mm;
-  left: 0;
-  width: 196mm;
-  margin: 0;
-  padding-top: 1mm;
-  border-top: 0.75mm solid #750000;
-}
-
-.layout-certificate .accreditation-footer img,
-.layout-compact_form .accreditation-footer img,
-.layout-report .accreditation-footer img {
-  height: 12mm;
-  max-height: none;
-  object-fit: fill;
-}
+.controlled-form-code { font-weight: 700; }
+.accreditation-footer { margin-top: 8mm; break-inside: avoid; }
 
 .page-break-before {
   break-before: page;
@@ -329,7 +130,7 @@ body {
 /* F5 has three controlled source pages with a repeated institutional shell. */
 .individual-inventory-page {
   position: relative;
-  height: 275mm;
+  height: 217mm;
   break-after: page;
   page-break-after: always;
 }
@@ -339,13 +140,9 @@ body {
   page-break-after: auto;
 }
 
-.individual-inventory-page .office-heading {
-  margin-bottom: 2.5mm;
-}
-
 .inventory-source-body {
   width: 180mm;
-  margin: 0 0 0 -5mm;
+  margin: 0;
   font-size: 8.5pt;
   line-height: 1.2;
 }
@@ -480,7 +277,7 @@ td.inventory-fit { display: table-cell; }
 .inventory-guardian-row { margin-top: 1mm; }
 .inventory-emergency-title { margin: 2mm 0 1mm; }
 .individual-inventory-page .controlled-form-metadata {
-  position: absolute; bottom: 0; left: -5mm; width: 170mm;
+  position: absolute; bottom: 0; left: 0; width: 180mm;
   margin: 0; padding: 0; border: 0;
 }
 
@@ -576,17 +373,22 @@ td.inventory-fit { display: table-cell; }
   line-height: 1.25;
 }
 
-.good-moral-signature-name {
-  margin-top: 1mm;
-  font-weight: 700;
-}
-
 .good-moral-signature-line {
-  height: 12mm;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  min-height: 12mm;
+  padding: 0 2mm 0.5mm;
   border-bottom: 0.25mm solid #111;
+  font-weight: 700;
+  overflow-wrap: anywhere;
 }
 
 .good-moral-receipt {
+  display: grid;
+  grid-template-columns: max-content minmax(30mm, 1fr);
+  gap: 0.7mm 1.5mm;
+  align-items: end;
   width: 72mm;
   margin-top: 8mm;
   line-height: 1.5;
@@ -602,8 +404,8 @@ td.inventory-fit { display: table-cell; }
 .official-form-title { margin: 0 0 7mm; text-align: center; font-size: 13pt; letter-spacing: 0.2mm; }
 .document-state-banner { margin: 0 auto 4mm; padding: 1.5mm 4mm; border: 0.5mm solid #111; text-align: center; font-weight: 700; letter-spacing: 0.8mm; }
 .document-state-banner.subtle { border-width: 0.25mm; font-size: 8.5pt; }
-.official-form-grid { display: grid; grid-template-columns: 38mm 1fr; gap: 2mm 4mm; align-items: end; margin-bottom: 4mm; }
-.official-form-grid.compact { grid-template-columns: 22mm 1fr; margin-bottom: 2mm; }
+.official-form-grid { display: grid; grid-template-columns: 38mm minmax(0, 1fr); gap: 2mm 4mm; align-items: end; margin-bottom: 4mm; }
+.official-form-grid.compact { grid-template-columns: 22mm minmax(0, 1fr); margin-bottom: 2mm; }
 .official-form-label { font-weight: 600; }
 .official-form-value { min-height: 5mm; padding: 0 1mm 0.5mm; border-bottom: 0.25mm solid #333; }
 .official-form-section { margin: 5mm 0; }
@@ -622,3 +424,36 @@ td.inventory-fit { display: table-cell; }
 .call-slip-instruction { margin: 6mm auto; max-width: 155mm; text-align: center; font-style: italic; }
 .status-row { margin-top: 5mm; }
 .void-reason { margin-top: 4mm; padding: 2mm; border: 0.25mm solid #777; }
+
+/* Keep long values inside the body and signature groups intact. */
+.official-form-value,
+.official-form-long-text,
+.official-form-table td,
+.call-slip-destination {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.good-moral-field {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  vertical-align: bottom;
+}
+
+.signature-block,
+.good-moral-signature,
+.good-moral-receipt {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+.good-moral-receipt-value {
+  display: inline-block;
+  min-width: 30mm;
+  max-width: 100%;
+  min-height: 4mm;
+  padding: 0 1mm;
+  border-bottom: 0.25mm solid #111;
+  vertical-align: bottom;
+  overflow-wrap: anywhere;
+}

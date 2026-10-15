@@ -17,11 +17,11 @@ from playwright.sync_api import Error as PlaywrightError
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 from playwright.sync_api import sync_playwright
 from pypdf import PdfReader, PdfWriter
+from pypdf.errors import PdfReadError
 
 from compass.common.correlation import get_current_request_id
 
 from .assets import DocumentAssetError, get_document_assets, get_print_css
-from .services import get_document_branding
 from .template_specs import (
     DocumentTemplateSpec,
     UnknownDocumentTemplate,
@@ -57,44 +57,57 @@ def _safe_template_spec(key: str, version: int) -> DocumentTemplateSpec:
         raise DocumentTemplateError("The requested document template is not available.") from exc
 
 
-def _page_footer_template(label: str | None = None) -> str:
-    if not label:
-        return (
-            '<div style="width:100%;font-family:Arial,Helvetica,sans-serif;'
-            'font-size:8px;color:#333;padding:0 7mm;">'
-            '<div style="text-align:right;margin-top:2mm;">'
-            'Page <span class="pageNumber"></span> of <span class="totalPages"></span>'
-            "</div></div>"
-        )
+def _page_footer_template(
+    controlled_form: dict[str, Any], *, label: str | None, show_page_numbers: bool
+) -> str:
+    # Identity comes from the consumer's authorized current/historical Form Revision.
+    identity = []
+    if controlled_form.get("official_code"):
+        identity.append(f"<strong>{escape(str(controlled_form['official_code']))}</strong>")
+    if controlled_form.get("official_revision") not in (None, ""):
+        revision = escape(str(controlled_form["official_revision"]))
+        identity.append(f"Revision: {revision}")
+    left = "<br>".join(identity) if identity else escape(str(label or ""))
+    pagination = (
+        'Page <span class="pageNumber"></span> of <span class="totalPages"></span>'
+        if show_page_numbers
+        else ""
+    )
+    font_size = "10px" if identity else "8px"
     return (
         '<div style="width:100%;font-family:Arial,Helvetica,sans-serif;'
-        "font-size:8px;color:#333;padding:0 7mm;display:flex;"
-        'justify-content:space-between;gap:6mm;margin-top:2mm;">'
-        f"<div>{escape(label)}</div>"
-        '<div style="white-space:nowrap;">Page <span class="pageNumber"></span> of '
-        '<span class="totalPages"></span></div></div>'
+        f"font-size:{font_size};color:#333;padding:0 9mm;display:flex;"
+        'justify-content:space-between;align-items:flex-end;gap:6mm;line-height:1.2;">'
+        f'<div>{left}</div><div style="white-space:nowrap">{pagination}</div></div>'
     )
 
 
-def _referral_footer_template(controlled_form: dict[str, Any]) -> str:
-    code = escape(str(controlled_form.get("official_code") or ""))
-    revision = escape(str(controlled_form.get("official_revision") or ""))
+def _page_artwork_html(assets: dict[str, str | None]) -> str:
+    """One A4 overlay, shared by every page including source-paged Inventory.
+
+    Extend the existing report overlay path for images and use Chromium's native
+    page counters for metadata. Page margins reserve space for both.
+    """
+    footer = (
+        f'<img class="recognition" src="{assets["accreditation_footer"]}">'
+        if assets["accreditation_footer"]
+        else ""
+    )
     return (
-        '<div style="width:100%;font-family:Arial,Helvetica,sans-serif;'
-        "font-size:8px;color:#333;padding:0 25mm;display:flex;"
-        'justify-content:space-between;align-items:flex-end;">'
-        f"<div><strong>{code}</strong><br>Revision: {revision}</div>"
-        '<div>Page <span class="pageNumber"></span> of '
-        '<span class="totalPages"></span></div></div>'
+        "<style>@page{size:A4;margin:0}body{margin:0}"
+        "img{position:absolute;left:0;width:210mm;height:auto;display:block}"
+        ".masthead{top:5mm}.recognition{bottom:14mm}</style>"
+        f'<img class="masthead" src="{assets["institution_header"]}">{footer}'
     )
 
 
-def _repeat_accreditation_footer(pdf_bytes: bytes, overlay_bytes: bytes) -> bytes:
+def _repeat_page_artwork(pdf_bytes: bytes, overlay_bytes: bytes) -> bytes:
     overlay = PdfReader(BytesIO(overlay_bytes)).pages[0]
     writer = PdfWriter()
     for page in PdfReader(BytesIO(pdf_bytes)).pages:
-        page.merge_page(deepcopy(overlay))
-        writer.add_page(page)
+        # Keep extractable body/metadata text after the image-only overlay stream.
+        output_page = writer.add_page(page)
+        output_page.merge_page(deepcopy(overlay), over=False)
     output = BytesIO()
     writer.write(output)
     return output.getvalue()
@@ -107,7 +120,6 @@ def render_document_html(
     context: dict[str, Any] | None = None,
 ) -> tuple[str, DocumentTemplateSpec]:
     spec = _safe_template_spec(template_key, template_version)
-    branding = get_document_branding()
     try:
         assets = get_document_assets(include_accreditation_footer=spec.include_accreditation_footer)
         print_css = get_print_css()
@@ -116,7 +128,6 @@ def render_document_html(
 
     caller_context = dict(context or {})
     reserved = {
-        "document_branding": branding,
         "document_assets": assets,
         "document_print_css": mark_safe(print_css),
         "document_template_spec": spec,
@@ -138,27 +149,20 @@ def render_document_pdf(
     context: dict[str, Any] | None = None,
 ) -> DocumentRenderResult:
     pdf_context = dict(context or {})
-    if template_key in {"student_profiling_report", "referral_slip"}:
-        pdf_context["document_pdf_footer"] = True
+    pdf_context["document_pdf_shell"] = True
     html, spec = render_document_html(
         template_key,
         template_version,
         context=pdf_context,
     )
-    show_report_pagination = spec.show_page_numbers and not (context or {}).get("controlled_form")
-    show_referral_pagination = spec.key == "referral_slip"
+    controlled_form = (context or {}).get("controlled_form") or {}
+    show_page_numbers = spec.show_page_numbers
     timeout_ms = int(settings.DOCUMENT_RENDER_TIMEOUT_SECONDS * 1000)
     blocked_urls: list[str] = []
-    accreditation_uri = None
-    if spec.key == "student_profiling_report" and spec.include_accreditation_footer:
-        try:
-            accreditation_uri = get_document_assets(include_accreditation_footer=True)[
-                "accreditation_footer"
-            ]
-        except DocumentAssetError as exc:
-            raise DocumentTemplateError(
-                "Document presentation resources are not configured."
-            ) from exc
+    try:
+        assets = get_document_assets(include_accreditation_footer=spec.include_accreditation_footer)
+    except DocumentAssetError as exc:
+        raise DocumentTemplateError("Document presentation resources are not configured.") from exc
 
     with sync_playwright() as playwright:
         try:
@@ -391,12 +395,12 @@ def render_document_pdf(
                           probe.remove();
                           for (const section of pages) {
                             const body = section.querySelector('.inventory-source-body');
-                            const metadata = section.querySelector('.controlled-form-metadata');
+                            const pageBottom = section.getBoundingClientRect().bottom;
                             if (body.getBoundingClientRect().bottom >
-                                  metadata.getBoundingClientRect().top - 4) {
+                                  pageBottom - 4) {
                               return { ok: false, reason: 'page overflow',
                                 bodyBottom: body.getBoundingClientRect().bottom,
-                                metadataTop: metadata.getBoundingClientRect().top };
+                                pageBottom };
                             }
                           }
                           return { ok: true, truncatedFields };
@@ -425,16 +429,12 @@ def render_document_pdf(
                         format="A4",
                         print_background=True,
                         prefer_css_page_size=True,
-                        display_header_footer=show_report_pagination or show_referral_pagination,
+                        display_header_footer=True,
                         header_template="<span></span>",
-                        footer_template=(
-                            _referral_footer_template((context or {}).get("controlled_form") or {})
-                            if show_referral_pagination
-                            else _page_footer_template(
-                                (context or {}).get("document_pdf_footer_label")
-                            )
-                            if show_report_pagination
-                            else "<span></span>"
+                        footer_template=_page_footer_template(
+                            controlled_form,
+                            label=(context or {}).get("document_pdf_footer_label"),
+                            show_page_numbers=show_page_numbers,
                         ),
                     )
                 except PlaywrightError as exc:
@@ -445,28 +445,22 @@ def render_document_pdf(
                             raise DocumentRenderError(
                                 "The Individual Inventory PDF did not fit exactly three pages."
                             )
-                    except ValueError as exc:
+                    except (ValueError, PdfReadError) as exc:
                         raise DocumentRenderError(
                             "Chromium returned an invalid Individual Inventory PDF."
                         ) from exc
-                if accreditation_uri:
-                    overlay_html = (
-                        "<style>@page{size:A4;margin:0}body{margin:0}"
-                        ".recognition{position:absolute;left:7mm;bottom:16mm;"
-                        "width:196mm;border-top:0.75mm solid #750000;padding-top:1mm}"
-                        ".recognition img{display:block;width:100%;height:12mm}</style>"
-                        f'<div class="recognition"><img src="{accreditation_uri}"></div>'
+                try:
+                    page.set_content(
+                        _page_artwork_html(assets), wait_until="load", timeout=timeout_ms
                     )
-                    page.set_content(overlay_html, wait_until="load", timeout=timeout_ms)
-                    try:
-                        overlay_bytes = page.pdf(
-                            format="A4", print_background=True, prefer_css_page_size=True
-                        )
-                        pdf_bytes = _repeat_accreditation_footer(pdf_bytes, overlay_bytes)
-                    except (PlaywrightError, ValueError) as exc:
-                        raise DocumentRenderError(
-                            "The report recognition footer could not be placed."
-                        ) from exc
+                    overlay_bytes = page.pdf(
+                        format="A4", print_background=True, prefer_css_page_size=True
+                    )
+                    pdf_bytes = _repeat_page_artwork(pdf_bytes, overlay_bytes)
+                except (PlaywrightError, ValueError, PdfReadError) as exc:
+                    raise DocumentRenderError(
+                        "The institutional page artwork could not be placed."
+                    ) from exc
             finally:
                 browser_context.close()
         finally:

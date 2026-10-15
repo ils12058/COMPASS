@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import replace
 from io import BytesIO
 from unittest.mock import patch
@@ -78,10 +79,11 @@ def test_submitted_pdf_uses_saved_snapshots_and_all_source_rows(tmp_path):
         ("FACILITIES", "Facilities comment"),
     ]
     html, spec = render_document_html("exit_interview", 1, context=context)
-    assert spec.include_accreditation_footer is False
+    assert spec.include_accreditation_footer is True
     assert "Pride and confidence in being from CNSC" in html
     assert "SUGGESTIONS/RECOMMENDATIONS (if any):" in html
-    assert "N/A" not in html and "No opinion" not in html
+    visible_html = re.sub(r"data:image/png;base64,[A-Za-z0-9+/=]+", "", html)
+    assert "N/A" not in visible_html and "No opinion" not in visible_html
     assert '<span class="exit-selected">0</span>' in html
     assert "Changed Inventory Course" not in html
     assert "changed-account@example.edu" not in html
@@ -91,14 +93,15 @@ def test_submitted_pdf_uses_saved_snapshots_and_all_source_rows(tmp_path):
     assert pdf.startswith(b"%PDF-")
     (tmp_path / "submitted-exit-interview.pdf").write_bytes(pdf)
     pages = PdfReader(BytesIO(pdf)).pages
-    assert len(pages) == 2
+    # Repeated full-width branding reserves body space on every page.
+    assert len(pages) == 3
     assert all(round(float(page.mediabox.width)) == 595 for page in pages)
     assert all(round(float(page.mediabox.height)) == 842 for page in pages)
-    page_one, page_two = [page.extract_text() or "" for page in pages]
+    page_one, page_two, page_three = [page.extract_text() or "" for page in pages]
     assert "SELF-ASSESSMENT" in page_one
     assert "FEEDBACK TO THE COLLEGE" not in page_one
     assert "FEEDBACK TO THE COLLEGE" in page_two
-    assert "Suggestion" in page_two
+    assert "Suggestion" in page_three
     assert "Pride and confidence in being from CNSC" in page_one
     assert "Form Local Student" in page_one
 

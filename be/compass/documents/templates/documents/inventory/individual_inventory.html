@@ -1,6 +1,12 @@
 {% extends "documents/base.html" %}
 {% block title %}Individual Inventory{% endblock %}
 {% block document %}
+<style>
+  /* Keep the 180 mm source form and its ruled-table gutters inside the print box. */
+  @page { margin: 45mm 10mm 34mm; }
+  body.document { --document-body-margin: 15mm; }
+  .individual-inventory { margin: 0 5mm; }
+</style>
 <div class="individual-inventory">
   {% include "documents/inventory/page_one.html" %}
   {% include "documents/inventory/page_two.html" %}

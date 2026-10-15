@@ -1,0 +1,378 @@
+{
+  "key": "exit_interview",
+  "version": 1,
+  "context": {
+    "exit_form": {
+      "name": "Form Local Student",
+      "age": 22,
+      "civil_status": "Single",
+      "course": "BS Information Systems",
+      "major": "Information Systems",
+      "email": "form-local@example.edu",
+      "address": "Line 1\nLine 2",
+      "contact": "09171234567",
+      "completion": [
+        {
+          "label": "According to schedule",
+          "selected": true,
+          "code": "ACCORDING_TO_SCHEDULE"
+        },
+        {
+          "label": "With some delay",
+          "selected": false,
+          "code": "WITH_SOME_DELAY"
+        }
+      ],
+      "delayed": false,
+      "extra_terms": null,
+      "delay_reasons": [
+        {
+          "label": "Transferee",
+          "selected": false,
+          "code": "TRANSFEREE"
+        },
+        {
+          "label": "Academic Failures",
+          "selected": false,
+          "code": "ACADEMIC_FAILURES"
+        },
+        {
+          "label": "Others (pls. specify)",
+          "selected": false,
+          "code": "OTHER"
+        }
+      ],
+      "delay_other": "",
+      "learning": [
+        {
+          "label": "Independence",
+          "selected": true,
+          "code": "INDEPENDENCE"
+        },
+        {
+          "label": "Interpersonal Relations",
+          "selected": false,
+          "code": "INTERPERSONAL_RELATIONS"
+        },
+        {
+          "label": "Intellectual Growth",
+          "selected": false,
+          "code": "INTELLECTUAL_GROWTH"
+        },
+        {
+          "label": "Spiritual Growth",
+          "selected": false,
+          "code": "SPIRITUAL_GROWTH"
+        },
+        {
+          "label": "Responsibility",
+          "selected": false,
+          "code": "RESPONSIBILITY"
+        },
+        {
+          "label": "Working under pressure",
+          "selected": false,
+          "code": "WORKING_UNDER_PRESSURE"
+        },
+        {
+          "label": "Time Management",
+          "selected": true,
+          "code": "TIME_MANAGEMENT"
+        },
+        {
+          "label": "Setting priorities",
+          "selected": false,
+          "code": "SETTING_PRIORITIES"
+        },
+        {
+          "label": "Others, pls. specify",
+          "selected": false,
+          "code": "OTHER"
+        }
+      ],
+      "learning_other": "",
+      "career_modes": [
+        {
+          "label": "Work",
+          "selected": true,
+          "code": "WORK"
+        },
+        {
+          "label": "Study",
+          "selected": true,
+          "code": "STUDY"
+        }
+      ],
+      "work_choices": [
+        {
+          "label": "in a field related to my course",
+          "selected": true,
+          "code": "RELATED_FIELD"
+        },
+        {
+          "label": "in a field unrelated to my course",
+          "selected": false,
+          "code": "UNRELATED_FIELD"
+        },
+        {
+          "label": "work in a family business",
+          "selected": false,
+          "code": "FAMILY_BUSINESS"
+        },
+        {
+          "label": "set up my own business",
+          "selected": false,
+          "code": "OWN_BUSINESS"
+        },
+        {
+          "label": "work abroad",
+          "selected": false,
+          "code": "WORK_ABROAD"
+        },
+        {
+          "label": "no definite career plan yet",
+          "selected": false,
+          "code": "NO_DEFINITE_PLAN"
+        }
+      ],
+      "study_choices": [
+        {
+          "label": "in a field related to my course",
+          "selected": true,
+          "code": "RELATED_FIELD"
+        },
+        {
+          "label": "in a field unrelated to my course",
+          "selected": false,
+          "code": "UNRELATED_FIELD"
+        }
+      ],
+      "self_rows": [
+        {
+          "label": "Pride and confidence in being from CNSC",
+          "rating": 5
+        },
+        {
+          "label": "Ability to maintain balance between academics & recreational activities",
+          "rating": 5
+        },
+        {
+          "label": "Awareness of the importance of holistic personal well-being",
+          "rating": 5
+        },
+        {
+          "label": "Ability to integrate knowledge with experience",
+          "rating": 5
+        },
+        {
+          "label": "Clarity of career goals",
+          "rating": 5
+        },
+        {
+          "label": "Self Esteem",
+          "rating": 5
+        },
+        {
+          "label": "Self-Awareness",
+          "rating": 5
+        },
+        {
+          "label": "Ability to cope with pressures",
+          "rating": 5
+        },
+        {
+          "label": "Ability to deal comfortably with people from different walks of life",
+          "rating": 5
+        },
+        {
+          "label": "Leadership",
+          "rating": 5
+        },
+        {
+          "label": "Communication Skills",
+          "rating": 5
+        },
+        {
+          "label": "Civic Mindedness",
+          "rating": 5
+        },
+        {
+          "label": "Initiative",
+          "rating": 5
+        },
+        {
+          "label": "Decision Making",
+          "rating": 5
+        },
+        {
+          "label": "Relationship with God",
+          "rating": 5
+        }
+      ],
+      "categories": [
+        {
+          "label": "DEAN",
+          "rows": [
+            {
+              "label": "Availability",
+              "rating": 0
+            },
+            {
+              "label": "Open Mindedness",
+              "rating": 5
+            },
+            {
+              "label": "Concern for Students",
+              "rating": 5
+            },
+            {
+              "label": "Commitment",
+              "rating": 5
+            },
+            {
+              "label": "Approachability",
+              "rating": 5
+            }
+          ],
+          "comments": "Dean comment"
+        },
+        {
+          "label": "PROG CHAIR",
+          "rows": [
+            {
+              "label": "Availability",
+              "rating": 5
+            },
+            {
+              "label": "Approachability",
+              "rating": 5
+            },
+            {
+              "label": "Concern for Students",
+              "rating": 5
+            }
+          ],
+          "comments": "Program Chair comment"
+        },
+        {
+          "label": "FACULTY",
+          "rows": [
+            {
+              "label": "Availability",
+              "rating": 5
+            },
+            {
+              "label": "Approachability",
+              "rating": 5
+            },
+            {
+              "label": "Knowledge of subject matter",
+              "rating": 5
+            },
+            {
+              "label": "Teaching Skills",
+              "rating": 5
+            }
+          ],
+          "comments": "Faculty comment"
+        },
+        {
+          "label": "CURRICULUM",
+          "rows": [
+            {
+              "label": "Relevance of subjects",
+              "rating": 5
+            },
+            {
+              "label": "Systematic Sequencing of Subjects",
+              "rating": 5
+            },
+            {
+              "label": "Completeness",
+              "rating": 5
+            }
+          ],
+          "comments": "Curriculum comment"
+        },
+        {
+          "label": "GUIDANCE COUNSELOR",
+          "rows": [
+            {
+              "label": "Availability",
+              "rating": 5
+            },
+            {
+              "label": "Approachability",
+              "rating": 5
+            },
+            {
+              "label": "Concern for Students",
+              "rating": 5
+            },
+            {
+              "label": "Efficiency",
+              "rating": 5
+            }
+          ],
+          "comments": "Guidance comment"
+        },
+        {
+          "label": "OFFICE STAFF",
+          "rows": [
+            {
+              "label": "Service Oriented",
+              "rating": 5
+            },
+            {
+              "label": "Availability",
+              "rating": 5
+            },
+            {
+              "label": "Concern for Students",
+              "rating": 5
+            },
+            {
+              "label": "Approachability",
+              "rating": 5
+            }
+          ],
+          "comments": "Office Staff comment"
+        },
+        {
+          "label": "FACILITIES",
+          "rows": [
+            {
+              "label": "Maintenance and Condition",
+              "rating": 5
+            },
+            {
+              "label": "Availability",
+              "rating": 5
+            },
+            {
+              "label": "Completeness",
+              "rating": 5
+            }
+          ],
+          "comments": "Facilities comment"
+        }
+      ],
+      "suggestions": "Suggestion"
+    },
+    "self_scale": [
+      5,
+      4,
+      3,
+      2,
+      1
+    ],
+    "college_scale": [
+      5,
+      4,
+      3,
+      2,
+      1,
+      0
+    ]
+  }
+}

@@ -143,9 +143,9 @@ def test_call_slip_pdf_instruction_matches_saved_destination_and_release_policy(
             r"\s+", " ", "\n".join(page.extract_text() for page in PdfReader(BytesIO(pdf)).pages)
         )
         assert expected_destination in text
-        assert saved_student in text and saved_issuer in text
+        assert saved_student in text and saved_issuer.upper() in text
         assert student.get_full_name() not in text
-        assert head.get_full_name() not in text
+        assert head.get_full_name().upper() not in text
         assert "CNSC-OP-GTA-01F8" in text and "Revision: 0" in text
         if destination_type == "OTHER":
             assert "Guidance Counselor's Office" not in text

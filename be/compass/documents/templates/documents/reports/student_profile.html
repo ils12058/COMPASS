@@ -4,18 +4,10 @@
 <style>
   @page {
     size: A4 portrait;
-    /* Reserve the repeated recognition strip and the page footer on every page. */
-    margin: 12mm 7mm 34mm;
+    margin: 45mm 18mm 34mm;
   }
 
-  /* Tables need the width; the masthead keeps its own proportions. */
-  body.document {
-    padding: 0 11mm;
-  }
-
-  .office-heading {
-    margin-bottom: 5mm;
-  }
+  body.document { --document-body-margin: 18mm; }
 
   .sp-report {
     font-size: 9pt;

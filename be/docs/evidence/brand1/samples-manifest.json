@@ -1,0 +1,82 @@
+[
+  {
+    "sample": "call_slip-long-values",
+    "pages": 1,
+    "bytes": 1662979
+  },
+  {
+    "sample": "call_slip",
+    "pages": 1,
+    "bytes": 1656563
+  },
+  {
+    "sample": "exit-long-comments",
+    "pages": 5,
+    "bytes": 1899814
+  },
+  {
+    "sample": "exit_interview",
+    "pages": 3,
+    "bytes": 1837827
+  },
+  {
+    "sample": "foundation_test",
+    "pages": 4,
+    "bytes": 1820970
+  },
+  {
+    "sample": "foundation_test_no_footer",
+    "pages": 4,
+    "bytes": 923535
+  },
+  {
+    "sample": "good_moral_current_student-long-values",
+    "pages": 1,
+    "bytes": 1638034
+  },
+  {
+    "sample": "good_moral_current_student",
+    "pages": 1,
+    "bytes": 1632048
+  },
+  {
+    "sample": "good_moral_graduate-long-values",
+    "pages": 1,
+    "bytes": 1635806
+  },
+  {
+    "sample": "good_moral_graduate",
+    "pages": 1,
+    "bytes": 1630828
+  },
+  {
+    "sample": "individual_inventory",
+    "pages": 3,
+    "bytes": 1970583
+  },
+  {
+    "sample": "inventory-long-narrative",
+    "pages": 3,
+    "bytes": 1990784
+  },
+  {
+    "sample": "inventory-long-school",
+    "pages": 3,
+    "bytes": 1983369
+  },
+  {
+    "sample": "referral-long-content",
+    "pages": 5,
+    "bytes": 1889347
+  },
+  {
+    "sample": "referral_slip",
+    "pages": 1,
+    "bytes": 1656501
+  },
+  {
+    "sample": "student_profiling_report",
+    "pages": 42,
+    "bytes": 2979369
+  }
+]

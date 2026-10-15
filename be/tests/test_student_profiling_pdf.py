@@ -574,7 +574,7 @@ def test_rendered_html_is_table_first_with_branding_overview_and_numbered_tables
     assert spec.include_accreditation_footer is True
     assert spec.show_page_numbers is True
     assert "University of Camarines Norte" in html
-    assert "Guidance and Counseling Office" in html
+    assert "Guidance and Counselling Office" in html
     assert "STUDENT PROFILE REPORT" in html
     assert "Individual Inventory-Based Student Profiling" in html
     for heading in (
@@ -640,7 +640,7 @@ def test_template_is_portrait_local_without_continuation_markers():
 
     good_moral = get_template_spec("good_moral_current_student", 1)
     assert good_moral.layout_family is LayoutFamily.CERTIFICATE
-    assert good_moral.show_page_numbers is False
+    assert good_moral.show_page_numbers is True
 
 
 def test_overall_tables_print_canonical_counts_total_row_and_omit_zero_legacy():

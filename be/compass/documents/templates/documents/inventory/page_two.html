@@ -1,6 +1,5 @@
 <section class="individual-inventory-page inventory-page-two">
   {% include "documents/partials/institution_masthead.html" %}
-  {% include "documents/partials/office_heading.html" %}
   <main class="inventory-source-body">
     <p class="inventory-sibling-instruction">Please name below your siblings form eldest to youngest, include yourself. Put X opposite your name, if married, please provide the information called for using the same table below.</p>
     <table class="inventory-sibling-table">
@@ -60,5 +59,6 @@
     <div class="inventory-row inventory-contact-row"><span>Course currently enrolled</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.course }}</span></span><span>Major</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.major }}</span></span></div>
     <div class="inventory-row inventory-schedule-row"><span>Are you satisfied with your present schedule?</span><span><span class="inventory-checkbox">{% if inventory_form.schedule_satisfied == True %}<span class="generated-value">X</span>{% endif %}</span> Yes &nbsp;&nbsp; <span class="inventory-checkbox">{% if inventory_form.schedule_satisfied == False %}<span class="generated-value">X</span>{% endif %}</span> No</span><span>Why?</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.schedule_why }}</span></span></div>
   </main>
+  {% include "documents/partials/accreditation_footer.html" %}
   {% include "documents/partials/controlled_form_metadata.html" with page_label="Page 2 of 3" %}
 </section>

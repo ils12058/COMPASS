@@ -1,0 +1,25 @@
+{
+  "key": "referral_slip",
+  "version": 1,
+  "context": {
+    "referral": {
+      "student_name": "Historical Student",
+      "course_year_block": "BSIS 4A",
+      "reason": "STARTREASON short ENDREASON",
+      "referrer_name": "Source Referrer",
+      "reference_code": "REF-2026-001",
+      "actions": [
+        {
+          "label": "Call the Parent/Guardian",
+          "recorded": true,
+          "remarks": "STARTREMARKS short ENDREMARKS"
+        }
+      ],
+      "status_note": "SAVED-STATUS-MARKER"
+    },
+    "controlled_form": {
+      "official_code": "CNSC-OP-GTA-01F9",
+      "official_revision": "1"
+    }
+  }
+}
