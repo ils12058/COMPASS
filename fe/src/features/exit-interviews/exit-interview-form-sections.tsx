@@ -1,3 +1,4 @@
+import { exitInterviewTextLimits } from "@/features/exit-interviews/exit-interview-field-limits";
 import type {
   CareerModeValue,
   DelayReasonValue,
@@ -66,6 +67,18 @@ export function exitRatingRowId(matrixId: ExitRatingMatrixId, code: string): str
   return `exit-rating-${matrixId}-${code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
 }
 
+function FieldLimit({ id, value, maximum }: { id: string; value: string; maximum?: number }) {
+  if (maximum === undefined) return null;
+  const reached = value.length >= maximum;
+  return (
+    <p id={`${id}-limit`} aria-live="polite" className={reached ? "mt-1.5 text-xs leading-5 text-muted" : "sr-only"}>
+      {value.length > maximum
+        ? `This answer is longer than ${maximum.toLocaleString("en-US")} characters. It’s kept in full here. Shorten it before saving.`
+        : reached ? `You’ve reached the ${maximum.toLocaleString("en-US")}-character limit.` : ""}
+    </p>
+  );
+}
+
 function FormField({
   id,
   label,
@@ -78,6 +91,7 @@ function FormField({
   required = false,
   error,
   hint,
+  maxLength,
 }: {
   id: string;
   label: string;
@@ -90,10 +104,12 @@ function FormField({
   required?: boolean;
   error?: string;
   hint?: string;
+  maxLength?: number;
 }) {
   const errorId = error ? `${id}-error` : undefined;
   const hintId = hint ? `${id}-hint` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+  const limitId = maxLength !== undefined && value.length >= maxLength ? `${id}-limit` : undefined;
+  const describedBy = [hintId, limitId, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -107,6 +123,7 @@ function FormField({
         value={value}
         min={min}
         max={max}
+        maxLength={maxLength}
         step={type === "number" ? 1 : undefined}
         required={required}
         aria-invalid={error ? true : undefined}
@@ -114,6 +131,7 @@ function FormField({
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
       />
+      <FieldLimit id={id} value={value} maximum={maxLength} />
       {hint ? <p id={hintId} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
       {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
@@ -128,6 +146,7 @@ function FormTextArea({
   onChange,
   required = false,
   error,
+  maxLength,
 }: {
   id: string;
   label: string;
@@ -136,8 +155,11 @@ function FormTextArea({
   onChange: (value: string) => void;
   required?: boolean;
   error?: string;
+  maxLength?: number;
 }) {
   const errorId = error ? `${id}-error` : undefined;
+  const limitId = maxLength !== undefined && value.length >= maxLength ? `${id}-limit` : undefined;
+  const describedBy = [limitId, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -148,12 +170,14 @@ function FormTextArea({
         id={id}
         className="mt-2 min-h-24"
         value={value}
+        maxLength={maxLength}
         required={required}
         aria-invalid={error ? true : undefined}
-        aria-describedby={errorId}
+        aria-describedby={describedBy}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
       />
+      <FieldLimit id={id} value={value} maximum={maxLength} />
       {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
   );
@@ -321,15 +345,15 @@ export function ExitInterviewFormSections({
           These values belong to this Exit Interview only. Changes here do not update your Account Profile or Individual Inventory.
         </p>
         <div className="mt-5 grid gap-x-6 gap-y-5 sm:grid-cols-2">
-          <FormField id="exit-student-name" label="Student name" value={form.studentName} disabled={disabled} onChange={(value) => onTextChange("studentName", value)} />
+          <FormField id="exit-student-name" maxLength={exitInterviewTextLimits.studentName} label="Student name" value={form.studentName} disabled={disabled} onChange={(value) => onTextChange("studentName", value)} />
           <FormField id="exit-age" label="Age" type="number" min={0} max={150} value={form.age} disabled={disabled} onChange={(value) => onTextChange("age", value)} />
-          <FormField id="exit-civil-status" label="Civil Status" value={form.civilStatus} disabled={disabled} onChange={(value) => onTextChange("civilStatus", value)} />
-          <FormField id="exit-course" label="Course" value={form.course} disabled={disabled} onChange={(value) => onTextChange("course", value)} />
-          <FormField id="exit-major" label="Major" value={form.major} disabled={disabled} onChange={(value) => onTextChange("major", value)} />
-          <FormField id="exit-email-address" label="Email Address" type="email" value={form.emailAddress} disabled={disabled} onChange={(value) => onTextChange("emailAddress", value)} />
-          <FormField id="exit-contact-number" label="Contact Number" type="tel" hint="For example, 0917 123 4567." value={form.contactNumber} disabled={disabled} onChange={(value) => onTextChange("contactNumber", value)} />
+          <FormField id="exit-civil-status" maxLength={exitInterviewTextLimits.civilStatus} label="Civil Status" value={form.civilStatus} disabled={disabled} onChange={(value) => onTextChange("civilStatus", value)} />
+          <FormField id="exit-course" maxLength={exitInterviewTextLimits.course} label="Course" value={form.course} disabled={disabled} onChange={(value) => onTextChange("course", value)} />
+          <FormField id="exit-major" maxLength={exitInterviewTextLimits.major} label="Major" value={form.major} disabled={disabled} onChange={(value) => onTextChange("major", value)} />
+          <FormField id="exit-email-address" maxLength={exitInterviewTextLimits.emailAddress} label="Email Address" type="email" value={form.emailAddress} disabled={disabled} onChange={(value) => onTextChange("emailAddress", value)} />
+          <FormField id="exit-contact-number" maxLength={exitInterviewTextLimits.contactNumber} label="Contact Number" type="tel" hint="For example, 0917 123 4567." value={form.contactNumber} disabled={disabled} onChange={(value) => onTextChange("contactNumber", value)} />
           <div className="sm:col-span-2">
-            <FormTextArea id="exit-home-address" label="Home Address" value={form.homeAddress} disabled={disabled} onChange={(value) => onTextChange("homeAddress", value)} />
+            <FormTextArea id="exit-home-address" maxLength={exitInterviewTextLimits.homeAddress} label="Home Address" value={form.homeAddress} disabled={disabled} onChange={(value) => onTextChange("homeAddress", value)} />
           </div>
         </div>
       </ExitInterviewSection>
@@ -373,7 +397,7 @@ export function ExitInterviewFormSections({
               </div>
             </fieldset>
             {hasDelayOther ? (
-              <FormTextArea id="exit-delay-other" label="Specify other reason" value={form.delayOther} required disabled={disabled} onChange={(value) => onTextChange("delayOther", value)} />
+              <FormTextArea id="exit-delay-other-detail" maxLength={exitInterviewTextLimits.delayOther} label="Specify other reason" value={form.delayOther} required disabled={disabled} onChange={(value) => onTextChange("delayOther", value)} />
             ) : null}
           </div>
         ) : null}
@@ -397,7 +421,7 @@ export function ExitInterviewFormSections({
           </fieldset>
           {hasLearningOther ? (
             <div className="mt-3 max-w-2xl">
-              <FormTextArea id="exit-learning-other" label="Specify other experience" value={form.significantLearningOther} required disabled={disabled} onChange={(value) => onTextChange("significantLearningOther", value)} />
+              <FormTextArea id="exit-learning-other-detail" maxLength={exitInterviewTextLimits.significantLearningOther} label="Specify other experience" value={form.significantLearningOther} required disabled={disabled} onChange={(value) => onTextChange("significantLearningOther", value)} />
             </div>
           ) : null}
         </div>
@@ -486,6 +510,7 @@ export function ExitInterviewFormSections({
             <div className="mt-4 max-w-3xl">
               <FormTextArea
                 id={`exit-comment-${category.commentKey}`}
+                maxLength={exitInterviewTextLimits[category.commentKey]}
                 label={category.commentLabel}
                 value={form[category.commentKey]}
                 disabled={disabled}
@@ -500,6 +525,7 @@ export function ExitInterviewFormSections({
         <div className="mt-4 max-w-3xl">
           <FormTextArea
             id="exit-suggestions-recommendations"
+            maxLength={exitInterviewTextLimits.suggestionsRecommendations}
             label="Suggestions / Recommendations"
             value={form.suggestionsRecommendations}
             disabled={disabled}
