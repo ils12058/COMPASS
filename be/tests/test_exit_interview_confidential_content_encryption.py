@@ -115,7 +115,7 @@ def safe(value, *extras):
 
 
 def payload_values():
-    values = valid_payload(feedback_zero=True)
+    values = valid_payload(feedback_zero=True, legacy=True)
     for name, value in asdict(PAYLOAD).items():
         logical = {
             "email_snapshot": "email_address",
@@ -135,6 +135,9 @@ def payload_values():
 def record(world, *, submitted=False):
     student = world["student"]
     item = services.ensure_my_current(student=student, context=AuditContext.user(student))
+    # Cover every legacy encrypted field, including the retired Program Chair comment.
+    item.form_revision = None
+    item.save(update_fields=["form_revision"])
     item = services.replace_my_current(
         student=student,
         values=api._payload_values(api.ExitInterviewDraftPayload(**payload_values())),
@@ -956,10 +959,12 @@ def test_forward_reverse_restores_exact_all_content_and_preserves_metadata_ratin
         exit_interview_id=items[0].pk, item_code="DEAN_AVAILABILITY", rating=0
     )
     before, counts = all_raw(), effects()
-    MigrationExecutor(connection).migrate(AFTER)
+    MigrationExecutor(connection).migrate([("exit_interviews", "0005_saved_form_revision")])
     for model, column, read in FAMILIES:
         for historical in before[model]:
             row = model.objects.get(pk=historical["id"])
+            if model is ExitInterview:
+                assert row.form_revision_id is None
             logical = read(row)
             expected = (
                 {name: historical[name] for name in content.CONTENT_LIMITS}
@@ -978,7 +983,9 @@ def test_forward_reverse_restores_exact_all_content_and_preserves_metadata_ratin
                 )
             }
             assert {
-                name: value for name, value in raw(model, row.pk).items() if name != column
+                name: value
+                for name, value in raw(model, row.pk).items()
+                if name not in {column, "form_revision_id"}
             } == ordinary
     assert rating_model.objects.get(pk=rating.pk).rating == 5
     assert feedback_model.objects.get(pk=feedback.pk).rating == 0
@@ -1036,7 +1043,7 @@ def test_phase_b_reconciles_old_release_changes_and_missing_late_rows_under_fenc
         note=NOTE,
     )
     assert model.objects.get(pk=late.pk).confidential_content_ciphertext is None
-    MigrationExecutor(connection).migrate(AFTER)
+    MigrationExecutor(connection).migrate([("exit_interviews", "0005_saved_form_revision")])
     assert all(
         content.read_exit_interview_confidential_content(row) == PAYLOAD
         for row in ExitInterview.objects.all()

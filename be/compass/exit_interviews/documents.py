@@ -11,6 +11,7 @@ from .confidential_content import (
     ExitInterviewConfidentialContent,
     read_exit_interview_confidential_content,
 )
+from .form_contract import college_feedback_codes
 from .models import (
     CareerMode,
     CollegeFeedbackItem,
@@ -56,15 +57,28 @@ def build_exit_interview_render_context(
     if item.status != ExitInterviewStatus.SUBMITTED:
         raise ExitInterviewNotSubmitted("Only submitted Exit Interviews have a downloadable PDF.")
 
+    try:
+        supported_codes = set(college_feedback_codes(item))
+    except ExitInterviewError as exc:
+        raise ExitInterviewDocumentUnavailable(str(exc)) from exc
+    revision = item.form_revision
     self_ratings = {row.item_code: row.rating for row in item.self_assessment_ratings.all()}
     college_ratings = {row.item_code: row.rating for row in item.college_feedback_ratings.all()}
+    if set(college_ratings) - supported_codes or (
+        revision is not None and content.program_chair_comments
+    ):
+        raise ExitInterviewDocumentUnavailable(
+            "The saved answers do not match the Exit Interview Form Revision."
+        )
     categories = []
     for label, comments_field, prefix in _FEEDBACK_CATEGORIES:
         rows = [
             {"label": item_label.split(" — ", 1)[1], "rating": college_ratings.get(code)}
             for code, item_label in CollegeFeedbackItem.choices
-            if code.startswith(prefix)
+            if code.startswith(prefix) and code in supported_codes
         ]
+        if not rows:
+            continue
         categories.append(
             {"label": label, "rows": rows, "comments": getattr(content, comments_field)}
         )
@@ -98,6 +112,12 @@ def build_exit_interview_render_context(
             "categories": categories,
             "suggestions": content.suggestions_recommendations,
         },
+        "controlled_form": {
+            "official_code": revision.official_code,
+            "official_revision": revision.official_revision,
+        }
+        if revision is not None
+        else {},
         "self_scale": (5, 4, 3, 2, 1),
         "college_scale": (5, 4, 3, 2, 1, 0),
     }
@@ -109,7 +129,11 @@ def render_exit_interview_pdf(item) -> bytes:
     content = read_exit_interview_confidential_content(item)
     context = build_exit_interview_render_context(item, content)
     try:
-        return render_document_pdf("exit_interview", 1, context=context).pdf_bytes
+        return render_document_pdf(
+            "exit_interview",
+            item.form_revision.internal_schema_version if item.form_revision_id is not None else 1,
+            context=context,
+        ).pdf_bytes
     except DocumentRenderError as exc:
         logger.warning(
             "Exit Interview PDF rendering failed.",

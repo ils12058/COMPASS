@@ -449,12 +449,11 @@ def test_good_moral_receipt_identity_and_revision_filters_keep_nullable_and_fami
 def test_customer_feedback_revision_filter_keeps_service_date_name_and_domain_authority():
     student = feedback.make_user("student@example.edu")
     client = feedback.auth_client(student)
-    first = feedback.post_json(
-        client, "/api/v1/feedback/customer-feedback", feedback.valid_f14_payload()
-    )
-    second = feedback.post_json(
-        client, "/api/v1/feedback/customer-feedback", feedback.valid_f14_payload()
-    )
+    payload = feedback.valid_f14_payload()
+    # Searching by a respondent name requires a name deliberately supplied under FB-1.
+    payload["respondent_name"] = "Feedback Respondent"
+    first = feedback.post_json(client, "/api/v1/feedback/customer-feedback", payload)
+    second = feedback.post_json(client, "/api/v1/feedback/customer-feedback", payload)
     assert first.status_code == second.status_code == 201
     old = historical_revision("customer_feedback")
     feedback.CustomerFeedbackResponse.objects.filter(pk=first.json()["id"]).update(

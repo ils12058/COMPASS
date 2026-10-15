@@ -105,9 +105,10 @@ def _repeat_page_artwork(pdf_bytes: bytes, overlay_bytes: bytes) -> bytes:
     overlay = PdfReader(BytesIO(overlay_bytes)).pages[0]
     writer = PdfWriter()
     for page in PdfReader(BytesIO(pdf_bytes)).pages:
-        # Keep extractable body/metadata text after the image-only overlay stream.
+        # Artwork occupies reserved margins. Paint above Chromium's opaque page background
+        # so continuation pages cannot hide the masthead and recognition footer.
         output_page = writer.add_page(page)
-        output_page.merge_page(deepcopy(overlay), over=False)
+        output_page.merge_page(deepcopy(overlay), over=True)
     output = BytesIO()
     writer.write(output)
     return output.getvalue()

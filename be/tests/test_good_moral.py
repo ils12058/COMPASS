@@ -761,10 +761,10 @@ def test_f4_issue_rechecks_current_lifecycle_and_duplicate_issue_is_idempotent()
     )
     assert issued.status == GoodMoralStatus.ISSUED
     assert issued.form_revision.family.key == "good_moral_current_student"
-    assert issued.form_revision.official_code == "CNSC-OP-GCO-01F4"
-    assert issued.form_revision.official_revision == "0"
+    assert issued.form_revision.official_code == "UCN-OP-GCO-01F4"
+    assert issued.form_revision.official_revision == "1"
     assert issued.document_template_key == "good_moral_current_student"
-    assert issued.document_template_version == 1
+    assert issued.document_template_version == 2
 
     issued_notification = Notification.objects.get(
         recipient=student,
@@ -1005,10 +1005,10 @@ def test_saved_render_provenance_drives_html_after_current_data_and_revision_cha
     assert "University of Camarines Norte" in html
     assert "GOOD MORAL CHARACTER" in html
     assert saved_name in html
-    assert saved_course in html
+    assert context["certificate"]["course"] == saved_course
     assert "Changed Course" not in html
-    assert "CNSC-OP-GCO-01F4" in html
-    assert "Revision: 0" in html
+    assert "UCN-OP-GCO-01F4" in html
+    assert "Revision: 1" in html
     assert "Page 1 of 1" in html
     assert saved_issuer.upper() in html
     assert counselor.get_full_name().upper() not in html
@@ -1911,3 +1911,31 @@ def test_unique_creation_digest_race_recovers_existing_resource_without_raw_inte
             context=AuditContext.user(student),
         )
     assert GoodMoralRequest.objects.filter(student=student).count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("graduate", [False, True])
+def test_legacy_certificate_reprint_preserves_saved_form_and_template(graduate):
+    sync_policy()
+    student = make_user(
+        "legacy-cert-student@example.edu",
+        lifecycle=StudentLifecycleStatus.GRADUATED if graduate else StudentLifecycleStatus.CURRENT,
+    )
+    counselor = make_user("legacy-cert-counselor@example.edu", role="COUNSELOR")
+    item = make_graduate_request(student) if graduate else make_current_request(student)[0]
+    issued = prepare_and_issue(
+        actor=counselor, request_id=item.pk, context=AuditContext.user(counselor)
+    )
+    legacy = FormRevision.objects.get(
+        family=issued.form_revision.family, official_code__startswith="CNSC-"
+    )
+    issued.form_revision = legacy
+    issued.document_template_version = 1
+    issued.save(update_fields=["form_revision", "document_template_version"])
+    sync_institutional_forms()
+    issued.refresh_from_db()
+    pages = PdfReader(BytesIO(render_certificate_pdf(issued))).pages
+    assert len(pages) == 1
+    assert legacy.official_code in pages[0].extract_text()
+    assert "Revision: 0" in pages[0].extract_text()
+    assert issued.form_revision_id == legacy.pk

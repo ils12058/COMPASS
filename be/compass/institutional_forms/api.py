@@ -18,6 +18,7 @@ from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     InstitutionalFormError,
     InstitutionalFormNotFound,
+    is_current_form_revision,
     is_supported_form_revision,
     list_form_families,
     list_form_revisions,
@@ -100,7 +101,7 @@ def _family(item) -> dict[str, object]:
     if active is not None:
         state = (
             FormFamilyConfigurationState.READY
-            if is_supported_form_revision(active)
+            if is_current_form_revision(active)
             else FormFamilyConfigurationState.ACTIVE_UNSUPPORTED
         )
     elif canonical.revision_required:

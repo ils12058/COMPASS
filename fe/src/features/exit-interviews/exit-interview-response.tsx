@@ -9,7 +9,7 @@ import {
   DELAY_REASONS,
   SELF_ASSESSMENT_ITEMS,
   SELF_ASSESSMENT_SCALE,
-  COLLEGE_FEEDBACK_CATEGORIES,
+  collegeFeedbackCategories,
   COLLEGE_FEEDBACK_SCALE,
   CAREER_MODES,
   SIGNIFICANT_LEARNING_CHOICES,
@@ -90,7 +90,7 @@ export function ExitInterviewResponse({
     detail.college_feedback_ratings.map((rating) => [rating.item_code, rating]),
   );
   const collegeRatingByCode = new Map(
-    COLLEGE_FEEDBACK_CATEGORIES.flatMap((category) =>
+    collegeFeedbackCategories(detail.college_feedback_item_codes).flatMap((category) =>
       category.items.map((item) => [item.code, feedbackRatings.get(item.code)] as const),
     ),
   );
@@ -173,7 +173,7 @@ export function ExitInterviewResponse({
       <ExitInterviewSection title="Section III — College Feedback" id="exit-interview-college-feedback">
         <p className="mt-2 text-sm leading-6 text-muted">5 — Highly Satisfactory; 4 — Satisfactory; 3 — Average; 2 — Unsatisfactory; 1 — Very Unsatisfactory.</p>
         <p className="mt-2 text-sm text-muted">The source form includes 0 as a response option but does not specify its meaning.</p>
-        {COLLEGE_FEEDBACK_CATEGORIES.map((category) => {
+        {collegeFeedbackCategories(detail.college_feedback_item_codes).map((category) => {
           const comment = detail[category.commentField];
           return (
             <section key={category.code} aria-labelledby={`exit-response-${category.code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="mt-6 border-t border-border pt-5">

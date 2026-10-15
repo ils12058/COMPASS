@@ -67,11 +67,10 @@ def test_submitted_pdf_uses_saved_snapshots_and_all_source_rows(tmp_path):
     assert form["email"] == "form-local@example.edu"
     assert form["course"] == "BS Information Systems"
     assert len(form["self_rows"]) == 15
-    assert sum(len(category["rows"]) for category in form["categories"]) == 26
+    assert sum(len(category["rows"]) for category in form["categories"]) == 23
     assert form["categories"][0]["rows"][0]["rating"] == 0
     assert [(category["label"], category["comments"]) for category in form["categories"]] == [
         ("DEAN", "Dean comment"),
-        ("PROG CHAIR", "Program Chair comment"),
         ("FACULTY", "Faculty comment"),
         ("CURRICULUM", "Curriculum comment"),
         ("GUIDANCE COUNSELOR", "Guidance comment"),
@@ -87,7 +86,10 @@ def test_submitted_pdf_uses_saved_snapshots_and_all_source_rows(tmp_path):
     assert '<span class="exit-selected">0</span>' in html
     assert "Changed Inventory Course" not in html
     assert "changed-account@example.edu" not in html
-    assert "CNSC-OP-GCO" not in html and "UCN-OP-GCO" not in html
+    assert context["controlled_form"] == {
+        "official_code": "UCN-OP-GCO-01F9",
+        "official_revision": "1",
+    }
 
     pdf = render_exit_interview_pdf(item)
     assert pdf.startswith(b"%PDF-")
@@ -267,3 +269,90 @@ def test_pdf_openapi_retains_binary_success_and_error_schemas():
             assert responses[str(status)]["content"]["application/json"]["schema"]["$ref"].endswith(
                 "/APIErrorResponse"
             )
+
+
+@pytest.mark.django_db
+def test_legacy_null_revision_retains_program_chair_answers_and_no_official_identity():
+    from compass.audit.context import AuditContext
+    from compass.exit_interviews.services import replace_my_current, submit_my_current
+    from compass.institutional_forms.bootstrap import sync_institutional_forms
+
+    student, _, item = _submitted()
+    # Simulate a submitted pre-cutover record with genuine, unlabelled provenance.
+    item.form_revision = None
+    item.status = ExitInterviewStatus.DRAFT
+    item.save(update_fields=["form_revision", "status"])
+    payload = valid_payload(legacy=True, feedback_zero=True)
+    from compass.exit_interviews.api import ExitInterviewDraftPayload, _payload_values
+
+    replace_my_current(
+        student=student, values=_payload_values(ExitInterviewDraftPayload(**payload))
+    )
+    item = submit_my_current(student=student, context=AuditContext.user(student))
+    sync_institutional_forms()
+    item.refresh_from_db()
+    assert item.form_revision_id is None
+    context = build_exit_interview_render_context(
+        item, read_exit_interview_confidential_content(item)
+    )
+    assert context["controlled_form"] == {}
+    assert len(context["exit_form"]["categories"]) == 7
+    assert sum(len(category["rows"]) for category in context["exit_form"]["categories"]) == 26
+    text = " ".join(
+        page.extract_text() for page in PdfReader(BytesIO(render_exit_interview_pdf(item))).pages
+    )
+    assert "Program Chair comment" in text
+    assert "UCN-OP-GCO-01F9" not in text
+
+
+@pytest.mark.django_db
+def test_ucn_pdf_retains_saved_identity_after_sync_and_rejects_unknown_revision():
+    from compass.exit_interviews.documents import ExitInterviewDocumentUnavailable
+    from compass.institutional_forms.bootstrap import sync_institutional_forms
+    from compass.institutional_forms.models import FormRevision
+
+    _, _, item = _submitted(feedback_zero=True)
+    saved = item.form_revision_id
+    sync_institutional_forms()
+    item.refresh_from_db()
+    assert item.form_revision_id == saved
+    pages = PdfReader(BytesIO(render_exit_interview_pdf(item))).pages
+    text = " ".join(page.extract_text() for page in pages)
+    assert all("UCN-OP-GCO-01F9" in page.extract_text() for page in pages)
+    assert "Revision: 1" in text
+    assert "PROG CHAIR" not in text
+    unknown = FormRevision.objects.create(
+        family=item.form_revision.family,
+        official_code="UCN-UNKNOWN",
+        official_revision="1",
+        internal_schema_version=2,
+        status="INACTIVE",
+    )
+    item.form_revision = unknown
+    with pytest.raises(ExitInterviewDocumentUnavailable, match="unsupported"):
+        render_exit_interview_pdf(item)
+
+
+@pytest.mark.django_db
+def test_ucn_contract_rejects_legacy_only_answers_without_silent_discard():
+    _, client, item = _submitted()
+    from compass.audit.context import AuditContext
+    from compass.exit_interviews.services import reopen_for_correction
+
+    head = make_head("ucn-correction-head@example.edu")
+    reopen_for_correction(
+        actor=head,
+        exit_interview_id=item.pk,
+        reason="Correct source responses",
+        context=AuditContext.user(head),
+    )
+    old_revision = item.form_revision_id
+    bad = put_api(client, valid_payload(legacy=True))
+    assert bad.status_code == 422
+    good = put_api(client, valid_payload(feedback_zero=True))
+    assert good.status_code == 200
+    assert len(good.json()["college_feedback_item_codes"]) == 23
+    assert submit_api(client).status_code == 200
+    item.refresh_from_db()
+    assert item.form_revision_id == old_revision
+    assert item.college_feedback_ratings.filter(rating=0).count() == 1

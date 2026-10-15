@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  COLLEGE_FEEDBACK_CATEGORIES,
+  collegeFeedbackCategories,
   COLLEGE_FEEDBACK_SCALE,
   DELAY_REASONS,
   SELF_ASSESSMENT_ITEMS,
@@ -464,7 +464,7 @@ export function ExitInterviewFormSections({
         <p className="mt-2 text-sm text-muted">
           The source form includes 0 as a response option but does not specify its meaning.
         </p>
-        {COLLEGE_FEEDBACK_CATEGORIES.map((category) => (
+        {collegeFeedbackCategories(form.collegeFeedbackItemCodes).map((category) => (
           <section key={category.code} aria-labelledby={`exit-feedback-${category.code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="mt-6 border-t border-border pt-5">
             <h3 id={`exit-feedback-${category.code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="font-semibold text-ink">{category.label}</h3>
             <RatingMatrix

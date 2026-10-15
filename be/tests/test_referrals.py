@@ -62,7 +62,7 @@ def ensure_referral_form_revision() -> None:
     )
     FormRevision.objects.get_or_create(
         family=family,
-        official_code="CNSC-OP-GTA-01F9",
+        official_code="UCN-OP-GCO-01F3",
         official_revision="1",
         defaults={
             "internal_schema_version": 1,
@@ -158,7 +158,7 @@ def test_referral_form_family_bootstraps_exact_historical_qms_identity():
     family = FormFamily.objects.get(key="referral_slip")
     revision = FormRevision.objects.get(
         family=family,
-        official_code="CNSC-OP-GTA-01F9",
+        official_code="UCN-OP-GCO-01F3",
         official_revision="1",
     )
     assert family.title == "Referral Slip"
@@ -389,7 +389,7 @@ def test_referral_pdf_keeps_source_identity_safe_filename_and_fail_closed_releas
     )
     assert saved_name in pdf_text
     assert student.get_full_name() not in pdf_text
-    assert "CNSC-OP-GTA-01F9" in pdf_text
+    assert "UCN-OP-GCO-01F3" in pdf_text
     assert "Revision: 1" in pdf_text
 
     url = f"/api/v1/referrals/{item.pk}/pdf"
@@ -768,7 +768,7 @@ def test_active_unsupported_form_revision_blocks_new_referrals_and_history_keeps
     FormRevision.objects.filter(family=family, status="ACTIVE").update(status="INACTIVE")
     unsupported = FormRevision.objects.create(
         family=family,
-        official_code="CNSC-OP-GTA-01F9",
+        official_code="UCN-OP-GCO-01F3",
         official_revision="future-unsupported",
         internal_schema_version=2,
         status="ACTIVE",
@@ -780,7 +780,7 @@ def test_active_unsupported_form_revision_blocks_new_referrals_and_history_keeps
     unsupported.refresh_from_db()
     replacement = FormRevision.objects.get(
         family=family,
-        official_code="CNSC-OP-GTA-01F9",
+        official_code="UCN-OP-GCO-01F3",
         official_revision="1",
         internal_schema_version=1,
     )
@@ -971,3 +971,30 @@ def test_head_referral_oversight_is_not_inherited_by_supervised_staff():
             get_referral(actor=staff, referral_id=item.pk)
     with pytest.raises(ReferralNotPermitted):
         create_for(staff, student_a, key="staff-denied", fingerprint="d" * 64)
+
+
+@pytest.mark.django_db
+def test_saved_legacy_referral_slip_identity_survives_sync_and_reprint():
+    from io import BytesIO
+
+    from pypdf import PdfReader
+
+    from compass.institutional_forms.bootstrap import sync_institutional_forms
+    from compass.referrals.services import render_referral_pdf
+
+    sync_policy()
+    actor, _, _, student, *_ = setup_scope()
+    item = create_for(actor, student, key="legacy-reprint", fingerprint="a" * 64)
+    legacy = FormRevision.objects.get(
+        family__key="referral_slip", official_code="CNSC-OP-GTA-01F9", official_revision="1"
+    )
+    item.form_revision = legacy
+    item.save(update_fields=["form_revision"])
+    sync_institutional_forms()
+    item.refresh_from_db()
+    assert item.form_revision_id == legacy.pk
+    text = " ".join(
+        page.extract_text() for page in PdfReader(BytesIO(render_referral_pdf(item))).pages
+    )
+    assert "CNSC-OP-GTA-01F9" in text
+    assert "Revision: 1" in text

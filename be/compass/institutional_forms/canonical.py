@@ -34,6 +34,12 @@ CANONICAL_FORM_FAMILIES = (
                 official_code="CNSC-OP-GCO-01F5",
                 official_revision="0",
                 internal_schema_version=1,
+                active=False,
+            ),
+            CanonicalFormRevision(
+                official_code="UCN-OP-GCO-01F5",
+                official_revision="1",
+                internal_schema_version=1,
                 active=True,
             ),
         ),
@@ -42,7 +48,14 @@ CANONICAL_FORM_FAMILIES = (
         key="routine_interview",
         title="Routine Interview Form",
         supported_schema_versions=frozenset({1}),
-        revision_required=False,
+        revisions=(
+            CanonicalFormRevision(
+                official_code="UCN-OP-GCO-01F7",
+                official_revision="1",
+                internal_schema_version=1,
+                active=True,
+            ),
+        ),
     ),
     CanonicalFormFamily(
         key="referral_slip",
@@ -51,6 +64,12 @@ CANONICAL_FORM_FAMILIES = (
         revisions=(
             CanonicalFormRevision(
                 official_code="CNSC-OP-GTA-01F9",
+                official_revision="1",
+                internal_schema_version=1,
+                active=False,
+            ),
+            CanonicalFormRevision(
+                official_code="UCN-OP-GCO-01F3",
                 official_revision="1",
                 internal_schema_version=1,
                 active=True,
@@ -66,6 +85,12 @@ CANONICAL_FORM_FAMILIES = (
                 official_code="CNSC-OP-GTA-01F8",
                 official_revision="0",
                 internal_schema_version=1,
+                active=False,
+            ),
+            CanonicalFormRevision(
+                official_code="UCN-OP-GCO-01F2",
+                official_revision="2",
+                internal_schema_version=1,
                 active=True,
             ),
         ),
@@ -78,6 +103,12 @@ CANONICAL_FORM_FAMILIES = (
             CanonicalFormRevision(
                 official_code="CNSC-OP-GCO-01F4",
                 official_revision="0",
+                internal_schema_version=1,
+                active=False,
+            ),
+            CanonicalFormRevision(
+                official_code="UCN-OP-GCO-01F4",
+                official_revision="1",
                 internal_schema_version=1,
                 active=True,
             ),
@@ -92,6 +123,25 @@ CANONICAL_FORM_FAMILIES = (
                 official_code="CNSC-OP-GCO-01F6",
                 official_revision="0",
                 internal_schema_version=1,
+                active=False,
+            ),
+            CanonicalFormRevision(
+                official_code="UCN-OP-GCO-01F6",
+                official_revision="1",
+                internal_schema_version=1,
+                active=True,
+            ),
+        ),
+    ),
+    CanonicalFormFamily(
+        key="exit_interview",
+        title="Exit Interview Form",
+        supported_schema_versions=frozenset({2}),
+        revisions=(
+            CanonicalFormRevision(
+                official_code="UCN-OP-GCO-01F9",
+                official_revision="1",
+                internal_schema_version=2,
                 active=True,
             ),
         ),
@@ -133,8 +183,10 @@ def _validate_registry() -> None:
                     f"canonical revision schema is not supported by its family: {family.key}"
                 )
             active_count += int(revision.active)
-        if active_count > 1:
-            raise RuntimeError(f"multiple active canonical revisions defined for {family.key}")
+        if active_count > 1 or (family.revision_required and active_count != 1):
+            raise RuntimeError(
+                f"invalid number of active canonical revisions defined for {family.key}"
+            )
 
 
 _validate_registry()

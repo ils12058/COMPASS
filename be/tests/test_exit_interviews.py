@@ -175,7 +175,7 @@ def csrf(client: Client) -> dict[str, str]:
     return {"HTTP_X_CSRFTOKEN": response.json()["csrf_token"]}
 
 
-def valid_payload(*, feedback_zero: bool = False) -> dict[str, object]:
+def valid_payload(*, feedback_zero: bool = False, legacy: bool = False) -> dict[str, object]:
     return {
         "student_name": "Form Local Student",
         "age": 22,
@@ -206,9 +206,10 @@ def valid_payload(*, feedback_zero: bool = False) -> dict[str, object]:
                 "rating": 0 if feedback_zero and index == 0 else 5,
             }
             for index, code in enumerate(CollegeFeedbackItem.values)
+            if legacy or not code.startswith("PROGRAM_CHAIR_")
         ],
         "dean_comments": "Dean comment",
-        "program_chair_comments": "Program Chair comment",
+        "program_chair_comments": "Program Chair comment" if legacy else "",
         "faculty_comments": "Faculty comment",
         "curriculum_comments": "Curriculum comment",
         "guidance_counselor_comments": "Guidance comment",
@@ -282,12 +283,12 @@ def test_source_schema_is_fixed_and_matches_inspected_two_page_form():
 @pytest.mark.django_db
 def test_exit_interview_models_are_domain_specific_and_have_no_qms_or_generic_engine():
     fields = {field.name for field in ExitInterview._meta.get_fields()}
-    assert "form_revision" not in fields
+    assert ExitInterview._meta.get_field("form_revision").null is True
     assert "reference_code" not in fields
     assert "interview_date" not in fields
     assert "form_date" not in fields
     assert "student_entered_date" not in fields
-    assert not FormFamily.objects.filter(key="exit_interview").exists()
+    assert FormFamily.objects.filter(key="exit_interview").exists()
 
     for name in (
         "GenericSurvey",
@@ -533,7 +534,7 @@ def test_full_put_edits_form_local_values_without_mutating_profile_or_inventory(
     assert body["student_name"] == "Form Local Student"
     assert body["course"] == "BS Information Systems"
     assert len(body["self_assessment_ratings"]) == 15
-    assert len(body["college_feedback_ratings"]) == 26
+    assert len(body["college_feedback_ratings"]) == 23
 
     student.refresh_from_db()
     inventory.refresh_from_db()
@@ -687,7 +688,7 @@ def test_student_draft_is_private_from_head_detail_but_visible_in_summary_list()
     assert mine.status_code == 200
     assert mine.json()["suggestions_recommendations"] == "Suggestion"
     assert len(mine.json()["self_assessment_ratings"]) == 15
-    assert len(mine.json()["college_feedback_ratings"]) == 26
+    assert len(mine.json()["college_feedback_ratings"]) == 23
 
     head_client = auth_client(make_head("draft-private-head@example.edu"))
     listing = head_client.get("/api/v1/exit-interviews")
@@ -1287,3 +1288,57 @@ def test_head_review_list_supports_identity_search_exact_student_filter_and_snap
     overlong = head.get("/api/v1/exit-interviews", {"search": "x" * 161})
     assert overlong.status_code == 422
     assert overlong.json()["error"]["code"] == "invalid_exit_interview_request"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_revision_migration_preserves_unlabelled_submitted_history_without_backfill():
+    from django.db import connection
+    from django.db.migrations.executor import MigrationExecutor
+
+    sync_policy()
+    student = make_user("pre-cutover-migration@example.edu")
+    year = make_year()
+    inventory = make_inventory(student, year, admit=False)
+    now = timezone.now()
+    draft = ExitInterview(student=student, academic_year=year, inventory=inventory)
+    write_exit_interview_confidential_content(
+        draft,
+        ExitInterviewConfidentialContent(
+            suggestions_recommendations="Preserve this historical response"
+        ),
+    )
+    before = [("exit_interviews", "0004_remove_plaintext_confidential_content")]
+    after = [("exit_interviews", "0005_saved_form_revision")]
+    executor = MigrationExecutor(connection)
+    executor.migrate(before)
+    try:
+        old = executor.loader.project_state(before).apps
+        row = old.get_model("exit_interviews", "ExitInterview").objects.create(
+            id=draft.pk,
+            student_id=student.pk,
+            academic_year_id=year.pk,
+            inventory_id=inventory.pk,
+            status="SUBMITTED",
+            first_submitted_at=now,
+            last_submitted_at=now,
+            student_name_snapshot="Historical Student",
+            confidential_content_ciphertext=draft.confidential_content_ciphertext,
+        )
+        Rating = old.get_model("exit_interviews", "ExitInterviewCollegeFeedbackRating")
+        Rating.objects.bulk_create(
+            [
+                Rating(exit_interview_id=row.pk, item_code=code, rating=0)
+                for code in CollegeFeedbackItem.values
+            ]
+        )
+        MigrationExecutor(connection).migrate(after)
+        saved = ExitInterview.objects.get(pk=row.pk)
+        assert saved.form_revision_id is None
+        assert saved.status == "SUBMITTED"
+        assert saved.first_submitted_at == now and saved.last_submitted_at == now
+        assert saved.confidential_content_ciphertext == draft.confidential_content_ciphertext
+        assert saved.student_name_snapshot == "Historical Student"
+        assert saved.college_feedback_ratings.count() == 26
+        assert saved.college_feedback_ratings.filter(rating=0).count() == 26
+    finally:
+        MigrationExecutor(connection).migrate(after)

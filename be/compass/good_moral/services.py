@@ -49,6 +49,7 @@ from compass.institutional_forms.filter_options import represented_form_revision
 from compass.institutional_forms.models import FormRevision
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
+    is_supported_form_revision,
     require_active_supported_form_revision,
 )
 from compass.inventory.services import (
@@ -1005,6 +1006,11 @@ def issue_request(
             ) from exc
 
         template_key, template_version = _template_for_variant(item.variant)
+        if (
+            family_key == "good_moral_current_student"
+            and revision.official_code == "UCN-OP-GCO-01F4"
+        ):
+            template_version = 2
         try:
             spec = get_template_spec(template_key, template_version)
         except UnknownDocumentTemplate as exc:
@@ -1169,6 +1175,16 @@ def build_certificate_render_context(item: GoodMoralRequest) -> dict[str, object
         or item.document_template_version is None
     ):
         raise GoodMoralConfigurationConflict("Issued Good Moral provenance is incomplete.")
+
+    expected_family = (
+        "good_moral_current_student"
+        if item.variant == GoodMoralVariant.CURRENT_STUDENT
+        else "good_moral_graduate"
+    )
+    if item.form_revision.family.key != expected_family or not is_supported_form_revision(
+        item.form_revision
+    ):
+        raise GoodMoralDocumentUnavailable("The saved Good Moral form identity is unsupported.")
 
     year_level = item.year_level_snapshot
     college = item.college_snapshot

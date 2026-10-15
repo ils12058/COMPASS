@@ -86,60 +86,42 @@ def csrf(client: Client) -> dict[str, str]:
 @pytest.mark.django_db
 def test_canonical_registry_preserves_exact_confirmed_controlled_form_identities():
     expected = {
-        "individual_inventory": (
-            "Individual Inventory",
-            frozenset({1}),
-            (("CNSC-OP-GCO-01F5", "0", 1, True),),
-        ),
-        "routine_interview": ("Routine Interview Form", frozenset({1}), ()),
-        "referral_slip": (
-            "Referral Slip",
-            frozenset({1}),
-            (("CNSC-OP-GTA-01F9", "1", 1, True),),
-        ),
-        "call_slip": (
-            "Interview Permit / Call Slip",
-            frozenset({1}),
-            (("CNSC-OP-GTA-01F8", "0", 1, True),),
-        ),
-        "good_moral_current_student": (
-            "Good Moral Character — Current Student",
-            frozenset({1}),
-            (("CNSC-OP-GCO-01F4", "0", 1, True),),
-        ),
-        "good_moral_graduate": (
-            "Good Moral Character — Graduate",
-            frozenset({1}),
-            (("CNSC-OP-GCO-01F6", "0", 1, True),),
-        ),
-        "customer_feedback": (
-            "Customer Feedback Form",
-            frozenset({1}),
-            (("CNSC-OP-GTA-01F14", "0", 1, True),),
-        ),
+        "individual_inventory": ("UCN-OP-GCO-01F5", "1", 1),
+        "routine_interview": ("UCN-OP-GCO-01F7", "1", 1),
+        "referral_slip": ("UCN-OP-GCO-01F3", "1", 1),
+        "call_slip": ("UCN-OP-GCO-01F2", "2", 1),
+        "good_moral_current_student": ("UCN-OP-GCO-01F4", "1", 1),
+        "good_moral_graduate": ("UCN-OP-GCO-01F6", "1", 1),
+        "exit_interview": ("UCN-OP-GCO-01F9", "1", 2),
+        "customer_feedback": ("CNSC-OP-GTA-01F14", "0", 1),
     }
-    actual = {
-        family.key: (
-            family.title,
-            family.supported_schema_versions,
-            tuple(
-                (
-                    revision.official_code,
-                    revision.official_revision,
-                    revision.internal_schema_version,
-                    revision.active,
+    assert FormFamily.objects.count() == len(expected)
+    for family in CANONICAL_FORM_FAMILIES:
+        active = [revision for revision in family.revisions if revision.active]
+        assert len(active) == 1
+        revision = active[0]
+        assert (
+            revision.official_code,
+            revision.official_revision,
+            revision.internal_schema_version,
+        ) == expected[family.key]
+        assert family.revision_required
+        saved = require_active_supported_form_revision(family.key)
+        assert (
+            saved.official_code,
+            saved.official_revision,
+            saved.internal_schema_version,
+        ) == expected[family.key]
+        for legacy in family.revisions:
+            if not legacy.active:
+                assert (
+                    FormRevision.objects.get(
+                        family__key=family.key,
+                        official_code=legacy.official_code,
+                        official_revision=legacy.official_revision,
+                    ).status
+                    == "INACTIVE"
                 )
-                for revision in family.revisions
-            ),
-        )
-        for family in CANONICAL_FORM_FAMILIES
-    }
-    assert actual == expected
-
-    assert FormFamily.objects.count() == 7
-    routine_family = FormFamily.objects.get(key="routine_interview")
-    assert routine_family.title == "Routine Interview Form"
-    assert not FormRevision.objects.filter(family=routine_family).exists()
 
 
 @pytest.mark.django_db
@@ -176,6 +158,7 @@ def test_exact_identity_not_schema_version_alone_controls_runtime_support():
         canonical.save(update_fields=["status", "updated_at"])
 
     routine_family = FormFamily.objects.get(key="routine_interview")
+    FormRevision.objects.filter(family=routine_family).update(status="INACTIVE")
     arbitrary_routine = FormRevision.objects.create(
         family=routine_family,
         official_code="UNCONFIRMED-ROUTINE",
@@ -202,9 +185,9 @@ def test_canonical_sync_repairs_drift_preserves_ids_and_historical_references():
 
     inventory_family.title = "Locally edited title"
     inventory_family.save(update_fields=["title", "updated_at"])
-    inventory_revision.internal_schema_version = 999
     inventory_revision.status = "INACTIVE"
-    inventory_revision.save(update_fields=["internal_schema_version", "status", "updated_at"])
+    inventory_revision.save(update_fields=["status", "updated_at"])
+    FormRevision.objects.filter(family=inventory_family).update(status="INACTIVE")
     legacy = FormRevision.objects.create(
         family=inventory_family,
         official_code="LEGACY-LOCAL-FORM",
@@ -223,6 +206,7 @@ def test_canonical_sync_repairs_drift_preserves_ids_and_historical_references():
     )
 
     routine_family = FormFamily.objects.get(key="routine_interview")
+    routine_family.revisions.all().delete()
     routine_family.delete()
 
     referral_revision = FormRevision.objects.get(
@@ -232,6 +216,7 @@ def test_canonical_sync_repairs_drift_preserves_ids_and_historical_references():
     )
     referral_revision.delete()
 
+    prior_events = AuditEvent.objects.filter(action="institutional_forms.synced").count()
     first = sync_institutional_forms()
     assert first.changed
 
@@ -244,28 +229,33 @@ def test_canonical_sync_repairs_drift_preserves_ids_and_historical_references():
     assert inventory_family.title == "Individual Inventory"
     assert inventory_revision.pk == revision_id
     assert inventory_revision.internal_schema_version == 1
-    assert inventory_revision.status == "ACTIVE"
+    assert inventory_revision.status == "INACTIVE"
     assert legacy.status == "INACTIVE"
     assert historical_inventory.form_revision_id == legacy.pk
     assert FormRevision.objects.filter(pk=legacy.pk).exists()
 
     restored_routine = FormFamily.objects.get(key="routine_interview")
-    assert not FormRevision.objects.filter(family=restored_routine).exists()
+    assert (
+        FormRevision.objects.filter(family=restored_routine, status="ACTIVE").get().official_code
+        == "UCN-OP-GCO-01F7"
+    )
     restored_referral = FormRevision.objects.get(
         family__key="referral_slip",
         official_code="CNSC-OP-GTA-01F9",
         official_revision="1",
     )
     assert restored_referral.internal_schema_version == 1
-    assert restored_referral.status == "ACTIVE"
+    assert restored_referral.status == "INACTIVE"
 
     for family in FormFamily.objects.filter(
         key__in=[definition.key for definition in CANONICAL_FORM_FAMILIES]
     ):
         assert FormRevision.objects.filter(family=family, status="ACTIVE").count() <= 1
 
-    assert AuditEvent.objects.filter(action="institutional_forms.synced").count() == 1
-    event = AuditEvent.objects.get(action="institutional_forms.synced")
+    assert (
+        AuditEvent.objects.filter(action="institutional_forms.synced").count() == prior_events + 1
+    )
+    event = AuditEvent.objects.filter(action="institutional_forms.synced").latest("occurred_at")
     assert event.actor_type == "SYSTEM"
     assert set(event.metadata) == {
         "families_created",
@@ -278,7 +268,9 @@ def test_canonical_sync_repairs_drift_preserves_ids_and_historical_references():
 
     second = sync_institutional_forms()
     assert not second.changed
-    assert AuditEvent.objects.filter(action="institutional_forms.synced").count() == 1
+    assert (
+        AuditEvent.objects.filter(action="institutional_forms.synced").count() == prior_events + 1
+    )
 
 
 @pytest.mark.django_db
@@ -349,6 +341,7 @@ def test_institutional_forms_api_is_read_only_and_projects_exact_support():
     assert [item["key"] for item in families.json()["items"]] == [
         "call_slip",
         "customer_feedback",
+        "exit_interview",
         "good_moral_current_student",
         "good_moral_graduate",
         "individual_inventory",
@@ -356,8 +349,8 @@ def test_institutional_forms_api_is_read_only_and_projects_exact_support():
         "routine_interview",
     ]
     by_key = {item["key"]: item for item in families.json()["items"]}
-    assert by_key["routine_interview"]["revision_required"] is False
-    assert by_key["routine_interview"]["configuration_state"] == "REVISION_NOT_REQUIRED"
+    assert by_key["routine_interview"]["revision_required"] is True
+    assert by_key["routine_interview"]["configuration_state"] == "READY"
     assert by_key["individual_inventory"]["revision_required"] is True
     assert by_key["individual_inventory"]["configuration_state"] == "READY"
 
@@ -366,8 +359,8 @@ def test_institutional_forms_api_is_read_only_and_projects_exact_support():
     by_id = {item["id"]: item for item in revisions.json()["items"]}
     canonical = FormRevision.objects.get(
         family=family,
-        official_code="CNSC-OP-GCO-01F5",
-        official_revision="0",
+        official_code="UCN-OP-GCO-01F5",
+        official_revision="1",
     )
     assert by_id[str(canonical.pk)]["supported"] is True
     assert by_id[str(historical.pk)]["supported"] is False
@@ -463,3 +456,63 @@ def test_academic_year_mutations_still_require_head_capability_and_recent_mfa():
     )
     assert current.status_code == 200
     assert current.json()["is_current"] is True
+
+
+@pytest.mark.django_db
+def test_fresh_sync_creates_both_supported_history_and_ucn_active_identities():
+    FormRevision.objects.all().delete()
+    FormFamily.objects.all().delete()
+    result = sync_institutional_forms()
+    assert result.families_created == 8
+    assert result.revisions_created == 13
+    assert result.revisions_activated == 8
+    assert not sync_institutional_forms().changed
+    for definition in CANONICAL_FORM_FAMILIES:
+        active = require_active_supported_form_revision(definition.key)
+        assert active.status == "ACTIVE"
+        assert is_supported_form_revision(active)
+    assert (
+        FormRevision.objects.filter(official_code__startswith="UCN-", status="ACTIVE").count() == 7
+    )
+    assert (
+        require_active_supported_form_revision("customer_feedback").official_code
+        == "CNSC-OP-GTA-01F14"
+    )
+
+
+@pytest.mark.django_db
+def test_sync_refuses_to_rewrite_saved_schema_identity():
+    from compass.institutional_forms.bootstrap import CanonicalFormSyncError
+
+    saved = FormRevision.objects.get(official_code="CNSC-OP-GCO-01F5", official_revision="0")
+    saved.internal_schema_version = 99
+    saved.save(update_fields=["internal_schema_version"])
+    with pytest.raises(CanonicalFormSyncError, match="different saved schema"):
+        sync_institutional_forms()
+    saved.refresh_from_db()
+    assert saved.internal_schema_version == 99
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "family_key",
+    [
+        "individual_inventory",
+        "referral_slip",
+        "call_slip",
+        "good_moral_current_student",
+        "good_moral_graduate",
+    ],
+)
+def test_supported_retired_identity_cannot_govern_new_records(family_key):
+    active = require_active_supported_form_revision(family_key)
+    active.status = "INACTIVE"
+    active.save(update_fields=["status"])
+    legacy = FormRevision.objects.get(family=active.family, official_code__startswith="CNSC-")
+    legacy.status = "ACTIVE"
+    legacy.save(update_fields=["status"])
+    assert is_supported_form_revision(legacy)
+    with pytest.raises(UnsupportedInstitutionalFormRevision, match="retired"):
+        require_active_supported_form_revision(family_key)
+    sync_institutional_forms()
+    assert require_active_supported_form_revision(family_key).pk == active.pk

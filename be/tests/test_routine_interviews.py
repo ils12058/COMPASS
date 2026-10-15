@@ -183,7 +183,10 @@ def test_routine_form_family_and_capabilities_are_explicit_without_fake_qms_revi
 
     family = FormFamily.objects.get(key="routine_interview")
     assert family.title == "Routine Interview Form"
-    assert not FormRevision.objects.filter(family=family).exists()
+    assert (
+        FormRevision.objects.filter(family=family, status="ACTIVE").get().official_code
+        == "UCN-OP-GCO-01F7"
+    )
     assert supported_schema_versions("routine_interview") == frozenset({1})
 
     assert student.has_capability("routine_interviews.view_self")
@@ -271,7 +274,7 @@ def test_appointment_ensure_derives_context_is_stable_and_keeps_bound_inventory_
     assert created.counselor_id == counselor.pk
     assert created.inventory_id == first_inventory.pk
     assert created.inventory.academic_year_id == first_year.pk
-    assert created.form_revision is None
+    assert created.form_revision.official_code == "UCN-OP-GCO-01F7"
     assert AuditEvent.objects.filter(action="routine_interview.created").count() == 1
 
     second_year = create_academic_year(label="2027-2028", context=context(admin))
@@ -665,7 +668,10 @@ def test_unconfirmed_active_form_revision_is_rejected_without_rewriting_existing
 
     family = FormFamily.objects.get(key="routine_interview")
     first = direct_routine(counselor=counselor, student=student, key="key-1")
-    assert first.form_revision_id is None
+    # Simulate a genuinely pre-cutover record; synchronization must never relabel it.
+    first.form_revision = None
+    first.save(update_fields=["form_revision"])
+    FormRevision.objects.filter(family=family).update(status="INACTIVE")
 
     FormRevision.objects.create(
         family=family,
@@ -1095,6 +1101,7 @@ def test_student_appointment_candidates_do_not_depend_on_inventory_or_academic_y
     student.student_lifecycle_status = StudentLifecycleStatus.CURRENT
     student.save(update_fields=["student_lifecycle_status", "updated_at"])
     family = FormFamily.objects.get(key="routine_interview")
+    FormRevision.objects.filter(family=family).update(status="INACTIVE")
     FormRevision.objects.create(
         family=family,
         official_code="UNSUPPORTED-ROUTINE",
@@ -1261,6 +1268,7 @@ def test_direct_options_fail_when_counselor_is_not_canonical_service_provider():
     service.provider_coverage = "ALL_COUNSELORS"
     service.save(update_fields=["provider_coverage", "updated_at"])
     family = FormFamily.objects.get(key="routine_interview")
+    FormRevision.objects.filter(family=family).update(status="INACTIVE")
     FormRevision.objects.create(
         family=family,
         official_code="UNSUPPORTED-DIRECT-OPTIONS",

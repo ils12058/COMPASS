@@ -14,7 +14,7 @@
         {% endfor %}
       </tbody>
     </table>
-    <div class="inventory-section-title inventory-unique-title"><strong>UNIQUE</strong></div>
+    <div class="inventory-section-title inventory-unique-title"><strong>{% if ucn_inventory %}UNIQUE FEATURES{% else %}UNIQUE{% endif %}</strong></div>
     <div class="inventory-row inventory-unique-row"><span>Name of Friends:</span></div>
     <div class="inventory-row inventory-unique-row indent"><span>In School</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.friends_school }}</span></span></div>
     <div class="inventory-row inventory-unique-row indent"><span>Outside School</span><span class="inventory-line inventory-fit"><span class="generated-value">{{ inventory_form.friends_outside }}</span></span></div>

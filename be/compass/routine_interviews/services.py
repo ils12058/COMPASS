@@ -32,7 +32,7 @@ from compass.counseling.services import (
 )
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
-    get_active_supported_form_revision,
+    require_active_supported_form_revision,
 )
 from compass.inventory.models import StudentInventory
 from compass.notifications.policy import NotificationEvent
@@ -390,7 +390,7 @@ def _initiation_context(student: User) -> RoutineInitiationContext:
 
 def _optional_form_revision():
     try:
-        return get_active_supported_form_revision(ROUTINE_FORM_FAMILY_KEY)
+        return require_active_supported_form_revision(ROUTINE_FORM_FAMILY_KEY)
     except InstitutionalFormConflict as exc:
         raise RoutineInterviewFormRevisionUnsupported(
             "The active Routine Interview Form Revision is not supported by this COMPASS version."

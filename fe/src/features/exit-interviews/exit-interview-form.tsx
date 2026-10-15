@@ -22,7 +22,7 @@ import {
   exitInterviewFormFromDetail,
   exitInterviewDraftPayload,
   answeredCount,
-  COLLEGE_FEEDBACK_CATEGORIES,
+  collegeFeedbackCategories,
   SELF_ASSESSMENT_ITEMS,
 } from "@/features/exit-interviews/exit-interview-presentation";
 import {
@@ -262,7 +262,7 @@ export function ExitInterviewForm({
   }
 
   const selfAnswered = answeredCount(SELF_ASSESSMENT_ITEMS, form.selfRatings);
-  const collegeItems = COLLEGE_FEEDBACK_CATEGORIES.flatMap((category) => category.items);
+  const collegeItems = collegeFeedbackCategories(form.collegeFeedbackItemCodes).flatMap((category) => category.items);
   const collegeAnswered = answeredCount(collegeItems, form.collegeRatings);
   const missingRatings = [
     ...SELF_ASSESSMENT_ITEMS
@@ -272,7 +272,7 @@ export function ExitInterviewForm({
         label: item.label,
         targetId: exitRatingRowId("self", item.code),
       })),
-    ...COLLEGE_FEEDBACK_CATEGORIES.flatMap((category) =>
+    ...collegeFeedbackCategories(form.collegeFeedbackItemCodes).flatMap((category) =>
       category.items
         .filter((item) => !form.collegeRatings[item.code])
         .map((item) => ({

@@ -34,6 +34,7 @@ from compass.institutional_forms.models import FormRevision
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     UnsupportedInstitutionalFormRevision,
+    is_supported_form_revision,
     require_active_supported_form_revision,
 )
 from compass.operational_students import (
@@ -564,6 +565,10 @@ _REFERRAL_ACTION_LABELS = {
 
 
 def build_referral_render_context(item: Referral) -> dict[str, object]:
+    if item.form_revision.family.key != "referral_slip" or not is_supported_form_revision(
+        item.form_revision
+    ):
+        raise ReferralDocumentUnavailable("The saved controlled-form identity is unsupported.")
     content = read_referral_confidential_content(item)
     recorded = {action.action_type: action for action in item.actions.all()}
     action_rows: list[dict[str, object]] = []
@@ -615,7 +620,7 @@ def render_referral_pdf(item: Referral) -> bytes:
     try:
         result = render_document_pdf(
             "referral_slip",
-            item.form_revision.internal_schema_version,
+            2 if item.form_revision.official_code == "UCN-OP-GCO-01F3" else 1,
             context=build_referral_render_context(item),
         )
     except DocumentRenderError as exc:

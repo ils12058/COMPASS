@@ -3034,3 +3034,15 @@ def test_guidance_operations_contract_is_closed_read_only_and_aggregate_only():
     assert schemas["WaitingMetric"]["properties"]["count"]["minimum"] == 0
     assert schemas["DueMetric"]["properties"]["count"]["minimum"] == 0
     assert not any(code.startswith("guidance_operations.") for code in CAPABILITY_CODES)
+
+
+def test_exit_interview_saved_revision_and_answer_contract_are_read_only():
+    schema = api.get_openapi_schema()
+    definitions = schema["components"]["schemas"]
+    detail = definitions["ExitInterviewDetailResponse"]["properties"]
+    assert detail["form_revision"]["anyOf"][1] == {"type": "null"}
+    assert detail["college_feedback_item_codes"]["items"]["$ref"].endswith(
+        "/CollegeFeedbackItemValue"
+    )
+    payload = definitions["ExitInterviewDraftPayload"]["properties"]
+    assert "form_revision" not in payload and "college_feedback_item_codes" not in payload

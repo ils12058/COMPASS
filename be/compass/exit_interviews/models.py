@@ -9,6 +9,7 @@ from django.contrib.postgres.fields import ArrayField
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
+from compass.institutional_forms.models import FormRevision
 from compass.inventory.models import StudentInventory
 from compass.organization.models import AcademicYear
 
@@ -262,6 +263,14 @@ class CollegeFeedbackItem(models.TextChoices):
 
 
 class ExitInterview(models.Model):
+    # NULL is genuine pre-cutover provenance; creation services bind new records explicitly.
+    form_revision = models.ForeignKey(
+        FormRevision,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="exit_interviews",
+    )
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # Null only for records admitted before explicit GCO opportunities existed.
     opportunity = models.OneToOneField(

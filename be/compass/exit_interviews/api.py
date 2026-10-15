@@ -29,6 +29,7 @@ from .confidential_content import (
     read_reopen_reason,
 )
 from .documents import ExitInterviewDocumentUnavailable, render_exit_interview_pdf
+from .form_contract import college_feedback_codes
 from .models import (
     CareerMode,
     CollegeFeedbackItem,
@@ -286,7 +287,16 @@ class ReopenEventResponse(StrictSchema):
     reason: str
 
 
+class ExitInterviewFormRevisionSummary(StrictSchema):
+    id: UUID
+    official_code: str | None
+    official_revision: str | None
+    internal_schema_version: int
+
+
 class ExitInterviewDetailResponse(ExitInterviewDraftPayload):
+    form_revision: ExitInterviewFormRevisionSummary | None
+    college_feedback_item_codes: list[CollegeFeedbackItemValue]
     can_edit: bool
     id: UUID
     student: StudentSummary
@@ -586,6 +596,10 @@ def _summary(item) -> dict[str, object]:
 
 def _detail(item) -> dict[str, object]:
     content = _read(read_exit_interview_confidential_content, item)
+    try:
+        feedback_codes = college_feedback_codes(item)
+    except ExitInterviewError as exc:
+        _raise(exc)
     return {
         **_summary(item),
         "can_edit": bool(
@@ -598,6 +612,15 @@ def _detail(item) -> dict[str, object]:
                 or item.opportunity.status == ExitInterviewOpportunityStatus.OPEN
             )
         ),
+        "form_revision": {
+            "id": item.form_revision_id,
+            "official_code": item.form_revision.official_code,
+            "official_revision": item.form_revision.official_revision,
+            "internal_schema_version": item.form_revision.internal_schema_version,
+        }
+        if item.form_revision_id is not None
+        else None,
+        "college_feedback_item_codes": feedback_codes,
         "inventory_id": item.inventory_id,
         "age": item.age_snapshot,
         "civil_status": item.civil_status_snapshot,

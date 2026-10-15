@@ -28,6 +28,10 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.common.institutional_time import institution_today
 from compass.common.ordering import parse_ordering
+from compass.institutional_forms.services import (
+    InstitutionalFormConflict,
+    require_active_supported_form_revision,
+)
 from compass.inventory.services import (
     CurrentAcademicYearNotConfigured,
     InventoryConflict,
@@ -46,9 +50,9 @@ from .confidential_content import (
     write_reopen_reason,
 )
 from .errors import ExitInterviewError, InvalidExitInterviewInput
+from .form_contract import college_feedback_codes
 from .models import (
     CareerMode,
-    CollegeFeedbackItem,
     DelayReason,
     ExitInterview,
     ExitInterviewCollegeFeedbackRating,
@@ -189,6 +193,7 @@ def _summary_queryset():
     return ExitInterview.objects.select_related(
         "student",
         "academic_year",
+        "form_revision__family",
     )
 
 
@@ -496,7 +501,7 @@ def _replace_ratings(item: ExitInterview, values: dict[str, object]) -> None:
     )
     feedback_rows = _normalize_ratings(
         values.get("college_feedback_ratings", []),
-        allowed=set(CollegeFeedbackItem.values),
+        allowed=set(college_feedback_codes(item)),
         minimum=0,
         maximum=5,
         field_name="college_feedback_ratings",
@@ -657,6 +662,12 @@ def ensure_my_current(
             # remain authoritative. Admission never creates a second response.
             return _detail_queryset().get(pk=existing.pk)
 
+        try:
+            revision = require_active_supported_form_revision("exit_interview")
+        except InstitutionalFormConflict as exc:
+            raise ExitInterviewConflict(
+                "The active Exit Interview Form Revision is not configured or supported."
+            ) from exc
         inventory = _require_submitted_current_inventory(locked_student)
         current = inventory.academic_year
         opportunity = (
@@ -689,6 +700,7 @@ def ensure_my_current(
                     student=locked_student,
                     academic_year=current,
                     inventory=inventory,
+                    form_revision=revision,
                     opportunity=opportunity,
                     student_name_snapshot=profile.full_name.strip(),
                     age_snapshot=_age_on(profile.date_of_birth, reference_date),
@@ -774,6 +786,9 @@ def replace_my_current(*, student: User, values: dict[str, object]) -> ExitInter
             )
 
         _require_draft_admission(item)
+        college_feedback_codes(item)
+        if item.form_revision_id is not None and normalized["program_chair_comments"]:
+            raise InvalidExitInterviewInput("Program Chair is not part of the saved UCN form.")
 
         # Full replacement still verifies existing authorized content: a corrupt token
         # cannot be silently repaired by a PUT. The request controls logical form fields only.
@@ -830,6 +845,9 @@ def replace_mine(
             )
 
         _require_draft_admission(item)
+        college_feedback_codes(item)
+        if item.form_revision_id is not None and normalized["program_chair_comments"]:
+            raise InvalidExitInterviewInput("Program Chair is not part of the saved UCN form.")
 
         # Full replacement still verifies existing authorized content: a corrupt token
         # cannot be silently repaired by a PUT. The request controls logical form fields only.
@@ -869,9 +887,10 @@ def _validate_submission(item: ExitInterview) -> None:
             "All 15 fixed Self-Assessment items are required before submission."
         )
     feedback_codes = set(item.college_feedback_ratings.values_list("item_code", flat=True))
-    if feedback_codes != set(CollegeFeedbackItem.values):
+    required = college_feedback_codes(item)
+    if feedback_codes != set(required):
         raise InvalidExitInterviewInput(
-            "All 26 fixed College Feedback items are required before submission."
+            f"All {len(required)} fixed College Feedback items are required before submission."
         )
 
     if (

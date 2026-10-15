@@ -29,6 +29,7 @@ from compass.institutional_forms.models import FormRevision
 from compass.institutional_forms.services import (
     InstitutionalFormConflict,
     UnsupportedInstitutionalFormRevision,
+    is_supported_form_revision,
     require_active_supported_form_revision,
 )
 from compass.notifications.policy import NotificationEvent
@@ -914,6 +915,10 @@ def build_call_slip_render_context(
     *,
     access_mode: str,
 ) -> dict[str, object]:
+    if item.form_revision.family.key != "call_slip" or not is_supported_form_revision(
+        item.form_revision
+    ):
+        raise CallSlipDocumentUnavailable("The saved controlled-form identity is unsupported.")
     normalized_access = str(access_mode).strip().upper()
     if normalized_access not in {"SELF", "GCO"}:
         raise InvalidCallSlipInput("Call Slip document access mode is invalid.")
@@ -966,7 +971,7 @@ def render_call_slip_pdf(item: CallSlip, *, access_mode: str) -> bytes:
     try:
         result = render_document_pdf(
             "call_slip",
-            item.form_revision.internal_schema_version,
+            2 if item.form_revision.official_code == "UCN-OP-GCO-01F2" else 1,
             context=build_call_slip_render_context(item, access_mode=access_mode),
         )
     except DocumentRenderError as exc:

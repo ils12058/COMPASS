@@ -160,8 +160,8 @@ def test_ensure_draft_snapshots_active_revision_and_annual_identity():
     assert repeated.pk == first.pk
     assert first.academic_year_id == year.pk
     assert first.form_revision.family.key == "individual_inventory"
-    assert first.form_revision.official_code == "CNSC-OP-GCO-01F5"
-    assert first.form_revision.official_revision == "0"
+    assert first.form_revision.official_code == "UCN-OP-GCO-01F5"
+    assert first.form_revision.official_revision == "1"
     assert first.form_revision.internal_schema_version == 1
     assert first.submitted_at is None
     assert AuditEvent.objects.filter(action="inventory.created").count() == 1
