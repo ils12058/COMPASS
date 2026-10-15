@@ -242,7 +242,11 @@ function StudentSession({ appointmentId, access, data }: {
   access: ECounselingAccess;
   data: StudentWorkspaceResponse;
 }) {
-  const view = useSessionCallView({ appointmentId, participantName: data.counselor.display_name });
+  const view = useSessionCallView({
+    appointmentId,
+    participantName: data.counselor.display_name,
+    endsAt: data.appointment.ends_at,
+  });
   const routine = data.routine_interview;
   return (
     <GuidanceContextualMessages appointmentId={appointmentId} counterpartName={data.counselor.display_name} enabled>
@@ -262,6 +266,7 @@ function StudentSession({ appointmentId, access, data }: {
           readiness={data.provider_readiness}
           canJoin={access.canJoinSelf}
           media={data.media}
+          timing={view.timing}
           onJoin={view.join}
           onLeave={view.leave}
           joinBlocked={view.joinBlocked}
@@ -444,7 +449,11 @@ function CounselorSession({ appointmentId, access, data, sessionStateCurrent }: 
   data: CounselorWorkspaceResponse;
   sessionStateCurrent: boolean;
 }) {
-  const view = useSessionCallView({ appointmentId, participantName: data.student.display_name });
+  const view = useSessionCallView({
+    appointmentId,
+    participantName: data.student.display_name,
+    endsAt: data.appointment.ends_at,
+  });
   const inCall = view.inCall;
   const { user } = usePortalSession();
   const counselingAccess = getCounselingAccess(user);
@@ -477,6 +486,7 @@ function CounselorSession({ appointmentId, access, data, sessionStateCurrent }: 
           readiness={data.provider_readiness}
           canJoin={access.canJoinAssigned}
           media={data.media}
+          timing={view.timing}
           governedControls={<GovernedCaptureControls media={media} />}
           devicesInTray="when-wide"
           onJoin={view.join}

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowUpRight, ChevronDown, ChevronUp, LoaderCircle, Mic, MicOff, PhoneOff, Settings2, Video, VideoOff, WifiLow, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, ChevronUp, Clock, LoaderCircle, Mic, MicOff, PhoneOff, Settings2, Video, VideoOff, WifiLow, X } from "lucide-react";
 import { useEffect, useId, useRef, useState, type RefObject } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,8 @@ export function GlobalCallDock({
   onDismissEnded: () => void;
 }) {
   const runtime = useActiveECounselingCall();
-  const { call } = runtime;
+  const { call, timing } = runtime;
+  const timingNotice = timing?.notice;
   const [collapsed, setCollapsed] = useState(false);
   const [devicesOpen, setDevicesOpen] = useState(false);
   const bodyId = useId();
@@ -92,6 +93,25 @@ export function GlobalCallDock({
   const consentEnded = runtime.role === "COUNSELOR" ? consentEndedNotice(runtime.canonical.media) : null;
   const stops = (["recording", "transcription"] as const).filter((kind) => runtime.capture.canStop[kind]);
   const unstable = connected && (call.network === "warning" || call.network === "bad");
+  const timingNoticeBox = timingNotice ? (
+    <div
+      role="status"
+      aria-label={timingNotice.title}
+      data-timing-phase={timingNotice.phase}
+      className={cn(
+        "rounded-sm border border-brand-line bg-surface px-2.5 py-1.5 text-xs text-ink",
+        timingNotice.phase === "OVERTIME" || timingNotice.phase === "SCHEDULED_END_REACHED"
+          ? "border-l-2 border-l-warning"
+          : "border-l-2 border-l-brand"
+      )}
+    >
+      <div className="flex items-center gap-1.5 font-semibold">
+        <Clock aria-hidden="true" size={13} className="shrink-0 text-muted" />
+        <span>{timingNotice.title}</span>
+      </div>
+      <p className="mt-0.5 text-muted">{timingNotice.message}</p>
+    </div>
+  ) : null;
 
   const notices = (
     <>
@@ -136,6 +156,20 @@ export function GlobalCallDock({
         <p className="min-w-0 flex-1 truncate text-sm">
           <span className="font-semibold text-ink">{name}</span>
           <span className="text-muted"> · {status}</span>
+          {timingNotice ? (
+            <span
+              data-timing-compact={timingNotice.compactLabel}
+              className={cn(
+                "ml-1 font-medium",
+                timingNotice.phase === "OVERTIME" || timingNotice.phase === "SCHEDULED_END_REACHED"
+                  ? "font-semibold text-warning"
+                  : "text-muted"
+              )}
+            >
+              {" · "}
+              {timingNotice.compactLabel}
+            </span>
+          ) : null}
         </p>
         {collapsed ? (
           <>
@@ -179,7 +213,7 @@ export function GlobalCallDock({
               {unstable ? <p className="inline-flex items-center gap-1 rounded-sm bg-ink/85 px-2 py-1 text-xs font-semibold"><WifiLow aria-hidden="true" size={14} />Connection unstable</p> : null}
             </div>
           </div>
-          <div className="space-y-2 px-3 py-2 empty:hidden">{notices}</div>
+          <div className="space-y-2 px-3 py-2 empty:hidden">{timingNoticeBox}{notices}</div>
           <CallTray className="p-1.5">
             <CallControl icon={call.microphoneOn ? Mic : MicOff} label="Mic" accessibleName="Microphone" aria-pressed={call.microphoneOn} tone={call.microphoneOn ? "default" : "off"} problem={Boolean(call.mediaProblem?.microphone)} disabled={!connected} onClick={() => call.setMicrophone(!call.microphoneOn)} />
             <CallControl icon={call.cameraOn ? Video : VideoOff} label="Camera" aria-pressed={call.cameraOn} tone={call.cameraOn ? "default" : "off"} problem={Boolean(call.mediaProblem?.camera)} disabled={!connected} onClick={() => call.setCamera(!call.cameraOn)} />

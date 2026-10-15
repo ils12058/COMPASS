@@ -23,7 +23,15 @@ const idleCall: CallControls = {
 // live (or just ended) it is that call; for any other Appointment it is an idle call whose Join
 // starts one, unless this tab or another already has a call. While this page shows the full stage
 // for the live call, the call dock steps aside. Opening the page never starts a call by itself.
-export function useSessionCallView({ appointmentId, participantName }: { appointmentId: string; participantName: string }) {
+export function useSessionCallView({
+  appointmentId,
+  participantName,
+  endsAt,
+}: {
+  appointmentId: string;
+  participantName: string;
+  endsAt?: string;
+}) {
   const runtime = useActiveECounselingCall();
   const { presentStage } = runtime;
   const owns = runtime.appointmentId === appointmentId && runtime.state !== "inactive";
@@ -40,8 +48,9 @@ export function useSessionCallView({ appointmentId, participantName }: { appoint
     call,
     // This page's Appointment has the live call: the portal runtime keeps its session state fresh.
     inCall: owns && runtime.live,
-    join: () => void runtime.join({ appointmentId, participantName }),
+    join: () => void runtime.join({ appointmentId, participantName, endsAt }),
     leave: runtime.requestLeave,
+    timing: owns ? runtime.timing : { phase: "NORMAL" as const, notice: null, endsAt: endsAt ?? null },
     audio: owns ? runtime.audio : undefined,
     joinBlocked: blocked ? (
       <div className="flex flex-col items-center gap-3">
