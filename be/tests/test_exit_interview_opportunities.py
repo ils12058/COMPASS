@@ -69,8 +69,8 @@ def open_for(student, head, year, source="GRADUATION", note=""):
 def request_f4(student, **kwargs):
     return create_my_current_student(
         student=student,
-        year_level="Fourth",
-        semester="First",
+        year_level="4th Year",
+        semester="First Semester",
         context=AuditContext.user(student),
         **kwargs,
     )
@@ -351,7 +351,7 @@ def test_graduation_f4_requires_matching_submitted_response_with_controlled_api_
     client = auth_client(student)
     response = client.post(
         "/api/v1/good-moral/me/requests/current-student",
-        data=json.dumps({"year_level": "Fourth", "semester": "First"}),
+        data=json.dumps({"year_level": "4th Year", "semester": "First Semester"}),
         content_type="application/json",
         HTTP_IDEMPOTENCY_KEY="opportunity-f4",
         **csrf(client),

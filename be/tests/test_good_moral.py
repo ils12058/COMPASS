@@ -33,7 +33,13 @@ from compass.feedback.models import (
     FeedbackOpportunitySourceType,
 )
 from compass.good_moral import services as good_moral_services
-from compass.good_moral.models import GoodMoralRequest, GoodMoralStatus, GoodMoralVariant
+from compass.good_moral.models import (
+    CANONICAL_SEMESTERS,
+    CANONICAL_YEAR_LEVELS,
+    GoodMoralRequest,
+    GoodMoralStatus,
+    GoodMoralVariant,
+)
 from compass.good_moral.services import (
     GoodMoralCertificateDateInFuture,
     GoodMoralConfigurationConflict,
@@ -182,8 +188,8 @@ def make_current_request(student: User) -> tuple[GoodMoralRequest, StudentInvent
     )
     item = create_my_current_student(
         student=student,
-        year_level="Fourth",
-        semester="First",
+        year_level="4th Year",
+        semester="First Semester",
         context=AuditContext.user(student),
     )
     return item, inventory
@@ -214,14 +220,14 @@ def test_f4_creation_uses_locked_current_student_exact_inventory_and_local_text_
 
     first = create_my_current_student(
         student=student,
-        year_level="  Fifth  ",
-        semester="  Special Term  ",
+        year_level="  5th Year  ",
+        semester="  First Semester  ",
         context=AuditContext.user(student),
     )
     second = create_my_current_student(
         student=student,
-        year_level="Fifth",
-        semester="Special Term",
+        year_level="5th Year",
+        semester="First Semester",
         context=AuditContext.user(student),
     )
 
@@ -234,8 +240,8 @@ def test_f4_creation_uses_locked_current_student_exact_inventory_and_local_text_
     assert first.college_snapshot == affiliation.college.name
     assert first.course_snapshot == "BS Information Systems"
     assert first.major_snapshot == "Systems Development"
-    assert first.year_level_snapshot == "Fifth"
-    assert first.semester_snapshot == "Special Term"
+    assert first.year_level_snapshot == "5th Year"
+    assert first.semester_snapshot == "First Semester"
     assert second.pk != first.pk
     assert GoodMoralRequest.objects.filter(student=student).count() == 2
 
@@ -257,8 +263,8 @@ def test_f4_uses_resolver_returned_inventory_academic_year_without_second_year_r
     )
     item = create_my_current_student(
         student=student,
-        year_level="Fourth",
-        semester="First",
+        year_level="4th Year",
+        semester="First Semester",
         context=AuditContext.user(student),
     )
 
@@ -297,7 +303,7 @@ def test_f4_inventory_prerequisite_failures_are_controlled_good_moral_409(case: 
     client = auth_client(student)
     response = client.post(
         "/api/v1/good-moral/me/requests/current-student",
-        data=json.dumps({"year_level": "Fourth", "semester": "First"}),
+        data=json.dumps({"year_level": "4th Year", "semester": "First Semester"}),
         content_type="application/json",
         **good_moral_create_headers(client),
     )
@@ -317,7 +323,7 @@ def test_f4_rejects_noncurrent_lifecycle_before_inventory_lookup(lifecycle: str)
 
     response = client.post(
         "/api/v1/good-moral/me/requests/current-student",
-        data=json.dumps({"year_level": "Fourth", "semester": "First"}),
+        data=json.dumps({"year_level": "4th Year", "semester": "First Semester"}),
         content_type="application/json",
         **good_moral_create_headers(client),
     )
@@ -337,8 +343,8 @@ def test_student_creation_schemas_do_not_accept_server_owned_good_moral_fields()
         "/api/v1/good-moral/me/requests/current-student",
         data=json.dumps(
             {
-                "year_level": "Fourth",
-                "semester": "First",
+                "year_level": "4th Year",
+                "semester": "First Semester",
                 "variant": "GRADUATE",
                 "student_id": str(student.pk),
                 "inventory_id": "00000000-0000-0000-0000-000000000001",
@@ -1073,12 +1079,18 @@ def test_f4_render_uses_full_labels_and_fragments_without_changing_snapshots(
     affiliation.college.name = college_name
     affiliation.college.save(update_fields=["name", "updated_at"])
     academic_year = make_academic_year()
-    make_inventory(student, academic_year)
-    item = create_my_current_student(
+    inventory = make_inventory(student, academic_year)
+    item = GoodMoralRequest.objects.create(
         student=student,
-        year_level=year_level,
-        semester=semester,
-        context=AuditContext.user(student),
+        variant=GoodMoralVariant.CURRENT_STUDENT,
+        inventory=inventory,
+        academic_year=inventory.academic_year,
+        applicant_name_snapshot=student.get_full_name(),
+        year_level_snapshot=year_level,
+        college_snapshot=college_name,
+        course_snapshot=inventory.course_currently_enrolled,
+        major_snapshot=inventory.major,
+        semester_snapshot=semester,
     )
     issued = prepare_and_issue(
         actor=counselor,
@@ -1303,7 +1315,7 @@ def test_f4_persistent_replay_precedes_lifecycle_inventory_affiliation_and_snaps
         major="Original Major",
     )
     client = auth_client(student)
-    payload = {"year_level": "Fourth Year", "semester": "First Semester"}
+    payload = {"year_level": "4th Year", "semester": "First Semester"}
     key = "gm-f4-1"
 
     first = client.post(
@@ -1483,7 +1495,7 @@ def test_same_good_moral_key_changed_body_and_cross_variant_conflict():
 
     first = client.post(
         "/api/v1/good-moral/me/requests/current-student",
-        data=json.dumps({"year_level": "Fourth", "semester": "First"}),
+        data=json.dumps({"year_level": "4th Year", "semester": "First Semester"}),
         content_type="application/json",
         **good_moral_create_headers(client, key),
     )
@@ -1491,7 +1503,7 @@ def test_same_good_moral_key_changed_body_and_cross_variant_conflict():
 
     changed = client.post(
         "/api/v1/good-moral/me/requests/current-student",
-        data=json.dumps({"year_level": "Fourth", "semester": "Second"}),
+        data=json.dumps({"year_level": "4th Year", "semester": "Second Semester"}),
         content_type="application/json",
         **good_moral_create_headers(client, key),
     )
@@ -1939,3 +1951,478 @@ def test_legacy_certificate_reprint_preserves_saved_form_and_template(graduate):
     assert legacy.official_code in pages[0].extract_text()
     assert "Revision: 0" in pages[0].extract_text()
     assert issued.form_revision_id == legacy.pk
+
+
+# ==============================================================================
+# FORM-INPUT-1A: Good Moral Year Level & Semester Standardization Tests
+# ==============================================================================
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("year_level", CANONICAL_YEAR_LEVELS)
+def test_form_input_1a_creation_accepts_all_ten_canonical_year_levels(year_level: str):
+    sync_policy()
+    student = make_user(f"year.{year_level.replace(' ', '.').lower()}@example.edu")
+    make_affiliation(student)
+    academic_year = make_academic_year()
+    make_inventory(student, academic_year)
+    client = auth_client(student)
+
+    response = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps({"year_level": year_level, "semester": "First Semester"}),
+        content_type="application/json",
+        **good_moral_create_headers(client, f"gm-year-{year_level}"),
+    )
+    assert response.status_code == 201
+    item = GoodMoralRequest.objects.get(pk=response.json()["id"])
+    assert item.year_level_snapshot == year_level
+    assert item.semester_snapshot == "First Semester"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("semester", CANONICAL_SEMESTERS)
+def test_form_input_1a_creation_accepts_both_canonical_semesters(semester: str):
+    sync_policy()
+    student = make_user(f"sem.{semester.replace(' ', '.').lower()}@example.edu")
+    make_affiliation(student)
+    academic_year = make_academic_year()
+    make_inventory(student, academic_year)
+    client = auth_client(student)
+
+    response = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps({"year_level": "3rd Year", "semester": semester}),
+        content_type="application/json",
+        **good_moral_create_headers(client, f"gm-sem-{semester}"),
+    )
+    assert response.status_code == 201
+    item = GoodMoralRequest.objects.get(pk=response.json()["id"])
+    assert item.year_level_snapshot == "3rd Year"
+    assert item.semester_snapshot == semester
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "invalid_year",
+    [
+        "Fourth",
+        "1st",
+        "11th Year",
+        "0 Year",
+        "First Year",
+        "Fifth",
+        "Senior",
+        "Grade 12",
+        "random string",
+    ],
+)
+def test_form_input_1a_creation_rejects_unsupported_year_level(invalid_year: str):
+    sync_policy()
+    student = make_user("bad.year@example.edu")
+    make_affiliation(student)
+    academic_year = make_academic_year()
+    make_inventory(student, academic_year)
+    client = auth_client(student)
+
+    response = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps({"year_level": invalid_year, "semester": "First Semester"}),
+        content_type="application/json",
+        **good_moral_create_headers(client),
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_good_moral_request"
+    assert "year_level is not supported" in response.json()["error"]["message"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "invalid_sem",
+    [
+        "Summer",
+        "Midyear",
+        "Summer/Midyear",
+        "Third Semester",
+        "First",
+        "Second",
+        "1st Semester",
+        "Special Term",
+        "random term",
+    ],
+)
+def test_form_input_1a_creation_rejects_unsupported_semester(invalid_sem: str):
+    sync_policy()
+    student = make_user("bad.sem@example.edu")
+    make_affiliation(student)
+    academic_year = make_academic_year()
+    make_inventory(student, academic_year)
+    client = auth_client(student)
+
+    response = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps({"year_level": "3rd Year", "semester": invalid_sem}),
+        content_type="application/json",
+        **good_moral_create_headers(client),
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_good_moral_request"
+    assert "semester is not supported" in response.json()["error"]["message"]
+
+
+@pytest.mark.django_db
+def test_form_input_1a_idempotent_replay_preserves_older_accepted_requests_with_legacy_values():
+    sync_policy()
+    student = make_user("idem.legacy@example.edu")
+    make_affiliation(student)
+    academic_year = make_academic_year()
+    inventory = make_inventory(student, academic_year)
+
+    key = "gm-legacy-idem-1"
+    digest = good_moral_services._creation_digest(student_id=student.pk, key=key)
+    fingerprint = "a" * 64
+
+    # Simulate an older accepted request stored with legacy free-text values
+    legacy_item = GoodMoralRequest.objects.create(
+        student=student,
+        variant=GoodMoralVariant.CURRENT_STUDENT,
+        inventory=inventory,
+        academic_year=academic_year,
+        applicant_name_snapshot=student.get_full_name(),
+        year_level_snapshot="Fourth",
+        college_snapshot="College of Arts",
+        course_snapshot="BA History",
+        major_snapshot="",
+        semester_snapshot="First",
+        creation_key_digest=digest,
+        creation_request_fingerprint=fingerprint,
+    )
+
+    # Calling create_my_current_student with identical key and fingerprint replays cleanly
+    replayed = good_moral_services.create_my_current_student(
+        student=student,
+        year_level="Fourth",
+        semester="First",
+        idempotency_key=key,
+        request_fingerprint=fingerprint,
+        context=AuditContext.user(student),
+    )
+    assert replayed.pk == legacy_item.pk
+    assert replayed.year_level_snapshot == "Fourth"
+    assert replayed.semester_snapshot == "First"
+
+
+@pytest.mark.django_db
+def test_form_input_1a_operational_correction_counselor_and_gss_can_update_to_canonical():
+    sync_policy()
+    student = make_user("correction.student@example.edu")
+    counselor = make_user("correction.counselor@example.edu", role="COUNSELOR")
+    staff = make_user("correction.gss@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    UserDesignation.objects.create(
+        user=staff,
+        designation=Designation.objects.create(code="STAFF_PREP", name="Preparation Staff"),
+    )
+
+    item, _ = make_current_request(student)
+    assert item.year_level_snapshot == "4th Year"
+    assert item.semester_snapshot == "First Semester"
+
+    # Counselor can update to another canonical value
+    updated_by_counselor = update_request(
+        actor=counselor,
+        request_id=item.pk,
+        changes={"year_level_snapshot": "5th Year", "semester_snapshot": "Second Semester"},
+        context=AuditContext.user(counselor),
+    )
+    assert updated_by_counselor.year_level_snapshot == "5th Year"
+    assert updated_by_counselor.semester_snapshot == "Second Semester"
+
+    # GSS clerical can also update to another canonical value
+    updated_by_staff = update_request(
+        actor=staff,
+        request_id=item.pk,
+        changes={"year_level_snapshot": "1st Year", "semester_snapshot": "First Semester"},
+        context=AuditContext.user(staff),
+    )
+    assert updated_by_staff.year_level_snapshot == "1st Year"
+    assert updated_by_staff.semester_snapshot == "First Semester"
+
+
+@pytest.mark.django_db
+def test_form_input_1a_operational_correction_preserves_untouched_legacy_values():
+    sync_policy()
+    student = make_user("legacy.preserve@example.edu")
+    counselor = make_user("legacy.counselor@example.edu", role="COUNSELOR")
+    make_affiliation(student)
+    academic_year = make_academic_year()
+    inventory = make_inventory(student, academic_year)
+
+    # Legacy request with historical free-text
+    item = GoodMoralRequest.objects.create(
+        student=student,
+        variant=GoodMoralVariant.CURRENT_STUDENT,
+        inventory=inventory,
+        academic_year=academic_year,
+        applicant_name_snapshot=student.get_full_name(),
+        year_level_snapshot="Fourth",
+        college_snapshot="College of Engineering",
+        course_snapshot="BS Civil Engineering",
+        major_snapshot="",
+        semester_snapshot="First",
+    )
+
+    # Unrelated correction (course and receipt) must preserve legacy values without error
+    updated = update_request(
+        actor=counselor,
+        request_id=item.pk,
+        changes={
+            "course_snapshot": "BS Electrical Engineering",
+            "official_receipt_number": "OR-2026-9999",
+        },
+        context=AuditContext.user(counselor),
+    )
+    assert updated.course_snapshot == "BS Electrical Engineering"
+    assert updated.official_receipt_number == "OR-2026-9999"
+    assert updated.year_level_snapshot == "Fourth"
+    assert updated.semester_snapshot == "First"
+
+    # Providing the exact same legacy values unchanged in changes also succeeds
+    updated_same = update_request(
+        actor=counselor,
+        request_id=item.pk,
+        changes={
+            "year_level_snapshot": "Fourth",
+            "semester_snapshot": "First",
+            "official_receipt_number": "OR-2026-1000",
+        },
+        context=AuditContext.user(counselor),
+    )
+    assert updated_same.year_level_snapshot == "Fourth"
+    assert updated_same.semester_snapshot == "First"
+    assert updated_same.official_receipt_number == "OR-2026-1000"
+
+
+@pytest.mark.django_db
+def test_form_input_1a_operational_correction_rejects_unsupported_values_when_changed():
+    sync_policy()
+    student = make_user("correction.bad@example.edu")
+    counselor = make_user("correction.bad.counselor@example.edu", role="COUNSELOR")
+    item, _ = make_current_request(student)
+
+    # Attempt to change year_level to unsupported value
+    with pytest.raises(InvalidGoodMoralInput, match="year_level is not supported"):
+        update_request(
+            actor=counselor,
+            request_id=item.pk,
+            changes={"year_level_snapshot": "Senior Year"},
+            context=AuditContext.user(counselor),
+        )
+
+    # Attempt to change semester to unsupported value
+    with pytest.raises(InvalidGoodMoralInput, match="semester is not supported"):
+        update_request(
+            actor=counselor,
+            request_id=item.pk,
+            changes={"semester_snapshot": "Summer"},
+            context=AuditContext.user(counselor),
+        )
+
+    # Stored values are untouched
+    item.refresh_from_db()
+    assert item.year_level_snapshot == "4th Year"
+    assert item.semester_snapshot == "First Semester"
+
+
+@pytest.mark.django_db
+def test_form_input_1a_operational_correction_issued_remains_locked():
+    sync_policy()
+    student = make_user("locked.student@example.edu")
+    counselor = make_user("locked.counselor@example.edu", role="COUNSELOR")
+    item, _ = make_current_request(student)
+
+    issued = prepare_and_issue(
+        actor=counselor, request_id=item.pk, context=AuditContext.user(counselor)
+    )
+    with pytest.raises(GoodMoralConflict, match="Issued and cancelled"):
+        update_request(
+            actor=counselor,
+            request_id=issued.pk,
+            changes={"year_level_snapshot": "1st Year"},
+            context=AuditContext.user(counselor),
+        )
+
+
+@pytest.mark.django_db
+def test_form_input_1a_operational_correction_cancelled_remains_locked():
+    sync_policy()
+    student = make_user("locked.student2@example.edu")
+    counselor = make_user("locked.counselor2@example.edu", role="COUNSELOR")
+    item, _ = make_current_request(student)
+
+    cancelled = cancel_request(
+        actor=counselor,
+        request_id=item.pk,
+        reason="No longer needed",
+        self_service=False,
+        context=AuditContext.user(counselor),
+    )
+    with pytest.raises(GoodMoralConflict, match="Issued and cancelled"):
+        update_request(
+            actor=counselor,
+            request_id=cancelled.pk,
+            changes={"year_level_snapshot": "1st Year"},
+            context=AuditContext.user(counselor),
+        )
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    (
+        "scenario_name",
+        "year_level",
+        "semester",
+        "expected_year_text",
+        "expected_sem_text",
+        "renderer_version",
+    ),
+    [
+        # Scenario 1: 1st Year / First Semester
+        ("canonical_1st", "1st Year", "First Semester", "1st year student", "First semester", 2),
+        # Scenario 2: 2nd Year / Second Semester
+        ("canonical_2nd", "2nd Year", "Second Semester", "2nd year student", "Second semester", 2),
+        # Scenario 3: 10th Year / First Semester
+        ("canonical_10th", "10th Year", "First Semester", "10th year student", "First semester", 2),
+        # Scenario 4: Historical Year Level text with trailing year
+        ("legacy_year", "3rd Year", "First Semester", "3rd year student", "First semester", 2),
+        # Scenario 5: Historical Semester text with trailing semester
+        ("legacy_sem", "4th Year", "1st semester", "4th year student", "1st semester", 2),
+        # Scenario 6: Historical renderer version 1
+        (
+            "legacy_renderer_v1",
+            "3rd Year",
+            "First Semester",
+            "3rd year student",
+            "First semester",
+            1,
+        ),
+        # Scenario 7: Current UCN F4 renderer version 2
+        (
+            "current_ucn_v2",
+            "4th Year",
+            "Second Semester",
+            "4th year student",
+            "Second semester",
+            2,
+        ),
+    ],
+)
+def test_form_input_1a_official_f4_pdf_rendering_scenarios(
+    scenario_name,
+    year_level,
+    semester,
+    expected_year_text,
+    expected_sem_text,
+    renderer_version,
+):
+    sync_policy()
+    student = make_user(f"pdf.{scenario_name}@example.edu")
+    counselor = make_user(f"pdf.counselor.{scenario_name}@example.edu", role="COUNSELOR")
+    make_affiliation(student)
+    academic_year = make_academic_year()
+    inventory = make_inventory(student, academic_year)
+
+    item = GoodMoralRequest.objects.create(
+        student=student,
+        variant=GoodMoralVariant.CURRENT_STUDENT,
+        inventory=inventory,
+        academic_year=academic_year,
+        applicant_name_snapshot=student.get_full_name(),
+        year_level_snapshot=year_level,
+        college_snapshot="College of Science",
+        course_snapshot=inventory.course_currently_enrolled,
+        major_snapshot=inventory.major,
+        semester_snapshot=semester,
+    )
+    issued = prepare_and_issue(
+        actor=counselor, request_id=item.pk, context=AuditContext.user(counselor)
+    )
+
+    if renderer_version != issued.document_template_version:
+        issued.document_template_version = renderer_version
+        if renderer_version == 1:
+            issued.document_template_key = "good_moral_current_student"
+            legacy_rev = FormRevision.objects.get(
+                family__key="good_moral_current_student", official_code__startswith="CNSC-"
+            )
+            issued.form_revision = legacy_rev
+        issued.save(
+            update_fields=["document_template_key", "document_template_version", "form_revision"]
+        )
+
+    # Render PDF
+    pdf_bytes = render_certificate_pdf(issued)
+    reader = PdfReader(BytesIO(pdf_bytes))
+    assert len(reader.pages) == 1
+    pdf_text = " ".join(reader.pages[0].extract_text().split())
+
+    # Verify expected text fragments
+    assert expected_year_text in pdf_text
+    assert expected_sem_text in pdf_text
+
+    # Strict check: NO duplicate word repetitions
+    assert "year year" not in pdf_text.lower()
+    assert "semester semester" not in pdf_text.lower()
+
+    # Verify database snapshots were never mutated by rendering
+    issued.refresh_from_db()
+    assert issued.year_level_snapshot == year_level
+    assert issued.semester_snapshot == semester
+
+
+@pytest.mark.django_db
+def test_form_input_1a_graduate_f6_strict_non_regression():
+    sync_policy()
+    student = make_user("f6.regression@example.edu", lifecycle=StudentLifecycleStatus.GRADUATED)
+    counselor = make_user("f6.counselor@example.edu", role="COUNSELOR")
+
+    # Graduate request creation succeeds with its own fields
+    grad = make_graduate_request(student)
+    assert grad.variant == GoodMoralVariant.GRADUATE
+    assert grad.year_level_snapshot == ""
+    assert grad.semester_snapshot == ""
+    assert grad.degree_snapshot == "Bachelor of Science in Information Systems"
+
+    # Graduate creation payload does not accept year_level or semester
+    client = auth_client(student)
+    bad_grad = client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(
+            {
+                "degree": "BS Biology",
+                "major": "",
+                "graduation_date": "2026-06-30",
+                "year_level": "4th Year",
+            }
+        ),
+        content_type="application/json",
+        **good_moral_create_headers(client),
+    )
+    assert bad_grad.status_code == 422
+
+    # Graduate correction works for degree/major
+    updated_grad = update_request(
+        actor=counselor,
+        request_id=grad.pk,
+        changes={"degree_snapshot": "Bachelor of Science in Computer Science"},
+        context=AuditContext.user(counselor),
+    )
+    assert updated_grad.degree_snapshot == "Bachelor of Science in Computer Science"
+
+    # Graduate issuance and PDF work cleanly
+    issued = prepare_and_issue(
+        actor=counselor, request_id=updated_grad.pk, context=AuditContext.user(counselor)
+    )
+    pdf_bytes = render_certificate_pdf(issued)
+    pages = PdfReader(BytesIO(pdf_bytes)).pages
+    assert len(pages) == 1
+    assert "Computer Science" in pages[0].extract_text()

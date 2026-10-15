@@ -67,9 +67,9 @@ def academic_semester(day: date) -> str:
     """
 
     if day.month >= 8:
-        return "First"
+        return "First Semester"
     if day.month <= 5:
-        return "Second"
+        return "Second Semester"
     raise ValueError(f"{day.isoformat()} falls in the midyear term, outside the demo calendar")
 
 

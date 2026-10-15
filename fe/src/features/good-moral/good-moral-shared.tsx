@@ -28,6 +28,36 @@ export function goodMoralOrderingOptions(
   ];
 }
 
+export const GOOD_MORAL_YEAR_LEVELS = [
+  "1st Year",
+  "2nd Year",
+  "3rd Year",
+  "4th Year",
+  "5th Year",
+  "6th Year",
+  "7th Year",
+  "8th Year",
+  "9th Year",
+  "10th Year",
+] as const;
+
+export type GoodMoralYearLevel = (typeof GOOD_MORAL_YEAR_LEVELS)[number];
+
+export const GOOD_MORAL_SEMESTERS = [
+  "First Semester",
+  "Second Semester",
+] as const;
+
+export type GoodMoralSemester = (typeof GOOD_MORAL_SEMESTERS)[number];
+
+export function isCanonicalYearLevel(value: string | null | undefined): boolean {
+  return typeof value === "string" && (GOOD_MORAL_YEAR_LEVELS as readonly string[]).includes(value);
+}
+
+export function isCanonicalSemester(value: string | null | undefined): boolean {
+  return typeof value === "string" && (GOOD_MORAL_SEMESTERS as readonly string[]).includes(value);
+}
+
 export function goodMoralVariantLabel(variant: GoodMoralVariantValue): string {
   return variant === "CURRENT_STUDENT" ? "Current Student" : "Graduate";
 }

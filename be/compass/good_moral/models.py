@@ -26,6 +26,25 @@ class GoodMoralStatus(models.TextChoices):
     CANCELLED = "CANCELLED", "Cancelled"
 
 
+CANONICAL_YEAR_LEVELS: tuple[str, ...] = (
+    "1st Year",
+    "2nd Year",
+    "3rd Year",
+    "4th Year",
+    "5th Year",
+    "6th Year",
+    "7th Year",
+    "8th Year",
+    "9th Year",
+    "10th Year",
+)
+
+CANONICAL_SEMESTERS: tuple[str, ...] = (
+    "First Semester",
+    "Second Semester",
+)
+
+
 class GoodMoralRequest(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     graduation_opportunity = models.ForeignKey(
