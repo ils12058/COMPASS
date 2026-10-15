@@ -5,9 +5,10 @@ import Link from "next/link";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
+import { InventoryCorrectionNotice } from "@/features/inventory/inventory-correction-notice";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
 import { InventoryPdfDownload } from "@/features/inventory/inventory-pdf-download";
-import { formatInventoryDate, InventoryHeading, InventoryNotice, InventoryQueryError, InventoryStatus } from "@/features/inventory/inventory-shared";
+import { formatInventoryDate, InventoryHeading, InventoryQueryError, InventoryStatus } from "@/features/inventory/inventory-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { useInventoryGetMyHistoryItem } from "@/lib/api/generated/inventory/inventory";
@@ -68,10 +69,7 @@ function StudentInventoryHistoryDetail({ inventoryId }: { inventoryId: string })
       ) : null}
       {inventory.correction_pending && inventory.latest_correction ? (
         <div className="mt-5">
-          <InventoryNotice title="Correction requested" tone="warning">
-            <p className="whitespace-pre-wrap">{inventory.latest_correction.message}</p>
-            <p className="mt-2 text-xs text-muted">Requested {formatInventoryDate(inventory.latest_correction.requested_at)}</p>
-          </InventoryNotice>
+          <InventoryCorrectionNotice correction={inventory.latest_correction} />
         </div>
       ) : null}
       <div className="mt-7">

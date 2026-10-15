@@ -11,6 +11,7 @@ import { InventoryEditor } from "@/features/inventory/editor/inventory-editor";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
 import { InventoryPdfDownload } from "@/features/inventory/inventory-pdf-download";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
+import { InventoryCorrectionNotice } from "@/features/inventory/inventory-correction-notice";
 import { formatInventoryDate, InventoryHeading, InventoryNotice, InventoryQueryError, InventoryStatus } from "@/features/inventory/inventory-shared";
 import { inventoryErrorMessage } from "@/features/inventory/inventory-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -183,10 +184,7 @@ function StudentCurrentInventory() {
       ) : null}
       {inventory.correction_pending && inventory.latest_correction ? (
         <div className="mt-5">
-          <InventoryNotice title="Correction requested" tone="warning">
-            <p className="whitespace-pre-wrap">{inventory.latest_correction.message}</p>
-            <p className="mt-2 text-xs text-muted">Requested {formatInventoryDate(inventory.latest_correction.requested_at)}</p>
-          </InventoryNotice>
+          <InventoryCorrectionNotice correction={inventory.latest_correction} />
         </div>
       ) : null}
       <div className="mt-7">

@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { CheckboxGroupField, SelectField, TextAreaField, TextField } from "@/features/inventory/editor/fields";
+import { InventoryReviewHintText, useInventoryReview, useInventoryReviewDetailsOpen } from "@/features/inventory/editor/inventory-review-context";
 import type { InventorySectionProps } from "@/features/inventory/editor/types";
 import {
   annualIncomeOptions,
@@ -32,6 +33,7 @@ export function FamilySection({ draft, onChange, validationIssues = [] }: Invent
     validationIssues.find((issue) => issue.targetId === targetId)?.message;
   const members = draft.family_members ?? emptyFamilyMembers;
   const hasSpouse = members.some((member) => member.kind === FamilyMemberKindValue.SPOUSE);
+  const spouseAddReview = useInventoryReview("inventory-spouse-add");
   const focusAfterUpdate = useRef<string | null>(null);
 
   useEffect(() => {
@@ -84,16 +86,20 @@ export function FamilySection({ draft, onChange, validationIssues = [] }: Invent
               }}
             />
           ) : (
-            <Button
-              id="inventory-spouse-add"
-              variant="secondary"
-              onClick={() => {
-                focusAfterUpdate.current = "inventory-family-spouse-name";
-                updateMember(FamilyMemberKindValue.SPOUSE, {});
-              }}
-            >
-              Add optional Spouse details
-            </Button>
+            <div>
+              <Button
+                id="inventory-spouse-add"
+                variant="secondary"
+                aria-describedby={spouseAddReview.describedBy}
+                onClick={() => {
+                  focusAfterUpdate.current = "inventory-family-spouse-name";
+                  updateMember(FamilyMemberKindValue.SPOUSE, {});
+                }}
+              >
+                Add optional Spouse details
+              </Button>
+              <InventoryReviewHintText hint={spouseAddReview.hint} />
+            </div>
           )}
         </div>
       </FieldGroup>
@@ -111,6 +117,7 @@ export function FamilySection({ draft, onChange, validationIssues = [] }: Invent
             hint="This answer describes your current situation."
           />
           <CheckboxGroupField
+            id="inventory-parent-statuses"
             legend="Additional parent circumstances"
             value={draft.parent_statuses}
             options={parentStatusOptions}
@@ -246,12 +253,15 @@ function FamilyMemberFields({
   const required = kind !== FamilyMemberKindValue.SPOUSE;
   const prefix = `inventory-family-${kind.toLowerCase()}`;
   const birthDateError = errorFor(`${prefix}-date-of-birth`);
+  const detailsId = `${prefix}-details`;
+  const detailsUnderReview = useInventoryReviewDetailsOpen(detailsId);
   const detailsRef = useRef<HTMLDetailsElement>(null);
 
-  // The birth date sits in the collapsed details; reveal it when it needs attention.
+  // The birth date and the other optional details sit in the collapsed details; reveal them when
+  // one needs attention or was named in a correction request.
   useEffect(() => {
-    if (birthDateError && detailsRef.current) detailsRef.current.open = true;
-  }, [birthDateError]);
+    if ((birthDateError || detailsUnderReview) && detailsRef.current) detailsRef.current.open = true;
+  }, [birthDateError, detailsUnderReview]);
 
   function changeOccupationCategory(value: OccupationCategoryValue | null) {
     onChange({
@@ -331,7 +341,7 @@ function FamilyMemberFields({
         ) : null}
       </div>
 
-      <details ref={detailsRef} className="mt-5 border-t border-border/70 pt-4">
+      <details id={detailsId} ref={detailsRef} className="mt-5 border-t border-border/70 pt-4">
         <summary className="min-h-9 cursor-pointer text-sm font-semibold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
           Additional {label.toLowerCase()} information
         </summary>

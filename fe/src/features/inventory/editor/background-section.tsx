@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { SelectField, TextAreaField, TextField } from "@/features/inventory/editor/fields";
+import { InventoryReviewHintText, useInventoryReview } from "@/features/inventory/editor/inventory-review-context";
 import type { InventorySectionProps } from "@/features/inventory/editor/types";
 import { sexOptions } from "@/features/inventory/inventory-presentation";
 import { siblingTextLimits } from "@/features/inventory/inventory-field-limits";
@@ -16,6 +17,9 @@ export function BackgroundSection({ draft, onChange, validationIssues = [] }: In
   const errorFor = (targetId: string) =>
     validationIssues.find((issue) => issue.targetId === targetId)?.message;
   const siblings = draft.siblings ?? emptySiblings;
+  // Siblings are reviewed as a whole list: rows have no identity that survives a save or a move.
+  const listReview = useInventoryReview("inventory-siblings");
+  const addReview = useInventoryReview("inventory-sibling-add");
   const focusAfterUpdate = useRef<string | null>(null);
 
   useEffect(() => {
@@ -43,10 +47,11 @@ export function BackgroundSection({ draft, onChange, validationIssues = [] }: In
 
   return (
     <div className="space-y-7">
-      <FieldGroup legend="Siblings">
-        <p className="mb-5 text-sm leading-6 text-muted">
+      <FieldGroup legend="Siblings" describedBy={listReview.hint?.id}>
+        <p className={`${listReview.hint ? "mb-1" : "mb-5"} text-sm leading-6 text-muted`}>
           List siblings from eldest to youngest, including yourself. Mark the row that represents you.
         </p>
+        <InventoryReviewHintText hint={listReview.hint} className="mb-5" />
         <ol className="divide-y divide-border rounded-sm border border-border">
           {siblings.map((sibling, index) => (
             <li key={`sibling-${index}`} className="px-4 py-5">
@@ -148,6 +153,7 @@ export function BackgroundSection({ draft, onChange, validationIssues = [] }: In
           id="inventory-sibling-add"
           variant="secondary"
           className="mt-4"
+          aria-describedby={addReview.describedBy}
           onClick={() => {
             focusAfterUpdate.current = `inventory-sibling-${siblings.length}-name`;
             setRows([...siblings, { sort_order: siblings.length }]);

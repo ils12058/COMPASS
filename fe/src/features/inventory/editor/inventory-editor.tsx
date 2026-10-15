@@ -4,7 +4,7 @@ import { studentActionsQueryFamily } from "@/features/student-actions/student-ac
 
 import { useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -17,15 +17,27 @@ import { EducationSection } from "@/features/inventory/editor/education-section"
 import { FamilySection } from "@/features/inventory/editor/family-section";
 import { HealthSection } from "@/features/inventory/editor/health-section";
 import { InterestsSection } from "@/features/inventory/editor/interests-section";
+import { InventoryReviewProvider } from "@/features/inventory/editor/inventory-review-context";
 import { OrganizationsSection } from "@/features/inventory/editor/organizations-section";
 import { PersonalSection } from "@/features/inventory/editor/personal-section";
 import { PlansSection } from "@/features/inventory/editor/plans-section";
 import { ReviewSection } from "@/features/inventory/editor/review-section";
+import { InventoryCorrectionNotice } from "@/features/inventory/inventory-correction-notice";
+import {
+  focusInventoryCorrectionTarget,
+  INVENTORY_SECTION_REVIEW_ID,
+  INVENTORY_SECTION_START_ID,
+  inventoryCorrectionTarget,
+  inventoryCorrectionFocusOrder,
+  inventoryReviewHints,
+  inventoryReviewHintText,
+  readInventoryCorrectionTargets,
+} from "@/features/inventory/inventory-correction-targets";
 import { getInventoryDraftIssues, getInventorySubmissionIssues, normalizeInventoryPayload, toInventoryPayload, type InventorySubmissionIssue } from "@/features/inventory/inventory-payload";
 import { inventorySections, type InventorySectionId } from "@/features/inventory/inventory-presentation";
-import { formatInventoryDate, InventoryHeading, InventoryNotice, inventoryErrorMessage } from "@/features/inventory/inventory-shared";
+import { InventoryHeading, InventoryNotice, inventoryErrorMessage } from "@/features/inventory/inventory-shared";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
-import type { InventoryPayload, InventoryResponse } from "@/lib/api/generated/model";
+import type { InventoryCorrectionTarget, InventoryPayload, InventoryResponse } from "@/lib/api/generated/model";
 import {
   getInventoryGetMyCurrentQueryKey,
   getInventoryGetMyStatusQueryKey,
@@ -62,6 +74,8 @@ export function InventoryEditor({
   const [section, setSection] = useState<InventorySectionId>("personal");
   const [validationVisible, setValidationVisible] = useState(false);
   const pendingTargetRef = useRef<string | null>(null);
+  // The element ids to try for a correction target the Student chose, best first.
+  const pendingReviewRef = useRef<string[] | null>(null);
   // Bumped on every request to show an issue, so its field gets focus even within the open section.
   const [focusRequest, setFocusRequest] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -83,8 +97,21 @@ export function InventoryEditor({
   const issues = getInventorySubmissionIssues(draft, activeProgramIds);
   const currentSectionIndex = inventorySections.findIndex((item) => item.id === section);
   const currentCorrection = inventory.correction_pending ? inventory.latest_correction : null;
+  const correctionTargetValues = currentCorrection?.targets;
+  const correctionTargets = useMemo(
+    () => readInventoryCorrectionTargets(correctionTargetValues).targets,
+    [correctionTargetValues],
+  );
+  // Advisory only: a target never marks an answer invalid, blocks saving, or blocks resubmission.
+  const reviewHints = useMemo(() => inventoryReviewHints(correctionTargets, draft), [correctionTargets, draft]);
 
   useEffect(() => {
+    const pendingReview = pendingReviewRef.current;
+    if (pendingReview) {
+      pendingReviewRef.current = null;
+      focusInventoryCorrectionTarget(pendingReview);
+      return;
+    }
     const pendingTargetId = pendingTargetRef.current;
     if (!pendingTargetId) return;
     pendingTargetRef.current = null;
@@ -100,6 +127,12 @@ export function InventoryEditor({
   function navigateToSection(next: InventorySectionId) {
     if (next === "review") setValidationVisible(true);
     setSection(next);
+  }
+
+  function selectCorrectionTarget(target: InventoryCorrectionTarget) {
+    pendingReviewRef.current = inventoryCorrectionFocusOrder(target, draft);
+    setSection(inventoryCorrectionTarget(target).section);
+    setFocusRequest((current) => current + 1);
   }
 
   function selectIssue(issue: InventorySubmissionIssue) {
@@ -242,10 +275,7 @@ export function InventoryEditor({
 
       {currentCorrection ? (
         <div className="mt-5">
-          <InventoryNotice title="Correction requested" tone="warning">
-            <p className="whitespace-pre-wrap">{currentCorrection.message}</p>
-            <p className="mt-2 text-xs text-muted">Requested {formatInventoryDate(currentCorrection.requested_at)}</p>
-          </InventoryNotice>
+          <InventoryCorrectionNotice correction={currentCorrection} onSelectTarget={selectCorrectionTarget} />
         </div>
       ) : null}
 
@@ -293,11 +323,14 @@ export function InventoryEditor({
         </div>
 
         <Panel as="div" className="min-w-0">
-          <PanelHeader
-            title={inventorySections[currentSectionIndex]?.label}
-            titleId="inventory-editor-heading"
-            context={`Section ${currentSectionIndex + 1} of ${inventorySections.length}`}
-          />
+          {/* Where focus lands when a requested answer cannot take it, such as while saving. */}
+          <div id={INVENTORY_SECTION_START_ID} tabIndex={-1} className="rounded-t-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus">
+            <PanelHeader
+              title={inventorySections[currentSectionIndex]?.label}
+              titleId="inventory-editor-heading"
+              context={`Section ${currentSectionIndex + 1} of ${inventorySections.length}`}
+            />
+          </div>
 
           {saveError || submitError || notice ? (
             <div className="space-y-3 border-b border-brand-line px-4 py-4 sm:px-5">
@@ -308,24 +341,31 @@ export function InventoryEditor({
           ) : null}
 
           <fieldset disabled={pending} className="min-w-0 px-4 py-5 disabled:opacity-100 sm:px-5">
-            {section === "personal" ? <PersonalSection {...sectionProps} /> : null}
-            {section === "family" ? <FamilySection {...sectionProps} /> : null}
-            {section === "background" ? <BackgroundSection {...sectionProps} /> : null}
-            {section === "health" ? <HealthSection {...sectionProps} /> : null}
-            {section === "education" ? <EducationSection {...sectionProps} /> : null}
-            {section === "interests" ? <InterestsSection {...sectionProps} /> : null}
-            {section === "organizations" ? <OrganizationsSection {...sectionProps} /> : null}
-            {section === "plans" ? <PlansSection {...sectionProps} /> : null}
-            {section === "review" ? (
-              <ReviewSection
-                draft={draft}
-                academicYear={inventory.academic_year.label}
-                formRevision={`${inventory.form_revision.official_code} · Revision ${inventory.form_revision.official_revision}`}
-                issues={issues}
-                programLookupReady={Boolean(programQuery.data) || !canDiscoverPrograms}
-                onSelectIssue={selectIssue}
-              />
-            ) : null}
+            <InventoryReviewProvider value={reviewHints}>
+              {section !== "review" && reviewHints.sections.has(section) ? (
+                <p id={INVENTORY_SECTION_REVIEW_ID} tabIndex={-1} className="mb-5 rounded-sm text-sm font-medium leading-6 text-info focus:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                  {inventoryReviewHintText.section}
+                </p>
+              ) : null}
+              {section === "personal" ? <PersonalSection {...sectionProps} /> : null}
+              {section === "family" ? <FamilySection {...sectionProps} /> : null}
+              {section === "background" ? <BackgroundSection {...sectionProps} /> : null}
+              {section === "health" ? <HealthSection {...sectionProps} /> : null}
+              {section === "education" ? <EducationSection {...sectionProps} /> : null}
+              {section === "interests" ? <InterestsSection {...sectionProps} /> : null}
+              {section === "organizations" ? <OrganizationsSection {...sectionProps} /> : null}
+              {section === "plans" ? <PlansSection {...sectionProps} /> : null}
+              {section === "review" ? (
+                <ReviewSection
+                  draft={draft}
+                  academicYear={inventory.academic_year.label}
+                  formRevision={`${inventory.form_revision.official_code} · Revision ${inventory.form_revision.official_revision}`}
+                  issues={issues}
+                  programLookupReady={Boolean(programQuery.data) || !canDiscoverPrograms}
+                  onSelectIssue={selectIssue}
+                />
+              ) : null}
+            </InventoryReviewProvider>
           </fieldset>
 
           <div className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-4 sm:px-5">
