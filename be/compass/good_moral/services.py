@@ -61,7 +61,13 @@ from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.models import StudentAffiliation
 
-from .models import GoodMoralRequest, GoodMoralStatus, GoodMoralVariant
+from .models import (
+    CANONICAL_SEMESTERS,
+    CANONICAL_YEAR_LEVELS,
+    GoodMoralRequest,
+    GoodMoralStatus,
+    GoodMoralVariant,
+)
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -469,6 +475,11 @@ def create_my_current_student(
         if existing is not None:
             return existing
 
+        if year not in CANONICAL_YEAR_LEVELS:
+            raise InvalidGoodMoralInput("year_level is not supported.")
+        if term not in CANONICAL_SEMESTERS:
+            raise InvalidGoodMoralInput("semester is not supported.")
+
         if not is_current_student(locked_student):
             raise GoodMoralCurrentStudentRequired(
                 "Current Student lifecycle is required to request the F4 Good Moral certificate."
@@ -825,6 +836,18 @@ def update_request(
         # Only a changed value is checked, so an unrelated correction never fails on a stored date.
         for name in OCCURRED_DATE_FIELDS.intersection(changed):
             _reject_future_occurred_date(normalized[name], name)
+
+        if item.variant == GoodMoralVariant.CURRENT_STUDENT:
+            if (
+                "year_level_snapshot" in changed
+                and normalized["year_level_snapshot"] not in CANONICAL_YEAR_LEVELS
+            ):
+                raise InvalidGoodMoralInput("year_level is not supported.")
+            if (
+                "semester_snapshot" in changed
+                and normalized["semester_snapshot"] not in CANONICAL_SEMESTERS
+            ):
+                raise InvalidGoodMoralInput("semester is not supported.")
 
         for name in changed:
             setattr(item, name, normalized[name])

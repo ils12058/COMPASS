@@ -15,8 +15,11 @@ import { Label } from "@/components/ui/label";
 import { Notice } from "@/components/ui/notice";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelFooter, PanelSection } from "@/components/ui/panel";
+import { Select } from "@/components/ui/select";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import {
+  GOOD_MORAL_SEMESTERS,
+  GOOD_MORAL_YEAR_LEVELS,
   GoodMoralHeading,
   GoodMoralNotice,
   GoodMoralUnavailable,
@@ -237,7 +240,7 @@ function CurrentStudentRequestForm() {
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (blocked) return;
+    if (blocked || !yearLevel || !semester) return;
     create.start({ variant: "CURRENT_STUDENT", payload: { year_level: yearLevel, semester } });
   }
 
@@ -258,14 +261,34 @@ function CurrentStudentRequestForm() {
         >
         <fieldset disabled={fieldsLocked} className="max-w-2xl space-y-5 disabled:opacity-80">
           <div>
-            <Label htmlFor="good-moral-year-level">Year level <span aria-hidden="true">*</span></Label>
-            <Input id="good-moral-year-level" className="mt-2" required maxLength={64} value={yearLevel} onChange={(event) => setYearLevel(event.target.value)} aria-describedby="good-moral-year-level-help" />
-            <p id="good-moral-year-level-help" className="mt-1 text-xs text-muted">Up to 64 characters.</p>
+            <Label htmlFor="good-moral-year-level">Year Level <span aria-hidden="true">*</span></Label>
+            <Select
+              id="good-moral-year-level"
+              className="mt-2"
+              required
+              value={yearLevel}
+              onChange={(event) => setYearLevel(event.target.value)}
+            >
+              <option value="">Select your Year Level</option>
+              {GOOD_MORAL_YEAR_LEVELS.map((level) => (
+                <option key={level} value={level}>{level}</option>
+              ))}
+            </Select>
           </div>
           <div>
             <Label htmlFor="good-moral-semester">Semester <span aria-hidden="true">*</span></Label>
-            <Input id="good-moral-semester" className="mt-2" required maxLength={80} value={semester} onChange={(event) => setSemester(event.target.value)} aria-describedby="good-moral-semester-help" />
-            <p id="good-moral-semester-help" className="mt-1 text-xs text-muted">Enter the term wording used for your current enrollment; up to 80 characters.</p>
+            <Select
+              id="good-moral-semester"
+              className="mt-2"
+              required
+              value={semester}
+              onChange={(event) => setSemester(event.target.value)}
+            >
+              <option value="">Select your Semester</option>
+              {GOOD_MORAL_SEMESTERS.map((sem) => (
+                <option key={sem} value={sem}>{sem}</option>
+              ))}
+            </Select>
           </div>
         </fieldset>
         </PanelSection>

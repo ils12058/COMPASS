@@ -1234,10 +1234,10 @@ def test_timeline_places_activity_on_business_days_only():
 
 
 def test_semester_follows_the_dataset_academic_calendar():
-    assert academic_semester(date(2026, 8, 3)) == "First"
-    assert academic_semester(date(2026, 12, 18)) == "First"
-    assert academic_semester(date(2027, 1, 4)) == "Second"
-    assert academic_semester(date(2027, 5, 31)) == "Second"
+    assert academic_semester(date(2026, 8, 3)) == "First Semester"
+    assert academic_semester(date(2026, 12, 18)) == "First Semester"
+    assert academic_semester(date(2027, 1, 4)) == "Second Semester"
+    assert academic_semester(date(2027, 5, 31)) == "Second Semester"
     with pytest.raises(ValueError, match="midyear"):
         academic_semester(date(2027, 6, 15))
 

@@ -8,7 +8,16 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GoodMoralSection, goodMoralErrorMessage, uncertainGoodMoralMutation } from "@/features/good-moral/good-moral-shared";
+import { Select } from "@/components/ui/select";
+import {
+  GOOD_MORAL_SEMESTERS,
+  GOOD_MORAL_YEAR_LEVELS,
+  GoodMoralSection,
+  goodMoralErrorMessage,
+  isCanonicalSemester,
+  isCanonicalYearLevel,
+  uncertainGoodMoralMutation,
+} from "@/features/good-moral/good-moral-shared";
 import { goodMoralUpdateRequest, getGoodMoralGetRequestQueryKey, getGoodMoralListRequestsQueryKey } from "@/lib/api/generated/good-moral/good-moral";
 import type { GoodMoralCorrectionPayload, GoodMoralOperationalDetailResponse } from "@/lib/api/generated/model";
 import { institutionalDateInputValue } from "@/lib/institutional-time";
@@ -186,11 +195,57 @@ export function GoodMoralCorrectionForm({
                 </div> : null}
                 {item.variant === "CURRENT_STUDENT" ? (
                   <>
-                    <div>{correctionFieldLabel("year-level", "Year level")}<Input id="good-moral-correction-year-level" className="mt-2" maxLength={64} value={draft.yearLevel} onChange={(event) => setField("yearLevel", event.target.value)} /></div>
+                    <div>
+                      {correctionFieldLabel("year-level", "Year Level")}
+                      <Select
+                        id="good-moral-correction-year-level"
+                        className="mt-2"
+                        value={draft.yearLevel}
+                        onChange={(event) => setField("yearLevel", event.target.value)}
+                      >
+                        {!isCanonicalYearLevel(item.year_level) && item.year_level ? (
+                          <option value={item.year_level}>
+                            {item.year_level} (Current value as entered)
+                          </option>
+                        ) : null}
+                        {!draft.yearLevel && !item.year_level ? (
+                          <option value="">Select Year Level</option>
+                        ) : null}
+                        {GOOD_MORAL_YEAR_LEVELS.map((level) => (
+                          <option key={level} value={level}>{level}</option>
+                        ))}
+                      </Select>
+                      {!isCanonicalYearLevel(item.year_level) && item.year_level ? (
+                        <p className="mt-1 text-xs text-muted">Historical value as entered: “{item.year_level}”. Select a standardized Year Level to update it.</p>
+                      ) : null}
+                    </div>
                     {item.actions.correction_fields.includes("college") ? <div>{correctionFieldLabel("college", "College")}<Input id="good-moral-correction-college" className="mt-2" maxLength={160} value={draft.college} onChange={(event) => setField("college", event.target.value)} /></div> : null}
                     <div>{correctionFieldLabel("course", "Course")}<Input id="good-moral-correction-course" className="mt-2" maxLength={180} value={draft.course} onChange={(event) => setField("course", event.target.value)} /></div>
                     <div>{correctionFieldLabel("major", "Major")}<Input id="good-moral-correction-major" className="mt-2" maxLength={180} value={draft.major} onChange={(event) => setField("major", event.target.value)} /></div>
-                    <div>{correctionFieldLabel("semester", "Semester")}<Input id="good-moral-correction-semester" className="mt-2" maxLength={80} value={draft.semester} onChange={(event) => setField("semester", event.target.value)} /></div>
+                    <div>
+                      {correctionFieldLabel("semester", "Semester")}
+                      <Select
+                        id="good-moral-correction-semester"
+                        className="mt-2"
+                        value={draft.semester}
+                        onChange={(event) => setField("semester", event.target.value)}
+                      >
+                        {!isCanonicalSemester(item.semester) && item.semester ? (
+                          <option value={item.semester}>
+                            {item.semester} (Current value as entered)
+                          </option>
+                        ) : null}
+                        {!draft.semester && !item.semester ? (
+                          <option value="">Select Semester</option>
+                        ) : null}
+                        {GOOD_MORAL_SEMESTERS.map((sem) => (
+                          <option key={sem} value={sem}>{sem}</option>
+                        ))}
+                      </Select>
+                      {!isCanonicalSemester(item.semester) && item.semester ? (
+                        <p className="mt-1 text-xs text-muted">Historical value as entered: “{item.semester}”. Select a standardized Semester to update it.</p>
+                      ) : null}
+                    </div>
                   </>
                 ) : (
                   <>
