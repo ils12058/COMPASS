@@ -33,6 +33,7 @@ from compass.graduate_tracer.models import (
     GTSDegreeReason,
     GTSFirstJobDuration,
 )
+from compass.organization.models import Campus, College, Program
 from tests.profile_fixtures import set_profile
 
 
@@ -94,7 +95,15 @@ def put_json(client: Client, path: str, payload: dict[str, object]):
     )
 
 
+def default_academic_classification() -> tuple[College, Program, int]:
+    campus, _ = Campus.objects.get_or_create(code="UCN-MAIN", defaults={"name": "UCN Main Campus"})
+    college, _ = College.objects.get_or_create(campus=campus, code="CCMS", defaults={"name": "College of Computing and Multimedia Studies"})
+    program, _ = Program.objects.get_or_create(college=college, code="BSIS", defaults={"name": "BS Information Systems"})
+    return college, program, 2026
+
+
 def valid_unemployed_payload() -> dict[str, object]:
+    college, program, grad_year = default_academic_classification()
     return {
         "name": "Graduate Student",
         "permanent_address": "Daet, Camarines Norte",
@@ -107,6 +116,9 @@ def valid_unemployed_payload() -> dict[str, object]:
         "region_of_origin": "REGION_5",
         "province": "Camarines Norte",
         "residence_location": "MUNICIPALITY",
+        "graduated_college_id": str(college.pk),
+        "graduated_program_id": str(program.pk),
+        "graduation_year": grad_year,
         "education": [
             {
                 "degree_and_specialization": "BS Information Systems",

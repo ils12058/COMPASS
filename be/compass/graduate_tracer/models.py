@@ -256,6 +256,21 @@ class GraduateTracerResponse(models.Model):
     )
 
     name_snapshot = models.CharField(max_length=200, blank=True, default="")
+    graduated_college = models.ForeignKey(
+        "organization.College",
+        on_delete=models.PROTECT,
+        related_name="graduate_tracer_responses",
+        null=True,
+        blank=True,
+    )
+    graduated_program = models.ForeignKey(
+        "organization.Program",
+        on_delete=models.PROTECT,
+        related_name="graduate_tracer_responses",
+        null=True,
+        blank=True,
+    )
+    graduation_year = models.PositiveSmallIntegerField(null=True, blank=True)
     civil_status = models.CharField(
         max_length=24, choices=GTSCivilStatus.choices, blank=True, default=""
     )
@@ -362,6 +377,16 @@ class GraduateTracerResponse(models.Model):
     class Meta:
         default_permissions = ()
         ordering = ("-created_at", "id")
+        indexes = [
+            models.Index(
+                fields=("status", "graduated_college", "graduated_program", "graduation_year"),
+                name="gts_response_class_idx",
+            ),
+            models.Index(
+                fields=("status", "graduation_year"),
+                name="gts_response_grad_year_idx",
+            ),
+        ]
         constraints = [
             models.CheckConstraint(
                 condition=(

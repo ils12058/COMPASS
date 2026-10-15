@@ -18,6 +18,7 @@ import {
   type GraduateTracerErrorLookup,
 } from "@/features/graduate-tracer/graduate-tracer-form-fields";
 import { GraduateTracerSection } from "@/features/graduate-tracer/graduate-tracer-shared";
+import { useGraduateTracerGetClassificationOptions } from "@/lib/api/generated/graduate-tracer/graduate-tracer";
 import { institutionalDateInputValue } from "@/lib/institutional-time";
 
 export type GraduateTracerDraftChange = <K extends keyof GraduateTracerFormDraft>(
@@ -74,9 +75,98 @@ export function GraduateTracerEducationSection({
   onChange: GraduateTracerDraftChange;
   errorFor: GraduateTracerErrorLookup;
 }) {
+  const optionsQuery = useGraduateTracerGetClassificationOptions();
+  const colleges = optionsQuery.data?.data.colleges ?? [];
+  const programs = optionsQuery.data?.data.programs ?? [];
+  const currentInstitutionalYear = Number(institutionalDateInputValue().slice(0, 4));
+
+  const collegeOptions = colleges.map((c) => ({
+    value: c.id,
+    label: `${c.code} — ${c.name}`,
+  }));
+
+  const visiblePrograms = draft.graduated_college_id
+    ? programs.filter((p) => p.college_id === draft.graduated_college_id)
+    : [];
+
+  const programOptions = visiblePrograms.map((p) => ({
+    value: p.id,
+    label: `${p.code} — ${p.name}`,
+  }));
+
   return (
     <GraduateTracerSection id="graduate-tracer-education" title="B. Educational Background">
-      <div>
+      <div className="space-y-4">
+        <div>
+          <h3 className="font-semibold text-ink">
+            Graduation Information <span aria-hidden="true" className="text-danger">*</span>
+          </h3>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Select the College and Program you graduated from at UCN, then enter your graduation year.
+          </p>
+        </div>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <SelectField
+            id="gts-graduated-college"
+            label="College at Graduation"
+            value={draft.graduated_college_id}
+            options={collegeOptions}
+            required
+            error={errorFor("gts-graduated-college")}
+            disabled={optionsQuery.isPending}
+            placeholder={optionsQuery.isPending ? "Loading colleges…" : "Select your college"}
+            onChange={(collegeId) => {
+              const nextCollege = collegeId || null;
+              const stillValid =
+                !nextCollege ||
+                !draft.graduated_program_id ||
+                programs.some(
+                  (p) =>
+                    p.id === draft.graduated_program_id &&
+                    p.college_id === nextCollege,
+                );
+              onChange("graduated_college_id", nextCollege);
+              if (!stillValid) {
+                onChange("graduated_program_id", null);
+              }
+            }}
+          />
+          <SelectField
+            id="gts-graduated-program"
+            label="Program Graduated"
+            value={draft.graduated_program_id}
+            options={programOptions}
+            required
+            error={errorFor("gts-graduated-program")}
+            disabled={optionsQuery.isPending || !draft.graduated_college_id}
+            placeholder={
+              !draft.graduated_college_id
+                ? "Select a college first"
+                : "Select your program"
+            }
+            onChange={(programId) => onChange("graduated_program_id", programId || null)}
+          />
+          <TextField
+            id="gts-graduation-year"
+            label="Graduation Year"
+            type="number"
+            inputMode="numeric"
+            min={1900}
+            max={currentInstitutionalYear}
+            step={1}
+            placeholder="e.g. 2024"
+            value={draft.graduation_year ? String(draft.graduation_year) : ""}
+            required
+            error={errorFor("gts-graduation-year")}
+            onChange={(val) => {
+              const trimmed = val.trim();
+              onChange("graduation_year", trimmed ? Number(trimmed) : null);
+            }}
+          />
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-5">
         <h3 className="font-semibold text-ink">Q12. Educational Attainment (Baccalaureate Degree only) <span aria-hidden="true" className="text-danger">*</span></h3>
         <p className="mt-1 text-sm leading-6 text-muted">Add each baccalaureate degree you completed. At least one is required before submission.</p>
         {draft.education.length ? (

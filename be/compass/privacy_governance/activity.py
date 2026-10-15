@@ -189,6 +189,12 @@ def _graduate_tracer_report_release(event: AuditEvent) -> PrivacyActivityItem | 
             return None
 
     scope_parts = [f"Schema version {schema_version}"]
+    if metadata.get("college_code"):
+        scope_parts.append(f"College {metadata['college_code']}")
+    if metadata.get("program_code"):
+        scope_parts.append(f"Program {metadata['program_code']}")
+    if metadata.get("graduation_year") is not None:
+        scope_parts.append(f"Graduation year {metadata['graduation_year']}")
     if submitted_from is not None:
         scope_parts.append(f"Submitted from {submitted_from.isoformat()}")
     if submitted_to is not None:

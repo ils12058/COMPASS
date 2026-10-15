@@ -52,6 +52,7 @@ export function TextField({
   onChange,
   type = "text",
   hint,
+  placeholder,
   inputMode,
   min,
   max,
@@ -65,6 +66,7 @@ export function TextField({
   onChange: (value: string) => void;
   type?: string;
   hint?: string;
+  placeholder?: string;
   inputMode?: "text" | "email" | "tel" | "numeric";
   min?: string | number;
   max?: string | number;
@@ -77,6 +79,7 @@ export function TextField({
       <Input
         id={id}
         type={type}
+        placeholder={placeholder}
         value={value ?? ""}
         onChange={(event) => onChange(event.target.value)}
         inputMode={inputMode}
@@ -131,6 +134,7 @@ export function SelectField<T extends string>({
   placeholder = "Select an option",
   required = false,
   error,
+  disabled = false,
 }: {
   id: string;
   label: string;
@@ -140,12 +144,14 @@ export function SelectField<T extends string>({
   placeholder?: string;
   required?: boolean;
   error?: string;
+  disabled?: boolean;
 }) {
   return (
     <FormField id={id} label={label} required={required} error={error}>
       <Select
         id={id}
         value={value ?? ""}
+        disabled={disabled}
         aria-required={required || undefined}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? `${id}-error` : undefined}

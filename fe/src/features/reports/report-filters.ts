@@ -25,6 +25,9 @@ export type ParsedStudentProfileFilters = {
 export type GraduateTracerDraft = {
   submitted_from: string;
   submitted_to: string;
+  college_id: string;
+  program_id: string;
+  graduation_year: string;
 };
 
 export type ParsedGraduateTracerFilters = {
@@ -44,6 +47,7 @@ const FILTER_LABELS: Record<string, string> = {
   year_level: "year level",
   submitted_from: "submission start date",
   submitted_to: "submission end date",
+  graduation_year: "graduation year",
 };
 
 function readSingle(
@@ -180,12 +184,47 @@ export function validateGraduateTracerDraft(
     errors.push("Submitted From must be on or before Submitted To.");
   }
 
+  const collegeId = draft.college_id.trim();
+  if (collegeId && !UUID_PATTERN.test(collegeId)) {
+    errors.push("Choose a valid college.");
+  }
+
+  const programId = draft.program_id.trim();
+  if (programId && !UUID_PATTERN.test(programId)) {
+    errors.push("Choose a valid program.");
+  }
+
+  const gradYear = draft.graduation_year.trim();
+  const currentYear = new Date().getFullYear();
+  if (gradYear) {
+    if (!/^\d{4}$/.test(gradYear)) {
+      errors.push("Graduation Year must be a 4-digit calendar year.");
+    } else {
+      const yearNum = Number(gradYear);
+      if (yearNum < 1900 || yearNum > currentYear) {
+        errors.push(`Graduation Year must be between 1900 and ${currentYear}.`);
+      }
+    }
+  }
+
   const params: ReportsGetGraduateTracerParams = {};
   if (submittedFrom && isValidDateOnly(submittedFrom)) {
     params.submitted_from = submittedFrom;
   }
   if (submittedTo && isValidDateOnly(submittedTo)) {
     params.submitted_to = submittedTo;
+  }
+  if (collegeId && UUID_PATTERN.test(collegeId)) {
+    params.college_id = collegeId;
+  }
+  if (programId && UUID_PATTERN.test(programId)) {
+    params.program_id = programId;
+  }
+  if (gradYear && /^\d{4}$/.test(gradYear)) {
+    const yearNum = Number(gradYear);
+    if (yearNum >= 1900 && yearNum <= currentYear) {
+      params.graduation_year = yearNum;
+    }
   }
   return {
     draft,
@@ -202,6 +241,9 @@ export function parseGraduateTracerFilters(
   const draft: GraduateTracerDraft = {
     submitted_from: readSingle(searchParams, "submitted_from", errors),
     submitted_to: readSingle(searchParams, "submitted_to", errors),
+    college_id: readSingle(searchParams, "college_id", errors),
+    program_id: readSingle(searchParams, "program_id", errors),
+    graduation_year: readSingle(searchParams, "graduation_year", errors),
   };
   const validated = validateGraduateTracerDraft(draft);
   errors.push(...validated.errors);
@@ -224,6 +266,15 @@ export function graduateTracerFilterQuery(
   }
   if (validated.params.submitted_to) {
     params.set("submitted_to", validated.params.submitted_to);
+  }
+  if (validated.params.college_id) {
+    params.set("college_id", validated.params.college_id);
+  }
+  if (validated.params.program_id) {
+    params.set("program_id", validated.params.program_id);
+  }
+  if (validated.params.graduation_year !== undefined) {
+    params.set("graduation_year", String(validated.params.graduation_year));
   }
   return params.toString();
 }

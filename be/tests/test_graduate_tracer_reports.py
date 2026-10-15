@@ -514,10 +514,7 @@ def test_aggregate_response_excludes_identity_free_text_and_academic_inference()
         sentinel,
         "sentinel-private@example.edu",
         str(item.student_id),
-        "program_id",
-        "college_id",
         "campus_id",
-        "graduation_year",
         "non_response_rate",
     ):
         assert forbidden not in serialized

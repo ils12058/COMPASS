@@ -270,6 +270,9 @@ export function graduateTracerDraftFromDetail(
 
   return {
     ...draft,
+    graduated_college_id: detail.graduated_college_id ?? detail.graduated_college?.id ?? null,
+    graduated_program_id: detail.graduated_program_id ?? detail.graduated_program?.id ?? null,
+    graduation_year: detail.graduation_year ?? null,
     education: (detail.education ?? []).map((row, index) => ({
       ...row,
       year_graduated: String(row.year_graduated),
@@ -295,6 +298,9 @@ export function graduateTracerPayloadFromDraft(
 ): GraduateTracerDraftPayload {
   return {
     ...draft,
+    graduated_college_id: draft.graduated_college_id || null,
+    graduated_program_id: draft.graduated_program_id || null,
+    graduation_year: draft.graduation_year ? Number(draft.graduation_year) : null,
     education: draft.education.map((row) => {
       const { formKey, ...payload } = row;
       void formKey;
@@ -430,6 +436,17 @@ export function getGraduateTracerDraftRowIssues(
     issues.push({ section, targetId, message });
   const currentInstitutionalYear = Number(institutionalDateInputValue().slice(0, 4));
 
+  if (draft.graduation_year !== undefined && draft.graduation_year !== null) {
+    const year = Number(draft.graduation_year);
+    if (!Number.isInteger(year) || year < 1900 || year > currentInstitutionalYear) {
+      add(
+        "graduate-tracer-education",
+        "gts-graduation-year",
+        `Enter a valid graduation year from 1900 through ${currentInstitutionalYear}.`,
+      );
+    }
+  }
+
   draft.education.forEach((row, index) => {
     if (!row.degree_and_specialization.trim()) {
       add("graduate-tracer-education", `degree-${index}-name`, `Enter the degree or specialization for Degree ${index + 1}.`);
@@ -484,6 +501,26 @@ export function getGraduateTracerSubmissionIssues(draft: GraduateTracerFormDraft
   if (!draft.residence_location) add("graduate-tracer-general", "gts-residence-location", "Select City or Municipality.");
   if (draft.email?.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(draft.email.trim())) {
     add("graduate-tracer-general", "gts-email", "Enter a valid email address or leave the field blank.");
+  }
+
+  if (!draft.graduated_college_id) {
+    add("graduate-tracer-education", "gts-graduated-college", "Select your college at graduation.");
+  }
+  if (!draft.graduated_program_id) {
+    add("graduate-tracer-education", "gts-graduated-program", "Select your program graduated.");
+  }
+  if (draft.graduation_year === undefined || draft.graduation_year === null) {
+    add("graduate-tracer-education", "gts-graduation-year", "Enter your graduation year.");
+  } else {
+    const currentInstitutionalYear = Number(institutionalDateInputValue().slice(0, 4));
+    const year = Number(draft.graduation_year);
+    if (!Number.isInteger(year) || year < 1900 || year > currentInstitutionalYear) {
+      add(
+        "graduate-tracer-education",
+        "gts-graduation-year",
+        `Enter a valid graduation year from 1900 through ${currentInstitutionalYear}.`,
+      );
+    }
   }
 
   if (draft.education.length === 0) add("graduate-tracer-education", "gts-add-degree", "Add at least one baccalaureate degree.");

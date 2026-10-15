@@ -81,7 +81,7 @@ export function GraduateTracerReportContent({
       <Panel aria-labelledby="graduate-tracer-context-heading">
         <PanelHeader title="Report context" titleId="graduate-tracer-context-heading" />
         <PanelBody>
-        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-4">
+        <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 xl:grid-cols-3">
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
               Submitted Response Count
@@ -103,6 +103,34 @@ export function GraduateTracerReportContent({
           </div>
           <div>
             <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
+              College at Graduation
+            </dt>
+            <dd className="mt-1 text-sm font-medium text-ink">
+              {report.report_context.college
+                ? `${report.report_context.college.code} — ${report.report_context.college.name}`
+                : "All Colleges"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Program Graduated
+            </dt>
+            <dd className="mt-1 text-sm font-medium text-ink">
+              {report.report_context.program
+                ? `${report.report_context.program.code} — ${report.report_context.program.name}`
+                : "All Programs"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Graduation Year
+            </dt>
+            <dd className="mt-1 text-sm font-medium text-ink">
+              {report.report_context.graduation_year ?? "All Graduation Years"}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
               Generated At
             </dt>
             <dd className="mt-1 text-sm font-medium text-ink">
@@ -115,7 +143,7 @@ export function GraduateTracerReportContent({
       <ReportDisclosureNotice warnings={report.disclosure_warnings} />
       {report.report_context.submitted_response_count === 0 ? (
         <Notice>
-          No submitted Graduate Tracer responses match the selected submission period.
+          No submitted Graduate Tracer responses match the selected filters.
         </Notice>
       ) : null}
 

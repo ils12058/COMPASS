@@ -20,6 +20,7 @@ from compass.privacy_governance.releases import (
 )
 
 from .graduate_tracer import (
+    GraduateTracerDisclosureRestricted,
     GraduateTracerReportError,
     InvalidGraduateTracerReportFilter,
     build_graduate_tracer_report,
@@ -124,6 +125,12 @@ def _raise(exc: ReportError) -> NoReturn:
 
 
 def _raise_graduate_tracer(exc: GraduateTracerReportError) -> NoReturn:
+    if isinstance(exc, GraduateTracerDisclosureRestricted):
+        raise APIError(
+            403,
+            "small_population_disclosure_restricted",
+            "Aggregate reporting is restricted for this population to protect respondent confidentiality.",
+        ) from exc
     if isinstance(exc, InvalidGraduateTracerReportFilter):
         raise APIError(422, "invalid_report_filter", str(exc)) from exc
     if isinstance(exc, GraduateTracerWorkbookUnavailable):
@@ -284,12 +291,18 @@ def graduate_tracer(
     request,
     submitted_from: date | None = None,
     submitted_to: date | None = None,
+    college_id: UUID | None = None,
+    program_id: UUID | None = None,
+    graduation_year: int | None = None,
 ):
     _require_global_viewer(request)
     try:
         return build_graduate_tracer_report(
             submitted_from=submitted_from,
             submitted_to=submitted_to,
+            college_id=college_id,
+            program_id=program_id,
+            graduation_year=graduation_year,
         )
     except GraduateTracerReportError as exc:
         _raise_graduate_tracer(exc)
@@ -306,12 +319,18 @@ def graduate_tracer_xlsx(
     request,
     submitted_from: date | None = None,
     submitted_to: date | None = None,
+    college_id: UUID | None = None,
+    program_id: UUID | None = None,
+    graduation_year: int | None = None,
 ):
     _require_global_viewer(request)
     try:
         result = render_graduate_tracer_xlsx(
             submitted_from=submitted_from,
             submitted_to=submitted_to,
+            college_id=college_id,
+            program_id=program_id,
+            graduation_year=graduation_year,
         )
     except GraduateTracerReportError as exc:
         _raise_graduate_tracer(exc)

@@ -107,6 +107,11 @@ def record_graduate_tracer_release(
             "instrument_schema_version": schema_version,
             "submitted_from": release_context.get("submitted_from"),
             "submitted_to": release_context.get("submitted_to"),
+            "college_id": release_context.get("college_id"),
+            "college_code": release_context.get("college_code"),
+            "program_id": release_context.get("program_id"),
+            "program_code": release_context.get("program_code"),
+            "graduation_year": release_context.get("graduation_year"),
         },
     )
 

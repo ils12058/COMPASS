@@ -38,11 +38,17 @@ export default async function Page({
 }) {
   const query = await searchParams;
   const employmentValue = singleValue(query.current_employment_state);
+  const collegeId = singleValue(query.college_id);
+  const programId = singleValue(query.program_id);
+  const gradYear = positiveInteger(singleValue(query.graduation_year));
   const filters: GraduateTracerOperationalFilters = {
     search: singleValue(query.search),
     submittedFrom: validCalendarDate(singleValue(query.submitted_from)),
     submittedTo: validCalendarDate(singleValue(query.submitted_to)),
     employmentState: Object.values(GTSEmploymentStateValue).find((value) => value === employmentValue) ?? "",
+    collegeId: collegeId || undefined,
+    programId: programId || undefined,
+    graduationYear: gradYear,
     ordering: readOrdering(singleValue(query.ordering), GraduateTracerOrdering),
     page: positiveInteger(singleValue(query.page)) ?? 1,
     pageSize: pageSize(singleValue(query.page_size)),

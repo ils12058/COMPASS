@@ -46,6 +46,7 @@ from .services import (
     GraduateTracerOrdering,
     InvalidGraduateTracerInput,
     ensure_my_response,
+    get_classification_options,
     get_my_response,
     get_submitted_for_head,
     list_submitted_for_head,
@@ -259,6 +260,36 @@ class GraduateTracerTrainingPayload(StrictSchema):
     institution: str = ""
 
 
+class GTSCollegeOption(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
+class GTSProgramOption(StrictSchema):
+    id: UUID
+    college_id: UUID
+    code: str
+    name: str
+
+
+class GTSClassificationOptionsResponse(StrictSchema):
+    colleges: list[GTSCollegeOption]
+    programs: list[GTSProgramOption]
+
+
+class GTSCollegeSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
+class GTSProgramSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
 class GraduateTracerDraftPayload(StrictSchema):
     name: str = ""
     permanent_address: str = ""
@@ -271,6 +302,10 @@ class GraduateTracerDraftPayload(StrictSchema):
     region_of_origin: GTSRegionOfOriginValue | None = None
     province: str = ""
     residence_location: GTSResidenceLocationValue | None = None
+
+    graduated_college_id: UUID | None = None
+    graduated_program_id: UUID | None = None
+    graduation_year: int | None = None
 
     education: list[GraduateTracerEducationPayload] = Field(default_factory=list)
     professional_exams: list[GraduateTracerProfessionalExamPayload] = Field(default_factory=list)
@@ -327,6 +362,8 @@ class GraduateTracerDetailResponse(GraduateTracerDraftPayload):
     id: UUID
     student_id: UUID
     student: GraduateTracerStudentSummary
+    graduated_college: GTSCollegeSummary | None = None
+    graduated_program: GTSProgramSummary | None = None
     instrument_schema_version: int
     status: GraduateTracerStatusValue
     submitted_at: datetime | None
@@ -340,6 +377,9 @@ class GraduateTracerSummaryResponse(StrictSchema):
     student: GraduateTracerStudentSummary
     name: str
     current_employment_state: GTSEmploymentStateValue
+    graduated_college: GTSCollegeSummary | None = None
+    graduated_program: GTSProgramSummary | None = None
+    graduation_year: int | None = None
     instrument_schema_version: int
     submitted_at: datetime
 
@@ -375,6 +415,24 @@ def _require_viewer(request) -> None:
             "permission_denied",
             "Head Guidance Graduate Tracer review authority is required.",
         )
+
+
+def _require_classification_options_viewer(request) -> None:
+    actor = request.auth_user
+    if not actor.is_active:
+        raise APIError(403, "permission_denied", "Active user session required.")
+    if (
+        actor.has_capability("graduate_tracer.manage_self")
+        or actor.has_capability("graduate_tracer.view_self")
+        or actor.has_capability("graduate_tracer.view")
+        or actor.has_capability("reports.view")
+    ):
+        return
+    raise APIError(
+        403,
+        "permission_denied",
+        "Graduate Tracer classification options access is required.",
+    )
 
 
 def _raise(exc: GraduateTracerError) -> NoReturn:
@@ -449,6 +507,26 @@ def _student_summary(item) -> dict[str, object]:
     }
 
 
+def _college_summary(college) -> dict[str, object] | None:
+    if college is None:
+        return None
+    return {
+        "id": college.pk,
+        "code": college.code,
+        "name": college.name,
+    }
+
+
+def _program_summary(program) -> dict[str, object] | None:
+    if program is None:
+        return None
+    return {
+        "id": program.pk,
+        "code": program.code,
+        "name": program.name,
+    }
+
+
 def _detail(item) -> dict[str, object]:
     from .confidential_content import read_private_projection
 
@@ -461,6 +539,11 @@ def _detail(item) -> dict[str, object]:
         "id": item.pk,
         "student_id": item.student_id,
         "student": _student_summary(item),
+        "graduated_college_id": item.graduated_college_id,
+        "graduated_program_id": item.graduated_program_id,
+        "graduation_year": item.graduation_year,
+        "graduated_college": _college_summary(item.graduated_college),
+        "graduated_program": _program_summary(item.graduated_program),
         "instrument_schema_version": item.instrument_schema_version,
         "status": item.status,
         "submitted_at": item.submitted_at,
@@ -524,6 +607,9 @@ def _summary(item) -> dict[str, object]:
         "student": _student_summary(item),
         "name": item.name_snapshot,
         "current_employment_state": item.current_employment_state,
+        "graduated_college": _college_summary(item.graduated_college),
+        "graduated_program": _program_summary(item.graduated_program),
+        "graduation_year": item.graduation_year,
         "instrument_schema_version": item.instrument_schema_version,
         "submitted_at": item.submitted_at,
     }
@@ -537,6 +623,27 @@ def _payload_values(payload: GraduateTracerDraftPayload) -> dict[str, object]:
     values["telephone_contact_numbers_snapshot"] = values.pop("telephone_contact_numbers")
     values["mobile_number_snapshot"] = values.pop("mobile_number")
     return values
+
+
+@router.get(
+    "/classification-options",
+    response=response_with_errors(GTSClassificationOptionsResponse, 401, 403),
+    auth=session_auth,
+    operation_id="graduateTracerGetClassificationOptions",
+)
+def graduate_tracer_get_classification_options(request):
+    _require_classification_options_viewer(request)
+    colleges, programs = get_classification_options()
+    return {
+        "colleges": [
+            {"id": c.pk, "code": c.code, "name": c.name}
+            for c in colleges
+        ],
+        "programs": [
+            {"id": p.pk, "college_id": p.college_id, "code": p.code, "name": p.name}
+            for p in programs
+        ],
+    }
 
 
 @router.post(
@@ -632,6 +739,9 @@ def graduate_tracer_list_responses(
     submitted_from: date | None = None,
     submitted_to: date | None = None,
     current_employment_state: GTSEmploymentStateValue | None = None,
+    college_id: UUID | None = None,
+    program_id: UUID | None = None,
+    graduation_year: int | None = None,
     ordering: GraduateTracerOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
@@ -647,6 +757,9 @@ def graduate_tracer_list_responses(
             current_employment_state=(
                 current_employment_state.value if current_employment_state is not None else None
             ),
+            college_id=college_id,
+            program_id=program_id,
+            graduation_year=graduation_year,
             ordering=ordering,
             page=page,
             page_size=page_size,

@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
 from io import BytesIO
+from uuid import UUID
 
 from openpyxl import Workbook
 from openpyxl.cell.cell import Cell
@@ -149,13 +150,25 @@ def _build_summary(
     _write_text(worksheet, 1, 1, "Graduate Tracer Aggregate Report", bold=True)
     worksheet["A1"].font = Font(bold=True, size=14)
 
-    rows = [
+    college = report_context.get("college")
+    program = report_context.get("program")
+    graduation_year = report_context.get("graduation_year")
+
+    rows: list[tuple[str, object]] = [
         ("Instrument Schema Version", report_context.get("instrument_schema_version")),
+    ]
+    if isinstance(college, dict) and college.get("code"):
+        rows.append(("College at Graduation", f"{college.get('code')} - {college.get('name')}"))
+    if isinstance(program, dict) and program.get("code"):
+        rows.append(("Program Graduated", f"{program.get('code')} - {program.get('name')}"))
+    if graduation_year is not None:
+        rows.append(("Graduation Year", graduation_year))
+    rows.extend([
         ("Submitted From", _date_text(report_context.get("submitted_from"))),
         ("Submitted To", _date_text(report_context.get("submitted_to"))),
         ("Submitted Response Count", int(report_context.get("submitted_response_count") or 0)),
         ("Generated At", _generated_at_text(report_context.get("generated_at"))),
-    ]
+    ])
     row = 3
     for label, value in rows:
         _write_text(worksheet, row, 1, label, bold=True, wrap=True)
@@ -302,8 +315,21 @@ def _build_section_sheet(
     worksheet.column_dimensions["C"].width = 18
 
 
-def _filename(*, submitted_from: date | None, submitted_to: date | None) -> str:
+def _filename(
+    *,
+    submitted_from: date | None,
+    submitted_to: date | None,
+    college_code: str | None = None,
+    program_code: str | None = None,
+    graduation_year: int | None = None,
+) -> str:
     stem = "graduate-tracer-schema-v1"
+    if college_code:
+        stem += f"-college-{college_code.lower()}"
+    if program_code:
+        stem += f"-program-{program_code.lower()}"
+    if graduation_year is not None:
+        stem += f"-year-{graduation_year}"
     if submitted_from is not None or submitted_to is not None:
         start = submitted_from.isoformat() if submitted_from else "start"
         end = submitted_to.isoformat() if submitted_to else "end"
@@ -315,10 +341,16 @@ def render_graduate_tracer_xlsx(
     *,
     submitted_from: date | None = None,
     submitted_to: date | None = None,
+    college_id: UUID | None = None,
+    program_id: UUID | None = None,
+    graduation_year: int | None = None,
 ) -> GraduateTracerXlsxResult:
     report = build_graduate_tracer_report(
         submitted_from=submitted_from,
         submitted_to=submitted_to,
+        college_id=college_id,
+        program_id=program_id,
+        graduation_year=graduation_year,
     )
     report_context = report.get("report_context")
     methodology = report.get("methodology")
@@ -372,15 +404,29 @@ def render_graduate_tracer_xlsx(
             "The Graduate Tracer XLSX export could not be generated."
         ) from exc
 
+    college = report_context.get("college")
+    program = report_context.get("program")
+    college_code = college.get("code") if isinstance(college, dict) else None
+    program_code = program.get("code") if isinstance(program, dict) else None
+    grad_year = report_context.get("graduation_year")
+
     return GraduateTracerXlsxResult(
         xlsx_bytes=output.getvalue(),
         filename=_filename(
             submitted_from=submitted_from,
             submitted_to=submitted_to,
+            college_code=college_code,
+            program_code=program_code,
+            graduation_year=grad_year,
         ),
         release_context=graduate_tracer_release_context(
             submitted_from=submitted_from,
             submitted_to=submitted_to,
+            college_id=college.get("id") if isinstance(college, dict) else None,
+            college_code=college_code,
+            program_id=program.get("id") if isinstance(program, dict) else None,
+            program_code=program_code,
+            graduation_year=grad_year,
         ),
     )
 

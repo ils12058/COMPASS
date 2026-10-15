@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from datetime import date, datetime
 
+from uuid import UUID
+
 from .schemas import ReportDisclosureWarning, StrictSchema
 
 
@@ -23,10 +25,25 @@ class GraduateTracerDistributionSection(StrictSchema):
     rows: list[GraduateTracerDistributionRow]
 
 
+class GraduateTracerCollegeSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
+class GraduateTracerProgramSummary(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
 class GraduateTracerReportContext(StrictSchema):
     instrument_schema_version: int
     submitted_from: date | None
     submitted_to: date | None
+    college: GraduateTracerCollegeSummary | None = None
+    program: GraduateTracerProgramSummary | None = None
+    graduation_year: int | None = None
     submitted_response_count: int
     generated_at: datetime
 

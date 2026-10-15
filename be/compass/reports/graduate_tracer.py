@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
+from uuid import UUID
 
 from django.db import transaction
 from django.db.models import Count, Q
 from django.utils import timezone
 
-from compass.common.institutional_time import institution_day_start
+from compass.common.institutional_time import institution_day_start, institution_today
 from compass.graduate_tracer.models import (
     GTS_SCHEMA_VERSION,
     GraduateTracerResponse,
@@ -30,6 +31,7 @@ from compass.graduate_tracer.models import (
     GTSUnemploymentReason,
     GTSUsefulCompetency,
 )
+from compass.organization.models import College, Program
 
 from .policy import build_disclosure_warnings
 
@@ -47,8 +49,10 @@ METHODOLOGY = {
         "campaign or graduate-roster denominator."
     ),
     "academic_grouping": (
-        "No Program, College, or Campus grouping is performed because the survey has no canonical "
-        "historical academic-program binding."
+        "Graduation College, Program, and Year filters reflect student self-reported "
+        "academic classification at graduation, not Registrar-verified credentials. "
+        "Historical records lacking classification remain unclassified and are excluded from "
+        "contradictory or specific academic filters."
     ),
     "free_text": "Free-text survey fields are not automatically classified or aggregated.",
     "multi_select": (
@@ -62,6 +66,10 @@ class GraduateTracerReportError(RuntimeError):
 
 
 class InvalidGraduateTracerReportFilter(GraduateTracerReportError):
+    pass
+
+
+class GraduateTracerDisclosureRestricted(GraduateTracerReportError):
     pass
 
 
@@ -81,7 +89,14 @@ def _submission_boundary(value: date, *, following_day: bool = False) -> datetim
     return institution_day_start(local_date)
 
 
-def _base_queryset(*, submitted_from: date | None, submitted_to: date | None):
+def _base_queryset(
+    *,
+    submitted_from: date | None,
+    submitted_to: date | None,
+    college_id: UUID | None = None,
+    program_id: UUID | None = None,
+    graduation_year: int | None = None,
+):
     if submitted_from is not None and submitted_to is not None:
         if submitted_from > submitted_to:
             raise InvalidGraduateTracerReportFilter(
@@ -99,6 +114,12 @@ def _base_queryset(*, submitted_from: date | None, submitted_to: date | None):
         queryset = queryset.filter(
             submitted_at__lt=_submission_boundary(submitted_to, following_day=True)
         )
+    if college_id is not None:
+        queryset = queryset.filter(graduated_college_id=college_id)
+    if program_id is not None:
+        queryset = queryset.filter(graduated_program_id=program_id)
+    if graduation_year is not None:
+        queryset = queryset.filter(graduation_year=graduation_year)
     return queryset
 
 
@@ -287,15 +308,53 @@ def build_graduate_tracer_report(
     *,
     submitted_from: date | None = None,
     submitted_to: date | None = None,
+    college_id: UUID | None = None,
+    program_id: UUID | None = None,
+    graduation_year: int | None = None,
 ) -> dict[str, object]:
+    college_obj: College | None = None
+    program_obj: Program | None = None
+    if college_id is not None:
+        college_obj = College.objects.filter(pk=college_id).first()
+        if college_obj is None:
+            raise InvalidGraduateTracerReportFilter("The selected college was not found.")
+    if program_id is not None:
+        program_obj = Program.objects.select_related("college").filter(pk=program_id).first()
+        if program_obj is None:
+            raise InvalidGraduateTracerReportFilter("The selected program was not found.")
+        if college_id is not None and program_obj.college_id != college_id:
+            raise InvalidGraduateTracerReportFilter(
+                "The selected program does not belong to the selected college."
+            )
+        if college_obj is None:
+            college_obj = program_obj.college
+    if graduation_year is not None:
+        if type(graduation_year) is not int or isinstance(graduation_year, bool):
+            raise InvalidGraduateTracerReportFilter("graduation_year must be a valid graduation year.")
+        current_year = institution_today().year
+        if not (1900 <= graduation_year <= current_year):
+            raise InvalidGraduateTracerReportFilter("graduation_year must be a valid graduation year.")
+
     population_ids = list(
         _base_queryset(
             submitted_from=submitted_from,
             submitted_to=submitted_to,
+            college_id=college_id,
+            program_id=program_id,
+            graduation_year=graduation_year,
         )
         .select_for_update()
         .values_list("id", flat=True)
     )
+    population = len(population_ids)
+    is_filtered_academic = bool(
+        college_id is not None or program_id is not None or graduation_year is not None
+    )
+    if is_filtered_academic and 0 < population < 5:
+        raise GraduateTracerDisclosureRestricted(
+            "Aggregate reporting is restricted for this population to protect respondent confidentiality."
+        )
+
     # Freeze and lock membership until all distributions are calculated. A disposition cannot
     # replace a contributing row between separate aggregate queries under READ COMMITTED.
     base = GraduateTracerResponse.objects.filter(pk__in=population_ids)
@@ -473,15 +532,28 @@ def build_graduate_tracer_report(
         ),
     }
     disclosure_warnings = build_disclosure_warnings(
-        population=len(population_ids),
+        population=population,
         released_counts=_graduate_tracer_released_counts(sections),
+    )
+    college_summary = (
+        {"id": college_obj.pk, "code": college_obj.code, "name": college_obj.name}
+        if college_obj is not None
+        else None
+    )
+    program_summary = (
+        {"id": program_obj.pk, "code": program_obj.code, "name": program_obj.name}
+        if program_obj is not None
+        else None
     )
     return {
         "report_context": {
             "instrument_schema_version": GTS_SCHEMA_VERSION,
             "submitted_from": submitted_from,
             "submitted_to": submitted_to,
-            "submitted_response_count": len(population_ids),
+            "college": college_summary,
+            "program": program_summary,
+            "graduation_year": graduation_year,
+            "submitted_response_count": population,
             "generated_at": timezone.now(),
         },
         "methodology": dict(METHODOLOGY),
@@ -494,15 +566,32 @@ def graduate_tracer_release_context(
     *,
     submitted_from: date | None,
     submitted_to: date | None,
+    college_id: UUID | None = None,
+    college_code: str | None = None,
+    program_id: UUID | None = None,
+    program_code: str | None = None,
+    graduation_year: int | None = None,
 ) -> dict[str, object]:
-    return {
+    context: dict[str, object] = {
         "instrument_schema_version": GTS_SCHEMA_VERSION,
         "submitted_from": submitted_from.isoformat() if submitted_from else None,
         "submitted_to": submitted_to.isoformat() if submitted_to else None,
     }
+    if college_id is not None:
+        context["college_id"] = str(college_id)
+    if college_code is not None:
+        context["college_code"] = college_code
+    if program_id is not None:
+        context["program_id"] = str(program_id)
+    if program_code is not None:
+        context["program_code"] = program_code
+    if graduation_year is not None:
+        context["graduation_year"] = graduation_year
+    return context
 
 
 __all__ = [
+    "GraduateTracerDisclosureRestricted",
     "GraduateTracerReportError",
     "InvalidGraduateTracerReportFilter",
     "METHODOLOGY",

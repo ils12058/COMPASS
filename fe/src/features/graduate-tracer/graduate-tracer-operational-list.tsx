@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -18,7 +19,10 @@ import { CanonicalPagination } from "@/features/portal/components/canonical-pagi
 import { describeResultPage } from "@/features/portal/components/result-context";
 import { EMPLOYMENT_STATE_CHOICES, formatGraduateTracerDateTime, graduateTracerOrderingOptions } from "@/features/graduate-tracer/graduate-tracer-presentation";
 import { GraduateTracerError, GraduateTracerHeading, graduateTracerErrorMessage } from "@/features/graduate-tracer/graduate-tracer-shared";
-import { useGraduateTracerListResponses } from "@/lib/api/generated/graduate-tracer/graduate-tracer";
+import {
+  useGraduateTracerGetClassificationOptions,
+  useGraduateTracerListResponses,
+} from "@/lib/api/generated/graduate-tracer/graduate-tracer";
 import { GraduateTracerOrdering, type GTSEmploymentStateValue } from "@/lib/api/generated/model";
 
 export type GraduateTracerOperationalFilters = {
@@ -26,6 +30,9 @@ export type GraduateTracerOperationalFilters = {
   submittedFrom: string;
   submittedTo: string;
   employmentState: GTSEmploymentStateValue | "";
+  collegeId?: string;
+  programId?: string;
+  graduationYear?: number;
   // A chosen order; absent means the newest submission first (ADR-090).
   ordering?: GraduateTracerOrdering;
   page: number;
@@ -38,6 +45,9 @@ function pageHref(filters: GraduateTracerOperationalFilters, page: number, pageS
   if (filters.submittedFrom) params.set("submitted_from", filters.submittedFrom);
   if (filters.submittedTo) params.set("submitted_to", filters.submittedTo);
   if (filters.employmentState) params.set("current_employment_state", filters.employmentState);
+  if (filters.collegeId) params.set("college_id", filters.collegeId);
+  if (filters.programId) params.set("program_id", filters.programId);
+  if (filters.graduationYear) params.set("graduation_year", String(filters.graduationYear));
   if (filters.ordering) params.set("ordering", filters.ordering);
   const effectivePageSize = pageSize ?? filters.pageSize;
   if (effectivePageSize) params.set("page_size", String(effectivePageSize));
@@ -53,21 +63,60 @@ function hideCachedResults(error: unknown): boolean {
 export function GraduateTracerOperationalList({ filters }: { filters: GraduateTracerOperationalFilters }) {
   const router = useRouter();
   const dateRangeInvalid = Boolean(filters.submittedFrom && filters.submittedTo && filters.submittedFrom > filters.submittedTo);
+
+  const optionsQuery = useGraduateTracerGetClassificationOptions();
+  const colleges = optionsQuery.data?.data.colleges ?? [];
+  const programs = optionsQuery.data?.data.programs ?? [];
+
+  const [selectedCollege, setSelectedCollege] = useState(filters.collegeId ?? "");
+  const [selectedProgram, setSelectedProgram] = useState(filters.programId ?? "");
+
+  const visiblePrograms = selectedCollege
+    ? programs.filter((p) => p.college_id === selectedCollege)
+    : programs;
+
   const params = {
     ...(filters.search ? { search: filters.search } : {}),
     ...(filters.submittedFrom ? { submitted_from: filters.submittedFrom } : {}),
     ...(filters.submittedTo ? { submitted_to: filters.submittedTo } : {}),
     ...(filters.employmentState ? { current_employment_state: filters.employmentState } : {}),
+    ...(filters.collegeId ? { college_id: filters.collegeId } : {}),
+    ...(filters.programId ? { program_id: filters.programId } : {}),
+    ...(filters.graduationYear ? { graduation_year: filters.graduationYear } : {}),
     ...(filters.ordering ? { ordering: filters.ordering } : {}),
     page: filters.page,
     ...(filters.pageSize ? { page_size: filters.pageSize } : {}),
   };
   const queue = useGraduateTracerListResponses(params, { query: { retry: false, enabled: !dateRangeInvalid } });
   const page = queue.data?.data;
-  const hasFilters = Boolean(filters.search || filters.submittedFrom || filters.submittedTo || filters.employmentState);
+  const hasFilters = Boolean(
+    filters.search ||
+    filters.submittedFrom ||
+    filters.submittedTo ||
+    filters.employmentState ||
+    filters.collegeId ||
+    filters.programId ||
+    filters.graduationYear,
+  );
   const hideCached = queue.isError && hideCachedResults(queue.error);
-  const clearHref = pageHref({ ...filters, search: "", submittedFrom: "", submittedTo: "", employmentState: "" }, 1);
-  const advancedCount = [filters.submittedFrom, filters.submittedTo, filters.employmentState].filter(Boolean).length;
+  const clearHref = pageHref({
+    ...filters,
+    search: "",
+    submittedFrom: "",
+    submittedTo: "",
+    employmentState: "",
+    collegeId: undefined,
+    programId: undefined,
+    graduationYear: undefined,
+  }, 1);
+  const advancedCount = [
+    filters.submittedFrom,
+    filters.submittedTo,
+    filters.employmentState,
+    filters.collegeId,
+    filters.programId,
+    filters.graduationYear,
+  ].filter(Boolean).length;
   // The order the rows are in: the reader's choice, or the default the backend applied.
   const ordering = filters.ordering ?? page?.ordering;
   const setOrdering = (next: GraduateTracerOrdering) =>
@@ -90,18 +139,77 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
           clear={hasFilters ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
           filters={
             <>
-          <FilterField label="Submitted from" htmlFor="gts-submitted-from">
-            <Input id="gts-submitted-from" type="date" name="submitted_from" defaultValue={filters.submittedFrom} />
-          </FilterField>
-          <FilterField label="Submitted to" htmlFor="gts-submitted-to">
-            <Input id="gts-submitted-to" type="date" name="submitted_to" defaultValue={filters.submittedTo} />
-          </FilterField>
-          <FilterField label="Current employment state" htmlFor="gts-employment-filter">
-            <Select id="gts-employment-filter" name="current_employment_state" defaultValue={filters.employmentState}>
-              <option value="">All employment states</option>
-              {EMPLOYMENT_STATE_CHOICES.map((choice) => <option key={choice.value} value={choice.value}>{choice.label === "Yes" ? "Employed" : choice.label === "No" ? "Not employed" : choice.label}</option>)}
-            </Select>
-          </FilterField>
+              <FilterField label="College" htmlFor="gts-college-filter">
+                <Select
+                  id="gts-college-filter"
+                  name="college_id"
+                  value={selectedCollege}
+                  disabled={optionsQuery.isPending}
+                  onChange={(event) => {
+                    const newCollegeId = event.target.value;
+                    setSelectedCollege(newCollegeId);
+                    const stillValid =
+                      !newCollegeId ||
+                      !selectedProgram ||
+                      programs.some(
+                        (p) =>
+                          p.id === selectedProgram &&
+                          p.college_id === newCollegeId,
+                      );
+                    if (!stillValid) setSelectedProgram("");
+                  }}
+                >
+                  <option value="">All Colleges</option>
+                  {colleges.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.code} — {c.name}
+                    </option>
+                  ))}
+                </Select>
+              </FilterField>
+              <FilterField label="Program" htmlFor="gts-program-filter">
+                <Select
+                  id="gts-program-filter"
+                  name="program_id"
+                  value={selectedProgram}
+                  disabled={optionsQuery.isPending}
+                  onChange={(event) => setSelectedProgram(event.target.value)}
+                >
+                  <option value="">
+                    {selectedCollege
+                      ? "All Programs in selected College"
+                      : "All Programs"}
+                  </option>
+                  {visiblePrograms.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.code} — {p.name}
+                    </option>
+                  ))}
+                </Select>
+              </FilterField>
+              <FilterField label="Graduation Year" htmlFor="gts-graduation-year">
+                <Input
+                  id="gts-graduation-year"
+                  type="number"
+                  name="graduation_year"
+                  min={1900}
+                  max={new Date().getFullYear()}
+                  placeholder="e.g. 2024"
+                  defaultValue={filters.graduationYear ? String(filters.graduationYear) : ""}
+                />
+              </FilterField>
+              <FilterField label="Submitted from" htmlFor="gts-submitted-from">
+                <Input id="gts-submitted-from" type="date" name="submitted_from" defaultValue={filters.submittedFrom} />
+              </FilterField>
+              <FilterField label="Submitted to" htmlFor="gts-submitted-to">
+                <Input id="gts-submitted-to" type="date" name="submitted_to" defaultValue={filters.submittedTo} />
+              </FilterField>
+              <FilterField label="Current employment state" htmlFor="gts-employment-filter">
+                <Select id="gts-employment-filter" name="current_employment_state" defaultValue={filters.employmentState}>
+                  <option value="">All employment states</option>
+                  {EMPLOYMENT_STATE_CHOICES.map((choice) => <option key={choice.value} value={choice.value}>{choice.label === "Yes" ? "Employed" : choice.label === "No" ? "Not employed" : choice.label}</option>)}
+                </Select>
+              </FilterField>
             </>
           }
         >
@@ -149,7 +257,7 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
             </PanelMessage>
           ) : (
             <div className={dataTable.scroll}>
-              <table className={`${dataTable.table} min-w-[42rem]`}>
+              <table className={`${dataTable.table} min-w-[50rem]`}>
                 <caption className="sr-only">Submitted Graduate Tracer responses</caption>
                 <thead className={dataTable.head}>
                   <tr>
@@ -163,6 +271,7 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
                       onSort={setOrdering}
                       className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell} min-w-56`}
                     />
+                    <th scope="col" className={`${dataTable.headerCell} min-w-44`}>Graduation</th>
                     <th scope="col" className={`${dataTable.headerCell} min-w-44`}>Employment</th>
                     <SortableColumnHeader
                       label="Submitted"
@@ -184,6 +293,25 @@ export function GraduateTracerOperationalList({ filters }: { filters: GraduateTr
                         <Link href={`/portal/graduate-tracer/responses/${item.id}`} className="text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{item.name || item.student.display_name}</Link>
                         {item.student.institutional_id ? <span className="mt-1 block text-xs font-normal text-muted">{item.student.institutional_id}</span> : null}
                       </th>
+                      <td className={`${dataTable.cell} text-ink`}>
+                        {item.graduated_college || item.graduated_program || item.graduation_year ? (
+                          <div>
+                            <span className="font-medium">
+                              {item.graduated_program?.code ?? item.graduated_college?.code ?? "—"}
+                            </span>
+                            {item.graduation_year ? (
+                              <span className="text-muted"> ({item.graduation_year})</span>
+                            ) : null}
+                            {item.graduated_college && item.graduated_program ? (
+                              <span className="mt-0.5 block text-xs text-muted" title={item.graduated_college.name}>
+                                {item.graduated_college.code}
+                              </span>
+                            ) : null}
+                          </div>
+                        ) : (
+                          <span className="text-muted">Not recorded</span>
+                        )}
+                      </td>
                       <td className={`${dataTable.cell} text-ink`}>{item.current_employment_state === "EMPLOYED" ? "Employed" : item.current_employment_state === "NOT_EMPLOYED" ? "Not employed" : "Never employed"}</td>
                       <td className={`${dataTable.cell} whitespace-nowrap text-muted`}>{formatGraduateTracerDateTime(item.submitted_at)}</td>
                     </tr>

@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-09-19
 - Scope: backend-only aggregate reporting over submitted Graduate Tracer Survey schema-v1 data
+- Refined/partially superseded by: [ADR-112](ADR-112-graduate-tracer-graduation-classification-and-filtering.md) (authorizes College, Program, and Graduation Year academic classification and report filtering)
 
 ## Context
 

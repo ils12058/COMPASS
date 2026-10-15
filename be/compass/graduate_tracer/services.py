@@ -22,6 +22,7 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.common.institutional_time import institution_day_start, institution_today
 from compass.common.ordering import parse_ordering
+from compass.organization.models import College, Program
 
 from .confidential_content import (
     FIELDS,
@@ -183,7 +184,7 @@ class GraduateTracerPage:
 def _queryset():
     return (
         GraduateTracerResponse.objects.filter(anonymized_at__isnull=True)
-        .select_related("student", "student__role")
+        .select_related("student", "student__role", "graduated_college", "graduated_program")
         .prefetch_related(
             "education_rows",
             "professional_exam_rows",
@@ -504,13 +505,26 @@ def _normalize_training_rows(raw: object) -> list[dict[str, object]]:
     return normalized
 
 
+def _clean_uuid(value: object, field_name: str) -> UUID | None:
+    if value in {None, ""}:
+        return None
+    if isinstance(value, UUID):
+        return value
+    if isinstance(value, str):
+        try:
+            return UUID(value.strip())
+        except (ValueError, AttributeError):
+            raise InvalidGraduateTracerInput(f"{field_name} must be a valid UUID or null.") from None
+    raise InvalidGraduateTracerInput(f"{field_name} must be a valid UUID or null.")
+
+
 def _normalize_root(values: dict[str, object]) -> dict[str, object]:
     allowed = (
         set(TEXT_FIELD_LIMITS)
         | set(CHOICE_FIELDS)
         | set(LIST_FIELDS)
         | BOOLEAN_FIELDS
-        | {"birth_date"}
+        | {"birth_date", "graduated_college_id", "graduated_program_id", "graduation_year"}
     )
     unknown = set(values) - allowed - {"education", "professional_exams", "trainings"}
     if unknown:
@@ -531,6 +545,40 @@ def _normalize_root(values: dict[str, object]) -> dict[str, object]:
             ) from exc
 
     normalized["birth_date"] = _birth_date(values.get("birth_date"))
+
+    college_id = _clean_uuid(values.get("graduated_college_id"), "graduated_college_id")
+    if college_id is not None and not College.objects.filter(pk=college_id).exists():
+        raise InvalidGraduateTracerInput("The selected college was not found.")
+    normalized["graduated_college_id"] = college_id
+
+    program_id = _clean_uuid(values.get("graduated_program_id"), "graduated_program_id")
+    if program_id is not None:
+        program = Program.objects.filter(pk=program_id).first()
+        if program is None:
+            raise InvalidGraduateTracerInput("The selected program was not found.")
+        if college_id is not None and program.college_id != college_id:
+            raise InvalidGraduateTracerInput(
+                "The selected program does not belong to the selected college."
+            )
+        if college_id is None:
+            raise InvalidGraduateTracerInput(
+                "College at graduation is required when selecting a program."
+            )
+    normalized["graduated_program_id"] = program_id
+
+    year = values.get("graduation_year")
+    if year in {None, ""}:
+        normalized["graduation_year"] = None
+    else:
+        if type(year) is not int or isinstance(year, bool):
+            raise InvalidGraduateTracerInput("graduation_year must be an integer year or null.")
+        current_year = institution_today().year
+        if not (1900 <= year <= current_year):
+            raise InvalidGraduateTracerInput(
+                f"graduation_year must be a valid completed graduation year from 1900 through {current_year}."
+            )
+        normalized["graduation_year"] = year
+
     for field_name, allowed_values in CHOICE_FIELDS.items():
         normalized[field_name] = _choice(
             values.get(field_name, ""),
@@ -699,6 +747,21 @@ def _validate_other(
 
 def _validate_submission(item: GraduateTracerResponse, private) -> None:
     _require_text(item.name_snapshot, "name")
+    if item.graduated_college_id is None:
+        raise InvalidGraduateTracerInput("graduated_college is required before submission.")
+    if item.graduated_program_id is None:
+        raise InvalidGraduateTracerInput("graduated_program is required before submission.")
+    if item.graduation_year is None:
+        raise InvalidGraduateTracerInput("graduation_year is required before submission.")
+    current_year = institution_today().year
+    if not (1900 <= item.graduation_year <= current_year):
+        raise InvalidGraduateTracerInput(
+            f"graduation_year must be a valid completed graduation year from 1900 through {current_year}."
+        )
+    if item.graduated_program.college_id != item.graduated_college_id:
+        raise InvalidGraduateTracerInput(
+            "The selected program does not belong to the selected college."
+        )
     if not item.civil_status:
         raise InvalidGraduateTracerInput("civil_status is required before submission.")
     if not item.sex:
@@ -934,6 +997,9 @@ def list_submitted_for_head(
     submitted_from: date | None = None,
     submitted_to: date | None = None,
     current_employment_state: str | None = None,
+    college_id: UUID | None = None,
+    program_id: UUID | None = None,
+    graduation_year: int | None = None,
     ordering: str | GraduateTracerOrdering | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
@@ -949,6 +1015,23 @@ def list_submitted_for_head(
     term = _clean_search(search)
     if submitted_from is not None and submitted_to is not None and submitted_from > submitted_to:
         raise InvalidGraduateTracerInput("submitted_from must be on or before submitted_to.")
+    if college_id is not None:
+        if not College.objects.filter(pk=college_id).exists():
+            raise InvalidGraduateTracerInput("The selected college was not found.")
+    if program_id is not None:
+        program = Program.objects.filter(pk=program_id).first()
+        if program is None:
+            raise InvalidGraduateTracerInput("The selected program was not found.")
+        if college_id is not None and program.college_id != college_id:
+            raise InvalidGraduateTracerInput(
+                "The selected program does not belong to the selected college."
+            )
+    if graduation_year is not None:
+        if type(graduation_year) is not int or isinstance(graduation_year, bool):
+            raise InvalidGraduateTracerInput("graduation_year must be a valid graduation year.")
+        current_year = institution_today().year
+        if not (1900 <= graduation_year <= current_year):
+            raise InvalidGraduateTracerInput("graduation_year must be a valid graduation year.")
     queryset = _queryset().filter(status=GraduateTracerStatus.SUBMITTED)
     if student_id is not None:
         queryset = queryset.filter(student_id=student_id)
@@ -973,6 +1056,12 @@ def list_submitted_for_head(
             "current_employment_state",
         )
         queryset = queryset.filter(current_employment_state=employment_state)
+    if college_id is not None:
+        queryset = queryset.filter(graduated_college_id=college_id)
+    if program_id is not None:
+        queryset = queryset.filter(graduated_program_id=program_id)
+    if graduation_year is not None:
+        queryset = queryset.filter(graduation_year=graduation_year)
     queryset = queryset.order_by(*_GRADUATE_ORDER_BY[resolved])
     offset = (page - 1) * page_size
     rows = list(queryset[offset : offset + page_size + 1])
@@ -983,6 +1072,20 @@ def list_submitted_for_head(
         len(rows) > page_size,
         resolved,
     )
+
+
+def get_classification_options() -> tuple[tuple[College, ...], tuple[Program, ...]]:
+    colleges = tuple(
+        College.objects.filter(is_active=True)
+        .select_related("campus")
+        .order_by("campus__code", "code")
+    )
+    programs = tuple(
+        Program.objects.filter(is_active=True, college__is_active=True)
+        .select_related("college__campus")
+        .order_by("college__campus__code", "college__code", "code")
+    )
+    return colleges, programs
 
 
 def get_submitted_for_head(

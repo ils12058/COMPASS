@@ -99,7 +99,37 @@ export function GraduateTracerResponse({ detail }: { detail: GraduateTracerDetai
       </GraduateTracerSection>
 
       <GraduateTracerSection id="graduate-tracer-education" title="B. Educational Background">
-        <div>
+        <div className="pb-5">
+          <h3 className="font-semibold text-ink">Graduation Information</h3>
+          <p className="mt-1 text-sm text-muted">
+            College, Program, and Graduation Year self-reported at graduation from UCN.
+          </p>
+          <div className="mt-3">
+            <Answers>
+              <GraduateTracerAnswer
+                label="College at Graduation"
+                value={
+                  detail.graduated_college
+                    ? `${detail.graduated_college.name} (${detail.graduated_college.code})`
+                    : "Not recorded"
+                }
+              />
+              <GraduateTracerAnswer
+                label="Program Graduated"
+                value={
+                  detail.graduated_program
+                    ? `${detail.graduated_program.name} (${detail.graduated_program.code})`
+                    : "Not recorded"
+                }
+              />
+              <GraduateTracerAnswer
+                label="Graduation Year"
+                value={detail.graduation_year ? String(detail.graduation_year) : "Not recorded"}
+              />
+            </Answers>
+          </div>
+        </div>
+        <div className="border-t border-border pt-5">
           <h3 className="font-semibold text-ink">Q12. Educational Attainment (Baccalaureate Degree only)</h3>
           <div className="mt-3">
             <DataTable

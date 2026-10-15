@@ -776,11 +776,13 @@ def test_migration_all_four_families_exact_forward_reverse_variants_anonymous_an
     before, counts = raw_all(), effects()
     MigrationExecutor(connection).migrate(AFTER)
     assert effects() == counts
+    after_apps = MigrationExecutor(connection).loader.project_state(AFTER).apps
     for family in NAMES:
+        model = after_apps.get_model("graduate_tracer", family)
         assert not set(content.FIELDS[family]).intersection(
-            columns(apps.get_model("graduate_tracer", family))
+            columns(model)
         )
-        for row in apps.get_model("graduate_tracer", family).objects.all():
+        for row in model.objects.all():
             if family == NAMES[0] and row.pk == anonymous.pk:
                 assert verify_anonymized(row) and row.confidential_content_ciphertext is None
             else:
@@ -819,13 +821,15 @@ def test_phase_b_reconciles_latest_old_root_children_and_submission(legacy):
     late = old_rows(registry, "empty", 1)
     before = raw_all()
     MigrationExecutor(connection).migrate(AFTER)
+    after_apps = MigrationExecutor(connection).loader.project_state(AFTER).apps
+    response_model = after_apps.get_model("graduate_tracer", NAMES[0])
     assert (
         content.read_confidential_content(
-            GraduateTracerResponse.objects.get(pk=root.pk)
+            response_model.objects.get(pk=root.pk)
         ).permanent_address_snapshot
         == "Latest PRIVATE-address 🎓"
     )
-    assert content.read_confidential_content(GraduateTracerResponse.objects.get(pk=late.pk))
+    assert content.read_confidential_content(response_model.objects.get(pk=late.pk))
     for family in NAMES:
         assert [row["id"] for row in raw_all()[family]] == [row["id"] for row in before[family]]
     MigrationExecutor(connection).migrate(BEFORE)
@@ -856,8 +860,10 @@ def test_phase_a_old_disposition_new_anonymous_null_is_valid(legacy):
     source.delete()
     assert retained.confidential_content_ciphertext is None
     MigrationExecutor(connection).migrate(AFTER)
-    assert verify_anonymized(GraduateTracerResponse.objects.get(pk=retained.pk))
-    assert not GraduateTracerResponse.objects.filter(pk=root.pk).exists()
+    after_apps = MigrationExecutor(connection).loader.project_state(AFTER).apps
+    response_model = after_apps.get_model("graduate_tracer", NAMES[0])
+    assert verify_anonymized(response_model.objects.get(pk=retained.pk))
+    assert not response_model.objects.filter(pk=root.pk).exists()
     MigrationExecutor(connection).migrate(BEFORE)
     restored = (
         MigrationExecutor(connection)
@@ -949,7 +955,8 @@ def test_migration_anonymous_integrity_aborts_without_normalizing(legacy, stage,
 def test_corrupt_reverse_rolls_back_plaintext_ddl_and_data(legacy, family):
     old_rows(legacy)
     MigrationExecutor(connection).migrate(AFTER)
-    model = apps.get_model("graduate_tracer", family)
+    after_apps = MigrationExecutor(connection).loader.project_state(AFTER).apps
+    model = after_apps.get_model("graduate_tracer", family)
     row = model.objects.first()
     model.objects.filter(pk=row.pk).update(confidential_content_ciphertext="PRIVATE-corrupt-token")
     before = raw_all()

@@ -10548,6 +10548,81 @@
         "title": "GTSCivilStatusValue",
         "type": "string"
       },
+      "GTSClassificationOptionsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "colleges": {
+            "items": {
+              "$ref": "#/components/schemas/GTSCollegeOption"
+            },
+            "title": "Colleges",
+            "type": "array"
+          },
+          "programs": {
+            "items": {
+              "$ref": "#/components/schemas/GTSProgramOption"
+            },
+            "title": "Programs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "colleges",
+          "programs"
+        ],
+        "title": "GTSClassificationOptionsResponse",
+        "type": "object"
+      },
+      "GTSCollegeOption": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "GTSCollegeOption",
+        "type": "object"
+      },
+      "GTSCollegeSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "GTSCollegeSummary",
+        "type": "object"
+      },
       "GTSDegreeReasonValue": {
         "enum": [
           "HIGH_GRADES_RELATED_COURSE",
@@ -10655,6 +10730,62 @@
         ],
         "title": "GTSPresentEmploymentStatusValue",
         "type": "string"
+      },
+      "GTSProgramOption": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "college_id": {
+            "format": "uuid",
+            "title": "College Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "college_id",
+          "code",
+          "name"
+        ],
+        "title": "GTSProgramOption",
+        "type": "object"
+      },
+      "GTSProgramSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "GTSProgramSummary",
+        "type": "object"
       },
       "GTSRegionOfOriginValue": {
         "enum": [
@@ -12047,6 +12178,31 @@
         "title": "GraduateRequestPayload",
         "type": "object"
       },
+      "GraduateTracerCollegeSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "GraduateTracerCollegeSummary",
+        "type": "object"
+      },
       "GraduateTracerDetailResponse": {
         "additionalProperties": false,
         "properties": {
@@ -12220,6 +12376,61 @@
             },
             "title": "Graduate Study Reasons",
             "type": "array"
+          },
+          "graduated_college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSCollegeSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graduated_college_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduated College Id"
+          },
+          "graduated_program": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSProgramSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graduated_program_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduated Program Id"
+          },
+          "graduation_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Year"
           },
           "id": {
             "format": "uuid",
@@ -12710,6 +12921,41 @@
             "title": "Graduate Study Reasons",
             "type": "array"
           },
+          "graduated_college_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduated College Id"
+          },
+          "graduated_program_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduated Program Id"
+          },
+          "graduation_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Year"
+          },
           "initial_gross_monthly_earning": {
             "anyOf": [
               {
@@ -13057,17 +13303,73 @@
         "title": "GraduateTracerProfessionalExamPayload",
         "type": "object"
       },
+      "GraduateTracerProgramSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "code",
+          "name"
+        ],
+        "title": "GraduateTracerProgramSummary",
+        "type": "object"
+      },
       "GraduateTracerReportContext": {
         "additionalProperties": false,
         "properties": {
+          "college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraduateTracerCollegeSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "generated_at": {
             "format": "date-time",
             "title": "Generated At",
             "type": "string"
           },
+          "graduation_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Year"
+          },
           "instrument_schema_version": {
             "title": "Instrument Schema Version",
             "type": "integer"
+          },
+          "program": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraduateTracerProgramSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "submitted_from": {
             "anyOf": [
@@ -13271,6 +13573,37 @@
         "properties": {
           "current_employment_state": {
             "$ref": "#/components/schemas/GTSEmploymentStateValue"
+          },
+          "graduated_college": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSCollegeSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graduated_program": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GTSProgramSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "graduation_year": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Graduation Year"
           },
           "id": {
             "format": "uuid",
@@ -40810,6 +41143,53 @@
         ]
       }
     },
+    "/api/v1/graduate-tracer/classification-options": {
+      "get": {
+        "operationId": "graduateTracerGetClassificationOptions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GTSClassificationOptionsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Graduate Tracer Get Classification Options",
+        "tags": [
+          "graduate-tracer"
+        ]
+      }
+    },
     "/api/v1/graduate-tracer/me": {
       "get": {
         "operationId": "graduateTracerGetMyResponse",
@@ -41188,6 +41568,56 @@
                   "type": "null"
                 }
               ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "college_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "College Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "program_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Program Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "graduation_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Graduation Year"
             }
           },
           {
@@ -52516,6 +52946,56 @@
               ],
               "title": "Submitted To"
             }
+          },
+          {
+            "in": "query",
+            "name": "college_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "College Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "program_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Program Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "graduation_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Graduation Year"
+            }
           }
         ],
         "responses": {
@@ -52607,6 +53087,56 @@
                 }
               ],
               "title": "Submitted To"
+            }
+          },
+          {
+            "in": "query",
+            "name": "college_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "College Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "program_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Program Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "graduation_year",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Graduation Year"
             }
           }
         ],
