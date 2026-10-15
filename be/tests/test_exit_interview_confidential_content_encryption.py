@@ -59,6 +59,8 @@ SETTING = content.KEYRING_SETTING
 BEFORE = [("exit_interviews", "0002_exitinterviewopportunity_exitinterview_opportunity_and_more")]
 BACKFILLED = [("exit_interviews", "0003_encrypt_confidential_content")]
 AFTER = [("exit_interviews", "0004_remove_plaintext_confidential_content")]
+# Current models also read the later additive columns (saved Form Revision, correction targets).
+CURRENT = [("exit_interviews", "0006_exitinterviewreopenevent_targets_ciphertext")]
 FAMILIES = (
     (
         ExitInterview,
@@ -959,12 +961,14 @@ def test_forward_reverse_restores_exact_all_content_and_preserves_metadata_ratin
         exit_interview_id=items[0].pk, item_code="DEAN_AVAILABILITY", rating=0
     )
     before, counts = all_raw(), effects()
-    MigrationExecutor(connection).migrate([("exit_interviews", "0005_saved_form_revision")])
+    MigrationExecutor(connection).migrate(CURRENT)
     for model, column, read in FAMILIES:
         for historical in before[model]:
             row = model.objects.get(pk=historical["id"])
             if model is ExitInterview:
                 assert row.form_revision_id is None
+            if model is ExitInterviewReopenEvent:
+                assert row.targets_ciphertext == ""
             logical = read(row)
             expected = (
                 {name: historical[name] for name in content.CONTENT_LIMITS}
@@ -985,7 +989,7 @@ def test_forward_reverse_restores_exact_all_content_and_preserves_metadata_ratin
             assert {
                 name: value
                 for name, value in raw(model, row.pk).items()
-                if name not in {column, "form_revision_id"}
+                if name not in {column, "form_revision_id", "targets_ciphertext"}
             } == ordinary
     assert rating_model.objects.get(pk=rating.pk).rating == 5
     assert feedback_model.objects.get(pk=feedback.pk).rating == 0
@@ -1043,7 +1047,7 @@ def test_phase_b_reconciles_old_release_changes_and_missing_late_rows_under_fenc
         note=NOTE,
     )
     assert model.objects.get(pk=late.pk).confidential_content_ciphertext is None
-    MigrationExecutor(connection).migrate([("exit_interviews", "0005_saved_form_revision")])
+    MigrationExecutor(connection).migrate(CURRENT)
     assert all(
         content.read_exit_interview_confidential_content(row) == PAYLOAD
         for row in ExitInterview.objects.all()
