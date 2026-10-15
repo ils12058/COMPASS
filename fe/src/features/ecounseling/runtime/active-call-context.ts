@@ -6,6 +6,7 @@ import type { CallSnapshot } from "@/features/ecounseling/call/call-model";
 import type { MediaWorkspaceState } from "@/lib/api/generated/model";
 
 import type { JoinAvailability, RuntimeState } from "./runtime-model";
+import type { ActiveECounselingTiming } from "./session-timing";
 
 // Local call controls: they act on the Call Object directly and never on institutional records.
 export type CallControls = CallSnapshot & {
@@ -30,7 +31,9 @@ export type ActiveECounselingCall = {
   call: CallControls;
   otherTabActive: boolean;
   availabilityFor: (appointmentId: string) => JoinAvailability;
-  join: (target: { appointmentId: string; participantName: string }) => Promise<void>;
+  join: (target: { appointmentId: string; participantName: string; endsAt?: string }) => Promise<void>;
+  // Informational scheduled-end warning and overtime awareness (EC-1 Option A).
+  timing: ActiveECounselingTiming;
   // Leave, with either participant's warning when capture cessation is unresolved.
   requestLeave: () => void;
   // Ends the call without a warning, for sign-out and other confirmed endings.

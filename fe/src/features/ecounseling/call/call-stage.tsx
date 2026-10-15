@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, Maximize, Mic, MicOff, Minimize, PhoneOff, Settings2, Video, VideoOff, WifiLow } from "lucide-react";
+import { Clock, LoaderCircle, Maximize, Mic, MicOff, Minimize, PhoneOff, Settings2, Video, VideoOff, WifiLow } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import { activeCallPhases, type ParticipantView } from "./call-model";
 import { CaptureIndicators } from "./capture-indicators";
 import { DeviceDialog } from "./device-dialog";
 import type { CallControls } from "@/features/ecounseling/runtime/active-call-context";
+import type { ActiveECounselingTiming } from "@/features/ecounseling/runtime/session-timing";
 
 import { ParticipantVideo, PlayAudioPrompt } from "./participant-media";
 import { leaveFullscreen, useFullscreen } from "./use-fullscreen";
@@ -128,6 +129,7 @@ export function CallStage({
   onLeave,
   joinBlocked,
   audio,
+  timing,
   footer,
   className,
 }: {
@@ -146,6 +148,8 @@ export function CallStage({
   // Shown instead of Join when this tab or another already has a call.
   joinBlocked?: ReactNode;
   audio?: { blocked: boolean; resume: () => void };
+  // Scheduled-end warnings and overtime awareness projection (EC-1 Option A).
+  timing?: ActiveECounselingTiming;
   // Session status that belongs with the call, such as the Counselor's media permission strip.
   footer?: ReactNode;
   className?: string;
@@ -224,12 +228,35 @@ export function CallStage({
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2 sm:p-3">
           {/* Names the other person once they are in the call; before that the stage says what is
               happening in its centre. */}
-          {connected && call.remote ? (
-            <div className="min-w-0 rounded-sm bg-ink/85 px-2.5 py-1">
-              <p className="truncate text-sm font-semibold">{participantName}</p>
-              <p className="text-xs text-on-brand/80">{call.phase === "reconnecting" ? "Reconnecting…" : "Connected"}</p>
-            </div>
-          ) : <span />}
+          <div className="flex min-w-0 flex-col items-start gap-1">
+            {connected && call.remote ? (
+              <div className="min-w-0 rounded-sm bg-ink/85 px-2.5 py-1">
+                <p className="truncate text-sm font-semibold">{participantName}</p>
+                <p className="text-xs text-on-brand/80">{call.phase === "reconnecting" ? "Reconnecting…" : "Connected"}</p>
+              </div>
+            ) : null}
+            {connected && timing?.notice ? (
+              <div
+                role="status"
+                aria-label={timing.notice.title}
+                data-timing-phase={timing.notice.phase}
+                className={cn(
+                  "pointer-events-auto max-w-xs rounded-sm bg-ink/85 px-2.5 py-1 text-xs text-on-brand shadow-sm @[28rem]/stage:max-w-md",
+                  timing.notice.phase === "OVERTIME" || timing.notice.phase === "SCHEDULED_END_REACHED"
+                    ? "border-l-2 border-warning"
+                    : "border-l-2 border-brand"
+                )}
+              >
+                <div className="flex items-center gap-1.5 font-semibold">
+                  <Clock aria-hidden="true" size={13} className="shrink-0 text-on-brand/80" />
+                  <span>{timing.notice.title}</span>
+                </div>
+                <p className="mt-0.5 text-[0.6875rem] leading-tight text-on-brand/80 @[28rem]/stage:text-xs">
+                  {timing.notice.message}
+                </p>
+              </div>
+            ) : null}
+          </div>
           <div className="pointer-events-auto flex shrink-0 gap-1">
             {devicesInTray === "when-wide" && connected ? (
               <button

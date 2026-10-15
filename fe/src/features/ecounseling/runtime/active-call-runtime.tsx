@@ -22,18 +22,29 @@ import {
   useECounselingGetMyWorkspace,
 } from "@/lib/api/generated/e-counseling/e-counseling";
 import type { UserSummary } from "@/lib/api/generated/model";
+import { isOpaqueRealtimeId } from "@/features/realtime/realtime-protocol";
 
 import { ActiveECounselingCallContext, type ActiveECounselingCall, type CallControls } from "./active-call-context";
 import { CrossTabCallCoordinator } from "./cross-tab-call-coordinator";
 import { GlobalCallDock } from "./global-call-dock";
 import { activeCaptureKinds, captureCessationWarning, isLiveRuntime, joinAvailability, runtimeState } from "./runtime-model";
+import {
+  calculateTimingPhase,
+  getNextTimingDelayMs,
+  getSessionTimingNotice,
+  getTimingTransitionAnnouncement,
+  type ActiveECounselingTiming,
+  type SessionTimingPhase,
+} from "./session-timing";
+
+const MAX_BROWSER_TIMEOUT_MS = 2_147_000_000;
 
 // The portal's authentication as PortalBoundary knows it. Only "signed-out" (the server answered that
 // the session is gone) ends the call; "unverified" (the session couldn't be checked) keeps a working
 // call while the portal fails closed around it.
 export type PortalAuthState = "pending" | "confirmed" | "unverified" | "signed-out";
 
-type Activation = { appointmentId: string; participantName: string };
+type Activation = { appointmentId: string; participantName: string; endsAt?: string };
 
 // The one E-Counseling call of an authenticated portal session (ADR-094). It owns the Daily Call
 // Object for as long as the portal is open, so moving between portal pages never leaves or rejoins
@@ -101,11 +112,93 @@ export function ActiveECounselingRuntimeProvider({
   const media = protectedUnavailable ? undefined : role === "STUDENT" ? safeQueryData(studentSession)?.data.media : safeQueryData(counselorSession)?.data.media;
   const sessionParticipant = protectedUnavailable ? null : role === "STUDENT" ? safeQueryData(studentSession)?.data.counselor.display_name : safeQueryData(counselorSession)?.data.student.display_name;
   const canonicalCurrent = !protectedUnavailable && observed.isSuccess;
+  const appointmentData = protectedUnavailable
+    ? undefined
+    : role === "STUDENT"
+      ? safeQueryData(studentSession)?.data.appointment
+      : safeQueryData(counselorSession)?.data.appointment;
+  const canonicalEndsAt = appointmentData?.ends_at ?? activation?.endsAt ?? null;
+  const connected = snapshot.phase === "joined" || snapshot.phase === "reconnecting";
+  const inCall = live && connected;
+
+  const [timingTick, setTimingTick] = useState(() => Date.now());
+  const timingPhase: SessionTimingPhase = inCall && canonicalEndsAt
+    ? calculateTimingPhase({ endsAt: canonicalEndsAt, now: timingTick, connected })
+    : "NORMAL";
+
+  const [prevTimingKey, setPrevTimingKey] = useState<string | null>(null);
+  const [timingAnnouncement, setTimingAnnouncement] = useState<string | null>(null);
+
+  const currentTimingKey = inCall && canonicalEndsAt && timingPhase !== "NORMAL"
+    ? `${appointmentId}:${canonicalEndsAt}:${timingPhase}`
+    : null;
+
+  if (prevTimingKey !== currentTimingKey) {
+    setPrevTimingKey(currentTimingKey);
+    if (!currentTimingKey) {
+      setTimingAnnouncement(null);
+    } else {
+      const prevPhase = prevTimingKey ? (prevTimingKey.split(":")[2] as SessionTimingPhase) : null;
+      const announcement = getTimingTransitionAnnouncement({
+        previousPhase: prevPhase,
+        currentPhase: timingPhase,
+      });
+      setTimingAnnouncement(announcement);
+    }
+  }
+
+  useEffect(() => {
+    if (!live || !appointmentId || !canonicalEndsAt) return;
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
+
+    const scheduleNext = () => {
+      if (cancelled) return;
+      const now = Date.now();
+      const delay = getNextTimingDelayMs({ endsAt: canonicalEndsAt, now });
+      if (delay === null) return;
+
+      timer = setTimeout(() => {
+        setTimingTick(Date.now());
+        scheduleNext();
+      }, Math.min(delay, MAX_BROWSER_TIMEOUT_MS));
+    };
+
+    scheduleNext();
+
+    const handleWake = () => {
+      setTimingTick(Date.now());
+      scheduleNext();
+    };
+
+    window.addEventListener("visibilitychange", handleWake);
+    window.addEventListener("focus", handleWake);
+    window.addEventListener("online", handleWake);
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) clearTimeout(timer);
+      window.removeEventListener("visibilitychange", handleWake);
+      window.removeEventListener("focus", handleWake);
+      window.removeEventListener("online", handleWake);
+    };
+  }, [appointmentId, canonicalEndsAt, live]);
+
+  const timingNotice = inCall ? getSessionTimingNotice(timingPhase) : null;
+  const timing: ActiveECounselingTiming = useMemo(
+    () => ({
+      phase: inCall ? timingPhase : "NORMAL",
+      notice: timingNotice,
+      endsAt: canonicalEndsAt,
+    }),
+    [canonicalEndsAt, inCall, timingNotice, timingPhase]
+  );
 
   const refreshSession = useCallback(async () => {
     if (!appointmentId || !role || resourceAccess.getDenial(appointmentId)) return;
     const queryKey = role === "STUDENT" ? getECounselingGetMyWorkspaceQueryKey(appointmentId) : getECounselingGetAssignedWorkspaceQueryKey(appointmentId);
-    if (freshness) await freshness.refreshWorkspace(appointmentId);
+    if (freshness && isOpaqueRealtimeId(appointmentId)) await freshness.refreshWorkspace(appointmentId);
     else await queryClient.invalidateQueries({ queryKey, exact: true }, { cancelRefetch: false });
   }, [appointmentId, freshness, queryClient, resourceAccess, role]);
 
@@ -272,6 +365,7 @@ export function ActiveECounselingRuntimeProvider({
     otherTabActive,
     availabilityFor: (target) => joinAvailability({ appointmentId: target, activeAppointmentId: appointmentId, state, otherTabActive }),
     join,
+    timing,
     requestLeave,
     end,
     audio: { blocked: audioBlocked, resume: () => void resumeAudio() },
@@ -290,6 +384,8 @@ export function ActiveECounselingRuntimeProvider({
   return (
     <ActiveECounselingCallContext.Provider value={value}>
       {children}
+      {/* Polite announcement for timing transitions (EC-1 Option A), announced once per portal runtime. */}
+      <p aria-live="polite" className="sr-only">{timingAnnouncement}</p>
       {/* The one element that plays the other person, mounted for the whole portal session. */}
       <audio ref={audioRef} autoPlay className="hidden" />
       <GlobalCallDock
