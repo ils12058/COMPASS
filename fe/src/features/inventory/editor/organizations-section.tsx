@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { SelectField, TextField } from "@/features/inventory/editor/fields";
 import type { InventorySectionProps } from "@/features/inventory/editor/types";
+import { organizationTextLimits, transportationTextLimits } from "@/features/inventory/inventory-field-limits";
 import { organizationScopeOptions, transportationFrequencyOptions, transportationModes } from "@/features/inventory/inventory-presentation";
 import { FieldGroup } from "@/features/inventory/inventory-shared";
 import {
@@ -23,7 +24,9 @@ function rowsForScope(
   return rows.filter((row) => row.scope === scope);
 }
 
-export function OrganizationsSection({ draft, onChange }: InventorySectionProps) {
+export function OrganizationsSection({ draft, onChange, validationIssues = [] }: InventorySectionProps) {
+  const errorFor = (targetId: string) =>
+    validationIssues.find((issue) => issue.targetId === targetId)?.message;
   const memberships = draft.organization_memberships ?? emptyOrganizationMemberships;
   const transportation = draft.transportation_entries ?? [];
   const focusAfterUpdate = useRef<string | null>(null);
@@ -75,12 +78,14 @@ export function OrganizationsSection({ draft, onChange }: InventorySectionProps)
                       <TextField
                         id={`inventory-membership-${scope.toLowerCase()}-${index}-organization`}
                         label="Organization name"
+                        maxLength={organizationTextLimits.organization_name}
                         value={row.organization_name}
                         onChange={(value) => replaceScopeRows(scope, rows.map((item, itemIndex) => itemIndex === index ? { ...item, organization_name: value } : item))}
                       />
                       <TextField
                         id={`inventory-membership-${scope.toLowerCase()}-${index}-position`}
                         label="Position or title"
+                        maxLength={organizationTextLimits.position_title}
                         value={row.position_title}
                         onChange={(value) => replaceScopeRows(scope, rows.map((item, itemIndex) => itemIndex === index ? { ...item, position_title: value } : item))}
                       />
@@ -148,6 +153,7 @@ export function OrganizationsSection({ draft, onChange }: InventorySectionProps)
                 <SelectField
                   id={`inventory-transport-${mode.toLowerCase()}-frequency-category`}
                   label="Frequency"
+                  error={errorFor(`inventory-transport-${mode.toLowerCase()}-frequency-category`)}
                   value={entry.frequency_category}
                   options={transportationFrequencyOptions}
                   onChange={(value) => updateTransport(mode, {
@@ -161,9 +167,12 @@ export function OrganizationsSection({ draft, onChange }: InventorySectionProps)
                   <TextField
                     id={`inventory-transport-${mode.toLowerCase()}-frequency-other`}
                     label="Other frequency"
+                    maxLength={transportationTextLimits.frequency}
+                    error={errorFor(`inventory-transport-${mode.toLowerCase()}-frequency-other`)}
                     value={entry.frequency}
                     onChange={(value) => updateTransport(mode, { frequency: value })}
                     hint="Choosing a different frequency clears this detail."
+                    required
                   />
                 ) : null}
                 <TextField
@@ -171,9 +180,11 @@ export function OrganizationsSection({ draft, onChange }: InventorySectionProps)
                   label="Fare (optional)"
                   type="number"
                   min={0}
-                  step="any"
+                  step={0.01}
                   value={entry.fare}
                   onChange={(value) => updateTransport(mode, { fare: value || null })}
+                  hint="In pesos (₱)."
+                  error={errorFor(`inventory-transport-${mode.toLowerCase()}-fare`)}
                 />
               </section>,
             ];

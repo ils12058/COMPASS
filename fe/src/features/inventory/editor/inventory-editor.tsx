@@ -62,6 +62,8 @@ export function InventoryEditor({
   const [section, setSection] = useState<InventorySectionId>("personal");
   const [validationVisible, setValidationVisible] = useState(false);
   const pendingTargetRef = useRef<string | null>(null);
+  // Bumped on every request to show an issue, so its field gets focus even within the open section.
+  const [focusRequest, setFocusRequest] = useState(0);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -93,7 +95,7 @@ export function InventoryEditor({
       ? target
       : target.querySelector<HTMLElement>("input, select, textarea, button");
     (focusTarget as HTMLElement | null)?.focus({ preventScroll: true });
-  }, [section]);
+  }, [section, focusRequest]);
 
   function navigateToSection(next: InventorySectionId) {
     if (next === "review") setValidationVisible(true);
@@ -104,6 +106,7 @@ export function InventoryEditor({
     setValidationVisible(true);
     pendingTargetRef.current = issue.targetId;
     setSection(issue.section);
+    setFocusRequest((current) => current + 1);
   }
 
   function updateDraft(patch: Partial<InventoryPayload>) {
@@ -145,8 +148,8 @@ export function InventoryEditor({
     setNotice(null);
     const draftIssues = getInventoryDraftIssues(draft);
     if (draftIssues.length > 0) {
-      setValidationVisible(true);
       setSaveError(draftIssues[0].message);
+      selectIssue(draftIssues[0]);
       return false;
     }
     try {

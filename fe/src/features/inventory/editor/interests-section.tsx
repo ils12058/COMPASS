@@ -138,10 +138,11 @@ export function InterestsSection({ draft, onChange, validationIssues = [] }: Inv
                   type="number"
                   min={0}
                   max={24}
-                  step="any"
+                  step={0.01}
                   value={draft[key]}
                   onChange={(value) => onChange({ [key]: value || null })}
-                  hint="0 to 24 hours; decimals are accepted."
+                  hint="0 to 24 hours, up to two decimal places."
+                  error={errorFor(`inventory-${key.replaceAll("_", "-")}`)}
                 />
               ))}
             </div>

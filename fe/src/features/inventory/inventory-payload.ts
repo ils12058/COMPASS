@@ -15,7 +15,7 @@ import {
   type InventoryPayload,
   type InventoryResponse,
 } from "@/lib/api/generated/model";
-import type { InventorySectionId } from "@/features/inventory/inventory-presentation";
+import { inventorySections, transportationModes, type InventorySectionId } from "@/features/inventory/inventory-presentation";
 import { isFutureInstitutionalDateInput } from "@/lib/institutional-time";
 
 export type InventorySubmissionIssue = {
@@ -106,25 +106,122 @@ const familyMemberLabels: Record<FamilyMemberKindValue, string> = {
   [FamilyMemberKindValue.SPOUSE]: "Spouse",
 };
 
-// Birth dates are historical facts: any past date is accepted, a date after today never is.
-// COMPASS rejects these when saving, so they block a draft save as well as submission.
+const transportationModeLabels = new Map<string, string>(transportationModes);
+
+const dailyHourFields = [
+  ["daily_hours_class", "class"],
+  ["daily_hours_library", "library work"],
+  ["daily_hours_studying", "studying lessons"],
+  ["daily_hours_rest", "rest"],
+  ["daily_hours_recreation", "recreation"],
+  ["daily_hours_other", "other activities"],
+] as const;
+
+// The largest value a PositiveSmallIntegerField or a small encrypted integer accepts.
+const MAX_SMALL_COUNT = 32767;
+
+type DecimalCheck = "ok" | "format" | "precision" | "range";
+
+// Exact peso amounts and hours are kept to two decimal places. Report what is wrong with the typed
+// text instead of rounding it, so the saved value is always the value the Student entered.
+function checkDecimal(
+  raw: string | number | null | undefined,
+  { integerDigits, maximum }: { integerDigits: number; maximum?: number },
+): DecimalCheck {
+  const value = raw === null || raw === undefined ? "" : String(raw).trim();
+  const match = /^(\d+)(?:\.(\d*))?$/.exec(value);
+  if (!match) return "format";
+  if ((match[2] ?? "").length > 2) return "precision";
+  if (match[1].replace(/^0+(?=\d)/, "").length > integerDigits) return "range";
+  if (maximum !== undefined && Number(value) > maximum) return "range";
+  return "ok";
+}
+
+function isBlank(raw: string | number | null | undefined): boolean {
+  return raw === null || raw === undefined || String(raw).trim() === "";
+}
+
+function isWholeCount(value: number | null | undefined): boolean {
+  return value === null || value === undefined || (Number.isInteger(value) && value >= 0 && value <= MAX_SMALL_COUNT);
+}
+
+// Rules COMPASS enforces whenever the Inventory is saved, so they block saving a draft as well as
+// submitting it. Birth dates are historical facts: any past date is accepted, a later one never is.
 export function getInventoryDraftIssues(
   input: InventoryPayload,
   now = new Date(),
 ): InventorySubmissionIssue[] {
   const issues: InventorySubmissionIssue[] = [];
+  const add = (section: InventorySectionId, targetId: string, message: string) =>
+    issues.push({ section, targetId, message });
+
   if (input.date_of_birth && isFutureInstitutionalDateInput(input.date_of_birth, now)) {
-    issues.push({ section: "personal", targetId: "inventory-date-of-birth", message: "Date of birth cannot be in the future." });
+    add("personal", "inventory-date-of-birth", "Date of birth cannot be in the future.");
   }
+
   for (const member of input.family_members ?? []) {
+    const prefix = `inventory-family-${member.kind.toLowerCase()}`;
+    const label = familyMemberLabels[member.kind];
     if (member.date_of_birth && isFutureInstitutionalDateInput(member.date_of_birth, now)) {
-      issues.push({
-        section: "family",
-        targetId: `inventory-family-${member.kind.toLowerCase()}-date-of-birth`,
-        message: `${familyMemberLabels[member.kind]}'s date of birth cannot be in the future.`,
-      });
+      add("family", `${prefix}-date-of-birth`, `${label}'s date of birth cannot be in the future.`);
+    }
+    if (member.annual_income_status !== AnnualIncomeStatusValue.REPORTED) continue;
+    const amount = member.annual_income_previous_year;
+    if (isBlank(amount)) {
+      add("family", `${prefix}-income-amount`, `Enter the reported previous-year income for ${label.toLowerCase()}.`);
+      continue;
+    }
+    const check = checkDecimal(amount, { integerDigits: 12 });
+    if (check === "precision") {
+      add("family", `${prefix}-income-amount`, `Use up to two decimal places for ${label.toLowerCase()}'s income.`);
+    } else if (check === "range") {
+      add("family", `${prefix}-income-amount`, `Enter a smaller amount for ${label.toLowerCase()}'s income.`);
+    } else if (check === "format" || Number(amount) <= 0) {
+      add("family", `${prefix}-income-amount`, `Enter an amount greater than ₱0 for ${label.toLowerCase()}'s income.`);
     }
   }
+
+  (input.siblings ?? []).forEach((sibling, index) => {
+    if (!isWholeCount(sibling.age)) {
+      add("background", `inventory-sibling-${index}-age`, `Enter sibling ${index + 1}'s age as a whole number.`);
+    }
+  });
+
+  if (!isWholeCount(input.present_place_people_count)) {
+    add("health", "inventory-present-place-people", "Enter a whole number for the people in your present living place.");
+  }
+  if (!isWholeCount(input.room_sharing_people_count)) {
+    add("health", "inventory-room-sharing-people", "Enter a whole number for the people sharing your room.");
+  }
+
+  for (const [key, activity] of dailyHourFields) {
+    const hours = input[key];
+    if (isBlank(hours)) continue;
+    const check = checkDecimal(hours, { integerDigits: 2, maximum: 24 });
+    if (check === "precision") {
+      add("interests", `inventory-${key.replaceAll("_", "-")}`, `Use up to two decimal places for ${activity} hours.`);
+    } else if (check !== "ok") {
+      add("interests", `inventory-${key.replaceAll("_", "-")}`, `Enter ${activity} hours from 0 to 24.`);
+    }
+  }
+
+  for (const entry of input.transportation_entries ?? []) {
+    const prefix = `inventory-transport-${entry.mode.toLowerCase()}`;
+    const mode = (transportationModeLabels.get(entry.mode) ?? entry.mode).toLowerCase();
+    if (entry.frequency_category === TransportationFrequencyCategoryValue.OTHER && !entry.frequency?.trim()) {
+      add("organizations", `${prefix}-frequency-other`, `Describe how often you use the ${mode}.`);
+    }
+    if (isBlank(entry.fare)) continue;
+    const check = checkDecimal(entry.fare, { integerDigits: 8 });
+    if (check === "precision") {
+      add("organizations", `${prefix}-fare`, `Use up to two decimal places for the ${mode} fare.`);
+    } else if (check === "range") {
+      add("organizations", `${prefix}-fare`, `Enter a smaller ${mode} fare.`);
+    } else if (check === "format") {
+      add("organizations", `${prefix}-fare`, `Enter the ${mode} fare as ₱0 or more.`);
+    }
+  }
+
   return issues;
 }
 
@@ -136,11 +233,9 @@ export function getInventorySubmissionIssues(
   const issues: InventorySubmissionIssue[] = [];
   const add = (section: InventorySectionId, targetId: string, message: string) =>
     issues.push({ section, targetId, message });
-  const dateIssues = getInventoryDraftIssues(payload);
 
   if (!payload.sex) add("personal", "inventory-sex", "Choose a sex response.");
   if (!payload.date_of_birth) add("personal", "inventory-date-of-birth", "Enter a date of birth.");
-  issues.push(...dateIssues.filter((issue) => issue.section === "personal"));
   if (!payload.civil_status_category) add("personal", "inventory-civil-status", "Choose a civil-status response.");
   if (
     payload.civil_status_category === CivilStatusCategoryValue.OTHER &&
@@ -180,15 +275,7 @@ export function getInventorySubmissionIssues(
     if (!member?.annual_income_status) {
       add("family", `${prefix}-income-status`, `Choose an annual-income response for ${label.toLowerCase()}.`);
     }
-    if (
-      member?.annual_income_status === AnnualIncomeStatusValue.REPORTED &&
-      !member.annual_income_previous_year?.trim()
-    ) {
-      add("family", `${prefix}-income-amount`, `Enter the reported previous-year income for ${label.toLowerCase()}.`);
-    }
   }
-
-  issues.push(...dateIssues.filter((issue) => issue.section === "family"));
 
   if (!payload.living_arrangement) add("health", "inventory-living-arrangement", "Choose a living arrangement.");
   if (!payload.pwd_status) add("health", "inventory-pwd-status", "Choose a disability-status response.");
@@ -214,12 +301,25 @@ export function getInventorySubmissionIssues(
     (payload.course_choice_reasons ?? []).includes(CourseChoiceReasonValue.OTHER) &&
     !payload.course_choice_other?.trim()
   ) add("interests", "inventory-course-choice-other", "Describe the other reason for your course choice.");
+  for (const entry of payload.transportation_entries ?? []) {
+    if (!entry.frequency_category) {
+      const mode = (transportationModeLabels.get(entry.mode) ?? entry.mode).toLowerCase();
+      add("organizations", `inventory-transport-${entry.mode.toLowerCase()}-frequency-category`, `Choose how often you use the ${mode}.`);
+    }
+  }
+
   if (
     payload.intended_work_field === PostGraduationFieldValue.OTHER &&
     !payload.intended_work_other?.trim()
   ) add("plans", "inventory-intended-work-other", "Describe the other intended work field.");
 
-  return issues;
+  // Every rule that blocks saving also blocks submission. List the issues in section order so the
+  // review follows the form.
+  const sectionOrder = (section: InventorySectionId) =>
+    inventorySections.findIndex((item) => item.id === section);
+  return [...issues, ...getInventoryDraftIssues(payload)].sort(
+    (left, right) => sectionOrder(left.section) - sectionOrder(right.section),
+  );
 }
 
 export function isInventorySubmitted(status: string): boolean {

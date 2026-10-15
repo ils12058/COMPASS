@@ -5,6 +5,7 @@ import type { InventorySubmissionIssue } from "@/features/inventory/inventory-pa
 import { inventorySections } from "@/features/inventory/inventory-presentation";
 import { FieldGroup, InventoryNotice } from "@/features/inventory/inventory-shared";
 import type { InventoryPayload } from "@/lib/api/generated/model";
+import { yearLevelLabel } from "@/lib/year-level";
 
 export function ReviewSection({
   draft,
@@ -42,7 +43,7 @@ export function ReviewSection({
           </div>
           <div className="border-b border-border py-3">
             <dt className="text-xs font-semibold text-muted">Year Level</dt>
-            <dd className="mt-1 text-sm text-ink">{draft.year_level ?? "Not selected"}</dd>
+            <dd className="mt-1 text-sm text-ink">{draft.year_level ? yearLevelLabel(draft.year_level) : "Not selected"}</dd>
           </div>
         </dl>
       </FieldGroup>

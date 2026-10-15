@@ -9,6 +9,22 @@ import { Textarea } from "@/components/ui/textarea";
 
 export type FieldOption<T extends string> = readonly [T, string];
 
+// A browser stops typing (and cuts a paste) at maxLength, so say so once the answer reaches it
+// rather than leaving the reader to wonder why the text stopped.
+function limitState(id: string, value: string | number | null | undefined, maxLength?: number) {
+  if (maxLength === undefined) return { limitId: undefined, atLimit: false };
+  return { limitId: `${id}-limit`, atLimit: String(value ?? "").length >= maxLength };
+}
+
+function LimitMessage({ id, atLimit, maxLength }: { id?: string; atLimit: boolean; maxLength?: number }) {
+  if (!id || maxLength === undefined) return null;
+  return (
+    <p id={id} aria-live="polite" className={atLimit ? "mt-1.5 text-xs leading-5 text-muted" : "sr-only"}>
+      {atLimit ? `This field allows up to ${maxLength} characters.` : ""}
+    </p>
+  );
+}
+
 export function TextField({
   id,
   label,
@@ -44,7 +60,8 @@ export function TextField({
 }) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+  const { limitId, atLimit } = limitState(id, value, maxLength);
+  const describedBy = [hintId, atLimit ? limitId : undefined, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -69,6 +86,7 @@ export function TextField({
         className={readOnly ? "bg-surface-muted" : undefined}
       />
       {hint ? <p id={hintId} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
+      <LimitMessage id={limitId} atLimit={atLimit} maxLength={maxLength} />
       {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
   );
@@ -97,7 +115,8 @@ export function TextAreaField({
 }) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+  const { limitId, atLimit } = limitState(id, value, maxLength);
+  const describedBy = [hintId, atLimit ? limitId : undefined, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -115,6 +134,7 @@ export function TextAreaField({
         onChange={(event) => onChange(event.target.value)}
       />
       {hint ? <p id={hintId} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
+      <LimitMessage id={limitId} atLimit={atLimit} maxLength={maxLength} />
       {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
   );

@@ -14,6 +14,7 @@ import {
   parentStatusCategoryOptions,
   parentStatusOptions,
 } from "@/features/inventory/inventory-presentation";
+import { familyMemberTextLimits, inventoryTextLimits } from "@/features/inventory/inventory-field-limits";
 import { FieldGroup } from "@/features/inventory/inventory-shared";
 import { institutionalDateInputValue } from "@/lib/institutional-time";
 import {
@@ -122,12 +123,14 @@ export function FamilySection({ draft, onChange, validationIssues = [] }: Invent
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField
             id="inventory-guardian-name"
+            maxLength={inventoryTextLimits.guardian_name}
             label="Guardian name"
             value={draft.guardian_name}
             onChange={(value) => onChange({ guardian_name: value })}
           />
           <TextField
             id="inventory-guardian-relationship"
+            maxLength={inventoryTextLimits.guardian_relationship}
             label="Relationship with guardian"
             value={draft.guardian_relationship}
             onChange={(value) => onChange({ guardian_relationship: value })}
@@ -140,6 +143,8 @@ export function FamilySection({ draft, onChange, validationIssues = [] }: Invent
           />
           <TextField
             id="inventory-guardian-contact"
+            maxLength={inventoryTextLimits.guardian_contact_number}
+            hint="For example, 0917 123 4567."
             label="Guardian contact number"
             type="tel"
             value={draft.guardian_contact_number}
@@ -147,12 +152,15 @@ export function FamilySection({ draft, onChange, validationIssues = [] }: Invent
           />
           <TextField
             id="inventory-emergency-name"
+            maxLength={inventoryTextLimits.emergency_contact_name}
             label="Emergency contact name"
             value={draft.emergency_contact_name}
             onChange={(value) => onChange({ emergency_contact_name: value })}
           />
           <TextField
             id="inventory-emergency-number"
+            maxLength={inventoryTextLimits.emergency_contact_number}
+            hint="For example, 0917 123 4567."
             label="Emergency contact number"
             type="tel"
             value={draft.emergency_contact_number}
@@ -276,7 +284,7 @@ function FamilyMemberFields({
         ) : null}
       </div>
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <TextField id={`${prefix}-name`} label="Name" value={member.name} onChange={(value) => onChange({ name: value })} />
+        <TextField id={`${prefix}-name`} label="Name" maxLength={familyMemberTextLimits.name} value={member.name} onChange={(value) => onChange({ name: value })} />
         <SelectField
           id={`${prefix}-occupation-category`}
           label="Occupation category"
@@ -292,6 +300,7 @@ function FamilyMemberFields({
           <TextField
             id={`${prefix}-occupation`}
             label="Occupation details"
+            maxLength={familyMemberTextLimits.occupation}
             value={member.occupation}
             onChange={(value) => onChange({ occupation: value })}
             hint="If you chose Other, describe the occupation here."
@@ -313,10 +322,11 @@ function FamilyMemberFields({
             error={errorFor(`${prefix}-income-amount`)}
             type="number"
             min={0}
-            step="any"
+            step={0.01}
             value={member.annual_income_previous_year}
             onChange={(value) => onChange({ annual_income_previous_year: value || null })}
-            required={required}
+            hint="Total for the whole previous year, in pesos (₱)."
+            required
           />
         ) : null}
       </div>
@@ -327,17 +337,17 @@ function FamilyMemberFields({
         </summary>
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <TextField id={`${prefix}-date-of-birth`} label="Date of birth" type="date" max={institutionalDateInputValue()} error={birthDateError} value={member.date_of_birth} onChange={(value) => onChange({ date_of_birth: value || null })} />
-          <TextField id={`${prefix}-place-of-birth`} label="Place of birth" value={member.place_of_birth} onChange={(value) => onChange({ place_of_birth: value })} />
+          <TextField id={`${prefix}-place-of-birth`} label="Place of birth" maxLength={familyMemberTextLimits.place_of_birth} value={member.place_of_birth} onChange={(value) => onChange({ place_of_birth: value })} />
           <TextAreaField id={`${prefix}-current-address`} label="Current address" value={member.current_address} onChange={(value) => onChange({ current_address: value })} />
           <TextAreaField id={`${prefix}-permanent-address`} label="Permanent address" value={member.permanent_address} onChange={(value) => onChange({ permanent_address: value })} />
-          <TextField id={`${prefix}-contact`} label="Contact number" type="tel" value={member.contact_number} onChange={(value) => onChange({ contact_number: value })} />
-          <TextField id={`${prefix}-email`} label="Email address" type="email" value={member.email_address} onChange={(value) => onChange({ email_address: value })} />
-          <TextField id={`${prefix}-education`} label="Educational attainment" value={member.educational_attainment} onChange={(value) => onChange({ educational_attainment: value })} />
+          <TextField id={`${prefix}-contact`} label="Contact number" type="tel" maxLength={familyMemberTextLimits.contact_number} hint="For example, 0917 123 4567." value={member.contact_number} onChange={(value) => onChange({ contact_number: value })} />
+          <TextField id={`${prefix}-email`} label="Email address" type="email" maxLength={familyMemberTextLimits.email_address} value={member.email_address} onChange={(value) => onChange({ email_address: value })} />
+          <TextField id={`${prefix}-education`} label="Educational attainment" maxLength={familyMemberTextLimits.educational_attainment} value={member.educational_attainment} onChange={(value) => onChange({ educational_attainment: value })} />
           <TextAreaField id={`${prefix}-business-address`} label="Business address" value={member.business_address} onChange={(value) => onChange({ business_address: value })} />
-          <TextField id={`${prefix}-business-telephone`} label="Business telephone" type="tel" value={member.business_telephone} onChange={(value) => onChange({ business_telephone: value })} />
+          <TextField id={`${prefix}-business-telephone`} label="Business telephone" type="tel" maxLength={familyMemberTextLimits.business_telephone} hint="Include the area code for a landline." value={member.business_telephone} onChange={(value) => onChange({ business_telephone: value })} />
           <TextField id={`${prefix}-languages`} label="Languages spoken" value={member.languages_spoken} onChange={(value) => onChange({ languages_spoken: value })} />
-          <TextField id={`${prefix}-religion-raised`} label="Religion raised with" value={member.religion_raised_with} onChange={(value) => onChange({ religion_raised_with: value })} />
-          <TextField id={`${prefix}-current-religion`} label="Current religion" value={member.current_religion} onChange={(value) => onChange({ current_religion: value })} />
+          <TextField id={`${prefix}-religion-raised`} label="Religion raised with" maxLength={familyMemberTextLimits.religion_raised_with} value={member.religion_raised_with} onChange={(value) => onChange({ religion_raised_with: value })} />
+          <TextField id={`${prefix}-current-religion`} label="Current religion" maxLength={familyMemberTextLimits.current_religion} value={member.current_religion} onChange={(value) => onChange({ current_religion: value })} />
         </div>
       </details>
     </section>

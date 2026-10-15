@@ -3,10 +3,12 @@
 import { Select } from "@/components/ui/select";
 import { BooleanField, TextAreaField, TextField } from "@/features/inventory/editor/fields";
 import type { InventorySectionProps } from "@/features/inventory/editor/types";
+import { educationTextLimits, inventoryTextLimits } from "@/features/inventory/inventory-field-limits";
 import { educationLevelOptions } from "@/features/inventory/inventory-presentation";
 import { FieldGroup, InventoryNotice } from "@/features/inventory/inventory-shared";
 import type { EducationEntryPayload } from "@/lib/api/generated/model";
 import { EducationLevelValue } from "@/lib/api/generated/model";
+import { YEAR_LEVELS, yearLevelLabel } from "@/lib/year-level";
 
 export function EducationSection({
   draft,
@@ -41,7 +43,7 @@ export function EducationSection({
     <div className="space-y-7">
       <FieldGroup legend="Educational history">
         <p className="mb-5 text-sm leading-6 text-muted">
-          Add the school and years attended for each level. You can leave levels that do not apply blank.
+          Add the school and years attended for each level, such as 2016–2022. You can leave levels that do not apply blank.
         </p>
         <div className="divide-y divide-border rounded-sm border border-border">
           {educationLevelOptions.map(([level, label]) => {
@@ -58,6 +60,7 @@ export function EducationSection({
                 <TextField
                   id={`inventory-education-${level.toLowerCase()}-years`}
                   label="Inclusive years"
+                  maxLength={educationTextLimits.inclusive_years}
                   value={entry?.inclusive_years}
                   onChange={(value) => updateEducation(level, { inclusive_years: value })}
                 />
@@ -134,14 +137,15 @@ export function EducationSection({
               onChange={(event) => onChange({ year_level: event.target.value ? Number(event.target.value) : null })}
             >
               <option value="">Select a Year Level</option>
-              {Array.from({ length: 10 }, (_, index) => index + 1).map((year) => (
-                <option key={year} value={year}>{year}{year === 1 ? "st" : year === 2 ? "nd" : year === 3 ? "rd" : "th"} year</option>
+              {YEAR_LEVELS.map((year) => (
+                <option key={year} value={year}>{yearLevelLabel(year)}</option>
               ))}
             </Select>
             {yearLevelError ? <p id="inventory-year-level-error" role="alert" className="mt-1.5 text-xs leading-5 text-danger">{yearLevelError}</p> : null}
           </div>
           <TextField
             id="inventory-major"
+            maxLength={inventoryTextLimits.major}
             label="Major"
             value={draft.major}
             onChange={(value) => onChange({ major: value })}

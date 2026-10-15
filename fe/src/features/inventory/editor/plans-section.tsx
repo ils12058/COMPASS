@@ -2,6 +2,7 @@
 
 import { BooleanField, SelectField, TextAreaField, TextField } from "@/features/inventory/editor/fields";
 import type { InventorySectionProps } from "@/features/inventory/editor/types";
+import { inventoryTextLimits } from "@/features/inventory/inventory-field-limits";
 import { allowanceOptions, workFieldOptions } from "@/features/inventory/inventory-presentation";
 import { FieldGroup, InventoryNotice } from "@/features/inventory/inventory-shared";
 import { PostGraduationFieldValue } from "@/lib/api/generated/model";
@@ -33,6 +34,7 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
           {draft.intended_work_field === PostGraduationFieldValue.OTHER ? (
             <TextField
               id="inventory-intended-work-other"
+              maxLength={inventoryTextLimits.intended_work_other}
               error={errorFor("inventory-intended-work-other")}
               label="Other intended work field"
               value={draft.intended_work_other}
@@ -64,18 +66,21 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
             <div className="grid gap-4 rounded-sm bg-surface-subtle p-4 sm:grid-cols-2">
               <TextField
                 id="inventory-prior-counselor"
+                maxLength={inventoryTextLimits.prior_counselor_name}
                 label="Counselor name"
                 value={draft.prior_counselor_name}
                 onChange={(value) => onChange({ prior_counselor_name: value })}
               />
               <TextField
                 id="inventory-prior-counseling-when"
+                maxLength={inventoryTextLimits.prior_counseling_when}
                 label="When"
                 value={draft.prior_counseling_when}
                 onChange={(value) => onChange({ prior_counseling_when: value })}
               />
               <TextField
                 id="inventory-prior-counseling-where"
+                maxLength={inventoryTextLimits.prior_counseling_where}
                 label="Where"
                 value={draft.prior_counseling_where}
                 onChange={(value) => onChange({ prior_counseling_where: value })}

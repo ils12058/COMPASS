@@ -2,6 +2,7 @@
 
 import { BooleanField, CheckboxGroupField, SelectField, TextAreaField, TextField } from "@/features/inventory/editor/fields";
 import type { InventorySectionProps } from "@/features/inventory/editor/types";
+import { inventoryTextLimits } from "@/features/inventory/inventory-field-limits";
 import { immunizationOptions, livingArrangementOptions, pwdOptions } from "@/features/inventory/inventory-presentation";
 import { FieldGroup } from "@/features/inventory/inventory-shared";
 import {
@@ -46,17 +47,21 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
           />
           <TextField
             id="inventory-present-place-people"
+            error={errorFor("inventory-present-place-people")}
             label="People in your present living place"
             type="number"
             min={0}
+            step={1}
             value={draft.present_place_people_count}
             onChange={(value) => onChange({ present_place_people_count: nullableCount(value) })}
           />
           <TextField
             id="inventory-room-sharing-people"
+            error={errorFor("inventory-room-sharing-people")}
             label="People sharing your room"
             type="number"
             min={0}
+            step={1}
             value={draft.room_sharing_people_count}
             onChange={(value) => onChange({ room_sharing_people_count: nullableCount(value) })}
           />
@@ -70,6 +75,7 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
             />
             <TextField
               id="inventory-boarding-landlord"
+              maxLength={inventoryTextLimits.boarding_landlord_name}
               label="Landlord or landlady name"
               value={draft.boarding_landlord_name}
               onChange={(value) => onChange({ boarding_landlord_name: value })}
@@ -130,6 +136,7 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
           {immunizations.includes(ImmunizationValue.OTHER) ? (
             <TextField
               id="inventory-immunization-other"
+              maxLength={inventoryTextLimits.immunization_other}
             error={errorFor("inventory-immunization-other")}
               label="Other immunization"
               value={draft.immunization_other}
@@ -140,12 +147,16 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
           ) : null}
           <TextField
             id="inventory-height"
+            maxLength={inventoryTextLimits.height}
+            hint="For example, 160 cm."
             label="Height"
             value={draft.height}
             onChange={(value) => onChange({ height: value })}
           />
           <TextField
             id="inventory-weight"
+            maxLength={inventoryTextLimits.weight}
+            hint="For example, 52 kg."
             label="Weight"
             value={draft.weight}
             onChange={(value) => onChange({ weight: value })}
