@@ -227,6 +227,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Individual Inventory workflow, review, documents, and profiling normalization.",
         (
             "test_inventory.py",
+            "test_inventory_correction_targets.py",
             "test_inventory_counselor_review.py",
             "test_inventory_documents.py",
             "test_inventory_frontend_readiness.py",
@@ -250,6 +251,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_exit_interview_documents.py",
             "test_exit_interview_opportunities.py",
             "test_exit_interview_confidential_content_encryption.py",
+            "test_exit_interview_correction_targets.py",
         ),
     ),
     "good-moral": (
