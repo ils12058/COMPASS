@@ -14506,6 +14506,21 @@
         "title": "GuidanceThreadResponse",
         "type": "object"
       },
+      "GuidanceUnreadCountResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "unread_conversations_count": {
+            "minimum": 0,
+            "title": "Unread Conversations Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "unread_conversations_count"
+        ],
+        "title": "GuidanceUnreadCountResponse",
+        "type": "object"
+      },
       "HandednessValue": {
         "enum": [
           "RIGHT",
@@ -43808,6 +43823,53 @@
           }
         ],
         "summary": "Resolve",
+        "tags": [
+          "guidance-messages"
+        ]
+      }
+    },
+    "/api/v1/guidance-messages/unread-count": {
+      "get": {
+        "operationId": "guidanceMessagesGetUnreadCount",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceUnreadCountResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Get Unread Count",
         "tags": [
           "guidance-messages"
         ]

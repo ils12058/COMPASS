@@ -895,6 +895,95 @@ def test_staff_transfer_and_status_http_proof_without_workflow_mutation(world):
     assert record.metadata["handler_id"] == str(world.gss.pk)
 
 
+def test_count_unread_conversations_semantics_and_api(world):
+    assert services.count_unread_conversations(actor=world.student) == 0
+    assert services.count_unread_conversations(actor=world.counselor) == 0
+    assert services.count_unread_conversations(actor=world.other) == 0
+
+    thread, msg1 = office(world)
+    assert services.count_unread_conversations(actor=world.student) == 0
+    assert services.count_unread_conversations(actor=world.counselor) == 1
+    assert services.count_unread_conversations(actor=world.other) == 0
+
+    msg2 = send(world, thread, actor=world.counselor)
+    assert services.count_unread_conversations(actor=world.student) == 1
+    assert services.count_unread_conversations(actor=world.counselor) == 1
+
+    msg3 = send(world, thread, actor=world.counselor)
+    assert services.count_unread_conversations(actor=world.student) == 1
+
+    services.mark_read(actor=world.student, thread_id=thread.pk, sequence=msg3.sequence)
+    assert services.count_unread_conversations(actor=world.student) == 0
+
+    counseling_thread, c_msg1 = counseling(world)
+    assert services.count_unread_conversations(actor=world.counselor) == 2
+
+    services.mark_read(actor=world.counselor, thread_id=thread.pk, sequence=msg1.sequence)
+    assert services.count_unread_conversations(actor=world.counselor) == 1
+
+    services.set_status(actor=world.counselor, thread_id=thread.pk, resolved=True)
+    assert services.count_unread_conversations(actor=world.student) == 0
+
+    world.student.is_active = False
+    world.student.save(update_fields=["is_active"])
+    with pytest.raises(MessagesPermissionDenied):
+        services.count_unread_conversations(actor=world.student)
+    world.student.is_active = True
+    world.student.save(update_fields=["is_active"])
+
+    with pytest.raises(MessagesPermissionDenied):
+        services.count_unread_conversations(actor=world.admin)
+    with pytest.raises(MessagesPermissionDenied):
+        services.count_unread_conversations(actor=world.dpo)
+
+    student_client = auth_client(world.student)
+    counselor_client = auth_client(world.counselor)
+    admin_client = auth_client(world.admin)
+
+    res_student = student_client.get(f"{BASE}/unread-count")
+    assert res_student.status_code == 200
+    assert res_student.json() == {"unread_conversations_count": 0}
+
+    res_counselor = counselor_client.get(f"{BASE}/unread-count")
+    assert res_counselor.status_code == 200
+    assert res_counselor.json() == {"unread_conversations_count": 1}
+
+    res_admin = admin_client.get(f"{BASE}/unread-count")
+    assert res_admin.status_code == 403
+
+    unauth_client = Client()
+    res_unauth = unauth_client.get(f"{BASE}/unread-count")
+    assert res_unauth.status_code == 401
+
+
+def test_count_unread_conversations_pagination_independence_and_query_efficiency(world, django_assert_num_queries):
+    now = timezone.now()
+    for i in range(25):
+        appt = Appointment.objects.create(
+            reference_code=f"GM-PAGINATED-{i}",
+            student=world.student,
+            provider=world.counselor,
+            service=world.appointment.service,
+            delivery_mode="IN_PERSON",
+            starts_at=now + timedelta(days=i + 1),
+            ends_at=now + timedelta(days=i + 1, hours=1),
+            created_by=world.student,
+        )
+        services.open_counseling_thread(
+            actor=world.student,
+            appointment_id=appt.pk,
+            client_message_id=uuid4(),
+            body=f"Pagination test message {i}",
+        )
+
+    assert services.count_unread_conversations(actor=world.counselor) == 25
+
+    with django_assert_num_queries(8):
+        assert services.count_unread_conversations(actor=world.counselor) == 25
+
+
+
+
 @pytest.mark.parametrize("configuration", ["absent", "valid", "malformed", "reuse"])
 def test_runtime_keyring_configuration_boundary(configuration):
     import os

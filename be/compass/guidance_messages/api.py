@@ -62,6 +62,10 @@ class GuidanceThreadResponse(StrictSchema):
     unread_count: int
 
 
+class GuidanceUnreadCountResponse(StrictSchema):
+    unread_conversations_count: int = Field(ge=0)
+
+
 class GuidanceThreadPage(StrictSchema):
     items: list[GuidanceThreadResponse]
     page: int
@@ -295,6 +299,17 @@ def list_threads(request, response: HttpResponse, page: int = 1, page_size: int 
         page_size=page_size,
         has_next=has_next,
     )
+
+
+@router.get(
+    "/unread-count",
+    response=response_with_errors(GuidanceUnreadCountResponse, 401, 403),
+    operation_id="guidanceMessagesGetUnreadCount",
+)
+@_safe
+def get_unread_count(request, response: HttpResponse):
+    count = services.count_unread_conversations(actor=request.auth_user)
+    return GuidanceUnreadCountResponse(unread_conversations_count=count)
 
 
 @router.get(

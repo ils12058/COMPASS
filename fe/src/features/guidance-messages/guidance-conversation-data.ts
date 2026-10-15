@@ -13,6 +13,7 @@ import {
   guidanceConversationQueryKey,
   guidanceDirectoryQueryFamily,
   guidanceThreadQueryKey,
+  guidanceUnreadCountQueryKey,
   HISTORY_PAGE_SIZE,
   mergeNewestPage,
   mergeOlderPage,
@@ -130,6 +131,7 @@ export function useMarkThreadRead({
       cacheConfirmedRead(queryClient, threadId, response.data.own_last_read_sequence);
       void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
       void queryClient.invalidateQueries({ queryKey: guidanceDirectoryQueryFamily() });
+      void queryClient.invalidateQueries({ queryKey: guidanceUnreadCountQueryKey() });
     },
     onError: (error) => {
       // The next confirmed refresh of the thread may try again; concealment closes the thread.

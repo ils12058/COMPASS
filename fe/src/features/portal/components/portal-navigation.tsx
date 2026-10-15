@@ -11,6 +11,10 @@ import {
   portalWorkspaceGroups,
   type PortalWorkspaceLink,
 } from "@/features/portal/components/portal-workspaces";
+import {
+  useNavigationAttention,
+  type NavigationAttentionBadge,
+} from "@/features/portal/components/portal-navigation-attention";
 import { cn } from "@/lib/utils/cn";
 
 const overviewLink: PortalWorkspaceLink = { href: "/portal", label: "Overview", icon: LayoutDashboard };
@@ -85,20 +89,24 @@ function NavItem({
   expanded,
   onNavigate,
   tipProps,
+  badge,
 }: {
   link: PortalWorkspaceLink;
   current: boolean;
   expanded: boolean;
   onNavigate?: () => void;
   tipProps: ReturnType<ReturnType<typeof useDockTips>["bind"]>;
+  badge?: NavigationAttentionBadge | null;
 }) {
   const Icon = link.icon;
+  const ariaLabel = badge ? `${link.label}, ${badge.ariaDescription}` : undefined;
 
   return (
     <GuardedPortalLink
       href={link.href}
       onNavigate={onNavigate}
       aria-current={current ? "page" : undefined}
+      aria-label={ariaLabel}
       className={cn(
         itemClass,
         // The current destination is a lit tile in the dock, not a stripe on its edge.
@@ -108,8 +116,34 @@ function NavItem({
       )}
       {...tipProps}
     >
-      <Icon size={20} aria-hidden="true" className="shrink-0" />
-      <span className={expanded ? "min-w-0 truncate" : "sr-only"}>{link.label}</span>
+      <span className="relative inline-flex shrink-0">
+        <Icon size={20} aria-hidden="true" className="shrink-0" />
+        {!expanded && badge ? (
+          <span
+            aria-hidden="true"
+            data-testid="nav-badge-collapsed"
+            className={cn(
+              "pointer-events-none absolute -right-2 -top-1.5 flex min-h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold leading-none shadow-xs",
+              current ? "bg-brand-strong text-on-brand" : "bg-on-brand text-brand-strong",
+            )}
+          >
+            {badge.display}
+          </span>
+        ) : null}
+      </span>
+      <span className={expanded ? "min-w-0 flex-1 truncate" : "sr-only"}>{link.label}</span>
+      {expanded && badge ? (
+        <span
+          aria-hidden="true"
+          data-testid="nav-badge-expanded"
+          className={cn(
+            "ml-auto inline-flex min-h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-xs font-semibold tabular-nums leading-none",
+            current ? "bg-brand-strong text-on-brand" : "bg-on-brand/20 text-on-brand",
+          )}
+        >
+          {badge.display}
+        </span>
+      ) : null}
     </GuardedPortalLink>
   );
 }
@@ -128,8 +162,9 @@ export function PortalNavigation({
 }) {
   const { user } = usePortalSession();
   const pathname = usePathname();
+  const attention = useNavigationAttention(user);
   const isWithin = (href: string) =>
-    pathname === href || pathname.startsWith(href + "/");
+    Boolean(pathname && (pathname === href || pathname.startsWith(href + "/")));
   const visibleGroups = portalWorkspaceGroups(user);
   const tips = useDockTips(!expanded);
   const navRef = useRef<HTMLElement>(null);
@@ -203,6 +238,7 @@ export function PortalNavigation({
                   expanded={expanded}
                   onNavigate={onNavigate}
                   tipProps={tips.bind(link.label)}
+                  badge={attention.getBadge(link.href)}
                 />
               ))}
             </div>

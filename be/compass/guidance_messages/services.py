@@ -3,7 +3,7 @@
 from uuid import UUID
 
 from django.db import transaction
-from django.db.models import BigIntegerField, Count, OuterRef, Subquery, Value
+from django.db.models import BigIntegerField, Count, Exists, OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -105,6 +105,21 @@ def list_threads(*, actor, page=1, page_size=DEFAULT_PAGE_SIZE):
     offset = (page - 1) * page_size
     rows = list(query[offset : offset + page_size + 1])
     return rows[:page_size], len(rows) > page_size
+
+
+def count_unread_conversations(*, actor) -> int:
+    actor = policy.current_actor(actor)
+    cursor = GuidanceThreadReadState.objects.filter(
+        thread_id=OuterRef("pk"), user_id=actor.pk
+    ).values("last_read_sequence")[:1]
+    threads = policy.authorized_threads(actor).annotate(
+        own_last_read_sequence=Coalesce(Subquery(cursor), Value(0), output_field=BigIntegerField())
+    )
+    has_unread = GuidanceMessage.objects.filter(
+        thread_id=OuterRef("pk"),
+        sequence__gt=OuterRef("own_last_read_sequence"),
+    ).exclude(sender_id=actor.pk)
+    return threads.filter(Exists(has_unread)).count()
 
 
 def get_thread(*, actor, thread_id):

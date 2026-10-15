@@ -33,6 +33,7 @@ EXPECTED_OPERATION_IDS = {
     "studentActionsList",
     "guidanceOperationsGet",
     "guidanceMessagesListThreads",
+    "guidanceMessagesGetUnreadCount",
     "guidanceMessagesRecipientOptions",
     "guidanceMessagesEligibleStudents",
     "guidanceMessagesOpenMyOfficeThread",
