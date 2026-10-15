@@ -1,4 +1,4 @@
-"""Verify and rewrap all three Exit Interview envelopes; preserve business metadata (ADR-082)."""
+"""Verify and rewrap all four Exit Interview envelopes; preserve business metadata (ADR-082)."""
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
@@ -10,7 +10,9 @@ from compass.exit_interviews.confidential_content import (
     read_exit_interview_confidential_content,
     read_opportunity_note,
     read_reopen_reason,
+    read_reopen_targets,
     reencrypt_confidential_content,
+    reencrypt_reopen_targets,
 )
 from compass.exit_interviews.models import (
     ExitInterview,
@@ -49,17 +51,39 @@ class Command(BaseCommand):
                 "Legacy plaintext Exit Interview columns remain; apply migrations first."
             )
         failures, failed_total = [], 0
-        for model, label, column, read in (
+        for model, label, column, read, reencrypt in (
             (
                 ExitInterview,
                 "Exit Interviews",
                 "confidential_content_ciphertext",
                 read_exit_interview_confidential_content,
+                reencrypt_confidential_content,
             ),
-            (ExitInterviewOpportunity, "Opportunities", "note_ciphertext", read_opportunity_note),
-            (ExitInterviewReopenEvent, "Reopen Events", "reason_ciphertext", read_reopen_reason),
+            (
+                ExitInterviewOpportunity,
+                "Opportunities",
+                "note_ciphertext",
+                read_opportunity_note,
+                reencrypt_confidential_content,
+            ),
+            (
+                ExitInterviewReopenEvent,
+                "Reopen Events",
+                "reason_ciphertext",
+                read_reopen_reason,
+                reencrypt_confidential_content,
+            ),
+            # Correction targets share the reopen-event row but are a separate, optional envelope.
+            (
+                ExitInterviewReopenEvent,
+                "Reopen Event correction targets",
+                "targets_ciphertext",
+                read_reopen_targets,
+                reencrypt_reopen_targets,
+            ),
         ):
-            scanned = current = needing_rotation = failed = 0
+            optional = column == "targets_ciphertext"
+            scanned = empty = current = needing_rotation = failed = 0
             last_pk = None
             while True:
                 with transaction.atomic():
@@ -70,6 +94,9 @@ class Command(BaseCommand):
                         rows = rows.filter(pk__gt=last_pk)
                     batch = list(rows[:batch_size])
                     for item in batch:
+                        if optional and not getattr(item, column):
+                            empty += 1
+                            continue
                         try:
                             read(item)
                         except ExitInterviewConfidentialContentUnavailable as exc:
@@ -82,24 +109,24 @@ class Command(BaseCommand):
                             continue
                         needing_rotation += 1
                         if not dry_run:
-                            model.objects.filter(pk=item.pk).update(
-                                **{column: reencrypt_confidential_content(item)}
-                            )
+                            model.objects.filter(pk=item.pk).update(**{column: reencrypt(item)})
                 if not batch:
                     break
                 scanned += len(batch)
                 last_pk = batch[-1].pk
             failed_total += failed
             action = "needing rotation" if dry_run else "rotated"
+            empty_note = f"empty {empty}; " if optional else ""
             self.stdout.write(
-                f"{label}: scanned {scanned}; current {current}; "
+                f"{label}: scanned {scanned}; {empty_note}current {current}; "
                 f"{action} {needing_rotation}; failures {failed}"
             )
         for exc in failures:
             self.stderr.write(
                 f"Unreadable: Exit Interview {exc.exit_interview_id}; "
                 f"Opportunity {exc.opportunity_id}; "
-                f"Reopen Event {exc.reopen_event_id} ({exc.reason})"
+                f"Reopen Event {exc.reopen_event_id}"
+                f"{' correction targets' if exc.content else ''} ({exc.reason})"
             )
         if failed_total > len(failures):
             self.stderr.write(f"... and {failed_total - len(failures)} more")

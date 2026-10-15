@@ -1,0 +1,231 @@
+{
+  "workstream": "FORM-CORR-1",
+  "slice": "PR 1 of 3 — backend correction targets",
+  "baseline": {
+    "staging_sha": "fea0f3c483d5fade22457efba6b73aed8d1893ce",
+    "includes_pr_235": true,
+    "staging_moved_since_audit": false
+  },
+  "worktree": "/Users/reynantlntno/Projects/COMPASS-FORM-CORR-1-BE",
+  "branch": "feat/form-corr-1-backend-targets",
+  "pull_request": "https://github.com/ils12058/COMPASS/pull/237",
+  "isolated_services": {
+    "postgres": "podman container corr1-be-pg, postgres:17.11-bookworm, 127.0.0.1:55434",
+    "redis": "podman container corr1-be-redis, redis:8.10.1-trixie, 127.0.0.1:56381",
+    "shared_environments_touched": false,
+    "environment": "POSTGRES_HOST=127.0.0.1 POSTGRES_PORT=55434 POSTGRES_USER=compass POSTGRES_PASSWORD=*** POSTGRES_DB=<isolated name> REDIS_URL=redis://127.0.0.1:56381/<n> (+ cache, rate-limit, idempotency, realtime on distinct DB numbers)"
+  },
+  "catalog": {
+    "inventory_codes": 148,
+    "inventory_section_codes": 8,
+    "inventory_excluded_answers": [
+      "student_number",
+      "course_currently_enrolled"
+    ],
+    "exit_interview_codes": 68,
+    "exit_interview_allowed_ucn_f9": 64,
+    "exit_interview_allowed_legacy_null_revision": 68,
+    "max_selected_targets": 30,
+    "matches_audit_matrix_target_count": 216
+  },
+  "migration_checks": {
+    "makemigrations_check": {
+      "command": "uv run python manage.py makemigrations --check --dry-run --settings=tests.settings",
+      "result": "No changes detected"
+    },
+    "system_check": {
+      "command": "uv run python manage.py check --settings=tests.settings",
+      "result": "System check identified no issues (0 silenced)."
+    },
+    "sqlmigrate": {
+      "inventory.0008": [
+        "ALTER TABLE \"inventory_inventoryreopenevent\" ADD COLUMN \"targets_ciphertext\" text DEFAULT '' NOT NULL;",
+        "ALTER TABLE \"inventory_inventoryreopenevent\" ALTER COLUMN \"targets_ciphertext\" DROP DEFAULT;"
+      ],
+      "exit_interviews.0006": [
+        "ALTER TABLE \"exit_interviews_exitinterviewreopenevent\" ADD COLUMN \"targets_ciphertext\" text DEFAULT '' NOT NULL;",
+        "ALTER TABLE \"exit_interviews_exitinterviewreopenevent\" ALTER COLUMN \"targets_ciphertext\" DROP DEFAULT;"
+      ]
+    },
+    "fresh_database_migrate": {
+      "command": "uv run python manage.py migrate --settings=tests.settings --noinput (POSTGRES_DB=compass_corr1_fresh)",
+      "result": "Applied all migrations including exit_interviews.0006 and inventory.0008"
+    },
+    "rewrite_and_lock_probe": {
+      "postgres_version": "PostgreSQL 17.11",
+      "pg_relation_filenode_before": {
+        "inventory_inventoryreopenevent": 33688,
+        "exit_interviews_exitinterviewreopenevent": 33453
+      },
+      "pg_relation_filenode_after": {
+        "inventory_inventoryreopenevent": 33688,
+        "exit_interviews_exitinterviewreopenevent": 33453
+      },
+      "table_rewrite": false,
+      "pg_attribute_after": {
+        "attnotnull": true,
+        "atthasdef": false,
+        "atthasmissing": true
+      },
+      "lock_probe": {
+        "concurrent_lock_held": "AccessShareLock (ordinary reader transaction)",
+        "statement": "SET lock_timeout = '500ms'; ALTER TABLE inventory_inventoryreopenevent ADD COLUMN targets_ciphertext text DEFAULT '' NOT NULL;",
+        "result": "ERROR: canceling statement due to lock timeout",
+        "conclusion": "ADD COLUMN needs a brief ACCESS EXCLUSIVE lock; no row rewrite"
+      }
+    },
+    "upgrade_path_tests": [
+      "tests/test_inventory_correction_targets.py::test_migration_keeps_existing_reopen_events_and_adds_empty_targets_without_rewrite",
+      "tests/test_exit_interview_correction_targets.py::test_migration_keeps_existing_reopen_events_and_adds_empty_targets_without_rewrite"
+    ]
+  },
+  "contract": {
+    "export": "uv run python manage.py export_openapi --settings=tests.settings",
+    "check": {
+      "command": "uv run python manage.py export_openapi --check --settings=tests.settings",
+      "result": "OpenAPI contract is current"
+    },
+    "new_schemas": [
+      "InventoryCorrectionTarget",
+      "ExitInterviewCorrectionTarget"
+    ],
+    "changed_schemas": {
+      "InventoryReopenRequest": "optional targets (maxItems 30); reason unchanged",
+      "InventoryCorrectionSummary": "required targets",
+      "ReopenRequest": "reason minLength 1 / maxLength 1000; optional targets (maxItems 30)",
+      "ReopenEventResponse": "required targets"
+    },
+    "reason_only_requests_valid": true,
+    "inventory_put_round_trip_after_nested_targets": "200 (test_counselor_reopens_with_targets_and_student_reads_them_inside_latest_correction)"
+  },
+  "frontend_compatibility": {
+    "commands": {
+      "pnpm install --frozen-lockfile --prefer-offline": "pass",
+      "pnpm api:generate": "pass",
+      "pnpm typecheck": "pass",
+      "pnpm lint": "pass (0 errors, 4 pre-existing warnings)",
+      "node --import ./tests/support/register-tsx.mjs --test tests/*.test.mjs": "718 passed, 0 failed"
+    },
+    "frontend_source_changed": false,
+    "generated_client_committed": false,
+    "generated_enum_keys_note": "orval drops dots in object keys (personalfull_name); key frontend maps by enum value"
+  },
+  "static_checks": {
+    "ruff_changed_files": "clean (format and lint)",
+    "ruff_repository_inherited": {
+      "format_files_flagged_outside_change": 8,
+      "lint_findings_outside_change": 38,
+      "areas": [
+        "graduate_tracer",
+        "reports",
+        "tests/test_graduate_tracer*",
+        "tests/test_guidance_messages.py"
+      ]
+    },
+    "git_diff_check": "clean",
+    "ci_bundle_verify": {
+      "command": "uv run python ../.github/scripts/backend_ci.py verify",
+      "result_after_fix": "only inherited problem remains: tests/test_graduate_tracer_graduation_classification.py is in no CI bundle",
+      "same_problem_on_baseline": true
+    }
+  },
+  "targeted_tests": [
+    {
+      "command": "uv run pytest -q -p no:cacheprovider tests/test_inventory_correction_targets.py",
+      "result": "29 passed"
+    },
+    {
+      "command": "uv run pytest -q -p no:cacheprovider tests/test_exit_interview_correction_targets.py",
+      "result": "24 passed"
+    },
+    {
+      "command": "uv run pytest -q -p no:cacheprovider tests/test_openapi_contract.py",
+      "result": "35 passed, 3 failed (inherited; same failures on baseline)"
+    },
+    {
+      "command": "uv run pytest -q -p no:cacheprovider tests/test_inventory_confidential_content_encryption.py tests/test_exit_interview_confidential_content_encryption.py",
+      "result": "Covered by full-suite shard 0 (both files); the 5 introduced migration-state failures were fixed and rerun: 11 passed"
+    }
+  ],
+  "mutation_spot_check": {
+    "disabled_exit_interview_revision_guard": "test_unsupported_saved_revision… and test_f9_rejects_program_chair_targets… failed as expected",
+    "removed_content_binding_key": "swap test still passed: payload-shape validation independently rejects reason/targets swaps; envelope test asserts the key",
+    "sources_restored": true
+  },
+  "full_backend_suite": {
+    "method": "164 test files split round-robin into three shards, each on its own database and Redis DB range",
+    "command": "uv run pytest -q -p no:cacheprovider --no-header $(cat shardN.txt)",
+    "shards": [
+      {
+        "index": 0,
+        "files": 54,
+        "result": "7 failed, 2362 passed in 4010.58s",
+        "exit": 1,
+        "failures": "5 introduced legacy migration-state tests (fixed, rerun green) + 2 inherited test_audit rollback tests"
+      },
+      {
+        "index": 1,
+        "files": 55,
+        "result": "8 failed, 1144 passed, 17 errors in 1304.00s",
+        "exit": 1
+      },
+      {
+        "index": 2,
+        "files": 55,
+        "result": "26 failed, 950 passed, 5 errors in 1351.76s",
+        "exit": 1
+      }
+    ],
+    "introduced_failures_fixed": {
+      "contract_expectation": {
+        "test": "tests/test_openapi_contract.py::test_inventory_frontend_readiness_openapi_contract",
+        "fix": "expected correction-summary properties include targets",
+        "rerun": "uv run pytest tests/test_openapi_contract.py -> 35 passed, 3 failed (inherited only)"
+      },
+      "legacy_migration_state_tests": {
+        "tests": [
+          "tests/test_exit_interview_confidential_content_encryption.py::test_forward_reverse_restores_exact_all_content_and_preserves_metadata_ratings",
+          "tests/test_exit_interview_confidential_content_encryption.py::test_phase_b_reconciles_old_release_changes_and_missing_late_rows_under_fence",
+          "tests/test_inventory_confidential_content_encryption.py::test_migrations_forward_reverse_exact_all_fields_empty_partial_legacy_submitted",
+          "tests/test_inventory_confidential_content_encryption.py::test_phase_b_reconciles_stale_root_children_reason_and_late_replacements",
+          "tests/test_inventory_confidential_content_encryption.py::test_reverse_corruption_atomic_no_blank_restoration[InventoryReopenEvent]"
+        ],
+        "cause": "current models selected targets_ciphertext at a migration state before the additive column",
+        "fix": "apply the additive migration before current-model reads (FORM-ID-1 precedent) and assert the column is empty; the reverse-corruption test stays at the 0007 boundary and selects only the corrupted column",
+        "rerun": "11 passed in 270.92s (all parametrizations of the five tests)"
+      }
+    },
+    "baseline_comparison": {
+      "method": "Temporary detached worktree at fea0f3c4 running test_demo_seed.py, test_demo_seed_v2.py, test_openapi_contract.py, test_privacy_release_audit.py",
+      "baseline_result": "33 failed, 72 passed, 22 errors in 638.34s",
+      "audit_rollback_tests": {
+        "tests": [
+          "tests/test_audit.py::test_success_audit_event_rolls_back_with_surrounding_transaction",
+          "tests/test_audit.py::test_policy_sync_rolls_back_if_audit_recording_fails"
+        ],
+        "baseline_alone": "2 failed, 15 passed in 29.22s",
+        "branch_alone": "2 failed, 15 passed in 28.50s",
+        "classification": "inherited"
+      },
+      "branch_failures_not_on_baseline": [],
+      "inherited_groups": {
+        "demo_seed SCENARIO_ALUMNI graduated_college": 51,
+        "openapi graduate tracer / operation count": 3,
+        "privacy_release_audit graduate tracer xlsx": 1,
+        "audit rollback count": 2
+      },
+      "total_inherited": 57
+    }
+  },
+  "ci": {
+    "pull_request": 237,
+    "head_runs": {
+      "1a214f51": {
+        "Backend full regression": "failure (prepare: inherited CI bundle gap for test_graduate_tracer_graduation_classification.py; static and contract: 8 inherited unformatted files)",
+        "Backend targeted validation": "failure (prepare gate: same inherited CI bundle gap; backend test steps skipped)",
+        "Frontend targeted validation": "failure only in frontend-browser-regressions (inherited #231 My work31/My work22 badge checks); frontend-tests and targeted-frontend pass"
+      }
+    },
+    "conclusion": "No CI failure is attributable to this PR; CI backend test steps are gated off by the inherited prepare failure, so local runs are the test evidence"
+  }
+}

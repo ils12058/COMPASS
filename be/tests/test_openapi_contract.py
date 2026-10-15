@@ -2371,8 +2371,11 @@ def test_inventory_frontend_readiness_openapi_contract() -> None:
     assert barangay_parameters["city_municipality_code"]["required"] is True
 
     correction = schemas["InventoryCorrectionSummary"]
-    assert set(correction["properties"]) == {"requested_at", "message"}
-    assert set(correction["required"]) == {"requested_at", "message"}
+    assert set(correction["properties"]) == {"requested_at", "message", "targets"}
+    assert set(correction["required"]) == {"requested_at", "message", "targets"}
+    assert correction["properties"]["targets"]["items"] == {
+        "$ref": "#/components/schemas/InventoryCorrectionTarget"
+    }
     assert "reopened_by" not in correction["properties"]
     assert "email" not in correction["properties"]
 
@@ -2389,6 +2392,25 @@ def test_inventory_frontend_readiness_openapi_contract() -> None:
     reopen = schemas["InventoryReopenRequest"]
     reason = reopen["properties"]["reason"]
     assert "Student-visible correction guidance" in reason["description"]
+    # Correction targets are optional, so existing reason-only clients stay valid.
+    assert reopen["required"] == ["reason"]
+    assert reopen["properties"]["targets"]["maxItems"] == 30
+    assert reopen["properties"]["targets"]["items"] == {
+        "$ref": "#/components/schemas/InventoryCorrectionTarget"
+    }
+    assert "section.personal" in schemas["InventoryCorrectionTarget"]["enum"]
+    assert "personal.student_number" not in schemas["InventoryCorrectionTarget"]["enum"]
+
+    exit_reopen = schemas["ReopenRequest"]
+    assert exit_reopen["required"] == ["reason"]
+    assert exit_reopen["properties"]["reason"]["minLength"] == 1
+    assert exit_reopen["properties"]["reason"]["maxLength"] == 1000
+    assert exit_reopen["properties"]["targets"]["maxItems"] == 30
+    exit_event = schemas["ReopenEventResponse"]
+    assert "targets" in exit_event["required"]
+    assert exit_event["properties"]["targets"]["items"] == {
+        "$ref": "#/components/schemas/ExitInterviewCorrectionTarget"
+    }
 
     submit = _operation(schema, "/api/v1/inventory/me/current/submit", "post")
     assert _response_statuses(submit) == {200, 401, 403, 404, 409, 422, 503}

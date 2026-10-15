@@ -59,6 +59,8 @@ SETTING = content.KEYRING_SETTING
 BEFORE = [("exit_interviews", "0002_exitinterviewopportunity_exitinterview_opportunity_and_more")]
 BACKFILLED = [("exit_interviews", "0003_encrypt_confidential_content")]
 AFTER = [("exit_interviews", "0004_remove_plaintext_confidential_content")]
+# Current models also read the later additive columns (saved Form Revision, correction targets).
+CURRENT = [("exit_interviews", "0006_exitinterviewreopenevent_targets_ciphertext")]
 FAMILIES = (
     (
         ExitInterview,
@@ -762,7 +764,7 @@ def test_rotation_all_families_preserves_exact_bytes_timestamps_and_business_met
                     Fernet(K1).decrypt(new[column].encode())
                 read(row)
         out, _ = rotate(batch_size=1)
-        assert out.count("rotated 0; failures 0") == 3 and snapshots() == after
+        assert out.count("rotated 0; failures 0") == 4 and snapshots() == after
     assert effects() == counts
 
 
@@ -827,7 +829,7 @@ def test_interrupted_rotation_commits_one_batch_then_resumes_without_rewrapping(
             content.encrypted_with_primary_key(getattr(row, column)) for row in model.objects.all()
         )
         out, _ = rotate(batch_size=1)
-        assert out.count("rotated 0; failures 0") == 3
+        assert out.count("rotated 0; failures 0") == 4
 
 
 def test_rotation_corruption_is_bounded_safe_nonzero_and_never_repaired(world):
@@ -959,12 +961,14 @@ def test_forward_reverse_restores_exact_all_content_and_preserves_metadata_ratin
         exit_interview_id=items[0].pk, item_code="DEAN_AVAILABILITY", rating=0
     )
     before, counts = all_raw(), effects()
-    MigrationExecutor(connection).migrate([("exit_interviews", "0005_saved_form_revision")])
+    MigrationExecutor(connection).migrate(CURRENT)
     for model, column, read in FAMILIES:
         for historical in before[model]:
             row = model.objects.get(pk=historical["id"])
             if model is ExitInterview:
                 assert row.form_revision_id is None
+            if model is ExitInterviewReopenEvent:
+                assert row.targets_ciphertext == ""
             logical = read(row)
             expected = (
                 {name: historical[name] for name in content.CONTENT_LIMITS}
@@ -985,7 +989,7 @@ def test_forward_reverse_restores_exact_all_content_and_preserves_metadata_ratin
             assert {
                 name: value
                 for name, value in raw(model, row.pk).items()
-                if name not in {column, "form_revision_id"}
+                if name not in {column, "form_revision_id", "targets_ciphertext"}
             } == ordinary
     assert rating_model.objects.get(pk=rating.pk).rating == 5
     assert feedback_model.objects.get(pk=feedback.pk).rating == 0
@@ -1043,7 +1047,7 @@ def test_phase_b_reconciles_old_release_changes_and_missing_late_rows_under_fenc
         note=NOTE,
     )
     assert model.objects.get(pk=late.pk).confidential_content_ciphertext is None
-    MigrationExecutor(connection).migrate([("exit_interviews", "0005_saved_form_revision")])
+    MigrationExecutor(connection).migrate(CURRENT)
     assert all(
         content.read_exit_interview_confidential_content(row) == PAYLOAD
         for row in ExitInterview.objects.all()

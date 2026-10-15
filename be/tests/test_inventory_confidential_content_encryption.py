@@ -51,6 +51,8 @@ SETTING = content.SETTING
 BEFORE = [("inventory", "0005_submission_history_reopen")]
 BACKFILLED = [("inventory", "0006_encrypt_confidential_content")]
 AFTER = [("inventory", "0007_remove_plaintext_confidential_content")]
+# Current models also read the later additive correction-targets column.
+CURRENT = [("inventory", "0008_inventoryreopenevent_targets_ciphertext")]
 NAMES = tuple(name for name, _, _ in content.FAMILIES)
 REASON = "PRIVATE-REOPEN-SENTINEL 雪"
 
@@ -608,9 +610,9 @@ def test_rotation_all_seven_families_bytes_timestamp_metadata_idempotent(world, 
     event(world, item)
     before, counts = snapshots(), effects()
     settings.INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS = (K2, K1)
-    assert rotate(dry_run=True, batch_size=1).count("failures 0") == 7
+    assert rotate(dry_run=True, batch_size=1).count("failures 0") == 8
     assert snapshots() == before
-    assert rotate(batch_size=1).count("failures 0") == 7
+    assert rotate(batch_size=1).count("failures 0") == 8
     after = snapshots()
     for (family, pk), row in before.items():
         col = column(family)
@@ -798,18 +800,21 @@ def test_migrations_forward_reverse_exact_all_fields_empty_partial_legacy_submit
             old_reason(registry, world, root)
     before, counts = all_raw(), effects()
     MigrationExecutor(connection).migrate(AFTER)
+    MigrationExecutor(connection).migrate(CURRENT)
     for family, col, _ in content.FAMILIES:
         model = apps.get_model("inventory", family)
         assert not set(content.FIELDS[family]) & columns(model)
         for historical in before[family]:
             row = model.objects.get(pk=historical["id"])
+            if family == "InventoryReopenEvent":
+                assert row.targets_ciphertext == ""
             expected = {name: historical[name] for name in content.FIELDS[family]}
             if "date_of_birth" in expected and expected["date_of_birth"] is not None:
                 expected["date_of_birth"] = expected["date_of_birth"].isoformat()
             assert content.read_confidential_content(row).payload() == expected
-            assert {k: v for k, v in raw(model, row.pk).items() if k != col} == {
-                k: v for k, v in historical.items() if k not in content.FIELDS[family]
-            }
+            assert {
+                k: v for k, v in raw(model, row.pk).items() if k not in {col, "targets_ciphertext"}
+            } == {k: v for k, v in historical.items() if k not in content.FIELDS[family]}
     MigrationExecutor(connection).migrate(BACKFILLED)
     restored = all_raw()
     for family, col, _ in content.FAMILIES:
@@ -900,6 +905,7 @@ def test_phase_b_reconciles_stale_root_children_reason_and_late_replacements(leg
     )
     expected = all_raw()
     MigrationExecutor(connection).migrate(AFTER)
+    MigrationExecutor(connection).migrate(CURRENT)
     for family, ids in replaced_ids.items():
         assert not apps.get_model("inventory", family).objects.filter(pk__in=ids).exists()
     assert (
@@ -925,7 +931,7 @@ def test_phase_b_reconciles_stale_root_children_reason_and_late_replacements(leg
             } == {
                 k: v
                 for k, v in raw(apps.get_model("inventory", family), saved["id"]).items()
-                if k != col
+                if k not in {col, "targets_ciphertext"}
             }
     assert before != expected
 
@@ -972,8 +978,9 @@ def test_reverse_corruption_atomic_no_blank_restoration(legacy, family):
     old_reason(registry, world, world["item"])
     MigrationExecutor(connection).migrate(AFTER)
     model = apps.get_model("inventory", family)
-    row = model.objects.first()
     col = column(family)
+    # This test reverses exactly 0007, so the 0008 targets column does not exist yet.
+    row = model.objects.only("pk", col).first()
     original = getattr(row, col)
     model.objects.filter(pk=row.pk).update(**{col: "private-corrupt-token"})
     before = all_raw()

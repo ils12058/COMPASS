@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from datetime import datetime
 from enum import StrEnum
 from typing import NoReturn
@@ -27,6 +28,12 @@ from .confidential_content import (
     read_exit_interview_confidential_content,
     read_opportunity_note,
     read_reopen_reason,
+    read_reopen_targets,
+)
+from .correction_targets import (
+    MAX_CORRECTION_TARGETS,
+    ExitInterviewCorrectionTarget,
+    project_stored_targets,
 )
 from .documents import ExitInterviewDocumentUnavailable, render_exit_interview_pdf
 from .form_contract import college_feedback_codes
@@ -80,6 +87,7 @@ from .services import (
 )
 
 router = Router(tags=["exit-interviews"])
+logger = logging.getLogger(__name__)
 PDF_SUCCESS_OPENAPI = {
     "responses": {
         200: {"content": {"application/pdf": {"schema": {"type": "string", "format": "binary"}}}}
@@ -285,6 +293,12 @@ class ReopenEventResponse(StrictSchema):
     reopened_at: datetime
     reopened_by: PersonSummary
     reason: str
+    targets: list[ExitInterviewCorrectionTarget] = Field(
+        description=(
+            "Parts of the Exit Interview Head Guidance asked the Student to review, in catalog "
+            "order. Empty for requests that named none, including every earlier request."
+        )
+    )
 
 
 class ExitInterviewFormRevisionSummary(StrictSchema):
@@ -408,7 +422,23 @@ class ExitInterviewStudentOptionsResponse(StrictSchema):
 
 
 class ReopenRequest(StrictSchema):
-    reason: str
+    reason: str = Field(
+        min_length=1,
+        max_length=1000,
+        description=(
+            "Student-visible correction guidance explaining what must be corrected before "
+            "resubmission."
+        ),
+    )
+    targets: list[ExitInterviewCorrectionTarget] = Field(
+        default_factory=list,
+        max_length=MAX_CORRECTION_TARGETS,
+        description=(
+            "Optional parts of the Exit Interview for the Student to review. Advisory only; "
+            "each must exist on the record's saved Form Revision. Repeats are dropped and the "
+            "stored order follows the catalog."
+        ),
+    )
 
 
 def _context(request) -> AuditContext:
@@ -568,6 +598,21 @@ def _read(reader, item):
         _raise(exc)
 
 
+def _reopen_targets(event) -> list[ExitInterviewCorrectionTarget]:
+    # Codes from a newer build are left in storage and omitted here; never logged.
+    targets, omitted = project_stored_targets(_read(read_reopen_targets, event))
+    if omitted:
+        logger.warning(
+            "Unrecognized Exit Interview correction targets were omitted.",
+            extra={
+                "event": "exit_interview_correction_targets_omitted",
+                "target_type": "exitinterviews.exitinterviewreopenevent",
+                "target_id": event.pk,
+            },
+        )
+    return list(targets)
+
+
 def _reopen_events(item) -> list[dict[str, object]]:
     return [
         {
@@ -575,6 +620,7 @@ def _reopen_events(item) -> list[dict[str, object]]:
             "reopened_at": event.reopened_at,
             "reopened_by": _person(event.reopened_by),
             "reason": _read(read_reopen_reason, event),
+            "targets": _reopen_targets(event),
         }
         for event in item.reopen_events.all()
     ]
@@ -1090,6 +1136,7 @@ def exit_interviews_reopen(
             actor=request.auth_user,
             exit_interview_id=exit_interview_id,
             reason=payload.reason,
+            targets=payload.targets,
             context=_context(request),
         )
     except ExitInterviewError as exc:

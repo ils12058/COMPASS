@@ -465,6 +465,8 @@ class ExitInterviewReopenEvent(models.Model):
         related_name="exit_interview_reopen_events",
     )
     reason_ciphertext = models.TextField(editable=False)
+    # Encrypted correction targets (FORM-CORR-1); empty when the request named none.
+    targets_ciphertext = models.TextField(blank=True, default="", editable=False)
 
     class Meta:
         default_permissions = ()

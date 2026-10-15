@@ -5,7 +5,8 @@ Call only after domain authorization. Models never decrypt or retain logical pri
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+import re
+from collections.abc import Mapping, Sequence
 from dataclasses import asdict, dataclass
 from datetime import date
 from types import MappingProxyType
@@ -377,14 +378,24 @@ PROJECTIONS = {
 }
 
 
+# Correction targets are a separate envelope in their own column on InventoryReopenEvent. The
+# reason envelope is unchanged, so older readers never meet this payload.
+TARGETS_FAMILY = "InventoryReopenEventTargets"
+TARGETS_COLUMN = "targets_ciphertext"
+# Readers accept any well-formed code list: codes outside this build's catalog are filtered by the
+# API, not treated as corruption. Writers are limited by the catalog to far fewer entries.
+_STORED_TARGET_CODE = re.compile(r"[A-Za-z0-9_.-]{1,128}")
+MAX_STORED_TARGETS = 256
+
+
 class InventoryConfidentialContentUnavailable(InventoryError):
     """Only typed structural context and a bounded ADR-079 reason; never content."""
 
-    def __init__(self, row, *, reason: UnavailableReason) -> None:
+    def __init__(self, row, *, reason: UnavailableReason, family: str | None = None) -> None:
         self.inventory_id = row.pk if type(row).__name__ == "StudentInventory" else row.inventory_id
         self.object_id = row.pk
-        self.family = type(row).__name__
-        if self.family not in FIELDS or reason not in {
+        self.family = family or type(row).__name__
+        if (self.family not in FIELDS and self.family != TARGETS_FAMILY) or reason not in {
             "missing",
             "undecryptable",
             "malformed",
@@ -491,6 +502,79 @@ def read_inventory_private_projection(item) -> InventoryPrivateProjection:
 
 def read_reopen_reason(event) -> str:
     return read_confidential_content(event).reason
+
+
+def _targets_binding(event) -> dict[str, str]:
+    # "content" keeps this envelope's key set distinct from the reason envelope's, so neither
+    # ciphertext can be read from the other column.
+    return {
+        "inventory_id": str(event.inventory_id),
+        "reopen_event_id": str(event.pk),
+        "content": "correction_targets",
+    }
+
+
+def _validate_targets_payload(payload) -> tuple[str, ...]:
+    if not isinstance(payload, dict) or set(payload) != {"targets"}:
+        raise ValueError("Invalid correction-target payload")
+    targets = payload["targets"]
+    if (
+        not isinstance(targets, list)
+        or not 1 <= len(targets) <= MAX_STORED_TARGETS
+        or any(
+            not isinstance(code, str) or not _STORED_TARGET_CODE.fullmatch(code) for code in targets
+        )
+        or len(set(targets)) != len(targets)
+    ):
+        raise ValueError("Invalid correction targets")
+    return tuple(targets)
+
+
+def write_reopen_targets(event, targets: Sequence[str]) -> None:
+    """Encrypt a non-empty target list; an empty list keeps the column empty."""
+
+    codes = [str(code) for code in targets]
+    if not codes:
+        event.targets_ciphertext = ""
+        return
+    try:
+        _validate_targets_payload({"targets": codes})
+    except ValueError:
+        raise InvalidInventoryInput("The correction targets are invalid.") from None
+    event.targets_ciphertext = encrypt_bound_json(
+        keyring=keyring(),
+        schema_version=1,
+        binding=_targets_binding(event),
+        payload={"targets": codes},
+    )
+
+
+def read_reopen_targets(event) -> tuple[str, ...]:
+    """Stored codes in stored order. Only an empty column means "no targets"."""
+
+    token = event.targets_ciphertext
+    if token == "":
+        return ()
+    try:
+        payload = decrypt_bound_json(
+            token,
+            keyring=keyring(),
+            schema_version=1,
+            binding=_targets_binding(event),
+        )
+        try:
+            return _validate_targets_payload(payload)
+        except (ValueError, TypeError):
+            raise ConfidentialDataUnavailable(reason="malformed") from None
+    except ConfidentialDataUnavailable as exc:
+        raise InventoryConfidentialContentUnavailable(
+            event, reason=exc.reason, family=TARGETS_FAMILY
+        ) from None
+
+
+def reencrypt_reopen_targets(event) -> str:
+    read_reopen_targets(event)
+    return reencrypt_with_primary_key(event.targets_ciphertext, keyring=keyring())
 
 
 def encrypted_with_primary_key(token) -> bool:
