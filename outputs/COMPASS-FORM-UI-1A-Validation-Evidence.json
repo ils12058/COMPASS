@@ -1,0 +1,204 @@
+{
+  "workstream": "FORM-UI-1A",
+  "date": "2026-10-15",
+  "baseline_sha": "b7f365b5828ab5db8fc541d90321558a5183f7f2",
+  "branch": "fix/form-ui-1a-call-slip-permissions",
+  "initial_checkout": {
+    "branch": "staging",
+    "sha": "40492b1aacca7b608c1cf8bc0a4aef618d9d78f1",
+    "status": "clean"
+  },
+  "merged_dependencies": {
+    "232": "180759f0b79b8a3d2b418ad0fd38101196f18942",
+    "233": "b7f365b5828ab5db8fc541d90321558a5183f7f2"
+  },
+  "component_reproduction": {
+    "before": {
+      "passed": 22,
+      "failed": 3
+    },
+    "after": {
+      "passed": 25,
+      "failed": 0
+    }
+  },
+  "commands": [
+    {
+      "cwd": "fe",
+      "command": "pnpm api:generate",
+      "exit_code": 0,
+      "outcome": "Orval generation passed; generated files uncommitted"
+    },
+    {
+      "cwd": "fe",
+      "command": "pnpm test",
+      "exit_code": 0,
+      "outcome": "712 passed, 0 failed (includes 25 new actual-component checks)"
+    },
+    {
+      "cwd": "fe",
+      "command": "pnpm typecheck",
+      "exit_code": 0,
+      "outcome": "Passed"
+    },
+    {
+      "cwd": "fe",
+      "command": "pnpm lint",
+      "exit_code": 0,
+      "outcome": "Passed"
+    },
+    {
+      "cwd": "fe",
+      "command": "pnpm build",
+      "exit_code": 0,
+      "outcome": "Production build passed"
+    },
+    {
+      "cwd": "fe",
+      "command": "COMPASS_UI_ARTIFACTS=../outputs/form-ui-1a pnpm test:ui:call-slips",
+      "exit_code": 0,
+      "outcome": "Chromium 25/25; WebKit 25/25"
+    },
+    {
+      "cwd": "be",
+      "command": "uv run pytest tests/test_call_slips.py tests/test_referral_call_slip_lifecycle.py --reuse-db -q --junitxml=../outputs/form-ui-1a/backend-final.xml",
+      "exit_code": 0,
+      "outcome": "52 passed in 62.23s"
+    },
+    {
+      "cwd": "be",
+      "command": "uv run ruff check tests/test_call_slips.py && uv run ruff format --check tests/test_call_slips.py",
+      "exit_code": 0,
+      "outcome": "Both passed"
+    },
+    {
+      "cwd": ".",
+      "command": "git diff --check",
+      "exit_code": 0,
+      "outcome": "Passed"
+    }
+  ],
+  "guidance_operations": [
+    {
+      "variant": "guidance-chromium",
+      "base_url": "http://localhost:3107",
+      "engine": "chromium",
+      "passed": 17,
+      "total": 20,
+      "failures": [
+        {
+          "name": "navigation and direct route authority for COUNSELOR",
+          "message": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'My work31',\n-   'My work',\n    'Guidance operations'\n  ]\n"
+        },
+        {
+          "name": "navigation and direct route authority for GUIDANCE_SERVICES_STAFF",
+          "message": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'My work22',\n-   'My work',\n    'Guidance operations'\n  ]\n"
+        },
+        {
+          "name": "same-tab reading preserves reply backlog; confirmed send reconciles it without a socket",
+          "message": "Canonical HTTP summary was invalidated by confirmed send"
+        }
+      ]
+    },
+    {
+      "variant": "guidance-webkit",
+      "base_url": "http://localhost:3107",
+      "engine": "webkit",
+      "passed": 17,
+      "total": 20,
+      "failures": [
+        {
+          "name": "navigation and direct route authority for COUNSELOR",
+          "message": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'My work31',\n-   'My work',\n    'Guidance operations'\n  ]\n"
+        },
+        {
+          "name": "navigation and direct route authority for GUIDANCE_SERVICES_STAFF",
+          "message": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'My work22',\n-   'My work',\n    'Guidance operations'\n  ]\n"
+        },
+        {
+          "name": "same-tab reading preserves reply backlog; confirmed send reconciles it without a socket",
+          "message": "Canonical HTTP summary was invalidated by confirmed send"
+        }
+      ]
+    },
+    {
+      "variant": "baseline-chromium",
+      "base_url": "http://localhost:3108",
+      "engine": "chromium",
+      "passed": 0,
+      "total": 3,
+      "failures": [
+        {
+          "name": "navigation and direct route authority for COUNSELOR",
+          "message": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'My work31',\n-   'My work',\n    'Guidance operations'\n  ]\n"
+        },
+        {
+          "name": "navigation and direct route authority for GUIDANCE_SERVICES_STAFF",
+          "message": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'My work22',\n-   'My work',\n    'Guidance operations'\n  ]\n"
+        },
+        {
+          "name": "same-tab reading preserves reply backlog; confirmed send reconciles it without a socket",
+          "message": "locator.waitFor: Timeout 12000ms exceeded.\nCall log:\n  - waiting for getByRole('main').locator('dl > div').filter({ has: getByText('Messages awaiting reply', { exact: true }) }).locator('dd').filter({ hasText: /^1$/ }) to be visible\n"
+        }
+      ]
+    },
+    {
+      "variant": "baseline-webkit",
+      "base_url": "http://localhost:3108",
+      "engine": "webkit",
+      "passed": 0,
+      "total": 3,
+      "failures": [
+        {
+          "name": "navigation and direct route authority for COUNSELOR",
+          "message": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'My work31',\n-   'My work',\n    'Guidance operations'\n  ]\n"
+        },
+        {
+          "name": "navigation and direct route authority for GUIDANCE_SERVICES_STAFF",
+          "message": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n+   'My work22',\n-   'My work',\n    'Guidance operations'\n  ]\n"
+        },
+        {
+          "name": "same-tab reading preserves reply backlog; confirmed send reconciles it without a socket",
+          "message": "Canonical HTTP summary was invalidated by confirmed send"
+        }
+      ]
+    }
+  ],
+  "baseline_reproduction": {
+    "source": "git archive origin/staging fe contracts into a temporary directory; dependencies shared by symlink; generated clients regenerated from archived contract",
+    "server": "node <installed-next>/dist/bin/next dev --webpack --port 3108",
+    "check_filter": "navigation and direct route authority for (COUNSELOR|GUIDANCE_SERVICES_STAFF)|same-tab reading",
+    "commands": [
+      "COMPASS_UI_BASE_URL=http://localhost:3108 COMPASS_UI_CHECK=\"$FILTER\" node tests/guidance-operations.browser.mjs",
+      "COMPASS_UI_BASE_URL=http://localhost:3108 COMPASS_UI_BROWSER=webkit COMPASS_UI_CHECK=\"$FILTER\" node tests/guidance-operations.browser.mjs"
+    ]
+  },
+  "sha256": {
+    "fe/src/features/call-slips/call-slip-detail-page.tsx": "7d064aafa228c6a9bfb72a8d897f2746a4b728879c538c2be509e70b2efb6cd6",
+    "fe/tests/call-slip-permissions.test.mjs": "1dccdc6f66cfea9c5d93637822062e424fc65c315f2ee86113b4c3b2d92e961a",
+    "fe/tests/call-slip-permissions.browser.mjs": "ece57a04582069b3d6a18bdb3cfd0e010d9a36823765f34d4afb4d070afd6698",
+    "fe/package.json": "23ff64daab5697bc66507aa44a402780cd8b4d3f3d4a36d8e983c97c6b726f89",
+    "be/tests/test_call_slips.py": "b990aa7ae3bdd2519fc8d85c8764bc8cde42b91e2e7c8f4367a0684f7e30758c"
+  },
+  "raw_log_sha256": {
+    "api-generate.log": "2f9ae383302598b86b7836d76c0666c11db19b18de0ecfb29bbe14ae28b4098a",
+    "backend-final.log": "86a3c3af679665b906c4eade48ad4edc62fc3c410c93d1b19107771b1b8da7d0",
+    "browser.log": "af4e87be29400f8b4f417f30c180fb2f5b1b3dccf66dc8c9ae3ee8a89b5bd1fa",
+    "backend.log": "3c31712dc702560917f0bba583da1496b936542965f3248bd1d5cafa9431d8dc",
+    "baseline-dev.log": "b56d0ef68758bba6b08c0c4627443a36ef95e5f1d5380e879f27b9369494e5f5",
+    "lint.log": "56a9bbcfa6adfc624915f9165c7b3c65b7a6133ab0cdaf9d3afeab67970de666",
+    "baseline-api-generate.log": "3420435d18742643a3f5915f642b89815fc1eb437966298a51075d15d348b2b4",
+    "guidance-webkit.log": "60a7093dd08c5a2e06ecec0f6a73997596275bfc9edb48046bff14a64fa05b62",
+    "backend-permissions.log": "ca7f319b3ead9253e9e8baadfbdac1b1563a221494071c057aa33c061c478708",
+    "guidance-chromium.log": "22d5e52ac9141bf38c3e63e851f7e988cb274bcea73d8c5951309a61da47c142",
+    "typecheck.log": "8366207267355d3e3d5bf3bf6e8c94c5f93f6078c34f08973fa2b38cdda6cc92",
+    "component-after.log": "270bedeb88362abe9769d9674c7358aac211b92f9680de4535a4686999837416",
+    "next-dev.log": "bb5bfbc7fa782dbe5d52c7c086bed0a909f7a349284583a6ce285c0938a152ad",
+    "baseline-chromium.log": "9de682b3d1f1d8d3ff1d0dc532a7499d020f03f93c52124b3e82cde739d289f0",
+    "frontend-tests.log": "c0836c7207334c2f340e3bf90a895ce55c59a995c5a4e16cdbf68bf2751c5747",
+    "baseline-webkit.log": "435142d405e64784af7202ec67b04ba200de18f7323a826d12f4f85747139b7a",
+    "component-before.log": "e46b0d66ddf5664ffc583467ccd27c7abcfb129610ae1604efc7b02080f146b1",
+    "build.log": "bf7eea1e27844b35c885a86ae70111b84641c98f5f18d7eeb8c009bb392d00f6"
+  },
+  "limits": "Focused checks only; full browser/backend repository suites and remote CI not claimed green. Synthetic browser PDF bytes validate download routing only."
+}

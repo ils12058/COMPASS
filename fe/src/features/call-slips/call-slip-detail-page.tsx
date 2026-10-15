@@ -95,6 +95,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
 
 function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   const { user } = usePortalSession();
+  const access = getCallSlipAccess(user);
   const referralAccess = getReferralAccess(user);
   const slip = useCallSlipsGet(callSlipId, { query: { retry: false } });
   const confirmed = safeQueryData(slip);
@@ -146,7 +147,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
         </PanelSection>
       ) : null}
       </Panel>
-      {!slip.isError ? <CallSlipLifecycleActions slip={item} onRefresh={async () => {
+      {access.canManageOperational && !slip.isError ? <CallSlipLifecycleActions slip={item} onRefresh={async () => {
         const refreshed = await slip.refetch();
         return refreshed.isSuccess ? refreshed.data.data : undefined;
       }} /> : null}

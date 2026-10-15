@@ -2139,3 +2139,40 @@ def test_saved_legacy_call_slip_identity_survives_sync_and_reprint():
     )
     assert "CNSC-OP-GTA-01F8" in text
     assert "Revision: 0" in text
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("role", ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"])
+def test_view_only_operational_account_cannot_mutate_call_slip(role):
+    from compass.accounts.models import Capability, UserCapabilityOverride
+
+    sync_policy()
+    counselor, _, staff, student, _ = setup_scope()
+    item = create_for(counselor, student, key="view-only-defense", fingerprint="a" * 64)
+    viewer = counselor if role == "COUNSELOR" else staff
+    UserCapabilityOverride.objects.create(
+        user=viewer,
+        capability=Capability.objects.get(code="call_slips.manage"),
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="View-only regression fixture",
+    )
+    assert viewer.has_capability("call_slips.view")
+    assert not viewer.has_capability("call_slips.manage")
+    client = auth_client(viewer)
+    assert client.get(f"/api/v1/call-slips/{item.pk}").status_code == 200
+    before = CallSlip.objects.filter(pk=item.pk).values().get()
+    audit_count = AuditEvent.objects.count()
+    for method, suffix, payload in (
+        (client.patch, "interview-ended", {"interview_ended_at": timezone.now().isoformat()}),
+        (client.post, "void", {"reason": "Must be rejected"}),
+    ):
+        response = method(
+            f"/api/v1/call-slips/{item.pk}/{suffix}",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **csrf(client),
+        )
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "permission_denied"
+        assert CallSlip.objects.filter(pk=item.pk).values().get() == before
+    assert AuditEvent.objects.count() == audit_count
