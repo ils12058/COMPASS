@@ -175,7 +175,7 @@ def csrf(client: Client) -> dict[str, str]:
     return {"HTTP_X_CSRFTOKEN": response.json()["csrf_token"]}
 
 
-def valid_payload(*, feedback_zero: bool = False) -> dict[str, object]:
+def valid_payload(*, feedback_zero: bool = False, legacy: bool = False) -> dict[str, object]:
     return {
         "student_name": "Form Local Student",
         "age": 22,
@@ -206,9 +206,10 @@ def valid_payload(*, feedback_zero: bool = False) -> dict[str, object]:
                 "rating": 0 if feedback_zero and index == 0 else 5,
             }
             for index, code in enumerate(CollegeFeedbackItem.values)
+            if legacy or not code.startswith("PROGRAM_CHAIR_")
         ],
         "dean_comments": "Dean comment",
-        "program_chair_comments": "Program Chair comment",
+        "program_chair_comments": "Program Chair comment" if legacy else "",
         "faculty_comments": "Faculty comment",
         "curriculum_comments": "Curriculum comment",
         "guidance_counselor_comments": "Guidance comment",
@@ -282,12 +283,12 @@ def test_source_schema_is_fixed_and_matches_inspected_two_page_form():
 @pytest.mark.django_db
 def test_exit_interview_models_are_domain_specific_and_have_no_qms_or_generic_engine():
     fields = {field.name for field in ExitInterview._meta.get_fields()}
-    assert "form_revision" not in fields
+    assert ExitInterview._meta.get_field("form_revision").null is True
     assert "reference_code" not in fields
     assert "interview_date" not in fields
     assert "form_date" not in fields
     assert "student_entered_date" not in fields
-    assert not FormFamily.objects.filter(key="exit_interview").exists()
+    assert FormFamily.objects.filter(key="exit_interview").exists()
 
     for name in (
         "GenericSurvey",
@@ -533,7 +534,7 @@ def test_full_put_edits_form_local_values_without_mutating_profile_or_inventory(
     assert body["student_name"] == "Form Local Student"
     assert body["course"] == "BS Information Systems"
     assert len(body["self_assessment_ratings"]) == 15
-    assert len(body["college_feedback_ratings"]) == 26
+    assert len(body["college_feedback_ratings"]) == 23
 
     student.refresh_from_db()
     inventory.refresh_from_db()
@@ -687,7 +688,7 @@ def test_student_draft_is_private_from_head_detail_but_visible_in_summary_list()
     assert mine.status_code == 200
     assert mine.json()["suggestions_recommendations"] == "Suggestion"
     assert len(mine.json()["self_assessment_ratings"]) == 15
-    assert len(mine.json()["college_feedback_ratings"]) == 26
+    assert len(mine.json()["college_feedback_ratings"]) == 23
 
     head_client = auth_client(make_head("draft-private-head@example.edu"))
     listing = head_client.get("/api/v1/exit-interviews")

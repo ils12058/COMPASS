@@ -9079,6 +9079,13 @@
             "title": "Civil Status",
             "type": "string"
           },
+          "college_feedback_item_codes": {
+            "items": {
+              "$ref": "#/components/schemas/CollegeFeedbackItemValue"
+            },
+            "title": "College Feedback Item Codes",
+            "type": "array"
+          },
           "college_feedback_ratings": {
             "items": {
               "$ref": "#/components/schemas/CollegeFeedbackRatingResponse"
@@ -9161,6 +9168,16 @@
               }
             ],
             "title": "First Submitted At"
+          },
+          "form_revision": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ExitInterviewFormRevisionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "guidance_counselor_comments": {
             "default": "",
@@ -9284,6 +9301,8 @@
         "required": [
           "self_assessment_ratings",
           "college_feedback_ratings",
+          "form_revision",
+          "college_feedback_item_codes",
           "can_edit",
           "id",
           "student",
@@ -9473,6 +9492,50 @@
           }
         },
         "title": "ExitInterviewDraftPayload",
+        "type": "object"
+      },
+      "ExitInterviewFormRevisionSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "internal_schema_version": {
+            "title": "Internal Schema Version",
+            "type": "integer"
+          },
+          "official_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Code"
+          },
+          "official_revision": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Official Revision"
+          }
+        },
+        "required": [
+          "id",
+          "official_code",
+          "official_revision",
+          "internal_schema_version"
+        ],
+        "title": "ExitInterviewFormRevisionSummary",
         "type": "object"
       },
       "ExitInterviewHistoryResponse": {

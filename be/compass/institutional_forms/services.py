@@ -85,6 +85,17 @@ def is_supported_form_revision(revision: FormRevision) -> bool:
     )
 
 
+def is_current_form_revision(revision: FormRevision) -> bool:
+    """Whether the exact saved identity is canonical for new records in this build."""
+    definition = get_canonical_form_revision(
+        family_key=revision.family.key,
+        official_code=revision.official_code,
+        official_revision=revision.official_revision,
+        internal_schema_version=revision.internal_schema_version,
+    )
+    return definition is not None and definition.active
+
+
 def _require_supported(revision: FormRevision) -> None:
     if not is_supported_form_revision(revision):
         raise UnsupportedInstitutionalFormRevision(
@@ -99,6 +110,11 @@ def get_active_supported_form_revision(family_key: str) -> FormRevision | None:
     if revision is None:
         return None
     _require_supported(revision)
+    if not is_current_form_revision(revision):
+        raise UnsupportedInstitutionalFormRevision(
+            "The active Form Revision is retired by this COMPASS version. "
+            "Run sync_institutional_forms before creating new records."
+        )
     return revision
 
 

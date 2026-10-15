@@ -213,6 +213,12 @@ def seed_exit_interview(
         "contact_number_snapshot": content.contact_number_snapshot,
         **narrative,
     }
+    values["college_feedback_ratings"] = [
+        row
+        for row in values["college_feedback_ratings"]
+        if not row["item_code"].startswith("PROGRAM_CHAIR_")
+    ]
+    values["program_chair_comments"] = ""
     replace_my_current(student=student, values=values)
     if submitted is not None:
         submit_my_current(student=student, context=context, now=submitted)

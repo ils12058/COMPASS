@@ -131,3 +131,34 @@ test("Student and reviewer Exit Interview copy names authorized reviewers withou
   // Submission remains final except through the controlled reopen process.
   assert.match(form, /available only to authorized Guidance and Counseling Office reviewers\. You will not be able to edit it after submission unless it is reopened for correction\./);
 });
+
+
+// FORM-ID-1: the saved answer contract controls display, completion and submission.
+import { collegeFeedbackCategories, exitInterviewFormFromDetail, exitInterviewDraftPayload,
+  COLLEGE_FEEDBACK_CATEGORIES } from "../src/features/exit-interviews/exit-interview-presentation.ts";
+import { ExitInterviewFormSections } from "../src/features/exit-interviews/exit-interview-form-sections.tsx";
+
+test("UCN F9 uses six source categories while legacy responses keep Program Chair", () => {
+  const allCodes = COLLEGE_FEEDBACK_CATEGORIES.flatMap(category => category.items.map(item => item.code));
+  const codes = allCodes.filter(code => !code.startsWith("PROGRAM_CHAIR_"));
+  assert.equal(allCodes.length, 26);
+  assert.equal(codes.length, 23);
+  assert.equal(collegeFeedbackCategories(codes).length, 6);
+  assert.equal(collegeFeedbackCategories(allCodes).length, 7);
+  const makeForm = items => exitInterviewFormFromDetail({ ...record, college_feedback_item_codes: items,
+    self_assessment_ratings: [], college_feedback_ratings: items.map(item_code => ({ item_code, rating: 0 })),
+    delay_reasons: [], significant_learning_experiences: [], career_modes: [], work_choices: [], study_choices: [],
+  });
+  const current = makeForm(codes);
+  const payload = exitInterviewDraftPayload(current);
+  assert.equal(payload.college_feedback_ratings.length, 23);
+  assert.ok(payload.college_feedback_ratings.every(row => row.rating === 0));
+  const props = { disabled: false, onTextChange() {}, onProgramCompletionChange() {}, onToggleDelayReason() {},
+    onToggleLearning() {}, onToggleCareerMode() {}, onToggleWorkChoice() {}, onToggleStudyChoice() {}, onRatingChange() {} };
+  const currentHtml = renderToStaticMarkup(h(ExitInterviewFormSections, { ...props, form: current }));
+  assert.doesNotMatch(currentHtml, /Program Chair/);
+  assert.match(currentHtml, /does not specify its meaning/);
+  const legacyHtml = renderToStaticMarkup(h(ExitInterviewFormSections, { ...props, form: makeForm(allCodes) }));
+  assert.match(legacyHtml, /Program Chair/);
+  assert.equal(exitInterviewDraftPayload(makeForm(allCodes)).college_feedback_ratings.length, 26);
+});

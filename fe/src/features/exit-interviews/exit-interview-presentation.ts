@@ -165,6 +165,16 @@ export const COLLEGE_FEEDBACK_CATEGORIES: readonly {
   },
 ];
 
+export function collegeFeedbackCategories(codes?: readonly string[]) {
+  // Older responses have the complete legacy contract. Current responses declare saved items.
+  if (!codes) return COLLEGE_FEEDBACK_CATEGORIES;
+  const allowed = new Set(codes);
+  return COLLEGE_FEEDBACK_CATEGORIES.map((category) => ({
+    ...category,
+    items: category.items.filter((item) => allowed.has(item.code)),
+  })).filter((category) => category.items.length > 0);
+}
+
 export const SELF_ASSESSMENT_SCALE = [
   { value: 5, label: "Much enhanced" },
   { value: 4, label: "Enhanced" },
@@ -219,6 +229,7 @@ export const CAREER_MODES = [
 ] as const;
 
 export type ExitInterviewFormState = {
+  collegeFeedbackItemCodes: readonly string[];
   studentName: string;
   age: string;
   civilStatus: string;
@@ -259,11 +270,12 @@ function ratingValues<T extends { item_code: string; rating: number }>(
 export function exitInterviewFormFromDetail(
   detail: ExitInterviewDetailResponse,
 ): ExitInterviewFormState {
-  const collegeCodes = COLLEGE_FEEDBACK_CATEGORIES.flatMap((category) =>
+  const collegeCodes = collegeFeedbackCategories(detail.college_feedback_item_codes).flatMap((category) =>
     category.items.map((item) => item.code),
   );
 
   return {
+    collegeFeedbackItemCodes: collegeCodes,
     studentName: detail.student_name ?? "",
     age: detail.age === null || detail.age === undefined ? "" : String(detail.age),
     civilStatus: detail.civil_status ?? "",
@@ -308,7 +320,7 @@ export function exitInterviewDraftPayload(
   const hasLearningOther = form.significantLearningExperiences.includes(SignificantLearningValue.OTHER);
   const hasWork = form.careerModes.includes(CareerModeValue.WORK);
   const hasStudy = form.careerModes.includes(CareerModeValue.STUDY);
-  const collegeItems = COLLEGE_FEEDBACK_CATEGORIES.flatMap((category) => category.items);
+  const collegeItems = collegeFeedbackCategories(form.collegeFeedbackItemCodes).flatMap((category) => category.items);
 
   return {
     student_name: form.studentName,

@@ -68,8 +68,8 @@ def ensure_call_slip_form_revision() -> None:
     )
     FormRevision.objects.get_or_create(
         family=family,
-        official_code="CNSC-OP-GTA-01F8",
-        official_revision="0",
+        official_code="UCN-OP-GCO-01F2",
+        official_revision="2",
         defaults={
             "internal_schema_version": 1,
             "status": "ACTIVE",
@@ -105,7 +105,7 @@ def audit_context(actor: User) -> AuditContext:
 @pytest.mark.parametrize(
     ("destination_type", "other_destination", "expected_destination"),
     [
-        ("GUIDANCE_OFFICE", "", "Guidance Counselor's Office"),
+        ("GUIDANCE_OFFICE", "", "Guidance and Counselling Office"),
         ("OTHER", "Registrar Office", "Registrar Office"),
     ],
 )
@@ -133,7 +133,7 @@ def test_call_slip_pdf_instruction_matches_saved_destination_and_release_policy(
     for access_mode in ("SELF", "GCO"):
         html, _ = render_document_html(
             "call_slip",
-            1,
+            2,
             context=build_call_slip_render_context(item, access_mode=access_mode),
         )
         assert expected_destination in html
@@ -146,7 +146,7 @@ def test_call_slip_pdf_instruction_matches_saved_destination_and_release_policy(
         assert saved_student in text and saved_issuer.upper() in text
         assert student.get_full_name() not in text
         assert head.get_full_name().upper() not in text
-        assert "CNSC-OP-GTA-01F8" in text and "Revision: 0" in text
+        assert "UCN-OP-GCO-01F2" in text and "Revision: 2" in text
         if destination_type == "OTHER":
             assert "Guidance Counselor's Office" not in text
 
@@ -312,8 +312,8 @@ def test_call_slip_form_family_bootstraps_exact_historical_identity():
     family = FormFamily.objects.get(key="call_slip")
     revision = FormRevision.objects.get(
         family=family,
-        official_code="CNSC-OP-GTA-01F8",
-        official_revision="0",
+        official_code="UCN-OP-GCO-01F2",
+        official_revision="2",
     )
     assert family.title == "Interview Permit / Call Slip"
     assert revision.internal_schema_version == 1
@@ -701,7 +701,7 @@ def test_form_revision_snapshot_survives_future_activation_and_unsupported_activ
     FormRevision.objects.filter(family=family, status="ACTIVE").update(status="INACTIVE")
     unsupported = FormRevision.objects.create(
         family=family,
-        official_code="CNSC-OP-GTA-01F8",
+        official_code="UCN-OP-GCO-01F2",
         official_revision="future-unsupported",
         internal_schema_version=2,
         status="ACTIVE",
@@ -713,8 +713,8 @@ def test_form_revision_snapshot_survives_future_activation_and_unsupported_activ
     unsupported.refresh_from_db()
     replacement = FormRevision.objects.get(
         family=family,
-        official_code="CNSC-OP-GTA-01F8",
-        official_revision="0",
+        official_code="UCN-OP-GCO-01F2",
+        official_revision="2",
         internal_schema_version=1,
     )
     assert unsupported.status == "INACTIVE"
@@ -2111,3 +2111,31 @@ def test_atomic_referral_call_slip_rejects_void_referral_bad_action_chronology_a
     )
     assert missing_key.status_code == 422
     assert not ReferralAction.objects.filter(referral=missing_key_referral).exists()
+
+
+@pytest.mark.django_db
+def test_saved_legacy_call_slip_identity_survives_sync_and_reprint():
+    from io import BytesIO
+
+    from pypdf import PdfReader
+
+    from compass.call_slips.services import render_call_slip_pdf
+    from compass.institutional_forms.bootstrap import sync_institutional_forms
+
+    sync_policy()
+    actor, _, _, student, *_ = setup_scope()
+    item = create_for(actor, student, key="legacy-reprint", fingerprint="a" * 64)
+    legacy = FormRevision.objects.get(
+        family__key="call_slip", official_code="CNSC-OP-GTA-01F8", official_revision="0"
+    )
+    item.form_revision = legacy
+    item.save(update_fields=["form_revision"])
+    sync_institutional_forms()
+    item.refresh_from_db()
+    assert item.form_revision_id == legacy.pk
+    text = " ".join(
+        page.extract_text()
+        for page in PdfReader(BytesIO(render_call_slip_pdf(item, access_mode="GCO"))).pages
+    )
+    assert "CNSC-OP-GTA-01F8" in text
+    assert "Revision: 0" in text

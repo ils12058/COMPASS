@@ -118,9 +118,10 @@ def _sync_institutional_forms() -> CanonicalFormSyncResult:
             if revision_created:
                 counts["revisions_created"] += 1
             elif revision.internal_schema_version != revision_definition.internal_schema_version:
-                revision.internal_schema_version = revision_definition.internal_schema_version
-                revision.save(update_fields=["internal_schema_version", "updated_at"])
-                counts["revisions_updated"] += 1
+                raise CanonicalFormSyncError(
+                    "An existing official identity has a different saved schema version. "
+                    "Inspect its historical references before reconciling it."
+                )
             if revision_definition.active:
                 active_revision_id = revision.pk
 

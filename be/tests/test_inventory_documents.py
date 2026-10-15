@@ -175,7 +175,7 @@ def test_individual_inventory_html_and_chromium_pdf_are_source_shaped_and_three_
         assert label in html
     assert html.count('class="individual-inventory-page') == 3
     assert "Page 1 of 3" in html and "Page 2 of 3" in html and "Page 3 of 3" in html
-    assert "CNSC-OP-GCO-01F5" in html and "Revision: 0" in html
+    assert "UCN-OP-GCO-01F5" in html and "Revision: 1" in html
     assert "StudentSupportProfile" not in html
     assert "student_number" not in html
     assert "Alex" in html
@@ -318,8 +318,8 @@ def test_student_inventory_pdf_is_owned_submitted_only_and_audited_safely(monkey
         "document_type": "individual_inventory",
         "access_mode": "SELF",
         "form_revision_id": str(submitted.form_revision_id),
-        "official_code": "CNSC-OP-GCO-01F5",
-        "official_revision": "0",
+        "official_code": "UCN-OP-GCO-01F5",
+        "official_revision": "1",
     }
     assert "Alex Student" not in str(event.metadata)
     next_year = create_academic_year(label="2027-2028", context=context(actor))
@@ -378,3 +378,34 @@ def test_counselor_inventory_pdf_uses_existing_contextual_review_authority(monke
     assert blocked.status_code == 503
     assert blocked.json()["error"]["code"] == "release_audit_unavailable"
     assert b"%PDF-" not in blocked.content
+
+
+@pytest.mark.django_db
+def test_legacy_inventory_keeps_saved_cnsc_identity_on_reprint_and_rejects_unknown():
+    from compass.institutional_forms.bootstrap import sync_institutional_forms
+    from compass.institutional_forms.models import FormRevision
+    from compass.inventory.documents import InventoryDocumentUnavailable, render_inventory_pdf
+
+    call_command("sync_identity_policy", verbosity=0)
+    student = make_user("legacy-pdf-student@example.edu", "STUDENT")
+    actor = make_user("legacy-pdf-admin@example.edu", "IT_ADMIN")
+    item = make_submitted_inventory(student=student, actor=actor, code="LEGACYPDF")
+    legacy = FormRevision.objects.get(official_code="CNSC-OP-GCO-01F5", official_revision="0")
+    item.form_revision = legacy
+    item.save(update_fields=["form_revision"])
+    sync_institutional_forms()
+    item.refresh_from_db()
+    pages = PdfReader(BytesIO(render_inventory_pdf(item))).pages
+    assert len(pages) == 3
+    assert all("CNSC-OP-GCO-01F5" in page.extract_text() for page in pages)
+    assert all("UCN-OP-GCO-01F5" not in page.extract_text() for page in pages)
+    unknown = FormRevision.objects.create(
+        family=legacy.family,
+        official_code="UNKNOWN-F5",
+        official_revision="1",
+        internal_schema_version=1,
+        status="INACTIVE",
+    )
+    item.form_revision = unknown
+    with pytest.raises(InventoryDocumentUnavailable):
+        render_inventory_pdf(item)

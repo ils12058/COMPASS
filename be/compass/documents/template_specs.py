@@ -28,6 +28,38 @@ class UnknownDocumentTemplate(RuntimeError):
 
 
 _TEMPLATE_SPECS = {
+    ("call_slip", 2): DocumentTemplateSpec(
+        key="call_slip",
+        version=2,
+        template_name="documents/call_slips/ucn_call_slip.html",
+        layout_family=LayoutFamily.COMPACT_FORM,
+        include_accreditation_footer=True,
+        show_page_numbers=True,
+    ),
+    ("referral_slip", 2): DocumentTemplateSpec(
+        key="referral_slip",
+        version=2,
+        template_name="documents/referrals/ucn_referral_slip.html",
+        layout_family=LayoutFamily.COMPACT_FORM,
+        include_accreditation_footer=True,
+        show_page_numbers=True,
+    ),
+    ("good_moral_current_student", 2): DocumentTemplateSpec(
+        key="good_moral_current_student",
+        version=2,
+        template_name="documents/good_moral/ucn_current_student.html",
+        layout_family=LayoutFamily.CERTIFICATE,
+        include_accreditation_footer=True,
+        show_page_numbers=True,
+    ),
+    ("exit_interview", 2): DocumentTemplateSpec(
+        key="exit_interview",
+        version=2,
+        template_name="documents/exit_interviews/exit_interview.html",
+        layout_family=LayoutFamily.STANDARD_LETTERHEAD,
+        include_accreditation_footer=True,
+        show_page_numbers=True,
+    ),
     ("exit_interview", 1): DocumentTemplateSpec(
         key="exit_interview",
         version=1,

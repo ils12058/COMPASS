@@ -779,7 +779,7 @@ class SeededDemoDatasetTests(TestCase):
 
         exit_interview = ExitInterview.objects.get(student=demo_user(ALUMNI))
         assert exit_interview.self_assessment_ratings.count() == 15
-        assert exit_interview.college_feedback_ratings.count() == 26
+        assert exit_interview.college_feedback_ratings.count() == 23
 
         assert CustomerFeedbackResponse.objects.count() == 6
         overall = sorted(

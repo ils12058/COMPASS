@@ -81,6 +81,8 @@ REQUIRED_FORM_FAMILIES = (
     "good_moral_current_student",
     "good_moral_graduate",
     "customer_feedback",
+    "routine_interview",
+    "exit_interview",
 )
 
 

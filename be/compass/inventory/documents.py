@@ -9,6 +9,7 @@ from decimal import Decimal
 from compass.common.correlation import get_current_request_id
 from compass.common.institutional_time import institution_date
 from compass.documents.rendering import DocumentRenderError, render_document_pdf
+from compass.institutional_forms.services import is_supported_form_revision
 
 from .confidential_content import InventoryPrivateProjection, read_inventory_private_projection
 from .models import (
@@ -99,12 +100,7 @@ def build_inventory_render_context(
 ) -> dict[str, object]:
     """Map only source-visible F5 answers into their printed positions."""
     revision = item.form_revision
-    if (
-        revision.family.key != "individual_inventory"
-        or revision.internal_schema_version != 1
-        or revision.official_code != "CNSC-OP-GCO-01F5"
-        or revision.official_revision != "0"
-    ):
+    if revision.family.key != "individual_inventory" or not is_supported_form_revision(revision):
         raise InventoryDocumentUnavailable(
             "The saved Individual Inventory presentation version is unavailable."
         )
