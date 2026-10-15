@@ -2,6 +2,7 @@
 
 import { civilStatusOptions, religionOptions, sexOptions } from "@/features/inventory/inventory-presentation";
 import type { InventorySectionProps } from "@/features/inventory/editor/types";
+import { inventoryTextLimits } from "@/features/inventory/inventory-field-limits";
 import { SelectField, TextAreaField, TextField } from "@/features/inventory/editor/fields";
 import { PSGCLocationSelector } from "@/features/inventory/editor/psgc-location-selector";
 import {
@@ -39,6 +40,7 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
         <div className="grid gap-4 sm:grid-cols-2">
           <TextField
             id="inventory-full-name"
+            maxLength={inventoryTextLimits.full_name}
             label="Full name"
             value={draft.full_name}
             onChange={(value) => onChange({ full_name: value })}
@@ -46,6 +48,7 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
           />
           <TextField
             id="inventory-nickname"
+            maxLength={inventoryTextLimits.nickname}
             label="Nickname"
             value={draft.nickname}
             onChange={(value) => onChange({ nickname: value })}
@@ -70,12 +73,14 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
           />
           <TextField
             id="inventory-place-of-birth"
+            maxLength={inventoryTextLimits.place_of_birth}
             label="Place of birth"
             value={draft.place_of_birth}
             onChange={(value) => onChange({ place_of_birth: value })}
           />
           <TextField
             id="inventory-nationality"
+            maxLength={inventoryTextLimits.nationality}
             label="Nationality"
             value={draft.nationality}
             onChange={(value) => onChange({ nationality: value })}
@@ -91,6 +96,7 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
           />
           <TextField
             id="inventory-birth-order"
+            maxLength={inventoryTextLimits.birth_order_among_siblings}
             label="Birth order among siblings"
             value={draft.birth_order_among_siblings}
             onChange={(value) => onChange({ birth_order_among_siblings: value })}
@@ -112,6 +118,7 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
           {draft.civil_status_category === CivilStatusCategoryValue.OTHER ? (
             <TextField
               id="inventory-civil-status-other"
+              maxLength={inventoryTextLimits.civil_status}
             error={errorFor("inventory-civil-status-other")}
               label="Other civil status"
               value={draft.civil_status}
@@ -139,6 +146,8 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
           />
           <TextField
             id="inventory-contact-number"
+            maxLength={inventoryTextLimits.contact_number}
+            hint="For example, 0917 123 4567."
             label="Contact number"
             type="tel"
             value={draft.contact_number}
@@ -147,6 +156,7 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
           />
           <TextField
             id="inventory-email"
+            maxLength={inventoryTextLimits.email_address}
             label="Email address"
             type="email"
             value={draft.email_address}
@@ -167,6 +177,7 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
           />
           <TextField
             id="inventory-religion-birth"
+            maxLength={inventoryTextLimits.religion_from_birth}
             label="Religion from birth"
             value={draft.religion_from_birth}
             onChange={(value) => onChange({ religion_from_birth: value })}
@@ -190,6 +201,7 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
           {draft.current_religion_category === CurrentReligionCategoryValue.OTHER ? (
             <TextField
               id="inventory-current-religion-other"
+              maxLength={inventoryTextLimits.current_religion}
             error={errorFor("inventory-current-religion-other")}
               label="Other current religion"
               value={draft.current_religion}

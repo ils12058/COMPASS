@@ -23,6 +23,7 @@ import {
   validateStudentProfileDraft,
   type StudentProfileDraft,
 } from "@/features/reports/report-filters";
+import { YEAR_LEVELS, yearLevelLabel } from "@/lib/year-level";
 
 type CampusChoice = CampusSummary | OrganizationReference;
 type CollegeChoice = CollegeSummary | ReportScopeCollege;
@@ -384,20 +385,8 @@ export function StudentProfileFilters({
             onChange={(event) => updateDraft("year_level", event.target.value)}
           >
             <option value="">All Year Levels</option>
-            {Array.from({ length: 10 }, (_, index) => index + 1).map((year) => (
-              <option key={year} value={year}>
-                {year}
-                {year % 100 >= 11 && year % 100 <= 13
-                  ? "th"
-                  : year % 10 === 1
-                    ? "st"
-                    : year % 10 === 2
-                      ? "nd"
-                      : year % 10 === 3
-                        ? "rd"
-                        : "th"}{" "}
-                Year
-              </option>
+            {YEAR_LEVELS.map((year) => (
+              <option key={year} value={year}>{yearLevelLabel(year)}</option>
             ))}
           </Select>
         </div>

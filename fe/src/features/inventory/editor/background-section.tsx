@@ -6,12 +6,15 @@ import { Button } from "@/components/ui/button";
 import { SelectField, TextAreaField, TextField } from "@/features/inventory/editor/fields";
 import type { InventorySectionProps } from "@/features/inventory/editor/types";
 import { sexOptions } from "@/features/inventory/inventory-presentation";
+import { siblingTextLimits } from "@/features/inventory/inventory-field-limits";
 import { FieldGroup } from "@/features/inventory/inventory-shared";
 import type { SiblingPayload } from "@/lib/api/generated/model";
 
 const emptySiblings: SiblingPayload[] = [];
 
-export function BackgroundSection({ draft, onChange }: InventorySectionProps) {
+export function BackgroundSection({ draft, onChange, validationIssues = [] }: InventorySectionProps) {
+  const errorFor = (targetId: string) =>
+    validationIssues.find((issue) => issue.targetId === targetId)?.message;
   const siblings = draft.siblings ?? emptySiblings;
   const focusAfterUpdate = useRef<string | null>(null);
 
@@ -85,6 +88,7 @@ export function BackgroundSection({ draft, onChange }: InventorySectionProps) {
               <div className="grid gap-4 sm:grid-cols-2">
                 <TextField
                   id={`inventory-sibling-${index}-name`}
+                  maxLength={siblingTextLimits.name}
                   label="Name"
                   value={sibling.name}
                   onChange={(value) => updateRow(index, { name: value })}
@@ -100,17 +104,22 @@ export function BackgroundSection({ draft, onChange }: InventorySectionProps) {
                   id={`inventory-sibling-${index}-age`}
                   label="Age"
                   type="number"
+                  min={0}
+                  step={1}
+                  error={errorFor(`inventory-sibling-${index}-age`)}
                   value={sibling.age}
                   onChange={(value) => updateRow(index, { age: value ? Number(value) : null })}
                 />
                 <TextField
                   id={`inventory-sibling-${index}-education`}
+                  maxLength={siblingTextLimits.educational_attainment}
                   label="Educational attainment"
                   value={sibling.educational_attainment}
                   onChange={(value) => updateRow(index, { educational_attainment: value })}
                 />
                 <TextField
                   id={`inventory-sibling-${index}-occupation`}
+                  maxLength={siblingTextLimits.occupation}
                   label="Occupation"
                   value={sibling.occupation}
                   onChange={(value) => updateRow(index, { occupation: value })}

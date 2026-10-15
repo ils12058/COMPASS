@@ -77,6 +77,7 @@ function FormField({
   max,
   required = false,
   error,
+  hint,
 }: {
   id: string;
   label: string;
@@ -88,8 +89,11 @@ function FormField({
   max?: number;
   required?: boolean;
   error?: string;
+  hint?: string;
 }) {
   const errorId = error ? `${id}-error` : undefined;
+  const hintId = hint ? `${id}-hint` : undefined;
+  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -106,10 +110,11 @@ function FormField({
         step={type === "number" ? 1 : undefined}
         required={required}
         aria-invalid={error ? true : undefined}
-        aria-describedby={errorId}
+        aria-describedby={describedBy}
         disabled={disabled}
         onChange={(event) => onChange(event.target.value)}
       />
+      {hint ? <p id={hintId} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
       {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
   );
@@ -322,7 +327,7 @@ export function ExitInterviewFormSections({
           <FormField id="exit-course" label="Course" value={form.course} disabled={disabled} onChange={(value) => onTextChange("course", value)} />
           <FormField id="exit-major" label="Major" value={form.major} disabled={disabled} onChange={(value) => onTextChange("major", value)} />
           <FormField id="exit-email-address" label="Email Address" type="email" value={form.emailAddress} disabled={disabled} onChange={(value) => onTextChange("emailAddress", value)} />
-          <FormField id="exit-contact-number" label="Contact Number" type="tel" value={form.contactNumber} disabled={disabled} onChange={(value) => onTextChange("contactNumber", value)} />
+          <FormField id="exit-contact-number" label="Contact Number" type="tel" hint="For example, 0917 123 4567." value={form.contactNumber} disabled={disabled} onChange={(value) => onTextChange("contactNumber", value)} />
           <div className="sm:col-span-2">
             <FormTextArea id="exit-home-address" label="Home Address" value={form.homeAddress} disabled={disabled} onChange={(value) => onTextChange("homeAddress", value)} />
           </div>

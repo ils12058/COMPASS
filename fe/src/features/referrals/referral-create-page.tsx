@@ -24,6 +24,7 @@ import { getReferralsListQueryKey, referralsCreate, useReferralsListEligibleStud
 import type { ReferralCreateRequest } from "@/lib/api/generated/model";
 import {
   INSTITUTION_TIME_ZONE_LABEL,
+  institutionalDateInputValue,
   institutionalDateTimeInputToISO,
   isFutureInstitutionalDateInput,
   isFutureInstitutionalDateTimeInput,
@@ -182,7 +183,7 @@ export function ReferralCreatePage() {
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="grid content-start gap-2">
                 <Label htmlFor="referral-referred-on">Date referred</Label>
-                <Input id="referral-referred-on" type="date" required value={referredOn} onChange={(event) => setReferredOn(event.target.value)} />
+                <Input id="referral-referred-on" type="date" required max={institutionalDateInputValue()} value={referredOn} onChange={(event) => setReferredOn(event.target.value)} />
                 <p className="text-xs leading-5 text-muted">The date the source Referral was made or signed. It is not the date entered into COMPASS.</p>
               </div>
               <div className="grid content-start gap-2">

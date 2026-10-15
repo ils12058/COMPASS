@@ -30,6 +30,7 @@ import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useAcademicYearsList } from "@/lib/api/generated/academic-years/academic-years";
 import { useInventoryListStudents } from "@/lib/api/generated/inventory/inventory";
 import { InventoryRosterOrdering, InventoryStatusValue, type AcademicYearResponse } from "@/lib/api/generated/model";
+import { YEAR_LEVELS, yearLevelLabel } from "@/lib/year-level";
 
 const pageSize = 20;
 
@@ -145,8 +146,8 @@ function RosterFilters({
             onChange={(event) => setDraft((current) => ({ ...current, yearLevel: event.target.value }))}
           >
             <option value="">All Year Levels</option>
-            {Array.from({ length: 10 }, (_, index) => index + 1).map((year) => (
-              <option key={year} value={year}>{year}{year === 1 ? "st" : year === 2 ? "nd" : year === 3 ? "rd" : "th"} year</option>
+            {YEAR_LEVELS.map((year) => (
+              <option key={year} value={year}>{yearLevelLabel(year)}</option>
             ))}
           </Select>
         </FilterField>
