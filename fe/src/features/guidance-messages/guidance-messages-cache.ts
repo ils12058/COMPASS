@@ -2,6 +2,7 @@ import type { InfiniteData, QueryClient } from "@tanstack/react-query";
 
 import {
   getGuidanceMessagesGetThreadQueryKey,
+  getGuidanceMessagesGetUnreadCountQueryKey,
   getGuidanceMessagesListMessagesQueryKey,
   getGuidanceMessagesListThreadsQueryKey,
   type guidanceMessagesListThreadsResponseSuccess,
@@ -35,6 +36,10 @@ export function guidanceThreadQueryKey(threadId: string) {
 
 export function guidanceConversationQueryKey(threadId: string) {
   return [...getGuidanceMessagesListMessagesQueryKey(threadId), "conversation"] as const;
+}
+
+export function guidanceUnreadCountQueryKey() {
+  return getGuidanceMessagesGetUnreadCountQueryKey();
 }
 
 export type DirectoryData = InfiniteData<guidanceMessagesListThreadsResponseSuccess>;
@@ -142,4 +147,5 @@ export function cacheConfirmedRead(queryClient: QueryClient, threadId: string, s
   queryClient.setQueryData<{ data: GuidanceThreadResponse }>(guidanceThreadQueryKey(threadId), (response) =>
     response ? { ...response, data: apply(response.data) } : response,
   );
+  void queryClient.invalidateQueries({ queryKey: guidanceUnreadCountQueryKey() });
 }
