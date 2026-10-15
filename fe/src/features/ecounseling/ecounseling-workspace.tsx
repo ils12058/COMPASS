@@ -12,13 +12,13 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { AppointmentStatusBadge, formatAppointmentDateTime } from "@/features/appointments/appointments-shared";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { CounselingContextPanel } from "@/features/counseling/counseling-workspace";
+import { unconfirmedEncounterMessage } from "@/features/counseling/counseling-shared";
 import { RecordEncounterDialog } from "@/features/counseling/record-encounter-dialog";
-import { type EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
 import { CallStage } from "@/features/ecounseling/call/call-stage";
 import { useSessionCallView } from "@/features/ecounseling/runtime/use-session-call-view";
 import { CaptureStartDialogs, CounselorMediaStrip, GovernedCaptureControls, useCounselorMedia } from "@/features/ecounseling/counselor-media";
 import { getECounselingAccess, type ECounselingAccess } from "@/features/ecounseling/ecounseling-access";
-import { captureStatusLabel, ecounselingErrorMessage } from "@/features/ecounseling/ecounseling-shared";
+import { captureStatusLabel, ecounselingErrorMessage, sessionEncounterPreset } from "@/features/ecounseling/ecounseling-shared";
 import { ECounselingHelp } from "@/features/ecounseling/session-help";
 import { SessionFiles } from "@/features/ecounseling/session-files";
 import { LayoutPresetControl, phoneBleed, sessionGrid, sessionStageClass, useWideWorkspace, type LayoutPreset } from "@/features/ecounseling/session-layout";
@@ -32,7 +32,7 @@ import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { routineEvaluationStatusLabel, routineIntakeStatusLabel } from "@/features/routine-interviews/routine-interviews-shared";
 import type { AppointmentWorkspaceSummary, CounselorWorkspaceResponse, MediaWorkspaceState, ProviderReadiness, StudentWorkspaceResponse } from "@/lib/api/generated/model";
-import { CounselingContextAnchorType, CounselingEntryMode, DeliveryMode, ECounselingCaptureStatus, ECounselingJoinState } from "@/lib/api/generated/model";
+import { CounselingContextAnchorType, ECounselingCaptureStatus, ECounselingJoinState } from "@/lib/api/generated/model";
 import {
   getCounselingContextGetOverviewQueryKey,
   getCounselingListMyEncountersQueryKey,
@@ -311,40 +311,90 @@ function EncounterSection({ workspace, canManage, defaultOpen }: { workspace: Co
   const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [uncertain, setUncertain] = useState(false);
-  const recorded = Boolean(workspace.counseling_encounter?.recorded);
-  const preset: EncounterOriginPreset = {
-    entryMode: CounselingEntryMode.APPOINTMENT,
-    appointmentId: workspace.appointment.id,
-    appointmentReference: workspace.appointment.reference_code,
-    studentName: workspace.student.display_name,
-    deliveryMode: DeliveryMode.ONLINE,
-  };
+  const [checking, setChecking] = useState(false);
+  const [alreadyRecorded, setAlreadyRecorded] = useState(false);
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const encounter = workspace.counseling_encounter;
+  const recorded = Boolean(encounter?.recorded);
+  const preset = sessionEncounterPreset(workspace);
 
-  async function handleCreated() {
+  // Reloads what this session shows about its Encounter and the lists that include it.
+  async function reloadEncounter() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: getECounselingGetAssignedWorkspaceQueryKey(workspace.appointment.id) }),
       queryClient.invalidateQueries({ queryKey: getCounselingListMyEncountersQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getCounselingContextGetOverviewQueryKey(CounselingContextAnchorType.APPOINTMENT, workspace.appointment.id) }),
       ...(workspace.routine_interview ? [queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(workspace.routine_interview.id) })] : []),
     ]);
+  }
+
+  async function handleCreated() {
+    await reloadEncounter();
     setOpen(false);
   }
+
+  async function handleAlreadyRecorded() {
+    await reloadEncounter();
+    setAlreadyRecorded(true);
+    setOpen(false);
+  }
+
+  // An unconfirmed save is checked, never retried here: the reload shows the Encounter if it was
+  // recorded, and otherwise the result stays unconfirmed.
+  async function checkAgain() {
+    setChecking(true);
+    try {
+      await reloadEncounter();
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  // The backend can report an Encounter this workspace does not list, e.g. one recorded before a
+  // reassignment; it is still recorded.
+  const status = recorded || alreadyRecorded ? "Recorded" : uncertain ? "Not confirmed" : "Not yet recorded";
+  const message = alreadyRecorded
+    ? `An encounter was already recorded for this Appointment.${recorded ? " The latest details are now shown." : ""}`
+    : recorded ? "Encounter recorded." : uncertain ? unconfirmedEncounterMessage : "Record the encounter after the counseling conversation.";
 
   // Documenting the encounter is separate from recording audio or video, and sits apart from the
   // call controls.
   return (
-    <DisclosureSection title="Counseling Encounter" status={recorded ? "Documented" : "Not documented yet"} defaultOpen={defaultOpen}>
+    <DisclosureSection title="Counseling Encounter" status={status} defaultOpen={defaultOpen}>
       <div className="flex flex-wrap items-center justify-between gap-3 px-1">
-        <p className="text-sm text-muted">{recorded ? "Encounter recorded." : "Document the encounter once the conversation has taken place."}</p>
-        {recorded && workspace.counseling_encounter ? (
-          <Link className={buttonVariants({ variant: "secondary" })} href={`/portal/counseling/encounters/${workspace.counseling_encounter.id}`}>View encounter</Link>
-        ) : canManage ? (
-          <Button variant="secondary" disabled={uncertain} onClick={() => setOpen(true)}>
-            {uncertain ? "Recording result unconfirmed" : "Record encounter"}
-          </Button>
-        ) : null}
+        <p aria-live="polite" className="min-w-0 text-sm text-muted">{message}</p>
+        <div ref={actionsRef} className="flex flex-wrap gap-2">
+          {recorded && encounter ? (
+            <Link className={buttonVariants({ variant: "secondary" })} href={`/portal/counseling/encounters/${encounter.id}`}>View encounter</Link>
+          ) : alreadyRecorded ? (
+            <Link className={buttonVariants({ variant: "secondary" })} href="/portal/counseling#encounters">View encounters</Link>
+          ) : canManage && uncertain ? (
+            <>
+              <Button variant="secondary" aria-busy={checking} onClick={() => void checkAgain()}>{checking ? "Checking…" : "Check again"}</Button>
+              <Link className={buttonVariants({ variant: "quiet" })} href="/portal/counseling#encounters">View encounters</Link>
+            </>
+          ) : canManage ? (
+            <Button variant="secondary" onClick={() => setOpen(true)}>Record encounter</Button>
+          ) : null}
+        </div>
       </div>
-      {canManage && !recorded ? <RecordEncounterDialog open={open} onOpenChange={setOpen} preset={preset} onUncertain={() => setUncertain(true)} onCreated={handleCreated} /> : null}
+      {canManage ? (
+        <RecordEncounterDialog
+          open={open && !recorded && !alreadyRecorded}
+          onOpenChange={setOpen}
+          preset={preset}
+          onUncertain={() => setUncertain(true)}
+          onCreated={handleCreated}
+          onAlreadyRecorded={handleAlreadyRecorded}
+          // Recording replaces the opener with View encounter, so focus moves to this section's action.
+          onCloseAutoFocus={(event) => {
+            const action = actionsRef.current?.querySelector<HTMLElement>("a, button");
+            if (!action) return;
+            event.preventDefault();
+            action.focus();
+          }}
+        />
+      ) : null}
     </DisclosureSection>
   );
 }

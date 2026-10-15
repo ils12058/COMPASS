@@ -128,6 +128,12 @@ class PersonWorkspaceSummary(StrictSchema):
     display_name: str
 
 
+class CounselorWorkspaceStudentSummary(PersonWorkspaceSummary):
+    # The assigned Counselor already reads this ID on the Appointment. The Student workspace's
+    # Counselor summary stays name-only.
+    institutional_id: str | None
+
+
 class ProviderReadiness(StrictSchema):
     daily_enabled: bool
     room_provisioned: bool
@@ -185,7 +191,7 @@ class StudentWorkspaceResponse(StrictSchema):
 
 class CounselorWorkspaceResponse(StrictSchema):
     appointment: AppointmentWorkspaceSummary
-    student: PersonWorkspaceSummary
+    student: CounselorWorkspaceStudentSummary
     provider_readiness: ProviderReadiness
     routine_interview: CounselorRoutineWorkspaceSummary | None
     counseling_encounter: CounselingEncounterWorkspaceSummary | None

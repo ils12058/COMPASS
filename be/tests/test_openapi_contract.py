@@ -2652,6 +2652,16 @@ def test_ecounseling_join_and_context_readiness_openapi_contract() -> None:
 
     counselor_workspace = schemas["CounselorWorkspaceResponse"]
     assert counselor_workspace["properties"]["counseling_context_available"]["type"] == "boolean"
+    # Only the assigned Counselor's projection carries the Student's Institutional ID.
+    assert counselor_workspace["properties"]["student"]["$ref"].endswith(
+        "/CounselorWorkspaceStudentSummary"
+    )
+    workspace_student = schemas["CounselorWorkspaceStudentSummary"]
+    assert set(workspace_student["required"]) == {"id", "display_name", "institutional_id"}
+    assert {"type": "null"} in workspace_student["properties"]["institutional_id"]["anyOf"]
+    student_workspace = schemas["StudentWorkspaceResponse"]
+    assert student_workspace["properties"]["counselor"]["$ref"].endswith("/PersonWorkspaceSummary")
+    assert "institutional_id" not in schemas["PersonWorkspaceSummary"]["properties"]
 
 
 def test_feedback_submission_idempotency_openapi_contract() -> None:

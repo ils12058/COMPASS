@@ -351,6 +351,7 @@ def get_counselor_workspace(
         "student": {
             "id": appointment.student_id,
             "display_name": appointment.student.get_full_name(),
+            "institutional_id": appointment.student.institutional_id,
         },
         "provider_readiness": _provider_readiness(appointment, room, now=current),
         "routine_interview": routine_summary,

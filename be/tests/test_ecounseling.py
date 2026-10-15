@@ -339,6 +339,71 @@ def test_counselor_workspace_projects_current_context_availability_without_widen
 
 
 @pytest.mark.django_db
+def test_counselor_workspace_projects_each_students_own_institutional_id_to_assigned_counselor():
+    sync_policy()
+    admin = make_user("identity-admin@example.edu", "IT_ADMIN")
+    counselor = make_user("identity-counselor@example.edu", "COUNSELOR")
+    unrelated = make_user("identity-unrelated@example.edu", "COUNSELOR")
+    identified = make_user("identity-student@example.edu", "STUDENT")
+    identified.institutional_id = "synth-2026-0203 "
+    identified.save(update_fields=["institutional_id", "updated_at"])
+    unidentified = make_user("identity-no-id@example.edu", "STUDENT")
+    service = create_counseling_service(admin)
+    first = make_appointment(student=identified, counselor=counselor, service=service)
+    second = make_appointment(student=unidentified, counselor=counselor, service=service)
+
+    with override_settings(DAILY_ENABLED=False):
+        first_view = get_counselor_workspace(counselor=counselor, appointment_id=first.pk)
+        second_view = get_counselor_workspace(counselor=counselor, appointment_id=second.pk)
+        student_view = get_student_workspace(student=identified, appointment_id=first.pk)
+
+    assert first_view["student"] == {
+        "id": identified.pk,
+        "display_name": identified.get_full_name(),
+        "institutional_id": "SYNTH-2026-0203",
+    }
+    assert second_view["student"]["id"] == unidentified.pk
+    assert second_view["student"]["institutional_id"] is None
+    # The Student's own workspace names its Counselor only.
+    assert set(student_view["counselor"]) == {"id", "display_name"}
+    with pytest.raises(ECounselingNotPermitted):
+        get_counselor_workspace(counselor=unrelated, appointment_id=first.pk)
+
+
+@pytest.mark.django_db
+def test_counselor_workspace_api_returns_institutional_id_only_within_existing_access():
+    sync_policy()
+    admin = make_user("identity-api-admin@example.edu", "IT_ADMIN")
+    counselor = make_user("identity-api-counselor@example.edu", "COUNSELOR")
+    unrelated = make_user("identity-api-unrelated@example.edu", "COUNSELOR")
+    student = make_user("identity-api-student@example.edu", "STUDENT")
+    student.institutional_id = "SYNTH-2026-0204"
+    student.save(update_fields=["institutional_id", "updated_at"])
+    service = create_counseling_service(admin)
+    appointment = make_appointment(student=student, counselor=counselor, service=service)
+    path = f"/api/v1/e-counseling/appointments/{appointment.pk}"
+
+    with override_settings(DAILY_ENABLED=False):
+        assigned = auth_client(counselor).get(path)
+        refused = auth_client(unrelated).get(path)
+        as_student = auth_client(student).get(path)
+        own = auth_client(student).get(f"/api/v1/e-counseling/me/appointments/{appointment.pk}")
+
+    assert assigned.status_code == 200
+    assert assigned.json()["student"] == {
+        "id": str(student.pk),
+        "display_name": student.get_full_name(),
+        "institutional_id": "SYNTH-2026-0204",
+    }
+    for response in (refused, as_student):
+        assert response.status_code in {403, 404}
+        assert "SYNTH-2026-0204" not in response.content.decode()
+    assert own.status_code == 200
+    assert "student" not in own.json()
+    assert set(own.json()["counselor"]) == {"id", "display_name"}
+
+
+@pytest.mark.django_db
 def test_join_reuses_one_opaque_room_mints_fresh_tokens_and_never_checks_inventory():
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")

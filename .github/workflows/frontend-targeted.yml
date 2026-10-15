@@ -156,6 +156,7 @@ jobs:
             /portal/messages /portal/messages/new /portal/messages/a0000000-0000-4000-8000-000000000001 \
             /portal/messages/templates \
             /portal/appointments/b0000000-0000-4000-8000-000000000001 \
+            /portal/counseling /portal/counseling/encounters/e0000000-0000-4000-8000-000000000001 \
             /portal/counseling/workspace/appointment/b0000000-0000-4000-8000-000000000001 \
             /portal/counseling/workspace/routine-interview/c0000000-0000-4000-8000-000000000001 \
             /portal/e-counseling/b0000000-0000-4000-8000-000000000001; do

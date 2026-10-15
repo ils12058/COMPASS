@@ -1,11 +1,14 @@
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import { activeCaptureKinds, captureSafetyState } from "./runtime/runtime-model";
+import type { EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
 import {
+  CounselingEntryMode,
   ECounselingCaptureStatus,
   ECounselingConsentDecision,
   ECounselingConsentStatus,
   type ConsentResponse,
+  type CounselorWorkspaceResponse,
   type MediaWorkspaceState,
 } from "@/lib/api/generated/model";
 
@@ -113,4 +116,20 @@ export function sessionRefreshInterval(inCall: boolean, media: MediaWorkspaceSta
     (item) => ["START_REQUESTED", "STOP_REQUESTED", "ERROR"].includes(item.capture_status),
   ));
   return realtimeLive && !unresolved ? 60_000 : SESSION_REFRESH_MS;
+}
+
+// Recording from the session documents its own Appointment, so every fact comes from the assigned
+// Counselor's workspace projection: the Student's name and Institutional ID, and the scheduled
+// times, which are reference only and never become the actual times.
+export function sessionEncounterPreset(workspace: CounselorWorkspaceResponse): EncounterOriginPreset {
+  return {
+    entryMode: CounselingEntryMode.APPOINTMENT,
+    appointmentId: workspace.appointment.id,
+    appointmentReference: workspace.appointment.reference_code,
+    studentName: workspace.student.display_name,
+    institutionalId: workspace.student.institutional_id,
+    deliveryMode: workspace.appointment.delivery_mode,
+    scheduledStartsAt: workspace.appointment.starts_at,
+    scheduledEndsAt: workspace.appointment.ends_at,
+  };
 }

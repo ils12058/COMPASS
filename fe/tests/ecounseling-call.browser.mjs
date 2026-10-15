@@ -513,7 +513,7 @@ await check("active-capture-visible-before-joining", ePath, { role: "STUDENT", m
 await check("encounter-separate-from-recording", ePath, {}, async (page) => {
   const trigger = page.getByRole("button", { name: "Record encounter", exact: true });
   await shown(trigger);
-  await shown(page.getByRole("button", { name: /^Counseling Encounter.*Not documented yet/ }));
+  await shown(page.getByRole("button", { name: /^Counseling Encounter.*Not yet recorded/ }));
   await trigger.click();
   const dialog = page.getByRole("dialog", { name: "Record encounter", exact: true });
   await dialog.getByLabel("Actual start", { exact: true }).fill("2026-01-06T09:00");
@@ -534,8 +534,8 @@ await check("encounter-save-dismissal", ePath, { overrides: {
   const dialog = page.getByRole("dialog", { name: "Record encounter", exact: true });
   await dialog.getByLabel("Actual start", { exact: true }).fill("2026-01-06T09:00");
   await dialog.getByLabel("Actual end", { exact: true }).fill("2026-01-06T10:00");
-  await dialog.getByRole("button", { name: "Record counseling encounter", exact: true }).click();
-  await shown(dialog.getByRole("button", { name: "Recording…", exact: true }));
+  await dialog.getByRole("button", { name: "Record encounter", exact: true }).click();
+  await shown(dialog.getByRole("button", { name: "Recording encounter…", exact: true }));
   await page.keyboard.press("Escape");
   await shown(dialog);
   finishEncounter();

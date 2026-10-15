@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { CounselingHelp } from "@/features/counseling/counseling-help";
@@ -37,6 +37,7 @@ import {
   contextEncounterStateLabels,
   expiredContextEncounterMessage,
   formatCounselingDateTime,
+  unconfirmedEncounterMessage,
 } from "@/features/counseling/counseling-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import type {
@@ -56,6 +57,7 @@ import {
   getCounselingContextGetSupportIndicatorsQueryKey,
   getCounselingContextListHistoryQueryKey,
   getCounselingContextListSharedSummariesQueryKey,
+  getCounselingListMyEncountersQueryKey,
   useCounselingContextGetInventory,
   useCounselingContextGetOverview,
   useCounselingContextGetSupportIndicators,
@@ -235,6 +237,8 @@ function CounselingWorkspaceContent({
   const { user } = usePortalSession();
   const [recordOpen, setRecordOpen] = useState(false);
   const [recordUncertain, setRecordUncertain] = useState(false);
+  const [checkingRecord, setCheckingRecord] = useState(false);
+  const encounterActionsRef = useRef<HTMLDivElement>(null);
   const [recordNotice, setRecordNotice] = useState<string | null>(null);
   const [contextExpired, setContextExpired] = useState(false);
   const [contextPanelRevision, setContextPanelRevision] = useState(0);
@@ -286,7 +290,21 @@ function CounselingWorkspaceContent({
 
   async function handleAlreadyRecorded() {
     await handleCreated();
-    setRecordNotice("This Routine Interview's encounter was already recorded. The latest details are now shown.");
+    setRecordNotice(anchorType === CounselingContextAnchorType.ROUTINE_INTERVIEW
+      ? "This Routine Interview's encounter was already recorded. The latest details are now shown."
+      : "An encounter was already recorded for this Appointment. The latest details are now shown.");
+  }
+
+  async function checkRecordAgain() {
+    setCheckingRecord(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getCounselingListMyEncountersQueryKey() }),
+        onRefreshOverview(),
+      ]);
+    } finally {
+      setCheckingRecord(false);
+    }
   }
 
   async function handlePublished() {
@@ -319,16 +337,38 @@ function CounselingWorkspaceContent({
               <Metadata label="Delivery">{counselingDeliveryModeLabel(overview.delivery_mode)}</Metadata>
               <Metadata label="Available until">{formatCounselingDateTime(overview.valid_until)}</Metadata>
               <Metadata label="Routine Interview">{overview.routine_interview ? `${routineIntakeStatusLabel(overview.routine_interview.intake_status)} Intake · ${routineEvaluationStatusLabel(overview.routine_interview.evaluation_status)} Evaluation` : "No linked Routine Interview"}</Metadata>
-              <Metadata label="Counseling Encounter">{contextEncounterStateLabels[encounterState]}</Metadata>
+              <Metadata label="Counseling Encounter">{recordUncertain && encounterState === "NOT_RECORDED" ? "Not confirmed" : contextEncounterStateLabels[encounterState]}</Metadata>
             </dl>
+            <div ref={encounterActionsRef}>
             {overview.matching_encounter && encounterState === "RECORDED" ? (
               <div className="border-t border-brand-line px-4 py-4 sm:px-5">{recordNotice ? <p role="status" className="mb-2 text-sm text-ink">{recordNotice}</p> : null}<p className="text-sm text-muted">Completed interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)}.</p><Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link></div>
             ) : overview.matching_encounter ? (
               <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A matching interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)} is not linked to this Routine Interview. If it is this interaction, choose it when finalizing the Counselor Evaluation.</p><Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link></div>
+            ) : canRecord && recordUncertain ? (
+              // An unconfirmed save is checked, never retried here.
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-ink">{unconfirmedEncounterMessage}</p><div className="mt-3 flex flex-wrap gap-2"><Button variant="secondary" aria-busy={checkingRecord} onClick={() => void checkRecordAgain()}>{checkingRecord ? "Checking…" : "Check again"}</Button><Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "quiet" })}>View encounters</Link></div></div>
             ) : canRecord ? (
-              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm font-medium text-ink">Encounter not recorded</p><Button className="mt-3" disabled={recordUncertain} onClick={() => setRecordOpen(true)}>{recordUncertain ? "Recording result unconfirmed" : "Record encounter"}</Button>{preset ? <RecordEncounterDialog open={recordOpen} onOpenChange={setRecordOpen} preset={preset} onUncertain={() => setRecordUncertain(true)} onCreated={handleCreated} onAlreadyRecorded={handleAlreadyRecorded} /> : recordOpen ? <p role="alert" className="mt-3 text-sm text-danger">This interaction cannot be recorded from this page. Review its visit type and delivery mode.</p> : null}</div>
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><Button onClick={() => setRecordOpen(true)}>Record encounter</Button>{!preset && recordOpen ? <p role="alert" className="mt-3 text-sm text-danger">This interaction cannot be recorded from this page. Review its visit type and delivery mode.</p> : null}</div>
             ) : null}
+            </div>
           </Panel>
+          {canRecord && preset ? (
+            <RecordEncounterDialog
+              open={recordOpen && !overview.matching_encounter}
+              onOpenChange={setRecordOpen}
+              preset={preset}
+              onUncertain={() => setRecordUncertain(true)}
+              onCreated={handleCreated}
+              onAlreadyRecorded={handleAlreadyRecorded}
+              // Recording replaces the opener with View encounter, so focus moves to the new action.
+              onCloseAutoFocus={(event) => {
+                const action = encounterActionsRef.current?.querySelector<HTMLElement>("a, button");
+                if (!action) return;
+                event.preventDefault();
+                action.focus();
+              }}
+            />
+          ) : null}
 
           <CounselingContextPanel
             key={`${anchorType}-${anchorId}-${contextPanelRevision}`}

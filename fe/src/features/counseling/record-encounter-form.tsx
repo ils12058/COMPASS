@@ -13,12 +13,15 @@ import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { formatAppointmentDateTime } from "@/features/appointments/appointments-shared";
+import { ActualTimeFields, actualTimeInputId, actualTimeIssues, firstActualTimeIssue, type ActualTimeField } from "@/features/counseling/actual-time-fields";
 import {
   counselingDeliveryModeLabel,
   counselingEntryModeLabel,
   counselingErrorCode,
   counselingErrorMessage,
   formatCounselingDateTime,
+  unconfirmedEncounterMessage,
 } from "@/features/counseling/counseling-shared";
 import type {
   CounselingAppointmentCandidate,
@@ -50,6 +53,10 @@ export type EncounterOriginPreset = {
   // Recording from this Routine Interview's workspace links the Encounter to it.
   routineInterviewId?: string;
   deliveryMode: DeliveryMode;
+  // The Appointment's scheduled times, shown for reference only. They never fill the actual times
+  // and are not sent.
+  scheduledStartsAt?: string;
+  scheduledEndsAt?: string;
 };
 
 export type EncounterTimes = { startedAt: string; endedAt: string };
@@ -59,12 +66,22 @@ type RecordEncounterFormProps = {
   onTimesChange?: (times: EncounterTimes) => void;
   onBusyChange?: (busy: boolean) => void;
   preset?: EncounterOriginPreset;
+  // False inside a dialog, which supplies the title and the provenance note itself.
+  framed?: boolean;
   onCancel?: () => void;
   onCreated?: (encounterId: string) => void | Promise<void>;
   onUncertain?: () => void;
-  // The Routine Interview already has its Encounter; the caller reloads what it shows.
+  // The preset's Appointment or Routine Interview already has its Encounter; the caller reloads
+  // what it shows.
   onAlreadyRecorded?: () => void | Promise<void>;
 };
+
+// Who and what an Encounter recorded from this origin is fixed to.
+export function encounterProvenanceNote(entryMode: CounselingEntryMode): string {
+  return entryMode === "APPOINTMENT"
+    ? "The Appointment sets the student, Service, and delivery mode. You are recorded as the counselor."
+    : "You are recorded as the counselor for this encounter.";
+}
 
 export function encounterCreatePayload(
   origin: EncounterOriginPreset,
@@ -94,7 +111,7 @@ function statusLabel(value: string): string {
   return value.toLowerCase().replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, onAlreadyRecorded, initialTimes, onTimesChange, onBusyChange }: RecordEncounterFormProps) {
+export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated, onUncertain, onAlreadyRecorded, initialTimes, onTimesChange, onBusyChange }: RecordEncounterFormProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [source, setSource] = useState<Source | null>(null);
@@ -112,6 +129,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
   const [startedAt, setStartedAt] = useState(initialTimes?.startedAt ?? "");
   const [endedAt, setEndedAt] = useState(initialTimes?.endedAt ?? "");
   const [observedNow, setObservedNow] = useState<number | null>(null);
+  const [attempted, setAttempted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const create = useCounselingCreateEncounter({ mutation: { retry: false } });
@@ -139,13 +157,12 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
     (selectedAppointmentRecord?.id === selectedAppointmentId ? selectedAppointmentRecord : undefined);
   const selectedStudent = studentItems.find((item) => item.id === selectedStudentId) ??
     (selectedStudentRecord?.id === selectedStudentId ? selectedStudentRecord : undefined);
-  const selectedContextStudent = preset?.studentId ? preset : undefined;
   const selectedDeliveryMode = preset?.deliveryMode ?? (
     source === "appointment" && selectedAppointment
       ? selectedAppointment.delivery_mode
       : deliveryMode || (options?.delivery_modes.length === 1 ? options.delivery_modes[0] : "")
   );
-  const selectedOrigin = preset ?? (
+  const selectedOrigin: EncounterOriginPreset | undefined = preset ?? (
     source === "appointment" && selectedAppointment
       ? {
           entryMode: "APPOINTMENT" as const,
@@ -154,6 +171,8 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
           studentName: selectedAppointment.student.display_name,
           institutionalId: selectedAppointment.student.institutional_id,
           deliveryMode: selectedAppointment.delivery_mode,
+          scheduledStartsAt: selectedAppointment.starts_at,
+          scheduledEndsAt: selectedAppointment.ends_at,
         }
       : source === "direct" && selectedStudent && selectedDeliveryMode
         ? {
@@ -166,24 +185,15 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
         : undefined
   );
   const hasSelectedRecord = Boolean(preset || (source === "appointment" ? selectedAppointment : selectedStudent));
-  const startedAtIso = startedAt
-    ? institutionalDateTimeInputToISO(startedAt)
-    : null;
-  const endedAtIso = endedAt
-    ? institutionalDateTimeInputToISO(endedAt)
-    : null;
-  const endTimestamp = endedAtIso
-    ? new Date(endedAtIso).getTime()
-    : Number.NaN;
-  const startTimestamp = startedAtIso
-    ? new Date(startedAtIso).getTime()
-    : Number.NaN;
-  const timeError = startedAt && endedAt && (
-    Number.isNaN(startTimestamp) ||
-    Number.isNaN(endTimestamp) ||
-    startTimestamp >= endTimestamp ||
-    (observedNow !== null && endTimestamp > observedNow)
-  );
+  const timeIssues = actualTimeIssues(startedAt, endedAt, observedNow);
+
+  // A different record starts with blank actual times and no reported issues.
+  function clearTimes() {
+    setStartedAt("");
+    setEndedAt("");
+    setObservedNow(null);
+    setAttempted(false);
+  }
 
   function changeSource(next: Source) {
     setSource(next);
@@ -193,29 +203,31 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
     setSelectedAppointmentRecord(null);
     setSelectedStudentId("");
     setSelectedStudentRecord(null);
-    setStartedAt("");
-    setEndedAt("");
-    setObservedNow(null);
+    clearTimes();
+  }
+
+  function changeTime(field: ActualTimeField, value: string) {
+    if (field === "start") setStartedAt(value);
+    else setEndedAt(value);
+    setObservedNow(Date.now());
+    setError(null);
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!selectedOrigin || submitting || uncertain) return;
     setError(null);
-    if (!startedAt || !endedAt) {
-      setError("Enter the actual start and end times of the completed interaction.");
-      return;
-    }
-    if (timeError || endTimestamp > Date.now()) {
-      setError("The actual start must be before the end, and the end cannot be in the future.");
+    const now = Date.now();
+    const invalid = firstActualTimeIssue(actualTimeIssues(startedAt, endedAt, now));
+    if (invalid) {
+      setAttempted(true);
+      setObservedNow(now);
+      document.getElementById(actualTimeInputId("counseling", invalid))?.focus();
       return;
     }
     const started = institutionalDateTimeInputToISO(startedAt);
     const ended = institutionalDateTimeInputToISO(endedAt);
-    if (!started || !ended) {
-      setError("Enter valid actual start and end times.");
-      return;
-    }
+    if (!started || !ended) return;
 
     const payload = encounterCreatePayload(selectedOrigin, started, ended);
 
@@ -240,9 +252,14 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
         onUncertain?.();
         setError(null);
       } else {
-        setError(counselingErrorMessage(caught, "The Counseling Encounter could not be recorded. Review the values and try again."));
-        if (counselingErrorCode(caught) === "counseling_routine_interview_already_linked") await onAlreadyRecorded?.();
-        if (counselingErrorCode(caught) === "counseling_appointment_already_used") {
+        const code = counselingErrorCode(caught);
+        // A preset's own record already has its Encounter: the caller reloads it and says so.
+        if (preset && onAlreadyRecorded && (code === "counseling_routine_interview_already_linked" || code === "counseling_appointment_already_used")) {
+          await onAlreadyRecorded();
+          return;
+        }
+        setError(counselingErrorMessage(caught, "The encounter couldn’t be recorded. Review the details and try again."));
+        if (code === "counseling_appointment_already_used") {
           setSelectedAppointmentId("");
           setSelectedAppointmentRecord(null);
           void Promise.all([
@@ -274,13 +291,84 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
     );
   }
 
+  const scheduled = selectedOrigin?.scheduledStartsAt && selectedOrigin.scheduledEndsAt
+    ? formatAppointmentDateTime(selectedOrigin.scheduledStartsAt, selectedOrigin.scheduledEndsAt)
+    : null;
+  const recordForm = hasSelectedRecord && selectedOrigin ? (
+    // Validation is COMPASS's own, per field; the backend still checks every save.
+    <form noValidate onSubmit={submit} className={framed ? "border-t border-brand-line px-4 py-5 sm:px-5" : undefined}>
+      <dl className="grid gap-x-8 gap-y-3 rounded-sm bg-surface-subtle px-4 py-3.5 sm:grid-cols-2">
+        <div className="min-w-0">
+          <dt className="text-xs font-semibold text-muted">Student</dt>
+          <dd className="mt-1 break-words text-sm font-semibold text-ink">{selectedOrigin.studentName}</dd>
+          <dd className="mt-1 break-words text-xs text-muted">Institutional ID: {selectedOrigin.institutionalId || "Not provided"}</dd>
+        </div>
+        <div className="min-w-0">
+          <dt className="text-xs font-semibold text-muted">Origin and delivery</dt>
+          <dd className="mt-1 text-sm text-ink">{counselingEntryModeLabel(selectedOrigin.entryMode)} · {counselingDeliveryModeLabel(selectedOrigin.deliveryMode)}</dd>
+          {selectedOrigin.appointmentReference ? <dd className="mt-1 break-words text-xs text-muted">Appointment {selectedOrigin.appointmentReference}</dd> : null}
+        </div>
+        {scheduled ? (
+          <div className="min-w-0 sm:col-span-2">
+            <dt className="text-xs font-semibold text-muted">Scheduled appointment</dt>
+            <dd className="mt-1 text-sm text-ink">{scheduled}</dd>
+          </div>
+        ) : null}
+      </dl>
+      {framed ? <p className="mt-3 text-xs text-muted">{encounterProvenanceNote(selectedOrigin.entryMode)}</p> : null}
+      <div className="mt-5">
+        <ActualTimeFields
+          idPrefix="counseling"
+          startedAt={startedAt}
+          endedAt={endedAt}
+          onChange={changeTime}
+          issues={timeIssues}
+          attempted={attempted}
+          disabled={submitting || uncertain}
+          scheduled={selectedOrigin.entryMode === "APPOINTMENT"}
+        />
+      </div>
+      {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
+      {uncertain ? (
+        // Escape cannot hide this result inside a dialog; its Close is a deliberate choice (ADR-091).
+        <Notice
+          role="alert"
+          tone="warning"
+          className="mt-4"
+          action={(
+            <>
+              {framed ? (
+                <Button variant="secondary" onClick={() => void Promise.all([
+                  queryClient.invalidateQueries({ queryKey: getCounselingListMyEncountersQueryKey() }),
+                  ...(selectedOrigin.entryMode === "APPOINTMENT" ? [queryClient.invalidateQueries({ queryKey: getCounselingListAppointmentCandidatesQueryKey() })] : []),
+                ])}>Refresh encounters</Button>
+              ) : null}
+              <Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "secondary" })}>View encounters</Link>
+              {!framed && onCancel ? <Button variant="secondary" onClick={onCancel}>Close</Button> : null}
+            </>
+          )}
+        >
+          <p className="text-ink">{unconfirmedEncounterMessage} Check your encounters before trying again to avoid a duplicate.</p>
+        </Notice>
+      ) : (
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <Button type="submit" disabled={submitting || !selectedDeliveryMode} aria-busy={submitting}>{submitting ? "Recording encounter…" : "Record encounter"}</Button>
+          {onCancel ? <Button variant="secondary" disabled={submitting} onClick={onCancel}>Cancel</Button> : null}
+          {!preset && source === "appointment" && selectedAppointment?.status === "SCHEDULED" ? <p className="basis-full text-xs text-muted">Recording this encounter does not complete the Appointment.</p> : null}
+        </div>
+      )}
+    </form>
+  ) : null;
+
+  if (!framed) return recordForm;
+
   return (
     <Panel aria-labelledby="record-encounter-heading">
       <PanelHeader
         title="Record counseling encounter"
         titleId="record-encounter-heading"
         description={preset ? undefined : source === "appointment" ? "Choose an Appointment." : "Choose a Student."}
-        actions={!preset && !uncertain ? <Button variant="quiet" disabled={submitting} onClick={() => source ? changeSource(source === "appointment" ? "direct" : "appointment") : onCancel?.()}>Change source</Button> : preset && onCancel && !uncertain ? <Button variant="quiet" disabled={submitting} onClick={onCancel}>Close</Button> : undefined}
+        actions={!preset && !uncertain ? <Button variant="quiet" disabled={submitting} onClick={() => changeSource(source === "appointment" ? "direct" : "appointment")}>Change source</Button> : undefined}
       />
 
       {!preset && source === "appointment" ? (
@@ -297,7 +385,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
               <ul className="divide-y divide-border rounded-sm border border-border" aria-label="Counseling Appointment candidates">
                 {appointments.map((candidate) => (
                   <li key={candidate.id}>
-                    <button type="button" aria-pressed={selectedAppointmentId === candidate.id} onClick={() => { setSelectedAppointmentId(candidate.id); setSelectedAppointmentRecord(candidate); setStartedAt(""); setEndedAt(""); setError(null); }} className={`flex w-full flex-wrap items-start justify-between gap-3 px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${selectedAppointmentId === candidate.id ? "bg-brand-wash" : "hover:bg-surface-subtle"}`}>
+                    <button type="button" aria-pressed={selectedAppointmentId === candidate.id} onClick={() => { setSelectedAppointmentId(candidate.id); setSelectedAppointmentRecord(candidate); clearTimes(); setError(null); }} className={`flex w-full flex-wrap items-start justify-between gap-3 px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${selectedAppointmentId === candidate.id ? "bg-brand-wash" : "hover:bg-surface-subtle"}`}>
                       <span>
                         <span className="block font-semibold text-ink">{candidate.reference_code} · {candidate.student.display_name}</span>
                         <span className="mt-1 block text-sm text-muted">{candidate.student.institutional_id ? `Institutional ID ${candidate.student.institutional_id} · ` : ""}{formatCounselingDateTime(candidate.starts_at)} – {formatCounselingDateTime(candidate.ends_at)}</span>
@@ -318,7 +406,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
           {creationOptions.isPending ? <div aria-busy="true"><Skeleton className="h-12 w-full" /></div> : creationOptions.isError ? <p role="alert" className="text-sm text-danger">{counselingErrorMessage(creationOptions.error, "Counseling recording options could not be loaded.")}</p> : options ? (
             <div><p className="text-sm text-muted">Service: <span className="font-medium text-ink">{options.service.name}</span></p>{options.delivery_modes.length === 0 ? <p role="status" className="mt-2 text-sm text-warning">No delivery mode is available for this counseling service.</p> : null}</div>
           ) : null}
-          <form className="grid gap-2 sm:max-w-xl" onSubmit={(event) => { event.preventDefault(); setStudentQuery(studentSearch.trim()); setPage(1); setSelectedStudentId(""); setSelectedStudentRecord(null); setStartedAt(""); setEndedAt(""); setError(null); }}>
+          <form className="grid gap-2 sm:max-w-xl" onSubmit={(event) => { event.preventDefault(); setStudentQuery(studentSearch.trim()); setPage(1); setSelectedStudentId(""); setSelectedStudentRecord(null); clearTimes(); setError(null); }}>
             <Label htmlFor="counseling-student-search">Search for a Student</Label>
             <div className="flex flex-col gap-2 sm:flex-row">
               <Input id="counseling-student-search" value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} placeholder="Student name or Institutional ID" />
@@ -330,7 +418,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
               <ul className="divide-y divide-border rounded-sm border border-border" aria-label="Student candidates">
                 {studentItems.map((student) => (
                   <li key={student.id}>
-                    <button type="button" aria-pressed={selectedStudentId === student.id} onClick={() => { if (selectedStudentId !== student.id) { setStartedAt(""); setEndedAt(""); } setSelectedStudentId(student.id); setSelectedStudentRecord(student); setError(null); }} className={`w-full px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${selectedStudentId === student.id ? "bg-brand-wash" : "hover:bg-surface-subtle"}`}>
+                    <button type="button" aria-pressed={selectedStudentId === student.id} onClick={() => { if (selectedStudentId !== student.id) clearTimes(); setSelectedStudentId(student.id); setSelectedStudentRecord(student); setError(null); }} className={`w-full px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${selectedStudentId === student.id ? "bg-brand-wash" : "hover:bg-surface-subtle"}`}>
                       <span className="block font-semibold text-ink">{student.display_name}</span>
                       <span className="mt-1 block text-sm text-muted">Institutional ID: {student.institutional_id ?? "Not provided"}</span>
                     </button>
@@ -360,46 +448,7 @@ export function RecordEncounterForm({ preset, onCancel, onCreated, onUncertain, 
         </div>
       ) : null}
 
-      {hasSelectedRecord && selectedOrigin ? (
-        <form onSubmit={submit} className="border-t border-brand-line px-4 py-5 sm:px-5">
-          <div className="grid gap-x-8 gap-y-4 rounded-sm bg-surface-subtle px-4 py-3.5 sm:grid-cols-2">
-            <div><p className="text-xs font-semibold text-muted">Student</p><p className="mt-1 text-sm font-semibold text-ink">{selectedOrigin.studentName}</p><p className="mt-1 text-xs text-muted">Institutional ID: {selectedOrigin.institutionalId ?? "Not provided"}</p></div>
-            <div><p className="text-xs font-semibold text-muted">Origin and delivery</p><p className="mt-1 text-sm text-ink">{counselingEntryModeLabel(selectedOrigin.entryMode)} · {counselingDeliveryModeLabel(selectedOrigin.deliveryMode)}</p>{selectedOrigin.appointmentReference ? <p className="mt-1 text-xs text-muted">Appointment {selectedOrigin.appointmentReference}</p> : null}</div>
-          </div>
-          {selectedOrigin.entryMode === "APPOINTMENT" ? <p className="mt-3 text-xs text-muted">The Appointment sets the student, Service, and delivery mode. You are recorded as the counselor.</p> : <p className="mt-3 text-xs text-muted">You are recorded as the counselor for this Counseling encounter.</p>}
-          <p className="mt-4 text-sm text-muted">Enter the actual start and end, even if they differ from the scheduled times.</p>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div className="grid gap-2"><Label htmlFor="counseling-started-at">Actual start</Label><Input id="counseling-started-at" type="datetime-local" required value={startedAt} disabled={submitting || uncertain} aria-invalid={Boolean(error && !startedAt) || Boolean(startedAt && endedAt && timeError)} aria-describedby={error && (!startedAt || !endedAt) ? "counseling-time-required" : startedAt && endedAt && timeError ? "counseling-time-error" : undefined} onChange={(event) => { setStartedAt(event.target.value); setObservedNow(Date.now()); setError(null); }} /></div>
-            <div className="grid gap-2"><Label htmlFor="counseling-ended-at">Actual end</Label><Input id="counseling-ended-at" type="datetime-local" required value={endedAt} disabled={submitting || uncertain} aria-invalid={Boolean(error && (!endedAt || timeError))} aria-describedby={error && (!startedAt || !endedAt) ? "counseling-time-required" : startedAt && endedAt && timeError ? "counseling-time-error" : undefined} onChange={(event) => { setEndedAt(event.target.value); setObservedNow(Date.now()); setError(null); }} /></div>
-          </div>
-          {error && (!startedAt || !endedAt) ? <p id="counseling-time-required" className="mt-2 text-sm text-danger">{error}</p> : null}
-          {startedAt && endedAt && timeError ? <p id="counseling-time-error" className="mt-2 text-sm text-danger">The actual start must be before the end, and the end cannot be in the future.</p> : null}
-          {error ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
-          {uncertain ? (
-            <Notice role="alert" tone="warning" className="mt-4">
-              <p className="text-ink">We couldn’t confirm whether the encounter was saved. Check your encounters before trying again to avoid a duplicate.</p>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <Button type="button" variant="secondary" onClick={() => void Promise.all([
-                  queryClient.invalidateQueries({ queryKey: getCounselingListMyEncountersQueryKey() }),
-                  ...(selectedOrigin.entryMode === "APPOINTMENT" ? [queryClient.invalidateQueries({ queryKey: getCounselingListAppointmentCandidatesQueryKey() })] : []),
-                ])}>Refresh encounters</Button>
-                <Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "secondary" })}>View encounters</Link>
-              </div>
-            </Notice>
-          ) : null}
-          {!uncertain ? (
-            <div className="mt-5 flex flex-wrap gap-2">
-              <Button type="submit" disabled={submitting || !selectedDeliveryMode || Boolean(timeError)} aria-busy={submitting}>{submitting ? "Recording…" : "Record counseling encounter"}</Button>
-              {!preset && source === "appointment" && selectedAppointment?.status === "SCHEDULED" ? <p className="basis-full text-xs text-muted">Recording this Encounter will not complete the Appointment.</p> : null}
-              {!preset && onCancel ? <Button type="button" variant="secondary" disabled={submitting} onClick={onCancel}>Cancel</Button> : null}
-            </div>
-          ) : null}
-        </form>
-      ) : null}
-
-      {preset && selectedContextStudent ? (
-        <p className="sr-only">This encounter will be recorded for {selectedContextStudent.studentName}.</p>
-      ) : null}
+      {recordForm}
     </Panel>
   );
 }
