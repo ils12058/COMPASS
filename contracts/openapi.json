@@ -7089,7 +7089,7 @@
             ]
           },
           "student": {
-            "$ref": "#/components/schemas/PersonWorkspaceSummary"
+            "$ref": "#/components/schemas/CounselorWorkspaceStudentSummary"
           }
         },
         "required": [
@@ -7102,6 +7102,38 @@
           "media"
         ],
         "title": "CounselorWorkspaceResponse",
+        "type": "object"
+      },
+      "CounselorWorkspaceStudentSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "institutional_id"
+        ],
+        "title": "CounselorWorkspaceStudentSummary",
         "type": "object"
       },
       "CourseChoiceReasonValue": {

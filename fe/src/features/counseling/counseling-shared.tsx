@@ -36,8 +36,8 @@ const counselingErrors: Record<string, string> = {
   permission_denied: "You can't perform this counseling action.",
   counseling_resource_not_found: "This counseling record is unavailable.",
   counseling_invalid_request: "Some counseling details need attention. Review them and try again.",
-  counseling_invalid_time: "The recorded start and end times are not valid. Review the actual interaction times.",
-  counseling_appointment_already_used: "A Counseling Encounter has already been recorded for this Appointment. Refresh the candidates and your encounter list.",
+  counseling_invalid_time: "These actual times weren’t accepted. Check that the end is later than the start and not in the future.",
+  counseling_appointment_already_used: "An encounter has already been recorded for this Appointment. Choose another Appointment.",
   counseling_appointment_invalid: "This Appointment is no longer eligible for this Counseling action. Refresh the candidates and try again.",
   counseling_finalized_routine_conflict: "This correction cannot be saved because the encounter is used by a finalized Routine Interview and the new details would no longer match it.",
   counseling_linked_routine_conflict: "This correction cannot be saved because the encounter is linked to a Routine Interview and the new details would no longer match it.",
@@ -53,6 +53,10 @@ const counselingErrors: Record<string, string> = {
   shared_summary_already_published: "This shared summary has already been published and can no longer be edited.",
   shared_summary_empty: "Add content before publishing this Shared Summary.",
 };
+
+// A failed connection doesn't prove the save failed, so an unconfirmed result is never shown as
+// either outcome.
+export const unconfirmedEncounterMessage = "We couldn’t confirm whether the encounter was recorded.";
 
 export function counselingErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;

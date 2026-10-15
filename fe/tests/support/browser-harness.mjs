@@ -40,6 +40,8 @@ export async function createBrowserHarness(suite) {
     tablet = false,
     device,
     viewport,
+    // An IANA zone for the browser, e.g. to prove institutional times don't follow it.
+    timezoneId,
     studentContext = false,
     mediaStatus = "NOT_STARTED",
     decision = "APPROVED",
@@ -56,7 +58,7 @@ export async function createBrowserHarness(suite) {
     const contextOptions = device ? viewports[device] : mobile ? viewports.phone : tablet ? viewports.tablet : viewports.desktop;
     const context = // Service-worker fetches bypass Playwright routing. These synthetic suites must never
     // let the PWA worker send an unmocked API request (especially in WebKit).
-    await browser.newContext({ serviceWorkers: "block", ...contextOptions, ...(viewport ? { viewport } : {}) });
+    await browser.newContext({ serviceWorkers: "block", ...contextOptions, ...(viewport ? { viewport } : {}), ...(timezoneId ? { timezoneId } : {}) });
     const page = await context.newPage();
     page.setDefaultTimeout(12_000);
     const errors = [];
