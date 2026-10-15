@@ -2,7 +2,7 @@
 
 import { studentActionsQueryFamily } from "@/features/student-actions/student-actions-data";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
-import type { ExitInterviewDetailResponse } from "@/lib/api/generated/model";
+import type { ExitInterviewCorrectionTarget, ExitInterviewDetailResponse } from "@/lib/api/generated/model";
 import {
   CareerModeValue,
   DelayReasonValue,
@@ -37,6 +37,13 @@ import {
   isUncertainExitInterviewMutation,
 } from "@/features/exit-interviews/exit-interview-shared";
 import { ExitInterviewCorrectionHistory } from "@/features/exit-interviews/exit-interview-correction-history";
+import {
+  exitInterviewCorrectionFocusOrder,
+  exitInterviewReviewHints,
+  focusExitInterviewCorrectionTarget,
+  readExitInterviewCorrectionTargets,
+} from "@/features/exit-interviews/exit-interview-correction-targets";
+import { ExitInterviewReviewProvider } from "@/features/exit-interviews/exit-interview-review-context";
 import {
   exitInterviewsSubmitMine,
   exitInterviewsUpdateMine,
@@ -82,6 +89,14 @@ export function ExitInterviewForm({
   const [extraTermsError, setExtraTermsError] = useState<string>();
   const [invalidRatingTargetId, setInvalidRatingTargetId] = useState<string>();
   const isDirty = JSON.stringify(form) !== JSON.stringify(savedForm);
+  // An editable draft with reopen events is answering the latest one; earlier events are history.
+  const pendingTargetValues = detail.reopen_events.at(-1)?.targets;
+  const pendingTargets = useMemo(
+    () => readExitInterviewCorrectionTargets(pendingTargetValues).targets,
+    [pendingTargetValues],
+  );
+  // Advisory only: a target never marks an answer invalid, changes it, or blocks saving or submitting.
+  const reviewHints = useMemo(() => exitInterviewReviewHints(pendingTargets, form), [pendingTargets, form]);
 
   useUnsavedChangesGuard({
     dirty: isDirty,
@@ -295,6 +310,10 @@ export function ExitInterviewForm({
 
   const pending = save.isPending || submit.isPending;
 
+  // Every section is on the page, so a requested answer is scrolled to and focused right away.
+  function selectCorrectionTarget(target: ExitInterviewCorrectionTarget) {
+    focusExitInterviewCorrectionTarget(exitInterviewCorrectionFocusOrder(target, form));
+  }
 
   return (
     <section className="space-y-5" aria-labelledby="exit-interview-form-heading">
@@ -311,10 +330,11 @@ export function ExitInterviewForm({
 
       {refreshNotice}
 
-      <ExitInterviewCorrectionHistory events={detail.reopen_events} emphasizeLatest />
+      <ExitInterviewCorrectionHistory events={detail.reopen_events} emphasizeLatest onSelectTarget={selectCorrectionTarget} />
 
       <form onSubmit={handleSubmit} aria-busy={pending}>
         <Panel as="div">
+        <ExitInterviewReviewProvider value={reviewHints}>
         <ExitInterviewFormSections
           form={form}
           disabled={pending || submissionUncertain}
@@ -335,6 +355,7 @@ export function ExitInterviewForm({
           extraTermsError={extraTermsError}
           invalidRatingTargetId={invalidRatingTargetId}
         />
+        </ExitInterviewReviewProvider>
 
         <div className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-5 sm:px-5">
           <div aria-live="polite" className="space-y-1 text-sm text-muted">

@@ -20,14 +20,22 @@ import {
   collegeFeedbackCategories,
   COLLEGE_FEEDBACK_SCALE,
   DELAY_REASONS,
+  exitRatingRowId,
   SELF_ASSESSMENT_ITEMS,
   SELF_ASSESSMENT_SCALE,
   SIGNIFICANT_LEARNING_CHOICES,
   STUDY_CHOICES,
   WORK_CHOICES,
   type ExitInterviewFormState,
+  type ExitRatingMatrixId,
 } from "@/features/exit-interviews/exit-interview-presentation";
 import { ExitInterviewSection } from "@/features/exit-interviews/exit-interview-shared";
+import {
+  ExitInterviewReviewHintText,
+  ExitInterviewSectionReviewNote,
+  useExitInterviewReview,
+  useExitInterviewReviewLookup,
+} from "@/features/exit-interviews/exit-interview-review-context";
 
 const PROGRAM_COMPLETION_CHOICES: readonly {
   value: ProgramCompletionValue;
@@ -61,11 +69,7 @@ export type ExitInterviewTextFieldKey =
 type RatingItem = { code: string; label: string };
 type RatingScale = readonly { value: number; label: string }[];
 
-export type ExitRatingMatrixId = "self" | "college";
-
-export function exitRatingRowId(matrixId: ExitRatingMatrixId, code: string): string {
-  return `exit-rating-${matrixId}-${code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
-}
+export { exitRatingRowId, type ExitRatingMatrixId };
 
 function FieldLimit({ id, value, maximum }: { id: string; value: string; maximum?: number }) {
   if (maximum === undefined) return null;
@@ -109,7 +113,8 @@ function FormField({
   const errorId = error ? `${id}-error` : undefined;
   const hintId = hint ? `${id}-hint` : undefined;
   const limitId = maxLength !== undefined && value.length >= maxLength ? `${id}-limit` : undefined;
-  const describedBy = [hintId, limitId, errorId].filter(Boolean).join(" ") || undefined;
+  const review = useExitInterviewReview(id);
+  const describedBy = [hintId, review.describedBy, limitId, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -133,6 +138,7 @@ function FormField({
       />
       <FieldLimit id={id} value={value} maximum={maxLength} />
       {hint ? <p id={hintId} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
+      <ExitInterviewReviewHintText hint={review.hint} />
       {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
   );
@@ -159,7 +165,8 @@ function FormTextArea({
 }) {
   const errorId = error ? `${id}-error` : undefined;
   const limitId = maxLength !== undefined && value.length >= maxLength ? `${id}-limit` : undefined;
-  const describedBy = [limitId, errorId].filter(Boolean).join(" ") || undefined;
+  const review = useExitInterviewReview(id);
+  const describedBy = [review.describedBy, limitId, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -178,6 +185,7 @@ function FormTextArea({
         onChange={(event) => onChange(event.target.value)}
       />
       <FieldLimit id={id} value={value} maximum={maxLength} />
+      <ExitInterviewReviewHintText hint={review.hint} />
       {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
   );
@@ -235,6 +243,7 @@ function RatingMatrix({
   const options = zeroChoice
     ? [{ value: 0, label: "" }, ...scale.slice().reverse()]
     : scale;
+  const review = useExitInterviewReviewLookup();
 
   return (
     // relative: the header cells' sr-only labels are absolutely positioned and must stay inside the
@@ -261,16 +270,21 @@ function RatingMatrix({
             const rowId = exitRatingRowId(matrixId, item.code);
             const invalid = invalidTargetId === rowId;
             const errorId = invalid ? `${rowId}-error` : undefined;
+            // One hint per row, in the row header; the row's choices are described by it, so focus
+            // on the saved rating hears it once. The rating itself is never interpreted.
+            const rowReview = review(rowId);
+            const describedBy = [rowReview.describedBy, errorId].filter(Boolean).join(" ") || undefined;
             return (
             <tr
               key={item.code}
               id={rowId}
               aria-invalid={invalid ? true : undefined}
-              aria-describedby={errorId}
+              aria-describedby={describedBy}
               className={`align-middle ${invalid ? "bg-danger/5" : ""}`}
             >
               <th scope="row" className={`sticky left-0 z-10 px-3 py-3 text-left font-medium text-ink ${invalid ? "bg-danger/5" : "bg-surface-raised"}`}>
                 {item.label}
+                <ExitInterviewReviewHintText hint={rowReview.hint} className="mt-1 block" />
                 {invalid ? <span id={errorId} className="mt-1 block text-xs font-normal text-danger">Choose a rating for this item.</span> : null}
               </th>
               {options.map((option) => {
@@ -288,6 +302,7 @@ function RatingMatrix({
                         value={option.value}
                         checked={values[item.code] === String(option.value)}
                         disabled={disabled}
+                        aria-describedby={rowReview.describedBy}
                         onChange={() => onChange(item.code, String(option.value))}
                         className="h-4 w-4 accent-brand"
                       />
@@ -337,10 +352,17 @@ export function ExitInterviewFormSections({
   const hasLearningOther = form.significantLearningExperiences.includes(SignificantLearning.OTHER);
   const hasWork = form.careerModes.includes(CareerMode.WORK);
   const hasStudy = form.careerModes.includes(CareerMode.STUDY);
+  const review = useExitInterviewReviewLookup();
+  const completionReview = review("exit-program-completion");
+  const delayReview = review("exit-delay-reasons");
+  const learningReview = review("exit-learning-experiences");
+  const workReview = review("exit-career-work-plans");
+  const studyReview = review("exit-career-study-plans");
 
   return (
     <>
       <ExitInterviewSection title="General information" id="exit-interview-general-information">
+        <ExitInterviewSectionReviewNote section="general_information" />
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
           These values belong to this Exit Interview only. Changes here do not update your Account Profile or Individual Inventory.
         </p>
@@ -359,8 +381,10 @@ export function ExitInterviewFormSections({
       </ExitInterviewSection>
 
       <ExitInterviewSection title="Section I — Program completion and plans" id="exit-interview-program-completion">
-        <fieldset className="mt-4">
+        <ExitInterviewSectionReviewNote section="program_completion_and_plans" />
+        <fieldset id="exit-program-completion" aria-describedby={completionReview.describedBy} className="mt-4">
           <legend className="text-sm font-semibold text-ink">Program completion</legend>
+          <ExitInterviewReviewHintText hint={completionReview.hint} className="mt-1 block" />
           <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:gap-6">
             {PROGRAM_COMPLETION_CHOICES.map(({ value, label }) => (
               <label key={value} className="flex min-h-9 items-center gap-2 text-sm text-ink">
@@ -370,6 +394,8 @@ export function ExitInterviewFormSections({
                   value={value}
                   checked={form.programCompletion === value}
                   disabled={disabled}
+                  // Focus enters a radio group at one choice, so the choice carries the review hint too.
+                  aria-describedby={completionReview.describedBy}
                   onChange={() => onProgramCompletionChange(value)}
                   className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                 />
@@ -381,8 +407,9 @@ export function ExitInterviewFormSections({
         {delayed ? (
           <div className="mt-4 max-w-2xl space-y-4 rounded-sm bg-surface-subtle px-4 py-4">
             <FormField id="exit-extra-terms" label="Number of extra terms" type="number" min={1} value={form.extraTermsCount} required error={extraTermsError} disabled={disabled} onChange={(value) => onTextChange("extraTermsCount", value)} />
-            <fieldset>
+            <fieldset id="exit-delay-reasons" aria-describedby={delayReview.describedBy}>
               <legend className="text-sm font-semibold text-ink">Reason for delay</legend>
+              <ExitInterviewReviewHintText hint={delayReview.hint} className="mt-1 block" />
               <div className="mt-2 space-y-1">
                 {DELAY_REASONS.map((choice) => (
                   <ChoiceCheckbox
@@ -404,8 +431,9 @@ export function ExitInterviewFormSections({
 
         <div className="mt-7 border-t border-border pt-5">
           <h3 className="font-semibold text-ink">Significant learning experiences</h3>
-          <fieldset className="mt-2">
+          <fieldset id="exit-learning-experiences" aria-describedby={learningReview.describedBy} className="mt-2">
             <legend className="sr-only">Select significant learning experiences</legend>
+            <ExitInterviewReviewHintText hint={learningReview.hint} className="mb-1 block" />
             <div className="grid gap-x-6 sm:grid-cols-2">
               {SIGNIFICANT_LEARNING_CHOICES.map((choice) => (
                 <ChoiceCheckbox
@@ -430,8 +458,9 @@ export function ExitInterviewFormSections({
           <h3 className="font-semibold text-ink">Career plans</h3>
           <p className="mt-1 text-sm text-muted">Work and Study are independent choices. You may select both.</p>
           <div className="mt-3 grid gap-6 lg:grid-cols-2">
-            <fieldset>
+            <fieldset id="exit-career-work-plans" aria-describedby={workReview.describedBy}>
               <legend className="font-semibold text-ink">Work</legend>
+              <ExitInterviewReviewHintText hint={workReview.hint} className="mt-1 block" />
               <ChoiceCheckbox id="exit-career-work" label="Work" checked={hasWork} disabled={disabled} onChange={() => onToggleCareerMode(CareerMode.WORK)} />
               {hasWork ? (
                 <div className="mt-2 pl-7">
@@ -448,8 +477,9 @@ export function ExitInterviewFormSections({
                 </div>
               ) : null}
             </fieldset>
-            <fieldset>
+            <fieldset id="exit-career-study-plans" aria-describedby={studyReview.describedBy}>
               <legend className="font-semibold text-ink">Study</legend>
+              <ExitInterviewReviewHintText hint={studyReview.hint} className="mt-1 block" />
               <ChoiceCheckbox id="exit-career-study" label="Study" checked={hasStudy} disabled={disabled} onChange={() => onToggleCareerMode(CareerMode.STUDY)} />
               {hasStudy ? (
                 <div className="mt-2 pl-7">
@@ -471,6 +501,7 @@ export function ExitInterviewFormSections({
       </ExitInterviewSection>
 
       <ExitInterviewSection title="Section II — Self-Assessment" id="exit-interview-self-assessment">
+        <ExitInterviewSectionReviewNote section="self_assessment" />
         <p className="mt-2 text-sm leading-6 text-muted">
           Rate each item using the source scale: 5 — Much enhanced; 4 — Enhanced; 3 — No Difference; 2 — Became Worse; 1 — I don&apos;t know.
         </p>
@@ -487,6 +518,7 @@ export function ExitInterviewFormSections({
       </ExitInterviewSection>
 
       <ExitInterviewSection title="Section III — College Feedback" id="exit-interview-college-feedback">
+        <ExitInterviewSectionReviewNote section="college_feedback" />
         <p className="mt-2 text-sm leading-6 text-muted">
           5 — Highly Satisfactory; 4 — Satisfactory; 3 — Average; 2 — Unsatisfactory; 1 — Very Unsatisfactory.
         </p>
@@ -522,6 +554,7 @@ export function ExitInterviewFormSections({
       </ExitInterviewSection>
 
       <ExitInterviewSection title="Suggestions / Recommendations" id="exit-interview-suggestions">
+        <ExitInterviewSectionReviewNote section="suggestions" />
         <div className="mt-4 max-w-3xl">
           <FormTextArea
             id="exit-suggestions-recommendations"

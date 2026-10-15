@@ -16,6 +16,14 @@ import {
 } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
+export type ExitRatingMatrixId = "self" | "college";
+
+// A rating row's stable id, from its fixed source item code. Correction targets and missing-rating
+// recovery both navigate by it.
+export function exitRatingRowId(matrixId: ExitRatingMatrixId, code: string): string {
+  return `exit-rating-${matrixId}-${code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
+}
+
 export const SELF_ASSESSMENT_ITEMS: readonly {
   code: SelfAssessmentCode;
   label: string;
