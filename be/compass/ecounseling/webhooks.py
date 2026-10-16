@@ -7,7 +7,6 @@ from django.db import DatabaseError, connection, transaction
 from django.utils import timezone
 
 from compass.integrations.daily import DailyClient, DailyError, safe_daily_failure_code
-from compass.privacy_governance.retention_models import DispositionCase
 
 from .diagnostics import log_media_webhook
 from .media import (
@@ -220,9 +219,6 @@ def _protected(capture, artifact):
                 or artifact.provider_deleted_at
             )
         )
-        or DispositionCase.objects.filter(
-            source_id=capture.pk, state__in=("PROCESSING", "COMPLETED")
-        ).exists()
     )
 
 

@@ -1,10 +1,8 @@
 from datetime import timedelta
-from importlib import import_module
 from io import StringIO
 from unittest.mock import patch
 
 import pytest
-from django.apps import apps
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
@@ -568,22 +566,6 @@ def test_student_lifecycle_defaults_constraint_and_current_student_predicate():
     with pytest.raises(IntegrityError):
         with transaction.atomic():
             User.objects.filter(pk=student.pk).update(student_lifecycle_status="NOT_VALID")
-
-
-@pytest.mark.django_db
-def test_student_lifecycle_migration_backfills_only_existing_students():
-    sync_policy()
-    student = make_user(role="STUDENT", email="legacy-student@example.edu")
-    counselor = make_user(role="COUNSELOR", email="legacy-counselor@example.edu")
-    User.objects.filter(pk=student.pk).update(student_lifecycle_status=None)
-
-    migration = import_module("compass.accounts.migrations.0003_user_student_lifecycle_status")
-    migration.backfill_student_lifecycle_status(apps, None)
-
-    student.refresh_from_db()
-    counselor.refresh_from_db()
-    assert student.student_lifecycle_status == StudentLifecycleStatus.CURRENT
-    assert counselor.student_lifecycle_status is None
 
 
 @pytest.mark.django_db

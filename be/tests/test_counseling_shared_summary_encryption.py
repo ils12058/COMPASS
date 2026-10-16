@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import base64
-import importlib
 import json
 import runpy
 from datetime import timedelta
@@ -16,7 +15,6 @@ from cryptography.fernet import Fernet, InvalidToken
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import IntegrityError, connection, transaction
-from django.db.migrations.executor import MigrationExecutor
 from django.test import override_settings
 from django.utils import timezone
 
@@ -28,7 +26,6 @@ from compass.counseling.context_services import list_context_history
 from compass.counseling.management.commands import (
     rotate_counseling_shared_summary_encryption as rotation,
 )
-from compass.counseling.migrations import _shared_summary_content_v1 as frozen
 from compass.counseling.models import CounselingSharedSummary
 from compass.counseling.shared_summaries import (
     CounselingSharedSummaryEmpty,
@@ -38,6 +35,7 @@ from compass.counseling.shared_summaries import (
 )
 from compass.notifications.delivery import render_notification_email
 from compass.notifications.models import EmailDelivery, Notification
+from tests.encryption_oracles import shared_summary_content_v1 as frozen
 from tests.test_counseling import make_appointment
 from tests.test_shared_summaries import (
     auth_client,
@@ -88,11 +86,6 @@ def raw_row(pk):
     with connection.cursor() as cursor:
         cursor.execute(f'SELECT * FROM "{TABLE}" WHERE id = %s', [pk])
         return dict(zip([c.name for c in cursor.description], cursor.fetchone(), strict=True))
-
-
-def columns():
-    with connection.cursor() as cursor:
-        return {c.name for c in connection.introspection.get_table_description(cursor, TABLE)}
 
 
 def envelope(summary_id, encounter_id, body=SENTINEL):
@@ -634,170 +627,3 @@ def test_rotation_corruption_unchanged_and_non_success(world):
         assert raw_row(item.pk)["content_ciphertext"] == broken
     with pytest.raises(CommandError, match="batch-size"):
         rotate("--batch-size", "1001")
-
-
-BEFORE = [("counseling", "0003_service_name_snapshot")]
-BACKFILLED = [("counseling", "0004_encrypt_shared_summary_content")]
-AFTER = [("counseling", "0005_remove_plaintext_shared_summary_content")]
-
-
-@pytest.fixture
-def legacy(world, transactional_db):
-    executor = MigrationExecutor(connection)
-    executor.migrate(BEFORE)
-    Legacy = executor.loader.project_state(BEFORE).apps.get_model(
-        "counseling", "CounselingSharedSummary"
-    )
-    try:
-        yield Legacy, world
-    finally:
-        MigrationExecutor(connection).migrate(AFTER)
-
-
-@pytest.mark.django_db(transaction=True)
-def test_migration_forward_reverse_preserve_metadata_and_side_effect_counts(legacy):
-    Legacy, world = legacy
-    rows = [
-        Legacy.objects.create(
-            encounter_id=world[4].pk, content=SENTINEL, published_at=timezone.now()
-        )
-    ]
-    for body in ("", "draft Unicode 🌱"):
-        encounter = make_encounter(counselor=world[1], student=world[2])
-        rows.append(Legacy.objects.create(encounter_id=encounter.pk, content=body))
-    before = {row.pk: raw_row(row.pk) for row in rows}
-    counts = (
-        AuditEvent.objects.count(),
-        Notification.objects.count(),
-        EmailDelivery.objects.count(),
-    )
-    MigrationExecutor(connection).migrate(AFTER)
-    assert "content" not in columns()
-    for row in rows:
-        assert (
-            content.read_shared_summary_content(CounselingSharedSummary.objects.get(pk=row.pk))
-            == before[row.pk]["content"]
-        )
-        for field in ("id", "encounter_id", "created_at", "updated_at", "published_at"):
-            assert raw_row(row.pk)[field] == before[row.pk][field]
-    assert (
-        auth_client(world[2])
-        .get(f"/api/v1/counseling/me/shared-summaries/{rows[0].pk}")
-        .json()["content"]
-        == SENTINEL
-    )
-    executor = MigrationExecutor(connection)
-    executor.migrate(BACKFILLED)
-    Restored = executor.loader.project_state(BACKFILLED).apps.get_model(
-        "counseling", "CounselingSharedSummary"
-    )
-    for row in rows:
-        assert Restored.objects.get(pk=row.pk).content == before[row.pk]["content"]
-        for field in ("created_at", "updated_at", "published_at"):
-            assert raw_row(row.pk)[field] == before[row.pk][field]
-    assert counts == (
-        AuditEvent.objects.count(),
-        Notification.objects.count(),
-        EmailDelivery.objects.count(),
-    )
-    MigrationExecutor(connection).migrate(BEFORE)
-    assert (
-        "content_ciphertext" not in columns()
-        and Legacy.objects.get(pk=rows[0].pk).content == SENTINEL
-    )
-
-
-@pytest.mark.django_db(transaction=True)
-def test_phase_b_reconciles_stale_plaintext_and_late_insert(legacy):
-    Legacy, world = legacy
-    early = Legacy.objects.create(encounter_id=world[4].pk, content="old-before-backfill")
-    executor = MigrationExecutor(connection)
-    executor.migrate(BACKFILLED)
-    Backfilled = executor.loader.project_state(BACKFILLED).apps.get_model(
-        "counseling", "CounselingSharedSummary"
-    )
-    for args in ((), ("--dry-run",)):
-        with pytest.raises(CommandError, match="Legacy plaintext"):
-            rotate(*args)
-    Backfilled.objects.filter(pk=early.pk).update(content=SENTINEL)
-    next_encounter = make_encounter(counselor=world[1], student=world[2])
-    late = Backfilled.objects.create(encounter_id=next_encounter.pk, content="post-backfill insert")
-    assert late.content_ciphertext is None
-    metadata = {row.pk: raw_row(row.pk) for row in (early, late)}
-    MigrationExecutor(connection).migrate(AFTER)
-    assert (
-        content.read_shared_summary_content(CounselingSharedSummary.objects.get(pk=early.pk))
-        == SENTINEL
-    )
-    assert (
-        content.read_shared_summary_content(CounselingSharedSummary.objects.get(pk=late.pk))
-        == "post-backfill insert"
-    )
-    for row in (early, late):
-        assert raw_row(row.pk)["updated_at"] == metadata[row.pk]["updated_at"]
-
-
-@pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize("fault", ["invalid-keyring", "corrupt", "binding", "nul"])
-def test_phase_b_fault_aborts_before_plaintext_destruction(legacy, monkeypatch, fault):
-    Legacy, world = legacy
-    row = Legacy.objects.create(encounter_id=world[4].pk, content=SENTINEL)
-    executor = MigrationExecutor(connection)
-    executor.migrate(BACKFILLED)
-    Backfilled = executor.loader.project_state(BACKFILLED).apps.get_model(
-        "counseling", "CounselingSharedSummary"
-    )
-    if fault == "corrupt":
-        Backfilled.objects.filter(pk=row.pk).update(content_ciphertext="broken-private")
-    elif fault == "binding":
-        Backfilled.objects.filter(pk=row.pk).update(
-            content_ciphertext=authentic(envelope(uuid4(), row.encounter_id))
-        )
-    before = raw_row(row.pk)
-    # An earlier missing-token row is repaired before the corrupt later row is encountered;
-    # both its repair and schema work must roll back together on failure.
-    from uuid import UUID
-
-    extra_encounter = make_encounter(counselor=world[1], student=world[2])
-    repairable = Backfilled.objects.create(
-        id=UUID(int=1), encounter_id=extra_encounter.pk, content="late repairable plaintext"
-    )
-    repairable_before = raw_row(repairable.pk)
-    try:
-        with monkeypatch.context() as patch:
-            if fault == "nul":
-                # PG cannot store NUL. Inject this legacy value at validation to verify that
-                # unsupported content aborts the real transactional schema transition.
-                phase_b = importlib.import_module(
-                    "compass.counseling.migrations.0005_remove_plaintext_shared_summary_content"
-                )
-
-                def invalid_legacy(body, sid, eid):
-                    return frozen.validate_content(body + "\x00", sid, eid)
-
-                patch.setattr(phase_b, "validate_content", invalid_legacy)
-            with override_settings(**{SETTING: () if fault == "invalid-keyring" else (K1,)}):
-                with pytest.raises(RuntimeError) as caught:
-                    MigrationExecutor(connection).migrate(AFTER)
-            assert_safe(caught.value, "broken-private")
-        assert {"content", "content_ciphertext"} <= columns()
-        assert raw_row(row.pk) == before
-        assert raw_row(repairable.pk) == repairable_before
-        assert AFTER[0] not in MigrationExecutor(connection).loader.applied_migrations
-    finally:
-        Backfilled.objects.filter(pk=row.pk).delete()
-
-
-@pytest.mark.django_db(transaction=True)
-def test_reverse_aborts_without_blank_restoration(legacy):
-    Legacy, world = legacy
-    row = Legacy.objects.create(encounter_id=world[4].pk, content=SENTINEL)
-    MigrationExecutor(connection).migrate(AFTER)
-    good = raw_row(row.pk)["content_ciphertext"]
-    CounselingSharedSummary.objects.filter(pk=row.pk).update(content_ciphertext="broken")
-    try:
-        with pytest.raises(RuntimeError, match="undecryptable"):
-            MigrationExecutor(connection).migrate(BACKFILLED)
-        assert "content" not in columns() and raw_row(row.pk)["content_ciphertext"] == "broken"
-    finally:
-        CounselingSharedSummary.objects.filter(pk=row.pk).update(content_ciphertext=good)

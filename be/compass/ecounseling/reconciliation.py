@@ -14,7 +14,6 @@ from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 from compass.integrations.daily import DailyClient, DailyError, safe_daily_failure_code
-from compass.privacy_governance.retention_models import DispositionCase
 
 from .artifacts import ensure_pending_artifact
 from .diagnostics import CaptureStage, log_capture_reconciliation
@@ -154,9 +153,6 @@ def _protected(capture, artifact):
                 or artifact.provider_deleted_at
             )
         )
-        or DispositionCase.objects.filter(
-            source_id=capture.pk, state__in=("PROCESSING", "COMPLETED")
-        ).exists()
     )
 
 

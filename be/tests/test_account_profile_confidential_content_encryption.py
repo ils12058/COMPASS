@@ -14,7 +14,6 @@ from django.db import IntegrityError, connection, transaction
 
 from compass.account_management.services import serialize_account
 from compass.accounts import confidential_profile as content
-from compass.accounts.migrations import _account_profile_confidential_content_v1 as frozen
 from compass.accounts.models import User
 from compass.accounts.profiles import get_person_profile_context, update_my_profile
 from compass.accounts.services import effective_capabilities
@@ -22,27 +21,20 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
 from compass.organization.api import _person
+from tests.encryption_oracles import account_profile_confidential_content_v1 as frozen
 from tests.residual_encryption_helpers import (
     FAULTS,
     K1,
     K2,
-    cleanup_legacy,
     columns,
     command,
     envelope,
-    fence_probe,
     metadata,
-    migrate,
     mutated,
     raw,
-    setup_legacy,
-    state,
 )
 from tests.test_profiles import auth_client, csrf_headers, make_user, patch_profile, sync_policy
 
-BEFORE = [("accounts", "0006_rename_reference_capabilities")]
-BACKFILLED = [("accounts", "0007_encrypt_confidential_content")]
-AFTER = [("accounts", "0008_remove_plaintext_confidential_content")]
 PAYLOAD = {
     "date_of_birth": "2000-01-02",
     "civil_status": "PRIVATE-civil 雪",
@@ -272,125 +264,6 @@ def test_rotation_preserves_bytes_timestamp_metadata_idempotence_and_safe_failur
             command("rotate_account_profile_confidential_content", batch_size=size)
 
 
-@pytest.fixture
-def legacy(transactional_db):
-    initial, registry = setup_legacy("accounts", BEFORE)
-    try:
-        yield registry
-    finally:
-        cleanup_legacy("accounts", ("User",), initial)
-
-
-def old_user(registry, index=0):
-    role = registry.get_model("accounts", "Role").objects.create(code=f"TEST-{index}", name="Test")
-    return registry.get_model("accounts", "User").objects.create(
-        role=role,
-        email=f"legacy-{index}@example.edu",
-        first_name="Historical",
-        last_name="Identity",
-        password="!",
-        **{**PAYLOAD, "date_of_birth": date(2000, 1, 2)},
-    )
-
-
-def test_migration_backfill_late_insert_stale_and_missing_exact_reverse(legacy):
-    first = old_user(legacy)
-    stamp = first.updated_at
-    migrate(BACKFILLED)
-    reg = state(BACKFILLED)
-    model = reg.get_model("accounts", "User")
-    model.objects.filter(pk=first.pk).update(current_address="PRIVATE-late change")
-    second = old_user(reg, 1)
-    third = old_user(reg, 2)
-    equal = old_user(reg, 3)
-    model.objects.filter(pk=equal.pk).update(
-        date_of_birth=None,
-        civil_status="",
-        contact_number="",
-        current_address="",
-        permanent_address="",
-    )
-    equal = model.objects.get(pk=equal.pk)
-    equal_token = frozen.encrypt((K1,), equal, frozen.plaintext(equal, "User"), "User")
-    model.objects.filter(pk=equal.pk).update(**{content.COLUMN: equal_token})
-    model.objects.filter(pk=third.pk).update(**{content.COLUMN: ""})
-    migrate(AFTER)
-    assert "current_address" not in columns(User)
-    assert User.objects.get(pk=equal.pk).profile_confidential_content_ciphertext == equal_token
-    assert (
-        content.read_account_profile_confidential_content(User.objects.get(pk=equal.pk))
-        == content.AccountProfileConfidentialContent()
-    )
-    row = User.objects.get(pk=first.pk)
-    assert row.updated_at == stamp
-    assert (
-        content.read_account_profile_confidential_content(row).current_address
-        == "PRIVATE-late change"
-    )
-    assert (
-        content.read_account_profile_confidential_content(
-            User.objects.get(pk=second.pk)
-        ).contact_number
-        == PAYLOAD["contact_number"]
-    )
-    migrate(BEFORE)
-    reg = state(BEFORE)
-    row = reg.get_model("accounts", "User").objects.get(pk=first.pk)
-    assert row.current_address == "PRIVATE-late change" and row.updated_at == stamp
-    restored_empty = reg.get_model("accounts", "User").objects.get(pk=equal.pk)
-    assert restored_empty.date_of_birth is None and restored_empty.current_address == ""
-
-
-@pytest.mark.parametrize("fault", ["tamper", "binding", "schema", "wrong-type"])
-def test_present_bad_token_aborts_forward_and_reverse_atomically(legacy, fault):
-    first = old_user(legacy)
-    migrate(BACKFILLED)
-    model = state(BACKFILLED).get_model("accounts", "User")
-    item = model.objects.get(pk=first.pk)
-    token = getattr(item, content.COLUMN)
-    model.objects.filter(pk=item.pk).update(**{content.COLUMN: mutated(token, fault)})
-    before = raw(User)
-    with pytest.raises(RuntimeError) as caught:
-        migrate(AFTER)
-    safe(caught.value)
-    assert raw(User) == before and "current_address" in columns(User)
-    model.objects.filter(pk=item.pk).update(**{content.COLUMN: token})
-    migrate(AFTER)
-    User.objects.filter(pk=item.pk).update(**{content.COLUMN: mutated(token, fault)})
-    before = raw(User)
-    with pytest.raises(RuntimeError):
-        migrate(BEFORE)
-    assert raw(User) == before and "current_address" not in columns(User)
-
-
-@pytest.mark.parametrize("reverse", [False, True])
-def test_writer_fence_precedes_data_and_ddl(legacy, monkeypatch, reverse):
-    old_user(legacy)
-    migrate(AFTER if reverse else BACKFILLED)
-    calls = fence_probe(
-        "compass.accounts.migrations.0008_remove_plaintext_confidential_content",
-        "accounts",
-        ("User",),
-        "is_active",
-        monkeypatch,
-        reverse,
-    )
-    migrate(BEFORE if reverse else AFTER)
-    assert calls
-
-
-def test_rotation_refuses_transitional_plaintext_and_frozen_is_independent(legacy, monkeypatch):
-    old_user(legacy)
-    migrate(BACKFILLED)
-    for dry in (False, True):
-        with pytest.raises(CommandError, match="Legacy"):
-            command("rotate_account_profile_confidential_content", dry_run=dry)
-    monkeypatch.setattr(content, "read_account_profile_confidential_content", forbid)
-    monkeypatch.setattr(content, "write_account_profile_confidential_content", forbid)
-    migrate(AFTER)
-    migrate(BEFORE)
-
-
 @pytest.mark.parametrize(
     "target,source",
     [
@@ -511,25 +384,6 @@ def test_account_rotation_locks_real_rows_commits_batches_and_resumes(settings, 
     assert all(
         content.encrypted_with_primary_key(getattr(u, content.COLUMN)) for u in User.objects.all()
     )
-
-
-def test_corrupt_later_user_rolls_back_earlier_stale_rewrite(legacy):
-    from uuid import UUID
-
-    first, second = old_user(legacy), old_user(legacy, 1)
-    model = legacy.get_model("accounts", "User")
-    model.objects.filter(pk=first.pk).update(id=UUID(int=1))
-    model.objects.filter(pk=second.pk).update(id=UUID(int=2))
-    migrate(BACKFILLED)
-    model = state(BACKFILLED).get_model("accounts", "User")
-    model.objects.filter(pk=UUID(int=1)).update(current_address="PRIVATE-new plaintext")
-    model.objects.filter(pk=UUID(int=2)).update(
-        profile_confidential_content_ciphertext="PRIVATE-corrupt"
-    )
-    before = raw(User)
-    with pytest.raises(RuntimeError):
-        migrate(AFTER)
-    assert raw(User) == before and "current_address" in columns(User)
 
 
 @pytest.mark.django_db

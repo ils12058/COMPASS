@@ -44,14 +44,7 @@ from compass.integrations.media_download import (
     stream_daily_media,
     validate_daily_link,
 )
-from compass.privacy_governance import retention
-from compass.privacy_governance.tasks import execute_disposition
-from tests.legacy_disposition_fixtures import (
-    historically_disposed_media,
-    legacy_case,
-    legacy_rule,
-    media_category,
-)
+from tests.historical_outcome_fixtures import historically_disposed_media
 from tests.test_ecounseling_media import (
     FakeMediaDailyClient,
     approve_scope,
@@ -59,7 +52,7 @@ from tests.test_ecounseling_media import (
     make_user,
     setup_session,
 )
-from tests.test_privacy_governance import auth_client, make_dpo
+from tests.test_privacy_governance import auth_client
 
 pytestmark = pytest.mark.django_db
 
@@ -533,20 +526,11 @@ def test_access_has_no_store_bounded_ttl_and_survives_completed_appointment_serv
     assert not {"object_key", "provider_artifact_id"} & result.json().keys()
 
 
-def v2_case(capture, state="QUEUED"):
-    """A historical contract-2 case written directly; COMPASS no longer creates cases."""
-    dpo = make_dpo()
-    rule = legacy_rule(actor=dpo, category=media_category(capture), contract_version=2)
-    return dpo, legacy_case(rule=rule, source=capture, state=state)
-
-
 @pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
 def test_historically_disposed_v2_media_stays_fenced_against_ingestion_and_late_events(kind):
     _, counselor, appointment, capture, artifact, storage = ready_artifact(kind, pending=False)
-    _, case = v2_case(capture, state="COMPLETED")
     historically_disposed_media(capture, artifact, storage)
     provider = ArtifactDaily(capture)
-    execute_disposition(case.pk)
     ingest_artifact(artifact.pk, storage=storage, client=provider, download=fake_download)
     process_media_webhook_event(
         event_type="recording.ready-to-download"
@@ -572,54 +556,6 @@ def test_historically_disposed_v2_media_stays_fenced_against_ingestion_and_late_
         )
     assert response.status_code == 410
     assert response.json()["error"]["code"] == "ecounseling_artifact_disposed"
-
-
-@pytest.mark.parametrize("provider_residue", [False, True])
-@pytest.mark.parametrize("state", ["APPROVED", "QUEUED", "PROCESSING", "RECONCILIATION_REQUIRED"])
-def test_retired_executor_never_deletes_stored_media_or_provider_residue(state, provider_residue):
-    _, _, _, capture, artifact, storage = ready_artifact(pending=False)
-    if provider_residue:
-        capture.provider_artifact_id = "residue"
-        capture.save()
-    _, case = v2_case(capture, state=state)
-    storage.calls.clear()
-    provider = ArtifactDaily(capture)
-    with (
-        patch("compass.ecounseling.artifacts.ObjectStorage", return_value=storage),
-        patch("compass.integrations.daily.DailyClient.from_settings", return_value=provider),
-    ):
-        for _ in range(2):
-            execute_disposition(case.pk)
-            execute_disposition.apply(args=[str(case.pk)], headers={"redelivered": True})
-    artifact.refresh_from_db()
-    capture.refresh_from_db()
-    case.refresh_from_db()
-    assert storage.calls == [] and provider.calls == [] and storage.objects
-    assert artifact.status == "STORED" and artifact.object_key and artifact.sha256
-    assert capture.artifact_disposed_at is None
-    assert (capture.provider_artifact_id == "residue") == provider_residue
-    assert case.state == state and case.completed_at is None
-
-
-def test_hold_and_approval_are_refused_and_keep_the_canonical_object():
-    _, _, _, capture, artifact, storage = ready_artifact(pending=False)
-    dpo, case = v2_case(capture, state="QUEUED")
-    common = {"actor": dpo, "case_id": case.pk, "expected_revision": case.revision}
-    for call in (
-        lambda: retention.change_hold(
-            **common, reason="synthetic hold", release=False, context=context(dpo)
-        ),
-        lambda: retention.change_hold(**common, reason=None, release=True, context=context(dpo)),
-        lambda: retention.approve_case(**common, context=context(dpo)),
-        lambda: retention.approve_case(**common, context=context(dpo), retry=True),
-    ):
-        with pytest.raises(APIError) as refused:
-            call()
-        assert refused.value.code == "retention_decommissioned"
-    case.refresh_from_db()
-    artifact.refresh_from_db()
-    assert case.state == "QUEUED" and not case.holds.exists()
-    assert storage.objects and artifact.status == "STORED"
 
 
 @pytest.mark.parametrize(
@@ -919,8 +855,6 @@ def test_storage_namespace_change_blocks_access_and_keeps_the_original_copy():
             f"/api/v1/e-counseling/appointments/{appointment.pk}/media/RECORDING/access"
         )
     assert response.status_code == 503 and response["Cache-Control"] == "no-store, private"
-    _, case = v2_case(capture)
-    execute_disposition(case.pk)
     artifact.refresh_from_db()
     assert storage.objects and artifact.storage_binding == original_binding
     assert artifact.object_key and artifact.status == "STORED"

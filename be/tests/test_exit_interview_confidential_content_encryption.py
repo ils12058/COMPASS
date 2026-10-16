@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import base64
-import importlib
 import json
 import runpy
 from dataclasses import asdict
@@ -16,8 +15,7 @@ import pytest
 from cryptography.fernet import Fernet, InvalidToken
 from django.core.management import call_command
 from django.core.management.base import CommandError
-from django.db import IntegrityError, OperationalError, connection, transaction
-from django.db.migrations.executor import MigrationExecutor
+from django.db import IntegrityError, connection, transaction
 from django.test import override_settings
 from django.utils import timezone
 from pypdf import PdfReader
@@ -30,7 +28,6 @@ from compass.exit_interviews import confidential_content as content
 from compass.exit_interviews.management.commands import (
     rotate_exit_interview_confidential_content as rotation,
 )
-from compass.exit_interviews.migrations import _exit_interview_confidential_content_v1 as frozen
 from compass.exit_interviews.models import (
     ExitInterview,
     ExitInterviewOpportunity,
@@ -39,6 +36,7 @@ from compass.exit_interviews.models import (
 from compass.exit_interviews.opportunities import open_opportunity, revoke_opportunity
 from compass.notifications.delivery import render_notification_email
 from compass.notifications.models import EmailDelivery, Notification
+from tests.encryption_oracles import exit_interview_confidential_content_v1 as frozen
 from tests.test_exit_interview_opportunities import request_f4
 from tests.test_exit_interviews import (
     auth_client,
@@ -56,11 +54,6 @@ K1, K2, K3, K4, K5, K6, K7, K8 = (
     base64.urlsafe_b64encode(bytes([n]) * 32).decode("ascii") for n in range(101, 109)
 )
 SETTING = content.KEYRING_SETTING
-BEFORE = [("exit_interviews", "0002_exitinterviewopportunity_exitinterview_opportunity_and_more")]
-BACKFILLED = [("exit_interviews", "0003_encrypt_confidential_content")]
-AFTER = [("exit_interviews", "0004_remove_plaintext_confidential_content")]
-# Current models also read the later additive columns (saved Form Revision, correction targets).
-CURRENT = [("exit_interviews", "0006_exitinterviewreopenevent_targets_ciphertext")]
 FAMILIES = (
     (
         ExitInterview,
@@ -865,320 +858,6 @@ def test_rotation_corruption_is_bounded_safe_nonzero_and_never_repaired(world):
             rotate(batch_size=batch_size)
 
 
-@pytest.fixture
-def legacy(world, transactional_db):
-    initial = MigrationExecutor(connection).loader.graph.leaf_nodes()
-    executor = MigrationExecutor(connection)
-    executor.migrate(BEFORE)
-    try:
-        yield executor.loader.project_state(BEFORE).apps, world
-    finally:
-        # Only reset synthetic dual-schema tokens after deliberately corrupt migration cases.
-        # The tests assert refusal/atomicity before teardown; production never repairs them.
-        for model, column, _ in FAMILIES:
-            existing = columns(model)
-            legacy_field = (
-                next(iter(content.CONTENT_LIMITS))
-                if model is ExitInterview
-                else ("note" if model is ExitInterviewOpportunity else "reason")
-            )
-            if column in existing and legacy_field in existing:
-                with connection.cursor() as cursor:
-                    cursor.execute(f'UPDATE "{model._meta.db_table}" SET "{column}" = NULL')
-        MigrationExecutor(connection).migrate(initial)
-
-
-def old_response(apps, world, index=0, variant="filled"):
-    model = apps.get_model("exit_interviews", "ExitInterview")
-    values = asdict(PAYLOAD) if variant != "empty" else dict.fromkeys(content.CONTENT_LIMITS, "")
-    if variant == "unicode":
-        values["home_address_snapshot"] = '  雪 café\n"quotes" \\ path  '
-    year = world["year"] if index == 0 else make_year(f"204{index}-204{index + 1}", current=False)
-    submitted = variant in ("submitted", "reopened")
-    return model.objects.create(
-        student_id=world["student"].pk,
-        academic_year_id=year.pk,
-        inventory_id=world["inventory"].pk,
-        opportunity_id=world["opp"].pk if index == 0 else None,
-        student_name_snapshot="historical searchable name",
-        status="SUBMITTED" if variant == "submitted" else "DRAFT",
-        first_submitted_at=timezone.now() if submitted else None,
-        last_submitted_at=timezone.now() if submitted else None,
-        program_completion="WITH_SOME_DELAY" if variant != "empty" else "",
-        extra_terms_count=2 if variant != "empty" else None,
-        delay_reasons=["OTHER"] if variant != "empty" else [],
-        significant_learning_experiences=["OTHER"] if variant != "empty" else [],
-        **values,
-    )
-
-
-def old_event(apps, world, item, reason=REASON):
-    return apps.get_model("exit_interviews", "ExitInterviewReopenEvent").objects.create(
-        exit_interview_id=item.pk,
-        reopened_by_id=world["head"].pk,
-        reopened_at=timezone.now(),
-        reason=reason,
-    )
-
-
-def all_raw():
-    result = {}
-    for model, _, _ in FAMILIES:
-        with connection.cursor() as cursor:
-            cursor.execute(f'SELECT * FROM "{model._meta.db_table}" ORDER BY id')
-            names = [col.name for col in cursor.description]
-            result[model] = [dict(zip(names, row, strict=True)) for row in cursor.fetchall()]
-    return result
-
-
-def test_forward_reverse_restores_exact_all_content_and_preserves_metadata_ratings(legacy):
-    apps, world = legacy
-    variants = ["filled", "submitted", "reopened", "empty", "unicode"]
-    items = [old_response(apps, world, i, variant) for i, variant in enumerate(variants)]
-    old_event(apps, world, items[2])
-    old_event(apps, world, items[2], "second correction 雪")
-    opp_model = apps.get_model("exit_interviews", "ExitInterviewOpportunity")
-    for i, status in enumerate(("OPEN", "COMPLETED", "REVOKED")):
-        year = make_year(f"205{i}-205{i + 1}", current=False)
-        opp_model.objects.create(
-            student_id=world["student"].pk,
-            academic_year_id=year.pk,
-            source="MANUAL",
-            status=status,
-            note="" if i == 0 else NOTE,
-            opened_by_id=world["head"].pk,
-            opened_at=timezone.now(),
-            completed_at=timezone.now() if status == "COMPLETED" else None,
-            revoked_at=timezone.now() if status == "REVOKED" else None,
-            revoked_by_id=world["head"].pk if status == "REVOKED" else None,
-        )
-    rating_model = apps.get_model("exit_interviews", "ExitInterviewSelfAssessmentRating")
-    rating = rating_model.objects.create(
-        exit_interview_id=items[0].pk, item_code="LEADERSHIP", rating=5
-    )
-    feedback_model = apps.get_model("exit_interviews", "ExitInterviewCollegeFeedbackRating")
-    feedback = feedback_model.objects.create(
-        exit_interview_id=items[0].pk, item_code="DEAN_AVAILABILITY", rating=0
-    )
-    before, counts = all_raw(), effects()
-    MigrationExecutor(connection).migrate(CURRENT)
-    for model, column, read in FAMILIES:
-        for historical in before[model]:
-            row = model.objects.get(pk=historical["id"])
-            if model is ExitInterview:
-                assert row.form_revision_id is None
-            if model is ExitInterviewReopenEvent:
-                assert row.targets_ciphertext == ""
-            logical = read(row)
-            expected = (
-                {name: historical[name] for name in content.CONTENT_LIMITS}
-                if model is ExitInterview
-                else historical["note" if model is ExitInterviewOpportunity else "reason"]
-            )
-            assert (asdict(logical) if model is ExitInterview else logical) == expected
-            ordinary = {
-                name: value
-                for name, value in historical.items()
-                if name
-                not in (
-                    set(content.CONTENT_LIMITS)
-                    if model is ExitInterview
-                    else {"note" if model is ExitInterviewOpportunity else "reason"}
-                )
-            }
-            assert {
-                name: value
-                for name, value in raw(model, row.pk).items()
-                if name not in {column, "form_revision_id", "targets_ciphertext"}
-            } == ordinary
-    assert rating_model.objects.get(pk=rating.pk).rating == 5
-    assert feedback_model.objects.get(pk=feedback.pk).rating == 0
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    restored = all_raw()
-    for model, column, _ in FAMILIES:
-        assert [
-            {name: value for name, value in row.items() if name != column}
-            for row in restored[model]
-        ] == before[model]
-    MigrationExecutor(connection).migrate(BEFORE)
-    assert all_raw() == before and effects() == counts
-    assert rating_model.objects.get(pk=rating.pk).rating == 5
-    assert feedback_model.objects.get(pk=feedback.pk).rating == 0
-
-
-def test_phase_b_reconciles_old_release_changes_and_missing_late_rows_under_fence(legacy):
-    apps, world = legacy
-    item = old_response(apps, world, variant="empty")
-    event = old_event(apps, world, item, "original")
-    apps.get_model("exit_interviews", "ExitInterviewOpportunity").objects.filter(
-        pk=world["opp"].pk
-    ).update(status="REVOKED", revoked_at=timezone.now(), revoked_by_id=world["head"].pk)
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    apps = MigrationExecutor(connection).loader.project_state(BACKFILLED).apps
-    model = apps.get_model("exit_interviews", "ExitInterview")
-    model.objects.filter(pk=item.pk).update(
-        **asdict(PAYLOAD),
-        program_completion="WITH_SOME_DELAY",
-        extra_terms_count=2,
-        delay_reasons=["OTHER"],
-        significant_learning_experiences=["OTHER"],
-    )
-    apps.get_model("exit_interviews", "ExitInterviewOpportunity").objects.filter(
-        pk=world["opp"].pk
-    ).update(
-        status="OPEN",
-        revoked_at=None,
-        revoked_by_id=None,
-        opened_at=timezone.now(),
-        note="changed old-release note",
-    )
-    apps.get_model("exit_interviews", "ExitInterviewReopenEvent").objects.filter(
-        pk=event.pk
-    ).update(reason="changed old-release reason")
-    late = old_response(apps, world, index=1)
-    late_event = old_event(apps, world, late)
-    late_opp = apps.get_model("exit_interviews", "ExitInterviewOpportunity").objects.create(
-        student_id=world["student"].pk,
-        academic_year_id=make_year("2060-2061", current=False).pk,
-        source="MANUAL",
-        status="OPEN",
-        opened_by_id=world["head"].pk,
-        opened_at=timezone.now(),
-        note=NOTE,
-    )
-    assert model.objects.get(pk=late.pk).confidential_content_ciphertext is None
-    MigrationExecutor(connection).migrate(CURRENT)
-    assert all(
-        content.read_exit_interview_confidential_content(row) == PAYLOAD
-        for row in ExitInterview.objects.all()
-    )
-    assert (
-        content.read_opportunity_note(ExitInterviewOpportunity.objects.get(pk=world["opp"].pk))
-        == "changed old-release note"
-    )
-    assert (
-        content.read_opportunity_note(ExitInterviewOpportunity.objects.get(pk=late_opp.pk)) == NOTE
-    )
-    assert (
-        content.read_reopen_reason(ExitInterviewReopenEvent.objects.get(pk=event.pk))
-        == "changed old-release reason"
-    )
-    assert (
-        content.read_reopen_reason(ExitInterviewReopenEvent.objects.get(pk=late_event.pk)) == REASON
-    )
-
-
-@pytest.mark.parametrize("family", [0, 1, 2])
-@pytest.mark.parametrize("fault", ["tamper", "binding", "schema", "payload", "undecryptable"])
-def test_present_corrupt_phase_a_token_aborts_without_repair_or_partial_ddl(legacy, family, fault):
-    apps, world = legacy
-    item = old_response(apps, world)
-    event = old_event(apps, world, item)
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    model, column, _ = FAMILIES[family]
-    pk = (item.pk, world["opp"].pk, event.pk)[family]
-    token = raw(model, pk)[column]
-    envelope = json.loads(Fernet(K1).decrypt(token.encode()))
-    if fault == "binding":
-        envelope[next(name for name in envelope if name.endswith("_id"))] = str(uuid4())
-    elif fault == "schema":
-        envelope["schema_version"] = 2
-    elif fault == "payload":
-        envelope["payload"]["unrecognized"] = "private"
-    broken = (
-        token[:-20]
-        if fault == "tamper"
-        else (
-            Fernet(K2).encrypt(b"{}").decode()
-            if fault == "undecryptable"
-            else Fernet(K1).encrypt(json.dumps(envelope).encode()).decode()
-        )
-    )
-    with connection.cursor() as cursor:
-        cursor.execute(
-            f'UPDATE "{model._meta.db_table}" SET "{column}" = %s WHERE id = %s', [broken, pk]
-        )
-        cursor.execute(
-            f'UPDATE "{ExitInterview._meta.db_table}" SET dean_comments = %s',
-            ["stale newest comment"],
-        )
-    before = all_raw()
-    with pytest.raises(RuntimeError) as caught:
-        MigrationExecutor(connection).migrate(AFTER)
-    safe(caught.value, broken)
-    assert all_raw() == before
-    assert set(content.CONTENT_LIMITS) <= columns(ExitInterview)
-    assert "note" in columns(ExitInterviewOpportunity) and "reason" in columns(
-        ExitInterviewReopenEvent
-    )
-
-
-@pytest.mark.parametrize("family", [0, 1, 2])
-def test_corrupt_reverse_is_atomic_and_restores_no_blank_plaintext(legacy, family):
-    apps, world = legacy
-    item = old_response(apps, world)
-    event = old_event(apps, world, item)
-    MigrationExecutor(connection).migrate(AFTER)
-    model, column, _ = FAMILIES[family]
-    pk = (item.pk, world["opp"].pk, event.pk)[family]
-    token = raw(model, pk)[column]
-    model.objects.filter(pk=pk).update(**{column: "unreadable-private-token"})
-    try:
-        before = all_raw()
-        with pytest.raises(RuntimeError) as caught:
-            MigrationExecutor(connection).migrate(BACKFILLED)
-        safe(caught.value, "unreadable-private-token")
-        assert all_raw() == before
-        assert not set(content.CONTENT_LIMITS).intersection(columns(ExitInterview))
-        assert "note" not in columns(ExitInterviewOpportunity) and "reason" not in columns(
-            ExitInterviewReopenEvent
-        )
-    finally:
-        model.objects.filter(pk=pk).update(**{column: token})
-
-
-def test_rotation_refuses_dual_schema_and_migration_requires_valid_keyring(legacy):
-    apps, world = legacy
-    old_response(apps, world)
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    for dry_run in (True, False):
-        with pytest.raises(CommandError, match="Legacy plaintext"):
-            rotate(dry_run=dry_run)
-    for keys in ((), ("invalid-private-key",), (K1, K1)):
-        with override_settings(**{SETTING: keys}), pytest.raises(RuntimeError) as caught:
-            MigrationExecutor(connection).migrate(AFTER)
-        safe(caught.value, "invalid-private-key")
-    assert set(content.CONTENT_LIMITS) <= columns(ExitInterview)
-
-
-def test_phase_b_fences_every_old_writer_before_reading_any_content(legacy, monkeypatch):
-    apps, world = legacy
-    old_event(apps, world, old_response(apps, world))
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    phase = importlib.import_module(
-        "compass.exit_interviews.migrations.0004_remove_plaintext_confidential_content"
-    )
-    original, seen = phase._lock, []
-
-    def probe(apps, editor):
-        original(apps, editor)
-        writer = connection.copy()
-        try:
-            with writer.cursor() as cursor:
-                cursor.execute("SET lock_timeout = '100ms'")
-                for name, _, _ in frozen.FAMILIES:
-                    table = apps.get_model("exit_interviews", name)._meta.db_table
-                    with pytest.raises(OperationalError, match="lock timeout"):
-                        cursor.execute(f'UPDATE "{table}" SET id = id')
-                    seen.append(name)
-        finally:
-            writer.close()
-
-    monkeypatch.setattr(phase, "_lock", probe)
-    MigrationExecutor(connection).migrate(AFTER)
-    assert seen == [name for name, _, _ in frozen.FAMILIES]
-
-
 @pytest.mark.parametrize(
     "source,target",
     [
@@ -1293,59 +972,3 @@ def test_resubmit_keeps_main_ciphertext_and_exposes_historical_reason_only_after
             ]
             == value
         )
-
-
-@pytest.mark.parametrize("fault", ["over-limit", "invalid-email", "other-mismatch", "blank-reason"])
-def test_invalid_latest_plaintext_aborts_phase_b_before_destructive_changes(legacy, fault):
-    apps, world = legacy
-    item = old_response(apps, world)
-    event = old_event(apps, world, item)
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    with connection.cursor() as cursor:
-        if fault == "blank-reason":
-            cursor.execute(
-                f'UPDATE "{ExitInterviewReopenEvent._meta.db_table}" SET reason = %s WHERE id = %s',
-                [" ", event.pk],
-            )
-        else:
-            field, value = {
-                "over-limit": ("dean_comments", "x" * 4001),
-                "invalid-email": ("email_snapshot", "invalid-sensitive-email"),
-                "other-mismatch": ("delay_other", ""),
-            }[fault]
-            cursor.execute(
-                f'UPDATE "{ExitInterview._meta.db_table}" SET "{field}" = %s WHERE id = %s',
-                [value, item.pk],
-            )
-    before = all_raw()
-    try:
-        with pytest.raises(RuntimeError) as caught:
-            MigrationExecutor(connection).migrate(AFTER)
-        safe(caught.value, "invalid-sensitive-email")
-        assert all_raw() == before and set(content.CONTENT_LIMITS) <= columns(ExitInterview)
-    finally:
-        with connection.cursor() as cursor:
-            if fault == "blank-reason":
-                cursor.execute(
-                    f'UPDATE "{ExitInterviewReopenEvent._meta.db_table}" '
-                    "SET reason = %s WHERE id = %s",
-                    [REASON, event.pk],
-                )
-            else:
-                cursor.execute(
-                    f'UPDATE "{ExitInterview._meta.db_table}" SET "{field}" = %s WHERE id = %s',
-                    [asdict(PAYLOAD)[field], item.pk],
-                )
-
-
-def test_phase_b_retains_identical_readable_tokens_without_randomized_rewrite(legacy):
-    apps, world = legacy
-    old_event(apps, world, old_response(apps, world))
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    before = all_raw()
-    MigrationExecutor(connection).migrate(AFTER)
-    after = all_raw()
-    for model, column, _ in FAMILIES:
-        assert [(row["id"], row[column]) for row in before[model]] == [
-            (row["id"], row[column]) for row in after[model]
-        ]

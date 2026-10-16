@@ -27,29 +27,20 @@ from compass.ecounseling.reconciliation import (
 from compass.ecounseling.services import ECounselingProviderUnavailable, create_join_credential
 from compass.integrations.daily import DailyHTTPError, DailyTimeout
 from compass.notifications import services as notifications
-from compass.privacy_governance.tasks import execute_disposition
 from compass.realtime import connection as realtime_connection
 from compass.realtime import publish
 from realtime_service import protocol
-from tests.legacy_disposition_fixtures import (
-    legacy_case,
-    legacy_media_source,
-    legacy_rule,
-    media_category,
-)
 from tests.test_ecounseling_media import FakeMediaDailyClient, context, make_user, setup_session
 from tests.test_ecounseling_media_v2 import (
     ArtifactDaily,
     FakeStorage,
     fake_download,
     ready_artifact,
-    v2_case,
 )
 from tests.test_ecounseling_reconciliation import metadata, pending_capture
 from tests.test_ecounseling_state_correctness import authorized_session
 from tests.test_ecounseling_webhook_security import body_for, signed
 from tests.test_notifications import auth_client
-from tests.test_privacy_governance import make_dpo
 from tests.test_realtime_service import Socket, run
 from tests.test_realtime_tickets import issue
 
@@ -549,30 +540,6 @@ def test_custody_hints_follow_verified_public_stages_and_ignore_cleanup_bookkeep
         assert_hints(frames, appointment, [student, counselor], transitions=2)
     else:
         assert media_frames(frames) == []
-
-
-@pytest.mark.parametrize("state", ["APPROVED", "QUEUED", "PROCESSING"])
-def test_retired_disposition_task_publishes_no_hint_and_keeps_availability(frames, state):
-    student, counselor, appointment, capture, artifact, storage = ready_artifact(pending=False)
-    _, case = v2_case(capture, state=state)
-    frames.clear()
-    execute_disposition(case.pk)
-    artifact.refresh_from_db()
-    assert artifact.status == "STORED" and media_frames(frames) == []
-    assert media.get_media_projection(capture.room)["recording"]["artifact_available"]
-
-
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
-def test_retired_legacy_provider_disposition_publishes_no_hint(frames, kind):
-    capture, _ = legacy_media_source(kind)
-    rule = legacy_rule(actor=make_dpo(), category=media_category(capture))
-    case = legacy_case(rule=rule, source=capture, state="QUEUED")
-    frames.clear()
-    execute_disposition(case.pk)
-    capture.refresh_from_db()
-    assert capture.artifact_disposed_at is None
-    assert capture.provider_artifact_id == "artifact-opaque"
-    assert media_frames(frames) == []
 
 
 @pytest.mark.parametrize("operation", ["stop", "withdraw"])

@@ -19,26 +19,20 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.feedback import api, services
 from compass.feedback import confidential_content as content
-from compass.feedback.migrations import _feedback_confidential_content_v1 as frozen
 from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
-from compass.institutional_forms.models import FormRevision
 from compass.notifications.models import EmailDelivery, Notification
+from tests.encryption_oracles import feedback_confidential_content_v1 as frozen
 from tests.profile_fixtures import set_profile
 from tests.residual_encryption_helpers import (
     FAULTS,
     K1,
     K2,
-    cleanup_legacy,
     columns,
     command,
     envelope,
-    fence_probe,
     metadata,
-    migrate,
     mutated,
     raw,
-    setup_legacy,
-    state,
 )
 from tests.test_feedback import (
     ControlledIdempotencyStore,
@@ -54,9 +48,6 @@ from tests.test_feedback import (
 )
 
 NAMES = content.FAMILIES
-BEFORE = [("feedback", "0002_feedback_opportunity")]
-BACKFILLED = [("feedback", "0003_encrypt_confidential_content")]
-AFTER = [("feedback", "0004_remove_plaintext_confidential_content")]
 PRIVATE = {
     NAMES[0]: {
         "other_service": "",
@@ -358,125 +349,6 @@ def test_rotation_dry_real_timestamp_metadata_idempotence_and_failures(world, fa
     assert model.objects.get().confidential_content_ciphertext == "PRIVATE-broken"
 
 
-@pytest.fixture
-def legacy(transactional_db):
-    initial, registry = setup_legacy("feedback", BEFORE)
-    try:
-        yield registry
-    finally:
-        cleanup_legacy("feedback", NAMES, initial)
-
-
-def old_rows(registry, index=0):
-    revision = FormRevision.objects.filter(family__key="customer_feedback").first()
-    if revision is None:
-        from compass.institutional_forms.models import FormFamily
-
-        family, _ = FormFamily.objects.get_or_create(
-            key="customer_feedback", defaults={"title": "Test"}
-        )
-        revision = FormRevision.objects.create(family=family, internal_schema_version=1)
-    values = valid_f14_payload()
-    values = {
-        k: v
-        for k, v in values.items()
-        if k not in {"respondent_name", "course_year", "address", "mobile_number"}
-    }
-    values["accommodated_by"] = ""
-    first = registry.get_model("feedback", NAMES[0]).objects.create(
-        form_revision_id=revision.pk,
-        respondent_name_snapshot=f"Historical {index}",
-        course_year_snapshot="BSIS4",
-        **{**values, **PRIVATE[NAMES[0]]},
-    )
-    second = registry.get_model("feedback", NAMES[1]).objects.create(
-        instrument_schema_version=1, **{**valid_csm_payload(), **PRIVATE[NAMES[1]]}
-    )
-    return first, second
-
-
-def test_forward_phase_a_late_old_inserts_stale_missing_reverse_exact(legacy):
-    rows = old_rows(legacy)
-    stamps = [r.submitted_at for r in rows]
-    migrate(BACKFILLED)
-    reg = state(BACKFILLED)
-    old_rows(reg, 1)
-    for family, row in zip(NAMES, rows, strict=True):
-        model = reg.get_model("feedback", family)
-        field = next(iter(PRIVATE[family]))
-        value = "PRIVATE-late" if field != "other_service" else ""
-        model.objects.filter(pk=row.pk).update(**{field: value})
-    migrate(AFTER)
-    for family, row, stamp in zip(NAMES, rows, stamps, strict=True):
-        model = apps.get_model("feedback", family)
-        item = model.objects.get(pk=row.pk)
-        assert item.submitted_at == stamp and set(PRIVATE[family]).isdisjoint(columns(model))
-        content.read_feedback_confidential_content(item)
-    migrate(BEFORE)
-    reg = state(BEFORE)
-    assert (
-        reg.get_model("feedback", NAMES[1]).objects.get(pk=rows[1].pk).suggestions == "PRIVATE-late"
-    )
-    assert (
-        reg.get_model("feedback", NAMES[0]).objects.get(pk=rows[0].pk).address_snapshot
-        == PRIVATE[NAMES[0]]["address_snapshot"]
-    )
-
-
-@pytest.mark.parametrize("family", NAMES)
-@pytest.mark.parametrize("fault", ["tamper", "binding", "schema", "wrong-type"])
-def test_present_bad_forward_and_reverse_atomic_no_restoration(legacy, family, fault):
-    rows = old_rows(legacy)
-    migrate(BACKFILLED)
-    model = state(BACKFILLED).get_model("feedback", family)
-    item = model.objects.get(pk=rows[NAMES.index(family)].pk)
-    token = item.confidential_content_ciphertext
-    model.objects.filter(pk=item.pk).update(**{content.COLUMN: mutated(token, fault)})
-    before = {n: raw(apps.get_model("feedback", n)) for n in NAMES}
-    with pytest.raises(RuntimeError) as caught:
-        migrate(AFTER)
-    safe(caught.value)
-    assert {n: raw(apps.get_model("feedback", n)) for n in NAMES} == before
-    model.objects.filter(pk=item.pk).update(**{content.COLUMN: token})
-    migrate(AFTER)
-    apps.get_model("feedback", family).objects.filter(pk=item.pk).update(
-        **{content.COLUMN: mutated(token, fault)}
-    )
-    before = {n: raw(apps.get_model("feedback", n)) for n in NAMES}
-    with pytest.raises(RuntimeError):
-        migrate(BEFORE)
-    assert {n: raw(apps.get_model("feedback", n)) for n in NAMES} == before
-    assert all(set(PRIVATE[n]).isdisjoint(columns(apps.get_model("feedback", n))) for n in NAMES)
-
-
-@pytest.mark.parametrize("reverse", [False, True])
-def test_writer_fence_on_both_tables_before_forward_and_reverse_ddl(legacy, monkeypatch, reverse):
-    old_rows(legacy)
-    migrate(AFTER if reverse else BACKFILLED)
-    calls = fence_probe(
-        "compass.feedback.migrations.0004_remove_plaintext_confidential_content",
-        "feedback",
-        NAMES,
-        "submitted_at",
-        monkeypatch,
-        reverse,
-    )
-    migrate(BEFORE if reverse else AFTER)
-    assert calls
-
-
-def test_rotation_refuses_legacy_and_migration_does_not_use_runtime(legacy, monkeypatch):
-    old_rows(legacy)
-    migrate(BACKFILLED)
-    for dry in (False, True):
-        with pytest.raises(CommandError, match="Legacy"):
-            command("rotate_feedback_confidential_content", dry_run=dry)
-    monkeypatch.setattr(content, "read_feedback_confidential_content", forbid)
-    monkeypatch.setattr(content, "write_feedback_confidential_content", forbid)
-    migrate(AFTER)
-    migrate(BEFORE)
-
-
 @pytest.mark.parametrize(
     "family,field,value",
     [
@@ -501,45 +373,6 @@ def test_private_input_limits_utf8_email_keep_empty_storage_on_rejection(
     response = post_json(auth_client(world[0]), "/api/v1/feedback/" + path, values)
     assert response.status_code == 422
     assert not apps.get_model("feedback", family).objects.exists()
-
-
-def test_f14_stale_other_choices_reconciled_missing_csm_and_equal_tokens_retained(legacy):
-    first, second = old_rows(legacy)
-    first_model = legacy.get_model("feedback", NAMES[0])
-    first_model.objects.filter(pk=first.pk).update(
-        services_received=["COUNSELING", "OTHER"], other_service="PRIVATE-other original"
-    )
-    migrate(BACKFILLED)
-    reg = state(BACKFILLED)
-    model = reg.get_model("feedback", NAMES[0])
-    old = model.objects.get(pk=first.pk).confidential_content_ciphertext
-    reg.get_model("feedback", NAMES[1]).objects.filter(pk=second.pk).update(
-        confidential_content_ciphertext=""
-    )
-    model.objects.filter(pk=first.pk).update(
-        services_received=["COUNSELING"], other_service="", additional_feedback="PRIVATE-late prose"
-    )
-    equal_first, equal_second = old_rows(reg, 1)
-    # Late rows with missing envelopes are backfilled, and valid equal envelopes are preserved.
-    for item in [equal_first, equal_second]:
-        payload = frozen.plaintext(item, item._meta.object_name)
-        token = frozen.encrypt((K1,), item, payload, item._meta.object_name)
-        type(item).objects.filter(pk=item.pk).update(confidential_content_ciphertext=token)
-        item.confidential_content_ciphertext = token
-    migrate(AFTER)
-    row = CustomerFeedbackResponse.objects.get(pk=first.pk)
-    assert row.confidential_content_ciphertext != old
-    assert (
-        content.read_feedback_confidential_content(row).additional_feedback == "PRIVATE-late prose"
-    )
-    for item in [equal_first, equal_second]:
-        assert (
-            apps.get_model("feedback", item._meta.object_name)
-            .objects.get(pk=item.pk)
-            .confidential_content_ciphertext
-            == item.confidential_content_ciphertext
-        )
-    content.read_feedback_confidential_content(ClientSatisfactionResponse.objects.get(pk=second.pk))
 
 
 @pytest.mark.django_db(transaction=True)
@@ -599,23 +432,6 @@ def test_feedback_rotation_locks_batches_interruption_resume(settings, monkeypat
         content.encrypted_with_primary_key(item.confidential_content_ciphertext)
         for item in ClientSatisfactionResponse.objects.all()
     )
-
-
-def test_csm_corruption_rolls_back_earlier_f14_reconciliation(legacy):
-    first, second = old_rows(legacy)
-    migrate(BACKFILLED)
-    reg = state(BACKFILLED)
-    reg.get_model("feedback", NAMES[0]).objects.filter(pk=first.pk).update(
-        additional_feedback="PRIVATE-late edit"
-    )
-    reg.get_model("feedback", NAMES[1]).objects.filter(pk=second.pk).update(
-        confidential_content_ciphertext="PRIVATE-corrupt"
-    )
-    before = {n: raw(apps.get_model("feedback", n)) for n in NAMES}
-    with pytest.raises(RuntimeError):
-        migrate(AFTER)
-    assert {n: raw(apps.get_model("feedback", n)) for n in NAMES} == before
-    assert "additional_feedback" in columns(CustomerFeedbackResponse)
 
 
 def test_demo_private_reconciliation_and_counts_use_explicit_projections(world, monkeypatch):

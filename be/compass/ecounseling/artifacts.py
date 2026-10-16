@@ -208,11 +208,6 @@ def ingest_artifact(artifact_id, *, storage=None, client=None, download=None):
             source = ECounselingMediaCapture.objects.select_for_update().get(pk=initial.capture_id)
             source.room = initial.capture.room
             artifact = ECounselingMediaArtifact.objects.select_for_update().get(pk=artifact_id)
-            from compass.privacy_governance.retention_models import DispositionCase
-
-            if DispositionCase.objects.filter(source_id=source.pk, state="PROCESSING").exists():
-                log_artifact_diagnostic(stage=ArtifactStage.CLAIM, outcome_code="INELIGIBLE")
-                return
             if not artifact_eligible(source) or artifact.status == MediaArtifactStatus.DISPOSED:
                 log_artifact_diagnostic(stage=ArtifactStage.CLAIM, outcome_code="INELIGIBLE")
                 return

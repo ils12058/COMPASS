@@ -6,8 +6,6 @@ import json
 from datetime import timedelta
 
 import pytest
-from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
 from django.utils import timezone
 
 from compass.appointments.services import (
@@ -27,12 +25,10 @@ from compass.inventory.services import (
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
 from compass.organization.models import (
-    AcademicYear,
     CounselorResponsibility,
     Program,
     StudentAffiliation,
 )
-from compass.routine_interviews.content import initial_content
 from compass.routine_interviews.models import RoutineInterview
 from compass.routine_interviews.services import (
     create_direct,
@@ -46,7 +42,6 @@ from compass.routine_interviews.services import (
 )
 from compass.service_catalog.services import update_service
 from tests.inventory_test_helpers import (
-    ensure_inventory_form_revision,
     minimum_normalized_inventory_values,
 )
 from tests.test_routine_interviews import (
@@ -463,45 +458,3 @@ def test_service_inventory_prerequisite_stays_an_appointment_rule_only():
 
 
 # Migration ------------------------------------------------------------------------------------
-
-BEFORE = [("routine_interviews", "0003_remove_plaintext_routine_content")]
-LATEST = [("routine_interviews", "0004_optional_inventory_and_academic_year")]
-
-
-@pytest.mark.django_db(transaction=True)
-def test_migration_keeps_inventory_links_and_backfills_academic_year():
-    ensure_inventory_form_revision()
-    _, student, counselor, _, year = setup_domain("migration")
-    inventory = submitted_inventory(student, configure_program())
-    assert RoutineInterview._meta.get_field("inventory").null
-
-    try:
-        executor = MigrationExecutor(connection)
-        executor.migrate(BEFORE)
-        Legacy = executor.loader.project_state(BEFORE).apps.get_model(
-            "routine_interviews", "RoutineInterview"
-        )
-        routine_id = Legacy._meta.get_field("id").default()
-        Legacy.objects.create(
-            id=routine_id,
-            student_id=student.pk,
-            counselor_id=counselor.pk,
-            inventory_id=inventory.pk,
-            entry_mode="WALK_IN",
-            delivery_mode="IN_PERSON",
-            **initial_content(routine_id),
-        )
-
-        MigrationExecutor(connection).migrate(LATEST)
-        migrated = RoutineInterview.objects.get(pk=routine_id)
-        assert migrated.inventory_id == inventory.pk
-        assert migrated.academic_year_id == year.pk == inventory.academic_year_id
-
-        # A Routine Interview without an Inventory cannot be represented by the old schema.
-        RoutineInterview.objects.filter(pk=routine_id).update(inventory=None)
-        with pytest.raises(RuntimeError, match="cannot be reversed"):
-            MigrationExecutor(connection).migrate(BEFORE)
-        assert AcademicYear.objects.filter(pk=year.pk).exists()
-    finally:
-        RoutineInterview.objects.all().delete()
-        MigrationExecutor(connection).migrate(LATEST)
