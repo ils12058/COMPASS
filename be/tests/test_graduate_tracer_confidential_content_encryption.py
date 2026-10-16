@@ -710,10 +710,10 @@ def test_setting_required_and_file_backed_no_fallback(monkeypatch, tmp_path, fau
         safe(caught.value, "private-invalid-key")
 
 
-def test_demo_tracer_projection_uses_explicit_encrypted_snapshots(world, monkeypatch):
+def test_dataset_tracer_projection_uses_explicit_encrypted_snapshots(world, monkeypatch):
     from types import SimpleNamespace
 
-    from compass.demo_seed import scenarios
+    from compass.staging_seed.scenarios import rich as scenarios
 
     item = filled(world)
     private = content.read_confidential_content(item)
@@ -723,7 +723,7 @@ def test_demo_tracer_projection_uses_explicit_encrypted_snapshots(world, monkeyp
         "program_for",
         lambda _persona: SimpleNamespace(college_id=24, pk=42),
     )
-    values = scenarios._tracer_values(
+    values = scenarios.tracer_values(
         item,
         SimpleNamespace(date_of_birth=birthday),
         {"sex": "MALE"},

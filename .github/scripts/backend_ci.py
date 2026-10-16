@@ -363,9 +363,9 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "The shared confidential-data primitive and Routine Interview crypto compatibility.",
         ("test_confidential_data_crypto.py", "test_routine_crypto_compatibility.py"),
     ),
-    "demo-seed": (
-        "The staging demo dataset seeders, which drive nearly every domain service.",
-        ("test_demo_seed.py", "test_demo_seed_v2.py"),
+    "staging-seed": (
+        "COMPASS Staging Dataset v1, which drives nearly every domain service.",
+        ("test_staging_seed.py",),
     ),
     "deployment-runtime": (
         "Runtime secrets, compose files, Redis/Celery configuration, and build metadata.",
@@ -489,10 +489,10 @@ DOMAINS: dict[str, Area] = {
         ),
         ("test_exit_interviews.py",),
     ),
-    "demo_seed": domain(
-        "demo_seed",
-        "The demo seeders and the tests that reuse their dataset.",
-        ("demo-seed",),
+    "staging_seed": domain(
+        "staging_seed",
+        "The Staging Dataset v1 seeder and the tests that reuse its helpers.",
+        ("staging-seed",),
         (
             "test_exit_interview_opportunities.py",
             "test_feedback_confidential_content_encryption.py",

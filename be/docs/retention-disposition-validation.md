@@ -1,3 +1,6 @@
+> **Reset-only canonical baseline (CANON-1C, ADR-116).** Historical validation of the compatible
+> runtime; the canonical baseline removes the ledger, tombstones and preflight command.
+
 # Operational retention and disposition implementation report
 
 > **Historical (ADR-114).** This report records the 2026-10-04 ADR-072 implementation. That engine is

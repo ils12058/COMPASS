@@ -34,7 +34,7 @@ class SelectionTests(unittest.TestCase):
                      "test_appointment_management_scope.py", "test_accounts.py",
                      "test_openapi_contract.py"):
             self.assertIn(name, result.files)
-        self.assertNotIn("test_demo_seed.py", result.files)
+        self.assertNotIn("test_staging_seed.py", result.files)
 
     def test_operations_frontend_presentation_does_not_select_backend_domains(self):
         result = selected("fe/src/features/guidance-operations/guidance-operations-page.tsx")
@@ -98,7 +98,7 @@ class SelectionTests(unittest.TestCase):
             result = selected(f"be/compass/{source}/student_actions.py")
             self.assertFalse(result.full)
             self.assertIn("test_student_actions.py", result.files)
-            self.assertNotIn("test_demo_seed.py", result.files)
+            self.assertNotIn("test_staging_seed.py", result.files)
         composition = selected("be/compass/student_actions/services.py")
         for name in ("test_inventory.py", "test_routine_interviews.py", "test_exit_interviews.py",
                      "test_graduate_tracer.py", "test_call_slips.py", "test_ecounseling.py",
@@ -122,7 +122,7 @@ class SelectionTests(unittest.TestCase):
         self.assertIn(
             "test_guidance_messages_rotation.py", selected("be/compass/work_queue/api.py").files
         )
-        self.assertNotIn("test_demo_seed.py", selected("be/compass/work_queue/services.py").files)
+        self.assertNotIn("test_staging_seed.py", selected("be/compass/work_queue/services.py").files)
         self.assertIn(
             "test_runtime_secrets.py",
             selected("be/deploy/runtime-secrets/runtime_secrets.py").files,
@@ -212,7 +212,7 @@ class SelectionTests(unittest.TestCase):
             "test_appointments.py",
         ):
             self.assertIn(name, result.files)
-        self.assertNotIn("test_demo_seed.py", result.files)
+        self.assertNotIn("test_staging_seed.py", result.files)
 
     def test_counseling_change_reaches_routine_feedback_and_appointments(self):
         result = selected("be/compass/counseling/services.py")

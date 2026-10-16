@@ -12,11 +12,6 @@ from django.utils import timezone
 from compass.accounts.models import StudentLifecycleStatus
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
-from compass.demo_seed.cast import RECENT_GRADUATE
-from compass.demo_seed.history import seed_exit_interview
-from compass.demo_seed.narratives import RECENT_GRADUATE_EXIT_INTERVIEW
-from compass.demo_seed.support import SeedSession
-from compass.demo_seed.timeline import DemoTimeline
 from compass.exit_interviews.confidential_content import write_opportunity_note
 from compass.exit_interviews.models import ExitInterview, ExitInterviewOpportunity
 from compass.exit_interviews.opportunities import open_opportunity, revoke_opportunity
@@ -29,6 +24,11 @@ from compass.exit_interviews.services import (
 )
 from compass.good_moral.models import GoodMoralRequest
 from compass.good_moral.services import GoodMoralExitInterviewRequired
+from compass.staging_seed.content.narratives import RECENT_GRADUATE_EXIT_INTERVIEW
+from compass.staging_seed.history import seed_exit_interview
+from compass.staging_seed.students import RECENT_GRADUATE
+from compass.staging_seed.support import SeedSession
+from compass.staging_seed.timeline import StagingTimeline
 from tests.test_exit_interviews import (
     auth_client,
     csrf,
@@ -423,12 +423,12 @@ def in_thread(callback):
 
 
 @pytest.mark.django_db
-def test_demo_exit_interview_explicitly_opens_manual_access_and_preserves_timeline():
+def test_dataset_exit_interview_explicitly_opens_manual_access_and_preserves_timeline():
     student, head, year, _ = setup_student()
     submitted = timezone.now() - timedelta(days=1)
     started = submitted - timedelta(days=2)
     session = SeedSession(
-        timeline=DemoTimeline(anchor=submitted.date(), zone=ZoneInfo("Asia/Manila")),
+        timeline=StagingTimeline(anchor=submitted.date(), zone=ZoneInfo("Asia/Manila")),
         app_env="local-staging",
         users={RECENT_GRADUATE.key: student, "head_guidance": head},
     )

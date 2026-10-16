@@ -2,7 +2,6 @@
 
 import json
 from dataclasses import FrozenInstanceError, asdict
-from datetime import date
 from io import StringIO
 from uuid import uuid4
 
@@ -434,38 +433,16 @@ def test_feedback_rotation_locks_batches_interruption_resume(settings, monkeypat
     )
 
 
-def test_demo_private_reconciliation_and_counts_use_explicit_projections(world, monkeypatch):
-    from compass.demo_seed import seed
-    from compass.demo_seed.feedback_content import matching_feedback
-    from compass.demo_seed.support import SeedSession
-    from compass.demo_seed.timeline import resolve_timeline
+def test_dataset_reconciliation_uses_explicit_projections(world):
+    from compass.staging_seed.content.feedback_matching import (
+        matching_customer_feedback,
+        matching_feedback,
+    )
 
     student, _ = world
     first = submitted(world, NAMES[0])
-    second = submitted(world, NAMES[1])
-    # Isolate both source-controlled cohorts with a one-user SeedSession; the real combined v2
-    # counts are covered by test_demo_seed_v2.
-    monkeypatch.setattr(seed.population_feedback, "CUSTOMER_FEEDBACK", {})
-    monkeypatch.setattr(seed.population_feedback, "CLIENT_SATISFACTION", [])
     customer_values = {**PRIVATE[NAMES[0]], "course_year": valid_f14_payload()["course_year"]}
-    monkeypatch.setattr(seed, "CUSTOMER_FEEDBACK", {"one": customer_values})
-    session = SeedSession(
-        timeline=resolve_timeline(anchor=date(2026, 10, 15)),
-        app_env="test",
-        users={"one": student},
-    )
-    monkeypatch.setattr(
-        seed,
-        "CLIENT_SATISFACTION",
-        [
-            {
-                "service_availed": second.service_availed,
-                "suggestions": PRIVATE[NAMES[1]]["suggestions"],
-            }
-        ],
-    )
-    assert seed._seeded_customer_feedback(session) == 1
-    assert seed._seeded_csm() == 1
+    assert list(matching_customer_feedback(student, customer_values)) == [first]
     assert list(
         matching_feedback(
             CustomerFeedbackResponse.objects.filter(
@@ -479,4 +456,4 @@ def test_demo_private_reconciliation_and_counts_use_explicit_projections(world, 
         confidential_content_ciphertext="PRIVATE-corrupt"
     )
     with pytest.raises(content.FeedbackConfidentialContentUnavailable):
-        seed._seeded_customer_feedback(session)
+        list(matching_customer_feedback(student, customer_values))

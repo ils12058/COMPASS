@@ -2,6 +2,8 @@
 
 ## Status
 
+Superseded on the reset-only canonical baseline by [ADR-116](ADR-116-canonical-baseline-and-staging-dataset-v1.md) (CANON-1C); kept as the historical record of Demo Dataset v2.
+
 Accepted. Refines the dataset-content portions of [ADR-068](ADR-068-staging-demo-dataset-seeder.md).
 ADR-068 remains the historical architecture and operational safety decision. Decisions through
 ADR-094, including encrypted content, optional Routine Inventory provenance, Counselor provider

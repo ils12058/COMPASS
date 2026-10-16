@@ -5,6 +5,14 @@ Service Catalog, Availability, Appointments, Counseling, Student workflows, repo
 publications, platform operations, and Privacy Governance. Deployment-critical canonical
 configuration is synchronized explicitly after migrations; ordinary requests do not create it.
 
+> **Reset-only canonical baseline (CANON-1C).** Each app has one schema-only
+> `0001_canonical_baseline` migration that installs into an **empty** PostgreSQL database. A
+> database that records any earlier COMPASS migration is refused by `migrate` and by
+> `manage.py check --database default` (`compass.E001`); it is never upgraded, faked or restored
+> in place. Bootstrap order on a fresh database: `migrate`, `sync_identity_policy`,
+> `sync_canonical_services`, `sync_institutional_forms`, `sync_organization_catalog`. Later
+> features add ordinary `0002_…` migrations on top of the baseline.
+
 ## Baseline
 
 - Python 3.13, managed with `uv`
@@ -91,14 +99,18 @@ python manage.py export_openapi --check
 python manage.py compass_doctor
 python manage.py compass_doctor --configuration-only
 python manage.py compass_doctor --worker-smoke
-python manage.py seed_demo_staging
+python manage.py seed_staging_dataset seed
+python manage.py seed_staging_dataset verify
+python manage.py seed_staging_dataset report --output-dir <directory>
+python manage.py seed_staging_dataset issue-credentials --output <protected-file-outside-repo>
 python manage.py render_email_previews --output-dir <directory>
 ```
 
-create_it_admin, sync_identity_policy, seed_demo_staging, and migrate change persisted state.
-seed_demo_staging loads the synthetic staging demo dataset; it runs only in local-staging or
-live-staging with `DEMO_SEEDING_ENABLED=true` and is documented in
-[`docs/staging-demo-seeding.md`](docs/staging-demo-seeding.md). The deployment
+create_it_admin, sync_identity_policy, migrate, and the `seed` and `issue-credentials` modes of
+seed_staging_dataset change persisted state. seed_staging_dataset manages the synthetic COMPASS
+Staging Dataset v1; every mode runs only in local-staging or live-staging with
+`STAGING_SEED_ENABLED=true`, and its `verify` and `report` modes are read-only. It is documented in
+[`docs/staging-dataset-v1.md`](docs/staging-dataset-v1.md). The deployment
 check, OpenAPI check, and normal/configuration-only diagnostics are read-only. --worker-smoke
 explicitly sends the existing harmless diagnostic task so an operator can verify broker/worker/result
 execution; it is not a persistent heartbeat. Browser-based shell, arbitrary command execution,
@@ -196,8 +208,7 @@ The bootstrap command prompts for the password and never accepts it as a command
 Use `--password-stdin` for a controlled non-interactive deployment. Re-running policy sync is
 safe; it updates known definitions, adds missing baseline grants, and retains unknown database
 rows except capability codes that the canonical policy explicitly marks as retired. `create_it_admin` refuses an existing account unless `--idempotent` is explicitly supplied.
-Run migrations before identity policy synchronization: `accounts.0006` reconciles legacy
-capability codes first. Run `sync_identity_policy` before `sync_canonical_services` because the
+Run migrations before identity policy synchronization. Run `sync_identity_policy` before `sync_canonical_services` because the
 canonical Counseling Service requires the COUNSELOR Role. Canonical Service synchronization is
 idempotent: it creates the active IN_PERSON Counseling Service on a fresh installation and repairs
 required configuration in place while preserving valid institutional settings. It is an explicit
@@ -314,28 +325,21 @@ Privacy Notices, exact-revision acknowledgment, privacy-sensitive release auditi
 Privacy & Security Activity, and read-only retention policy oversight.
 Processing Activity,
 Privacy Review/PIA, Privacy Incident, and the descriptive Retention Policy registry are not live
-COMPASS features (ADR-065, ADR-069). The removal migrations fail closed when obsolete tables
-contain rows; those rows require a separate institutional data-disposition decision before
-migration can proceed.
+COMPASS features (ADR-065, ADR-069).
 
 COMPASS no longer performs records disposition
 ([ADR-114](docs/decisions/ADR-114-decommission-in-app-disposition.md)). Formal authorization,
 disposal and destruction of University records happen outside COMPASS. A state university's
-public records need National Archives authority (RA 9470). The ADR-072/ADR-092 engine is retired:
-- No Beat schedule discovers eligibility or dispatches disposition.
-- Its three Celery task names remain only as non-mutating tombstones.
-- Every rule, hold, approval and retry mutation returns 409 `retention_decommissioned`, whatever
-  capability or override the caller holds.
-
-Historical rules, cases, holds and AuditEvents are kept read-only, together with anonymous Graduate
-Tracer contributions and disposed E-Counseling markers. The legacy case ledger is still needed for
-backup-restore reconciliation, and it fences late media events. E-Counseling custody-transfer
-cleanup of the provider copy after verified private storage is unchanged.
+public records need National Archives authority (RA 9470). On the reset-only canonical baseline
+(CANON-1C) the ADR-072/ADR-092 engine is gone entirely: no rule, case or hold table, no Celery task
+or tombstone, no fallback service and no Beat schedule. E-Counseling keeps every capture and
+artifact disposal, terminal-state, quarantine, consent and custody fence, and custody-transfer
+cleanup of the provider copy after verified private storage is unchanged. The canonical baseline
+assumes an empty history: no pre-reset capture, room, broker message, worker or backup may reach
+it (see `outputs/canon-1c/CANON-1C-Cutover-Dependencies.md`).
 
 Decommissioning does not settle retention periods or disposal obligations. Until the University
-adopts them, identifiable records and stored media are retained. Before deploying, operators run
-`python manage.py retention_decommission_status` and the broker, worker and build checks in the
-[retention runbook](docs/retention-disposition-runbook.md).
+adopts them, identifiable records and stored media are retained.
 
 Retention policies are code-owned and read-only
 ([ADR-115](docs/decisions/ADR-115-code-owned-retention-oversight.md)):
