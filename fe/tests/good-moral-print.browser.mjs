@@ -25,7 +25,7 @@ const fakePreview = `${instrument}
     return preview;
   };
 `;
-function fixture({ status = 'READY_FOR_ISSUANCE', variant = 'CURRENT_STUDENT', issueCode, commit = true, pdfFailures = 0, pdfStatus = 503, refreshFailures = 0, holdIssue = false, holdVerify = false, account = counselor } = {}) {
+function fixture({ status = 'READY_FOR_ISSUANCE', variant = 'CURRENT_STUDENT', issueCode, commit = true, pdfFailures = 0, pdfStatus = 503, refreshFailures = 0, holdIssue = false, holdVerify = false, holdPdf = false, account = counselor } = {}) {
   let item = certificate(status, variant);
   let attempts = 0;
   let issuedAttempt = false;
@@ -37,11 +37,18 @@ function fixture({ status = 'READY_FOR_ISSUANCE', variant = 'CURRENT_STUDENT', i
   const verificationStarted = new Promise(resolve => { verificationBegan = resolve; });
   const issueGate = holdIssue ? new Promise(resolve => { releaseIssue = resolve; }) : Promise.resolve();
   const verifyGate = holdVerify ? new Promise(resolve => { releaseVerify = resolve; }) : Promise.resolve();
+  let releasePdf;
+  let pdfBegan;
+  const pdfStarted = new Promise(resolve => { pdfBegan = resolve; });
+  const pdfGate = holdPdf ? new Promise(resolve => { releasePdf = resolve; }) : Promise.resolve();
   const state = { issueBodies: [], pdfReads: 0, prematurePdfReads: 0, verificationReads: 0, refreshFailures, pdfFailures };
   return {
     state,
     issueStarted,
     verificationStarted,
+    pdfStarted,
+    releasePdf: () => releasePdf?.(),
+    setDownloadAllowed: allowed => { item.actions.can_download = allowed; },
     releaseIssue: () => releaseIssue?.(),
     releaseVerify: () => releaseVerify?.(),
     options: {
@@ -70,6 +77,8 @@ function fixture({ status = 'READY_FOR_ISSUANCE', variant = 'CURRENT_STUDENT', i
           state.pdfReads++;
           if (item.status !== 'ISSUED') state.prematurePdfReads++;
           attempts++;
+          pdfBegan();
+          await pdfGate;
           if (attempts <= state.pdfFailures) await reply({ error: { code: pdfStatus === 403 ? 'permission_denied' : 'release_audit_unavailable', message: diagnostic } }, pdfStatus);
           else await apiRoute.fulfill({ status: 200, contentType: 'application/pdf', headers: { 'content-disposition': 'attachment; filename="COMPASS-synthetic-certificate.pdf"' }, body: pdfBytes });
           return true;
@@ -96,7 +105,8 @@ async function prepared(page) {
   await shown(page.getByText(/physical signature and dry seal/));
 }
 async function downloaded(page) {
-  const event = page.waitForEvent('download');
+  // A headless PDF popup may also emit an unnamed download. Match this explicit fallback.
+  const event = page.waitForEvent('download', { predicate: item => item.suggestedFilename() === 'COMPASS-synthetic-certificate.pdf' });
   await page.getByRole('button', { name: 'Download certificate', exact: true }).click();
   const download = await event;
   assert.equal(download.suggestedFilename(), 'COMPASS-synthetic-certificate.pdf');
@@ -252,6 +262,31 @@ for (const status of ['REQUESTED', 'READY_FOR_ISSUANCE', 'CANCELLED']) {
     await shown(page.getByRole('heading', { name: 'Good Moral request', exact: true }));
     await hidden(page.getByRole('button', { name: 'Print certificate', exact: true }));
     assert.equal(data.state.pdfReads, 0);
+    await safe(page, data);
+  });
+}
+{
+  const data = fixture({ status: 'ISSUED', holdPdf: true });
+  await check('permission-loss-during-pdf-read-discards-response-before-authorized-remount', route, {
+    ...data.options,
+    beforeNavigate: async ({ page }) => page.clock.install(),
+  }, async page => {
+    await data.pdfStarted;
+    data.setDownloadAllowed(false);
+    await page.clock.fastForward(31_000);
+    await page.evaluate(() => { window.dispatchEvent(new Event('offline')); window.dispatchEvent(new Event('online')); });
+    await hidden(page.getByRole('button', { name: 'Print certificate', exact: true }));
+    const completed = page.waitForResponse(response => response.url().endsWith(`${path}/pdf`));
+    data.releasePdf();
+    await completed;
+    await page.clock.runFor(10);
+    await hidden(page.locator('iframe[title="Finalized certificate PDF"]'));
+    data.setDownloadAllowed(true);
+    await page.clock.fastForward(31_000);
+    await page.evaluate(() => { window.dispatchEvent(new Event('offline')); window.dispatchEvent(new Event('online')); });
+    await prepared(page);
+    assert.equal(data.state.pdfReads, 2, 'A newly authorized mount fetches again after the unobserved response was discarded');
+    assert.equal(data.state.issueBodies.length, 0);
     await safe(page, data);
   });
 }

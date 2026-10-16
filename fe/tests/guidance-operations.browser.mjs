@@ -66,7 +66,11 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN
     if (["COUNSELOR", "GUIDANCE_SERVICES_STAFF"].includes(role)) {
       await shown(page.getByRole("heading", { name: "Guidance operations", exact: true }));
       await shown(page.getByText(labels[0], { exact: true }));
-      const links = await nav.locator("a").allTextContents();
+      const links = await nav.locator("a").evaluateAll(nodes => nodes.map(node => {
+        const label = node.cloneNode(true);
+        for (const decoration of label.querySelectorAll('[aria-hidden="true"]')) decoration.remove();
+        return label.textContent;
+      }));
       assert.deepEqual(links.slice(1, 3).map((value) => value.trim()), ["My work", "Guidance operations"]);
       if (role === "GUIDANCE_SERVICES_STAFF") {
         await hidden(page.getByText(labels[1], { exact: true }));
@@ -226,9 +230,9 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN
     await page.evaluate((id) => window.next.router.push(`/portal/messages/${id}`), threadIds.office);
     await shown(page.getByText("Good afternoon po.", { exact: true }));
     await page.getByRole("textbox", { name: /^Message/ }).fill("Synthetic confirmed reply");
+    const before = state.reads;
     await page.getByRole("button", { name: "Send", exact: true }).click();
     await shown(page.getByText("Synthetic confirmed reply", { exact: true }));
-    const before = state.reads;
     await page.getByRole("navigation", { name: "Portal navigation" }).getByRole("link", { name: "Guidance operations", exact: true }).click();
     await shown(row(page, labels[0]).locator("dd").filter({ hasText: /^0$/ }));
     assert.ok(state.reads > before, "Canonical HTTP summary was invalidated by confirmed send");
