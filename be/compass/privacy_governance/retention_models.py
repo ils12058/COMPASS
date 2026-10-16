@@ -1,4 +1,9 @@
-"""Operational rules and single-member frozen disposition cases; no domain content."""
+"""Preserved historical disposition ledger (ADR-114, ADR-115); no domain content.
+
+OperationalRetentionRule, DispositionCase and DispositionHold no longer drive in-app retention
+or disposition. They remain intact as internal historical evidence and so DispositionCase.source_id
+continues to fence E-Counseling webhook, ingestion, reconciliation and backup-restore paths.
+"""
 
 import uuid
 

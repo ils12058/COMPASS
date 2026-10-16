@@ -30,8 +30,18 @@ Deploying ADR-115:
    - `/api/v1/privacy/retention/rules` returns 404;
    - Privacy Notices and Privacy & Security Activity still work.
 
-PG-1A PR 3 removes the tombstones only after a drained broker is verified, and may add database
-write protection to the legacy tables.
+PG-1A PR 3 readiness boundary:
+
+- Do **not** remove the temporary Celery tombstones (`discover_retention`, `execute_disposition`,
+  `recover_disposition`) or the fail-closed fallback services (`compass/privacy_governance/retention.py`)
+  until ADR-114 and ADR-115 are deployed on live staging and a post-deploy check confirms that
+  G1–G10 pass with zero `compass.privacy_governance.*` messages in Redis (`celery` and `unacked`).
+- Preserve `OperationalRetentionRule`, `DispositionCase` and `DispositionHold`. E-Counseling
+  webhook, ingestion and capture-reconciliation fences and backup-restore reconciliation depend on
+  `DispositionCase.source_id` to prevent disposed media from being resurrected.
+- Defer any PostgreSQL `BEFORE INSERT OR UPDATE OR DELETE` trigger migration on the legacy ledger
+  until live staging has completed the ADR-114/ADR-115 transition and G1–G5 are verified, because
+  `deploy-staging.yml` runs `migrate` while the previous worker and Beat containers are still up.
 
 ## Decommission verification (ADR-114)
 
