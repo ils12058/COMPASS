@@ -4,14 +4,16 @@
 // The socket connects directly to the API host's realtime route. It never relies on cookies:
 // a one-time ticket from the ordinary same-origin HTTP API authenticates it.
 
+import { browserTestRuntimeEnabled, isLoopbackHostname } from "@/lib/browser-test-runtime";
+
 export const REALTIME_SOCKET_PATH = "/api/realtime/v1/socket";
 
 export type RealtimeConfig = { enabled: false } | { enabled: true; url: string };
 
 declare global {
   interface Window {
-    // Development-only seam for browser regressions, like the fake Call Object. Production builds
-    // drop the code that reads it.
+    // Local browser regressions only, including explicitly flagged production test builds.
+    // Ordinary production builds drop the code that reads it.
     __COMPASS_REALTIME_TEST_CONFIG__?: { url: string };
   }
 }
@@ -49,8 +51,12 @@ export function parseRealtimeConfig(
 
 export function realtimeConfig(): RealtimeConfig {
   const production = process.env.NODE_ENV === "production";
-  if (!production && typeof window !== "undefined" && window.__COMPASS_REALTIME_TEST_CONFIG__) {
-    return parseRealtimeConfig("true", window.__COMPASS_REALTIME_TEST_CONFIG__.url, { production });
+  // Keep the literal build guard here so ordinary production drops even the window seam read.
+  if ((process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_COMPASS_UI_TEST_MODE === "1") && browserTestRuntimeEnabled() && window.__COMPASS_REALTIME_TEST_CONFIG__) {
+    const testConfig = parseRealtimeConfig("true", window.__COMPASS_REALTIME_TEST_CONFIG__.url, { production: false });
+    return testConfig.enabled && isLoopbackHostname(new URL(testConfig.url).hostname)
+      ? testConfig
+      : DISABLED;
   }
   // Next inlines NEXT_PUBLIC_* values at build time, so they must be read literally.
   return parseRealtimeConfig(

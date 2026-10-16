@@ -1,14 +1,8 @@
 "use client";
 
-import {
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { ListSearchField } from "@/components/ui/floating-list-tools";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { organizationErrorMessage } from "@/features/organization/components/organization-action";
 import { PageHeader } from "@/components/ui/page-header";
@@ -36,47 +30,6 @@ export function PageHeading({
       headingId={headingId}
       description={description}
       actions={action} help={help}
-    />
-  );
-}
-
-export function SearchField({
-  label,
-  placeholder,
-}: {
-  label: string;
-  placeholder: string;
-}) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const current = (searchParams.get("search") ?? "").slice(0, 200);
-  const [value, setValue] = useState(current);
-
-  useEffect(() => {
-    if (value === current) return;
-    const timer = window.setTimeout(() => {
-      const next = new URLSearchParams(searchParams.toString());
-      const trimmed = value.trim();
-      if (trimmed) next.set("search", trimmed);
-      else next.delete("search");
-      next.delete("page");
-      const query = next.toString();
-      router.replace(query ? `${pathname}?${query}` : pathname, {
-        scroll: false,
-      });
-    }, 350);
-    return () => window.clearTimeout(timer);
-  }, [current, pathname, router, searchParams, value]);
-
-  return (
-    <ListSearchField
-      id="organization-search"
-      label={label}
-      maxLength={200}
-      placeholder={placeholder}
-      value={value}
-      onChange={(event) => setValue(event.target.value)}
     />
   );
 }

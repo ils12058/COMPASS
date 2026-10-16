@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -21,7 +21,7 @@ test("browser discovery includes future and nested suites without a script edit"
 test("all current browser suites run exactly once across the four CI shards", () => {
   const suites = browserSuites();
   const planned = [1, 2, 3, 4].flatMap((index) => shardSuites(suites, `${index}/4`));
-  assert.ok(suites.length > 0);
+  assert.ok(suites.length >= 31, "Keep all CANON-1A browser suites registered");
   assert.deepEqual(planned.sort(), suites);
   assert.equal(new Set(planned).size, suites.length);
   for (const invalid of ["0/4", "5/4", "1/0", "bad", `1/${suites.length + 1}`]) {
@@ -44,4 +44,16 @@ test("a failing or interrupted suite cannot hide later failures or produce green
   assert.equal(runSuites(["passing.browser.mjs"], "chromium", { run: () => ({ status: 0 }) }), 0);
   assert.throws(() => runSuites([], "chromium"));
   assert.throws(() => runSuites(["example.browser.mjs"], "unknown"));
+});
+
+// Keep the production-server change from silently dropping either engine or a shard. Browser
+// assertions stay synthetic; test builds cannot become a deployment artifact through this job.
+test("CI runs all eight required browser jobs against the isolated production build", () => {
+  const workflow = readFileSync(new URL("../../.github/workflows/frontend-targeted.yml", import.meta.url), "utf8");
+  assert.match(workflow, /browser: \[chromium, webkit\]/);
+  assert.match(workflow, /shard: \[1, 2, 3, 4\]/);
+  assert.match(workflow, /needs: browser-build/);
+  assert.match(workflow, /pnpm start --port 3107/);
+  assert.match(workflow, /name: synthetic-browser-build/);
+  assert.doesNotMatch(workflow, /continue-on-error|pnpm dev/);
 });

@@ -66,8 +66,9 @@ test("confirmed empty queue has the requested empty copy", () => {
   assert.match(render([]), /You’re caught up\./);
 });
 
-test("frontend CI runs Work Queue in both engines and compiles its route", () => {
+test("frontend CI runs Work Queue in both engines against the production build", () => {
   const workflow = assertBrowserSuiteInCI("work-queue.browser.mjs");
-  assert.match(workflow, /\/portal\/work/);
+  assert.match(workflow, /needs: browser-build/);
+  assert.match(workflow, /pnpm start --port 3107/);
   assert.match(workflow, /pnpm test:ui:regressions/);
 });

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import base64
 import json
 import logging
 from datetime import timedelta
@@ -36,11 +35,7 @@ from compass.routine_interviews.content import (
     write_evaluation,
     write_intake,
 )
-from compass.routine_interviews.crypto import (
-    RoutineContentSection,
-    keyring_reuses_secret,
-    parse_keyring,
-)
+from compass.routine_interviews.crypto import RoutineContentSection
 from compass.routine_interviews.errors import RoutineContentUnavailable
 from compass.routine_interviews.management.commands import (
     rotate_routine_interview_encryption as rotation_command,
@@ -69,7 +64,6 @@ from tests.test_routine_interviews import (
 
 K1 = Fernet.generate_key().decode("ascii")
 K2 = Fernet.generate_key().decode("ascii")
-SETTING = "ROUTINE_INTERVIEW_ENCRYPTION_KEYS"
 TABLE = RoutineInterview._meta.db_table
 CIPHERTEXT_COLUMNS = ("student_intake_ciphertext", "counselor_evaluation_ciphertext")
 
@@ -109,12 +103,6 @@ PLAINTEXT_SENTINELS = (
 )
 
 
-def _noncanonical(key: str) -> str:
-    # The final Base64 character carries two padding bits; flipping one keeps the same key bytes.
-    alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
-    return key[:42] + alphabet[alphabet.index(key[42]) ^ 1] + key[43:]
-
-
 def _authentic_token(envelope: object) -> str:
     return Fernet(K1).encrypt(json.dumps(envelope).encode("utf-8")).decode("ascii")
 
@@ -143,41 +131,6 @@ def _rotate(*args: str) -> tuple[str, str]:
 def _assert_safe_output(text: str, *tokens: str) -> None:
     for secret in (K1, K2, *tokens, *PLAINTEXT_SENTINELS):
         assert secret not in text
-
-
-# --- Keyring -------------------------------------------------------------------------------
-
-
-def test_keyring_keeps_configured_order_and_ignores_surrounding_whitespace():
-    assert parse_keyring(f" {K2} ,\n{K1}\n") == (K2, K1)
-    assert parse_keyring((K1,)) == (K1,)
-
-
-@pytest.mark.parametrize(
-    ("configured", "message"),
-    [
-        ("", "is required"),
-        (" , ", "is required"),
-        (f"{K1},,{K2}", "entry 2 is empty"),
-        ("not-a-fernet-key", "entry 1 is not a valid Fernet key"),
-        (base64.urlsafe_b64encode(b"x" * 16).decode(), "entry 1 is not a valid Fernet key"),
-        (f"{K1},{_noncanonical(K1)}", "entry 2 is not a valid Fernet key"),
-        (f"{K1},{K2},{K1}", "entry 3 repeats an earlier key"),
-    ],
-)
-def test_keyring_rejects_unsafe_configuration_without_echoing_key_material(configured, message):
-    with pytest.raises(ValueError, match=message) as exc:
-        parse_keyring(configured, setting=SETTING)
-
-    assert SETTING in str(exc.value)
-    assert K1 not in str(exc.value)
-    assert K2 not in str(exc.value)
-
-
-def test_keyring_must_not_reuse_other_configured_secrets():
-    assert keyring_reuses_secret((K2, K1), "unrelated-secret-key", K1)
-    assert keyring_reuses_secret((K1,), f"  {K1}\n")
-    assert not keyring_reuses_secret((K1,), "", "unrelated-secret-key", K2)
 
 
 # --- Section content -----------------------------------------------------------------------

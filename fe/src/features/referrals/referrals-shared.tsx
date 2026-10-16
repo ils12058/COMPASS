@@ -121,7 +121,3 @@ export function ReferralQueryError({
     </Notice>
   );
 }
-
-export function ReferralNotice({ children }: { children: ReactNode }) {
-  return <p role="status" className="mt-4 text-sm text-muted">{children}</p>;
-}

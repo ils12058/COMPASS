@@ -403,8 +403,9 @@ test("Year Level labels are display text for the stored numbers 1 through 10", (
   assert.match(review, />4th Year</);
 });
 
-test("frontend CI runs the Inventory input checks in both engines on a compiled route", () => {
+test("frontend CI runs the Inventory input checks in both engines on the production build", () => {
   const workflow = assertBrowserSuiteInCI("form-input-standardization.browser.mjs");
-  assert.match(workflow, /\/portal\/inventory\/current/);
+  assert.match(workflow, /needs: browser-build/);
+  assert.match(workflow, /pnpm start --port 3107/);
   assert.match(workflow, /pnpm test:ui:regressions/);
 });

@@ -3,12 +3,7 @@ import type {
   ProgramColumn,
 } from "@/lib/api/generated/model";
 import { dataTable } from "@/components/ui/data-table";
-import { formatReportPercentage, reportSection } from "@/features/reports/reports-shared";
-
-function programName(program: ProgramColumn): string {
-  if (program.is_legacy) return program.name;
-  return (program.code ? program.code + " — " : "") + program.name;
-}
+import { formatReportPercentage, reportProgramName, reportSection } from "@/features/reports/reports-shared";
 
 export function StudentProfileGeographySection({
   section,
@@ -56,7 +51,7 @@ export function StudentProfileGeographySection({
                   scope="col"
                   className={`${dataTable.headerCell} min-w-36`}
                 >
-                  {programName(program)}
+                  {reportProgramName(program)}
                 </th>
               ))}
               <th scope="col" className={`${dataTable.headerCell} min-w-24`}>

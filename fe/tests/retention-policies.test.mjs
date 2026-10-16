@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync, readdirSync } from "node:fs";
+import { readdirSync } from "node:fs";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -97,13 +97,10 @@ test("loading, unauthorized and unavailable states fail safely", () => {
   }
 });
 
-test("retired rule and case routes only redirect to the oversight page", () => {
+test("retired rule and case routes have no page implementation or redirect", () => {
   const root = new URL("../src/app/(portal)/portal/privacy/retention/", import.meta.url);
   const files = readdirSync(root, { recursive: true }).filter((name) => name.endsWith(".tsx")).sort();
-  assert.deepEqual(files, ["[...legacy]/page.tsx", "page.tsx"]);
-  const legacy = readFileSync(new URL("[...legacy]/page.tsx", root), "utf8");
-  assert.match(legacy, /redirect\("\/portal\/privacy\/retention"\)/);
-  assert.doesNotMatch(legacy, /RuleEditor|DispositionCase|Approve/);
+  assert.deepEqual(files, ["page.tsx"]);
   const feature = readdirSync(new URL("../src/features/privacy-governance/retention/", import.meta.url)).sort();
   assert.deepEqual(feature, ["retention-help.tsx", "retention-policies-page.tsx"]);
 });

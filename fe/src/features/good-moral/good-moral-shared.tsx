@@ -41,14 +41,10 @@ export const GOOD_MORAL_YEAR_LEVELS = [
   "10th Year",
 ] as const;
 
-export type GoodMoralYearLevel = (typeof GOOD_MORAL_YEAR_LEVELS)[number];
-
 export const GOOD_MORAL_SEMESTERS = [
   "First Semester",
   "Second Semester",
 ] as const;
-
-export type GoodMoralSemester = (typeof GOOD_MORAL_SEMESTERS)[number];
 
 export function isCanonicalYearLevel(value: string | null | undefined): boolean {
   return typeof value === "string" && (GOOD_MORAL_YEAR_LEVELS as readonly string[]).includes(value);

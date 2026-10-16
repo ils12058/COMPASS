@@ -7,7 +7,6 @@ import { useDialogReturnFocus } from "@/components/ui/dialog-return-focus";
 import { cn } from "@/lib/utils/cn";
 
 export const AlertDialog = AlertDialogPrimitive.Root;
-export const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 export const AlertDialogCancel = AlertDialogPrimitive.Cancel;
 export const AlertDialogAction = AlertDialogPrimitive.Action;
 

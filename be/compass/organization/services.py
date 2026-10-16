@@ -84,7 +84,7 @@ class StudentAffiliationPage:
 
 
 def _actor(context: AuditContext) -> User | None:
-    actor = context.actor_user
+    actor = context.actor
     return actor if isinstance(actor, User) else None
 
 

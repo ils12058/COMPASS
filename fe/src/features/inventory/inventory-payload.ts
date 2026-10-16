@@ -6,7 +6,6 @@ import {
   FamilyMemberKindValue,
   GeographicLocationKindValue,
   ImmunizationValue,
-  InventoryStatusValue,
   LivingArrangementValue,
   OccupationCategoryValue,
   PostGraduationFieldValue,
@@ -320,8 +319,4 @@ export function getInventorySubmissionIssues(
   return [...issues, ...getInventoryDraftIssues(payload)].sort(
     (left, right) => sectionOrder(left.section) - sectionOrder(right.section),
   );
-}
-
-export function isInventorySubmitted(status: string): boolean {
-  return status === InventoryStatusValue.SUBMITTED;
 }

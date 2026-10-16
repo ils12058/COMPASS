@@ -166,36 +166,6 @@ export function AppointmentsUnavailable({
   );
 }
 
-export function AppointmentsWorkspaceGate({
-  section,
-  children,
-}: {
-  section: "self" | "manage" | "book";
-  children: ReactNode;
-}) {
-  const { user } = usePortalSession();
-  const access = getAppointmentAccess(user);
-  const allowed =
-    section === "self"
-      ? access.canViewSelf
-      : section === "manage"
-        ? access.canManage
-        : access.canBook;
-
-  if (!allowed) {
-    return (
-      <AppointmentsUnavailable>
-        {section === "book" && access.isStudent
-          ? access.canViewSelf
-            ? "Only current students can book appointments. You can still view your existing appointments."
-            : "Booking is unavailable to this account."
-          : "This appointment page is unavailable to this account."}
-      </AppointmentsUnavailable>
-    );
-  }
-  return children;
-}
-
 export function AppointmentsLocalNavigation() {
   const { user } = usePortalSession();
   const pathname = usePathname();

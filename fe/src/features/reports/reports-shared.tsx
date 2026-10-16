@@ -10,7 +10,7 @@ import {
   CompassApiError,
   readApiErrorCode,
 } from "@/lib/api/errors";
-import type { ReportDisclosureWarning } from "@/lib/api/generated/model";
+import type { ProgramColumn, ReportDisclosureWarning } from "@/lib/api/generated/model";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import { Notice } from "@/components/ui/notice";
 import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs";
@@ -30,6 +30,11 @@ const REPORT_ERROR_COPY: Record<string, string> = {
   release_audit_unavailable:
     "The report could not be released because its required privacy audit is unavailable.",
 };
+
+export function reportProgramName(program: ProgramColumn): string {
+  if (program.is_legacy) return program.name;
+  return (program.code ? program.code + " — " : "") + program.name;
+}
 
 export function reportErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;

@@ -284,12 +284,8 @@ SECURITY_ACTIVITY_PRESENTERS.update(
     }
 )
 
-# Short aliases make the closed-world nature of the two public projections obvious to callers.
-ACTIVITY_PRESENTERS = MY_ACTIVITY_PRESENTERS
-
 __all__ = [
     "ACCOUNT_TARGET",
-    "ACTIVITY_PRESENTERS",
     "AUTH_RECOVERY_CODE_TARGET",
     "AUTH_SESSION_TARGET",
     "AUTH_TOTP_FACTOR_TARGET",

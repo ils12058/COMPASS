@@ -154,12 +154,6 @@ export function ServiceConsequenceSummary({
   );
 }
 
-export function servicesErrorCode(error: unknown): string | undefined {
-  return error instanceof CompassApiError
-    ? readApiErrorCode(error.body)
-    : undefined;
-}
-
 export function serviceSchedulingConsequenceDetails(
   error: unknown,
 ): ServiceSchedulingConsequenceDetails | null {

@@ -65,38 +65,26 @@ class AuditContext:
         self,
         *,
         actor: object | None = None,
-        actor_user: object | None = None,
         actor_type: str | AuditActorType | None = None,
         request_id: str | uuid.UUID | None = None,
         ip_address: str | None = None,
         user_agent_summary: str | None = None,
     ) -> None:
-        if actor is not None and actor_user is not None and actor is not actor_user:
-            raise ValueError("actor and actor_user must refer to the same object")
-        selected_actor = actor if actor is not None else actor_user
         selected_type = _choice_value(actor_type) if actor_type is not None else None
         if selected_type is None:
-            selected_type = (
-                AuditActorType.USER if selected_actor is not None else AuditActorType.SYSTEM
-            )
+            selected_type = AuditActorType.USER if actor is not None else AuditActorType.SYSTEM
         if selected_type not in AuditActorType.values:
             raise ValueError("actor_type must be USER, SYSTEM, or ANONYMOUS")
-        if selected_type == AuditActorType.USER and selected_actor is None:
+        if selected_type == AuditActorType.USER and actor is None:
             raise ValueError("USER audit context requires an actor")
-        if selected_type != AuditActorType.USER and selected_actor is not None:
+        if selected_type != AuditActorType.USER and actor is not None:
             raise ValueError("SYSTEM and ANONYMOUS audit contexts cannot have an actor")
 
-        object.__setattr__(self, "actor", selected_actor)
+        object.__setattr__(self, "actor", actor)
         object.__setattr__(self, "actor_type", selected_type)
         object.__setattr__(self, "request_id", _normalize_request_id(request_id))
         object.__setattr__(self, "ip_address", _normalize_ip_address(ip_address))
         object.__setattr__(self, "user_agent_summary", summarize_user_agent(user_agent_summary))
-
-    @property
-    def actor_user(self) -> object | None:
-        """Compatibility/readability alias for the model field name."""
-
-        return self.actor
 
     @classmethod
     def user(cls, user, **kwargs) -> AuditContext:

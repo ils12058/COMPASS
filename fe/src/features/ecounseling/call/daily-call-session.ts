@@ -1,4 +1,5 @@
 import type { DailyEvent, DailyEventObject } from "@daily-co/daily-js";
+import { browserTestRuntimeEnabled } from "@/lib/browser-test-runtime";
 
 import {
   activeCallPhases,
@@ -55,14 +56,15 @@ const providerMediaEvents: ReadonlySet<DailyEvent> = new Set([
 
 declare global {
   interface Window {
-    // Development-only seam for the browser regression tests' fake Call Object (tests never reach
-    // Daily). Production builds compile this branch away.
+    // Local browser regressions use a fake Call Object and never reach Daily. Ordinary production
+    // builds compile the seam away; explicit test builds still require a loopback page.
     __COMPASS_FAKE_DAILY__?: DailyCallClientFactory;
   }
 }
 
 async function loadDailyFactory(): Promise<DailyCallClientFactory> {
-  if (process.env.NODE_ENV !== "production" && typeof window !== "undefined" && window.__COMPASS_FAKE_DAILY__) {
+  // Keep the literal build guard here so ordinary production drops even the window seam read.
+  if ((process.env.NODE_ENV === "development" || process.env.NEXT_PUBLIC_COMPASS_UI_TEST_MODE === "1") && browserTestRuntimeEnabled() && window.__COMPASS_FAKE_DAILY__) {
     return window.__COMPASS_FAKE_DAILY__;
   }
   const daily = await import("@daily-co/daily-js");

@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium, webkit } from "playwright";
 
+import { diagnosticAssertion, diagnosticError, diagnosticURL, documentReadiness } from "./browser-diagnostics.mjs";
 import { fakeDailyInitScript } from "./fake-daily.mjs";
 import { appointmentId, serviceId, appointment, service, workspace, consents, user, slip } from "./ui-hierarchy-fixtures.mjs";
 
@@ -40,6 +41,9 @@ export async function createBrowserHarness(suite) {
   const emptyPage = { items: [], page: 1, page_size: 20, has_next: false };
   const failures = [];
   const results = [];
+  // Keep a fixture even when the initial navigation fails, so diagnostics and cleanup still run.
+  const pendingFixtures = new Set();
+
 
   async function openPage(path, {
     role = "COUNSELOR",
@@ -66,11 +70,34 @@ export async function createBrowserHarness(suite) {
     const context = // Service-worker fetches bypass Playwright routing. These synthetic suites must never
     // let the PWA worker send an unmocked API request (especially in WebKit).
     await browser.newContext({ serviceWorkers: "block", ...contextOptions, ...(viewport ? { viewport } : {}), ...(timezoneId ? { timezoneId } : {}) });
+    context.setDefaultTimeout(12_000);
+    context.setDefaultNavigationTimeout(30_000);
+    // No browser regression is allowed to reach a provider or live API, even after a missing mock.
+    await context.route("**/*", (route) => {
+      const url = new URL(route.request().url());
+      // Blob/data/about URLs are local browser resources, not outbound network requests.
+      return !["http:", "https:"].includes(url.protocol) || ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+        ? route.continue() : route.abort("blockedbyclient");
+    });
     const page = await context.newPage();
     page.setDefaultTimeout(12_000);
+    // Route delivery has its own bounded budget; interactions keep the strict 12-second limit.
+    page.setDefaultNavigationTimeout(30_000);
     const errors = [];
     const requests = [];
+    const failedRequests = [];
+    const navigation = [];
+    const fixture = { page, context, errors, requests, failedRequests, navigation };
+    pendingFixtures.add(fixture);
+    // Diagnostics contain paths and error names only, never request bodies, query strings or URLs
+    // embedded in provider errors. The in-memory requests remain available for exact assertions.
     page.on("pageerror", (error) => errors.push(error.stack ?? error.message));
+    page.on("requestfailed", (request) => failedRequests.push({
+      method: request.method(), url: diagnosticURL(request.url()), failure: request.failure()?.errorText?.split(":")[0],
+    }));
+    page.on("framenavigated", (frame) => {
+      if (frame === page.mainFrame()) navigation.push(diagnosticURL(frame.url()));
+    });
     if (fakeDaily) await page.addInitScript({ content: fakeDailyInitScript(fakeDaily === true ? {} : fakeDaily) });
     for (const script of initScripts) await page.addInitScript({ content: script });
     await context.route(/\/api\/v1(?:\/|\?)/, async (route) => {
@@ -126,7 +153,7 @@ export async function createBrowserHarness(suite) {
     });
     if (beforeNavigate) await beforeNavigate({ context, page });
     await page.goto(`${baseURL}${path}`, { waitUntil: "domcontentloaded" });
-    return { page, context, errors, requests };
+    return fixture;
   }
 
   async function check(name, path, options, run) {
@@ -135,16 +162,27 @@ export async function createBrowserHarness(suite) {
     try {
       fixture = await openPage(path, options);
       await run(fixture.page, fixture);
-      assert.deepEqual(fixture.errors, [], "No browser runtime errors");
+      assert.equal(fixture.errors.length, 0, `No browser runtime errors: ${JSON.stringify(fixture.errors.map(diagnosticError))}`);
       results.push({ name, passed: true });
       console.log(`PASS ${name}`);
     } catch (error) {
       failures.push(name);
-      results.push({ name, passed: false, message: error.message, errors: fixture?.errors, requests: fixture?.requests });
-      console.error(`FAIL ${name}: ${error.message}`);
-      await fixture?.page.screenshot({ path: join(artifacts, `${artifactFilename(name)}-failure.png`), fullPage: true }).catch(() => {});
+      fixture ??= [...pendingFixtures].at(-1);
+      const diagnostics = fixture ? {
+        currentURL: diagnosticURL(fixture.page.url()),
+        readyState: await documentReadiness(fixture.page),
+        navigation: fixture.navigation,
+        errors: fixture.errors.map(diagnosticError),
+        failedRequests: fixture.failedRequests,
+        requests: fixture.requests.map(({ method, pathname }) => ({ method, pathname })),
+      } : {};
+      results.push({ name, passed: false, assertion: diagnosticAssertion(error), ...diagnostics });
+      console.error(`FAIL ${name}: ${diagnosticAssertion(error)}`);
+      await fixture?.page.screenshot({ path: join(artifacts, `${artifactFilename(name)}-failure.png`), fullPage: true, timeout: 3000 }).catch(() => {});
     } finally {
-      await fixture?.context.close();
+      // Some checks open additional pages themselves. Close every fixture created by this check.
+      for (const opened of pendingFixtures) await opened.context.close();
+      pendingFixtures.clear();
     }
   }
 

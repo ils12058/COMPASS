@@ -3,12 +3,11 @@ import type { NextConfig } from "next";
 const apiBaseUrl = process.env.COMPASS_API_BASE_URL?.replace(/\/$/, "");
 
 const nextConfig: NextConfig = {
-  // The browser regression job exercises many routes in one Next dev server. Keep those
-  // compiled entries alive for the duration of the job so a later shard test does not trigger a
-  // cold recompile while Playwright's navigation timeout is running.
-  ...(process.env.COMPASS_UI_TEST_MODE === "1"
-    ? { onDemandEntries: { maxInactiveAge: 40 * 60 * 1000, pagesBufferLength: 128 } }
-    : {}),
+  // Bake an explicit false into ordinary builds so provider test seams are eliminated. Only the
+  // separate local browser artifact opts in; runtime environment changes cannot enable it.
+  env: {
+    NEXT_PUBLIC_COMPASS_UI_TEST_MODE: process.env.NEXT_PUBLIC_COMPASS_UI_TEST_MODE === "1" ? "1" : "0",
+  },
   async headers() {
     return [{
       source: "/sw.js",
