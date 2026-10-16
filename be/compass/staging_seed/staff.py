@@ -163,6 +163,18 @@ UNASSIGNED_COUNSELOR = AccountSpec(
     summary="A Counselor with no College responsibility: an empty assigned caseload.",
     limitations="Negative-scope testing only: sees no Student records.",
 )
+IT_ADMIN_3 = AccountSpec(
+    key="it_admin_3",
+    label="IT Administrator (third evaluator)",
+    institutional_id="STG-E-0014",
+    email_local_part="stg-it-admin-3",
+    first_name="Denise",
+    middle_name="Alonzo",
+    last_name="Villanueva",
+    role="IT_ADMIN",
+    summary="Third IT Administrator for independent ITSO UAT; reviews platform health and access.",
+    limitations="No access to confidential guidance records; do not modify dataset accounts.",
+)
 OFFICER_NO_DESIGNATION = AccountSpec(
     key="officer_no_designation",
     label="Institutional Officer without DPO designation",
@@ -191,6 +203,7 @@ STAFF = (
     FORMER_STAFF,
     UNASSIGNED_COUNSELOR,
     OFFICER_NO_DESIGNATION,
+    IT_ADMIN_3,
 )
 
 COUNSELOR_RESPONSIBILITIES = (
@@ -239,6 +252,7 @@ __all__ = [
     "HEAD_GUIDANCE",
     "IT_ADMIN",
     "IT_ADMIN_2",
+    "IT_ADMIN_3",
     "OFFICER_NO_DESIGNATION",
     "STAFF",
     "STAFF_SUPERVISION",

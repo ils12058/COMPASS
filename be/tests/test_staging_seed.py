@@ -6,10 +6,13 @@ so a test failure proves the seeder never needed one.
 """
 
 import csv
+import hashlib
 import json
 import os
 import stat
 import tempfile
+from contextlib import ExitStack
+from dataclasses import asdict, replace
 from datetime import date, datetime, time
 from io import StringIO
 from pathlib import Path
@@ -18,6 +21,7 @@ from unittest.mock import patch
 import psycopg
 import pytest
 from cryptography.fernet import Fernet
+from django.apps import apps
 from django.conf import settings
 from django.core import mail
 from django.core.management import call_command
@@ -35,7 +39,11 @@ from compass.audit.models import AuditEvent
 from compass.authentication.actions import AUTH_PASSWORD_INITIAL_SET, AUTH_PASSWORD_RESET
 from compass.authentication.models import AuthSession
 from compass.ecounseling.models import ECounselingRoom
+from compass.exit_interviews.models import ExitInterview
 from compass.good_moral.models import GoodMoralRequest
+from compass.good_moral.services import create_my_graduate
+from compass.graduate_tracer.models import GraduateTracerResponse
+from compass.graduate_tracer.services import replace_my_draft, submit_my_response
 from compass.guidance_messages.models import GuidanceThread
 from compass.inventory.models import StudentInventory
 from compass.notifications.models import EmailDelivery, Notification, PushDelivery
@@ -47,10 +55,11 @@ from compass.staging_seed.credentials import (
     issue_credentials,
 )
 from compass.staging_seed.guard import StagingSeedingRefused, ensure_seeding_allowed
-from compass.staging_seed.identities import AuthPlan, StudentGroup, Suitability
+from compass.staging_seed.identities import AuthPlan, Lifecycle, StudentGroup, Suitability
 from compass.staging_seed.manifest import (
     ACCOUNTS,
     SCENARIOS,
+    UAT_40_ALLOCATION,
     Readiness,
     scenarios_for,
     validate_manifest,
@@ -67,7 +76,7 @@ from compass.staging_seed.reports import (
     write_reports,
 )
 from compass.staging_seed.seed import SEED_RUN_ADVISORY_LOCK_KEY, seed_staging_dataset
-from compass.staging_seed.students import STUDENTS
+from compass.staging_seed.students import POPULATION_STUDENTS, STUDENTS, STUDENTS_BY_KEY
 from compass.staging_seed.timeline import StagingTimelineError, resolve_timeline
 from compass.staging_seed.verify import verify_dataset
 from tests.test_authentication import AllowLimiter, login
@@ -80,6 +89,12 @@ PARTICIPANT_CREDENTIAL_KEYS = [
     for a in ACCOUNTS
     if a.suitability == Suitability.PARTICIPANT and a.auth == AuthPlan.CREDENTIAL
 ]
+EXPANSION_KEYS = {"it_admin_3", "ar_25", "ar_26"}
+EXPANSION_SCENARIOS = {"ITA-PLT-02", "STU-GT-03", "STU-GM-07"}
+
+
+def fingerprint(rows):
+    return hashlib.sha256(json.dumps(rows, sort_keys=True, default=str).encode()).hexdigest()
 
 
 def dataset_now() -> datetime:
@@ -175,10 +190,10 @@ def test_manifest_population_and_uat_rules():
     students = [a for a in ACCOUNTS if a.is_student]
     staff = [a for a in ACCOUNTS if not a.is_student]
     groups = {group: sum(s.group == group for s in students) for group in StudentGroup}
-    assert (len(students), len(staff)) == (100, 13)
+    assert (len(students), len(staff)) == (102, 14)
     assert groups == {
         StudentGroup.RICH: 11,
-        StudentGroup.ACTION_READY: 24,
+        StudentGroup.ACTION_READY: 26,
         StudentGroup.BACKGROUND: 65,
     }
     assert {a.role for a in staff} == {
@@ -200,6 +215,51 @@ def test_manifest_population_and_uat_rules():
         "Shared Guidance Follow-Up",
     }
     assert all(not s.checks for s in pending)
+
+
+def test_expansion_preserves_all_original_identity_and_scenario_definitions():
+    # Frozen from staging 8684ea10, excluding only the three additive participants/scenarios.
+    original_accounts = [asdict(a) for a in ACCOUNTS if a.key not in EXPANSION_KEYS]
+    original_scenarios = [asdict(s) for s in SCENARIOS if s.id not in EXPANSION_SCENARIOS]
+    assert len(original_accounts) == 113
+    assert len(original_scenarios) == 91
+    assert fingerprint(original_accounts) == (
+        "520a0b48acaae6b51dd7265bae2c77ed80fdb08005bd8b5bbf5d515e73d24477"
+    )
+    assert fingerprint(original_scenarios) == (
+        "1b63b4f8283d740993af7eccdafdc034565e15a5de26263b83b4af6775ddffa8"
+    )
+    assert len(ACCOUNTS) == 116 and len(SCENARIOS) == 94
+    names = [account.full_name for account in ACCOUNTS]
+    for account in ACCOUNTS:
+        if account.key in EXPANSION_KEYS:
+            assert names.count(account.full_name) == 1
+
+
+def test_40_person_allocation_has_independent_eligible_account_owners():
+    assert {category: len(keys) for category, keys in UAT_40_ALLOCATION.items()} == {
+        "Head Guidance Counselor": 1,
+        "Guidance Counselor": 3,
+        "Guidance Services Staff": 2,
+        "Current Student": 25,
+        "Alumni": 5,
+        "ITSO personnel": 3,
+        "Data Protection Officer": 1,
+    }
+    keys = [key for group in UAT_40_ALLOCATION.values() for key in group]
+    assert len(keys) == len(set(keys)) == 40
+    for key in keys:
+        account = next(a for a in ACCOUNTS if a.key == key)
+        assert account.suitability == Suitability.PARTICIPANT
+        assert account.auth == AuthPlan.CREDENTIAL
+        assert any(s.readiness == Readiness.EXECUTABLE for s in scenarios_for(key))
+    for category, lifecycle in (
+        ("Current Student", Lifecycle.CURRENT),
+        ("Alumni", Lifecycle.GRADUATED),
+    ):
+        assert all(
+            STUDENTS_BY_KEY[key].lifecycle == lifecycle for key in UAT_40_ALLOCATION[category]
+        )
 
 
 def test_documentation_scan_rejects_credential_material():
@@ -320,11 +380,11 @@ class SeededDatasetTests(TestCase):
         assert self.report.dataset_name == DATASET_NAME == "COMPASS Staging Dataset v1"
         assert self.report.dataset_version == DATASET_VERSION == 1
         assert self.report.anchor == ANCHOR
-        assert (self.report.account_count, self.report.student_count) == (113, 100)
+        assert (self.report.account_count, self.report.student_count) == (116, 102)
 
     def test_population_accounts_and_authentication_state(self):
         seeded = User.objects.filter(institutional_id__startswith="STG-")
-        assert seeded.count() == 113
+        assert seeded.count() == 116
         assert not any(user.has_usable_password() for user in seeded)
         assert dataset_user("onboarding").email_verified_at is None
         assert not dataset_user("former_staff").is_active
@@ -405,10 +465,11 @@ class SeededDatasetTests(TestCase):
         rows = list(csv.DictReader(StringIO(documents[ACCOUNTS_CSV])))
         assert tuple(rows[0]) == CSV_COLUMNS
         assert [row["account_key"] for row in rows] == [a.key for a in ACCOUNTS]
-        assert sum(row["role"] == "STUDENT" for row in rows) == 100
+        assert sum(row["role"] == "STUDENT" for row in rows) == 102
         for account in ACCOUNTS:
             assert f"| {account.key} |" in documents[CATALOG]
-        assert "**113** (100 Students, 13 staff)" in documents[SUMMARY]
+        assert "**116** (102 Students, 14 staff)" in documents[SUMMARY]
+        assert "40 independent participants" in documents[SUMMARY]
         executable = sum(s.readiness == Readiness.EXECUTABLE for s in SCENARIOS)
         assert f"Executable UAT scenarios: **{executable}**" in documents[SUMMARY]
         template = list(csv.DictReader(StringIO(documents[ASSIGNMENT])))
@@ -418,6 +479,70 @@ class SeededDatasetTests(TestCase):
         }
         with tempfile.TemporaryDirectory() as directory:
             assert len(write_reports(result, Path(directory))) == 6
+
+    def test_new_alumni_can_complete_their_existing_domain_workflows(self):
+        from compass.staging_seed.content.forms import tracer_answers
+        from compass.staging_seed.organization import program_for
+        from compass.staging_seed.scenarios.rich import tracer_values
+
+        for key in ("ar_25", "ar_26"):
+            student = dataset_user(key)
+            assert student.role.code == "STUDENT"
+            assert student.student_lifecycle_status == Lifecycle.GRADUATED
+            assert ExitInterview.objects.filter(student=student, status="SUBMITTED").exists()
+            assert not StudentInventory.objects.filter(
+                student=student, academic_year__label="2026-2027"
+            ).exists()
+        student = dataset_user("ar_25")
+        response = GraduateTracerResponse.objects.get(student=student)
+        assert response.status == "DRAFT"
+        persona = replace(STUDENTS_BY_KEY["ar_25"], tracer="related")
+        replace_my_draft(
+            student=student,
+            values=tracer_values(
+                response,
+                persona,
+                tracer_answers(persona, program_for(persona)),
+                graduation_year=2026,
+            ),
+        )
+        submit_my_response(student=student, context=AuditContext.user(student), now=dataset_now())
+        student = dataset_user("ar_26")
+        request = create_my_graduate(
+            student=student,
+            degree="Bachelor of Science in Accountancy",
+            major="",
+            graduation_date=date(2026, 6, 15),
+            idempotency_key="uat-expansion-graduate-request",
+            request_fingerprint=hashlib.sha256(b"uat-expansion-graduate-request").hexdigest(),
+            context=AuditContext.user(student),
+        )
+        assert request.status == "REQUESTED" and request.student_id == student.pk
+        response.refresh_from_db()
+        assert response.status == "SUBMITTED"
+        seed_once()
+        assert GoodMoralRequest.objects.filter(pk=request.pk, status="REQUESTED").exists()
+        assert not self.verify().passed
+        assert self.verify(allow_uat_changes=True).passed
+
+    def test_new_participants_support_only_selected_credential_issuance(self):
+        with tempfile.TemporaryDirectory(prefix="stg-expansion-") as directory:
+            target = Path(directory) / "selected.csv"
+            outcome = issue_credentials(output=target, account_keys=tuple(sorted(EXPANSION_KEYS)))
+            assert outcome.issued == 3 and outcome.skipped == 0
+            assert stat.S_IMODE(target.stat().st_mode) == 0o600
+            rows = list(csv.DictReader(target.open()))
+            assert {r["account_key"] for r in rows} == EXPANSION_KEYS
+            for row in rows:
+                assert dataset_user(row["account_key"]).check_password(row["temporary_password"])
+            assert all(
+                not dataset_user(a.key).has_usable_password()
+                for a in ACCOUNTS
+                if a.key not in EXPANSION_KEYS
+            )
+            admin = dataset_user("it_admin_3")
+            assert admin.role.code == "IT_ADMIN" and not admin.designations.exists()
+            assert not admin.capability_overrides.exists()
 
     def test_report_refuses_to_write_after_failed_verification(self):
         dataset_user("head_guidance").designations.clear()
@@ -515,3 +640,98 @@ class SeededDatasetTests(TestCase):
                         SUMMARY,
                     ]
                 )
+
+
+class IncrementalParticipantExpansionTests(TestCase):
+    def test_existing_113_account_dataset_expands_without_rewriting_uat(self):
+        # Run the original population through the same unchanged units, then upgrade it.
+        legacy_accounts = tuple(a for a in ACCOUNTS if a.key not in EXPANSION_KEYS)
+        legacy_students = tuple(s for s in STUDENTS if s.key not in EXPANSION_KEYS)
+        legacy_population = tuple(s for s in POPULATION_STUDENTS if s.key not in EXPANSION_KEYS)
+        with ExitStack() as stack:
+            for module, name, value in (
+                ("seed", "ACCOUNTS", legacy_accounts),
+                ("accounts", "ACCOUNTS", legacy_accounts),
+                ("seed", "STUDENTS", legacy_students),
+                ("history", "STUDENTS", legacy_students),
+                ("organization", "STUDENTS", legacy_students),
+                ("scenarios.background", "POPULATION_STUDENTS", legacy_population),
+            ):
+                stack.enter_context(patch(f"compass.staging_seed.{module}.{name}", value))
+            original = seed_once()
+        assert original.account_count == User.objects.count() == 113
+        assert User.objects.filter(role__code="STUDENT").count() == 100
+
+        student = dataset_user("ar_03")
+        appointment = Appointment.objects.get(student=student)
+        cancel_appointment(
+            appointment_id=appointment.pk,
+            actor=student,
+            administrative=False,
+            context=AuditContext.user(student),
+        )
+        other = dataset_user("ar_02")
+        other.set_password("an evaluator retained this passphrase")
+        other.save(update_fields=["password"])
+        with patch(
+            "compass.authentication.abuse.RedisRateLimiter.from_settings", lambda: AllowLimiter()
+        ):
+            response = login(
+                Client(), email=other.email, password="an evaluator retained this passphrase"
+            )
+        assert response.status_code == 200
+        assert AuthSession.objects.filter(user=other, revoked_at__isnull=True).exists()
+
+        # Fingerprint every existing account/auth/domain row, including encrypted history and
+        # routing. New audit events and transient Academic Year selection are allowed.
+        labels = {
+            "accounts",
+            "authentication",
+            "organization",
+            "inventory",
+            "appointments",
+            "exit_interviews",
+            "graduate_tracer",
+            "good_moral",
+            "counseling",
+            "routine_interviews",
+            "shared_summaries",
+            "referrals",
+            "call_slips",
+            "guidance_messages",
+            "feedback",
+        }
+        snapshots = []
+        for model in apps.get_models():
+            if (
+                model._meta.app_label not in labels
+                or model._meta.label == "organization.AcademicYear"
+            ):
+                continue
+            rows = model.objects.order_by("pk")
+            snapshots.append(
+                (model, list(rows.values_list("pk", flat=True)), fingerprint(list(rows.values())))
+            )
+
+        expanded = seed_once()
+        assert expanded.created["Accounts"] == 3
+        assert (expanded.account_count, expanded.student_count) == (116, 102)
+        assert User.objects.count() == 116
+        for model, ids, before in snapshots:
+            assert (
+                fingerprint(list(model.objects.filter(pk__in=ids).order_by("pk").values()))
+                == before
+            ), model._meta.label
+        for key in EXPANSION_KEYS:
+            assert not dataset_user(key).has_usable_password()
+        appointment.refresh_from_db()
+        assert appointment.status == "CANCELLED"
+        other.refresh_from_db()
+        assert other.check_password("an evaluator retained this passphrase")
+        result = verify_dataset(now=dataset_now(), allow_uat_changes=True)
+        assert result.passed
+        assert all(result.scenario_status[key] == "READY" for key in EXPANSION_SCENARIOS)
+        with tempfile.TemporaryDirectory() as directory:
+            assert len(write_reports(result, Path(directory))) == 6
+        again = seed_once()
+        assert sum(again.created.values()) == 0

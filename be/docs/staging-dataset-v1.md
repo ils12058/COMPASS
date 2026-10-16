@@ -2,7 +2,7 @@
 
 `seed_staging_dataset` builds, verifies and documents **COMPASS Staging Dataset v1**: a
 deterministic, synthetic, UAT-ready world for the reset-only canonical baseline (CANON-1C). It
-contains a fictional Guidance and Counseling Office, 13 staff and negative-test accounts, and 100
+contains a fictional Guidance and Counseling Office, 14 staff and negative-test accounts, and 102
 Students designed for stakeholder testing. The decision record is
 [ADR-116](decisions/ADR-116-canonical-baseline-and-staging-dataset-v1.md).
 
@@ -17,6 +17,27 @@ application and API versions.
 
 The command is operator tooling. There is no API, page, middleware or model flag for it, and no
 production code path knows whether a record was seeded. It never runs at application startup.
+
+## Independent 40-person allocation
+
+The additive participant expansion appends `it_admin_3` (`STG-E-0014`, canonical `IT_ADMIN`),
+`ar_25` and `ar_26` (`STG-S-0125`/`STG-S-0126`, canonical `STUDENT`, `GRADUATED`). The Alumni
+fixtures use historical Inventory/Exit Interview records and draft/submitted Graduate Tracers;
+their scenarios cover Tracer completion and a new graduate Good Moral request. Existing 113
+identities, 91 scenario definitions and all 65 background Students are retained. There are now
+116 accounts and 94 scenarios (91 executable, three pending); no migration is needed.
+
+The generated Selection Guide proposes distinct keys for 1 Head, 3 Counselors, 2 GSS, 25 current
+Students, five graduated Alumni, 3 ITSO personnel and 1 DPO. Its 40 accounts exclude background,
+restricted and onboarding identities. Shared catalog and staff/Student scenario dependencies still
+need scheduling. Reserve participant accounts remain listed in the full Assignment Template.
+
+This repository expansion does **not** apply itself to live staging. After a separate owner
+authorization, an incremental seed on the deployed canonical revision creates only missing
+accounts and fixtures; it preserves completed UAT work and existing credentials. Keep the same
+email domain/onboarding settings. Use `verify --allow-uat-changes` and `report --allow-uat-changes`
+for an active dataset. Obtain approval for exact participant keys before the separate
+`issue-credentials --account KEY` step; never use an unrestricted issuance command for this cohort.
 
 ## Modes
 

@@ -21,12 +21,28 @@ from compass.accounts.policy import (
     designation_role_compatible,
 )
 
-from .identities import AccountSpec, AuthPlan, StudentSpec, Suitability
+from .identities import AccountSpec, AuthPlan, Lifecycle, StudentSpec, Suitability
 from .staff import STAFF
 from .students import STUDENTS
 
 ACCOUNTS: tuple[AccountSpec, ...] = (*STAFF, *STUDENTS)
 ACCOUNTS_BY_KEY = {account.key: account for account in ACCOUNTS}
+
+# Proposed ownership only: no evaluator identities, credential issuance or live assignment.
+# Alumni retain the canonical STUDENT role; ITSO participants retain IT_ADMIN.
+UAT_40_ALLOCATION = {
+    "Head Guidance Counselor": ("head_guidance",),
+    "Guidance Counselor": ("counselor_a", "counselor_b", "counselor_c"),
+    "Guidance Services Staff": ("gss_a", "gss_b"),
+    "Current Student": (
+        "first_year",
+        "second_year",
+        *(f"ar_{n:02d}" for n in range(1, 25) if n != 13),
+    ),
+    "Alumni": ("recent_graduate", "alumni", "ar_13", "ar_25", "ar_26"),
+    "ITSO personnel": ("it_admin", "it_admin_2", "it_admin_3"),
+    "Data Protection Officer": ("dpo",),
+}
 
 ROLE_LABELS = {
     "IT_ADMIN": "IT Administrator",
@@ -1327,6 +1343,56 @@ SCENARIOS: tuple[Scenario, ...] = (
         related=("ar_07",),
         checks=(("counselor_c", "responsibility:4"),),
     ),
+    # --- Independent participants added for the 40-person UAT allocation --------------------
+    _s(
+        "STU-GT-03",
+        "Graduate Tracer",
+        "Complete an independent Alumni Tracer draft",
+        "Student",
+        "ar_25",
+        "/portal/graduate-tracer",
+        "GRADUATED; historical Inventory and submitted Exit Interview; Tracer draft.",
+        "Complete the remaining Tracer fields, save, then submit.",
+        "The response becomes SUBMITTED and appears in the Head's Graduate Tracer report.",
+        related=("head_guidance",),
+        checks=(
+            ("ar_25", "lifecycle:GRADUATED"),
+            ("ar_25", "exit:historical_submitted"),
+            ("ar_25", "tracer:draft"),
+        ),
+    ),
+    _s(
+        "STU-GM-07",
+        "Good Moral",
+        "Request an independent Alumni Good Moral certificate",
+        "Student",
+        "ar_26",
+        "/portal/good-moral/request",
+        "GRADUATED; submitted historical Exit Interview and Tracer; no Good Moral request.",
+        "Request a graduate Good Moral certificate and review its status.",
+        "A graduate request is REQUESTED; the submitted Tracer and history remain unchanged.",
+        checks=(
+            ("ar_26", "lifecycle:GRADUATED"),
+            ("ar_26", "exit:historical_submitted"),
+            ("ar_26", "tracer:submitted"),
+            ("ar_26", "good_moral:none"),
+        ),
+    ),
+    _s(
+        "ITA-PLT-02",
+        "Platform Operations",
+        "Review platform readiness as the third ITSO evaluator",
+        "IT Administrator",
+        "it_admin_3",
+        "/portal/platform",
+        "Canonical IT_ADMIN authority; no confidential guidance access.",
+        "Review Health, Email delivery and Environment without changing maintenance mode.",
+        "Operational status is visible; confidential guidance workspaces remain unavailable.",
+        mutating=False,
+        fresh_state=False,
+        restrictions="Do not toggle maintenance mode or edit seeded accounts or shared policy.",
+        checks=(("it_admin_3", "role:IT_ADMIN"), ("it_admin_3", "capabilities:no_counseling")),
+    ),
     # --- Pending pre-defense features -------------------------------------------------------
     _s(
         "PND-REM-01",
@@ -1432,6 +1498,28 @@ def validate_manifest() -> None:
     for account in ACCOUNTS:
         if account.suitability == Suitability.PARTICIPANT and account.key not in actors:
             raise ManifestError(f"{account.key}: a UAT-ready account needs at least one scenario.")
+    allocated = [key for keys in UAT_40_ALLOCATION.values() for key in keys]
+    if len(allocated) != 40 or len(set(allocated)) != 40:
+        raise ManifestError("The 40-person allocation requires 40 distinct accounts.")
+    for category, keys in UAT_40_ALLOCATION.items():
+        for key in keys:
+            account = ACCOUNTS_BY_KEY.get(key)
+            if (
+                account is None
+                or account.suitability != Suitability.PARTICIPANT
+                or account.auth != AuthPlan.CREDENTIAL
+            ):
+                raise ManifestError(f"{key}: allocation requires a credential-ready participant.")
+            if category in {"Current Student", "Alumni"}:
+                expected = (
+                    Lifecycle.CURRENT if category == "Current Student" else Lifecycle.GRADUATED
+                )
+                if not isinstance(account, StudentSpec) or account.lifecycle != expected:
+                    raise ManifestError(f"{key}: incorrect lifecycle for {category} allocation.")
+            elif stakeholder(account) != (
+                "IT Administrator" if category == "ITSO personnel" else category
+            ):
+                raise ManifestError(f"{key}: incorrect stakeholder for {category} allocation.")
 
 
 validate_manifest()
@@ -1443,6 +1531,7 @@ __all__ = [
     "Readiness",
     "SCENARIOS",
     "SCENARIOS_BY_ID",
+    "UAT_40_ALLOCATION",
     "Scenario",
     "email_for",
     "scenarios_for",

@@ -1,16 +1,17 @@
 # Staging Dataset v1 — Summary
 
-COMPASS Staging Dataset v1 (dataset version 1). Generated 2026-10-16T22:02:57+08:00 by `seed_staging_dataset report` from the manifest and a passing read-only verification of the local-staging database. Do not edit by hand: change `be/compass/staging_seed/` and regenerate.
+COMPASS Staging Dataset v1 (dataset version 1). Generated 2026-10-17T06:59:47+08:00 by `seed_staging_dataset report` from the manifest and a passing read-only verification of the live-staging database. Do not edit by hand: change `be/compass/staging_seed/` and regenerate.
 
 All names, identifiers, addresses and email addresses are synthetic. This document contains no passwords, MFA secrets, tokens, confidential form answers or counseling content, and no evaluator identities.
 
 ## Dataset
 
 - Dataset: **COMPASS Staging Dataset v1**, dataset version **1** (independent of the COMPASS application and API versions; not an upgrade of Demo Dataset v1/v2).
-- Timeline: Academic Years 2024-2025, 2025-2026 and current 2026-2027, Asia/Manila. Preparation dates supported: 2026-09-21 to 2027-04-30. Seed runs recorded on: 2026-10-16.
-- Accounts: **113** (100 Students, 13 staff).
-- Executable UAT scenarios: **88**; pending-implementation scenarios: **3**.
-- Verification: **PASSED** — Schema readiness: 5 passed, 0 failed, 0 warnings; Canonical configuration: 57 passed, 0 failed, 0 warnings; Account readiness: 1085 passed, 0 failed, 0 warnings; Organization routing: 12 passed, 0 failed, 0 warnings; Scenario initial states: 101 passed, 0 failed, 0 warnings; Workflow integrity: 40 passed, 0 failed, 0 warnings; Privacy and security: 142 passed, 0 failed, 0 warnings; External side effects: 5 passed, 0 failed, 0 warnings.
+- Timeline: Academic Years 2024-2025, 2025-2026 and current 2026-2027, Asia/Manila. Preparation dates supported: 2026-09-21 to 2027-04-30. Seed runs recorded on: 2026-10-17.
+- Accounts: **116** (102 Students, 14 staff).
+- Proposed allocation: **40 independent participants** — 1 Head, 3 Counselors, 2 Guidance Services Staff, 25 current Students, 5 graduated Alumni, 3 ITSO and 1 DPO. See the Selection Guide for exact account keys; credential issuance remains separate.
+- Executable UAT scenarios: **91**; pending-implementation scenarios: **3**.
+- Verification: **PASSED** — Schema readiness: 5 passed, 0 failed, 0 warnings; Canonical configuration: 57 passed, 0 failed, 0 warnings; Account readiness: 1112 passed, 0 failed, 0 warnings; Organization routing: 12 passed, 0 failed, 0 warnings; Scenario initial states: 110 passed, 0 failed, 0 warnings; Workflow integrity: 40 passed, 0 failed, 0 warnings; Privacy and security: 145 passed, 0 failed, 0 warnings; External side effects: 5 passed, 0 failed, 0 warnings.
 
 ## Accounts
 
@@ -18,7 +19,7 @@ All names, identifiers, addresses and email addresses are synthetic. This docume
 
 | Value | Count |
 | --- | --- |
-| ACTION_READY | 24 |
+| ACTION_READY | 26 |
 | BACKGROUND | 65 |
 | RICH_SCENARIO | 11 |
 
@@ -28,7 +29,7 @@ All names, identifiers, addresses and email addresses are synthetic. This docume
 | --- | --- |
 | BACKGROUND | 64 |
 | RESTRICTED | 4 |
-| UAT_READY | 45 |
+| UAT_READY | 48 |
 
 ### UAT-ready accounts by role
 
@@ -38,14 +39,14 @@ All names, identifiers, addresses and email addresses are synthetic. This docume
 | Guidance Counselor | 3 |
 | Guidance Services Staff | 2 |
 | Head Guidance Counselor | 1 |
-| IT Administrator | 2 |
-| Student | 35 |
+| IT Administrator | 3 |
+| Student | 37 |
 
 ### Authentication state (from the database)
 
 | Value | Count |
 | --- | --- |
-| Awaiting credential issuance | 110 |
+| Awaiting credential issuance | 113 |
 | Disabled | 2 |
 | Onboarding (never signed in) | 1 |
 
@@ -55,7 +56,7 @@ All names, identifiers, addresses and email addresses are synthetic. This docume
 | --- | --- |
 | CURRENT | 86 |
 | FORMER | 4 |
-| GRADUATED | 10 |
+| GRADUATED | 12 |
 
 ## Academic distribution
 
@@ -66,7 +67,7 @@ All names, identifiers, addresses and email addresses are synthetic. This docume
 | ABANO | 16 |
 | ENTIENZA | 4 |
 | LABO | 5 |
-| MAIN | 69 |
+| MAIN | 71 |
 | MERCEDES | 3 |
 | PANGANIBAN | 3 |
 
@@ -78,8 +79,8 @@ All names, identifiers, addresses and email addresses are synthetic. This docume
 | ENTIENZA/ENTIENZA | 4 |
 | LABO/CANR | 5 |
 | MAIN/CAS | 22 |
-| MAIN/CBPA | 21 |
-| MAIN/CCMS | 21 |
+| MAIN/CBPA | 22 |
+| MAIN/CCMS | 22 |
 | MAIN/COENG | 5 |
 | MERCEDES/CFAST | 3 |
 | PANGANIBAN/COTT | 3 |
@@ -98,13 +99,13 @@ All names, identifiers, addresses and email addresses are synthetic. This docume
 | CAS/BSDEVCOM | 2 |
 | CAS/BSPSYCH | 8 |
 | CBPA/BPA | 1 |
-| CBPA/BSA | 7 |
+| CBPA/BSA | 8 |
 | CBPA/BSBA | 8 |
 | CBPA/BSENTREP | 1 |
 | CBPA/BSHM | 3 |
 | CBPA/BSOA | 1 |
 | CCMS/BSIS | 9 |
-| CCMS/BSIT | 12 |
+| CCMS/BSIT | 13 |
 | CFAST/BSF | 3 |
 | COED/BEED | 6 |
 | COED/BPED | 1 |
@@ -201,7 +202,7 @@ All names, identifiers, addresses and email addresses are synthetic. This docume
 | Value | Count |
 | --- | --- |
 | 2024-2025 SUBMITTED | 1 |
-| 2025-2026 SUBMITTED | 9 |
+| 2025-2026 SUBMITTED | 11 |
 | 2026-2027 DRAFT | 3 |
 | 2026-2027 SUBMITTED | 3 |
 
@@ -209,8 +210,8 @@ All names, identifiers, addresses and email addresses are synthetic. This docume
 
 | Value | Count |
 | --- | --- |
-| DRAFT | 1 |
-| SUBMITTED | 7 |
+| DRAFT | 2 |
+| SUBMITTED | 8 |
 
 ### Student notifications
 
@@ -239,7 +240,7 @@ All names, identifiers, addresses and email addresses are synthetic. This docume
 
 | Record | Count |
 | --- | --- |
-| Inventories (all years) | 109 |
+| Inventories (all years) | 111 |
 | Counseling Encounters | 10 |
 | Referral actions | 4 |
 | Open Exit Interview opportunities | 5 |

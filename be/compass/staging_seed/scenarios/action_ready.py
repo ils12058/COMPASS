@@ -1,4 +1,4 @@
-"""Action-ready Students: one clear, evaluator-owned pending state each (``ar_01`` … ``ar_24``).
+"""Action-ready Students: one clear, evaluator-owned pending state each (``ar_01`` … ``ar_26``).
 
 Each unit prepares exactly the state its UAT scenario starts from, through the owning domain
 services, inside one transaction. The unit's marker is the record it creates (an Appointment,
@@ -6,7 +6,8 @@ referral, request, opportunity, …) in any status, so a rerun never restores a 
 already consumed (a cancelled booking stays cancelled; an issued certificate stays issued).
 
 Students whose scenario starts from "nothing yet" (``ar_01``, ``ar_02``, ``ar_07``, ``ar_08``,
-``ar_12``, ``ar_13``) need no unit: their Inventory and history come from the population units.
+``ar_12``, ``ar_13``, ``ar_25``, ``ar_26``) need no unit: their Inventory, Exit Interview and
+Tracer history come from the population units.
 """
 
 from __future__ import annotations

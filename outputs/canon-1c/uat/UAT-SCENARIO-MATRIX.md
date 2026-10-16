@@ -1,10 +1,10 @@
 # UAT Scenario Matrix
 
-COMPASS Staging Dataset v1 (dataset version 1). Generated 2026-10-16T22:02:57+08:00 by `seed_staging_dataset report` from the manifest and a passing read-only verification of the local-staging database. Do not edit by hand: change `be/compass/staging_seed/` and regenerate.
+COMPASS Staging Dataset v1 (dataset version 1). Generated 2026-10-17T06:59:47+08:00 by `seed_staging_dataset report` from the manifest and a passing read-only verification of the live-staging database. Do not edit by hand: change `be/compass/staging_seed/` and regenerate.
 
 All names, identifiers, addresses and email addresses are synthetic. This document contains no passwords, MFA secrets, tokens, confidential form answers or counseling content, and no evaluator identities.
 
-88 executable scenarios and 3 pending-implementation scenarios. *Readiness* is READY when verification proved every documented initial state, CHANGED when an evaluator has already changed it (active UAT), and PENDING_IMPLEMENTATION when the feature is not merged.
+91 executable scenarios and 3 pending-implementation scenarios. *Readiness* is READY when verification proved every documented initial state, CHANGED when an evaluator has already changed it (active UAT), and PENDING_IMPLEMENTATION when the feature is not merged.
 
 ## Student
 
@@ -51,6 +51,8 @@ All names, identifiers, addresses and email addresses are synthetic. This docume
 | STU-INV-04 | Individual Inventory | Finish an Inventory draft while a Call Slip is open | active_referral | `/portal/inventory/current` | Current Inventory draft; a referral and a LIVE Call Slip from gss_a. | Open the Call Slip, then complete and submit the Inventory. | The Inventory is submitted; the Call Slip is unaffected. | Mutating / needs fresh state to repeat | Signed in with the recommended account. | READY |
 | NEG-02 | Negative authorization | A disabled Student account cannot sign in | bg_65 | `/login` | bg_65 is disabled. | Attempt Password Access with the account email. | Sign-in does not proceed; no session is created. | Read-only / repeatable | Signed in with the recommended account. | READY |
 | NEG-05 | Negative authorization | A Student cannot open another Student's record | ar_01 | `/portal/appointments/my` | ar_03 has an upcoming Appointment; ar_01 has none. | Open ar_03's Appointment URL (provided by the UAT lead) while signed in as ar_01. | The record is not found; nothing about ar_03 is disclosed. | Read-only / repeatable | Signed in with the recommended account. | READY |
+| STU-GT-03 | Graduate Tracer | Complete an independent Alumni Tracer draft | ar_25 | `/portal/graduate-tracer` | GRADUATED; historical Inventory and submitted Exit Interview; Tracer draft. | Complete the remaining Tracer fields, save, then submit. | The response becomes SUBMITTED and appears in the Head's Graduate Tracer report. | Mutating / needs fresh state to repeat | Signed in with the recommended account. | READY |
+| STU-GM-07 | Good Moral | Request an independent Alumni Good Moral certificate | ar_26 | `/portal/good-moral/request` | GRADUATED; submitted historical Exit Interview and Tracer; no Good Moral request. | Request a graduate Good Moral certificate and review its status. | A graduate request is REQUESTED; the submitted Tracer and history remain unchanged. | Mutating / needs fresh state to repeat | Signed in with the recommended account. | READY |
 
 ## Guidance Counselor
 
@@ -112,6 +114,7 @@ All names, identifiers, addresses and email addresses are synthetic. This docume
 | ITA-ORG-01 | Organization | Review Counselor responsibilities and affiliations | it_admin | `/portal/organization/responsibilities` | Nine College responsibilities across three Counselors. | Review responsibilities and Student affiliations. | Every College except Graduate School has exactly one Counselor. | Read-only / repeatable | Signed in with the recommended account. Do not reassign responsibilities: Counselor caseloads drive most scenarios. | READY |
 | ITA-PLT-01 | Platform Operations | Platform health and email delivery | it_admin | `/portal/platform` | Platform Operations available to IT Administrators. | Open Health, Email delivery and Environment. | Dependency status and delivery history display without Student content. | Read-only / repeatable | Signed in with the recommended account. Maintenance mode affects every evaluator; schedule it separately. | READY |
 | ITA-NEG-01 | Restricted content | IT Administrators cannot read guidance records | it_admin_2 | `/portal/counseling` | Confidential guidance records exist. | Try to open Counseling, Inventory and Routine Interview workspaces. | The workspaces are unavailable to IT Administrators. | Read-only / repeatable | Signed in with the recommended account. | READY |
+| ITA-PLT-02 | Platform Operations | Review platform readiness as the third ITSO evaluator | it_admin_3 | `/portal/platform` | Canonical IT_ADMIN authority; no confidential guidance access. | Review Health, Email delivery and Environment without changing maintenance mode. | Operational status is visible; confidential guidance workspaces remain unavailable. | Read-only / repeatable | Signed in with the recommended account. Do not toggle maintenance mode or edit seeded accounts or shared policy. | READY |
 
 ## Data Protection Officer
 
