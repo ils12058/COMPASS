@@ -217,7 +217,7 @@ function ReviewerExitInterviewDetail({
         backHref="/portal/exit-interviews"
         headerAction={!detail.isError ? <>
           <ExitInterviewPdfDownload exitInterviewId={record.id} studentFacing={false} />
-          {canReopen ? <ExitInterviewReopenAction exitInterviewId={record.id} /> : null}
+          {canReopen ? <ExitInterviewReopenAction exitInterviewId={record.id} collegeFeedbackItemCodes={record.college_feedback_item_codes} /> : null}
         </> : undefined}
       />
     </div>
