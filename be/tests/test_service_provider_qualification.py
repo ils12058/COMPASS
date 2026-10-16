@@ -6,12 +6,9 @@ from datetime import timedelta
 from uuid import uuid4
 
 import pytest
-from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
 from django.test import override_settings
 from django.utils import timezone
 
-from compass.accounts.models import Role
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.appointments.services import (
     AppointmentDefaultProviderNotQualified,
@@ -490,74 +487,3 @@ def test_disabling_booking_keeps_existing_appointments_fulfillable():
 
 
 # Migration -------------------------------------------------------------------------------------
-
-BEFORE = [("service_catalog", "0003_service_requires_current_inventory")]
-LATEST = [("service_catalog", "0004_booking_capability_and_counselor_coverage")]
-
-
-@pytest.mark.django_db(transaction=True)
-def test_migration_maps_policy_normalizes_settings_and_keeps_legacy_roles():
-    sync_policy()
-    try:
-        executor = MigrationExecutor(connection)
-        executor.migrate(BEFORE)
-        apps = executor.loader.project_state(BEFORE).apps
-        Legacy = apps.get_model("service_catalog", "Service")
-        LegacyRole = apps.get_model("service_catalog", "ServiceProviderRole")
-        HistoricalRole = apps.get_model("accounts", "Role")
-        rows = {
-            "NONE": Legacy.objects.create(
-                code="MIG_NONE",
-                name="None",
-                appointment_policy="NONE",
-                default_duration_minutes=45,
-                cancellation_cutoff_minutes=20,
-                requires_current_inventory=True,
-            ),
-            "OPTIONAL": Legacy.objects.create(
-                code="MIG_OPTIONAL",
-                name="Optional",
-                appointment_policy="OPTIONAL",
-                default_duration_minutes=50,
-                cancellation_cutoff_minutes=25,
-                requires_current_inventory=True,
-            ),
-            "REQUIRED": Legacy.objects.create(
-                code="MIG_REQUIRED",
-                name="Required",
-                appointment_policy="REQUIRED",
-                default_duration_minutes=55,
-            ),
-        }
-        LegacyRole.objects.create(
-            service=rows["REQUIRED"],
-            role=HistoricalRole.objects.get(code="GUIDANCE_SERVICES_STAFF"),
-        )
-
-        MigrationExecutor(connection).migrate(LATEST)
-        none = Service.objects.get(code="MIG_NONE")
-        optional = Service.objects.get(code="MIG_OPTIONAL")
-        required = Service.objects.get(code="MIG_REQUIRED")
-        assert none.appointment_booking_enabled is False
-        assert (
-            none.default_appointment_duration_minutes,
-            none.cancellation_cutoff_minutes,
-            none.requires_current_inventory,
-        ) == (None, None, False)
-        assert optional.appointment_booking_enabled is True
-        assert (
-            optional.default_appointment_duration_minutes,
-            optional.cancellation_cutoff_minutes,
-            optional.requires_current_inventory,
-        ) == (50, 25, True)
-        assert required.appointment_booking_enabled is True
-        assert required.default_appointment_duration_minutes == 55
-        assert {none.provider_coverage, optional.provider_coverage, required.provider_coverage} == {
-            "ALL_COUNSELORS"
-        }
-        assert required.provider_role_assignments.filter(
-            role=Role.objects.get(code="GUIDANCE_SERVICES_STAFF")
-        ).exists()
-    finally:
-        Service.objects.filter(code__startswith="MIG_").delete()
-        MigrationExecutor(connection).migrate(LATEST)

@@ -89,7 +89,7 @@ INSTALLED_APPS = [
     "compass.ecounseling",
     "compass.platform_ops",
     "compass.privacy_governance",
-    "compass.demo_seed",
+    "compass.staging_seed",
 ]
 
 AUTH_USER_MODEL = "accounts.User"
@@ -707,9 +707,10 @@ DOCUMENT_RENDER_TIMEOUT_SECONDS = env_int("DOCUMENT_RENDER_TIMEOUT_SECONDS", 30)
 if not 1 <= DOCUMENT_RENDER_TIMEOUT_SECONDS <= 120:
     raise ValueError("DOCUMENT_RENDER_TIMEOUT_SECONDS must be between 1 and 120")
 
-# Operator opt-in for the synthetic ``seed_demo_staging`` dataset. The command also enforces its
-# own explicit staging allowlist, so this flag can never enable seeding anywhere else.
-DEMO_SEEDING_ENABLED = env_bool("DEMO_SEEDING_ENABLED", IS_LOCAL_STAGING)
+# Operator opt-in for the synthetic ``seed_staging_dataset`` command (COMPASS Staging Dataset v1).
+# The command also enforces its own explicit staging allowlist, so this flag can never enable
+# seeding anywhere else. Set it for one-off operator runs only, never in long-running runtimes.
+STAGING_SEED_ENABLED = env_bool("STAGING_SEED_ENABLED", IS_LOCAL_STAGING)
 
 API_DOCS_ENABLED = env_bool("API_DOCS_ENABLED", IS_LOCAL_STAGING)
 if not IS_LOCAL_STAGING and API_DOCS_ENABLED:

@@ -1,6 +1,7 @@
 # ADR-068: Staging demo dataset seeder
 
-- Status: Accepted
+- Status: Accepted (historical)
+- Superseded: by [ADR-116](ADR-116-canonical-baseline-and-staging-dataset-v1.md) (CANON-1C) on the reset-only canonical baseline. Kept as the historical record of Demo Dataset v1.
 - Date: 2026-09-28
 - Scope: The `seed_demo_staging` operator command, its environment boundary, and the seed-only
   writes it is allowed to make

@@ -168,7 +168,7 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
         assert "REDIS_PASSWORD" not in app["environment"]
         assert "REDIS_URL" not in app["environment"]
         assert "CELERY_BROKER_URL" not in app["environment"]
-        assert "DEMO_ACCOUNT_PASSWORD_FILE" not in app["environment"]
+        assert "STAGING_SEED_ENABLED" not in app["environment"]
         assert app["environment"]["SECRET_KEY_FILE"] == "/run/secrets/django_secret_key"
     postgres = config["services"]["postgres"]
     assert [grant["source"] for grant in postgres["secrets"]] == ["postgres_password"]

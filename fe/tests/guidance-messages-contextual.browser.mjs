@@ -22,7 +22,7 @@ import {
   threadIds,
 } from "./support/guidance-messages-fixtures.mjs";
 
-const { baseURL, check, shown, hidden, finish, noHorizontalOverflow } = await createBrowserHarness("guidance-messages-contextual");
+const { baseURL, check, shown, hidden, finish, navigate, noHorizontalOverflow } = await createBrowserHarness("guidance-messages-contextual");
 
 const SOCKET_URL = `${baseURL.replace(/^http/, "ws")}/api/realtime/v1/socket`;
 const enableRealtime = `window.__COMPASS_REALTIME_TEST_CONFIG__ = { url: ${JSON.stringify(SOCKET_URL)} };`;
@@ -385,7 +385,7 @@ for (const role of ["STUDENT", "COUNSELOR"]) {
   await check("Appointment, Counseling, E-Counseling and the full workspace share one thread", appointmentPath, world.options({ fakeDaily: true }), async (page) => {
     const hrefs = [];
     for (const path of [appointmentPath, counselingPath, ecounselingPath]) {
-      if (path !== appointmentPath) await page.goto(`${baseURL}${path}`);
+      if (path !== appointmentPath) await navigate(page, path);
       await trigger(page).click();
       const link = page.getByRole("link", { name: "Open full conversation" });
       await shown(link);

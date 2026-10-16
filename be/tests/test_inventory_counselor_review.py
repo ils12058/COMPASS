@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import importlib
 import json
 from datetime import timedelta
 
 import pytest
-from django.apps import apps
 from django.core.management import call_command
 from django.test import Client
 from django.utils import timezone
@@ -487,28 +485,3 @@ def test_cross_scope_counseling_assignment_does_not_expand_inventory_or_support_
     )
     with pytest.raises(StudentSupportNotFound):
         get_student_support_context(actor=counselor, student_id=student.pk)
-
-
-@pytest.mark.django_db
-def test_inventory_submission_history_backfill_uses_existing_submitted_at_only():
-    sync_policy()
-    admin = make_user("migration-admin@example.edu", "IT_ADMIN")
-    student = make_user("migration-student@example.edu", "STUDENT")
-    _, college, program = make_org("MIG")
-    StudentAffiliation.objects.create(student=student, college=college)
-    configure_year(admin)
-    item = submit_inventory(student=student, program=program)
-    original = item.submitted_at
-    StudentInventory.objects.filter(pk=item.pk).update(
-        first_submitted_at=None,
-        last_submitted_at=None,
-    )
-
-    migration = importlib.import_module(
-        "compass.inventory.migrations.0005_submission_history_reopen"
-    )
-    migration.backfill_submission_history(apps, None)
-
-    item.refresh_from_db()
-    assert item.first_submitted_at == original
-    assert item.last_submitted_at == original

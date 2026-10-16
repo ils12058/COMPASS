@@ -22,7 +22,7 @@ from compass.routine_interviews.crypto import (
     reencrypt_with_primary_key,
 )
 from compass.routine_interviews.errors import RoutineContentUnavailable
-from compass.routine_interviews.migrations import _routine_content_v1 as frozen
+from tests.encryption_oracles import routine_content_v1 as frozen
 
 K1 = base64.urlsafe_b64encode(b"1" * 32).decode("ascii")
 K2 = base64.urlsafe_b64encode(b"2" * 32).decode("ascii")

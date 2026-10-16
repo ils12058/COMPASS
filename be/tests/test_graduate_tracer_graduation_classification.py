@@ -13,7 +13,7 @@ from compass.graduate_tracer.models import (
     GraduateTracerResponse,
 )
 from compass.organization.models import Campus, College, Program
-from tests.legacy_disposition_fixtures import historical_anonymized_contribution
+from tests.historical_outcome_fixtures import historical_anonymized_contribution
 from tests.test_graduate_tracer import (
     auth_client,
     make_head,

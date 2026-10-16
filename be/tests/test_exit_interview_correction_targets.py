@@ -14,7 +14,6 @@ from cryptography.fernet import Fernet
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
 from pypdf import PdfReader
 
 from compass.audit.context import AuditContext
@@ -565,61 +564,6 @@ def test_rotation_rewraps_targets_and_reports_unreadable_ones(world, settings):
 
 
 # --- Migration -----------------------------------------------------------------------------------
-
-
-EXIT_BEFORE = [("exit_interviews", "0005_saved_form_revision")]
-EXIT_AFTER = [("exit_interviews", "0006_exitinterviewreopenevent_targets_ciphertext")]
-
-
-@pytest.mark.django_db(transaction=True)
-def test_migration_keeps_existing_reopen_events_and_adds_empty_targets_without_rewrite():
-    from compass.institutional_forms.bootstrap import sync_institutional_forms
-
-    sync_policy()
-    sync_institutional_forms()
-    head = make_head("corr-exit-migrate-head@example.edu")
-    student, item = submitted_record("corr-exit-migrate@example.edu", make_year())
-    services.reopen_for_correction(
-        actor=head,
-        exit_interview_id=item.pk,
-        reason=REASON,
-        context=AuditContext.user(head),
-    )
-    event = ExitInterviewReopenEvent.objects.get(exit_interview=item)
-    table = ExitInterviewReopenEvent._meta.db_table
-    reason_before = raw_event(event.pk)["reason_ciphertext"]
-
-    def column():
-        with connection.cursor() as cursor:
-            cursor.execute(
-                "SELECT is_nullable, column_default FROM information_schema.columns "
-                "WHERE table_name = %s AND column_name = 'targets_ciphertext'",
-                [table],
-            )
-            return cursor.fetchone()
-
-    def filenode():
-        with connection.cursor() as cursor:
-            cursor.execute("SELECT pg_relation_filenode(%s)", [table])
-            return cursor.fetchone()[0]
-
-    executor = MigrationExecutor(connection)
-    try:
-        executor.migrate(EXIT_BEFORE)
-        assert column() is None
-        node = filenode()
-        executor = MigrationExecutor(connection)
-        executor.migrate(EXIT_AFTER)
-        assert filenode() == node
-        assert column() == ("NO", None)
-        row = raw_event(event.pk)
-        assert row["reason_ciphertext"] == reason_before and row["targets_ciphertext"] == ""
-        body = auth_client(student).get(f"/api/v1/exit-interviews/me/{item.pk}").json()
-        assert body["reopen_events"][0]["reason"] == REASON
-        assert body["reopen_events"][0]["targets"] == []
-    finally:
-        executor = MigrationExecutor(connection)
-        executor.migrate(executor.loader.graph.leaf_nodes())
 
 
 # --- Privacy -------------------------------------------------------------------------------------

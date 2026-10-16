@@ -21,7 +21,6 @@ from django.apps import apps
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import IntegrityError, OperationalError, connection, transaction
-from django.db.migrations.executor import MigrationExecutor
 from django.utils import timezone
 from openpyxl import load_workbook
 
@@ -31,16 +30,15 @@ from compass.graduate_tracer import confidential_content as content
 from compass.graduate_tracer import services
 from compass.graduate_tracer.disposition import (
     ANALYTICAL_FIELDS,
-    verify_anonymized,
 )
-from compass.graduate_tracer.migrations import _graduate_tracer_confidential_content_v1 as frozen
 from compass.graduate_tracer.models import GraduateTracerResponse
 from compass.graduate_tracer.participation import GraduateTracerDisposedParticipation
 from compass.notifications.models import EmailDelivery, Notification
 from compass.reports.graduate_tracer import build_graduate_tracer_report
 from compass.reports.graduate_tracer_xlsx import render_graduate_tracer_xlsx
+from tests.encryption_oracles import graduate_tracer_confidential_content_v1 as frozen
 from tests.graduate_tracer_test_helpers import encrypted_row
-from tests.legacy_disposition_fixtures import historical_anonymized_contribution
+from tests.historical_outcome_fixtures import historical_anonymized_contribution
 from tests.test_graduate_tracer import (
     auth_client,
     make_head,
@@ -54,9 +52,6 @@ from tests.test_graduate_tracer import (
 
 K1, K2, K3 = (base64.urlsafe_b64encode(bytes([n]) * 32).decode() for n in (121, 122, 123))
 NAMES = tuple(content.FIELDS)
-BEFORE = [("graduate_tracer", "0002_graduatetracerdisposedparticipation_and_more")]
-BACKFILLED = [("graduate_tracer", "0003_encrypt_confidential_content")]
-AFTER = [("graduate_tracer", "0004_remove_plaintext_confidential_content")]
 SETTING = content.SETTING
 
 
@@ -445,48 +440,6 @@ def test_identifiable_database_cipher_invariant(world, family, value):
         model.objects.filter(pk=row.pk).update(confidential_content_ciphertext=value)
 
 
-def test_retired_disposition_never_decrypts_rewrites_or_removes_an_identifiable_source(
-    world, settings, monkeypatch, caplog
-):
-    from compass.privacy_governance.tasks import (
-        discover_retention,
-        execute_disposition,
-        recover_disposition,
-    )
-    from tests.legacy_disposition_fixtures import legacy_case, legacy_rule
-    from tests.test_privacy_governance import make_dpo
-
-    item = filled(world, submit=True)
-    case = legacy_case(rule=legacy_rule(actor=make_dpo()), source=item, state="QUEUED")
-    for family in NAMES:
-        apps.get_model("graduate_tracer", family).objects.update(
-            confidential_content_ciphertext="PRIVATE-corrupt-token"
-        )
-    settings.GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS = ()
-    for name in [
-        "decrypt_bound_json",
-        "read_confidential_content",
-        "read_private_projection",
-        "keyring",
-        "encrypt_bound_json",
-        "write_confidential_content",
-    ]:
-        monkeypatch.setattr(content, name, forbid)
-    before, counts = raw_all(), effects()
-    for _ in range(2):
-        execute_disposition(str(case.pk))
-        discover_retention()
-        recover_disposition()
-    case.refresh_from_db()
-    assert case.state == "QUEUED" and case.completed_at is None
-    assert (raw_all(), effects()) == (before, counts)
-    assert GraduateTracerResponse.objects.filter(pk=item.pk, student=world["student"]).exists()
-    assert not GraduateTracerResponse.objects.filter(student__isnull=True).exists()
-    assert not GraduateTracerDisposedParticipation.objects.exists()
-    safe(list(AuditEvent.objects.values_list("metadata", flat=True)), "PRIVATE-corrupt-token")
-    safe(caplog.text, "PRIVATE-corrupt-token")
-
-
 @pytest.mark.parametrize(
     "branch",
     ["NOT_EMPLOYED", "NEVER_EMPLOYED", "NOT_SELF", "CURRICULUM", "NOT_FIRST", "NOT_RELATED"],
@@ -660,343 +613,6 @@ def test_rotation_bounded_failures_and_batch_bounds(world):
             rotate(batch_size=size)
 
 
-@pytest.fixture
-def legacy(transactional_db):
-    initial = MigrationExecutor(connection).loader.graph.leaf_nodes()
-    assert connection.settings_dict["NAME"].startswith("test_")
-    models = [apps.get_model("graduate_tracer", name) for name in NAMES]
-    assert all(not model.objects.exists() for model in models)
-    # Reset empty dedicated test tables to avoid PostgreSQL dropped-attribute exhaustion.
-    with connection.schema_editor() as editor:
-        for model in reversed(models):
-            editor.delete_model(model)
-        for model in models:
-            editor.create_model(model)
-    sync_policy()
-    MigrationExecutor(connection).migrate(BEFORE)
-    try:
-        yield MigrationExecutor(connection).loader.project_state(BEFORE).apps
-    finally:
-        # Test cleanup only: remove bad transitional test data before restoring current graph.
-        with connection.cursor() as cursor:
-            for model in reversed(models):
-                cursor.execute(f'DELETE FROM "{model._meta.db_table}"')
-        MigrationExecutor(connection).migrate(initial)
-
-
-def old_rows(registry, variant="filled", index=0):
-    student = make_user(f"old-tracer-{index}@example.edu")
-    model = registry.get_model("graduate_tracer", NAMES[0])
-    values = (
-        content.PROJECTIONS[NAMES[0]]().payload()
-        if variant == "empty"
-        else private_payload(NAMES[0])
-    )
-    values["birth_date"] = (
-        date.fromisoformat(values["birth_date"]) if values["birth_date"] else None
-    )
-    if variant == "partial":
-        values["email_snapshot"] = ""
-        values["advanced_study_other_reason"] = ""
-    root = model.objects.create(
-        student_id=student.pk,
-        name_snapshot="Historical Searchable Graduate",
-        status="SUBMITTED" if variant == "submitted" else "DRAFT",
-        submitted_at=timezone.now() if variant == "submitted" else None,
-        current_employment_state=["EMPLOYED", "NOT_EMPLOYED", "NEVER_EMPLOYED"][index % 3],
-        **values,
-    )
-    if variant not in {"empty", "partial"}:
-        for family in NAMES[1:]:
-            values = private_payload(family)
-            if "date_taken" in values:
-                values["date_taken"] = date.fromisoformat(values["date_taken"])
-            registry.get_model("graduate_tracer", family).objects.create(
-                response_id=root.pk, position=1, **values
-            )
-    return root
-
-
-def old_anonymous(registry):
-    return registry.get_model("graduate_tracer", NAMES[0]).objects.create(
-        student_id=None,
-        status="SUBMITTED",
-        submitted_at=timezone.now(),
-        anonymized_at=timezone.now(),
-        sex="FEMALE",
-        current_employment_state="EMPLOYED",
-    )
-
-
-def test_migration_all_four_families_exact_forward_reverse_variants_anonymous_and_tombstone(legacy):
-    for index, variant in enumerate(["empty", "partial", "filled", "submitted"]):
-        old_rows(legacy, variant, index)
-    anonymous = old_anonymous(legacy)
-    student = make_user("old-disposed@example.edu")
-    GraduateTracerDisposedParticipation.objects.create(
-        student=student, instrument_schema_version=1, disposed_on=timezone.localdate()
-    )
-    before, counts = raw_all(), effects()
-    MigrationExecutor(connection).migrate(AFTER)
-    assert effects() == counts
-    after_apps = MigrationExecutor(connection).loader.project_state(AFTER).apps
-    for family in NAMES:
-        model = after_apps.get_model("graduate_tracer", family)
-        assert not set(content.FIELDS[family]).intersection(columns(model))
-        for row in model.objects.all():
-            if family == NAMES[0] and row.pk == anonymous.pk:
-                assert verify_anonymized(row) and row.confidential_content_ciphertext is None
-            else:
-                old = next(old for old in before[family] if old["id"] == row.pk)
-                expected = {name: old[name] for name in content.FIELDS[family]}
-                for name in {"birth_date", "date_taken"}.intersection(expected):
-                    expected[name] = expected[name].isoformat() if expected[name] else None
-                assert content.read_confidential_content(row).payload() == expected
-    MigrationExecutor(connection).migrate(BEFORE)
-    assert raw_all() == before and effects() == counts
-
-
-def test_phase_b_reconciles_latest_old_root_children_and_submission(legacy):
-    root = old_rows(legacy)
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    registry = MigrationExecutor(connection).loader.project_state(BACKFILLED).apps
-    model = registry.get_model("graduate_tracer", NAMES[0])
-    model.objects.filter(pk=root.pk).update(
-        permanent_address_snapshot="Latest PRIVATE-address 🎓",
-        current_employment_state="NOT_EMPLOYED",
-        reasons_for_staying_other="",
-        reasons_for_accepting_first_job=[],
-        reasons_for_accepting_other="",
-        status="SUBMITTED",
-        submitted_at=timezone.now(),
-    )
-    for family in NAMES[1:]:
-        child = registry.get_model("graduate_tracer", family)
-        child.objects.all().delete()
-        values = private_payload(family)
-        name = next(iter(values))
-        values[name] = "Latest PRIVATE-child"
-        if "date_taken" in values:
-            values["date_taken"] = date.fromisoformat(values["date_taken"])
-        child.objects.create(response_id=root.pk, position=1, **values)
-    late = old_rows(registry, "empty", 1)
-    before = raw_all()
-    MigrationExecutor(connection).migrate(AFTER)
-    after_apps = MigrationExecutor(connection).loader.project_state(AFTER).apps
-    response_model = after_apps.get_model("graduate_tracer", NAMES[0])
-    assert (
-        content.read_confidential_content(
-            response_model.objects.get(pk=root.pk)
-        ).permanent_address_snapshot
-        == "Latest PRIVATE-address 🎓"
-    )
-    assert content.read_confidential_content(response_model.objects.get(pk=late.pk))
-    for family in NAMES:
-        assert [row["id"] for row in raw_all()[family]] == [row["id"] for row in before[family]]
-    MigrationExecutor(connection).migrate(BEFORE)
-    assert {
-        name: [
-            {k: v for k, v in row.items() if k != "confidential_content_ciphertext"} for row in rows
-        ]
-        for name, rows in before.items()
-    } == raw_all()
-
-
-def test_phase_a_old_disposition_new_anonymous_null_is_valid(legacy):
-    root = old_rows(legacy, "submitted")
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    registry = MigrationExecutor(connection).loader.project_state(BACKFILLED).apps
-    model = registry.get_model("graduate_tracer", NAMES[0])
-    source = model.objects.get(pk=root.pk)
-    retained = model.objects.create(
-        student_id=None,
-        status="SUBMITTED",
-        submitted_at=source.submitted_at,
-        anonymized_at=timezone.now(),
-        **{name: getattr(source, name) for name in ANALYTICAL_FIELDS},
-    )
-    GraduateTracerDisposedParticipation.objects.create(
-        student_id=source.student_id, instrument_schema_version=1, disposed_on=timezone.localdate()
-    )
-    source.delete()
-    assert retained.confidential_content_ciphertext is None
-    MigrationExecutor(connection).migrate(AFTER)
-    after_apps = MigrationExecutor(connection).loader.project_state(AFTER).apps
-    response_model = after_apps.get_model("graduate_tracer", NAMES[0])
-    assert verify_anonymized(response_model.objects.get(pk=retained.pk))
-    assert not response_model.objects.filter(pk=root.pk).exists()
-    MigrationExecutor(connection).migrate(BEFORE)
-    restored = (
-        MigrationExecutor(connection)
-        .loader.project_state(BEFORE)
-        .apps.get_model("graduate_tracer", NAMES[0])
-        .objects.get(pk=retained.pk)
-    )
-    assert all(
-        getattr(restored, name) == restored._meta.get_field(name).get_default()
-        for name in content.FIELDS[NAMES[0]]
-    )
-
-
-@pytest.mark.parametrize("family", NAMES)
-@pytest.mark.parametrize("fault", ["tamper", "binding", "schema", "payload", "undecryptable"])
-def test_corrupt_phase_a_aborts_earlier_updates_and_all_ddl(legacy, family, fault):
-    root = old_rows(legacy)
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    registry = MigrationExecutor(connection).loader.project_state(BACKFILLED).apps
-    model = registry.get_model("graduate_tracer", family)
-    row = model.objects.first()
-    token = row.confidential_content_ciphertext
-    envelope = json.loads(Fernet(K1).decrypt(token.encode()))
-    if fault == "binding":
-        envelope[next(iter(content.BINDINGS[family]))] = str(uuid4())
-    elif fault == "schema":
-        envelope["schema_version"] = True
-    elif fault == "payload":
-        envelope["payload"]["unexpected"] = "PRIVATE-extra"
-    token = (
-        "PRIVATE-corrupt-token"
-        if fault == "tamper"
-        else Fernet(K2).encrypt(b"{}").decode()
-        if fault == "undecryptable"
-        else Fernet(K1).encrypt(json.dumps(envelope).encode()).decode()
-    )
-    model.objects.filter(pk=row.pk).update(confidential_content_ciphertext=token)
-    registry.get_model("graduate_tracer", NAMES[0]).objects.filter(pk=root.pk).update(
-        province="Latest PRIVATE-province"
-    )
-    before = raw_all()
-    with pytest.raises(RuntimeError) as caught:
-        MigrationExecutor(connection).migrate(AFTER)
-    safe(caught.value, token)
-    assert raw_all() == before
-    assert AFTER[0] not in MigrationExecutor(connection).loader.applied_migrations
-    for family in NAMES:
-        assert set(content.FIELDS[family]) <= columns(apps.get_model("graduate_tracer", family))
-
-
-@pytest.mark.parametrize(
-    "stage,fault",
-    [
-        (BEFORE, "private"),
-        (BEFORE, "child"),
-        (BACKFILLED, "private"),
-        (BACKFILLED, "child"),
-        (BACKFILLED, "ciphertext"),
-    ],
-)
-def test_migration_anonymous_integrity_aborts_without_normalizing(legacy, stage, fault):
-    anonymous = old_anonymous(legacy)
-    if stage == BACKFILLED:
-        MigrationExecutor(connection).migrate(BACKFILLED)
-    registry = MigrationExecutor(connection).loader.project_state(stage).apps
-    model = registry.get_model("graduate_tracer", NAMES[0])
-    if fault == "private":
-        model.objects.filter(pk=anonymous.pk).update(province="PRIVATE-leaked")
-    elif fault == "child":
-        registry.get_model("graduate_tracer", NAMES[1]).objects.create(
-            response_id=anonymous.pk,
-            position=1,
-            degree_and_specialization="PRIVATE-degree",
-            college_or_university="PRIVATE-school",
-            year_graduated=2020,
-        )
-    else:
-        model.objects.filter(pk=anonymous.pk).update(
-            confidential_content_ciphertext="PRIVATE-token"
-        )
-    before = raw_all()
-    with pytest.raises(RuntimeError) as caught:
-        MigrationExecutor(connection).migrate(AFTER)
-    safe(caught.value, "PRIVATE-token")
-    assert raw_all() == before
-
-
-@pytest.mark.parametrize("family", NAMES)
-def test_corrupt_reverse_rolls_back_plaintext_ddl_and_data(legacy, family):
-    old_rows(legacy)
-    MigrationExecutor(connection).migrate(AFTER)
-    after_apps = MigrationExecutor(connection).loader.project_state(AFTER).apps
-    model = after_apps.get_model("graduate_tracer", family)
-    row = model.objects.first()
-    model.objects.filter(pk=row.pk).update(confidential_content_ciphertext="PRIVATE-corrupt-token")
-    before = raw_all()
-    with pytest.raises(RuntimeError) as caught:
-        MigrationExecutor(connection).migrate(BEFORE)
-    safe(caught.value, "PRIVATE-corrupt-token")
-    assert raw_all() == before
-    for name in NAMES:
-        assert not set(content.FIELDS[name]).intersection(
-            columns(apps.get_model("graduate_tracer", name))
-        )
-
-
-@pytest.mark.parametrize("reverse", [False, True])
-def test_writer_fence_precedes_forward_and_reverse_verification_and_ddl(
-    legacy, monkeypatch, reverse
-):
-    old_rows(legacy)
-    MigrationExecutor(connection).migrate(AFTER if reverse else BACKFILLED)
-    phase = importlib.import_module(
-        "compass.graduate_tracer.migrations.0004_remove_plaintext_confidential_content"
-    )
-    original = phase.lock_tables
-    seen = []
-
-    def probe(registry, editor):
-        original(registry, editor)
-        writer = connection.copy()
-        try:
-            with writer.cursor() as cursor:
-                cursor.execute("SET lock_timeout='100ms'")
-                for name in NAMES:
-                    table = registry.get_model("graduate_tracer", name)._meta.db_table
-                    with pytest.raises(OperationalError, match="lock timeout"):
-                        cursor.execute(f'UPDATE "{table}" SET id=id')
-                    seen.append(name)
-                table = registry.get_model("graduate_tracer", NAMES[0])._meta.db_table
-                # Aggregate report row-population FOR SHARE/FOR UPDATE conflicts with the fence.
-                with pytest.raises(OperationalError, match="lock timeout"):
-                    cursor.execute(f'SELECT id FROM "{table}" FOR UPDATE')
-        finally:
-            writer.close()
-
-    monkeypatch.setattr(phase, "lock_tables", probe)
-    # RunPython stores function references at module import; update reverse reference explicitly.
-    if reverse:
-        monkeypatch.setattr(phase.Migration.operations[-1], "reverse_code", probe)
-    MigrationExecutor(connection).migrate(BEFORE if reverse else AFTER)
-    assert seen == list(NAMES)
-
-
-def test_dual_schema_rotation_refused_and_identical_tokens_kept(legacy):
-    old_rows(legacy)
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    before = raw_all()
-    for dry in (True, False):
-        with pytest.raises(CommandError, match="Legacy plaintext"):
-            rotate(dry_run=dry)
-    MigrationExecutor(connection).migrate(AFTER)
-    for family in NAMES:
-        assert [row["confidential_content_ciphertext"] for row in raw_all()[family]] == [
-            row["confidential_content_ciphertext"] for row in before[family]
-        ]
-
-
-@pytest.mark.parametrize("keys", [(), "", "invalid-key", (K1, K1)])
-def test_invalid_historical_keyring_aborts_without_data_or_schema_change(legacy, settings, keys):
-    old_rows(legacy)
-    before = raw_all()
-    settings.GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS = keys
-    try:
-        with pytest.raises(RuntimeError) as caught:
-            MigrationExecutor(connection).migrate(BACKFILLED)
-        safe(caught.value, "invalid-key")
-        assert raw_all() == before
-    finally:
-        settings.GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS = (K1,)
-
-
 @pytest.mark.parametrize(
     "source",
     [
@@ -1067,59 +683,6 @@ def test_exact_payload_dates_years_and_required_content(family, name, value):
     assert caught.value.reason == "malformed"
 
 
-@pytest.mark.parametrize("family", NAMES[1:])
-def test_existing_child_stale_and_missing_tokens_reconcile(legacy, family):
-    old_rows(legacy)
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    registry = MigrationExecutor(connection).loader.project_state(BACKFILLED).apps
-    model = registry.get_model("graduate_tracer", family)
-    row = model.objects.first()
-    field = next(iter(content.FIELDS[family]))
-    model.objects.filter(pk=row.pk).update(**{field: "Latest PRIVATE-row"})
-    other_values = private_payload(family)
-    if "date_taken" in other_values:
-        other_values["date_taken"] = date.fromisoformat(other_values["date_taken"])
-    other = model.objects.create(response_id=row.response_id, position=2, **other_values)
-    model.objects.filter(pk=other.pk).update(confidential_content_ciphertext="")
-    MigrationExecutor(connection).migrate(AFTER)
-    final = apps.get_model("graduate_tracer", family)
-    assert (
-        getattr(content.read_confidential_content(final.objects.get(pk=row.pk)), field)
-        == "Latest PRIVATE-row"
-    )
-    assert content.read_confidential_content(
-        final.objects.get(pk=other.pk)
-    ).payload() == private_payload(family)
-
-
-def test_migrations_are_runtime_adapter_independent_and_reverse_never_decrypts_anonymous(
-    legacy, monkeypatch
-):
-    old_rows(legacy)
-    anonymous = old_anonymous(legacy)
-    with monkeypatch.context() as guard:
-        for name in [
-            "read_confidential_content",
-            "write_confidential_content",
-            "keyring",
-            "decrypt_bound_json",
-            "encrypt_bound_json",
-        ]:
-            guard.setattr(content, name, forbid)
-        MigrationExecutor(connection).migrate(AFTER)
-    phase = importlib.import_module(
-        "compass.graduate_tracer.migrations.0004_remove_plaintext_confidential_content"
-    )
-    original = phase.decrypt
-
-    def identifiable_only(ring, row, token, family):
-        assert row.pk != anonymous.pk
-        return original(ring, row, token, family)
-
-    monkeypatch.setattr(phase, "decrypt", identifiable_only)
-    MigrationExecutor(connection).migrate(BEFORE)
-
-
 @pytest.mark.parametrize("fault", ["missing", "empty", "invalid", "duplicate", "file", "both"])
 def test_setting_required_and_file_backed_no_fallback(monkeypatch, tmp_path, fault):
     monkeypatch.delenv(SETTING, raising=False)
@@ -1147,10 +710,10 @@ def test_setting_required_and_file_backed_no_fallback(monkeypatch, tmp_path, fau
         safe(caught.value, "private-invalid-key")
 
 
-def test_demo_tracer_projection_uses_explicit_encrypted_snapshots(world, monkeypatch):
+def test_dataset_tracer_projection_uses_explicit_encrypted_snapshots(world, monkeypatch):
     from types import SimpleNamespace
 
-    from compass.demo_seed import scenarios
+    from compass.staging_seed.scenarios import rich as scenarios
 
     item = filled(world)
     private = content.read_confidential_content(item)
@@ -1160,7 +723,7 @@ def test_demo_tracer_projection_uses_explicit_encrypted_snapshots(world, monkeyp
         "program_for",
         lambda _persona: SimpleNamespace(college_id=24, pk=42),
     )
-    values = scenarios._tracer_values(
+    values = scenarios.tracer_values(
         item,
         SimpleNamespace(date_of_birth=birthday),
         {"sex": "MALE"},
