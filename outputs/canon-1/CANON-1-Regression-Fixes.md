@@ -46,6 +46,8 @@ outside authorization. The earlier failing-run evidence remains historical evide
   padding/minimum width so the five essential controls fit one row at 320px.
 - Devices opening explicitly focuses its invoking button, which Safari pointer clicks do not do
   automatically, so closing the dialog restores focus to the actual opener.
+- Appointment rescheduling and Call Slip interview-end confirmation also focus the invoking button
+  before opening a dialog, so Safari returns focus to the action instead of the prior field.
 - WebKit uses capture-phase popstate reversal rather than cancelling Navigation API traversal,
   which left its native Back cursor out of sync after refusal. Other engines retain early
   cancellation. The native guard listeners stay mounted and consult current registrations, avoiding
@@ -68,5 +70,9 @@ remaining operation-name expectation was corrected against the owning routers be
 Frontend units: 767 passed, zero failures/skips. CI self-tests: 42 passed; 167 backend files have
 exactly-once coverage across six planned shards. Ruff format/lint and frontend typecheck passed.
 The extra PDF regression verifies permission loss during an in-flight read, cache discard, and a
-fresh read after authorization is restored. Full backend and both complete 31-suite browser runs are in progress; final results will replace
-this paragraph only after completion. No green result is inferred from focused runs.
+fresh read after authorization is restored. Clean local reruns pass the exposed browser failures:
+18/18 UI hierarchy checks on Chromium and WebKit, 44/44 user-copy checks on Chromium, and 41/41
+Guidance Messages checks on WebKit. The first pushed head's remote frontend tests, targeted frontend
+validation and backend static/contract checks passed; two WebKit shards exposed the dialog focus
+issues now fixed above and a concurrent-load page navigation timeout. Full backend and exact-head
+browser validation are still pending; no full green result is inferred from focused runs.

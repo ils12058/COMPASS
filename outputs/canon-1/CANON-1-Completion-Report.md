@@ -23,8 +23,10 @@ Managed worktree: /Users/reynantlntno/.codex/worktrees/compass-canon-1a/COMPASS.
 ## Validation
 
 Frontend units: 767 passed, zero failed/skipped. Focused seed composition: 13 passed. CI self-tests:
-42 passed and all 167 files covered exactly once. Ruff and frontend typecheck pass. Full backend
-and complete browser regressions are running; a passing focused result is not full acceptance.
+42 passed and all 167 files covered exactly once. Ruff and frontend typecheck pass. Clean local
+reruns pass the exposed browser suites: 18/18 UI hierarchy checks per engine, 44/44 Chromium
+user-copy checks and 41/41 WebKit Guidance Messages checks. Full backend and exact-head browser
+regressions are still required; focused results do not establish full acceptance.
 The historical failing baseline is preserved in CANON-1-Regression-Report.md and its evidence.
 
 The earlier request to stop at CI-only review has been superseded by authorization to fix the
