@@ -4,12 +4,7 @@ import type {
 } from "@/lib/api/generated/model";
 import { dataTable } from "@/components/ui/data-table";
 import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
-import { formatReportPercentage, reportSection } from "@/features/reports/reports-shared";
-
-function programName(program: ProgramColumn): string {
-  if (program.is_legacy) return program.name;
-  return (program.code ? program.code + " — " : "") + program.name;
-}
+import { formatReportPercentage, reportProgramName, reportSection } from "@/features/reports/reports-shared";
 
 function programContext(program: ProgramColumn): string {
   if (program.is_legacy) return "Legacy Program identity";
@@ -38,7 +33,7 @@ export function StudentProfileProgramLegend({
       <ul className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 xl:grid-cols-3">
         {columns.map((program) => (
           <li key={program.key} className="min-w-0">
-            <span className="font-semibold text-ink">{programName(program)}</span>
+            <span className="font-semibold text-ink">{reportProgramName(program)}</span>
             <span className="ml-1 text-xs tabular-nums text-muted">
               n = {program.submitted_inventory_count}
             </span>
@@ -97,7 +92,7 @@ export function StudentProfileSection({
                   className={`${dataTable.headerCell} min-w-36`}
                   title={programContext(program) || undefined}
                 >
-                  <span className="block text-ink">{programName(program)}</span>
+                  <span className="block text-ink">{reportProgramName(program)}</span>
                   {programContext(program) ? (
                     <span className="mt-1 block max-w-56 text-xs font-normal leading-4 text-muted">
                       {programContext(program)}

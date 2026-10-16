@@ -23,23 +23,6 @@ export function InventoryHeading({
   return <PageHeader title={title} description={description} back={back} actions={action} />;
 }
 
-export function InventorySectionHeading({
-  title,
-  children,
-}: {
-  title: string;
-  children?: ReactNode;
-}) {
-  return (
-    <div className="border-b border-border pb-4">
-      <h2 className="font-heading text-xl font-semibold text-ink">{title}</h2>
-      {children ? (
-        <p className="mt-2 text-sm leading-6 text-muted">{children}</p>
-      ) : null}
-    </div>
-  );
-}
-
 export function InventoryNotice({
   title,
   children,

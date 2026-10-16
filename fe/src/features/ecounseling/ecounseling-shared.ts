@@ -12,10 +12,6 @@ import {
   type MediaWorkspaceState,
 } from "@/lib/api/generated/model";
 
-export function ecounselingErrorCode(error: unknown): string | undefined {
-  return error instanceof CompassApiError ? readApiErrorCode(error.body) : undefined;
-}
-
 export function ecounselingErrorMessage(error: unknown, fallback: string): string {
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);

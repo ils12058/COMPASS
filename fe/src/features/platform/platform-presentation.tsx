@@ -25,10 +25,6 @@ export const emailDeliveryStatusLabels: Record<EmailDeliveryStatusValue, string>
   [EmailDeliveryStatusValue.CANCELLED]: "Cancelled",
 };
 
-export function diagnosticStatusLabel(status: DiagnosticStatus): string {
-  return diagnosticLabels[status];
-}
-
 type BadgeTone = "success" | "warning" | "danger" | "info" | "neutral";
 
 const toneClasses: Record<BadgeTone, string> = {

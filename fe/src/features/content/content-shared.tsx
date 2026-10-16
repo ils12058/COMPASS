@@ -18,9 +18,6 @@ import {
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 
-export const contentPrimaryLinkClass =
-  "inline-flex min-h-10 items-center justify-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body motion-reduce:transition-none";
-
 export const contentSecondaryLinkClass =
   "inline-flex min-h-10 items-center justify-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body motion-reduce:transition-none";
 

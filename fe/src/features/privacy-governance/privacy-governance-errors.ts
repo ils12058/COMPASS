@@ -107,7 +107,3 @@ export function privacyErrorMessage(
 export function hasPrivacyConflictCode(error: unknown, code: PrivacyConflictCode): boolean {
   return error instanceof CompassApiError && readApiErrorCode(error.body) === code;
 }
-
-export function isNotFound(error: unknown): boolean {
-  return error instanceof CompassApiError && error.status === 404;
-}

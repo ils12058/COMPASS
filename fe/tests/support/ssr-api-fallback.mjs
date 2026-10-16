@@ -1,4 +1,4 @@
-// Development-only fallback for API reads made by Next while rendering test pages on the server.
+// Local synthetic fallback for API reads made by Next while rendering test pages on the server.
 // Browser suites still provide their own per-test route fixtures; unknown server-side calls fail
 // closed with JSON instead of producing an empty proxy response or touching a real API.
 import { createServer } from "node:http";
@@ -16,7 +16,7 @@ const server = createServer((request, response) => {
   const status = 503;
   const payload = { error: { code: "synthetic_unavailable", message: "Server-side API calls are not part of browser fixtures." } };
 
-  console.log(`${request.method ?? "GET"} ${url.pathname}${url.search} -> ${status}`);
+  console.log(`${request.method ?? "GET"} ${url.pathname} -> ${status}`);
   response.writeHead(status, {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store",

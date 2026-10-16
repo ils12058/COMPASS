@@ -7,7 +7,7 @@ import { join, relative } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 
-import { parseRealtimeConfig, REALTIME_SOCKET_PATH } from "../src/features/realtime/realtime-config.ts";
+import { parseRealtimeConfig, realtimeConfig, REALTIME_SOCKET_PATH } from "../src/features/realtime/realtime-config.ts";
 import { authenticateFrame, parseServerFrame } from "../src/features/realtime/realtime-protocol.ts";
 import {
   BACKOFF_MAX_MS,
@@ -164,6 +164,45 @@ test("a disabled build never requests a ticket or opens a socket", async () => {
   assert.equal(h.state(), "disabled");
   assert.equal(h.tickets.length, 0);
   assert.equal(h.sockets.length, 0);
+});
+
+test("realtime test configuration is confined to an explicit local test runtime and local socket", () => {
+  const previousWindow = Object.getOwnPropertyDescriptor(globalThis, "window");
+  const keys = ["NODE_ENV", "NEXT_PUBLIC_COMPASS_UI_TEST_MODE", "NEXT_PUBLIC_REALTIME_ENABLED", "NEXT_PUBLIC_REALTIME_URL"];
+  const previousEnv = Object.fromEntries(keys.map((key) => [key, process.env[key]]));
+  const localUrl = `ws://127.0.0.1:8080${REALTIME_SOCKET_PATH}`;
+  try {
+    process.env.NODE_ENV = "production";
+    process.env.NEXT_PUBLIC_REALTIME_ENABLED = "true";
+    process.env.NEXT_PUBLIC_REALTIME_URL = SOCKET_URL;
+    globalThis.window = { location: { hostname: "127.0.0.1" }, __COMPASS_REALTIME_TEST_CONFIG__: { url: localUrl } };
+    delete process.env.NEXT_PUBLIC_COMPASS_UI_TEST_MODE;
+    assert.deepEqual(realtimeConfig(), { enabled: true, url: SOCKET_URL }, "ordinary production ignores the seam");
+
+    process.env.NEXT_PUBLIC_COMPASS_UI_TEST_MODE = "1";
+    assert.deepEqual(realtimeConfig(), { enabled: true, url: localUrl });
+    for (const url of [`ws://external.example${REALTIME_SOCKET_PATH}`, SOCKET_URL, `${localUrl}?ticket=x`, "not a url"]) {
+      window.__COMPASS_REALTIME_TEST_CONFIG__.url = url;
+      assert.deepEqual(realtimeConfig(), { enabled: false }, url);
+    }
+    window.__COMPASS_REALTIME_TEST_CONFIG__.url = localUrl;
+    window.location.hostname = "staging.compass.example";
+    assert.deepEqual(realtimeConfig(), { enabled: true, url: SOCKET_URL }, "an external page ignores the seam even in a test build");
+    process.env.NEXT_PUBLIC_REALTIME_URL = localUrl;
+    assert.deepEqual(realtimeConfig(), { enabled: false }, "normal production configuration still requires wss");
+
+    process.env.NODE_ENV = "development";
+    delete process.env.NEXT_PUBLIC_COMPASS_UI_TEST_MODE;
+    window.location.hostname = "localhost";
+    assert.deepEqual(realtimeConfig(), { enabled: true, url: localUrl });
+  } finally {
+    if (previousWindow) Object.defineProperty(globalThis, "window", previousWindow);
+    else delete globalThis.window;
+    for (const key of keys) {
+      if (previousEnv[key] === undefined) delete process.env[key];
+      else process.env[key] = previousEnv[key];
+    }
+  }
 });
 
 test("only a confirmed account has a socket", async () => {
@@ -519,8 +558,6 @@ test("only the portal runtime opens a WebSocket; no feature owns one", () => {
   assert.deepEqual(sockets.map((file) => relative(src, file)), ["features/realtime/realtime-provider.tsx"]);
   const seam = files.filter((file) => readFileSync(file, "utf8").includes("__COMPASS_REALTIME_TEST_CONFIG__"));
   assert.deepEqual(seam.map((file) => relative(src, file)), ["features/realtime/realtime-config.ts"]);
-  const config = readFileSync(join(src, "features/realtime/realtime-config.ts"), "utf8");
-  assert.match(config, /!production && typeof window !== "undefined" && window\.__COMPASS_REALTIME_TEST_CONFIG__/);
   const ticket = readFileSync(join(src, "features/realtime/realtime-ticket.ts"), "utf8");
   assert.doesNotMatch(ticket, /localStorage|sessionStorage|console\./);
 });

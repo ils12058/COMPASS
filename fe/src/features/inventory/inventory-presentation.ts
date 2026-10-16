@@ -24,8 +24,6 @@ import {
   TransportationModeValue,
 } from "@/lib/api/generated/model";
 
-export const INVENTORY_FORM_CODE = "CNSC-OP-GCO-01F5";
-
 export const inventorySections = [
   { id: "personal", label: "Personal & contact" },
   { id: "family", label: "Family & student support" },

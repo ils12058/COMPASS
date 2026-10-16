@@ -75,6 +75,7 @@ def _noncanonical(key):
         ("🔒", "entry 1 is not a valid Fernet key"),
         (base64.urlsafe_b64encode(b"x" * 16).decode(), "entry 1 is not a valid Fernet key"),
         (_noncanonical(K1), "entry 1 is not a valid Fernet key"),
+        (f"{K1},{_noncanonical(K1)}", "entry 2 is not a valid Fernet key"),
         (f"{K1},{K2},{K1}", "entry 3 repeats an earlier key"),
     ],
 )

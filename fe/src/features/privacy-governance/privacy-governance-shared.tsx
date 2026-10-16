@@ -8,7 +8,6 @@ import { useId, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { LoadingRegion } from "@/components/ui/loading-region";
-import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import {
@@ -33,9 +32,6 @@ import { Notice } from "@/components/ui/notice";
 import { PanelMessage, PanelSection } from "@/components/ui/panel";
 
 export const PRIVACY_PAGE_SIZE = 20;
-
-export const primaryLinkClass =
-  "inline-flex min-h-10 items-center justify-center rounded-md border border-brand bg-brand px-4 py-2 text-sm font-semibold text-on-brand transition-colors hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body";
 
 export const secondaryLinkClass =
   "inline-flex min-h-10 items-center justify-center rounded-md border border-border-strong bg-surface-raised px-4 py-2 text-sm font-semibold text-ink transition-colors hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body";
@@ -345,24 +341,6 @@ export function DetailValue({ label, children }: { label: string; children: Reac
   );
 }
 
-export function CategoryList({ items }: { items: readonly string[] }) {
-  if (items.length === 0) {
-    return <p className="text-sm text-muted">None recorded.</p>;
-  }
-  return (
-    <ul className="flex max-w-3xl flex-wrap gap-2">
-      {items.map((item) => (
-        <li
-          key={item}
-          className="rounded-md border border-border bg-surface-subtle px-2.5 py-1 text-sm text-ink"
-        >
-          {item}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 export function FormSection({
   title,
   description,
@@ -457,45 +435,6 @@ export function useListSearchParams() {
   }
 
   return { searchParams, page, update, setPage };
-}
-
-export type LifecycleFilterValue = "active" | "retired" | "all";
-
-export function lifecycleFilterFrom(value: string | null): LifecycleFilterValue {
-  return value === "retired" || value === "all" ? value : "active";
-}
-
-export function lifecycleParams(filter: LifecycleFilterValue): { is_active?: boolean } {
-  if (filter === "active") return { is_active: true };
-  if (filter === "retired") return { is_active: false };
-  return {};
-}
-
-export function LifecycleFilter({
-  id,
-  value,
-  onChange,
-}: {
-  id: string;
-  value: LifecycleFilterValue;
-  onChange: (value: LifecycleFilterValue) => void;
-}) {
-  return (
-    <div className="grid max-w-56 gap-1.5">
-      <label htmlFor={id} className="text-sm font-medium text-ink">
-        Status
-      </label>
-      <Select
-        id={id}
-        value={value}
-        onChange={(event) => onChange(lifecycleFilterFrom(event.target.value))}
-      >
-        <option value="active">Active</option>
-        <option value="retired">Retired</option>
-        <option value="all">All</option>
-      </Select>
-    </div>
-  );
 }
 
 export function EmptyListState({

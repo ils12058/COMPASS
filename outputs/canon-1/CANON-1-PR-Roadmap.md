@@ -1,49 +1,35 @@
-# CANON-1 PR roadmap
+# CANON-1 condensed implementation roadmap
 
-Base verified 2026-10-16: `d353108d1f757386b9020c4d1297e081258d2e4e`.
-No merge, deployment, live reset, Redis purge, storage deletion or live infrastructure change is authorized.
+Verified base for CANON-1B: `0d7fbd0a5fd0ee6d38aba091a27ffa4ed3ac4691`, fetched 2026-10-16
+(Asia/Manila). PR #247 merged CANON-1A. Its exact post-merge backend full-regression run
+[38888769644](https://github.com/ils12058/COMPASS/actions/runs/38888769644) passed all six shards.
+That result does not certify later revisions or browser coverage.
 
-| Slice | Target | Concrete scope | Prerequisites and acceptance |
-| --- | --- | --- | --- |
-| CANON-1A — test discovery and CI coverage | staging | Register three backend files; include My Activity dependencies; select full suite on model edits; match pytest discovery; verify split-node coverage; repair Ruff; discover all browser suites on Chromium/WebKit with attributable failures and four shards per engine; remove workstation-only evidence path; enable validation on the reset integration target while preserving manual deployment | CI self-tests, exact-once coverage, lint, static/contract/migration checks, frontend generation/typecheck/build, classified regression evidence. Application green is a later checkpoint; no valid tests are deleted/skipped. |
-| CANON-1B — inherited regressions | staging | Fix independently reproduced seed, fixture, contract, migration isolation and user-copy/browser failures by root cause | Now included in draft PR #247 under the explicit follow-up authorization; ordinary validation uses the repaired planner and all browser suites. Production bugs and fixture updates need separate justification. No blanket assertion rewrites. Full six-shard run and registered browser results required. |
-| CANON-2 — compatible backend cleanup | staging | Review dead stubs/action vocabulary and Routine wrappers; domain-by-domain service/route/validation consumer tracing; capability drift handling | 1A trusted CI, 1B green baseline for attribution. Matrix evidence for each deletion; current policy/encryption/authorization/lifecycle invariants preserved. Retention tombstones and ledger changes excluded. |
-| CANON-3 — frontend/API consumers | staging where compatible, otherwise reset integration | Retired retention redirect; duplicated utilities/presentations; source-owned generated contract; supported deep links and strict error semantics | Domain/API consumer map, regenerated clients, unit/browser/build checks. Removal of currently served API contracts is reset-only if deployed frontend consumers would break. No visual redesign. |
-| CANON-2R — final PG-1A decommission | canon/compass-clean-baseline | Remove retired task registrations, 409 services, ledger models and legacy fixture machinery where proved obsolete; replace ledger-dependent E-Counseling queries with surviving custody rules | Reviewed compatible prerequisites; stopped/isolated old runtime and broker as cutover prerequisite; external callbacks/storage review; privacy absence/security tests. Never ordinary deploy to old staging. |
-| CANON-4 — canonical schema | canon/compass-clean-baseline | Final models, minimal valid migration graph, no dead schema/transition backfills; explicit config bootstrap | 2/3/2R reviewed. Existing-vs-canonical schema comparison with explained differences; fresh PostgreSQL tests A–E; constraints, indexes, defaults, key rotation, provenance and source ownership verified. Number of initial files is determined by the actual graph. |
-| CANON-5 — one deterministic synthetic dataset | canon/compass-clean-baseline | Modernize existing seeder, retire additive staging-only upgrades, cover assisted GM/notifications/printing/form corrections/Activity/DPO/E-Counseling; retain 57-Student population unless expansion separately approved | Canonical schema and sync order validated; actual count/coverage report, idempotent rerun, concurrent-run exclusion, environment/credential/synthetic-domain safety; no email/provider side effects. |
-| CANON-6 — complete canonical regression | canon/compass-clean-baseline | Full backend/shards, privacy, encryption, concurrency, reports/PDF, frontend unit/build, Chromium/WebKit/responsive/printing, representative role-scoped UAT | 4/5 and current APIs finalized. Exact revision, zero skipped required shards, all registered checks execute and pass. Record unsuccessful checks too. |
-| CANON-7 — operator rebuild preparation | canon/compass-clean-baseline | Resource inventory/classification, non-destructive preflight, typed environment/scope/revision gate, local rehearsal and rollback/failure procedure | No live destructive action. Disposable local full rehearsal, schema/seed/health/transcript/CI evidence, explicit operator approvals, secret preservation and incompatible-image rollback fencing. Normal CI/deploy must never invoke reset. |
+The owner consolidated the remaining milestone into four implementation slices. This replaces the
+older proposed CANON-2/3/2R/4/5/6/7 PR split and the regression work already incorporated into #247.
+Existing audit, inventories and historical regression reports remain evidence; they are not a
+second implementation backlog to repeat verbatim.
 
-## Current compatible regression checkpoint
+| Slice | Target | Scope and acceptance |
+| --- | --- | --- |
+| CANON-1A — CI Foundation | staging; merged #247 | Complete backend discovery (167 files, six shards), all 31 browser suites on both engines, attributable suite failures, CI selector self-tests, initial fixture/application regression fixes. Exact merged backend run passed; browser failures handed to 1B. |
+| CANON-1B — Full-Stack Cleanup & Browser Stabilization | staging; current | Remove caller-proven dead aliases/components/compatibility code; consolidate safe shared primitives and frontend consumers; stabilize required browser matrix without hiding assertions; document PG-1A reset-only boundary. One compatible PR, generated-client/contract consistency, focused domain tests and exact-revision CI. See implementation and browser reports. |
+| CANON-1C — Canonical Schema & Seeder | separate clean-baseline integration branch | Combine final PG-1A source/ledger decommission, canonical model/migration baseline and deterministic synthetic seeder work. Review tombstone/broker/runtime/callback prerequisites, provider-role model removal, old capability-name guards, frozen migration schemas and additive seed namespace together. Compare schema/constraints/indexes/defaults; fresh PostgreSQL migration tests; encryption/key rotation/provenance/ownership; seed rerun/concurrency/environment safety. No Student population expansion authorized here. |
+| CANON-1D — Final Regression & Staging Rebuild Preparation | clean-baseline integration branch | Complete backend and both browser engines at the reviewed final revision; role-scoped UAT, privacy/encryption/PDF/media regressions; non-destructive resource inventory and typed environment/revision gates; disposable local rebuild rehearsal, rollback fencing and operator handoff. No live reset execution. |
 
-The owner explicitly authorized fixing all exposed failures on 2026-10-16. The earlier stop after
-CI-only registration is superseded: the compatible regression fixes now continue on draft PR #247.
-See CANON-1-Regression-Fixes.md for each root cause, source contract and retained assertion. This
-combines the small prerequisite CI/fixture/seeder/browser fixes into a reviewable checkpoint;
-full backend and both browser engines must pass before claiming a green baseline. No merge occurs.
-The larger canonicalization/removal/reset slices remain separate work after this checkpoint.
+## Integration and reset gates
 
-Create the dedicated integration branch only when incompatible work begins, with the reviewed
-compatible base recorded. PRs into that branch must state reset-only safety and exact dependencies.
-Do not merge it into staging or deploy it until separately approved controlled cutover.
+Create the reset integration branch only when incompatible work begins and record its reviewed
+compatible base. Never merge incompatible schema/history/tombstone removals into ordinary staging.
+Keep supported APIs, deployed-frontend compatibility, encryption and authorization through 1B.
+Old retention page bookmarks cease redirecting in 1B and return 404; the canonical oversight route
+and all supported APIs remain. No data/schema cutover is required for that route retirement.
 
-Each implementation PR records base SHA, scope, architectural reason, removed/replaced files,
-compatibility/security effects, focused/full relevant test results, known regressions, migration
-effects and deployment safety. Regression fixes must explain why the old expectation/fixture or
-production behavior violates the current approved contract.
+The [PG-1A handoff](CANON-1B-PG-1A-Reset-Handoff.md) identifies actual ledger consumers and the
+required worker/Beat stop, broker isolation, callback/provider/object-store decisions and rollback
+image fencing. PostgreSQL reset does not delete provider artifacts, object storage, Redis messages
+or backups. Their classification and any destructive action require separate authorization.
 
-## Later deliverables
-
-The existing audit, matrix, CI baseline, migration inventory, regression report and this roadmap
-have source/command evidence. Do not create a claimed canonical schema comparison, successful
-seeder validation, completed reset runbook/rehearsal or milestone completion report until their
-implementation/evidence exists. A CANON-1A handoff report may explicitly record partial progress.
-
-## Regression work now included in PR #247
-
-Backend exact fixture/contract alignment, canonical seed classification and partial draft handling,
-controlled user copy, browser fixture synchronization, PDF query lifetime, WebKit Back/device/download
-behavior, narrow call controls and explicit initiation push policy are implemented in the authorized
-follow-up. Complete validation remains the gate; the earlier proposed 1B-A through 1B-D PR split is
-superseded for these small compatible repairs. Reset-only history/schema changes are still excluded.
+The reset itself remains a separately authorized operation after 1D preparation. No merge,
+deployment, infrastructure modification, secret rotation, migration rewrite, live migration,
+database reset, Redis purge or external artifact deletion is part of CANON-1B.

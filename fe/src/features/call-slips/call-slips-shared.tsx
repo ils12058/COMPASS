@@ -126,10 +126,6 @@ export function CallSlipQueryError({
   );
 }
 
-export function CallSlipNotice({ children }: { children: ReactNode }) {
-  return <p role="status" className="mt-4 text-sm text-muted">{children}</p>;
-}
-
 // A Call Slip's report time is when the Student is expected to report. Active Call Slips default
 // to the nearest report time; completed, voided, and mixed lists to the latest (ADR-090).
 export const callSlipOrderingOptions: readonly SortOption<CallSlipOrdering>[] = [

@@ -1,6 +1,6 @@
 "use client";
 
-import type { ChangeEvent, ReactNode } from "react";
+import type { ChangeEvent } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -323,8 +323,4 @@ export function BooleanField({
       {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </fieldset>
   );
-}
-
-export function InlineHelp({ children }: { children: ReactNode }) {
-  return <p className="text-xs leading-5 text-muted">{children}</p>;
 }

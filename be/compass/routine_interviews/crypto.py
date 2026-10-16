@@ -6,7 +6,7 @@ Payload validation and authorization remain in the content and service layers.
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from enum import StrEnum
 from uuid import UUID
 
@@ -28,21 +28,11 @@ class RoutineContentSection(StrEnum):
     COUNSELOR_EVALUATION = "counselor_evaluation"
 
 
-def parse_keyring(value: str | Sequence[str], *, setting: str = KEYRING_SETTING) -> tuple[str, ...]:
-    """Compatibility boundary for existing Routine keyring callers."""
-
-    return crypto.parse_fernet_keyring(value, setting=setting)
-
-
-def keyring_reuses_secret(keys: Sequence[str], *secrets: str) -> bool:
-    """Compatibility boundary for existing Routine key-reuse checks."""
-
-    return crypto.keyring_reuses_secret(keys, *secrets)
-
-
 def _configured_keyring() -> tuple[str, ...]:
     try:
-        return parse_keyring(getattr(settings, KEYRING_SETTING, ""))
+        return crypto.parse_fernet_keyring(
+            getattr(settings, KEYRING_SETTING, ""), setting=KEYRING_SETTING
+        )
     except ValueError as exc:
         raise ImproperlyConfigured(str(exc)) from None
 
@@ -117,7 +107,5 @@ __all__ = [
     "decrypt_section",
     "encrypt_section",
     "encrypted_with_primary_key",
-    "keyring_reuses_secret",
-    "parse_keyring",
     "reencrypt_with_primary_key",
 ]
