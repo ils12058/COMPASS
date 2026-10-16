@@ -1,6 +1,6 @@
 # Staging Dataset v1 — Account Catalog
 
-COMPASS Staging Dataset v1 (dataset version 1). Generated 2026-10-16T22:02:57+08:00 by `seed_staging_dataset report` from the manifest and a passing read-only verification of the local-staging database. Do not edit by hand: change `be/compass/staging_seed/` and regenerate.
+COMPASS Staging Dataset v1 (dataset version 1). Generated 2026-10-16T22:51:48+00:00 by `seed_staging_dataset report` from the manifest and a passing read-only verification of the local-staging database. Do not edit by hand: change `be/compass/staging_seed/` and regenerate.
 
 All names, identifiers, addresses and email addresses are synthetic. This document contains no passwords, MFA secrets, tokens, confidential form answers or counseling content, and no evaluator identities.
 
@@ -22,6 +22,7 @@ Email addresses use the configured `STAGING_SEED_EMAIL_DOMAIN`; on another stagi
 | head_guidance | STG-E-0003 | Ma. Lourdes Pascual Villareal | stg-head-guidance@compass-staging.test | COUNSELOR | HEAD_GUIDANCE_COUNSELOR | Awaiting credential issuance | UAT-ready (assignable) | HGC-SUP-01 HGC-ASN-01 HGC-EXIT-01 HGC-EXIT-02 HGC-REP-01 HGC-FB-01 HGC-AY-01 | Institution-wide supervision, Academic Years, Exit Interview opportunities and corrections, Services, reports and feedback results; has a consultation schedule. | One Head account exists; evaluators sharing it see each other's changes. |
 | it_admin | STG-E-0001 | Ramon Castillo Bautista | stg-it-admin@compass-staging.test | IT_ADMIN | — | Awaiting credential issuance | UAT-ready (assignable) | ITA-ACC-01 ITA-ORG-01 ITA-PLT-01 | Primary IT Administrator: accounts, access policy, organization, Platform Operations. | No access to confidential guidance records. |
 | it_admin_2 | STG-E-0002 | Jocelyn Bernal Arevalo | stg-it-admin-2@compass-staging.test | IT_ADMIN | — | Awaiting credential issuance | UAT-ready (assignable) | ITA-POL-01 ITA-NEG-01 | Second IT Administrator for a parallel evaluator; same authority as it_admin. | No access to confidential guidance records. |
+| it_admin_3 | STG-E-0014 | Denise Alonzo Villanueva | stg-it-admin-3@compass-staging.test | IT_ADMIN | — | Awaiting credential issuance | UAT-ready (assignable) | ITA-PLT-02 | Third IT Administrator for independent ITSO UAT; reviews platform health and access. | No access to confidential guidance records; do not modify dataset accounts. |
 
 ## Staff — restricted (negative tests)
 
@@ -75,6 +76,8 @@ Email addresses use the configured `STAGING_SEED_EMAIL_DOMAIN`; on another stagi
 | ar_22 | STG-S-0122 | Cristina Yabut | stg-ar-22@compass-staging.test | CURRENT | MAIN/CBPA | BSENTREP | 3 | Awaiting credential issuance | UAT-ready (assignable) | STU-FB-01 | Inventory 2026-2027: submitted; Appointments: 1 past, awaiting outcome; 1 unread notification(s) | Single-use action: once performed, a rerun does not restore the initial state. |
 | ar_23 | STG-S-0123 | Dominic Zamora | stg-ar-23@compass-staging.test | CURRENT | MERCEDES/CFAST | BSF | 2 | Awaiting credential issuance | UAT-ready (assignable) | STU-APT-06 | Inventory 2026-2027: submitted; Appointments: 1 past, awaiting outcome; 1 unread notification(s) | Single-use action: once performed, a rerun does not restore the initial state. |
 | ar_24 | STG-S-0124 | Erika Abrenica | stg-ar-24@compass-staging.test | CURRENT | ENTIENZA/ENTIENZA | BSED | 4 | Awaiting credential issuance | UAT-ready (assignable) | STU-GM-02 | Inventory 2026-2027: submitted; Exit Interview 2026-2027: SUBMITTED | Single-use action: once performed, a rerun does not restore the initial state. |
+| ar_25 | STG-S-0125 | Felicia Balagtas | stg-ar-25@compass-staging.test | GRADUATED | MAIN/CCMS | BSIT | 4 | Awaiting credential issuance | UAT-ready (assignable) | STU-GT-03 | 1 historical Inventory record(s); Exit Interview 2025-2026: SUBMITTED; Graduate Tracer: DRAFT | Single-use action: once performed, a rerun does not restore the initial state. |
+| ar_26 | STG-S-0126 | Gian Catacutan | stg-ar-26@compass-staging.test | GRADUATED | MAIN/CBPA | BSA | 4 | Awaiting credential issuance | UAT-ready (assignable) | STU-GM-07 | 1 historical Inventory record(s); Exit Interview 2025-2026: SUBMITTED; Graduate Tracer: SUBMITTED | Single-use action: once performed, a rerun does not restore the initial state. |
 
 ## Students — background population
 

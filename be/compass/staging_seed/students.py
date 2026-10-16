@@ -1,9 +1,9 @@
-"""The synthetic Student population of Staging Dataset v1 (100 Students by default).
+"""The synthetic Student population of Staging Dataset v1 (102 Students by default).
 
 Three groups, all source-controlled and deterministic (no RNG):
 
 * RICH_SCENARIO (11): multi-domain stories across three Academic Years.
-* ACTION_READY (24): one clear, evaluator-owned pending action each, so two evaluators never
+* ACTION_READY (26): one clear, evaluator-owned pending action each, so two evaluators never
   need the same Student.
 * BACKGROUND (65): a mostly quiet population that gives reports, rosters and filters realistic
   variety across every campus. One background account is disabled for negative tests.
@@ -604,7 +604,34 @@ ACTION_READY_ROWS = (
         "Graduating: Exit Interview submitted",
         "Exit Interview submitted: Head Guidance may reopen it; Good Moral can be requested.",
     ),
+    (
+        "Felicia",
+        "Balagtas",
+        "FEMALE",
+        "BSIT",
+        4,
+        "SUBMITTED",
+        "ordinary",
+        Lifecycle.GRADUATED,
+        "Graduate: Graduate Tracer draft to complete",
+        "Graduated June 2026 with historical Inventory and Exit Interview; Tracer draft.",
+    ),
+    (
+        "Gian",
+        "Catacutan",
+        "MALE",
+        "BSA",
+        4,
+        "SUBMITTED",
+        "ordinary",
+        Lifecycle.GRADUATED,
+        "Graduate: ready to request Good Moral",
+        "Graduated June 2026 with submitted Exit Interview and Tracer; no Good Moral request.",
+    ),
 )
+
+# Existing ar_13 keeps its not-started Tracer. Only the two appended Alumni get new fixtures.
+ACTION_READY_TRACERS = {"ar_25": "draft", "ar_26": "related"}
 
 # --- Background Students -----------------------------------------------------------------------
 # (first, last, program, year, inventory state, background, lifecycle, tracer)
@@ -724,7 +751,7 @@ def _action_ready() -> tuple[StudentSpec, ...]:
                 year_levels=_year_levels(year, state, lifecycle, 0),
                 inventory_state=state,
                 background=background,
-                tracer="missing",
+                tracer=ACTION_READY_TRACERS.get(f"ar_{ordinal:02d}", "missing"),
                 ordinal=100 + ordinal,
                 enrolled_year_level=year,
                 summary=summary,

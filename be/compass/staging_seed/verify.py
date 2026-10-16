@@ -262,6 +262,12 @@ def _predicate(lookup: Lookup, key: str, name: str) -> bool:
     if kind == "ecounseling" and arg == "no_room":
         return not ECounselingRoom.objects.filter(appointment__student=user).exists()
     if kind == "exit":
+        if arg == "historical_submitted":
+            return (
+                ExitInterview.objects.filter(student=user, status="SUBMITTED")
+                .exclude(academic_year=lookup.current_year)
+                .exists()
+            )
         rows = ExitInterview.objects.filter(student=user, academic_year=lookup.current_year)
         opportunity = ExitInterviewOpportunity.objects.filter(
             student=user, academic_year=lookup.current_year

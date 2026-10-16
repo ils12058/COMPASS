@@ -19,6 +19,7 @@ from .identities import AccountSpec, StudentGroup, StudentSpec, Suitability
 from .manifest import (
     ACCOUNTS,
     SCENARIOS,
+    UAT_40_ALLOCATION,
     Readiness,
     scenarios_for,
     stakeholder,
@@ -279,7 +280,7 @@ GUIDE_NOTES = {
         "their mutating scenarios (opportunities, reopen, reassignment) one at a time."
     ),
     "IT Administrator": (
-        "Two equivalent accounts let two evaluators work in parallel. Use newly created "
+        "Three equivalent accounts let three ITSO evaluators work independently. Use newly created "
         "synthetic accounts for account-management changes; never edit dataset accounts."
     ),
     "Data Protection Officer": (
@@ -310,6 +311,24 @@ def _guide(result) -> str:
         "never commit evaluator names or contact details.",
         "- Credentials are delivered privately from the protected handoff file; this guide and "
         "the catalog never contain them.",
+        "",
+        "## Proposed 40-person allocation",
+        "",
+        "Each key below belongs to a different participant. Alumni use the STUDENT role with "
+        "GRADUATED lifecycle; ITSO personnel use IT_ADMIN. This is a selection proposal, not "
+        "authorization to issue credentials. No background or onboarding account is included.",
+        "",
+        *_table(
+            ("Participant category", "Count", "Exact account keys"),
+            [
+                (category, len(keys), ", ".join(f"`{key}`" for key in keys))
+                for category, keys in UAT_40_ALLOCATION.items()
+            ],
+        ),
+        "",
+        "Keep one evaluator per account. Confirm mailbox ownership and staff authenticator "
+        "enrollment before issuance; record actual assignments only in the private template. "
+        "The template also lists reserve accounts; only the 40 keys above form this allocation.",
         "",
     ]
     for role in STAKEHOLDER_ORDER:
@@ -478,6 +497,9 @@ def _summary(result) -> str:
         f"{', '.join(result.preparation_dates) or 'none'}.",
         f"- Accounts: **{counts['accounts']}** ({counts['students']} Students, "
         f"{counts['staff']} staff).",
+        "- Proposed allocation: **40 independent participants** — 1 Head, 3 Counselors, "
+        "2 Guidance Services Staff, 25 current Students, 5 graduated Alumni, 3 ITSO and 1 DPO. "
+        "See the Selection Guide for exact account keys; credential issuance remains separate.",
         f"- Executable UAT scenarios: **{counts['scenarios_executable']}**; "
         f"pending-implementation scenarios: **{counts['scenarios_pending']}**.",
         f"- Verification: **{'PASSED' if result.passed else 'FAILED'}** — {sections}.",

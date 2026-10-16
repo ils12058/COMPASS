@@ -1,6 +1,6 @@
 # UAT Account Selection Guide
 
-COMPASS Staging Dataset v1 (dataset version 1). Generated 2026-10-16T22:02:57+08:00 by `seed_staging_dataset report` from the manifest and a passing read-only verification of the local-staging database. Do not edit by hand: change `be/compass/staging_seed/` and regenerate.
+COMPASS Staging Dataset v1 (dataset version 1). Generated 2026-10-16T22:51:48+00:00 by `seed_staging_dataset report` from the manifest and a passing read-only verification of the local-staging database. Do not edit by hand: change `be/compass/staging_seed/` and regenerate.
 
 All names, identifiers, addresses and email addresses are synthetic. This document contains no passwords, MFA secrets, tokens, confidential form answers or counseling content, and no evaluator identities.
 
@@ -13,6 +13,22 @@ How to choose seeded accounts for stakeholder UAT. Recommendations follow the sc
 - Restricted accounts are for negative-authorization tests only. Disabled accounts cannot receive credentials; the others need `issue-credentials --account <key>`.
 - Record assignments only in the private copy of `UAT-ACCOUNT-ASSIGNMENT-TEMPLATE.csv`; never commit evaluator names or contact details.
 - Credentials are delivered privately from the protected handoff file; this guide and the catalog never contain them.
+
+## Proposed 40-person allocation
+
+Each key below belongs to a different participant. Alumni use the STUDENT role with GRADUATED lifecycle; ITSO personnel use IT_ADMIN. This is a selection proposal, not authorization to issue credentials. No background or onboarding account is included.
+
+| Participant category | Count | Exact account keys |
+| --- | --- | --- |
+| Head Guidance Counselor | 1 | `head_guidance` |
+| Guidance Counselor | 3 | `counselor_a`, `counselor_b`, `counselor_c` |
+| Guidance Services Staff | 2 | `gss_a`, `gss_b` |
+| Current Student | 25 | `first_year`, `second_year`, `ar_01`, `ar_02`, `ar_03`, `ar_04`, `ar_05`, `ar_06`, `ar_07`, `ar_08`, `ar_09`, `ar_10`, `ar_11`, `ar_12`, `ar_14`, `ar_15`, `ar_16`, `ar_17`, `ar_18`, `ar_19`, `ar_20`, `ar_21`, `ar_22`, `ar_23`, `ar_24` |
+| Alumni | 5 | `recent_graduate`, `alumni`, `ar_13`, `ar_25`, `ar_26` |
+| ITSO personnel | 3 | `it_admin`, `it_admin_2`, `it_admin_3` |
+| Data Protection Officer | 1 | `dpo` |
+
+Keep one evaluator per account. Confirm mailbox ownership and staff authenticator enrollment before issuance; record actual assignments only in the private template. The template also lists reserve accounts; only the 40 keys above form this allocation.
 
 ## Student
 
@@ -55,6 +71,8 @@ Give each Student evaluator their own action-ready or rich account. Action-ready
 | ar_22 | STG-S-0122 | Past Appointment awaiting an outcome | UAT-ready (assignable) | STU-FB-01 | Yes — state changes | A past Appointment with counselor_b still SCHEDULED: complete it or mark no-show. | Single-use action: once performed, a rerun does not restore the initial state. |
 | ar_23 | STG-S-0123 | Past Appointment awaiting an outcome | UAT-ready (assignable) | STU-APT-06 | No — read-only | A past Appointment with counselor_c still SCHEDULED: complete it or mark no-show. | Single-use action: once performed, a rerun does not restore the initial state. |
 | ar_24 | STG-S-0124 | Graduating: Exit Interview submitted | UAT-ready (assignable) | STU-GM-02 | Yes — state changes | Exit Interview submitted: Head Guidance may reopen it; Good Moral can be requested. | Single-use action: once performed, a rerun does not restore the initial state. |
+| ar_25 | STG-S-0125 | Graduate: Graduate Tracer draft to complete | UAT-ready (assignable) | STU-GT-03 | Yes — state changes | Graduated June 2026 with historical Inventory and Exit Interview; Tracer draft. | Single-use action: once performed, a rerun does not restore the initial state. |
+| ar_26 | STG-S-0126 | Graduate: ready to request Good Moral | UAT-ready (assignable) | STU-GM-07 | Yes — state changes | Graduated June 2026 with submitted Exit Interview and Tracer; no Good Moral request. | Single-use action: once performed, a rerun does not restore the initial state. |
 | bg_65 | STG-S-0265 | Disabled Student account | Restricted (negative tests only) | NEG-02 | No — read-only | Disabled Student account (duplicate record closed by an administrator). | Disabled: cannot sign in. |
 
 Background-only (64): `bg_01`, `bg_02`, `bg_03`, `bg_04`, `bg_05`, `bg_06`, `bg_07`, `bg_08`, `bg_09`, `bg_10`, `bg_11`, `bg_12`, `bg_13`, `bg_14`, `bg_15`, `bg_16`, `bg_17`, `bg_18`, `bg_19`, `bg_20`, `bg_21`, `bg_22`, `bg_23`, `bg_24`, `bg_25`, `bg_26`, `bg_27`, `bg_28`, `bg_29`, `bg_30`, `bg_31`, `bg_32`, `bg_33`, `bg_34`, `bg_35`, `bg_36`, `bg_37`, `bg_38`, `bg_39`, `bg_40`, `bg_41`, `bg_42`, `bg_43`, `bg_44`, `bg_45`, `bg_46`, `bg_47`, `bg_48`, `bg_49`, `bg_50`, `bg_51`, `bg_52`, `bg_53`, `bg_54`, `bg_55`, `bg_56`, `bg_57`, `bg_58`, `bg_59`, `bg_60`, `bg_61`, `bg_62`, `bg_63`, `bg_64`. They appear in rosters, filters and reports and are the targets named by some staff scenarios; do not assign them to evaluators.
@@ -90,12 +108,13 @@ One Head account exists, as at the institution. If two evaluators share it, sche
 
 ## IT Administrator
 
-Two equivalent accounts let two evaluators work in parallel. Use newly created synthetic accounts for account-management changes; never edit dataset accounts.
+Three equivalent accounts let three ITSO evaluators work independently. Use newly created synthetic accounts for account-management changes; never edit dataset accounts.
 
 | Account | ID | Why recommended | Assignable | Scenarios | Initial state changes? | What it starts with | Conflicts / limitations |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | it_admin | STG-E-0001 | IT Administrator | UAT-ready (assignable) | ITA-ACC-01 ITA-ORG-01 ITA-PLT-01 | Yes — state changes | Primary IT Administrator: accounts, access policy, organization, Platform Operations. | No access to confidential guidance records. |
 | it_admin_2 | STG-E-0002 | IT Administrator (second evaluator) | UAT-ready (assignable) | ITA-POL-01 ITA-NEG-01 | Yes — state changes | Second IT Administrator for a parallel evaluator; same authority as it_admin. | No access to confidential guidance records. |
+| it_admin_3 | STG-E-0014 | IT Administrator (third evaluator) | UAT-ready (assignable) | ITA-PLT-02 | No — read-only | Third IT Administrator for independent ITSO UAT; reviews platform health and access. | No access to confidential guidance records; do not modify dataset accounts. |
 
 ## Data Protection Officer
 
