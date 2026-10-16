@@ -13,7 +13,7 @@ import { GoodMoralCancelAction } from "@/features/good-moral/good-moral-cancella
 import { GoodMoralCorrectionForm } from "@/features/good-moral/good-moral-correction-form";
 import { GoodMoralPreparationSection } from "@/features/good-moral/good-moral-preparation-section";
 import { GoodMoralIssueSection } from "@/features/good-moral/good-moral-issue-section";
-import { GoodMoralPdfDownload } from "@/features/good-moral/good-moral-pdf";
+import { GoodMoralIssuedPdf } from "@/features/good-moral/good-moral-issued-pdf";
 import {
   GoodMoralDetailSkeleton,
   GoodMoralError,
@@ -169,7 +169,7 @@ export function GoodMoralCounselorDetail({
             <GoodMoralField label="Official revision" value={item.form_revision?.official_revision ? `Revision ${item.form_revision.official_revision}` : null} />
           </dl>
           <div className="mt-5 border-t border-border pt-4">
-            {item.actions.can_download && !detail.isError ? <GoodMoralPdfDownload requestId={item.id} studentFacing={false} /> : null}
+            {item.actions.can_download && !detail.isError ? <GoodMoralIssuedPdf key={item.id} requestId={item.id} /> : null}
           </div>
         </GoodMoralSection>
       ) : null}
