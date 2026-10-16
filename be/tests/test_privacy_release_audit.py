@@ -298,6 +298,11 @@ def test_graduate_tracer_xlsx_release_records_only_safe_report_context(monkeypat
     assert event.target_id == "1"
     assert event.metadata == {
         "report_type": "graduate_tracer",
+        "college_id": None,
+        "college_code": None,
+        "program_id": None,
+        "program_code": None,
+        "graduation_year": None,
         "format": "XLSX",
         "instrument_schema_version": 1,
         "submitted_from": "2026-01-01",

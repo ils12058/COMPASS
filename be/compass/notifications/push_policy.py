@@ -24,6 +24,7 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
         PushDecision.PUSH,
         "You have an appointment update.",
     ),
+    NotificationEvent.GOOD_MORAL_REQUEST_INITIATED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.GOOD_MORAL_ISSUED: (
         PushDecision.PUSH,
         "Your Good Moral request has an update.",

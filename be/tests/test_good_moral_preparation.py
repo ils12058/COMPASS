@@ -151,7 +151,7 @@ def test_safe_corrections_preserve_sources_and_ready_requires_reconfirmation():
         actor=staff,
         request_id=item.pk,
         changes={
-            "year_level_snapshot": "Third",
+            "year_level_snapshot": "3rd Year",
             "course_snapshot": "BS Computing",
             "official_receipt_number": "OR-123",
         },
@@ -323,12 +323,15 @@ def test_prepare_validates_completeness_and_rejects_stale_review():
             context=AuditContext.user(staff),
             expected_resource_version=(item.updated_at - timedelta(seconds=1)).isoformat(),
         )
-    update_request(
-        actor=staff,
-        request_id=item.pk,
-        changes={"semester_snapshot": ""},
-        context=AuditContext.user(staff),
-    )
+    with pytest.raises(InvalidGoodMoralInput):
+        update_request(
+            actor=staff,
+            request_id=item.pk,
+            changes={"semester_snapshot": ""},
+            context=AuditContext.user(staff),
+        )
+    # Historical incomplete records must also fail the preparation boundary.
+    type(item).objects.filter(pk=item.pk).update(semester_snapshot="")
     with pytest.raises(GoodMoralConflict):
         prepare_request(actor=staff, request_id=item.pk, context=AuditContext.user(staff))
     item.refresh_from_db()

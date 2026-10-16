@@ -231,11 +231,17 @@ class DemoV2CompositionTests(TestCase):
         early = exits.get(student=demo.demo_user(PERSONAS_BY_KEY["population_04"]))
         nearly = exits.get(student=demo.demo_user(PERSONAS_BY_KEY["population_07"]))
         assert early.self_assessment_ratings.count() == 0
+        assert early.college_feedback_ratings.count() == 0
         assert nearly.self_assessment_ratings.count() == 15
         assert len(set(nearly.self_assessment_ratings.values_list("rating", flat=True))) == 3
         tracers = GraduateTracerResponse.objects.all()
         assert tracers.filter(status="SUBMITTED").count() == 6
         assert tracers.filter(status="DRAFT").count() == 1
+        for row in tracers.select_related("graduated_program", "graduated_college"):
+            assert row.graduated_program.college_id == row.graduated_college_id
+            assert row.graduation_year == (
+                2025 if row.student == demo.demo_user(demo.ALUMNI) else 2026
+            )
         assert set(
             tracers.filter(status="SUBMITTED").values_list("current_employment_state", flat=True)
         ) == {"EMPLOYED", "NOT_EMPLOYED", "NEVER_EMPLOYED"}
@@ -308,9 +314,11 @@ class DemoV2CompositionTests(TestCase):
 @pytest.mark.parametrize("name", REQUIRED_KEYRINGS)
 @pytest.mark.parametrize("value", ([], ["invalid-key"]))
 def test_keyring_preflight_fails_before_any_write(demo_env, name, value):
+    baseline_audit_count = AuditEvent.objects.count()
     with override_settings(**{name: value}), pytest.raises(DemoSeedError, match=name):
         seed_demo_staging()
-    assert User.objects.count() == AuditEvent.objects.count() == 0
+    assert User.objects.count() == 0
+    assert AuditEvent.objects.count() == baseline_audit_count
 
 
 @pytest.mark.django_db
