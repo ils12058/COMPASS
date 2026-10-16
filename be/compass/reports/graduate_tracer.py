@@ -330,10 +330,14 @@ def build_graduate_tracer_report(
             college_obj = program_obj.college
     if graduation_year is not None:
         if type(graduation_year) is not int or isinstance(graduation_year, bool):
-            raise InvalidGraduateTracerReportFilter("graduation_year must be a valid graduation year.")
+            raise InvalidGraduateTracerReportFilter(
+                "graduation_year must be a valid graduation year."
+            )
         current_year = institution_today().year
         if not (1900 <= graduation_year <= current_year):
-            raise InvalidGraduateTracerReportFilter("graduation_year must be a valid graduation year.")
+            raise InvalidGraduateTracerReportFilter(
+                "graduation_year must be a valid graduation year."
+            )
 
     population_ids = list(
         _base_queryset(
@@ -352,7 +356,8 @@ def build_graduate_tracer_report(
     )
     if is_filtered_academic and 0 < population < 5:
         raise GraduateTracerDisclosureRestricted(
-            "Aggregate reporting is restricted for this population to protect respondent confidentiality."
+            "Aggregate reporting is restricted for this population "
+            "to protect respondent confidentiality."
         )
 
     # Freeze and lock membership until all distributions are calculated. A disposition cannot

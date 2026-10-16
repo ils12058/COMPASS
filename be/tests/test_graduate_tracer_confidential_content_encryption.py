@@ -742,9 +742,7 @@ def test_migration_all_four_families_exact_forward_reverse_variants_anonymous_an
     after_apps = MigrationExecutor(connection).loader.project_state(AFTER).apps
     for family in NAMES:
         model = after_apps.get_model("graduate_tracer", family)
-        assert not set(content.FIELDS[family]).intersection(
-            columns(model)
-        )
+        assert not set(content.FIELDS[family]).intersection(columns(model))
         for row in model.objects.all():
             if family == NAMES[0] and row.pk == anonymous.pk:
                 assert verify_anonymized(row) and row.confidential_content_ciphertext is None

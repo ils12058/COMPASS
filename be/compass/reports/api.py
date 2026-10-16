@@ -129,7 +129,8 @@ def _raise_graduate_tracer(exc: GraduateTracerReportError) -> NoReturn:
         raise APIError(
             403,
             "small_population_disclosure_restricted",
-            "Aggregate reporting is restricted for this population to protect respondent confidentiality.",
+            "Aggregate reporting is restricted for this population "
+            "to protect respondent confidentiality.",
         ) from exc
     if isinstance(exc, InvalidGraduateTracerReportFilter):
         raise APIError(422, "invalid_report_filter", str(exc)) from exc

@@ -905,7 +905,7 @@ def test_count_unread_conversations_semantics_and_api(world):
     assert services.count_unread_conversations(actor=world.counselor) == 1
     assert services.count_unread_conversations(actor=world.other) == 0
 
-    msg2 = send(world, thread, actor=world.counselor)
+    send(world, thread, actor=world.counselor)
     assert services.count_unread_conversations(actor=world.student) == 1
     assert services.count_unread_conversations(actor=world.counselor) == 1
 
@@ -956,7 +956,9 @@ def test_count_unread_conversations_semantics_and_api(world):
     assert res_unauth.status_code == 401
 
 
-def test_count_unread_conversations_pagination_independence_and_query_efficiency(world, django_assert_num_queries):
+def test_count_unread_conversations_pagination_independence_and_query_efficiency(
+    world, django_assert_num_queries
+):
     now = timezone.now()
     for i in range(25):
         appt = Appointment.objects.create(
@@ -980,8 +982,6 @@ def test_count_unread_conversations_pagination_independence_and_query_efficiency
 
     with django_assert_num_queries(8):
         assert services.count_unread_conversations(actor=world.counselor) == 25
-
-
 
 
 @pytest.mark.parametrize("configuration", ["absent", "valid", "malformed", "reuse"])

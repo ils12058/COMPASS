@@ -163,12 +163,14 @@ def _build_summary(
         rows.append(("Program Graduated", f"{program.get('code')} - {program.get('name')}"))
     if graduation_year is not None:
         rows.append(("Graduation Year", graduation_year))
-    rows.extend([
-        ("Submitted From", _date_text(report_context.get("submitted_from"))),
-        ("Submitted To", _date_text(report_context.get("submitted_to"))),
-        ("Submitted Response Count", int(report_context.get("submitted_response_count") or 0)),
-        ("Generated At", _generated_at_text(report_context.get("generated_at"))),
-    ])
+    rows.extend(
+        [
+            ("Submitted From", _date_text(report_context.get("submitted_from"))),
+            ("Submitted To", _date_text(report_context.get("submitted_to"))),
+            ("Submitted Response Count", int(report_context.get("submitted_response_count") or 0)),
+            ("Generated At", _generated_at_text(report_context.get("generated_at"))),
+        ]
+    )
     row = 3
     for label, value in rows:
         _write_text(worksheet, row, 1, label, bold=True, wrap=True)

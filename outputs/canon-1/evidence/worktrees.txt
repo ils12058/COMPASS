@@ -1,0 +1,133 @@
+worktree /Users/reynantlntno/Projects/COMPASS
+HEAD ba09e79bb4728138e8fc6c9509f55893e0883f9e
+branch refs/heads/fix/form-ui-1b-form-guidance
+
+worktree /private/tmp/compass-staging-0179c6
+HEAD 0179c6eb0c60e1e658192eef8643624082ec8d5f
+detached
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/.codex/worktrees/backlog-gm-assist/COMPASS
+HEAD f32d7ebd92df1ad7ef1e81b9baa78313ef2b1412
+branch refs/heads/feat/backlog-gco-assisted-good-moral
+
+worktree /Users/reynantlntno/.codex/worktrees/brand1-static-ucn/COMPASS
+HEAD 502bc69a27aacf470d63ca3805e31c71a820f47e
+branch refs/heads/codex/brand1-static-ucn-document-branding
+
+worktree /Users/reynantlntno/.codex/worktrees/compass-canon-1a/COMPASS
+HEAD b06d8379b64dedc87531b9283328889bce145176
+branch refs/heads/codex/canon-1a-ci-coverage
+
+worktree /Users/reynantlntno/.codex/worktrees/fb1-customer-feedback-optional-identity/COMPASS
+HEAD 060045a0ceca39f68ef6048ab96a9c8288d139eb
+branch refs/heads/codex/fb1-customer-feedback-optional-identity
+
+worktree /Users/reynantlntno/.codex/worktrees/form-fidelity-0-audit/COMPASS
+HEAD b7f365b5828ab5db8fc541d90321558a5183f7f2
+detached
+
+worktree /Users/reynantlntno/.codex/worktrees/form-id-1-ucn-controlled-form-cutover/COMPASS
+HEAD 6fcdfebca08cee26275e58de227d9d2a3ec5c642
+branch refs/heads/feat/form-id-1-ucn-controlled-form-cutover
+
+worktree /Users/reynantlntno/.codex/worktrees/frontend-consistency-slice1/COMPASS
+HEAD c4a01f5a6ad418efb6f87cec2a8a2d4c3ea7f1cc
+branch refs/heads/codex/frontend-consistency-slice2
+
+worktree /Users/reynantlntno/.codex/worktrees/live-staging-deployment/COMPASS
+HEAD 0512e9ec3533f59b9a90038a50b2d5b122b2e5ee
+detached
+
+worktree /Users/reynantlntno/.local/share/kilo/worktree-pool/compass-f0ad4629bf0c/helpful-sousaphone
+HEAD 1a9933535a0b8c0cbd7764c35f301e8402f48375
+detached
+
+worktree /Users/reynantlntno/Documents/Codex/2026-10-13/gus/work/ecounseling-slice1a
+HEAD acbda7f65da19ecb6befd2aead85b21bec30bf2e
+branch refs/heads/codex/ecounseling-slice1a-safety-access
+
+worktree /Users/reynantlntno/Documents/Codex/2026-10-13/gus/work/ecounseling-slice1b
+HEAD de1b854c50eb2afbf1ec4ccb1ecde7269e6ec589
+branch refs/heads/codex/ecounseling-slice1b-diagnostics
+
+worktree /Users/reynantlntno/Documents/Codex/2026-10-13/gus/work/ecounseling-slice1c1
+HEAD d077421bfefb2bf2b0cfe2c9b3ac176055ae5c6e
+branch refs/heads/codex/ecounseling-rt1b-media-sync
+
+worktree /Users/reynantlntno/Projects/COMPASS-BACKLOG-GM-PRINT
+HEAD 69faf7b0d24e406decf1b6b48ef0697cf50a1997
+branch refs/heads/feat/backlog-good-moral-print
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/Projects/COMPASS-BACKLOG-MY-ACTIVITY
+HEAD 6bb953a64e87b8aaffed78aea8ad1f901ae56854
+branch refs/heads/feat/backlog-domain-rich-my-activity
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/Projects/COMPASS-BACKLOG-SECURITY
+HEAD ef017c47c0c78154856bb663954cc2600a27da7c
+branch refs/heads/feat/backlog-security-activity-cleanup
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/Projects/COMPASS-CANON-1
+HEAD b06d8379b64dedc87531b9283328889bce145176
+branch refs/heads/fix/canon-1a-ci-and-regression-baseline
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/Projects/COMPASS-FORM-CORR-1-AUDIT
+HEAD fea0f3c483d5fade22457efba6b73aed8d1893ce
+branch refs/heads/audit/form-corr-1-field-targeting
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/Projects/COMPASS-FORM-CORR-1-BE
+HEAD 6620646961bed431c6159716c25be8fedfe979d4
+branch refs/heads/feat/form-corr-1-backend-targets
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/Projects/COMPASS-FORM-CORR-1-EXIT-INTERVIEW
+HEAD 3a5dc876ec21472025b7d31dfcccafa23ddd4be4
+branch refs/heads/feat/form-corr-1-exit-interview-ui
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/Projects/COMPASS-FORM-CORR-1-INVENTORY
+HEAD 10361a32a5350614e9b35686f407f623d98c295f
+branch refs/heads/feat/form-corr-1-inventory-ui
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/Projects/COMPASS-PG-1A-AUDIT
+HEAD e0a3fd0cff8fb5f585e3ea46732fbeae27c0b583
+branch refs/heads/audit/pg-1a-disposition-code-owned-retention
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/Projects/COMPASS-PG-1A-PR1
+HEAD 9499ec50abdbd614da1124f3fc522afaac90e351
+branch refs/heads/fix/pg-1a-stop-in-app-disposition
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/Projects/COMPASS-PG-1A-PR2
+HEAD 43a6ac5073448209cff2b9f3d53fd9e21678a20d
+branch refs/heads/feat/pg-1a-code-owned-retention-oversight
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/Projects/COMPASS-PG-1A-PR3
+HEAD d86b5e7d443abcca0ea26cf05187f80095900445
+branch refs/heads/refactor/pg-1a-final-disposition-decommission
+prunable gitdir file points to non-existent location
+
+worktree /Users/reynantlntno/Projects/COMPASS/.claude/worktrees/counseling-encounter
+HEAD c10e72c5e1792f564f692142058908196371bc4c
+branch refs/heads/codex/counseling-encounter-workspace-consistency
+
+worktree /Users/reynantlntno/Projects/COMPASS/.claude/worktrees/form-input-1a
+HEAD 3f98677f7ee2426f172e342ff2734c8c8726870d
+branch refs/heads/feat/form-input-1a-good-moral-selects
+
+worktree /Users/reynantlntno/Projects/COMPASS/.claude/worktrees/form-input-1c
+HEAD 7b1823980bd2a83d9e8cc563323e3574a3763d7c
+branch refs/heads/fix/form-input-1c-input-validation
+
+worktree /Users/reynantlntno/Projects/COMPASS/.claude/worktrees/student-profiling
+HEAD 6cc6be52176d5ea39fa4676c25d0a9da07377b42
+branch refs/heads/fix/student-profiling-report-accuracy
+

@@ -1,14 +1,13 @@
 // Browser tests and visual verification for role-aware sidebar attention badges (NAV-1)
 import assert from "node:assert/strict";
-import { copyFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { messagesAccount, sessionFor } from "./support/guidance-messages-fixtures.mjs";
 
-const { baseURL, check, shown, hidden, finish, noHorizontalOverflow } = await createBrowserHarness("portal-navigation-attention");
+const { artifacts, check, shown, finish } = await createBrowserHarness("portal-navigation-attention");
 
 const instant = "2026-10-15T00:00:00Z";
-const ARTIFACTS_DIR = "/Users/reynantlntno/.gemini/antigravity/brain/3c86f411-e2f6-4d96-a3cc-ea2774271650";
+
 
 function createAttentionMockState(role = "COUNSELOR") {
   const account = messagesAccount(role);
@@ -64,7 +63,6 @@ function createAttentionMockState(role = "COUNSELOR") {
   return { handler, options: (extra = {}) => ({ handler, role, ...extra }) };
 }
 
-await mkdir(ARTIFACTS_DIR, { recursive: true });
 
 // 1. Desktop expanded sidebar
 const stateDesktop = createAttentionMockState("COUNSELOR");
@@ -90,7 +88,7 @@ await check("Desktop expanded sidebar renders attention badges", "/portal/work",
   assert.equal(await appointmentsLink.locator("span:has-text('3')").count(), 0);
 
   // Capture screenshot of expanded sidebar
-  const screenshotPath = join(ARTIFACTS_DIR, "nav-badges-desktop-expanded.png");
+  const screenshotPath = join(artifacts, "nav-badges-desktop-expanded.png");
   await page.screenshot({ path: screenshotPath });
   console.log(`Saved screenshot: ${screenshotPath}`);
 });
@@ -114,7 +112,7 @@ await check("Desktop collapsed rail renders badge chips with pointer-events-none
   await shown(messagesLink);
 
   // Capture screenshot of collapsed rail
-  const screenshotPath = join(ARTIFACTS_DIR, "nav-badges-desktop-collapsed.png");
+  const screenshotPath = join(artifacts, "nav-badges-desktop-collapsed.png");
   await page.screenshot({ path: screenshotPath });
   console.log(`Saved screenshot: ${screenshotPath}`);
 });
@@ -141,9 +139,9 @@ await check("Mobile drawer renders badges in navigation items", "/portal/work", 
   await shown(messagesBadge);
 
   // Capture screenshot of mobile drawer
-  const screenshotPath = join(ARTIFACTS_DIR, "nav-badges-mobile-drawer.png");
+  const screenshotPath = join(artifacts, "nav-badges-mobile-drawer.png");
   await page.screenshot({ path: screenshotPath });
   console.log(`Saved screenshot: ${screenshotPath}`);
 });
 
-finish();
+await finish();

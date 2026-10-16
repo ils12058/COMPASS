@@ -635,10 +635,7 @@ def graduate_tracer_get_classification_options(request):
     _require_classification_options_viewer(request)
     colleges, programs = get_classification_options()
     return {
-        "colleges": [
-            {"id": c.pk, "code": c.code, "name": c.name}
-            for c in colleges
-        ],
+        "colleges": [{"id": c.pk, "code": c.code, "name": c.name} for c in colleges],
         "programs": [
             {"id": p.pk, "college_id": p.college_id, "code": p.code, "name": p.name}
             for p in programs

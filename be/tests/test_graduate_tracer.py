@@ -97,8 +97,12 @@ def put_json(client: Client, path: str, payload: dict[str, object]):
 
 def default_academic_classification() -> tuple[College, Program, int]:
     campus, _ = Campus.objects.get_or_create(code="UCN-MAIN", defaults={"name": "UCN Main Campus"})
-    college, _ = College.objects.get_or_create(campus=campus, code="CCMS", defaults={"name": "College of Computing and Multimedia Studies"})
-    program, _ = Program.objects.get_or_create(college=college, code="BSIS", defaults={"name": "BS Information Systems"})
+    college, _ = College.objects.get_or_create(
+        campus=campus, code="CCMS", defaults={"name": "College of Computing and Multimedia Studies"}
+    )
+    program, _ = Program.objects.get_or_create(
+        college=college, code="BSIS", defaults={"name": "BS Information Systems"}
+    )
     return college, program, 2026
 
 

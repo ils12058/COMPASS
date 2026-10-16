@@ -1,132 +1,111 @@
-# COMPASS-CANON-1 — Architecture & Technical Audit
+# CANON-1 architecture audit — initial repository-wide inventory
 
-## 1. Executive Summary & Architectural Intent
+Verified 2026-10-16 (Asia/Manila), base `d353108d1f757386b9020c4d1297e081258d2e4e`.
+This report replaces the unverified claims in the recovered audit commit `b06d8379`.
+It establishes candidate decisions and safe implementation boundaries. Unresolved candidates are
+explicitly REVIEW_REQUIRED; it does not claim exhaustive dead-code proof or completed canonicalization.
 
-COMPASS is the Guidance and Counseling Information System for the University of Camarines Norte (UCN).
-Following multiple development iterations (including the complete retirement of in-app disposition execution in PG-1A PRs #244, #245, #246), COMPASS carries accumulated legacy implementations, transition shims, migration bloat, unregistered tests, and CI regressions.
+## Repository and runtime baseline
 
-The project owner has approved **COMPASS-CANON-1**: a comprehensive milestone to establish **one canonical, clean-installable COMPASS system**, culminating in a controlled clean-slate rebuild of live-staging.
+- Fetched origin/staging; 2,184 tracked files at the base revision.
+- No open PRs at initial inspection. The existing main checkout is on
+  `fix/form-ui-1b-form-guidance`; it was not modified.
+- Numerous existing worktrees were found, including live-staging-deployment and active feature
+  checkouts. Several registered paths no longer exist. None were pruned, removed or overwritten.
+  [Inventory](evidence/worktrees.txt).
+- A missing CANON worktree still had an audit-only commit on
+  `fix/canon-1a-ci-and-regression-baseline`. A new managed worktree was created from that commit
+  and continued on `codex/canon-1a-ci-coverage`. The old branch is preserved.
+- Public `GET https://staging-api.compass-gco.com/api/v1/meta` was rechecked read-only:
+  live-staging still runs `0512e9ec3533f59b9a90038a50b2d5b122b2e5ee`, built 2026-10-11.
+  [Response](evidence/staging-meta.json). Worker images, queue contents, external objects and
+  database records cannot be inferred from this endpoint and were not inspected live.
+- 102 numbered Django migrations across 27 apps, eight frozen migration helper modules,
+  28 `*models.py` modules, 117 frontend `page.tsx` files, 355 OpenAPI operations with no duplicate
+  operation IDs, 167 backend test files, 29 initial frontend unit files and 31 browser suites.
+  Source policy defines five roles, two institutional designations and 78 capabilities.
+  Role grants, overrides and effective capabilities still require database validation.
 
-### Key Architectural Invariants:
-1. **One Canonical Implementation:** One API route, one operation ID, one request/response schema, one authoritative service implementation, one domain lifecycle, one capability definition, one consistent frontend presentation, and one current database model per domain operation.
-2. **Clean-Slate Staging Baseline:** No requirement to preserve disposable staging development data or carry backward-compatibility migrations for discarded test schemas.
-3. **Uncompromising Security & Privacy:** All RBAC, capability enforcement, counselor boundaries, encryption at rest (Fernet bound JSON), audit trail integrity, privacy notices, and E-Counseling recording consent are strictly preserved and verified.
-4. **No Fake Green CI:** Zero deleted valid tests, zero blanket xfails, zero disabled linters, and full test registration across backend and frontend CI workflows.
+## Supported architecture and audit scope
 
----
+Django/Ninja owns authorization, lifecycle transitions, encrypted persistence, audits and
+notifications. Next.js consumes the committed OpenAPI contract through generated Orval clients
+and the shared authenticated transport. Generated frontend clients are ignored by repository
+policy; regenerate from the contract and validate consumers rather than committing generated code.
+Celery handles asynchronous tasks; Beat schedules work; a separate Django-free realtime service
+publishes bounded hints through Redis. Provider/media custody and private storage remain backend-owned.
 
-## 2. Backend Architecture Audit
+The migration inventory covers every app: Accounts, Announcements, Appointments, Assessment Records,
+Audit, Authentication, Availability, Call Slips, Counseling, Documents, E-Counseling, Exit Interviews,
+Feedback, Good Moral, Graduate Tracer, Guidance Messages, Institutional Forms, Inventory,
+Notifications, Organization, Platform Operations, Privacy Governance, Referrals, Resources,
+Routine Interviews, Service Catalog and Student Support. Projection-only modules (Activity,
+Student Actions, Work Queue, Guidance Operations, Overview, Reports), common crypto and integrations
+were included in import/candidate scans. App presence is not proof that each operation has been
+reviewed for duplication; domain-by-domain service/API/frontend tracing remains a later gate.
 
-### 2.1 Identity, Roles, Capabilities & Policy Bootstrap
-- **Active Capabilities:** `be/compass/accounts/policy.py` defines 67 canonical capabilities, 5 roles (`IT_ADMIN`, `COUNSELOR`, `GUIDANCE_SERVICES_STAFF`, `STUDENT`, `INSTITUTIONAL_OFFICER`), and 2 institutional designations (`HEAD_GUIDANCE_COUNSELOR`, `DPO`). All active capability definitions are strictly canonical.
-- **Legacy Capability Shims:**
-  - `be/compass/accounts/bootstrap.py` defines `RENAMED_LEGACY_CAPABILITY_CODES = ("organization.view", "services.view")` and `RETIRED_CAPABILITY_CODES = ("institutional_forms.manage", "document_branding.view", "document_branding.manage", "privacy_governance.retention.manage", "privacy_governance.retention.approve")`.
-  - `sync_identity_policy()` automatically purges any lingering role grants, designation grants, user overrides, or capability records matching `RETIRED_CAPABILITY_CODES`.
-  - **Classification:** `KEEP`. The purge in `bootstrap.py` is a critical fail-closed invariant that ensures retired administrative or retention capabilities cannot linger or grant authority.
+The [removal matrix](CANON-1-Removal-Matrix.csv) records explicit classifications, consumer evidence,
+security relevance, risks, replacements, affected tests, intended PR and cutover condition.
+Keyword-only findings are REVIEW_REQUIRED, never an automatic deletion list. Static imports miss
+dynamic dispatch, external consumers and bookmarks; those require runtime/contract evidence.
 
-### 2.2 Privacy Governance & Retired In-App Disposition Engine (ADR-114 / ADR-115)
-- **Active Canonical Surface:**
-  - `be/compass/privacy_governance/retention_policy_register.py` & `retention_api.py` implement the code-owned, read-only retention policy register under `GET /api/v1/privacy/retention/policies` (`privacyGovernanceListRetentionPolicies`).
-  - **Classification:** `KEEP` (Canonical).
-- **Dead Fail-Closed Service Stubs (`be/compass/privacy_governance/retention.py`):**
-  - Contains `create_rule()`, `update_rule()`, `transition_rule()`, `change_hold()`, `approve_case()`, and `decommissioned()`. Every function unconditionally raises HTTP 409 `retention_decommissioned`.
-  - There are zero API routes and zero runtime callers in `be/compass/`. They were explicitly kept as a temporary fallback until PG-1A PR 3.
-  - **Classification:** `REMOVE` (Target PR: CANON-2A).
-- **Broker-Drain Celery Task Tombstones (`be/compass/privacy_governance/tasks.py`):**
-  - Defines non-mutating no-op tasks for `discover_retention`, `execute_disposition`, and `recover_disposition`.
-  - Beat schedules were removed in PR #244. The task names remain registered solely to acknowledge and drop any pre-ADR-114 messages in the Celery broker.
-  - **Classification:** `KEEP_TEMPORARILY` (Target PR: CANON-2A / Reset Cutover).
-- **Historical Ledger & Resurrection Fences:**
-  - `OperationalRetentionRule`, `DispositionCase`, `DispositionHold` (`retention_models.py`): Retained as historical evidence ledgers.
-  - E-Counseling media resurrection fences in `be/compass/ecounseling/` (`artifacts.py`, `reconciliation.py`, `webhooks.py`) check `artifact_disposed_at` and `DispositionCase` status to prevent late Daily webhooks from re-ingesting or exposing disposed recordings or transcripts.
-  - `GraduateTracerDisposedParticipation` (`be/compass/graduate_tracer/participation.py`): Enforces one-submission-per-graduate and blocks reading historical anonymized responses.
-  - **Classification:** `KEEP` (Critical security and privacy custody fences).
-- **Dead Analytical Verification Helper:**
-  - `be/compass/graduate_tracer/disposition.py` contains `verify_anonymized()`. Zero runtime callers in `be/compass/`; only used by test assertions.
-  - **Classification:** `REMOVE` or relocate to `tests/`.
+## Principal findings and decisions
 
-### 2.3 Confidential Content Encryption & Key Rotation
-- **Zero Plaintext Fallback:** All 10 encrypted domains store data strictly in `*_ciphertext` columns with Fernet bound JSON envelopes (`be/compass/confidential_data/crypto.py`). Zero plaintext fallback exists in any runtime reader or writer.
-- **Architectural Cleanup Candidates:**
-  - **Migration Helper Runtime Imports:** `be/compass/inventory/confidential_content.py` and `be/compass/graduate_tracer/confidential_content.py` import schema definitions (`FIELDS`, `FAMILIES`, `BINDINGS`, `validate_payload`, `binding`) from `compass.<app>.migrations._<app>_confidential_content_v1`.
-  - **Classification:** `CANONICALIZE` (Target PR: CANON-2B). Runtime domain modules must own their schema constants directly, isolating `migrations/` from runtime dependencies.
-  - **Key Rotation Introspection Guards:** The 8 `rotate_*_confidential_content` management commands contain `_legacy_plaintext_exists()` introspection guards to prevent running on pre-Phase-B databases.
-  - **Classification:** `KEEP`. Harmless defensive check ensuring database integrity before rotation.
+1. **PG-1A is transition-safe, not cutover-complete.** Three retired Celery names are non-mutating
+   tombstones. Retired mutation services return 409. Rule/case/hold models remain historical ledgers.
+   E-Counseling artifact ingestion, reconciliation and webhook handling query DispositionCase;
+   deleting that model without updating these consumers would break custody fences. Keep all
+   transition safeguards in this staging-compatible slice. Final elimination belongs on the reset
+   integration branch after old workers/Beat, broker redelivery and callbacks are isolated.
+2. **Read-only retention oversight is current functionality.** Keep the code-owned policy register,
+   DPO authorization and absence of mutation APIs. Disposed artifact markers are distinct from
+   the retired executor and may still be needed after reset.
+3. **Identity bootstrap mixes canonical sync with transition handling.** The old-name guard refers
+   to migration 0006; the retired-capability purge removes grants and user overrides for retired
+   codes. Rework empty-baseline transition handling separately while preserving drift detection,
+   effective capability semantics and the supported capability-override feature.
+4. **Encryption compatibility is not automatically obsolete.** The shared bound Fernet primitive
+   supports ordered keyrings and key rotation. Routine's adapter preserves domain binding/error
+   semantics. Rotation commands inspect for old plaintext columns before operating. Review each
+   wrapper by its callers; no secrets were printed or rotated. Contrary to the recovered audit,
+   Inventory and Graduate Tracer runtime schemas do not import their frozen migration helpers.
+5. **ServiceProviderRole is a removal candidate with a schema boundary.** Current provider
+   qualification uses Counselor coverage and ServiceCounselorProvider. Remove its historical table
+   only with reviewed model/consumer tests and schema comparison on the reset branch.
+6. **Frontend legacy terms describe different things.** The retired retention wildcard redirect is
+   removable after route review. The Platform index redirect is a current default-tab destination.
+   Unrecorded Program report buckets, saved Exit Interview variants and historical issuance origin
+   enums need separate decisions; their names alone do not make them obsolete. Archived frontends
+   remain reference-only under fe/AGENTS.md.
+7. **Seeder upgrade history needs a reset-specific pass.** Dataset v2 documents 57 Students
+   (11 rich personas plus 46 population Students), not 57 total accounts. `demo-seed-v1` remains an
+   intentional additive-upgrade namespace. Keep current safety, synthetic domains, credentials,
+   environment opt-in and concurrent-run exclusion. The proposed 85–100 Student expansion is not
+   approved by this milestone. Actual seeded counts and rerun evidence remain pending.
+8. **CI discovery is incomplete.** Three current backend files are unbundled; eight browser files
+   lack package registration and three more are absent from CI regressions. Model paths selected
+   only domain suites. CANON-1A repairs these infrastructure defects and lint without changing
+   domain rules or accepting application regressions as correct.
 
-### 2.4 Dead Models & Obsolete Database Artifacts
-- **`ServiceProviderRole` (`be/compass/service_catalog/models.py`):** Historical table from pre-ADR-089. COMPASS has since established Counselors as the sole provider class, configured via `Service.provider_coverage` and `ServiceCounselorProvider`. `ServiceProviderRole` has zero runtime readers or writers.
-  - **Classification:** `REMOVE` (Target PR: CANON-4).
+## Infrastructure and clean-reset boundary
 
----
+Inspected `.github/workflows/{backend-full,backend-targeted,frontend-targeted,deploy-staging}.yml`,
+CI selector and exact-revision deployment guard, `be/compose.yaml`, `be/compose.staging.yaml`,
+runtime secret/Redis configuration, existing retention and staging-seeding runbooks, and integration
+seams for Daily, email and object storage. Backend full regression has six shards; the final
+aggregator checks plan/static/shard results. Deployment requires the exact successful revision.
+Those gates are preserved.
 
-## 3. Frontend Architecture Audit
+Ordinary deployment pulls images, starts PostgreSQL/Redis, migrates and syncs configuration before
+replacing the app/worker/Beat containers. Old workers can therefore overlap schema changes.
+This procedure is unsuitable for replacement migrations or a tombstone-free release.
 
-### 3.1 Routing & Navigation
-- **Routes:** 71 active page routes under `fe/src/app/`.
-- **Redirect Compatibility Pages:**
-  - `fe/src/app/(portal)/portal/privacy/retention/[...legacy]/page.tsx`: Redirects legacy bookmark URLs (`/portal/privacy/retention/rules/...`, `/portal/privacy/retention/cases/...`) to `/portal/privacy/retention`.
-  - **Classification:** `REMOVE` (Target PR: CANON-3). Live staging rebuild eliminates old bookmark dependencies.
-  - `fe/src/app/(portal)/portal/platform/page.tsx`: Redirects `/portal/platform` to `/portal/platform/health`.
-  - **Classification:** `KEEP`. Standard index-to-default-tab redirect.
+The reset design must separately inventory PostgreSQL volumes and bookkeeping; Redis broker,
+unacked/ETA tasks, caches, sessions and realtime; every worker/Beat/web/realtime instance; private
+and public storage prefixes, uploads, profile images and generated certificates; Daily rooms,
+recordings/transcripts and callback credentials/subscriptions; email intents and provider delivery;
+backups/snapshots; encryption keyrings and deployment/rollback images. PostgreSQL disposability
+confers no disposal permission for those resources. Classification and operator approval are pending.
 
-### 3.2 User Copy & Information Boundaries
-- **Boundary Violation in Good Moral Assisted Requests:**
-  - `fe/src/features/good-moral/good-moral-assisted-request.ts` imported `readApiErrorMessage` and called `readApiErrorMessage(error.body)` on `invalid_good_moral_request`.
-  - COMPASS architectural rules strictly forbid exposing raw API messages in user-facing form copy.
-  - **Classification:** `CANONICALIZE` (Target PR: CANON-1A). Replace with static safe copy: `"Check the request details and try again."`
-
-### 3.3 Attention Badges & Navigation Selectors
-- **Selector Fragility in Guidance Operations Browser Tests:**
-  - PR #231 (`NAV-1`) added `<span data-testid="nav-badge-expanded">{badge.display}</span>` inside the `My work` navigation link. Calling `nav.locator("a").allTextContents()` returned `"My work31"` instead of `"My work"`.
-  - **Classification:** `CANONICALIZE` (Target PR: CANON-1A). Target the label span directly.
-
----
-
-## 4. Database & Migration Consolidation Audit
-
-### 4.1 Migration State
-- **Current State:** 102 numbered migrations across 27 apps, plus 8 frozen helper modules (`_..._v1.py`).
-- **Anomalies Identified:**
-  - `documents`: `0001` creates `DocumentBrandingProfile`; `0002` checks and deletes it. The app has no models left.
-  - `privacy_governance`: `0001`–`0004` create and drop 4 legacy tables.
-  - `good_moral`: `0005_merge_20261005_0419.py` is an empty branch merge.
-  - Two-phase encryption migrations: 16 migration files across 8 apps added temporary nullable ciphertext columns, ran backfills, locked tables, and dropped plaintext.
-- **Target Consolidated State (`CANON-4`):**
-  - Replace the 102 migrations with 26 clean `0001_initial.py` migrations.
-  - All encrypted models declare their `*_ciphertext` columns and constraints directly in `0001_initial.py`.
-  - Zero data migrations in Django migration files; institutional configuration is seeded purely by authoritative `sync_*` commands.
-
----
-
-## 5. API Contract & OpenAPI Audit
-
-- **OpenAPI Schema Sync:** `python manage.py export_openapi --check` confirms `contracts/openapi.json` matches backend routers.
-- **Contract Test Discrepancies (`test_openapi_contract.py`):**
-  - Missing 4 recently added operations (`graduateTracerListClassificationOptions`, `goodMoralListStudentOptions`, `goodMoralCreateCurrentStudentRequest`, `goodMoralCreateGraduateRequest`).
-  - Missing query filter parameters (`college_id`, `program_id`, `graduation_year`) on `graduateTracerListResponses`.
-  - Missing `good_moral.initiate` capability code in expected enum list.
-  - **Classification:** `CANONICALIZE` (Target PR: CANON-1A). Update contract test expectations to reflect current canonical operations.
-
----
-
-## 6. Classification Summary Table
-
-| Category | Component / Module | Classification | Target PR |
-|---|---|---|---|
-| **Backend** | `privacy_governance/retention.py` 409 stubs | `REMOVE` | CANON-2A |
-| **Backend** | `privacy_governance/tasks.py` tombstones | `KEEP_TEMPORARILY` | CANON-2A |
-| **Backend** | `audit/actions.py` `DOCUMENT_BRANDING_UPDATED` | `REMOVE` | CANON-2A |
-| **Backend** | `graduate_tracer/disposition.py` verify helper | `REMOVE` | CANON-2A |
-| **Backend** | `service_catalog/models.py` `ServiceProviderRole` | `REMOVE` | CANON-4 |
-| **Backend** | `inventory` & `graduate_tracer` migration helper imports | `CANONICALIZE` | CANON-2B |
-| **Backend** | `accounts/bootstrap.py` retired capability purge | `KEEP` | CANON-2A |
-| **Backend** | `ecounseling/` media resurrection fences | `KEEP` | CANON-2B |
-| **Frontend** | `portal/privacy/retention/[...legacy]/page.tsx` | `REMOVE` | CANON-3 |
-| **Frontend** | `good-moral-assisted-request.ts` user copy | `CANONICALIZE` | CANON-1A |
-| **Frontend** | `portal-navigation-attention.browser.mjs` cleanup | `CANONICALIZE` | CANON-1A |
-| **Migrations** | 102 numbered migrations consolidated to 26 canonical | `CANONICALIZE` | CANON-4 |
-| **CI** | 3 unregistered backend test files | `CANONICALIZE` | CANON-1A |
-| **CI** | 8 unregistered frontend browser suites | `CANONICALIZE` | CANON-1A |
-| **CI** | 38 Ruff lint errors & 8 formatting files | `CANONICALIZE` | CANON-1A |
-| **CI** | Graduate Tracer demo seed ADR-112 input fields | `CANONICALIZE` | CANON-1A |
-| **CI** | Backend unit test assertion drift (audit, GM, accounts, OpenAPI) | `CANONICALIZE` | CANON-1A |
+No live reset procedure has been rehearsed, and no reset automation is introduced here.
+See the [PR roadmap](CANON-1-PR-Roadmap.md) for prerequisites and later evidence.

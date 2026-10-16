@@ -1,0 +1,1 @@
+OpenAPI contract is current: /Users/reynantlntno/.codex/worktrees/compass-canon-1a/COMPASS/contracts/openapi.json

@@ -2,41 +2,20 @@
 
 from __future__ import annotations
 
-import json
-from datetime import date
-from decimal import Decimal
-from uuid import uuid4
-
-import pytest
-from django.utils import timezone
-from openpyxl import load_workbook
 from io import BytesIO
 
-from compass.accounts.models import Designation, Role, StudentLifecycleStatus, User, UserDesignation
+import pytest
+from openpyxl import load_workbook
+
 from compass.common.institutional_time import institution_today
 from compass.graduate_tracer.disposition import verify_anonymized
 from compass.graduate_tracer.models import (
     GraduateTracerResponse,
-    GraduateTracerStatus,
-    GTSEmploymentState,
-)
-from compass.graduate_tracer.services import (
-    ensure_my_response,
-    replace_my_draft,
-    submit_my_response,
 )
 from compass.organization.models import Campus, College, Program
-from compass.reports.graduate_tracer import (
-    GraduateTracerDisclosureRestricted,
-    InvalidGraduateTracerReportFilter,
-    build_graduate_tracer_report,
-)
-from compass.reports.graduate_tracer_xlsx import render_graduate_tracer_xlsx
 from tests.legacy_disposition_fixtures import historical_anonymized_contribution
 from tests.test_graduate_tracer import (
     auth_client,
-    csrf,
-    default_academic_classification,
     make_head,
     make_user,
     post_empty,
@@ -53,7 +32,9 @@ def create_org_hierarchy():
     college_b = College.objects.create(campus=campus, code="CBA", name="College of Business")
     prog_a1 = Program.objects.create(college=college_a, code="BSIS", name="BS Information Systems")
     prog_a2 = Program.objects.create(college=college_a, code="BSCS", name="BS Computer Science")
-    prog_b1 = Program.objects.create(college=college_b, code="BSBA", name="BS Business Administration")
+    prog_b1 = Program.objects.create(
+        college=college_b, code="BSBA", name="BS Business Administration"
+    )
     return college_a, college_b, prog_a1, prog_a2, prog_b1
 
 
@@ -89,10 +70,15 @@ def test_classification_options_endpoint_permissions_and_response():
     assert bsis_option["college_id"] == str(college_a.pk)
 
     # Head guidance with graduate_tracer.view / reports.view
-    assert auth_client(head).get("/api/v1/graduate-tracer/classification-options").status_code == 200
+    assert (
+        auth_client(head).get("/api/v1/graduate-tracer/classification-options").status_code == 200
+    )
 
     # IT Admin without GTS capabilities
-    assert auth_client(it_admin).get("/api/v1/graduate-tracer/classification-options").status_code == 403
+    assert (
+        auth_client(it_admin).get("/api/v1/graduate-tracer/classification-options").status_code
+        == 403
+    )
 
 
 @pytest.mark.django_db
@@ -260,7 +246,7 @@ def test_aggregate_report_filtering_and_disclosure_restrictions():
         put_json(uc, "/api/v1/graduate-tracer/me", p)
         post_empty(uc, "/api/v1/graduate-tracer/me/submit")
 
-    # Filtered academic query matches 2 (0 < count < 5) -> 403 small_population_disclosure_restricted
+    # A filtered academic population of 2 must receive the small-population disclosure refusal.
     restricted_res = client.get(
         f"/api/v1/reports/graduate-tracer?college_id={college_a.pk}&graduation_year=2024"
     )

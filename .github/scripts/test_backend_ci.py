@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
@@ -39,7 +41,7 @@ class SelectionTests(unittest.TestCase):
         self.assertNotIn("test_guidance_operations.py", result.files)
 
     def test_assessment_records_selects_its_actual_boundaries(self):
-        for path in ("services.py", "api.py", "confidential_content.py", "models.py",
+        for path in ("services.py", "api.py", "confidential_content.py",
                      "management/commands/rotate_assessment_record_confidential_content.py"):
             result = selected("be/compass/assessment_records/" + path)
             self.assertFalse(result.full)
@@ -63,7 +65,7 @@ class SelectionTests(unittest.TestCase):
             self.assertNotIn("test_assessment_records.py", selected(path).files)
 
     def test_guidance_messages_reaches_all_boundaries(self):
-        for path in ("services.py", "policy.py", "content.py", "api.py", "models.py", "templates.py"):
+        for path in ("services.py", "policy.py", "content.py", "api.py", "templates.py"):
             result = selected("be/compass/guidance_messages/" + path)
             self.assertFalse(result.full)
             for name in (
@@ -135,6 +137,24 @@ class SelectionTests(unittest.TestCase):
             result = selected("be/tests/" + name)
             self.assertFalse(result.full)
             self.assertIn(name, result.files)
+
+    def test_recent_domain_suites_run_for_source_changes(self):
+        for path, expected in (
+            ("be/compass/good_moral/services.py", "test_good_moral_assisted.py"),
+            ("be/compass/reports/graduate_tracer.py", "test_graduate_tracer_graduation_classification.py"),
+            ("be/compass/graduate_tracer/services.py", "test_graduate_tracer_graduation_classification.py"),
+            ("be/compass/activity/domains.py", "test_domain_activity.py"),
+            ("be/compass/referrals/services.py", "test_domain_activity.py"),
+        ):
+            self.assertIn(expected, selected(path).files)
+
+    def test_every_model_layout_selects_the_complete_suite(self):
+        for path in (
+            "be/compass/guidance_messages/models.py",
+            "be/compass/privacy_governance/retention_models.py",
+            "be/compass/good_moral/models/request.py",
+        ):
+            self.assertTrue(selected(path).full, path)
 
     def test_safety_bundle_always_runs(self):
         result = selected("be/docs/decisions/ADR-001-example.md")
@@ -296,6 +316,28 @@ class SelectionTests(unittest.TestCase):
 class ShardingTests(unittest.TestCase):
     def test_full_regression_covers_every_test_file_exactly_once(self):
         self.assertEqual(backend_ci.verify(), [])
+
+    def test_discovery_matches_pytest_naming_and_nested_directories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            tests = Path(directory)
+            (tests / "nested").mkdir()
+            for name in ("test_one.py", "two_test.py", "nested/test_three.py", "helper.py"):
+                (tests / name).touch()
+            with patch.object(backend_ci, "TESTS", tests):
+                self.assertEqual(backend_ci.all_test_files(),
+                                 ["nested/test_three.py", "test_one.py", "two_test.py"])
+                self.assertTrue(any("nested/test_three.py is in no CI bundle" in problem
+                                    for problem in backend_ci.verify()))
+
+    def test_split_parts_select_every_collected_node_once(self):
+        filename = "test_inventory_confidential_content_encryption.py"
+        nodes = [f"tests/{filename}::test_example[{i}]" for i in range(19)]
+        with patch.object(backend_ci, "collect_node_ids", return_value=nodes):
+            targets = [backend_ci.pytest_targets([backend_ci.Item(filename, part, 4)])
+                       for part in range(4)]
+        flattened = [node for target in targets for node in target]
+        self.assertCountEqual(flattened, nodes)
+        self.assertEqual(len(set(flattened)), len(flattened))
 
     def test_split_files_are_spread_over_parts(self):
         buckets = backend_ci.plan(backend_ci.all_test_files(), backend_ci.FULL_SHARDS, backend_ci.load_weights())

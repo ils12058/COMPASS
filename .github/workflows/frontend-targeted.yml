@@ -89,14 +89,16 @@ jobs:
         working-directory: fe
         run: pnpm test
 
-  # Browser regressions for account changes, failed refreshes and unsaved drafts (frontend audit
-  # FE-001 to FE-004), the realtime runtime, encrypted Assessment Records, Guidance operations, and the full, contextual and staff-operations (handler
-  # assignment, Message templates) Guidance Messages. They
-  # run against a development server because the synthetic seams (fake Call Object, API
-  # interception) are development-only; every API call is answered in the browser, so no backend
-  # runs. The other browser suites stay local until the intermittent tooltip check in
-  # ui-information-hierarchy is characterized.
+  # Every *.browser.mjs suite runs on both engines. Discovery and exactly-once shard
+  # coverage are tested by browser-registration.test.mjs; each suite has a named log group.
+  # API/provider calls are synthetic and use only the local development server.
   frontend-browser-regressions:
+    name: browser ${{ matrix.browser }} ${{ matrix.shard }}/4
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
@@ -167,13 +169,13 @@ jobs:
         working-directory: fe
         env:
           COMPASS_UI_ARTIFACTS: ${{ runner.temp }}/browser-regressions
-        run: pnpm test:ui:regressions
+        run: pnpm test:ui:regressions --browser "${{ matrix.browser }}" --shard "${{ matrix.shard }}/4"
 
       - name: Upload browser evidence
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-browser-regressions
+          name: frontend-browser-${{ matrix.browser }}-${{ matrix.shard }}
           path: |
             ${{ runner.temp }}/browser-regressions
             ${{ runner.temp }}/next-dev.log

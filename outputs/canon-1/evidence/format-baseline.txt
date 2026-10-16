@@ -1,0 +1,129 @@
+unformatted: File would be reformatted
+   --> compass/graduate_tracer/api.py:638:22
+    |
+637 |     return {
+    -         "colleges": [
+    -             {"id": c.pk, "code": c.code, "name": c.name}
+    -             for c in colleges
+    -         ],
+638 +         "colleges": [{"id": c.pk, "code": c.code, "name": c.name} for c in colleges],
+639 |         "programs": [
+    |
+
+unformatted: File would be reformatted
+   --> compass/graduate_tracer/services.py:517:46
+    |
+516 |         except (ValueError, AttributeError):
+    -             raise InvalidGraduateTracerInput(f"{field_name} must be a valid UUID or null.") from None
+517 +             raise InvalidGraduateTracerInput(
+518 +                 f"{field_name} must be a valid UUID or null."
+519 +             ) from None
+520 |     raise InvalidGraduateTracerInput(f"{field_name} must be a valid UUID or null.")
+    |
+
+unformatted: File would be reformatted
+   --> compass/reports/graduate_tracer.py:333:53
+    |
+332 |         if type(graduation_year) is not int or isinstance(graduation_year, bool):
+    -             raise InvalidGraduateTracerReportFilter("graduation_year must be a valid graduation year.")
+333 +             raise InvalidGraduateTracerReportFilter(
+334 +                 "graduation_year must be a valid graduation year."
+335 +             )
+336 |         current_year = institution_today().year
+337 |         if not (1900 <= graduation_year <= current_year):
+    -             raise InvalidGraduateTracerReportFilter("graduation_year must be a valid graduation year.")
+338 +             raise InvalidGraduateTracerReportFilter(
+339 +                 "graduation_year must be a valid graduation year."
+340 +             )
+341 |
+    |
+
+unformatted: File would be reformatted
+   --> compass/reports/graduate_tracer_xlsx.py:166:17
+    |
+165 |         rows.append(("Graduation Year", graduation_year))
+    -     rows.extend([
+    -         ("Submitted From", _date_text(report_context.get("submitted_from"))),
+    -         ("Submitted To", _date_text(report_context.get("submitted_to"))),
+    -         ("Submitted Response Count", int(report_context.get("submitted_response_count") or 0)),
+    -         ("Generated At", _generated_at_text(report_context.get("generated_at"))),
+    -     ])
+166 +     rows.extend(
+167 +         [
+168 +             ("Submitted From", _date_text(report_context.get("submitted_from"))),
+169 +             ("Submitted To", _date_text(report_context.get("submitted_to"))),
+170 +             ("Submitted Response Count", int(report_context.get("submitted_response_count") or 0)),
+171 +             ("Generated At", _generated_at_text(report_context.get("generated_at"))),
+172 +         ]
+173 +     )
+174 |     row = 3
+    |
+
+unformatted: File would be reformatted
+   --> tests/test_graduate_tracer.py:100:48
+    |
+99  |     campus, _ = Campus.objects.get_or_create(code="UCN-MAIN", defaults={"name": "UCN Main Campus"})
+    -     college, _ = College.objects.get_or_create(campus=campus, code="CCMS", defaults={"name": "College of Computing and Multimedia Studies"})
+    -     program, _ = Program.objects.get_or_create(college=college, code="BSIS", defaults={"name": "BS Information Systems"})
+100 +     college, _ = College.objects.get_or_create(
+101 +         campus=campus, code="CCMS", defaults={"name": "College of Computing and Multimedia Studies"}
+102 +     )
+103 +     program, _ = Program.objects.get_or_create(
+104 +         college=college, code="BSIS", defaults={"name": "BS Information Systems"}
+105 +     )
+106 |     return college, program, 2026
+    |
+
+unformatted: File would be reformatted
+   --> tests/test_graduate_tracer_confidential_content_encryption.py:745:61
+    |
+744 |         model = after_apps.get_model("graduate_tracer", family)
+    -         assert not set(content.FIELDS[family]).intersection(
+    -             columns(model)
+    -         )
+745 +         assert not set(content.FIELDS[family]).intersection(columns(model))
+746 |         for row in model.objects.all():
+    |
+
+unformatted: File would be reformatted
+   --> tests/test_graduate_tracer_graduation_classification.py:56:38
+    |
+55  |     prog_a2 = Program.objects.create(college=college_a, code="BSCS", name="BS Computer Science")
+    -     prog_b1 = Program.objects.create(college=college_b, code="BSBA", name="BS Business Administration")
+56  +     prog_b1 = Program.objects.create(
+57  +         college=college_b, code="BSBA", name="BS Business Administration"
+58  +     )
+59  |     return college_a, college_b, prog_a1, prog_a2, prog_b1
+--------------------------------------------------------------------------------
+93  |     # Head guidance with graduate_tracer.view / reports.view
+    -     assert auth_client(head).get("/api/v1/graduate-tracer/classification-options").status_code == 200
+94  +     assert (
+95  +         auth_client(head).get("/api/v1/graduate-tracer/classification-options").status_code == 200
+96  +     )
+97  |
+98  |     # IT Admin without GTS capabilities
+    -     assert auth_client(it_admin).get("/api/v1/graduate-tracer/classification-options").status_code == 403
+99  +     assert (
+100 +         auth_client(it_admin).get("/api/v1/graduate-tracer/classification-options").status_code
+101 +         == 403
+102 +     )
+103 |
+    |
+
+unformatted: File would be reformatted
+   --> tests/test_guidance_messages.py:959:82
+    |
+958 |
+    - def test_count_unread_conversations_pagination_independence_and_query_efficiency(world, django_assert_num_queries):
+959 + def test_count_unread_conversations_pagination_independence_and_query_efficiency(
+960 +     world, django_assert_num_queries
+961 + ):
+962 |     now = timezone.now()
+--------------------------------------------------------------------------------
+984 |         assert services.count_unread_conversations(actor=world.counselor) == 25
+    -
+    -
+985 |
+    |
+
+8 files would be reformatted, 727 files already formatted
