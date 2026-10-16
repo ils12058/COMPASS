@@ -3,11 +3,14 @@
 // tracks, and every API call is answered with synthetic fixtures: no Daily room, credential,
 // recording, transcript or institutional record is touched.
 import assert from "node:assert/strict";
+import { createServer } from "node:http";
+import { once } from "node:events";
+import { readFile } from "node:fs/promises";
 
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { appointmentId, consents, workspace } from "./support/ui-hierarchy-fixtures.mjs";
 
-const { baseURL, check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("ecounseling-call");
+const { check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("ecounseling-call");
 const ePath = `/portal/e-counseling/${appointmentId}`;
 const STUDENT = "Maria Santos";
 const COUNSELOR = "Maria Reyes";
@@ -111,7 +114,7 @@ await check("counselor-native-call-desktop", ePath, { fakeDaily: true, overrides
   await screenshot(page, "counselor-call-desktop");
 });
 
-await check("call-controls-and-devices", ePath, { fakeDaily: true, overrides: liveSession().overrides }, async (page) => {
+await check("call-controls-and-devices", ePath, { fakeDaily: true, initScripts: ["HTMLMediaElement.prototype.setSinkId = async function () {};"], overrides: liveSession().overrides }, async (page) => {
   await joinCall(page);
   const mic = tray(page).getByRole("button", { name: "Microphone", exact: true });
   const camera = tray(page).getByRole("button", { name: "Camera", exact: true });
@@ -561,25 +564,49 @@ await check("v2-no-transcript-saved-copy", ePath, { overrides: liveSession({ rec
 
 let signedRequests = 0;
 {
+  // Use a real loopback attachment: WebKit does not reliably emit downloads for routed media.
+  const transfers = [];
+  const referrers = [];
+  const bytes = Buffer.from("synthetic recording attachment");
+  const attachment = createServer((request, response) => {
+    transfers.push(new URL(request.url, "http://localhost").searchParams.get("token"));
+    referrers.push(request.headers.referer ?? null);
+    response.writeHead(200, { "Content-Type": "video/mp4", "Content-Disposition": 'attachment; filename="synthetic.mp4"', "Cache-Control": "no-store" });
+    response.end(bytes);
+  });
+  attachment.listen(0, "127.0.0.1");
+  await once(attachment, "listening");
+  const attachmentURL = `http://127.0.0.1:${attachment.address().port}/synthetic-media-download`;
   const session = liveSession({ recording: "READY", transcription: "READY", artifact: "STORED" });
-  session.overrides[`/api/v1/e-counseling/appointments/${appointmentId}/media/RECORDING/access`] = ({ reply }) => reply({ url: `${baseURL}/synthetic-media-download?token=${++signedRequests}`, expires_at: "2099-10-08T00:00:00Z" });
+  session.overrides[`/api/v1/e-counseling/appointments/${appointmentId}/media/RECORDING/access`] = ({ reply }) => reply({ url: `${attachmentURL}?token=${++signedRequests}`, expires_at: "2099-10-08T00:00:00Z" });
   await check("v2-fresh-download-per-click", ePath, { overrides: session.overrides }, async (page, { context, requests }) => {
-    await context.route("**/synthetic-media-download?*", (route) => route.fulfill({ status: 200, contentType: "video/mp4", headers: { "Content-Disposition": 'attachment; filename="synthetic.mp4"' }, body: "synthetic" }));
     const button = page.getByRole("button", { name: "Download recording", exact: true });
     await shown(button);
     assert.equal(requests.filter((request) => request.pathname.endsWith("/access")).length, 0, "No link is fetched before the click");
     for (let count = 1; count <= 2; count++) {
-      const download = page.waitForEvent("download");
-      await button.click();
-      const result = await download;
+      // WebKit delivers a target=_blank attachment on its new page; Chromium uses the opener.
+      const download = new Promise((resolve, reject) => {
+        const pages = new Set([page]);
+        const cleanup = () => { clearTimeout(timer); context.off("page", opened); for (const source of pages) source.off("download", received); };
+        const received = item => { cleanup(); resolve(item); };
+        const opened = popup => { pages.add(popup); popup.once("download", received); };
+        const timer = setTimeout(() => { cleanup(); reject(new Error("The media attachment did not download")); }, 12_000);
+        page.once("download", received);
+        context.on("page", opened);
+      });
+      const [result] = await Promise.all([download, button.click()]);
       assert.equal(result.suggestedFilename(), "synthetic.mp4");
+      assert.deepEqual(await readFile(await result.path()), bytes);
       await result.delete();
       await shown(button);
       assert.equal(signedRequests, count);
+      assert.deepEqual(transfers, Array.from({ length: count }, (_, index) => String(index + 1)));
+      assert.deepEqual(referrers, Array(count).fill(null), "The signed download URL receives no referrer");
     }
     assert.doesNotMatch(await page.locator("main").innerText(), /token=|synthetic-media-download/);
     await screenshot(page, "v2-counselor-session-files");
   });
+  await new Promise(resolve => attachment.close(resolve));
 }
 
 {

@@ -10,6 +10,13 @@ import { chromium, webkit } from "playwright";
 import { fakeDailyInitScript } from "./fake-daily.mjs";
 import { appointmentId, serviceId, appointment, service, workspace, consents, user, slip } from "./ui-hierarchy-fixtures.mjs";
 
+function artifactFilename(name) {
+  return String(name)
+    .replace(/[<>:"/\\|?*\u0000-\u001f]/g, "-")
+    .replace(/[. ]+$/g, "")
+    .slice(0, 180) || "screenshot";
+}
+
 export const viewports = {
   desktop: { viewport: { width: 1440, height: 1000 } },
   laptop: { viewport: { width: 1280, height: 800 } },
@@ -63,7 +70,7 @@ export async function createBrowserHarness(suite) {
     page.setDefaultTimeout(12_000);
     const errors = [];
     const requests = [];
-    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("pageerror", (error) => errors.push(error.stack ?? error.message));
     if (fakeDaily) await page.addInitScript({ content: fakeDailyInitScript(fakeDaily === true ? {} : fakeDaily) });
     for (const script of initScripts) await page.addInitScript({ content: script });
     await context.route(/\/api\/v1(?:\/|\?)/, async (route) => {
@@ -135,7 +142,7 @@ export async function createBrowserHarness(suite) {
       failures.push(name);
       results.push({ name, passed: false, message: error.message, errors: fixture?.errors, requests: fixture?.requests });
       console.error(`FAIL ${name}: ${error.message}`);
-      await fixture?.page.screenshot({ path: join(artifacts, `${name}-failure.png`), fullPage: true }).catch(() => {});
+      await fixture?.page.screenshot({ path: join(artifacts, `${artifactFilename(name)}-failure.png`), fullPage: true }).catch(() => {});
     } finally {
       await fixture?.context.close();
     }
@@ -156,7 +163,7 @@ export async function createBrowserHarness(suite) {
     finish,
     async shown(locator) { await locator.waitFor({ state: "visible" }); },
     async hidden(locator) { await locator.waitFor({ state: "hidden" }); },
-    async screenshot(page, name) { await page.screenshot({ path: join(artifacts, `${name}.png`), fullPage: true }); },
+    async screenshot(page, name) { await page.screenshot({ path: join(artifacts, `${artifactFilename(name)}.png`), fullPage: true }); },
     async noHorizontalOverflow(page) {
       const { scroll, client } = await page.evaluate(() => ({
         scroll: document.documentElement.scrollWidth,

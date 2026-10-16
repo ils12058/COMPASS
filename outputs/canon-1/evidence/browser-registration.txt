@@ -1,0 +1,25 @@
+::group::webkit: first.browser.mjs
+::endgroup::
+::group::webkit: second.browser.mjs
+::endgroup::
+webkit: 0/2 suites passed.
+::group::chromium: passing.browser.mjs
+PASS chromium: passing.browser.mjs
+::endgroup::
+chromium: 1/1 suites passed.
+FAIL webkit: first.browser.mjs (1)
+FAIL webkit: second.browser.mjs (SIGTERM)
+Failed suites:
+first.browser.mjs
+second.browser.mjs
+✔ browser discovery includes future and nested suites without a script edit (3.456167ms)
+✔ all current browser suites run exactly once across the four CI shards (3.333208ms)
+✔ a failing or interrupted suite cannot hide later failures or produce green (1.027333ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 96.632708

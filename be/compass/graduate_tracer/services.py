@@ -514,7 +514,9 @@ def _clean_uuid(value: object, field_name: str) -> UUID | None:
         try:
             return UUID(value.strip())
         except (ValueError, AttributeError):
-            raise InvalidGraduateTracerInput(f"{field_name} must be a valid UUID or null.") from None
+            raise InvalidGraduateTracerInput(
+                f"{field_name} must be a valid UUID or null."
+            ) from None
     raise InvalidGraduateTracerInput(f"{field_name} must be a valid UUID or null.")
 
 
@@ -575,7 +577,8 @@ def _normalize_root(values: dict[str, object]) -> dict[str, object]:
         current_year = institution_today().year
         if not (1900 <= year <= current_year):
             raise InvalidGraduateTracerInput(
-                f"graduation_year must be a valid completed graduation year from 1900 through {current_year}."
+                "graduation_year must be a valid completed graduation year "
+                f"from 1900 through {current_year}."
             )
         normalized["graduation_year"] = year
 
@@ -756,7 +759,8 @@ def _validate_submission(item: GraduateTracerResponse, private) -> None:
     current_year = institution_today().year
     if not (1900 <= item.graduation_year <= current_year):
         raise InvalidGraduateTracerInput(
-            f"graduation_year must be a valid completed graduation year from 1900 through {current_year}."
+            "graduation_year must be a valid completed graduation year "
+            f"from 1900 through {current_year}."
         )
     if item.graduated_program.college_id != item.graduated_college_id:
         raise InvalidGraduateTracerInput(

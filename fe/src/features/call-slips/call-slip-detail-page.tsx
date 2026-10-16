@@ -292,7 +292,14 @@ function RecordInterviewEnd({ slip, onRefresh }: { slip: CallSlipOperationalResp
         </div>
         {error && !confirmOpen ? <p role="alert" className="text-sm text-danger">{error}</p> : null}
         {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
-        <Button type="submit" variant="secondary" disabled={mutation.isPending || reconcileRequired}>{reconcileRequired ? "Refresh required" : "Review interview end"}</Button>
+        <Button
+          type="submit"
+          variant="secondary"
+          disabled={mutation.isPending || reconcileRequired}
+          onClick={(event) => event.currentTarget.focus()}
+        >
+          {reconcileRequired ? "Refresh required" : "Review interview end"}
+        </Button>
         {reconcileRequired ? <IconAction action="refresh" label="Refresh Call Slip" className="ml-2" onClick={() => void record()} /> : null}
       </form>
       <ConsequentialActionDialog

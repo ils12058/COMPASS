@@ -1,0 +1,55 @@
+{
+  "run_id": 38859891949,
+  "head_sha": "8cff975e06deb9e252df0d3d1d7417316661f12b",
+  "reports": 6,
+  "counts": {
+    "tests": 1285,
+    "failures": 7,
+    "errors": 0,
+    "skipped": 0
+  },
+  "failures": [
+    {
+      "classname": "tests.test_privacy_release_audit",
+      "name": "test_graduate_tracer_xlsx_release_records_only_safe_report_context",
+      "kind": "failure",
+      "message": "AssertionError: assert {'format': 'X..._tracer', ...} == {'report_type...6-01-01', ...}\n  \n  Omitting 5 identical items, use -vv to show\n  Left contains 5 more items:\n  {'college_code': None,\n   'college_id': None,\n   'graduation_year': None,\n   'program_code': None,\n   'program_id': None}\n  \n  Full diff:\n    {\n  +     'format': 'XLSX',\n  +     'college_id': None,\n  +     'program_id': None,\n        'report_type': 'graduate_tracer',\n  -     'format': 'XLSX',\n  +     'college_code': None,\n  +     'program_code': None,\n  +     'submitted_to': '2026-12-31',\n  +     'submitted_from': '2026-01-01',\n  +     'graduation_year': None,\n        'instrument_schema_version': 1,\n  -     'submitted_from': '2026-01-01',\n  -     'submitted_to': '2026-12-31',\n    }"
+    },
+    {
+      "classname": "tests.test_audit",
+      "name": "test_success_audit_event_rolls_back_with_surrounding_transaction",
+      "kind": "failure",
+      "message": "assert 1 == 0\n +  where 1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7fb29e1c1450>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7fb29e1c1450> = AuditEvent.objects"
+    },
+    {
+      "classname": "tests.test_audit",
+      "name": "test_policy_sync_rolls_back_if_audit_recording_fails",
+      "kind": "failure",
+      "message": "assert 1 == 0\n +  where 1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7fb29e1c1450>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7fb29e1c1450> = AuditEvent.objects"
+    },
+    {
+      "classname": "tests.test_openapi_contract",
+      "name": "test_all_public_operations_have_stable_unique_ids_and_approved_tags",
+      "kind": "failure",
+      "message": "AssertionError: assert 355 == 351\n +  where 355 = len(['academicYearsList', 'academicYearsCreate', 'academicYearsSetCurrent', 'accountsList', 'accountsCreate', 'accountsImportCsv', ...])\n +  and   351 = len({'academicYearsCreate', 'academicYearsList', 'academicYearsSetCurrent', 'accountsAssignDesignation', 'accountsChangeRole', 'accountsCreate', ...})"
+    },
+    {
+      "classname": "tests.test_openapi_contract",
+      "name": "test_review_list_query_parameters_match_backend_consistency_contract",
+      "kind": "failure",
+      "message": "AssertionError: assert {'college_id'...ge_size', ...} == {'current_emp...dent_id', ...}\n  \n  Extra items in the left set:\n  'program_id'\n  'graduation_year'\n  'college_id'\n  \n  Full diff:\n    {\n  +     'college_id',\n        'current_employment_state',\n  +     'graduation_year',\n        'ordering',\n        'page',\n        'page_size',\n  +     'program_id',\n        'search',\n        'student_id',\n        'submitted_from',\n        'submitted_to',\n    }"
+    },
+    {
+      "classname": "tests.test_openapi_contract",
+      "name": "test_core_schemas_and_realistic_error_responses_are_typed",
+      "kind": "failure",
+      "message": "AssertionError: assert {'college', '...ed_from', ...} == {'generated_a...submitted_to'}\n  \n  Extra items in the left set:\n  'program'\n  'graduation_year'\n  'college'\n  \n  Full diff:\n    {\n  +     'college',\n        'generated_at',\n  +     'graduation_year',\n        'instrument_schema_version',\n  +     'program',\n        'submitted_from',\n        'submitted_response_count',\n        'submitted_to',\n    }"
+    },
+    {
+      "classname": "tests.test_openapi_contract",
+      "name": "test_policy_enums_and_sensitive_model_fields_are_contract_safe",
+      "kind": "failure",
+      "message": "AssertionError: assert ['academic_ye....manage', ...] == ['academic_ye....manage', ...]\n  \n  At index 35 diff: 'good_moral.initiate' != 'good_moral.issue'\n  Left contains one more item: 'student_support.view'\n  \n  Full diff:\n    [\n        'academic_years.manage',\n        'academic_years.view',\n        'accounts.manage',\n        'accounts.view',\n        'activity.supervised_staff.view',\n        'announcements.manage',\n        'appointments.manage',\n        'appointments.manage_self',\n        'appointments.view_self',\n        'assessment_records.manage',\n        'assessment_records.view',\n        'availability.manage',\n        'availability.manage_self',\n        'availability.view',\n        'call_slips.manage',\n        'call_slips.view',\n        'call_slips.view_self',\n        'counseling.manage_assigned',\n        'counseling.view_assigned',\n        'ecounseling.access_media_assigned',\n        'ecounseling.consent_self',\n        'ecounseling.join_assigned',\n        'ecounseling.join_self"
+    }
+  ]
+}

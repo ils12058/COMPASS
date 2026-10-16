@@ -216,7 +216,7 @@ def seed_exit_interview(
     }
     allowed = set(college_feedback_codes(item))
     values["college_feedback_ratings"] = [
-        row for row in values["college_feedback_ratings"] if row["item_code"] in allowed
+        row for row in values.get("college_feedback_ratings", []) if row["item_code"] in allowed
     ]
     if not any(code.startswith("PROGRAM_CHAIR_") for code in allowed):
         values["program_chair_comments"] = ""

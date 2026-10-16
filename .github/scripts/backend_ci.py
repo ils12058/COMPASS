@@ -98,6 +98,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Activity history, retrieval, and platform/privacy activity views.",
         (
             "test_activity.py",
+            "test_domain_activity.py",
             "test_activity_retrieval.py",
             "test_platform_activity.py",
             "test_privacy_activity.py",
@@ -256,7 +257,8 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
     "good-moral": (
         "Good Moral requests, preparation, issuance, and release audit.",
-        ("test_good_moral.py", "test_good_moral_preparation.py", "test_privacy_release_audit.py"),
+        ("test_good_moral.py", "test_good_moral_assisted.py",
+         "test_good_moral_preparation.py", "test_privacy_release_audit.py"),
     ),
     "feedback": (
         "Customer feedback and CSM responses, including encryption.",
@@ -267,6 +269,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         (
             "test_graduate_tracer.py",
             "test_graduate_tracer_confidential_content_encryption.py",
+            "test_graduate_tracer_graduation_classification.py",
             "test_graduate_tracer_reports.py",
             "test_graduate_tracer_xlsx.py",
         ),
@@ -279,6 +282,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_student_profiling_report_coverage.py",
             "test_student_profiling_pdf.py",
             "test_student_profiling_xlsx.py",
+            "test_graduate_tracer_graduation_classification.py",
             "test_graduate_tracer_reports.py",
             "test_graduate_tracer_xlsx.py",
         ),
@@ -701,6 +705,14 @@ for source in (
     area = DOMAINS[source]
     DOMAINS[source] = domain(area.name, area.reason, (*area.bundles, "student-actions"), area.tests)
 
+# My Activity reads these source domains directly; their changes must exercise its privacy scope.
+for source in (
+    "appointments", "call_slips", "exit_interviews", "good_moral", "inventory", "referrals",
+    "routine_interviews",
+):
+    area = DOMAINS[source]
+    DOMAINS[source] = domain(area.name, area.reason, (*area.bundles, "activity-audit"), area.tests)
+
 # compass/integrations is split by client: each client is used by different domains.
 for source in (
     "guidance_messages", "routine_interviews", "good_moral", "call_slips", "appointments",
@@ -755,6 +767,7 @@ FULL_PATHS = {
     "be/manage.py": "The Django entry point changed.",
     "be/compass/__init__.py": "The application package changed.",
     "be/compass/tasks.py": "The Celery task registry imports every domain.",
+    "be/compass/graduate_tracer/participation.py": "Disposed participation is a database model.",
     "be/tests/conftest.py": "Test configuration applies to every test.",
     "be/tests/settings.py": "Test settings apply to every test.",
     "be/tests/__init__.py": "The test package changed.",
@@ -793,6 +806,11 @@ def classify(path: str) -> Area | None:
         return None
     if "/migrations/" in path:
         return full("migrations", "Migrations change the schema every test builds.")
+    if path.startswith("be/compass/") and (
+        Path(path).name == "models.py" or Path(path).name.endswith("_models.py")
+        or "models" in Path(path).parts[2:-1]
+    ):
+        return full("models", "Database models affect the schema and cross-domain relationships.")
     if path in FULL_PATHS:
         return full(path, FULL_PATHS[path])
     if path.startswith("be/config/"):
@@ -864,7 +882,11 @@ def test_importers(module: str) -> set[str]:
 
 
 def all_test_files() -> list[str]:
-    return sorted(path.name for path in TESTS.glob("test_*.py"))
+    return sorted(
+        path.relative_to(TESTS).as_posix()
+        for path in TESTS.rglob("*.py")
+        if path.name.startswith("test_") or path.name.endswith("_test.py")
+    )
 
 
 # --------------------------------------------------------------------------------------------

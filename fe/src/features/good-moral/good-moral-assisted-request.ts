@@ -1,4 +1,4 @@
-import { CompassApiError, readApiErrorCode, readApiErrorMessage } from "@/lib/api/errors";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { uncertainGoodMoralMutation } from "./good-moral-shared";
 
 export function assistedCreationError(error: unknown): string {
@@ -14,7 +14,7 @@ export function assistedCreationError(error: unknown): string {
     case "good_moral_conflict": return "This Student already has a pending Good Moral request. Open it in the request queue.";
     case "idempotency_key_conflict": return "This attempt no longer matches its original request. Review the request queue before starting another request.";
     case "permission_denied": return "You no longer have permission to start this request.";
-    case "invalid_good_moral_request": return readApiErrorMessage(error.body) ?? "Check the request details and try again.";
+    case "invalid_good_moral_request": return "Check the request details and try again.";
     default: return "The Good Moral request could not be started. Review the details and try again.";
   }
 }

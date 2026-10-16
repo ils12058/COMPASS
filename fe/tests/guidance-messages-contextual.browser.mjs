@@ -287,7 +287,7 @@ for (const role of ["STUDENT", "COUNSELOR"]) {
 {
   const validUntil = new Date(Date.now() + 25_000).toISOString();
   const world = contextualWorld("COUNSELOR", backendFor("COUNSELOR"), { validUntil });
-  await check("Counseling context expiry keeps the Messages panel, its draft and the thread", counselingPath, world.options(), async (page) => {
+  await check("Counseling context expiry keeps the Messages panel, its draft and the thread", counselingPath, world.options(), async (page, { context, errors }) => {
     await trigger(page).click();
     await shown(history(panel(page)).getByText("Thank you po."));
     await composer(panel(page)).fill("Written before the context ended");
@@ -296,8 +296,13 @@ for (const role of ["STUDENT", "COUNSELOR"]) {
     assert.equal(await composer(panel(page)).inputValue(), "Written before the context ended");
     await shown(history(panel(page)).getByText("Thank you po."));
     assert.equal(world.backend.state.threads.size, 1, "The thread is untouched");
-    await page.goto(`${baseURL}/portal/messages/${THREAD}`);
-    await shown(page.getByRole("region", { name: "Conversation history" }).getByText("Thank you po."));
+    // Preserve the open Counseling page so its background queries are not aborted by a hard
+    // navigation; load the canonical conversation URL in a second page in the same session.
+    const conversationPage = await context.newPage();
+    conversationPage.setDefaultTimeout(12_000);
+    conversationPage.on("pageerror", (error) => errors.push(error.stack ?? error.message));
+    await conversationPage.goto(`${baseURL}/portal/messages/${THREAD}`, { waitUntil: "domcontentloaded" });
+    await shown(conversationPage.getByRole("region", { name: "Conversation history" }).getByText("Thank you po."));
   });
 }
 

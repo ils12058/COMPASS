@@ -15,9 +15,9 @@ name: Backend full regression
 
 on:
   push:
-    branches: [staging]
+    branches: [staging, canon/compass-clean-baseline]
   pull_request:
-    branches: [staging]
+    branches: [staging, canon/compass-clean-baseline]
     paths:
       - ".github/scripts/**"
       - ".github/workflows/backend-full.yml"

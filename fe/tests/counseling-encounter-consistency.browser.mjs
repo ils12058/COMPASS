@@ -294,7 +294,7 @@ const correctionOverrides = (state) => ({
   [`/api/v1/counseling/encounters/${ENCOUNTER}`]: async ({ reply, request }) => {
     if (request.method() === "PATCH") {
       state.patch = JSON.parse(request.postData());
-      if (state.hold) await new Promise((resolve) => { state.release = resolve; });
+      if (state.hold) await new Promise((resolve) => { state.release = resolve; state.started?.(); });
       return reply(savedEncounter(state.patch));
     }
     return reply(savedEncounter());
@@ -306,6 +306,7 @@ const correctionOverrides = (state) => ({
 });
 
 const correction = { hold: true };
+const correctionStarted = new Promise(resolve => { correction.started = resolve; });
 await check("correction-form-consistency", `/portal/counseling/encounters/${ENCOUNTER}`, { overrides: correctionOverrides(correction) }, async (page) => {
   await page.getByRole("button", { name: "Correct encounter details", exact: true }).click();
   const form = page.getByRole("form", { name: "Correct encounter details" });
@@ -327,6 +328,7 @@ await check("correction-form-consistency", `/portal/counseling/encounters/${ENCO
   await save.click();
   await shown(form.getByRole("button", { name: "Saving corrections…", exact: true }));
   assert.equal(await form.getByRole("button", { name: "Cancel", exact: true }).isDisabled(), true);
+  await correctionStarted;
   assert.deepEqual(correction.patch, { ended_at: "2026-10-08T02:50:00.000Z" }, "Only the changed time is sent; the start keeps its stored seconds");
   correction.release();
   await hidden(form);

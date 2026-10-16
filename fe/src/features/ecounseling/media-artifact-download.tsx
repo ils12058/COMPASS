@@ -45,20 +45,41 @@ export function MediaArtifactDownload({ appointmentId, kind, state, canAccess }:
 
   async function download() {
     if (pending || resourceAccess.getDenial(appointmentId)) return;
+    const downloadWindow = window.open("about:blank", "_blank");
+    if (!downloadWindow) {
+      setError("Allow pop-ups for COMPASS, then try again.");
+      return;
+    }
+    downloadWindow.opener = null;
+    const referrerPolicy = downloadWindow.document.createElement("meta");
+    referrerPolicy.name = "referrer";
+    referrerPolicy.content = "no-referrer";
+    downloadWindow.document.head.append(referrerPolicy);
+    downloadWindow.document.body.textContent = "Preparing file…";
     const epoch = resourceAccess.epoch(appointmentId);
     setPending(true);
     setError(null);
     try {
       const result = await eCounselingAccessAssignedMedia(appointmentId, kind, { cache: "no-store" });
       resourceAccess.assertAuthorized(appointmentId, epoch);
-      const link = document.createElement("a");
-      link.href = result.data.url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
-      link.referrerPolicy = "no-referrer";
-      link.click();
-      link.remove();
+      if (downloadWindow.closed) return;
+      const userAgent = navigator.userAgent;
+      const isSafari = /AppleWebKit/i.test(userAgent) && !/(Chrome|Chromium|Edg|OPR|CriOS)/i.test(userAgent);
+      if (isSafari) {
+        // A synthetic anchor click after the async access request is rejected by WebKit when the
+        // transient user activation has expired. Navigate the click-opened page directly instead.
+        downloadWindow.location.replace(result.data.url);
+      } else {
+        const link = downloadWindow.document.createElement("a");
+        link.href = result.data.url;
+        link.referrerPolicy = "no-referrer";
+        link.rel = "noopener noreferrer";
+        link.textContent = "Download is starting…";
+        downloadWindow.document.body.replaceChildren(link);
+        link.click();
+      }
     } catch (caught) {
+      downloadWindow.close();
       resourceAccess.requestFailed(caught);
       if (isSessionEndedError(caught)) requestSessionRevalidation("session");
       setError(ecounselingErrorMessage(caught, "The file isn't available right now. Try again."));

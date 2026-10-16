@@ -1,0 +1,7 @@
+{
+  "collected_cases": 4711,
+  "junit_cases": 4711,
+  "unique_junit_case_ids": 4711,
+  "function_parameter_count_mismatches": [],
+  "note": "Compared module/class/function parameter counts. Full parameter IDs cannot be compared between processes because some generate UUIDs and ephemeral test keys. Raw key-bearing IDs are deliberately not retained here. All JUnit case IDs in the six-shard run are unique."
+}

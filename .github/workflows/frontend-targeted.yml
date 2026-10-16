@@ -2,7 +2,7 @@ name: Frontend targeted validation
 
 on:
   pull_request:
-    branches: [staging]
+    branches: [staging, canon/compass-clean-baseline]
     paths:
       - "fe/**"
       - "contracts/openapi.json"
@@ -11,6 +11,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: frontend-targeted-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   targeted-frontend:
@@ -89,19 +93,22 @@ jobs:
         working-directory: fe
         run: pnpm test
 
-  # Browser regressions for account changes, failed refreshes and unsaved drafts (frontend audit
-  # FE-001 to FE-004), the realtime runtime, encrypted Assessment Records, Guidance operations, and the full, contextual and staff-operations (handler
-  # assignment, Message templates) Guidance Messages. They
-  # run against a development server because the synthetic seams (fake Call Object, API
-  # interception) are development-only; every API call is answered in the browser, so no backend
-  # runs. The other browser suites stay local until the intermittent tooltip check in
-  # ui-information-hierarchy is characterized.
+  # Every *.browser.mjs suite runs on both engines. Discovery and exactly-once shard
+  # coverage are tested by browser-registration.test.mjs; each suite has a named log group.
+  # API/provider calls are synthetic and use only the local development server.
   frontend-browser-regressions:
+    name: browser ${{ matrix.browser }} ${{ matrix.shard }}/4
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+        shard: [1, 2, 3, 4]
     runs-on: ubuntu-latest
     timeout-minutes: 35
     env:
       COMPASS_API_BASE_URL: http://127.0.0.1:8000
       NEXT_TELEMETRY_DISABLED: "1"
+      COMPASS_UI_TEST_MODE: "1"
       # Next blocks development resources for other origins, so the browser uses localhost.
       COMPASS_UI_BASE_URL: http://localhost:3107
 
@@ -131,10 +138,22 @@ jobs:
         working-directory: fe
         run: pnpm exec playwright install --with-deps chromium webkit
 
+      - name: Start fail-closed synthetic SSR API
+        working-directory: fe
+        run: |
+          nohup node tests/support/ssr-api-fallback.mjs > "$RUNNER_TEMP/ssr-api.log" 2>&1 &
+          for attempt in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:8000/__health >/dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/ssr-api.log"
+          exit 1
+
       - name: Start development server
         working-directory: fe
         run: |
-          nohup pnpm dev --port 3107 > "$RUNNER_TEMP/next-dev.log" 2>&1 &
+          # Use the supported Webpack dev compiler for stable cold next/font/google resolution.
+          nohup pnpm dev --webpack --port 3107 > "$RUNNER_TEMP/next-dev.log" 2>&1 &
           for attempt in $(seq 1 90); do
             if curl -fsS -o /dev/null http://localhost:3107/login; then exit 0; fi
             sleep 2
@@ -151,15 +170,19 @@ jobs:
             / /portal/actions /portal/work /portal/operations /portal /portal/services/service-density-test /portal/services/service-density-test/edit \
             /portal/services /portal/inventory/current /portal/exit-interviews/exit-draft-test \
             /portal/referrals/referral-draft-test /portal/availability/me /portal/availability/office /portal/accounts /portal/inventory /portal/exit-interviews \
+            /portal/account/activity /portal/account/activity\?view=security \
             /portal/resources /portal/organization/student-affiliations /portal/availability/providers \
             /portal/announcements/long /portal/referrals/long \
             /portal/messages /portal/messages/new /portal/messages/a0000000-0000-4000-8000-000000000001 \
+            /portal/call-slips/slip-density-test /portal/good-moral /portal/good-moral/11111111-1111-4111-8111-111111111116 \
             /portal/messages/templates \
             /portal/appointments/b0000000-0000-4000-8000-000000000001 \
             /portal/counseling /portal/counseling/encounters/e0000000-0000-4000-8000-000000000001 \
             /portal/counseling/workspace/appointment/b0000000-0000-4000-8000-000000000001 \
             /portal/counseling/workspace/routine-interview/c0000000-0000-4000-8000-000000000001 \
-            /portal/e-counseling/b0000000-0000-4000-8000-000000000001; do
+            /portal/e-counseling/b0000000-0000-4000-8000-000000000001 \
+            /portal/e-counseling/appointment-density-test /portal/e-counseling/11111111-1111-4111-8111-111111111111 \
+            /portal/routine-interviews/routine-slice1a; do
             curl -sS -o /dev/null -w "%{http_code} $route\n" "http://localhost:3107$route"
           done
 
@@ -167,14 +190,15 @@ jobs:
         working-directory: fe
         env:
           COMPASS_UI_ARTIFACTS: ${{ runner.temp }}/browser-regressions
-        run: pnpm test:ui:regressions
+        run: pnpm test:ui:regressions --browser "${{ matrix.browser }}" --shard "${{ matrix.shard }}/4"
 
       - name: Upload browser evidence
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: frontend-browser-regressions
+          name: frontend-browser-${{ matrix.browser }}-${{ matrix.shard }}
           path: |
             ${{ runner.temp }}/browser-regressions
             ${{ runner.temp }}/next-dev.log
+            ${{ runner.temp }}/ssr-api.log
           if-no-files-found: ignore

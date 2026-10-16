@@ -3,10 +3,10 @@
 from django.db import transaction
 
 from compass.counseling.models import CounselingEncounter
-from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
+from compass.feedback.models import ClientSatisfactionResponse
 from compass.feedback.services import create_csm_response, create_customer_feedback
 
-from .feedback_content import matching_feedback
+from .feedback_content import matching_customer_feedback, matching_feedback
 from .narratives import _csm_ratings, _customer_ratings
 from .publications import _demo_feedback_opportunity, _stamp_demo_feedback_marker
 from .support import align_timestamps
@@ -72,13 +72,7 @@ def seed_population_feedback(session):
             submitted = max(session.timeline.past(6, 18), encounter.ended_at)
             values = CUSTOMER_FEEDBACK[key]
             customer = next(
-                matching_feedback(
-                    CustomerFeedbackResponse.objects.filter(
-                        respondent_name_snapshot=session.user(key).get_full_name()
-                    ),
-                    "additional_feedback",
-                    values["additional_feedback"],
-                ),
+                matching_customer_feedback(session.user(key), values),
                 None,
             )
             created = customer is None

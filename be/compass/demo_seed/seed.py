@@ -17,7 +17,7 @@ from compass.call_slips.models import CallSlip
 from compass.common.correlation import reset_current_request_id, set_current_request_id
 from compass.counseling.models import CounselingEncounter, CounselingSharedSummary
 from compass.exit_interviews.models import ExitInterview
-from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
+from compass.feedback.models import ClientSatisfactionResponse
 from compass.good_moral.models import GoodMoralRequest
 from compass.graduate_tracer.models import GraduateTracerResponse
 from compass.institutional_forms.bootstrap import CanonicalFormSyncError, sync_institutional_forms
@@ -51,7 +51,7 @@ from .accounts import (
     provision_accounts,
     validate_demo_password,
 )
-from .cast import CAST, FORMER_STAFF, PERSONAS_BY_KEY, STAFF, STUDENTS, AuthState, Persona
+from .cast import CAST, FORMER_STAFF, STAFF, STUDENTS, AuthState, Persona
 from .config import DemoConfig, DemoConfigurationError, load_demo_config
 from .configuration import (
     check_organization_conflicts,
@@ -62,7 +62,7 @@ from .configuration import (
     program_for,
 )
 from .encryption import verify_encryption_keyrings
-from .feedback_content import matching_feedback
+from .feedback_content import matching_customer_feedback, matching_feedback
 from .guard import ensure_demo_seeding_allowed_by_settings
 from .history import check_history_preconditions, run_academic_timeline, seed_profiles
 from .narratives import CLIENT_SATISFACTION, CUSTOMER_FEEDBACK
@@ -365,7 +365,7 @@ def _records(session: SeedSession) -> tuple[tuple[str, str], ...]:
                 GraduateTracerResponse.objects.filter(student_id__in=students), "status"
             ),
         ),
-        ("Customer Feedback", str(_seeded_customer_feedback())),
+        ("Customer Feedback", str(_seeded_customer_feedback(session))),
         ("CSM responses", str(_seeded_csm())),
         (
             "Announcements",
@@ -409,19 +409,17 @@ def _status_breakdown_with_total(queryset, field_name: str) -> str:
     return f"{queryset.count()} ({_status_breakdown(queryset, field_name)})"
 
 
-def _seeded_customer_feedback() -> int:
-    return sum(
-        sum(
-            1
-            for _ in matching_feedback(
-                CustomerFeedbackResponse.objects.filter(
-                    respondent_name_snapshot=PERSONAS_BY_KEY[key].full_name
-                ),
-                "additional_feedback",
-                values["additional_feedback"],
-            )
-        )
+def _seeded_customer_feedback(session: SeedSession) -> int:
+    # Reports only count feedback for identities in this run's selected cohort. This also keeps a
+    # v1-to-v2 migration rehearsal from looking up the v2-only synthetic population.
+    values_by_persona = {
+        key: values
         for key, values in {**CUSTOMER_FEEDBACK, **population_feedback.CUSTOMER_FEEDBACK}.items()
+        if key in session.users
+    }
+    return sum(
+        sum(1 for _ in matching_customer_feedback(session.user(key), values))
+        for key, values in values_by_persona.items()
     )
 
 

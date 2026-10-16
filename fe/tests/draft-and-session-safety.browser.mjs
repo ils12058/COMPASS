@@ -554,8 +554,9 @@ async function refreshReferral(page, state) {
     await page.waitForTimeout(300);
     assert.equal(dialogs.seen.length, 3, "One question per Back");
     // The guard left with the editor, so closing no longer asks.
+    const closed = page.waitForEvent("close");
     await page.close({ runBeforeUnload: true });
-    await page.waitForEvent("close");
+    await closed;
     assert.equal(dialogs.seen.length, 3, "No question after the editor is gone");
   });
 }

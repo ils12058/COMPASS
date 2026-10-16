@@ -88,6 +88,7 @@ from .cast import (
     SECOND_YEAR,
     StudentPersona,
 )
+from .configuration import program_for
 from .history import seed_annual_inventory, seed_exit_interview
 from .slots import choose_slot
 from .support import (
@@ -908,10 +909,13 @@ def good_moral_student(session: SeedSession) -> None:
     )
 
 
-def _tracer_values(response: GraduateTracerResponse, persona: StudentPersona, answers) -> dict:
+def _tracer_values(
+    response: GraduateTracerResponse, persona: StudentPersona, answers, *, graduation_year: int
+) -> dict:
     from compass.graduate_tracer.confidential_content import read_confidential_content
 
     private = read_confidential_content(response)
+    program = program_for(persona)
     return {
         "name_snapshot": response.name_snapshot,
         "permanent_address_snapshot": private.permanent_address_snapshot,
@@ -920,6 +924,9 @@ def _tracer_values(response: GraduateTracerResponse, persona: StudentPersona, an
         "mobile_number_snapshot": private.mobile_number_snapshot,
         "birth_date": persona.date_of_birth,
         **answers,
+        "graduated_college_id": program.college_id,
+        "graduated_program_id": program.pk,
+        "graduation_year": graduation_year,
     }
 
 
@@ -974,7 +981,12 @@ def recent_graduate(session: SeedSession) -> None:
     response = ensure_my_response(student=student, context=session.as_user(RECENT_GRADUATE.key))
     replace_my_draft(
         student=session.user(RECENT_GRADUATE.key),
-        values=_tracer_values(response, RECENT_GRADUATE, narratives.RECENT_GRADUATE_TRACER_DRAFT),
+        values=_tracer_values(
+            response,
+            RECENT_GRADUATE,
+            narratives.RECENT_GRADUATE_TRACER_DRAFT,
+            graduation_year=details["graduation_date"].year,
+        ),
     )
     align_timestamps(response, created_at=t.past(4, 20, 10), updated_at=t.past(4, 20, 35))
     session.record("Graduate Tracer responses", created=True)
@@ -989,7 +1001,13 @@ def alumni(session: SeedSession) -> None:
     context = session.as_user(ALUMNI.key)
     response = ensure_my_response(student=student, context=context)
     replace_my_draft(
-        student=student, values=_tracer_values(response, ALUMNI, narratives.ALUMNI_TRACER)
+        student=student,
+        values=_tracer_values(
+            response,
+            ALUMNI,
+            narratives.ALUMNI_TRACER,
+            graduation_year=narratives.ALUMNI_GOOD_MORAL["graduation_date"].year,
+        ),
     )
     submitted_at = t.on(2026, 2, 9, 20, 15)
     submit_my_response(student=session.user(ALUMNI.key), context=context, now=submitted_at)

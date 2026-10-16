@@ -257,6 +257,7 @@ def test_actor_user_is_protected_so_disabling_is_preferred_to_deletion():
 
 @pytest.mark.django_db
 def test_success_audit_event_rolls_back_with_surrounding_transaction():
+    baseline_audit_count = AuditEvent.objects.count()
     with pytest.raises(RuntimeError, match="rollback"):
         with transaction.atomic():
             record_event(
@@ -266,7 +267,7 @@ def test_success_audit_event_rolls_back_with_surrounding_transaction():
             )
             raise RuntimeError("rollback")
 
-    assert AuditEvent.objects.count() == 0
+    assert AuditEvent.objects.count() == baseline_audit_count
 
 
 @pytest.mark.django_db
@@ -383,6 +384,7 @@ def test_policy_sync_records_one_event_only_when_it_changes_policy():
 
 @pytest.mark.django_db
 def test_policy_sync_rolls_back_if_audit_recording_fails():
+    baseline_audit_count = AuditEvent.objects.count()
     with patch(
         "compass.accounts.bootstrap.record_event",
         side_effect=RuntimeError("audit database unavailable"),
@@ -391,7 +393,7 @@ def test_policy_sync_rolls_back_if_audit_recording_fails():
             call_command("sync_identity_policy", stdout=StringIO())
 
     assert Role.objects.count() == 0
-    assert AuditEvent.objects.count() == 0
+    assert AuditEvent.objects.count() == baseline_audit_count
 
 
 @pytest.mark.django_db

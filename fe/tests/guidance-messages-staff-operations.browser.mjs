@@ -178,17 +178,25 @@ async function choose(page, name) {
 {
   const backend = studentWorld();
   const value = world(backend, messagesAccount("STUDENT"));
-  await check("Students see no assignment, no Templates and make no template request", OFFICE, value.options(), async (page) => {
+  await check("Students see no assignment, no Templates and make no template request", OFFICE, value.options(), async (page, { context, errors }) => {
     await shown(history(page).getByText("Bring your ID."));
     assert.equal(await conversation(page).getByText(/Assigned to/).count(), 0);
     assert.equal(await page.getByRole("button", { name: /Change assignment/ }).count(), 0);
     assert.equal(await templatesButton(page).count(), 0);
     assert.equal(await page.getByRole("link", { name: "Templates" }).count(), 0);
-    await page.goto(`${baseURL}/portal/messages/new`);
-    await shown(page.getByRole("heading", { name: "New message" }));
-    assert.equal(await templatesButton(page).count(), 0);
-    await page.goto(`${baseURL}${TEMPLATES_PAGE}`);
-    await shown(page.getByRole("heading", { name: "Message templates unavailable" }));
+    // Keep the thread page mounted while proving direct-route access. Navigating it while Next's
+    // prefetched RSC responses are in flight surfaces WebKit-only access-control errors.
+    const newMessagePage = await context.newPage();
+    newMessagePage.setDefaultTimeout(12_000);
+    newMessagePage.on("pageerror", (error) => errors.push(error.stack ?? error.message));
+    await newMessagePage.goto(`${baseURL}/portal/messages/new`, { waitUntil: "domcontentloaded" });
+    await shown(newMessagePage.getByRole("heading", { name: "New message" }));
+    assert.equal(await templatesButton(newMessagePage).count(), 0);
+    const templatesPage = await context.newPage();
+    templatesPage.setDefaultTimeout(12_000);
+    templatesPage.on("pageerror", (error) => errors.push(error.stack ?? error.message));
+    await templatesPage.goto(`${baseURL}${TEMPLATES_PAGE}`, { waitUntil: "domcontentloaded" });
+    await shown(templatesPage.getByRole("heading", { name: "Message templates unavailable" }));
     assert.equal(backend.templateRequests().length, 0, "No template API call");
     assert.equal(backend.handlerLists().length, 0);
   });

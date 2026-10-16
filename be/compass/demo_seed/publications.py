@@ -19,7 +19,6 @@ from compass.announcements.services import (
 from compass.counseling.models import CounselingEncounter
 from compass.feedback.models import (
     ClientSatisfactionResponse,
-    CustomerFeedbackResponse,
     CustomerFeedbackService,
     FeedbackOpportunity,
     FeedbackOpportunitySourceType,
@@ -44,8 +43,8 @@ from compass.resources.models import Resource
 from compass.resources.services import archive_resource, create_resource, publish_resource
 
 from . import narratives, publication_data
-from .cast import DPO, HEAD_GUIDANCE, PERSONAS_BY_KEY, SECOND_YEAR
-from .feedback_content import matching_feedback
+from .cast import DPO, HEAD_GUIDANCE, SECOND_YEAR
+from .feedback_content import matching_customer_feedback, matching_feedback
 from .publication_data import AnnouncementSpec, ResourceSpec
 from .support import DemoSeedError, SeedSession, align_timestamps
 
@@ -315,15 +314,8 @@ def seed_feedback(session: SeedSession) -> None:
         }
 
         for persona_key, values in narratives.CUSTOMER_FEEDBACK.items():
-            persona = PERSONAS_BY_KEY[persona_key]
             existing = next(
-                matching_feedback(
-                    CustomerFeedbackResponse.objects.filter(
-                        respondent_name_snapshot=persona.full_name
-                    ),
-                    "additional_feedback",
-                    values["additional_feedback"],
-                ),
+                matching_customer_feedback(session.user(persona_key), values),
                 None,
             )
             created = existing is None

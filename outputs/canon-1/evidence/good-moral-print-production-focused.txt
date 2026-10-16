@@ -1,0 +1,6 @@
+PASS issue-confirm-verify-preview-download-reprint-CURRENT_STUDENT-320
+PASS issue-confirm-verify-preview-download-reprint-CURRENT_STUDENT-1440
+PASS issue-confirm-verify-preview-download-reprint-GRADUATE-320
+PASS issue-confirm-verify-preview-download-reprint-GRADUATE-1440
+PASS issued-then-pdf-failure-and-retry-without-reissue
+5/5 browser checks passed; artifacts: /tmp/compass-canon-1a-evidence/printing-production-ready/good-moral-print-chromium

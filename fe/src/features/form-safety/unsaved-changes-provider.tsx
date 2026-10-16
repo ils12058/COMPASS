@@ -247,6 +247,11 @@ export function UnsavedChangesProvider({
       pendingTraversalDeltaRef.current =
         event.destination.index - currentIndex;
 
+      // WebKit can move its native Back cursor even when this event is cancelled. Its
+      // capture-phase popstate guard restores the exact traversal instead (covered in both engines).
+      const webKit = /AppleWebKit/.test(navigator.userAgent) && !/(Chrome|Chromium|Edg|OPR)\//.test(navigator.userAgent);
+      if (webKit) return;
+
       // Next.js handles Back and Forward in its own popstate listener, registered before this
       // provider's, so the popstate question below can come after the editor has already gone.
       // Where the browser lets this traversal be cancelled, ask now, before popstate.
@@ -271,9 +276,8 @@ export function UnsavedChangesProvider({
   }, []);
 
   useEffect(() => {
-    if (!hasUnsavedChanges) return;
-
     const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (registrationsRef.current.size === 0) return;
       event.preventDefault();
       event.returnValue = "";
     };
@@ -295,6 +299,11 @@ export function UnsavedChangesProvider({
           "",
           window.location.href,
         );
+        return;
+      }
+
+      if (registrationsRef.current.size === 0) {
+        if (targetMarker) currentHistoryIndexRef.current = targetMarker.index;
         return;
       }
 
@@ -348,7 +357,7 @@ export function UnsavedChangesProvider({
       window.removeEventListener("beforeunload", warnBeforeUnload);
       window.removeEventListener("popstate", handlePopState, true);
     };
-  }, [hasUnsavedChanges]);
+  }, []);
 
   const value = useMemo<UnsavedNavigationContextValue>(
     () => ({

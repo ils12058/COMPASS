@@ -1,0 +1,3365 @@
+[
+  {
+    "path": "be/compass/accounts/migrations/0001_initial.py",
+    "app": "accounts",
+    "dependencies": "[]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 18,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 31,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 44,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 57,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 80,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddField",
+        "line": 92,
+        "expression": "AddField"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 97,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 109,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 121,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 138,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 142,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/accounts/migrations/0002_user_reusable_profile_fields.py",
+    "app": "accounts",
+    "dependencies": "[('accounts', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 10,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 15,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 20,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 25,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 30,
+        "expression": "AddField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/accounts/migrations/0003_user_student_lifecycle_status.py",
+    "app": "accounts",
+    "dependencies": "[('accounts', '0002_user_reusable_profile_fields')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 18,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 32,
+        "expression": "migrations.RunPython(backfill_student_lifecycle_status, migrations.RunPython.noop)"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 36,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/accounts/migrations/0004_user_email_verified_at.py",
+    "app": "accounts",
+    "dependencies": "[('accounts', '0003_user_student_lifecycle_status')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 10,
+        "expression": "AddField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/accounts/migrations/0005_user_institutional_id.py",
+    "app": "accounts",
+    "dependencies": "[('accounts', '0004_user_email_verified_at')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 11,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 16,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/accounts/migrations/0006_rename_reference_capabilities.py",
+    "app": "accounts",
+    "dependencies": "[('accounts', '0005_user_institutional_id')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 41,
+        "expression": "migrations.RunPython(forwards, backwards)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/accounts/migrations/0007_encrypt_confidential_content.py",
+    "app": "accounts",
+    "dependencies": "[('accounts', '0006_rename_reference_capabilities')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 26,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 32,
+        "expression": "migrations.RunPython(backfill, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/accounts/migrations/0008_remove_plaintext_confidential_content.py",
+    "app": "accounts",
+    "dependencies": "[('accounts', '0007_encrypt_confidential_content')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 91,
+        "expression": "migrations.RunPython(migrations.RunPython.noop, lock_tables)"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 81,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AlterField",
+        "line": 75,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 73,
+        "expression": "RemoveField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 72,
+        "expression": "migrations.RunPython(migrations.RunPython.noop, restore_plaintext)"
+      },
+      {
+        "operation": "RunPython",
+        "line": 67,
+        "expression": "migrations.RunPython(verify_content, migrations.RunPython.noop)"
+      },
+      {
+        "operation": "AlterField",
+        "line": 69,
+        "expression": "AlterField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/announcements/migrations/0001_initial.py",
+    "app": "announcements",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 13,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 16,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 35,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 36,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 37,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 38,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/announcements/migrations/0002_alter_announcement_audience.py",
+    "app": "announcements",
+    "dependencies": "[('announcements', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "AlterField",
+        "line": 13,
+        "expression": "AlterField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/appointments/migrations/0001_initial.py",
+    "app": "appointments",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL), ('service_catalog', '0002_service_cancellation_cutoff')]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 11,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 16,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 24,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 31,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 115,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 122,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 129,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 136,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 146,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/appointments/migrations/0002_lifecycle_completion.py",
+    "app": "appointments",
+    "dependencies": "[('appointments', '0001_initial'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 10,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "RemoveConstraint",
+        "line": 14,
+        "expression": "RemoveConstraint"
+      },
+      {
+        "operation": "AlterField",
+        "line": 18,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AddField",
+        "line": 32,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 37,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 48,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 53,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 64,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 96,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 169,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/appointments/migrations/0003_service_name_snapshot.py",
+    "app": "appointments",
+    "dependencies": "[('appointments', '0002_lifecycle_completion'), ('service_catalog', '0003_service_requires_current_inventory')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 19,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 26,
+        "expression": "migrations.RunPython(backfill_service_names, migrations.RunPython.noop)"
+      },
+      {
+        "operation": "AlterField",
+        "line": 27,
+        "expression": "AlterField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/assessment_records/migrations/0001_initial.py",
+    "app": "assessment_records",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 15,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 19,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 35,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/audit/migrations/0001_initial.py",
+    "app": "audit",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 16,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 20,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/audit/migrations/0002_alter_auditevent_metadata.py",
+    "app": "audit",
+    "dependencies": "[('audit', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "AlterField",
+        "line": 13,
+        "expression": "AlterField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/audit/migrations/0003_allow_underscores_in_action_codes.py",
+    "app": "audit",
+    "dependencies": "[('audit', '0002_alter_auditevent_metadata'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 11,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "RemoveConstraint",
+        "line": 15,
+        "expression": "RemoveConstraint"
+      },
+      {
+        "operation": "AlterField",
+        "line": 19,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 32,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/authentication/migrations/0001_initial.py",
+    "app": "authentication",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 15,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 19,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 42,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 65,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 88,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 106,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 123,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/authentication/migrations/0002_email_change_request.py",
+    "app": "authentication",
+    "dependencies": "[('authentication', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "AlterField",
+        "line": 14,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 27,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/availability/migrations/0001_initial.py",
+    "app": "availability",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 13,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 17,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 65,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 108,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 171,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 222,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 229,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 236,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 243,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 250,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 257,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/call_slips/migrations/0001_initial.py",
+    "app": "call_slips",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL), ('institutional_forms', '0005_call_slip_family'), ('referrals', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 12,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 18,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 106,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 113,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 120,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/call_slips/migrations/0002_void_and_reissue.py",
+    "app": "call_slips",
+    "dependencies": "[('call_slips', '0001_initial'), ('referrals', '0002_void_provenance'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 10,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "AlterField",
+        "line": 14,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AddField",
+        "line": 25,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 30,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 35,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 46,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 56,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/call_slips/migrations/0003_callslip_issuance_mode.py",
+    "app": "call_slips",
+    "dependencies": "[('call_slips', '0002_void_and_reissue'), ('notifications', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 33,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 47,
+        "expression": "migrations.RunPython(classify_existing_call_slips, migrations.RunPython.noop)"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 48,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/counseling/migrations/0001_initial.py",
+    "app": "counseling",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL), ('appointments', '0001_initial'), ('service_catalog', '0002_service_cancellation_cutoff')]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 11,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 17,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 102,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 109,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 116,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 123,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/counseling/migrations/0002_counselingsharedsummary.py",
+    "app": "counseling",
+    "dependencies": "[('counseling', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 12,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/counseling/migrations/0003_service_name_snapshot.py",
+    "app": "counseling",
+    "dependencies": "[('counseling', '0002_counselingsharedsummary'), ('service_catalog', '0003_service_requires_current_inventory')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 19,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 25,
+        "expression": "migrations.RunPython(backfill_service_names, migrations.RunPython.noop)"
+      },
+      {
+        "operation": "AlterField",
+        "line": 26,
+        "expression": "AlterField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/counseling/migrations/0004_encrypt_shared_summary_content.py",
+    "app": "counseling",
+    "dependencies": "[('counseling', '0003_service_name_snapshot')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 21,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 26,
+        "expression": "migrations.RunPython(encrypt_legacy_content, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/counseling/migrations/0005_remove_plaintext_shared_summary_content.py",
+    "app": "counseling",
+    "dependencies": "[('counseling', '0004_encrypt_shared_summary_content')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 64,
+        "expression": "migrations.RunPython(verify_encrypted_content, restore_plaintext)"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 65,
+        "expression": "RemoveField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 66,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 71,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/documents/migrations/0001_initial.py",
+    "app": "documents",
+    "dependencies": "[]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 26,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 72,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "RunPython",
+        "line": 79,
+        "expression": "migrations.RunPython(bootstrap_default_profile, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/documents/migrations/0002_remove_documentbrandingprofile.py",
+    "app": "documents",
+    "dependencies": "[('documents', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 50,
+        "expression": "migrations.RunPython(refuse_divergent_branding_removal, reverse_code=migrations.RunPython.noop)"
+      },
+      {
+        "operation": "DeleteModel",
+        "line": 54,
+        "expression": "DeleteModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/ecounseling/migrations/0001_initial.py",
+    "app": "ecounseling",
+    "dependencies": "[('appointments', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 16,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 44,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/ecounseling/migrations/0002_consent_media_capture.py",
+    "app": "ecounseling",
+    "dependencies": "[('accounts', '0001_initial'), ('ecounseling', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 16,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 78,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 143,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 150,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 167,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 175,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 182,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 190,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/ecounseling/migrations/0003_ecounselingmediacapture_artifact_disposed_at.py",
+    "app": "ecounseling",
+    "dependencies": "[('ecounseling', '0002_consent_media_capture')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 13,
+        "expression": "AddField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/ecounseling/migrations/0004_ecounselingmediaartifact_and_more.py",
+    "app": "ecounseling",
+    "dependencies": "[('appointments', '0003_service_name_snapshot'), ('ecounseling', '0003_ecounselingmediacapture_artifact_disposed_at')]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 16,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddField",
+        "line": 41,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 46,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 51,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 57,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 62,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 67,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddField",
+        "line": 71,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 76,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 80,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 84,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 88,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/ecounseling/migrations/0005_capture_reconciliation.py",
+    "app": "ecounseling",
+    "dependencies": "[('ecounseling', '0004_ecounselingmediaartifact_and_more')]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 14,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/ecounseling/migrations/0006_webhook_provenance.py",
+    "app": "ecounseling",
+    "dependencies": "[('ecounseling', '0005_capture_reconciliation')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 14,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 19,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 24,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 29,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 34,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 39,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 44,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 49,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 54,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 59,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 64,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 69,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 74,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 79,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 84,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 89,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 94,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 99,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 104,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 109,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 114,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 119,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 124,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 129,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 134,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 139,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 143,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 147,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 151,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 155,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 159,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 163,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 167,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 171,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/exit_interviews/migrations/0001_initial.py",
+    "app": "exit_interviews",
+    "dependencies": "[('accounts', '0002_user_reusable_profile_fields'), ('inventory', '0001_initial'), ('organization', '0002_academic_year'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 17,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 21,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 207,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 303,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 336,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 403,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 410,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 417,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 425,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 433,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 440,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 476,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 483,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 490,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 515,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/exit_interviews/migrations/0002_exitinterviewopportunity_exitinterview_opportunity_and_more.py",
+    "app": "exit_interviews",
+    "dependencies": "[('exit_interviews', '0001_initial'), ('organization', '0003_program'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 14,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 18,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddField",
+        "line": 40,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 45,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 49,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 53,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 57,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/exit_interviews/migrations/0003_encrypt_confidential_content.py",
+    "app": "exit_interviews",
+    "dependencies": "[('exit_interviews', '0002_exitinterviewopportunity_exitinterview_opportunity_and_more')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 31,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 37,
+        "expression": "migrations.RunPython(backfill, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/exit_interviews/migrations/0004_remove_plaintext_confidential_content.py",
+    "app": "exit_interviews",
+    "dependencies": "[('exit_interviews', '0003_encrypt_confidential_content')]",
+    "operations": [
+      {
+        "operation": "AddConstraint",
+        "line": 108,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AlterField",
+        "line": 100,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 96,
+        "expression": "RemoveField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 94,
+        "expression": "migrations.RunPython(migrations.RunPython.noop, restore_plaintext)"
+      },
+      {
+        "operation": "RunPython",
+        "line": 89,
+        "expression": "migrations.RunPython(verify_content, migrations.RunPython.noop)"
+      },
+      {
+        "operation": "AlterField",
+        "line": 91,
+        "expression": "AlterField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/exit_interviews/migrations/0005_saved_form_revision.py",
+    "app": "exit_interviews",
+    "dependencies": "[('exit_interviews', '0004_remove_plaintext_confidential_content'), ('institutional_forms', '0007_customer_feedback_family')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 14,
+        "expression": "AddField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/exit_interviews/migrations/0006_exitinterviewreopenevent_targets_ciphertext.py",
+    "app": "exit_interviews",
+    "dependencies": "[('exit_interviews', '0005_saved_form_revision')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 12,
+        "expression": "AddField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/feedback/migrations/0001_initial.py",
+    "app": "feedback",
+    "dependencies": "[('institutional_forms', '0007_customer_feedback_family')]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 17,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 228,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 454,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 458,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 462,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 469,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 476,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 486,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 500,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 517,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 524,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 537,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/feedback/migrations/0002_feedback_opportunity.py",
+    "app": "feedback",
+    "dependencies": "[('accounts', '0006_rename_reference_capabilities'), ('feedback', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 15,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/feedback/migrations/0003_encrypt_confidential_content.py",
+    "app": "feedback",
+    "dependencies": "[('feedback', '0002_feedback_opportunity')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 26,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 32,
+        "expression": "migrations.RunPython(backfill, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/feedback/migrations/0004_remove_plaintext_confidential_content.py",
+    "app": "feedback",
+    "dependencies": "[('feedback', '0003_encrypt_confidential_content')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 120,
+        "expression": "migrations.RunPython(migrations.RunPython.noop, lock_tables)"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 111,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AlterField",
+        "line": 105,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 103,
+        "expression": "RemoveField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 102,
+        "expression": "migrations.RunPython(migrations.RunPython.noop, restore_plaintext)"
+      },
+      {
+        "operation": "RunPython",
+        "line": 97,
+        "expression": "migrations.RunPython(verify_content, migrations.RunPython.noop)"
+      },
+      {
+        "operation": "AlterField",
+        "line": 99,
+        "expression": "AlterField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/good_moral/migrations/0001_initial.py",
+    "app": "good_moral",
+    "dependencies": "[('institutional_forms', '0006_good_moral_families'), ('inventory', '0001_initial'), ('organization', '0002_academic_year'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 17,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 21,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 166,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 173,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 180,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 204,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/good_moral/migrations/0002_request_cancellation.py",
+    "app": "good_moral",
+    "dependencies": "[('good_moral', '0001_initial'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 9,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "RemoveConstraint",
+        "line": 13,
+        "expression": "RemoveConstraint"
+      },
+      {
+        "operation": "AlterField",
+        "line": 17,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AddField",
+        "line": 30,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 35,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 40,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 51,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 79,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/good_moral/migrations/0003_request_creation_identity.py",
+    "app": "good_moral",
+    "dependencies": "[('good_moral', '0002_request_cancellation')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 10,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 15,
+        "expression": "AddField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/good_moral/migrations/0004_goodmoralrequest_exit_interview_and_more.py",
+    "app": "good_moral",
+    "dependencies": "[('exit_interviews', '0002_exitinterviewopportunity_exitinterview_opportunity_and_more'), ('good_moral', '0003_request_creation_identity'), ('institutional_forms', '0007_customer_feedback_family'), ('inventory', '0005_submission_history_reopen'), ('organization', '0003_program'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 16,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "AddField",
+        "line": 20,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 25,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 30,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 35,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/good_moral/migrations/0004_remove_goodmoralrequest_good_moral_issuance_shape_and_more.py",
+    "app": "good_moral",
+    "dependencies": "[('good_moral', '0003_request_creation_identity'), ('institutional_forms', '0007_customer_feedback_family'), ('inventory', '0005_submission_history_reopen'), ('organization', '0003_program'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 15,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "RemoveConstraint",
+        "line": 19,
+        "expression": "RemoveConstraint"
+      },
+      {
+        "operation": "RemoveConstraint",
+        "line": 23,
+        "expression": "RemoveConstraint"
+      },
+      {
+        "operation": "AddField",
+        "line": 27,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 32,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 37,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 42,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 46,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 50,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/good_moral/migrations/0005_merge_20261005_0419.py",
+    "app": "good_moral",
+    "dependencies": "[('good_moral', '0004_goodmoralrequest_exit_interview_and_more'), ('good_moral', '0004_remove_goodmoralrequest_good_moral_issuance_shape_and_more')]",
+    "operations": []
+  },
+  {
+    "path": "be/compass/good_moral/migrations/0006_initiation_provenance.py",
+    "app": "good_moral",
+    "dependencies": "[('good_moral', '0005_merge_20261005_0419'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 11,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "AddField",
+        "line": 15,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 27,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 42,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/graduate_tracer/migrations/0001_initial.py",
+    "app": "graduate_tracer",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 15,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 19,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 533,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 566,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 593,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 620,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 627,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 634,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 641,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 651,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 658,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 665,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/graduate_tracer/migrations/0002_graduatetracerdisposedparticipation_and_more.py",
+    "app": "graduate_tracer",
+    "dependencies": "[('graduate_tracer', '0001_initial'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 12,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 16,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddField",
+        "line": 27,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 32,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 37,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddField",
+        "line": 41,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 46,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/graduate_tracer/migrations/0003_encrypt_confidential_content.py",
+    "app": "graduate_tracer",
+    "dependencies": "[('graduate_tracer', '0002_graduatetracerdisposedparticipation_and_more')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 43,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 49,
+        "expression": "migrations.RunPython(backfill, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/graduate_tracer/migrations/0004_remove_plaintext_confidential_content.py",
+    "app": "graduate_tracer",
+    "dependencies": "[('graduate_tracer', '0003_encrypt_confidential_content')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 396,
+        "expression": "migrations.RunPython(migrations.RunPython.noop, lock_tables)"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 386,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 364,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AlterField",
+        "line": 358,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 356,
+        "expression": "RemoveField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 355,
+        "expression": "migrations.RunPython(migrations.RunPython.noop, restore_plaintext)"
+      },
+      {
+        "operation": "RunPython",
+        "line": 350,
+        "expression": "migrations.RunPython(verify_content, migrations.RunPython.noop)"
+      },
+      {
+        "operation": "AlterField",
+        "line": 352,
+        "expression": "AlterField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/graduate_tracer/migrations/0005_graduation_classification.py",
+    "app": "graduate_tracer",
+    "dependencies": "[('graduate_tracer', '0004_remove_plaintext_confidential_content'), ('organization', '0003_program'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 13,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "AddField",
+        "line": 17,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 22,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 27,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 32,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 36,
+        "expression": "AddIndex"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/guidance_messages/migrations/0001_initial.py",
+    "app": "guidance_messages",
+    "dependencies": "[('appointments', '0003_service_name_snapshot'), ('organization', '0003_program'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 16,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 20,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 44,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 61,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 74,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 78,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 82,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 86,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 90,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 94,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 98,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 102,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 106,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 110,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/guidance_messages/migrations/0002_guidance_message_template.py",
+    "app": "guidance_messages",
+    "dependencies": "[('guidance_messages', '0001_initial'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 15,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 19,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/institutional_forms/migrations/0001_initial.py",
+    "app": "institutional_forms",
+    "dependencies": "[]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 31,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 50,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 89,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 96,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 107,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "RunPython",
+        "line": 115,
+        "expression": "migrations.RunPython(bootstrap_inventory_revision, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/institutional_forms/migrations/0002_routine_interview_family.py",
+    "app": "institutional_forms",
+    "dependencies": "[('institutional_forms', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 16,
+        "expression": "migrations.RunPython(add_routine_interview_family, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/institutional_forms/migrations/0003_allow_revisions_sharing_schema.py",
+    "app": "institutional_forms",
+    "dependencies": "[('institutional_forms', '0002_routine_interview_family')]",
+    "operations": [
+      {
+        "operation": "RemoveConstraint",
+        "line": 10,
+        "expression": "RemoveConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/institutional_forms/migrations/0004_referral_slip_family.py",
+    "app": "institutional_forms",
+    "dependencies": "[('institutional_forms', '0003_allow_revisions_sharing_schema')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 29,
+        "expression": "migrations.RunPython(add_referral_slip_family, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/institutional_forms/migrations/0005_call_slip_family.py",
+    "app": "institutional_forms",
+    "dependencies": "[('institutional_forms', '0004_referral_slip_family')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 29,
+        "expression": "migrations.RunPython(add_call_slip_family, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/institutional_forms/migrations/0006_good_moral_families.py",
+    "app": "institutional_forms",
+    "dependencies": "[('institutional_forms', '0005_call_slip_family')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 40,
+        "expression": "migrations.RunPython(add_good_moral_families, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/institutional_forms/migrations/0007_customer_feedback_family.py",
+    "app": "institutional_forms",
+    "dependencies": "[('institutional_forms', '0006_good_moral_families')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 27,
+        "expression": "migrations.RunPython(add_customer_feedback_family, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/inventory/migrations/0001_initial.py",
+    "app": "inventory",
+    "dependencies": "[('institutional_forms', '0001_initial'), ('organization', '0002_academic_year'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 18,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 22,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 118,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 132,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 150,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 165,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 192,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 207,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 211,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 215,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 219,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 223,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 227,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/inventory/migrations/0002_inventory_academic_context.py",
+    "app": "inventory",
+    "dependencies": "[('organization', '0003_program'), ('inventory', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 14,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 25,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 34,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/inventory/migrations/0003_inventory_profiling_normalization.py",
+    "app": "inventory",
+    "dependencies": "[('inventory', '0002_inventory_academic_context')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 13,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 29,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 54,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 78,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 92,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 106,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 126,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 140,
+        "expression": "AddField"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 157,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 211,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 218,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 228,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/inventory/migrations/0004_student_support_profile_context.py",
+    "app": "inventory",
+    "dependencies": "[('inventory', '0003_inventory_profiling_normalization'), ('student_support', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "RenameField",
+        "line": 52,
+        "expression": "RenameField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 57,
+        "expression": "migrations.RunPython(map_pwd_forward, map_pwd_reverse)"
+      },
+      {
+        "operation": "AlterField",
+        "line": 58,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 72,
+        "expression": "migrations.RunPython(migrations.RunPython.noop, restore_parent_life_status_on_reverse)"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 76,
+        "expression": "RemoveField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/inventory/migrations/0005_submission_history_reopen.py",
+    "app": "inventory",
+    "dependencies": "[('inventory', '0004_student_support_profile_context'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 20,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "AddField",
+        "line": 24,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 29,
+        "expression": "AddField"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 34,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "RunPython",
+        "line": 70,
+        "expression": "migrations.RunPython(backfill_submission_history, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/inventory/migrations/0006_encrypt_confidential_content.py",
+    "app": "inventory",
+    "dependencies": "[('inventory', '0005_submission_history_reopen')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 31,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 37,
+        "expression": "migrations.RunPython(backfill, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/inventory/migrations/0007_remove_plaintext_confidential_content.py",
+    "app": "inventory",
+    "dependencies": "[('inventory', '0006_encrypt_confidential_content')]",
+    "operations": [
+      {
+        "operation": "AddConstraint",
+        "line": 440,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AlterField",
+        "line": 432,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 428,
+        "expression": "RemoveField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 426,
+        "expression": "migrations.RunPython(migrations.RunPython.noop, restore_plaintext)"
+      },
+      {
+        "operation": "RunPython",
+        "line": 421,
+        "expression": "migrations.RunPython(verify_content, migrations.RunPython.noop)"
+      },
+      {
+        "operation": "AlterField",
+        "line": 423,
+        "expression": "AlterField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/inventory/migrations/0008_inventoryreopenevent_targets_ciphertext.py",
+    "app": "inventory",
+    "dependencies": "[('inventory', '0007_remove_plaintext_confidential_content')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 12,
+        "expression": "AddField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/notifications/migrations/0001_initial.py",
+    "app": "notifications",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 13,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 17,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 63,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 83,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 138,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 145,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 152,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 159,
+        "expression": "AddIndex"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/notifications/migrations/0002_pushsubscription_pushdelivery_and_more.py",
+    "app": "notifications",
+    "dependencies": "[('authentication', '0002_email_change_request'), ('notifications', '0001_initial'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 15,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 19,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 37,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 56,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 60,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 64,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/organization/migrations/0001_initial.py",
+    "app": "organization",
+    "dependencies": "[('accounts', '0001_initial'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 14,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 18,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 30,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 43,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 47,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 58,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 69,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/organization/migrations/0002_academic_year.py",
+    "app": "organization",
+    "dependencies": "[('organization', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 12,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 31,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/organization/migrations/0003_program.py",
+    "app": "organization",
+    "dependencies": "[('organization', '0002_academic_year')]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 13,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 44,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/platform_ops/migrations/0001_initial.py",
+    "app": "platform_ops",
+    "dependencies": "[]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 14,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/privacy_governance/migrations/0001_initial.py",
+    "app": "privacy_governance",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 14,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 18,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 68,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 90,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/privacy_governance/migrations/0002_privacynotice_retentionpolicy_and_more.py",
+    "app": "privacy_governance",
+    "dependencies": "[('privacy_governance', '0001_initial'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 13,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 17,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 32,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddField",
+        "line": 54,
+        "expression": "AddField"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 59,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 83,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddField",
+        "line": 95,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 100,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 104,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 108,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 112,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/privacy_governance/migrations/0003_simplify_privacy_governance_scope.py",
+    "app": "privacy_governance",
+    "dependencies": "[('privacy_governance', '0002_privacynotice_retentionpolicy_and_more')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 40,
+        "expression": "migrations.RunPython(refuse_destructive_removal_with_legacy_rows, reverse_code=migrations.RunPython.noop)"
+      },
+      {
+        "operation": "AddField",
+        "line": 44,
+        "expression": "AddField"
+      },
+      {
+        "operation": "DeleteModel",
+        "line": 49,
+        "expression": "DeleteModel"
+      },
+      {
+        "operation": "DeleteModel",
+        "line": 52,
+        "expression": "DeleteModel"
+      },
+      {
+        "operation": "DeleteModel",
+        "line": 55,
+        "expression": "DeleteModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/privacy_governance/migrations/0004_remove_retention_policy.py",
+    "app": "privacy_governance",
+    "dependencies": "[('privacy_governance', '0003_simplify_privacy_governance_scope')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 21,
+        "expression": "migrations.RunPython(refuse_populated_retention_policy, reverse_code=migrations.RunPython.noop)"
+      },
+      {
+        "operation": "DeleteModel",
+        "line": 25,
+        "expression": "DeleteModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/privacy_governance/migrations/0005_operationalretentionrule_dispositioncase_and_more.py",
+    "app": "privacy_governance",
+    "dependencies": "[('privacy_governance', '0004_remove_retention_policy'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 13,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 17,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 45,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 74,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 90,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 94,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 98,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 102,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 106,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 110,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 114,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/privacy_governance/migrations/0006_remove_operationalretentionrule_one_active_retention_category_and_more.py",
+    "app": "privacy_governance",
+    "dependencies": "[('privacy_governance', '0005_operationalretentionrule_dispositioncase_and_more'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 11,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "RemoveConstraint",
+        "line": 15,
+        "expression": "RemoveConstraint"
+      },
+      {
+        "operation": "RemoveConstraint",
+        "line": 19,
+        "expression": "RemoveConstraint"
+      },
+      {
+        "operation": "AddField",
+        "line": 23,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 28,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 33,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 38,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 43,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 47,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/referrals/migrations/0001_initial.py",
+    "app": "referrals",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL), ('institutional_forms', '0004_referral_slip_family')]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 12,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 17,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 25,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 87,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 143,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 150,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 157,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 164,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/referrals/migrations/0002_void_provenance.py",
+    "app": "referrals",
+    "dependencies": "[('referrals', '0001_initial'), migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 9,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "AddField",
+        "line": 13,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 18,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 23,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 34,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/referrals/migrations/0003_encrypt_confidential_content.py",
+    "app": "referrals",
+    "dependencies": "[('referrals', '0002_void_provenance')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 28,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 33,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 38,
+        "expression": "migrations.RunPython(backfill, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/referrals/migrations/0004_remove_plaintext_confidential_content.py",
+    "app": "referrals",
+    "dependencies": "[('referrals', '0003_encrypt_confidential_content')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 79,
+        "expression": "migrations.RunPython(verify_content, migrations.RunPython.noop)"
+      },
+      {
+        "operation": "RemoveConstraint",
+        "line": 80,
+        "expression": "RemoveConstraint"
+      },
+      {
+        "operation": "AlterField",
+        "line": 82,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 85,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 90,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 95,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 100,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 105,
+        "expression": "migrations.RunPython(migrations.RunPython.noop, restore_plaintext)"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 106,
+        "expression": "RemoveField"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 107,
+        "expression": "RemoveField"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 108,
+        "expression": "RemoveField"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 109,
+        "expression": "RemoveField"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 110,
+        "expression": "RemoveField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 111,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 116,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 121,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 128,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/resources/migrations/0001_initial.py",
+    "app": "resources",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL)]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 13,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 16,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 41,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 42,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddIndex",
+        "line": 43,
+        "expression": "AddIndex"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 44,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 45,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 46,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/resources/migrations/0002_alter_resource_audience.py",
+    "app": "resources",
+    "dependencies": "[('resources', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "AlterField",
+        "line": 13,
+        "expression": "AlterField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/routine_interviews/migrations/0001_initial.py",
+    "app": "routine_interviews",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL), ('appointments', '0001_initial'), ('counseling', '0001_initial'), ('institutional_forms', '0002_routine_interview_family'), ('inventory', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 14,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 22,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/routine_interviews/migrations/0002_encrypt_routine_content.py",
+    "app": "routine_interviews",
+    "dependencies": "[('routine_interviews', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 38,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 43,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 48,
+        "expression": "migrations.RunPython(encrypt_legacy_content, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/routine_interviews/migrations/0003_remove_plaintext_routine_content.py",
+    "app": "routine_interviews",
+    "dependencies": "[('routine_interviews', '0002_encrypt_routine_content')]",
+    "operations": [
+      {
+        "operation": "RunPython",
+        "line": 69,
+        "expression": "migrations.RunPython(verify_encrypted_content, restore_plaintext)"
+      },
+      {
+        "operation": "AlterField",
+        "line": 81,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 86,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 91,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 98,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "RemoveConstraint",
+        "line": 71,
+        "expression": "RemoveConstraint"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 78,
+        "expression": "RemoveField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/routine_interviews/migrations/0004_optional_inventory_and_academic_year.py",
+    "app": "routine_interviews",
+    "dependencies": "[('inventory', '0007_remove_plaintext_confidential_content'), ('organization', '0003_program'), ('routine_interviews', '0003_remove_plaintext_routine_content')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 48,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AlterField",
+        "line": 59,
+        "expression": "AlterField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 71,
+        "expression": "migrations.RunPython(migrations.RunPython.noop, refuse_unbound_rows)"
+      },
+      {
+        "operation": "RunPython",
+        "line": 72,
+        "expression": "migrations.RunPython(backfill_academic_year, migrations.RunPython.noop)"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/service_catalog/migrations/0001_initial.py",
+    "app": "service_catalog",
+    "dependencies": "[('accounts', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 17,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 63,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 76,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 101,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 108,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 134,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/service_catalog/migrations/0002_service_cancellation_cutoff.py",
+    "app": "service_catalog",
+    "dependencies": "[('service_catalog', '0001_initial')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 10,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 15,
+        "expression": "AddConstraint"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/service_catalog/migrations/0003_service_requires_current_inventory.py",
+    "app": "service_catalog",
+    "dependencies": "[('service_catalog', '0002_service_cancellation_cutoff')]",
+    "operations": [
+      {
+        "operation": "AddField",
+        "line": 13,
+        "expression": "AddField"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/service_catalog/migrations/0004_booking_capability_and_counselor_coverage.py",
+    "app": "service_catalog",
+    "dependencies": "[migrations.swappable_dependency(settings.AUTH_USER_MODEL), ('service_catalog', '0003_service_requires_current_inventory')]",
+    "operations": [
+      {
+        "operation": "swappable_dependency",
+        "line": 36,
+        "expression": "migrations.swappable_dependency(settings.AUTH_USER_MODEL)"
+      },
+      {
+        "operation": "AddField",
+        "line": 41,
+        "expression": "AddField"
+      },
+      {
+        "operation": "AddField",
+        "line": 46,
+        "expression": "AddField"
+      },
+      {
+        "operation": "RunPython",
+        "line": 58,
+        "expression": "migrations.RunPython(map_appointment_policy, restore_appointment_policy)"
+      },
+      {
+        "operation": "RemoveField",
+        "line": 59,
+        "expression": "RemoveField"
+      },
+      {
+        "operation": "RemoveConstraint",
+        "line": 60,
+        "expression": "RemoveConstraint"
+      },
+      {
+        "operation": "RenameField",
+        "line": 61,
+        "expression": "RenameField"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 66,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "AddConstraint",
+        "line": 77,
+        "expression": "AddConstraint"
+      },
+      {
+        "operation": "CreateModel",
+        "line": 89,
+        "expression": "CreateModel"
+      }
+    ]
+  },
+  {
+    "path": "be/compass/student_support/migrations/0001_initial.py",
+    "app": "student_support",
+    "dependencies": "[('inventory', '0003_inventory_profiling_normalization')]",
+    "operations": [
+      {
+        "operation": "CreateModel",
+        "line": 46,
+        "expression": "CreateModel"
+      },
+      {
+        "operation": "RunPython",
+        "line": 123,
+        "expression": "migrations.RunPython(copy_legacy_parent_life_status, migrations.RunPython.noop)"
+      }
+    ]
+  }
+]

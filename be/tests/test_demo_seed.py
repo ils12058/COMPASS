@@ -234,12 +234,13 @@ def test_guard_fails_closed_and_the_opt_in_never_widens_the_allowlist(app_env, e
 def test_command_refuses_before_reading_secrets_or_touching_the_database(
     monkeypatch, app_env, enabled, message
 ):
+    baseline_audit_count = AuditEvent.objects.count()
     monkeypatch.delenv("DEMO_ACCOUNT_PASSWORD", raising=False)
     with override_settings(APP_ENV=app_env, DEMO_SEEDING_ENABLED=enabled):
         with pytest.raises(CommandError, match=message):
             call_command(COMMAND, stdout=StringIO())
     assert not User.objects.exists()
-    assert not AuditEvent.objects.exists()
+    assert AuditEvent.objects.count() == baseline_audit_count
 
 
 @pytest.mark.django_db
@@ -264,11 +265,12 @@ def test_live_staging_requires_an_operator_controlled_email_domain(demo_env):
 
 @pytest.mark.django_db
 def test_missing_demo_password_fails_before_any_write(demo_env, monkeypatch):
+    baseline_audit_count = AuditEvent.objects.count()
     monkeypatch.delenv("DEMO_ACCOUNT_PASSWORD")
     with pytest.raises(CommandError, match="DEMO_ACCOUNT_PASSWORD or DEMO_ACCOUNT_PASSWORD_FILE"):
         call_command(COMMAND, stdout=StringIO())
     assert not User.objects.exists()
-    assert not AuditEvent.objects.exists()
+    assert AuditEvent.objects.count() == baseline_audit_count
 
 
 @pytest.mark.django_db
@@ -588,6 +590,9 @@ class SeededDemoDatasetTests(TestCase):
         assert recent.status == ExitInterviewStatus.SUBMITTED
         assert timezone.localtime(recent.first_submitted_at).date() < date(2026, 6, 26)
         alumni_tracer = GraduateTracerResponse.objects.get(student=demo_user(ALUMNI))
+        assert alumni_tracer.graduation_year == 2025
+        assert alumni_tracer.graduated_program.code == ALUMNI.program_code
+        assert alumni_tracer.graduated_college.code == ALUMNI.college_code
         assert alumni_tracer.status == GraduateTracerStatus.SUBMITTED
         assert timezone.localtime(alumni_tracer.submitted_at).date() > date(2025, 6, 27)
         for persona in STUDENTS:

@@ -7,7 +7,7 @@ name: Backend targeted validation
 
 on:
   pull_request:
-    branches: [staging]
+    branches: [staging, canon/compass-clean-baseline]
     paths:
       - "be/**"
       - "contracts/**"
@@ -140,8 +140,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-        # Pull requests target staging, the dispatched run's default comparison base.
-        run: gh workflow run backend-targeted.yml --ref "$PR_HEAD_REF"
+          PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
+        # Keep reset-integration PRs on their actual comparison base after contract sync.
+        run: |
+          gh workflow run backend-targeted.yml --ref "$PR_HEAD_REF" -f "base_ref=$PR_BASE_REF"
+          gh workflow run frontend-targeted.yml --ref "$PR_HEAD_REF"
       - name: Contract must be committed
         if: steps.openapi_sync.outputs.auto_committed != 'true'
         run: git diff --exit-code -- contracts/openapi.json

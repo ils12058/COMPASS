@@ -1,7 +1,7 @@
 "use client";
 
 import { Clock, LoaderCircle, Maximize, Mic, MicOff, Minimize, PhoneOff, Settings2, Video, VideoOff, WifiLow } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { formatECounselingDateTime } from "@/features/ecounseling/ecounseling-shared";
@@ -170,7 +170,9 @@ export function CallStage({
         : null
     : null;
 
-  function openDevices() {
+  function openDevices(event: MouseEvent<HTMLButtonElement>) {
+    // Safari does not focus buttons on pointer click; remember this opener for the dialog.
+    event.currentTarget.focus();
     leaveFullscreen();
     setDevicesOpen(true);
   }

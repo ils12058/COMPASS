@@ -131,7 +131,9 @@ def seed_population_member(session: SeedSession, member) -> None:
                 response = ensure_my_response(student=user, context=session.as_user(p.key))
                 replace_my_draft(
                     student=user,
-                    values=_tracer_values(response, p, tracer_answers(member, program_for(p))),
+                    values=_tracer_values(
+                        response, p, tracer_answers(member, program_for(p)), graduation_year=2026
+                    ),
                 )
                 saved = session.timeline.past(3, 19, int(p.key[-2:]))
                 if member.tracer != "draft":

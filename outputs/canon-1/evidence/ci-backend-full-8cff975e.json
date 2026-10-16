@@ -1,0 +1,466 @@
+{
+  "run_id": 38859891816,
+  "head_sha": "8cff975e06deb9e252df0d3d1d7417316661f12b",
+  "reports": 6,
+  "counts": {
+    "tests": 4711,
+    "failures": 41,
+    "errors": 22,
+    "skipped": 0
+  },
+  "passed": 4648,
+  "files_observed": 167,
+  "missing_duration_files": [],
+  "failures": [
+    {
+      "classname": "tests.test_good_moral_preparation",
+      "name": "test_safe_corrections_preserve_sources_and_ready_requires_reconfirmation",
+      "kind": "failure",
+      "message": "compass.good_moral.services.InvalidGoodMoralInput: year_level is not supported.",
+      "classification": "Fixture violates current canonical year-level/semester mutation contract"
+    },
+    {
+      "classname": "tests.test_good_moral_preparation",
+      "name": "test_prepare_validates_completeness_and_rejects_stale_review",
+      "kind": "failure",
+      "message": "compass.good_moral.services.InvalidGoodMoralInput: semester is not supported.",
+      "classification": "Fixture violates current canonical year-level/semester mutation contract"
+    },
+    {
+      "classname": "tests.test_audit",
+      "name": "test_success_audit_event_rolls_back_with_surrounding_transaction",
+      "kind": "failure",
+      "message": "assert 1 == 0\n +  where 1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f7dbffb9450>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f7dbffb9450> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_audit",
+      "name": "test_policy_sync_rolls_back_if_audit_recording_fails",
+      "kind": "failure",
+      "message": "assert 1 == 0\n +  where 1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f7dbffb9450>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f7dbffb9450> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_openapi_contract",
+      "name": "test_all_public_operations_have_stable_unique_ids_and_approved_tags",
+      "kind": "failure",
+      "message": "AssertionError: assert 355 == 351\n +  where 355 = len(['academicYearsList', 'academicYearsCreate', 'academicYearsSetCurrent', 'accountsList', 'accountsCreate', 'accountsImportCsv', ...])\n +  and   351 = len({'academicYearsCreate', 'academicYearsList', 'academicYearsSetCurrent', 'accountsAssignDesignation', 'accountsChangeRole', 'accountsCreate', ...})",
+      "classification": "Stale contract expectation: approved current operations/fields/capability"
+    },
+    {
+      "classname": "tests.test_openapi_contract",
+      "name": "test_review_list_query_parameters_match_backend_consistency_contract",
+      "kind": "failure",
+      "message": "AssertionError: assert {'college_id'...ge_size', ...} == {'current_emp...dent_id', ...}\n  \n  Extra items in the left set:\n  'college_id'\n  'graduation_year'\n  'program_id'\n  \n  Full diff:\n    {\n  +     'college_id',\n        'current_employment_state',\n  +     'graduation_year',\n        'ordering',\n        'page',\n        'page_size',\n  +     'program_id',\n        'search',\n        'student_id',\n        'submitted_from',\n        'submitted_to',\n    }",
+      "classification": "Stale contract expectation: approved current operations/fields/capability"
+    },
+    {
+      "classname": "tests.test_openapi_contract",
+      "name": "test_core_schemas_and_realistic_error_responses_are_typed",
+      "kind": "failure",
+      "message": "AssertionError: assert {'college', '...ed_from', ...} == {'generated_a...submitted_to'}\n  \n  Extra items in the left set:\n  'graduation_year'\n  'program'\n  'college'\n  \n  Full diff:\n    {\n  +     'college',\n        'generated_at',\n  +     'graduation_year',\n        'instrument_schema_version',\n  +     'program',\n        'submitted_from',\n        'submitted_response_count',\n        'submitted_to',\n    }",
+      "classification": "Stale contract expectation: approved current operations/fields/capability"
+    },
+    {
+      "classname": "tests.test_openapi_contract",
+      "name": "test_policy_enums_and_sensitive_model_fields_are_contract_safe",
+      "kind": "failure",
+      "message": "AssertionError: assert ['academic_ye....manage', ...] == ['academic_ye....manage', ...]\n  \n  At index 35 diff: 'good_moral.initiate' != 'good_moral.issue'\n  Left contains one more item: 'student_support.view'\n  \n  Full diff:\n    [\n        'academic_years.manage',\n        'academic_years.view',\n        'accounts.manage',\n        'accounts.view',\n        'activity.supervised_staff.view',\n        'announcements.manage',\n        'appointments.manage',\n        'appointments.manage_self',\n        'appointments.view_self',\n        'assessment_records.manage',\n        'assessment_records.view',\n        'availability.manage',\n        'availability.manage_self',\n        'availability.view',\n        'call_slips.manage',\n        'call_slips.view',\n        'call_slips.view_self',\n        'counseling.manage_assigned',\n        'counseling.view_assigned',\n        'ecounseling.access_media_assigned',\n        'ecounseling.consent_self',\n        'ecounseling.join_assigned',\n        'ecounseling.join_self",
+      "classification": "Stale contract expectation: approved current operations/fields/capability"
+    },
+    {
+      "classname": "tests.test_accounts",
+      "name": "test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions",
+      "kind": "failure",
+      "message": "assert 95 == 93\n +  where 95 = count()\n +    where count = <django.db.models.manager.Manager object at 0x7ffb54fa6450>.count\n +      where <django.db.models.manager.Manager object at 0x7ffb54fa6450> = RoleCapability.objects",
+      "classification": "Stale test expectation: canonical assisted Good Moral grants"
+    },
+    {
+      "classname": "tests.test_accounts",
+      "name": "test_effective_capabilities_combine_role_designation_and_overrides",
+      "kind": "failure",
+      "message": "AssertionError: assert frozenset({'a...manage', ...}) == {'academic_ye....manage', ...}\n  \n  Extra items in the left set:\n  'good_moral.initiate'\n  \n  Full diff:\n  - {\n  + frozenset({\n        'academic_years.manage',\n        'academic_years.view',\n        'accounts.manage',\n        'accounts.view',\n        'activity.supervised_staff.view',\n        'announcements.manage',\n        'appointments.manage',\n        'appointments.view_self',\n        'assessment_records.manage',\n        'assessment_records.view',\n        'availability.manage',\n        'availability.manage_self',\n        'availability.view',\n        'call_slips.manage',\n        'call_slips.view',\n        'counseling.manage_assigned',\n        'counseling.view_assigned',\n        'ecounseling.access_media_assigned',\n        'ecounseling.join_assigned',\n        'ecounseling.manage_media_assigned',\n        'ecounseling.view_assigned',\n        'exit_interviews.manage_opportunities',\n        'exit_interviews.reopen',\n        'exit_int",
+      "classification": "Stale test expectation: canonical assisted Good Moral grants"
+    },
+    {
+      "classname": "tests.test_privacy_release_audit",
+      "name": "test_graduate_tracer_xlsx_release_records_only_safe_report_context",
+      "kind": "failure",
+      "message": "AssertionError: assert {'format': 'X..._tracer', ...} == {'report_type...6-01-01', ...}\n  \n  Omitting 5 identical items, use -vv to show\n  Left contains 5 more items:\n  {'college_code': None,\n   'college_id': None,\n   'graduation_year': None,\n   'program_code': None,\n   'program_id': None}\n  \n  Full diff:\n    {\n  +     'format': 'XLSX',\n  +     'college_id': None,\n  +     'program_id': None,\n        'report_type': 'graduate_tracer',\n  -     'format': 'XLSX',\n  +     'college_code': None,\n  +     'program_code': None,\n  +     'submitted_to': '2026-12-31',\n  +     'submitted_from': '2026-01-01',\n  +     'graduation_year': None,\n        'instrument_schema_version': 1,\n  -     'submitted_from': '2026-01-01',\n  -     'submitted_to': '2026-12-31',\n    }",
+      "classification": "Stale safe release metadata expectation: academic filters"
+    },
+    {
+      "classname": "tests.test_demo_seed",
+      "name": "test_command_refuses_before_reading_secrets_or_touching_the_database[live-staging-False-disabled for live-staging]",
+      "kind": "failure",
+      "message": "assert not True\n +  where True = exists()\n +    where exists = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f861fbc1450>.exists\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f861fbc1450> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed",
+      "name": "test_command_refuses_before_reading_secrets_or_touching_the_database[production-True-refused for APP_ENV='production']",
+      "kind": "failure",
+      "message": "assert not True\n +  where True = exists()\n +    where exists = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f861fbc1450>.exists\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f861fbc1450> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed",
+      "name": "test_command_refuses_before_reading_secrets_or_touching_the_database[future-mode-True-refused for APP_ENV='future-mode']",
+      "kind": "failure",
+      "message": "assert not True\n +  where True = exists()\n +    where exists = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f861fbc1450>.exists\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f861fbc1450> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed",
+      "name": "test_live_staging_with_opt_in_seeds_using_the_configured_domain",
+      "kind": "failure",
+      "message": "django.core.management.base.CommandError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission. Units that completed earlier stay committed; fix the cause and rerun.",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed",
+      "name": "test_missing_demo_password_fails_before_any_write",
+      "kind": "failure",
+      "message": "assert not True\n +  where True = exists()\n +    where exists = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f861fbc1450>.exists\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f861fbc1450> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed",
+      "name": "test_clean_seed_credentials_auth_state_and_secret_hygiene",
+      "kind": "failure",
+      "message": "django.core.management.base.CommandError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission. Units that completed earlier stay committed; fix the cause and rerun.",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed",
+      "name": "test_onboarding_persona_resolves_to_the_real_first_password_flow",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed",
+      "name": "test_seeding_makes_no_external_calls_and_sends_no_email",
+      "kind": "failure",
+      "message": "compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_academic_years_and_cohort_histories_are_coherent",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_appointments_counseling_and_shared_summaries_cover_real_lifecycles",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_audit_trail_is_legitimate_attributable_and_secret_free",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_configuration_relationships_and_availability",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_derived_projections_are_useful_without_being_seeded_directly",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_good_moral_exit_interview_tracer_and_feedback",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_graduates_and_former_students_are_never_current_classmates",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_publications_and_privacy_governance",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_referrals_and_call_slips_form_believable_workflows",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_roles_designations_lifecycle_and_account_state_are_independent",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_routine_content_is_written_through_the_encrypted_boundary",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_routine_interviews_cover_draft_submitted_and_finalized_states",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed.SeededDemoDatasetTests",
+      "name": "test_seeded_records_are_readable_through_the_normal_api",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed",
+      "name": "test_ordinary_rerun_is_idempotent_and_preserves_established_credentials",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed",
+      "name": "test_feedback_opportunities_reconcile_known_demo_sources_without_recreating_raw_responses",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed",
+      "name": "test_changing_the_demo_domain_between_runs_fails_closed",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2.DemoV2CompositionTests",
+      "name": "test_all_confidential_domains_round_trip_and_sql_ciphertext",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2.DemoV2CompositionTests",
+      "name": "test_exit_and_tracer_variety",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2.DemoV2CompositionTests",
+      "name": "test_inventory_depth_children_drafts_and_support_mix",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2.DemoV2CompositionTests",
+      "name": "test_population_and_ordinary_pagination_scope_search_filters",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2.DemoV2CompositionTests",
+      "name": "test_v2_feedback_has_optional_text_and_report_counts",
+      "kind": "error",
+      "message": "failed on setup with \"compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.\"",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value0-ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value0-FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value0-ROUTINE_INTERVIEW_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value0-COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value0-REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value0-EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value0-INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value0-GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value1-ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value1-FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value1-ROUTINE_INTERVIEW_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value1-COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value1-REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value1-EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value1-INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_keyring_preflight_fails_before_any_write[value1-GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS]",
+      "kind": "failure",
+      "message": "assert 0 == 1\n +  where 0 = count()\n +    where count = <compass.accounts.models.UserManager object at 0x7f26627a9810>.count\n +      where <compass.accounts.models.UserManager object at 0x7f26627a9810> = User.objects\n +  and   1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90>.count\n +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x7f2662708b90> = AuditEvent.objects",
+      "classification": "Test fixture isolation: pre-existing institutional forms audit event"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_population_unit_failure_rolls_back_and_rerun_resumes",
+      "kind": "failure",
+      "message": "AssertionError: Regex pattern did not match.\n  Expected regex: 'controlled population-unit interruption'\n  Actual message: 'SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.'",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_v1_to_v2_is_additive_preserves_history_and_changed_password",
+      "kind": "failure",
+      "message": "compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_compatible_institutional_availability_is_preserved",
+      "kind": "failure",
+      "message": "compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_anchor_matrix_seeds_valid_intervals[anchor0]",
+      "kind": "failure",
+      "message": "compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_anchor_matrix_seeds_valid_intervals[anchor1]",
+      "kind": "failure",
+      "message": "compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_demo_seed_v2",
+      "name": "test_anchor_matrix_seeds_valid_intervals[anchor2]",
+      "kind": "failure",
+      "message": "compass.demo_seed.support.DemoSeedError: SCENARIO_ALUMNI failed: InvalidGraduateTracerInput: graduated_college is required before submission.",
+      "classification": "Production seeder regression: missing Graduate Tracer academic classification"
+    },
+    {
+      "classname": "tests.test_notification_push",
+      "name": "test_push_policy_is_complete_and_only_safe_generic_data_is_sent",
+      "kind": "failure",
+      "message": "AssertionError: assert {<Notificatio...voided'>, ...} == {<Notificatio...voided'>, ...}\n  \n  Extra items in the right set:\n  <NotificationEvent.GOOD_MORAL_REQUEST_INITIATED: 'good_moral.request_initiated'>\n  \n  Full diff:\n    {\n        <NotificationEvent.APPOINTMENT_CANCELLED: 'appointment.cancelled'>,\n        <NotificationEvent.APPOINTMENT_REASSIGNED: 'appointment.reassigned'>,\n        <NotificationEvent.APPOINTMENT_RESCHEDULED: 'appointment.rescheduled'>,\n        <NotificationEvent.APPOINTMENT_SCHEDULED: 'appointment.scheduled'>,\n        <NotificationEvent.CALL_SLIP_ISSUED: 'call_slip.issued'>,\n        <NotificationEvent.CALL_SLIP_VOIDED: 'call_slip.voided'>,\n        <NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED: 'counseling.shared_summary.published'>,\n        <NotificationEvent.ECOUNSELING_CONSENT_REQUESTED: 'ecounseling.consent.requested'>,\n        <NotificationEvent.EXIT_INTERVIEW_REOPENED: 'exit_interview.reopened'>,\n        <NotificationEvent.FEEDBACK_INVITATION: 'feedb",
+      "classification": "Production configuration omission: missing explicit event push decision; default fails closed"
+    }
+  ],
+  "failure_classification_counts": {
+    "Fixture violates current canonical year-level/semester mutation contract": 2,
+    "Test fixture isolation: pre-existing institutional forms audit event": 22,
+    "Stale contract expectation: approved current operations/fields/capability": 4,
+    "Stale test expectation: canonical assisted Good Moral grants": 2,
+    "Stale safe release metadata expectation: academic filters": 1,
+    "Production seeder regression: missing Graduate Tracer academic classification": 31,
+    "Production configuration omission: missing explicit event push decision; default fails closed": 1
+  }
+}

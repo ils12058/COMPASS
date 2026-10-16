@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { assertBrowserSuiteInCI } from "./support/browser-registration.mjs";
 import { test } from "node:test";
 import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
@@ -67,10 +67,7 @@ test("confirmed empty queue has the requested empty copy", () => {
 });
 
 test("frontend CI runs Student Actions in both engines and compiles its route", () => {
-  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-  assert.match(pkg.scripts["test:ui:regressions"], /node tests\/student-actions\.browser\.mjs/);
-  assert.match(pkg.scripts["test:ui:regressions"], /COMPASS_UI_BROWSER=webkit node tests\/student-actions\.browser\.mjs/);
-  const workflow = readFileSync(new URL("../../.github/workflows/frontend-targeted.yml", import.meta.url), "utf8");
+  const workflow = assertBrowserSuiteInCI("student-actions.browser.mjs");
   assert.match(workflow, /\/portal\/actions/);
   assert.match(workflow, /pnpm test:ui:regressions/);
 });

@@ -1,0 +1,544 @@
+{
+  "conclusion": "failure",
+  "headSha": "8cff975e06deb9e252df0d3d1d7417316661f12b",
+  "status": "completed",
+  "url": "https://github.com/ils12058/COMPASS/actions/runs/38859892026",
+  "jobs": [
+    {
+      "databaseId": 116839548588,
+      "name": "frontend-tests",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "databaseId": 116839548815,
+      "name": "browser chromium 4/4",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "databaseId": 116839548892,
+      "name": "browser webkit 4/4",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "databaseId": 116839548898,
+      "name": "browser chromium 3/4",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "databaseId": 116839548922,
+      "name": "targeted-frontend",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "databaseId": 116839548939,
+      "name": "browser webkit 2/4",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "databaseId": 116839548946,
+      "name": "browser chromium 2/4",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "databaseId": 116839548983,
+      "name": "browser webkit 1/4",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "databaseId": 116839549095,
+      "name": "browser webkit 3/4",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "databaseId": 116839549104,
+      "name": "browser chromium 1/4",
+      "status": "completed",
+      "conclusion": "failure"
+    }
+  ],
+  "browser_suites": [
+    {
+      "engine": "chromium",
+      "suite": "customer-feedback-identity.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548815
+    },
+    {
+      "engine": "chromium",
+      "suite": "ecounseling-consent-realtime.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548815
+    },
+    {
+      "engine": "chromium",
+      "suite": "ecounseling-timing.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548815
+    },
+    {
+      "engine": "chromium",
+      "suite": "form-ui-1b.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548815
+    },
+    {
+      "engine": "chromium",
+      "suite": "guidance-messages-contextual.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548815
+    },
+    {
+      "engine": "chromium",
+      "suite": "portal-navigation-attention.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548815
+    },
+    {
+      "engine": "chromium",
+      "suite": "ui-information-hierarchy.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548815
+    },
+    {
+      "engine": "webkit",
+      "suite": "customer-feedback-identity.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548892
+    },
+    {
+      "engine": "webkit",
+      "suite": "ecounseling-consent-realtime.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548892
+    },
+    {
+      "engine": "webkit",
+      "suite": "ecounseling-timing.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548892
+    },
+    {
+      "engine": "webkit",
+      "suite": "form-ui-1b.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548892
+    },
+    {
+      "engine": "webkit",
+      "suite": "guidance-messages-contextual.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548892
+    },
+    {
+      "engine": "webkit",
+      "suite": "portal-navigation-attention.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548892
+    },
+    {
+      "engine": "webkit",
+      "suite": "ui-information-hierarchy.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548892
+    },
+    {
+      "engine": "chromium",
+      "suite": "counseling-encounter-consistency.browser.mjs",
+      "result": "FAIL",
+      "job_id": 116839548898
+    },
+    {
+      "engine": "chromium",
+      "suite": "ecounseling-call.browser.mjs",
+      "result": "FAIL",
+      "job_id": 116839548898
+    },
+    {
+      "engine": "chromium",
+      "suite": "ecounseling-safety-access.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548898
+    },
+    {
+      "engine": "chromium",
+      "suite": "form-input-standardization.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548898
+    },
+    {
+      "engine": "chromium",
+      "suite": "good-moral-print.browser.mjs",
+      "result": "FAIL",
+      "job_id": 116839548898
+    },
+    {
+      "engine": "chromium",
+      "suite": "guidance-operations.browser.mjs",
+      "result": "FAIL",
+      "job_id": 116839548898
+    },
+    {
+      "engine": "chromium",
+      "suite": "student-actions.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548898
+    },
+    {
+      "engine": "chromium",
+      "suite": "work-queue.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548898
+    },
+    {
+      "engine": "webkit",
+      "suite": "call-slip-permissions.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548939
+    },
+    {
+      "engine": "webkit",
+      "suite": "draft-and-session-safety.browser.mjs",
+      "result": "FAIL",
+      "job_id": 116839548939
+    },
+    {
+      "engine": "webkit",
+      "suite": "ecounseling-runtime.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548939
+    },
+    {
+      "engine": "webkit",
+      "suite": "form-corr-1-inventory.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548939
+    },
+    {
+      "engine": "webkit",
+      "suite": "good-moral-assisted.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548939
+    },
+    {
+      "engine": "webkit",
+      "suite": "guidance-messages.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548939
+    },
+    {
+      "engine": "webkit",
+      "suite": "security-activity.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548939
+    },
+    {
+      "engine": "webkit",
+      "suite": "ux-hardening.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548939
+    },
+    {
+      "engine": "chromium",
+      "suite": "call-slip-permissions.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548946
+    },
+    {
+      "engine": "chromium",
+      "suite": "draft-and-session-safety.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548946
+    },
+    {
+      "engine": "chromium",
+      "suite": "ecounseling-runtime.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548946
+    },
+    {
+      "engine": "chromium",
+      "suite": "form-corr-1-inventory.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548946
+    },
+    {
+      "engine": "chromium",
+      "suite": "good-moral-assisted.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548946
+    },
+    {
+      "engine": "chromium",
+      "suite": "guidance-messages.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548946
+    },
+    {
+      "engine": "chromium",
+      "suite": "security-activity.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548946
+    },
+    {
+      "engine": "chromium",
+      "suite": "ux-hardening.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548946
+    },
+    {
+      "engine": "webkit",
+      "suite": "assessment-records.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548983
+    },
+    {
+      "engine": "webkit",
+      "suite": "domain-activity.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548983
+    },
+    {
+      "engine": "webkit",
+      "suite": "ecounseling-media-realtime.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548983
+    },
+    {
+      "engine": "webkit",
+      "suite": "form-corr-1-exit-interview.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548983
+    },
+    {
+      "engine": "webkit",
+      "suite": "frontend-consistency.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548983
+    },
+    {
+      "engine": "webkit",
+      "suite": "guidance-messages-staff-operations.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548983
+    },
+    {
+      "engine": "webkit",
+      "suite": "realtime-runtime.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839548983
+    },
+    {
+      "engine": "webkit",
+      "suite": "user-copy.browser.mjs",
+      "result": "FAIL",
+      "job_id": 116839548983
+    },
+    {
+      "engine": "webkit",
+      "suite": "counseling-encounter-consistency.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839549095
+    },
+    {
+      "engine": "webkit",
+      "suite": "ecounseling-call.browser.mjs",
+      "result": "FAIL",
+      "job_id": 116839549095
+    },
+    {
+      "engine": "webkit",
+      "suite": "ecounseling-safety-access.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839549095
+    },
+    {
+      "engine": "webkit",
+      "suite": "form-input-standardization.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839549095
+    },
+    {
+      "engine": "webkit",
+      "suite": "good-moral-print.browser.mjs",
+      "result": "FAIL",
+      "job_id": 116839549095
+    },
+    {
+      "engine": "webkit",
+      "suite": "guidance-operations.browser.mjs",
+      "result": "FAIL",
+      "job_id": 116839549095
+    },
+    {
+      "engine": "webkit",
+      "suite": "student-actions.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839549095
+    },
+    {
+      "engine": "webkit",
+      "suite": "work-queue.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839549095
+    },
+    {
+      "engine": "chromium",
+      "suite": "assessment-records.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839549104
+    },
+    {
+      "engine": "chromium",
+      "suite": "domain-activity.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839549104
+    },
+    {
+      "engine": "chromium",
+      "suite": "ecounseling-media-realtime.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839549104
+    },
+    {
+      "engine": "chromium",
+      "suite": "form-corr-1-exit-interview.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839549104
+    },
+    {
+      "engine": "chromium",
+      "suite": "frontend-consistency.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839549104
+    },
+    {
+      "engine": "chromium",
+      "suite": "guidance-messages-staff-operations.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839549104
+    },
+    {
+      "engine": "chromium",
+      "suite": "realtime-runtime.browser.mjs",
+      "result": "PASS",
+      "job_id": 116839549104
+    },
+    {
+      "engine": "chromium",
+      "suite": "user-copy.browser.mjs",
+      "result": "FAIL",
+      "job_id": 116839549104
+    }
+  ],
+  "browser_failures": [
+    {
+      "job": "browser chromium 3/4",
+      "message": "correction-form-consistency: Only the changed time is sent; the start keeps its stored seconds"
+    },
+    {
+      "job": "browser chromium 3/4",
+      "message": "counselor-mobile-tray-narrowPhone: One row of controls (129px)"
+    },
+    {
+      "job": "browser chromium 3/4",
+      "message": "issue-confirm-verify-preview-download-reprint-CURRENT_STUDENT-320: Preview, reprint, and download reuse the finalized Blob"
+    },
+    {
+      "job": "browser chromium 3/4",
+      "message": "issue-confirm-verify-preview-download-reprint-CURRENT_STUDENT-1440: Preview, reprint, and download reuse the finalized Blob"
+    },
+    {
+      "job": "browser chromium 3/4",
+      "message": "issue-confirm-verify-preview-download-reprint-GRADUATE-320: Preview, reprint, and download reuse the finalized Blob"
+    },
+    {
+      "job": "browser chromium 3/4",
+      "message": "issue-confirm-verify-preview-download-reprint-GRADUATE-1440: Preview, reprint, and download reuse the finalized Blob"
+    },
+    {
+      "job": "browser chromium 3/4",
+      "message": "issued-then-pdf-failure-and-retry-without-reissue: locator.waitFor: Timeout 12000ms exceeded."
+    },
+    {
+      "job": "browser chromium 3/4",
+      "message": "navigation and direct route authority for COUNSELOR: Expected values to be strictly deep-equal:"
+    },
+    {
+      "job": "browser chromium 3/4",
+      "message": "navigation and direct route authority for GUIDANCE_SERVICES_STAFF: Expected values to be strictly deep-equal:"
+    },
+    {
+      "job": "browser webkit 2/4",
+      "message": "service-draft-asks-before-back-and-unload: page.waitForURL: Timeout 12000ms exceeded."
+    },
+    {
+      "job": "browser webkit 1/4",
+      "message": "good-moral-unconfirmed-320: locator.fill: Error: Element is not an <input>, <textarea> or [contenteditable] element"
+    },
+    {
+      "job": "browser webkit 1/4",
+      "message": "good-moral-unconfirmed-1440: locator.fill: Error: Element is not an <input>, <textarea> or [contenteditable] element"
+    },
+    {
+      "job": "browser webkit 3/4",
+      "message": "call-controls-and-devices: locator.selectOption: Timeout 12000ms exceeded."
+    },
+    {
+      "job": "browser webkit 3/4",
+      "message": "v2-fresh-download-per-click: page.waitForEvent: Timeout 12000ms exceeded while waiting for event \"download\""
+    },
+    {
+      "job": "browser webkit 3/4",
+      "message": "issue-confirm-verify-preview-download-reprint-CURRENT_STUDENT-320: Preview, reprint, and download reuse the finalized Blob"
+    },
+    {
+      "job": "browser webkit 3/4",
+      "message": "issue-confirm-verify-preview-download-reprint-CURRENT_STUDENT-1440: Preview, reprint, and download reuse the finalized Blob"
+    },
+    {
+      "job": "browser webkit 3/4",
+      "message": "issue-confirm-verify-preview-download-reprint-GRADUATE-320: Preview, reprint, and download reuse the finalized Blob"
+    },
+    {
+      "job": "browser webkit 3/4",
+      "message": "issue-confirm-verify-preview-download-reprint-GRADUATE-1440: Preview, reprint, and download reuse the finalized Blob"
+    },
+    {
+      "job": "browser webkit 3/4",
+      "message": "issued-then-pdf-failure-and-retry-without-reissue: locator.waitFor: Timeout 12000ms exceeded."
+    },
+    {
+      "job": "browser webkit 3/4",
+      "message": "native-pdf-tab-opens-from-direct-print-click: Expected values to be strictly equal:"
+    },
+    {
+      "job": "browser webkit 3/4",
+      "message": "navigation and direct route authority for COUNSELOR: Expected values to be strictly deep-equal:"
+    },
+    {
+      "job": "browser webkit 3/4",
+      "message": "navigation and direct route authority for GUIDANCE_SERVICES_STAFF: Expected values to be strictly deep-equal:"
+    },
+    {
+      "job": "browser webkit 3/4",
+      "message": "same-tab reading preserves reply backlog; confirmed send reconciles it without a socket: Canonical HTTP summary was invalidated by confirmed send"
+    },
+    {
+      "job": "browser chromium 1/4",
+      "message": "good-moral-unconfirmed-320: locator.fill: Error: Element is not an <input>, <textarea> or [contenteditable] element"
+    },
+    {
+      "job": "browser chromium 1/4",
+      "message": "good-moral-unconfirmed-1440: locator.fill: Error: Element is not an <input>, <textarea> or [contenteditable] element"
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { GoodMoralFulfillmentNotice } from "@/features/good-moral/good-moral-pdf";
 import { openGoodMoralPrintPreview } from "@/features/good-moral/good-moral-print-preview";
-import { useGoodMoralDownloadCertificate } from "@/lib/api/generated/good-moral/good-moral";
+import { goodMoralDownloadCertificate, useGoodMoralDownloadCertificate } from "@/lib/api/generated/good-moral/good-moral";
 import { downloadBinaryResponse } from "@/lib/browser-download";
 import { institutionalPdfFallbackFilename } from "@/lib/institutional-pdf-filenames";
 
@@ -30,7 +30,9 @@ function CertificatePreview({ blob }: { blob: Blob }) {
 // back to the issue mutation; retrying a PDF or cancelling browser printing cannot reissue it.
 export function GoodMoralIssuedPdf({ requestId }: { requestId: string }) {
   const pdf = useGoodMoralDownloadCertificate(requestId, {
-    query: { retry: false, staleTime: Infinity, gcTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false },
+    // Share the in-flight read across observer replay. With gcTime zero, an unobserved
+    // response is discarded on completion, including after permission loss or navigation.
+    query: { queryFn: () => goodMoralDownloadCertificate(requestId), retry: false, staleTime: Infinity, gcTime: 0, refetchOnWindowFocus: false, refetchOnReconnect: false },
   });
   const response = safeQueryData(pdf);
   const helpId = useId();

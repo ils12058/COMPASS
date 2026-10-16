@@ -19,7 +19,7 @@ const tones: Record<CallControlTone, string> = {
 // The tile styling, shared with links that act as call controls (the dock's Return to session).
 export function callControlClass(tone: CallControlTone = "default", className?: string) {
   return cn(
-    "relative inline-flex min-h-14 min-w-[3.25rem] max-w-28 flex-auto flex-col items-center justify-center gap-1 rounded-md border px-1.5 py-1.5 text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none",
+    "relative inline-flex min-h-14 min-w-11 max-w-28 flex-auto flex-col items-center justify-center gap-1 rounded-md border px-1 py-1.5 text-xs font-semibold leading-tight transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-raised disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none",
     tones[tone],
     className,
   );

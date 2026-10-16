@@ -648,7 +648,22 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
             // The usual outcome leads; cancelling, the destructive one, comes last.
             <div className="mt-4 flex flex-wrap gap-2">
               {canComplete ? <Button disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button> : null}
-              {canReschedule ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); rescheduleChoice.clear(); setNotice(null); setReassignmentOpen(false); setRescheduleOpen(true); }}>Reschedule</Button> : null}
+              {canReschedule ? (
+                <Button
+                  variant="secondary"
+                  disabled={pending}
+                  onClick={(event) => {
+                    event.currentTarget.focus();
+                    setError(null);
+                    rescheduleChoice.clear();
+                    setNotice(null);
+                    setReassignmentOpen(false);
+                    setRescheduleOpen(true);
+                  }}
+                >
+                  Reschedule
+                </Button>
+              ) : null}
               {canReassign ? <Button variant="secondary" disabled={pending} onClick={() => { setError(null); setNotice(null); setRescheduleOpen(false); setReassignmentOpen(true); }}>Reassign</Button> : null}
               {canMarkNoShow ? (
                 <DropdownMenu>

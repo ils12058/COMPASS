@@ -1,0 +1,10 @@
+{
+  "command": "node --import ./tests/support/register-tsx.mjs --test --test-concurrency=2 tests/*.test.mjs",
+  "tests": 767,
+  "passed": 766,
+  "failed": 1,
+  "skipped": 0,
+  "failure": "Raw API message reading stays confined to verified transport and bounded/controlled translators",
+  "affected_source": "fe/src/features/good-moral/good-moral-assisted-request.ts",
+  "note": "Three coverage assertions initially depended on shell-command spelling. Their suite/engine/shard/compiled-route assertions were adapted to discovery; 31 focused checks pass. The application copy-boundary test remains failing."
+}

@@ -2,6 +2,7 @@
 
 import json
 from dataclasses import FrozenInstanceError, asdict
+from datetime import date
 from io import StringIO
 from uuid import uuid4
 
@@ -618,20 +619,24 @@ def test_csm_corruption_rolls_back_earlier_f14_reconciliation(legacy):
 
 
 def test_demo_private_reconciliation_and_counts_use_explicit_projections(world, monkeypatch):
-    from types import SimpleNamespace
-
     from compass.demo_seed import seed
     from compass.demo_seed.feedback_content import matching_feedback
+    from compass.demo_seed.support import SeedSession
+    from compass.demo_seed.timeline import resolve_timeline
 
+    student, _ = world
     first = submitted(world, NAMES[0])
     second = submitted(world, NAMES[1])
-    # This unit replaces the entire persona map with one synthetic identity. Isolate both
-    # source-controlled cohorts; the real combined v2 counts are covered by test_demo_seed_v2.
+    # Isolate both source-controlled cohorts with a one-user SeedSession; the real combined v2
+    # counts are covered by test_demo_seed_v2.
     monkeypatch.setattr(seed.population_feedback, "CUSTOMER_FEEDBACK", {})
     monkeypatch.setattr(seed.population_feedback, "CLIENT_SATISFACTION", [])
-    monkeypatch.setattr(seed, "CUSTOMER_FEEDBACK", {"one": PRIVATE[NAMES[0]]})
-    monkeypatch.setattr(
-        seed, "PERSONAS_BY_KEY", {"one": SimpleNamespace(full_name=first.respondent_name_snapshot)}
+    customer_values = {**PRIVATE[NAMES[0]], "course_year": valid_f14_payload()["course_year"]}
+    monkeypatch.setattr(seed, "CUSTOMER_FEEDBACK", {"one": customer_values})
+    session = SeedSession(
+        timeline=resolve_timeline(anchor=date(2026, 10, 15)),
+        app_env="test",
+        users={"one": student},
     )
     monkeypatch.setattr(
         seed,
@@ -643,7 +648,7 @@ def test_demo_private_reconciliation_and_counts_use_explicit_projections(world, 
             }
         ],
     )
-    assert seed._seeded_customer_feedback() == 1
+    assert seed._seeded_customer_feedback(session) == 1
     assert seed._seeded_csm() == 1
     assert list(
         matching_feedback(
@@ -658,4 +663,4 @@ def test_demo_private_reconciliation_and_counts_use_explicit_projections(world, 
         confidential_content_ciphertext="PRIVATE-corrupt"
     )
     with pytest.raises(content.FeedbackConfidentialContentUnavailable):
-        seed._seeded_customer_feedback()
+        seed._seeded_customer_feedback(session)
