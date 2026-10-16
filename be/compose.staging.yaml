@@ -57,7 +57,7 @@ services:
       - web_push_storage_key
       - guidance_message_encryption_keys
       - assessment_record_confidential_content_encryption_keys
-    pull_policy: always
+    pull_policy: never
     command:
       [
         "gunicorn",
@@ -99,7 +99,7 @@ services:
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS: ""
       ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE: ""
       ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS: ""
-    pull_policy: always
+    pull_policy: never
     command:
       [
         "celery",
@@ -122,7 +122,7 @@ services:
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS: ""
       ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE: ""
       ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS: ""
-    pull_policy: always
+    pull_policy: never
     command: ["celery", "--app", "config", "beat", "--loglevel=INFO", "--pidfile="]
     depends_on:
       postgres:
@@ -136,7 +136,7 @@ services:
   # SECRET_KEY, or content keyrings.
   realtime:
     image: ${COMPASS_IMAGE:?COMPASS_IMAGE must be set}
-    pull_policy: always
+    pull_policy: never
     profiles: ["realtime"]
     restart: unless-stopped
     command:
@@ -322,8 +322,22 @@ secrets:
   guidance_message_encryption_keys:
     file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/guidance_message_encryption_keys
 
+# Existing canonical live-staging resources. These suffixes identify the reset lineage,
+# not the candidate image SHA. External resources MUST exist; Compose must never create them.
 volumes:
   postgres_data:
+    external: true
+    name: compass_postgres_canonical_d86ddc08
   redis_data:
+    external: true
+    name: compass_redis_canonical_d86ddc08
   caddy_data:
+    external: true
+    name: compass_caddy_data
   caddy_config:
+    external: true
+    name: compass_caddy_config
+networks:
+  default:
+    external: true
+    name: compass_canonical_d86ddc08

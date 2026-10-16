@@ -134,6 +134,11 @@ def test_file_metadata(runtime, fault):
         "CELERY_BROKER_URL",
         "REDIS_CACHE_URL_FILE",
         "STAGING_SEED_ENABLED",
+        "DEMO_SEEDING_ENABLED",
+        "DEMO_ACCOUNT_PASSWORD",
+        "DEMO_ACCOUNT_PASSWORD_FILE",
+        "DEMO_EMAIL_DOMAIN",
+        "DEMO_ONBOARDING_EMAIL",
     ],
 )
 def test_forbidden_assignments_never_expose_values(runtime, name):

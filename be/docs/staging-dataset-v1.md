@@ -81,9 +81,12 @@ podman compose --profile local run --rm web python manage.py seed_staging_datase
 The canonical baseline installs only into an empty database; a local database created from the
 old migration history must be rebuilt, not migrated.
 
-### Live staging (after the separately authorized clean rebuild)
+### Live staging (separate operator authorization only)
 
-Run only after the reset-only release is active, verified by its exact `build_id`, and the
+The clean rebuild completed on 2026-10-17. Routine [staging deployment](staging-deployment.md)
+never runs this command; do not reseed or reissue credentials during UAT without a separate owner
+decision. For an authorized operator run, verify the canonical release
+by its exact `build_id` and ensure the
 cutover checks in `outputs/canon-1c/CANON-1C-Cutover-Dependencies.md` are recorded. Use the release
 image already on the Droplet and a one-off container:
 
@@ -91,15 +94,15 @@ image already on the Droplet and a one-off container:
 seed_staging_live() {
   local DEPLOY_PATH=/opt/compass DEPLOY_SHA COMPASS_IMAGE VERIFIED_BUILD_SHA DOMAIN
   . "$DEPLOY_PATH/.deploy.env" || return
-  export COMPASS_IMAGE
-  DEPLOY_SHA="${COMPASS_IMAGE##*:}"
+  export COMPASS_IMAGE COMPASS_SECRETS_DIR COMPOSE_FILE COMPOSE_PROFILES
+  DEPLOY_SHA="$(docker image inspect "$COMPASS_IMAGE" --format '{{index .Config.Labels "org.opencontainers.image.revision"}}')"
   [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]] || return 1
   read -r -p 'Verified public /api/v1/meta build_id: ' VERIFIED_BUILD_SHA
   [[ "$DEPLOY_SHA" == "$VERIFIED_BUILD_SHA" ]] || return 1
   cd "$DEPLOY_PATH/releases/$DEPLOY_SHA" || return
   read -r -p 'Dataset email domain (operator-controlled): ' DOMAIN
   [[ -n "$DOMAIN" ]] || return 1
-  docker compose -f compose.staging.yaml run --rm --no-deps --pull never -T \
+  docker compose --project-name compass run --rm --no-deps --pull never -T \
     -e STAGING_SEED_ENABLED=true -e STAGING_SEED_EMAIL_DOMAIN="$DOMAIN" \
     web python manage.py seed_staging_dataset "$@"
 }
@@ -114,9 +117,10 @@ provisions accounts: active, email verified (dataset mailboxes are operator-cont
 usable password**. They cannot sign in until the operator issues credentials:
 
 ```bash
-# Live staging: mount a host directory readable only by the operator.
+# First source/export the verified selector as above; COMPOSE_FILE preserves both reset-era
+# and routine-deployment resource selection. Mount a protected operator directory.
 install -d -m 700 /root/uat-handoff
-docker compose -f compose.staging.yaml run --rm --no-deps --pull never -T \
+docker compose --project-name compass run --rm --no-deps --pull never -T \
   -v /root/uat-handoff:/handoff -e STAGING_SEED_ENABLED=true -e STAGING_SEED_EMAIL_DOMAIN="$DOMAIN" \
   web python manage.py seed_staging_dataset issue-credentials --output /handoff/uat-credentials.csv
 ```

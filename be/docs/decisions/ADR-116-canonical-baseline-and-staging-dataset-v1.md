@@ -1,10 +1,11 @@
 # ADR-116: Reset-only canonical baseline and COMPASS Staging Dataset v1
 
-- Status: Proposed (CANON-1C). Becomes Accepted on owner approval of the reset-only branch.
+- Status: Accepted. Owner approved promotion and completed COMPASS-LIVE-RESET-1 on 2026-10-17.
 - Date: 2026-10-16
 - Scope: reviewed on `canon/compass-clean-baseline` (#250) and promoted to `staging` on
   2026-10-17 by owner decision, accepting that live staging is fully rebuilt (its database and old
-  runtime are discarded). It is still not deployable over the existing live database.
+  runtime are discarded). It must never be applied over a pre-canonical database. The live
+  destination has since been rebuilt; subsequent releases use the initialized canonical lineage.
 - Supersedes, on the canonical baseline: the historical migration graph; the ADR-072 ledger and
   the ADR-114 transition safeguards (tombstones, fallback services, preflight command);
   [ADR-068](ADR-068-staging-demo-dataset-seeder.md) and
@@ -61,11 +62,18 @@ that did not support independent stakeholder UAT.
 
 ## Consequences
 
-- The baseline is **RESET-ONLY**: it cannot be applied to the existing live database. With it on
-  `staging`, `deploy-staging.yml` refuses every revision and `migrate` refuses the old database,
-  so no ordinary staging deployment happens until the clean rebuild; that procedure lifts or
-  replaces the workflow refusal. The current deployed runtime keeps ADR-114's tombstones and
-  ledger until it is shut down.
+- Initial installation was **RESET-ONLY**: the baseline could not be applied over the old live
+  database. On promotion, `deploy-staging.yml` intentionally refused every baseline revision while
+  the old runtime retained the transition safeguards. COMPASS-LIVE-RESET-1 completed the authorized
+  cutover on 2026-10-17: both old data volumes, old containers/network and local pre-canonical images
+  were removed; canonical storage was freshly initialized and Dataset v1 verified. External objects,
+  provider resources and existing backups were preserved, not imported.
+- COMPASS-DEPLOY-1 replaces the transitional unconditional refusal with target/resource/history
+  gates for the already initialized canonical environment. Routine deployment reuses the same
+  external named volumes/network, quiesces old application consumers before forward migrations,
+  and never seeds, imports, purges, resets authentication or restores pre-canonical state. See
+  [the operational runbook](../staging-deployment.md). This does not authorize a reset or make a
+  pre-canonical database compatible.
 - Feature branches cut from the pre-baseline `staging` that add migrations must regenerate them
   as `0002_…` on top of `0001_canonical_baseline`; their old dependencies no longer exist.
 - Restoring a pre-reset backup into the canonical runtime is unsupported; the history guard
@@ -78,8 +86,8 @@ that did not support independent stakeholder UAT.
 
 ## Unresolved
 
-- Owner acceptance of the reset-only strategy and of the 100-Student design target.
-- Live clean-rebuild execution, provider/object-storage/backup classification and broker
-  isolation (CANON-1D and separately authorized operator work).
+- Participant credential issuance and evaluator UAT remain separate owner-controlled operations.
+- Any cleanup of preserved provider/object-storage resources or backups needs its own scope;
+  normal deployment does not dispose of them.
 - Good Moral `LEGACY_UNSPECIFIED` initiation and Call Slip `LEGACY_UNKNOWN` issuance values remain
   model-owned enum members; removing them is a separate contract change.

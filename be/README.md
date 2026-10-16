@@ -462,6 +462,10 @@ authentication cookie.
 
 ## Live-staging outline
 
+Use the [canonical staging deployment runbook](docs/staging-deployment.md) for routine releases.
+The 2026-10-17 clean rebuild is complete; the existing canonical volumes/network are external
+resources, never provisioned or reset by ordinary deployment.
+
 Follow [the host-managed runtime secret runbook](docs/runtime-secrets.md) (ADR-078) before
 deploying `compose.staging.yaml`. Keep long-lived values in `/opt/compass/secrets` and only ordinary
 configuration plus `_FILE` pointers in the deployment `.env`. In particular, set:
@@ -486,8 +490,9 @@ configuration plus `_FILE` pointers in the deployment `.env`. In particular, set
 
 Provision and compare exact existing values before the first file-backed deployment. Dispatch
 `Deploy staging backend` for the full current staging SHA; it runs host-secret metadata preflight,
-quiet Compose validation and the existing migration/synchronization checks before replacing the
-application containers. Repository correctness and live cutover are separate acceptance steps.
+quiet Compose validation and canonical destination/history checks. It stops old application
+producers and consumers before permitted forward migrations, synchronizes canonical configuration,
+and replaces application services while PostgreSQL/Redis stay running on their existing storage. Repository correctness and live cutover are separate acceptance steps.
 
 The same backend image is used by `web`, `worker`, `beat`, and the optional `realtime` service;
 only the command differs. `realtime` receives only Redis settings and allowed Origins. Keep

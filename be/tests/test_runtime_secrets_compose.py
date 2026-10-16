@@ -92,6 +92,17 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
             config["services"]["web"]["environment"]["REDIS_PASSWORD"] == "dev-only-redis-password"
         )
         return
+    expected_volumes = {
+        "postgres_data": "compass_postgres_canonical_d86ddc08",
+        "redis_data": "compass_redis_canonical_d86ddc08",
+        "caddy_data": "compass_caddy_data",
+        "caddy_config": "compass_caddy_config",
+    }
+    for key, name in expected_volumes.items():
+        assert config["volumes"][key]["external"] is True
+        assert config["volumes"][key]["name"] == name
+    assert config["networks"]["default"]["external"] is True
+    assert config["networks"]["default"]["name"] == "compass_canonical_d86ddc08"
     assert len(SECRET_NAMES) == 24
     assert set(config["secrets"]) == SECRET_NAMES
     for name, source in config["secrets"].items():
