@@ -108,7 +108,7 @@ realtime=$(python3 -c 'import json; print(str(json.load(open(".host-preflight.js
 python3 - "$DEPLOY_SHA" "$APP_VERSION" "$BUILD_TIME" <<'PY'
 import json,sys,urllib.request,subprocess
 from pathlib import Path
-with urllib.request.urlopen(urllib.request.Request('https://staging-api.compass-gco.com/api/v1/meta',headers={'Cache-Control':'no-cache'}),timeout=15) as r:
+with urllib.request.urlopen(urllib.request.Request('https://staging-api.compass-gco.com/api/v1/meta',headers={'Cache-Control':'no-cache','User-Agent':'COMPASS-Staging-Deploy/1.0'}),timeout=15) as r:
     meta=json.load(r)
 assert meta['application']=='COMPASS' and meta['environment']=='live-staging'
 assert [meta['build_id'],meta['version'],meta['built_at']]==sys.argv[1:]
