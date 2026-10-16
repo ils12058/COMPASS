@@ -54,6 +54,15 @@ function history(page) {
   return page.getByRole("region", { name: "Conversation history" });
 }
 
+async function openAdditionalPage(context, path, errors, viewport) {
+  const page = await context.newPage();
+  page.setDefaultTimeout(12_000);
+  page.on("pageerror", (error) => errors.push(error.stack ?? error.message));
+  if (viewport) await page.setViewportSize(viewport);
+  await page.goto(`${baseURL}${path}`, { waitUntil: "domcontentloaded" });
+  return page;
+}
+
 /** A signed-in account the test can replace, plus the fake realtime server for it. */
 function messagesWorld(backend, account) {
   const world = { account, backend, sockets: [], tickets: [] };
@@ -103,12 +112,16 @@ for (const [label, account] of [
   ["Head designation without the capability", messagesAccount("COUNSELOR", { designations: ["HEAD_GUIDANCE_COUNSELOR"], capabilities: ["appointments.view_self"] })],
 ]) {
   const world = messagesWorld(staffWorld(), account);
-  await check(`${label} has no Messages destination or content`, "/portal", world.options(), async (page) => {
+  await check(`${label} has no Messages destination or content`, "/portal", world.options(), async (page, { context, errors }) => {
     await shown(page.getByRole("link", { name: "Overview" }).first());
     assert.equal(await page.getByRole("link", { name: "Messages", exact: true }).count(), 0);
-    await page.goto(`${baseURL}/portal/messages`);
-    await shown(page.getByRole("heading", { name: "Messages unavailable" }));
-    assert.equal(world.backend.requests().length, 0, "No Messages request is made");
+    const messagesPage = await openAdditionalPage(context, "/portal/messages", errors);
+    try {
+      await shown(messagesPage.getByRole("heading", { name: "Messages unavailable" }));
+      assert.equal(world.backend.requests().length, 0, "No Messages request is made");
+    } finally {
+      await messagesPage.close();
+    }
   });
 }
 
@@ -438,11 +451,15 @@ function longWorld() {
   backend.addThread({ id: threadIds.hidden });
   backend.addMessage(threadIds.hidden, COUNSELOR, "SECRET OTHER THREAD");
   const world = messagesWorld(backend, messagesAccount("STUDENT"));
-  await check("a guessed or malformed thread URL shows only an unavailable state", threadPath(threadIds.hidden), world.options(), async (page) => {
+  await check("a guessed or malformed thread URL shows only an unavailable state", threadPath(threadIds.hidden), world.options(), async (page, { context, errors }) => {
     await shown(page.getByRole("heading", { name: "Conversation unavailable" }));
     assert.equal(await page.getByText("SECRET OTHER THREAD").count(), 0);
-    await page.goto(`${baseURL}/portal/messages/not-a-thread`);
-    await shown(page.getByRole("heading", { name: "Conversation unavailable" }));
+    const malformedPage = await openAdditionalPage(context, "/portal/messages/not-a-thread", errors);
+    try {
+      await shown(malformedPage.getByRole("heading", { name: "Conversation unavailable" }));
+    } finally {
+      await malformedPage.close();
+    }
     assert.equal(backend.requests((request) => request.pathname.includes("not-a-thread")).length, 0, "A malformed ID is never requested");
   });
 }
@@ -658,10 +675,12 @@ for (const mode of ["disabled", "unavailable"]) {
 {
   const backend = studentWorld();
   const world = messagesWorld(backend, messagesAccount("STUDENT"));
-  await check("two tabs of one account: a send reaches the other tab over HTTP; reads stay private", threadPath(threadIds.office), world.options({ initScripts: [enableRealtime] }), async (page, { context }) => {
+  await check("two tabs of one account: a send reaches the other tab over HTTP; reads stay private", threadPath(threadIds.office), world.options({ initScripts: [enableRealtime] }), async (page, { context, errors }) => {
     await shown(history(page).getByText("Bring your ID."));
     const second = await context.newPage();
     await second.addInitScript({ content: enableRealtime });
+    second.setDefaultTimeout(12_000);
+    second.on("pageerror", (error) => errors.push(error.stack ?? error.message));
     await second.goto(`${baseURL}${threadPath(threadIds.office)}`);
     await shown(history(second).getByText("Bring your ID."));
     await eventually(() => world.sockets.length === 2 && world.sockets.every((socket) => socket.serverFrames.length > 0), "One ready socket per tab");
@@ -679,10 +698,12 @@ for (const mode of ["disabled", "unavailable"]) {
 {
   const backend = staffWorld();
   const world = messagesWorld(backend, messagesAccount("COUNSELOR"));
-  await check("two tabs of one staff account: resolving in one closes the composer in the other", threadPath(threadIds.office), world.options({ initScripts: [enableRealtime] }), async (page, { context }) => {
+  await check("two tabs of one staff account: resolving in one closes the composer in the other", threadPath(threadIds.office), world.options({ initScripts: [enableRealtime] }), async (page, { context, errors }) => {
     await shown(composer(page));
     const second = await context.newPage();
     await second.addInitScript({ content: enableRealtime });
+    second.setDefaultTimeout(12_000);
+    second.on("pageerror", (error) => errors.push(error.stack ?? error.message));
     await second.goto(`${baseURL}${threadPath(threadIds.office)}`);
     await shown(composer(second));
     await eventually(() => world.sockets.length === 2 && world.sockets.every((socket) => socket.serverFrames.length > 0), "One ready socket per tab");
@@ -741,15 +762,21 @@ for (const device of ["desktop", "phone"]) {
 {
   const backend = staffWorld();
   const world = messagesWorld(backend, messagesAccount("COUNSELOR"));
-  await check("no horizontal overflow from 320px to 1440px", "/portal/messages", world.options(), async (page) => {
+  await check("no horizontal overflow from 320px to 1440px", "/portal/messages", world.options(), async (page, { context, errors }) => {
     for (const width of [320, 375, 390, 393, 430, 768, 1440]) {
-      await page.setViewportSize({ width, height: 800 });
+      let split = false;
       for (const path of ["/portal/messages", threadPath(threadIds.office), "/portal/messages/new"]) {
-        await page.goto(`${baseURL}${path}`);
-        await shown(page.getByRole("heading", { name: path.endsWith("/new") ? "New message" : path.endsWith("messages") ? "Messages" : "Maria Santos" }).first());
-        await noHorizontalOverflow(page);
+        const routePage = await openAdditionalPage(context, path, errors, { width, height: 800 });
+        try {
+          await shown(routePage.getByRole("heading", { name: path.endsWith("/new") ? "New message" : path.endsWith("messages") ? "Messages" : "Maria Santos" }).first());
+          await noHorizontalOverflow(routePage);
+          if (path.endsWith("/new")) {
+            split = await routePage.evaluate(() => getComputedStyle(document.getElementById("guidance-messages-heading").closest(".flex-col")).display !== "none");
+          }
+        } finally {
+          await routePage.close();
+        }
       }
-      const split = await page.evaluate(() => getComputedStyle(document.getElementById("guidance-messages-heading").closest(".flex-col")).display !== "none");
       assert.equal(split, width >= 768, `${width}px ${width >= 768 ? "shows" : "hides"} the directory beside a conversation`);
     }
   });
