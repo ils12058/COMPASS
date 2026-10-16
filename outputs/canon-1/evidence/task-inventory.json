@@ -1,0 +1,92 @@
+[
+  {
+    "path": "be/compass/tasks.py",
+    "symbol": "infrastructure_noop",
+    "line": 43,
+    "registration": "shared_task(bind=True, base=CorrelationTask, name='compass.infrastructure.noop')"
+  },
+  {
+    "path": "be/compass/privacy_governance/tasks.py",
+    "symbol": "discover_retention",
+    "line": 36,
+    "registration": "shared_task(base=CorrelationTask, name=DISCOVER_RETENTION, ignore_result=True)"
+  },
+  {
+    "path": "be/compass/privacy_governance/tasks.py",
+    "symbol": "execute_disposition",
+    "line": 41,
+    "registration": "shared_task(base=CorrelationTask, name=EXECUTE_DISPOSITION, ignore_result=True)"
+  },
+  {
+    "path": "be/compass/privacy_governance/tasks.py",
+    "symbol": "recover_disposition",
+    "line": 46,
+    "registration": "shared_task(base=CorrelationTask, name=RECOVER_DISPOSITION, ignore_result=True)"
+  },
+  {
+    "path": "be/compass/authentication/tasks.py",
+    "symbol": "deliver_email_otp",
+    "line": 28,
+    "registration": "shared_task(bind=True, base=CorrelationTask, name='compass.authentication.email_otp.deliver')"
+  },
+  {
+    "path": "be/compass/authentication/tasks.py",
+    "symbol": "deliver_email_change_security_alert",
+    "line": 71,
+    "registration": "shared_task(bind=True, base=CorrelationTask, name='compass.authentication.email_change.security_alert', autoretry_for=(Exception,), retry_backoff=True, retry_jitter=True, max_retries=5)"
+  },
+  {
+    "path": "be/compass/authentication/tasks.py",
+    "symbol": "recover_unsent_email_change_security_alerts",
+    "line": 119,
+    "registration": "shared_task(bind=True, base=CorrelationTask, name='compass.authentication.email_change.recover_unsent_alerts')"
+  },
+  {
+    "path": "be/compass/ecounseling/tasks.py",
+    "symbol": "ingest_media_artifact",
+    "line": 25,
+    "registration": "shared_task(name='compass.ecounseling.ingest_media_artifact', base=CorrelationTask, acks_late=True, reject_on_worker_lost=True, soft_time_limit=30 * 60, time_limit=35 * 60)"
+  },
+  {
+    "path": "be/compass/ecounseling/tasks.py",
+    "symbol": "recover_media_artifacts",
+    "line": 38,
+    "registration": "shared_task(name='compass.ecounseling.recover_media_artifacts', base=CorrelationTask)"
+  },
+  {
+    "path": "be/compass/ecounseling/tasks.py",
+    "symbol": "reconcile_media_captures",
+    "line": 71,
+    "registration": "shared_task(name='compass.ecounseling.reconcile_media_captures', base=CorrelationTask, acks_late=True, reject_on_worker_lost=True, soft_time_limit=120, time_limit=150)"
+  },
+  {
+    "path": "be/compass/ecounseling/tasks.py",
+    "symbol": "replay_media_webhooks",
+    "line": 100,
+    "registration": "shared_task(name='compass.ecounseling.replay_media_webhooks', base=CorrelationTask, acks_late=True, reject_on_worker_lost=True, soft_time_limit=30, time_limit=45)"
+  },
+  {
+    "path": "be/compass/notifications/tasks.py",
+    "symbol": "deliver_notification_email",
+    "line": 24,
+    "registration": "shared_task(bind=True, base=CorrelationTask, name='compass.notifications.email.deliver')"
+  },
+  {
+    "path": "be/compass/notifications/tasks.py",
+    "symbol": "dispatch_due_notification_emails",
+    "line": 37,
+    "registration": "shared_task(bind=True, base=CorrelationTask, name='compass.notifications.email.dispatch_due')"
+  },
+  {
+    "path": "be/compass/notifications/tasks.py",
+    "symbol": "deliver_notification_push",
+    "line": 60,
+    "registration": "shared_task(bind=True, base=CorrelationTask, name='compass.notifications.push.deliver')"
+  },
+  {
+    "path": "be/compass/notifications/tasks.py",
+    "symbol": "dispatch_due_notification_pushes",
+    "line": 68,
+    "registration": "shared_task(bind=True, base=CorrelationTask, name='compass.notifications.push.dispatch_due')"
+  }
+]

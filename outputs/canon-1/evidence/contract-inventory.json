@@ -1,0 +1,1788 @@
+{
+  "base_sha": "d353108d1f757386b9020c4d1297e081258d2e4e",
+  "operations": [
+    {
+      "operation_id": "academicYearsList",
+      "method": "get",
+      "path": "/api/v1/academic-years"
+    },
+    {
+      "operation_id": "academicYearsCreate",
+      "method": "post",
+      "path": "/api/v1/academic-years"
+    },
+    {
+      "operation_id": "academicYearsSetCurrent",
+      "method": "post",
+      "path": "/api/v1/academic-years/{academic_year_id}/set-current"
+    },
+    {
+      "operation_id": "accountsList",
+      "method": "get",
+      "path": "/api/v1/accounts"
+    },
+    {
+      "operation_id": "accountsCreate",
+      "method": "post",
+      "path": "/api/v1/accounts"
+    },
+    {
+      "operation_id": "accountsImportCsv",
+      "method": "post",
+      "path": "/api/v1/accounts/imports/csv"
+    },
+    {
+      "operation_id": "accountsGet",
+      "method": "get",
+      "path": "/api/v1/accounts/{user_id}"
+    },
+    {
+      "operation_id": "accountsGetEffectiveAccess",
+      "method": "get",
+      "path": "/api/v1/accounts/{user_id}/access"
+    },
+    {
+      "operation_id": "accountsListCapabilityOverrides",
+      "method": "get",
+      "path": "/api/v1/accounts/{user_id}/capability-overrides"
+    },
+    {
+      "operation_id": "accountsRemoveCapabilityOverride",
+      "method": "delete",
+      "path": "/api/v1/accounts/{user_id}/capability-overrides/{capability_code}"
+    },
+    {
+      "operation_id": "accountsSetCapabilityOverride",
+      "method": "put",
+      "path": "/api/v1/accounts/{user_id}/capability-overrides/{capability_code}"
+    },
+    {
+      "operation_id": "accountsListDesignations",
+      "method": "get",
+      "path": "/api/v1/accounts/{user_id}/designations"
+    },
+    {
+      "operation_id": "accountsRemoveDesignation",
+      "method": "delete",
+      "path": "/api/v1/accounts/{user_id}/designations/{designation_code}"
+    },
+    {
+      "operation_id": "accountsAssignDesignation",
+      "method": "post",
+      "path": "/api/v1/accounts/{user_id}/designations/{designation_code}"
+    },
+    {
+      "operation_id": "accountsDisable",
+      "method": "post",
+      "path": "/api/v1/accounts/{user_id}/disable"
+    },
+    {
+      "operation_id": "accountsRequestEmailChange",
+      "method": "post",
+      "path": "/api/v1/accounts/{user_id}/email-change"
+    },
+    {
+      "operation_id": "accountsEnable",
+      "method": "post",
+      "path": "/api/v1/accounts/{user_id}/enable"
+    },
+    {
+      "operation_id": "accountsUpdateIdentity",
+      "method": "patch",
+      "path": "/api/v1/accounts/{user_id}/identity"
+    },
+    {
+      "operation_id": "accountsChangeRole",
+      "method": "put",
+      "path": "/api/v1/accounts/{user_id}/role"
+    },
+    {
+      "operation_id": "accountsResetMfa",
+      "method": "post",
+      "path": "/api/v1/accounts/{user_id}/security/reset-mfa"
+    },
+    {
+      "operation_id": "accountsRevokeSessions",
+      "method": "post",
+      "path": "/api/v1/accounts/{user_id}/security/revoke-sessions"
+    },
+    {
+      "operation_id": "accountsRevokeTrustedSessions",
+      "method": "post",
+      "path": "/api/v1/accounts/{user_id}/security/revoke-trusted-sessions"
+    },
+    {
+      "operation_id": "accountsUpdateStudentLifecycle",
+      "method": "put",
+      "path": "/api/v1/accounts/{user_id}/student-lifecycle"
+    },
+    {
+      "operation_id": "announcementsListVisible",
+      "method": "get",
+      "path": "/api/v1/announcements"
+    },
+    {
+      "operation_id": "announcementsListManaged",
+      "method": "get",
+      "path": "/api/v1/announcements/management"
+    },
+    {
+      "operation_id": "announcementsCreateDraft",
+      "method": "post",
+      "path": "/api/v1/announcements/management"
+    },
+    {
+      "operation_id": "announcementsGetManaged",
+      "method": "get",
+      "path": "/api/v1/announcements/management/{announcement_id}"
+    },
+    {
+      "operation_id": "announcementsUpdate",
+      "method": "patch",
+      "path": "/api/v1/announcements/management/{announcement_id}"
+    },
+    {
+      "operation_id": "announcementsArchive",
+      "method": "post",
+      "path": "/api/v1/announcements/management/{announcement_id}/archive"
+    },
+    {
+      "operation_id": "announcementsPublish",
+      "method": "post",
+      "path": "/api/v1/announcements/management/{announcement_id}/publish"
+    },
+    {
+      "operation_id": "announcementsGetVisible",
+      "method": "get",
+      "path": "/api/v1/announcements/{announcement_id}"
+    },
+    {
+      "operation_id": "appointmentsListManaged",
+      "method": "get",
+      "path": "/api/v1/appointments"
+    },
+    {
+      "operation_id": "appointmentsCreateMy",
+      "method": "post",
+      "path": "/api/v1/appointments"
+    },
+    {
+      "operation_id": "appointmentsListEligibleCounselors",
+      "method": "get",
+      "path": "/api/v1/appointments/booking/counselors"
+    },
+    {
+      "operation_id": "appointmentsListBookingServices",
+      "method": "get",
+      "path": "/api/v1/appointments/booking/services"
+    },
+    {
+      "operation_id": "appointmentsListBookableSlots",
+      "method": "get",
+      "path": "/api/v1/appointments/booking/slots"
+    },
+    {
+      "operation_id": "appointmentsListMy",
+      "method": "get",
+      "path": "/api/v1/appointments/me"
+    },
+    {
+      "operation_id": "appointmentsGet",
+      "method": "get",
+      "path": "/api/v1/appointments/{appointment_id}"
+    },
+    {
+      "operation_id": "appointmentsCancel",
+      "method": "post",
+      "path": "/api/v1/appointments/{appointment_id}/cancel"
+    },
+    {
+      "operation_id": "appointmentsComplete",
+      "method": "post",
+      "path": "/api/v1/appointments/{appointment_id}/complete"
+    },
+    {
+      "operation_id": "appointmentsGetHistory",
+      "method": "get",
+      "path": "/api/v1/appointments/{appointment_id}/history"
+    },
+    {
+      "operation_id": "appointmentsMarkNoShow",
+      "method": "post",
+      "path": "/api/v1/appointments/{appointment_id}/no-show"
+    },
+    {
+      "operation_id": "appointmentsReassign",
+      "method": "post",
+      "path": "/api/v1/appointments/{appointment_id}/reassign"
+    },
+    {
+      "operation_id": "appointmentsListReassignmentCandidates",
+      "method": "get",
+      "path": "/api/v1/appointments/{appointment_id}/reassignment-candidates"
+    },
+    {
+      "operation_id": "appointmentsReschedule",
+      "method": "post",
+      "path": "/api/v1/appointments/{appointment_id}/reschedule"
+    },
+    {
+      "operation_id": "appointmentsListRescheduleSlots",
+      "method": "get",
+      "path": "/api/v1/appointments/{appointment_id}/reschedule-slots"
+    },
+    {
+      "operation_id": "assessmentRecordsList",
+      "method": "get",
+      "path": "/api/v1/assessment-records"
+    },
+    {
+      "operation_id": "assessmentRecordsCreate",
+      "method": "post",
+      "path": "/api/v1/assessment-records"
+    },
+    {
+      "operation_id": "assessmentRecordsEligibleStudents",
+      "method": "get",
+      "path": "/api/v1/assessment-records/students"
+    },
+    {
+      "operation_id": "assessmentRecordsListTypes",
+      "method": "get",
+      "path": "/api/v1/assessment-records/types"
+    },
+    {
+      "operation_id": "assessmentRecordsCreateType",
+      "method": "post",
+      "path": "/api/v1/assessment-records/types"
+    },
+    {
+      "operation_id": "assessmentRecordsUpdateType",
+      "method": "patch",
+      "path": "/api/v1/assessment-records/types/{type_id}"
+    },
+    {
+      "operation_id": "assessmentRecordsGet",
+      "method": "get",
+      "path": "/api/v1/assessment-records/{record_id}"
+    },
+    {
+      "operation_id": "assessmentRecordsUpdate",
+      "method": "patch",
+      "path": "/api/v1/assessment-records/{record_id}"
+    },
+    {
+      "operation_id": "authGetCsrf",
+      "method": "get",
+      "path": "/api/v1/auth/csrf"
+    },
+    {
+      "operation_id": "authConfirmEmailChange",
+      "method": "post",
+      "path": "/api/v1/auth/email-change/confirm"
+    },
+    {
+      "operation_id": "authRequestEmailChange",
+      "method": "post",
+      "path": "/api/v1/auth/email-change/request"
+    },
+    {
+      "operation_id": "authRequestEmailChangeSecurityChallenge",
+      "method": "post",
+      "path": "/api/v1/auth/email-change/security-challenge"
+    },
+    {
+      "operation_id": "authLogin",
+      "method": "post",
+      "path": "/api/v1/auth/login"
+    },
+    {
+      "operation_id": "authLogout",
+      "method": "post",
+      "path": "/api/v1/auth/logout"
+    },
+    {
+      "operation_id": "authRegenerateRecoveryCodes",
+      "method": "post",
+      "path": "/api/v1/auth/mfa/recovery-codes/regenerate"
+    },
+    {
+      "operation_id": "authGetMfaStatus",
+      "method": "get",
+      "path": "/api/v1/auth/mfa/status"
+    },
+    {
+      "operation_id": "authConfirmMandatoryTotpBootstrap",
+      "method": "post",
+      "path": "/api/v1/auth/mfa/totp/bootstrap/confirm"
+    },
+    {
+      "operation_id": "authStartMandatoryTotpBootstrap",
+      "method": "post",
+      "path": "/api/v1/auth/mfa/totp/bootstrap/setup"
+    },
+    {
+      "operation_id": "authConfirmTotpSetup",
+      "method": "post",
+      "path": "/api/v1/auth/mfa/totp/confirm"
+    },
+    {
+      "operation_id": "authDisableTotp",
+      "method": "post",
+      "path": "/api/v1/auth/mfa/totp/disable"
+    },
+    {
+      "operation_id": "authStartTotpSetup",
+      "method": "post",
+      "path": "/api/v1/auth/mfa/totp/setup"
+    },
+    {
+      "operation_id": "authVerifyTotp",
+      "method": "post",
+      "path": "/api/v1/auth/mfa/totp/verify"
+    },
+    {
+      "operation_id": "authVerifyLoginMfa",
+      "method": "post",
+      "path": "/api/v1/auth/mfa/verify"
+    },
+    {
+      "operation_id": "authChangePassword",
+      "method": "post",
+      "path": "/api/v1/auth/password/change"
+    },
+    {
+      "operation_id": "authConfirmPasswordAccess",
+      "method": "post",
+      "path": "/api/v1/auth/password/confirm"
+    },
+    {
+      "operation_id": "authRequestPasswordAccess",
+      "method": "post",
+      "path": "/api/v1/auth/password/request"
+    },
+    {
+      "operation_id": "authGetSession",
+      "method": "get",
+      "path": "/api/v1/auth/session"
+    },
+    {
+      "operation_id": "authListSessions",
+      "method": "get",
+      "path": "/api/v1/auth/sessions"
+    },
+    {
+      "operation_id": "authRevokeOtherSessions",
+      "method": "post",
+      "path": "/api/v1/auth/sessions/revoke-others"
+    },
+    {
+      "operation_id": "authRevokeSession",
+      "method": "delete",
+      "path": "/api/v1/auth/sessions/{session_id}"
+    },
+    {
+      "operation_id": "authListTrustedSessions",
+      "method": "get",
+      "path": "/api/v1/auth/trusted-sessions"
+    },
+    {
+      "operation_id": "authRevokeOtherTrustedSessions",
+      "method": "post",
+      "path": "/api/v1/auth/trusted-sessions/revoke-others"
+    },
+    {
+      "operation_id": "authRevokeTrustedSession",
+      "method": "delete",
+      "path": "/api/v1/auth/trusted-sessions/{session_id}"
+    },
+    {
+      "operation_id": "availabilityListMyExceptions",
+      "method": "get",
+      "path": "/api/v1/availability/me/exceptions"
+    },
+    {
+      "operation_id": "availabilityCreateMyException",
+      "method": "post",
+      "path": "/api/v1/availability/me/exceptions"
+    },
+    {
+      "operation_id": "availabilityRemoveMyException",
+      "method": "delete",
+      "path": "/api/v1/availability/me/exceptions/{exception_id}"
+    },
+    {
+      "operation_id": "availabilityGetMyWeekly",
+      "method": "get",
+      "path": "/api/v1/availability/me/weekly"
+    },
+    {
+      "operation_id": "availabilityReplaceMyWeekly",
+      "method": "put",
+      "path": "/api/v1/availability/me/weekly"
+    },
+    {
+      "operation_id": "availabilityListOfficeExceptions",
+      "method": "get",
+      "path": "/api/v1/availability/office/exceptions"
+    },
+    {
+      "operation_id": "availabilityCreateOfficeException",
+      "method": "post",
+      "path": "/api/v1/availability/office/exceptions"
+    },
+    {
+      "operation_id": "availabilityRemoveOfficeException",
+      "method": "delete",
+      "path": "/api/v1/availability/office/exceptions/{exception_id}"
+    },
+    {
+      "operation_id": "availabilityGetOfficeWeekly",
+      "method": "get",
+      "path": "/api/v1/availability/office/weekly"
+    },
+    {
+      "operation_id": "availabilityReplaceOfficeWeekly",
+      "method": "put",
+      "path": "/api/v1/availability/office/weekly"
+    },
+    {
+      "operation_id": "availabilityListProviders",
+      "method": "get",
+      "path": "/api/v1/availability/providers"
+    },
+    {
+      "operation_id": "availabilityGetProvider",
+      "method": "get",
+      "path": "/api/v1/availability/providers/{provider_id}"
+    },
+    {
+      "operation_id": "availabilityGetProviderEffective",
+      "method": "get",
+      "path": "/api/v1/availability/providers/{provider_id}/effective"
+    },
+    {
+      "operation_id": "availabilityListProviderExceptions",
+      "method": "get",
+      "path": "/api/v1/availability/providers/{provider_id}/exceptions"
+    },
+    {
+      "operation_id": "availabilityCreateProviderException",
+      "method": "post",
+      "path": "/api/v1/availability/providers/{provider_id}/exceptions"
+    },
+    {
+      "operation_id": "availabilityRemoveProviderException",
+      "method": "delete",
+      "path": "/api/v1/availability/providers/{provider_id}/exceptions/{exception_id}"
+    },
+    {
+      "operation_id": "availabilityGetProviderWeekly",
+      "method": "get",
+      "path": "/api/v1/availability/providers/{provider_id}/weekly"
+    },
+    {
+      "operation_id": "availabilityReplaceProviderWeekly",
+      "method": "put",
+      "path": "/api/v1/availability/providers/{provider_id}/weekly"
+    },
+    {
+      "operation_id": "callSlipsList",
+      "method": "get",
+      "path": "/api/v1/call-slips"
+    },
+    {
+      "operation_id": "callSlipsCreate",
+      "method": "post",
+      "path": "/api/v1/call-slips"
+    },
+    {
+      "operation_id": "callSlipsCreateFromReferral",
+      "method": "post",
+      "path": "/api/v1/call-slips/from-referral/{referral_id}"
+    },
+    {
+      "operation_id": "callSlipsListMy",
+      "method": "get",
+      "path": "/api/v1/call-slips/me"
+    },
+    {
+      "operation_id": "callSlipsGetMy",
+      "method": "get",
+      "path": "/api/v1/call-slips/me/{call_slip_id}"
+    },
+    {
+      "operation_id": "callSlipsDownloadMyPdf",
+      "method": "get",
+      "path": "/api/v1/call-slips/me/{call_slip_id}/pdf"
+    },
+    {
+      "operation_id": "callSlipsListEligibleStudents",
+      "method": "get",
+      "path": "/api/v1/call-slips/students"
+    },
+    {
+      "operation_id": "callSlipsGet",
+      "method": "get",
+      "path": "/api/v1/call-slips/{call_slip_id}"
+    },
+    {
+      "operation_id": "callSlipsRecordInterviewEnded",
+      "method": "patch",
+      "path": "/api/v1/call-slips/{call_slip_id}/interview-ended"
+    },
+    {
+      "operation_id": "callSlipsDownloadPdf",
+      "method": "get",
+      "path": "/api/v1/call-slips/{call_slip_id}/pdf"
+    },
+    {
+      "operation_id": "callSlipsVoid",
+      "method": "post",
+      "path": "/api/v1/call-slips/{call_slip_id}/void"
+    },
+    {
+      "operation_id": "counselingListAppointmentCandidates",
+      "method": "get",
+      "path": "/api/v1/counseling/appointment-candidates"
+    },
+    {
+      "operation_id": "counselingContextGetOverview",
+      "method": "get",
+      "path": "/api/v1/counseling/context/{anchor_type}/{anchor_id}"
+    },
+    {
+      "operation_id": "counselingContextListHistory",
+      "method": "get",
+      "path": "/api/v1/counseling/context/{anchor_type}/{anchor_id}/history"
+    },
+    {
+      "operation_id": "counselingContextGetInventory",
+      "method": "get",
+      "path": "/api/v1/counseling/context/{anchor_type}/{anchor_id}/inventory"
+    },
+    {
+      "operation_id": "counselingContextListSharedSummaries",
+      "method": "get",
+      "path": "/api/v1/counseling/context/{anchor_type}/{anchor_id}/shared-summaries"
+    },
+    {
+      "operation_id": "counselingContextGetSupportIndicators",
+      "method": "get",
+      "path": "/api/v1/counseling/context/{anchor_type}/{anchor_id}/support-indicators"
+    },
+    {
+      "operation_id": "counselingGetEncounterCreationOptions",
+      "method": "get",
+      "path": "/api/v1/counseling/encounter-options"
+    },
+    {
+      "operation_id": "counselingCreateEncounter",
+      "method": "post",
+      "path": "/api/v1/counseling/encounters"
+    },
+    {
+      "operation_id": "counselingGetEncounter",
+      "method": "get",
+      "path": "/api/v1/counseling/encounters/{encounter_id}"
+    },
+    {
+      "operation_id": "counselingUpdateEncounter",
+      "method": "patch",
+      "path": "/api/v1/counseling/encounters/{encounter_id}"
+    },
+    {
+      "operation_id": "counselingListEncounterAppointmentCandidates",
+      "method": "get",
+      "path": "/api/v1/counseling/encounters/{encounter_id}/appointment-candidates"
+    },
+    {
+      "operation_id": "counselingGetAssignedSharedSummary",
+      "method": "get",
+      "path": "/api/v1/counseling/encounters/{encounter_id}/shared-summary"
+    },
+    {
+      "operation_id": "counselingPutAssignedSharedSummary",
+      "method": "put",
+      "path": "/api/v1/counseling/encounters/{encounter_id}/shared-summary"
+    },
+    {
+      "operation_id": "counselingPublishAssignedSharedSummary",
+      "method": "post",
+      "path": "/api/v1/counseling/encounters/{encounter_id}/shared-summary/publish"
+    },
+    {
+      "operation_id": "counselingListMyEncounters",
+      "method": "get",
+      "path": "/api/v1/counseling/me/encounters"
+    },
+    {
+      "operation_id": "counselingListMySharedSummaries",
+      "method": "get",
+      "path": "/api/v1/counseling/me/shared-summaries"
+    },
+    {
+      "operation_id": "counselingGetMySharedSummary",
+      "method": "get",
+      "path": "/api/v1/counseling/me/shared-summaries/{summary_id}"
+    },
+    {
+      "operation_id": "counselingListStudents",
+      "method": "get",
+      "path": "/api/v1/counseling/students"
+    },
+    {
+      "operation_id": "eCounselingGetAssignedWorkspace",
+      "method": "get",
+      "path": "/api/v1/e-counseling/appointments/{appointment_id}"
+    },
+    {
+      "operation_id": "eCounselingListAssignedConsents",
+      "method": "get",
+      "path": "/api/v1/e-counseling/appointments/{appointment_id}/consents"
+    },
+    {
+      "operation_id": "eCounselingRequestConsent",
+      "method": "post",
+      "path": "/api/v1/e-counseling/appointments/{appointment_id}/consents"
+    },
+    {
+      "operation_id": "eCounselingCreateJoinCredential",
+      "method": "post",
+      "path": "/api/v1/e-counseling/appointments/{appointment_id}/join"
+    },
+    {
+      "operation_id": "eCounselingAccessAssignedMedia",
+      "method": "get",
+      "path": "/api/v1/e-counseling/appointments/{appointment_id}/media/{kind}/access"
+    },
+    {
+      "operation_id": "eCounselingStartAssignedRecording",
+      "method": "post",
+      "path": "/api/v1/e-counseling/appointments/{appointment_id}/recording/start"
+    },
+    {
+      "operation_id": "eCounselingStopAssignedRecording",
+      "method": "post",
+      "path": "/api/v1/e-counseling/appointments/{appointment_id}/recording/stop"
+    },
+    {
+      "operation_id": "eCounselingStartAssignedTranscription",
+      "method": "post",
+      "path": "/api/v1/e-counseling/appointments/{appointment_id}/transcription/start"
+    },
+    {
+      "operation_id": "eCounselingStopAssignedTranscription",
+      "method": "post",
+      "path": "/api/v1/e-counseling/appointments/{appointment_id}/transcription/stop"
+    },
+    {
+      "operation_id": "eCounselingGetMyWorkspace",
+      "method": "get",
+      "path": "/api/v1/e-counseling/me/appointments/{appointment_id}"
+    },
+    {
+      "operation_id": "eCounselingListMyConsents",
+      "method": "get",
+      "path": "/api/v1/e-counseling/me/appointments/{appointment_id}/consents"
+    },
+    {
+      "operation_id": "eCounselingDecideMyConsent",
+      "method": "post",
+      "path": "/api/v1/e-counseling/me/appointments/{appointment_id}/consents/{consent_id}/decision"
+    },
+    {
+      "operation_id": "eCounselingWithdrawMyConsent",
+      "method": "post",
+      "path": "/api/v1/e-counseling/me/appointments/{appointment_id}/consents/{consent_id}/withdraw"
+    },
+    {
+      "operation_id": "exitInterviewsList",
+      "method": "get",
+      "path": "/api/v1/exit-interviews"
+    },
+    {
+      "operation_id": "exitInterviewsListMine",
+      "method": "get",
+      "path": "/api/v1/exit-interviews/me"
+    },
+    {
+      "operation_id": "exitInterviewsGetMyCurrent",
+      "method": "get",
+      "path": "/api/v1/exit-interviews/me/current"
+    },
+    {
+      "operation_id": "exitInterviewsEnsureMyCurrent",
+      "method": "post",
+      "path": "/api/v1/exit-interviews/me/current"
+    },
+    {
+      "operation_id": "exitInterviewsUpdateMyCurrent",
+      "method": "put",
+      "path": "/api/v1/exit-interviews/me/current"
+    },
+    {
+      "operation_id": "exitInterviewsSubmitMyCurrent",
+      "method": "post",
+      "path": "/api/v1/exit-interviews/me/current/submit"
+    },
+    {
+      "operation_id": "exitInterviewsGetMyStatus",
+      "method": "get",
+      "path": "/api/v1/exit-interviews/me/status"
+    },
+    {
+      "operation_id": "exitInterviewsGetMine",
+      "method": "get",
+      "path": "/api/v1/exit-interviews/me/{exit_interview_id}"
+    },
+    {
+      "operation_id": "exitInterviewsUpdateMine",
+      "method": "put",
+      "path": "/api/v1/exit-interviews/me/{exit_interview_id}"
+    },
+    {
+      "operation_id": "exitInterviewsDownloadMyPdf",
+      "method": "get",
+      "path": "/api/v1/exit-interviews/me/{exit_interview_id}/pdf"
+    },
+    {
+      "operation_id": "exitInterviewsSubmitMine",
+      "method": "post",
+      "path": "/api/v1/exit-interviews/me/{exit_interview_id}/submit"
+    },
+    {
+      "operation_id": "exitInterviewsListOpportunities",
+      "method": "get",
+      "path": "/api/v1/exit-interviews/opportunities"
+    },
+    {
+      "operation_id": "exitInterviewsOpenOpportunity",
+      "method": "post",
+      "path": "/api/v1/exit-interviews/opportunities"
+    },
+    {
+      "operation_id": "exitInterviewsListEligibleStudents",
+      "method": "get",
+      "path": "/api/v1/exit-interviews/opportunities/students"
+    },
+    {
+      "operation_id": "exitInterviewsGetOpportunity",
+      "method": "get",
+      "path": "/api/v1/exit-interviews/opportunities/{opportunity_id}"
+    },
+    {
+      "operation_id": "exitInterviewsRevokeOpportunity",
+      "method": "post",
+      "path": "/api/v1/exit-interviews/opportunities/{opportunity_id}/revoke"
+    },
+    {
+      "operation_id": "exitInterviewsGet",
+      "method": "get",
+      "path": "/api/v1/exit-interviews/{exit_interview_id}"
+    },
+    {
+      "operation_id": "exitInterviewsDownloadPdf",
+      "method": "get",
+      "path": "/api/v1/exit-interviews/{exit_interview_id}/pdf"
+    },
+    {
+      "operation_id": "exitInterviewsReopen",
+      "method": "post",
+      "path": "/api/v1/exit-interviews/{exit_interview_id}/reopen"
+    },
+    {
+      "operation_id": "feedbackSubmitCsm",
+      "method": "post",
+      "path": "/api/v1/feedback/csm"
+    },
+    {
+      "operation_id": "feedbackListCsmResponses",
+      "method": "get",
+      "path": "/api/v1/feedback/csm/responses"
+    },
+    {
+      "operation_id": "feedbackGetCsmResponse",
+      "method": "get",
+      "path": "/api/v1/feedback/csm/responses/{response_id}"
+    },
+    {
+      "operation_id": "feedbackSubmitCustomerFeedback",
+      "method": "post",
+      "path": "/api/v1/feedback/customer-feedback"
+    },
+    {
+      "operation_id": "feedbackListCustomerFeedbackResponses",
+      "method": "get",
+      "path": "/api/v1/feedback/customer-feedback/responses"
+    },
+    {
+      "operation_id": "feedbackGetCustomerFeedbackResponse",
+      "method": "get",
+      "path": "/api/v1/feedback/customer-feedback/responses/{response_id}"
+    },
+    {
+      "operation_id": "feedbackListMyOpportunities",
+      "method": "get",
+      "path": "/api/v1/feedback/opportunities"
+    },
+    {
+      "operation_id": "feedbackGetMyOpportunity",
+      "method": "get",
+      "path": "/api/v1/feedback/opportunities/{opportunity_id}"
+    },
+    {
+      "operation_id": "goodMoralListMyRequests",
+      "method": "get",
+      "path": "/api/v1/good-moral/me"
+    },
+    {
+      "operation_id": "goodMoralCreateMyCurrentStudentRequest",
+      "method": "post",
+      "path": "/api/v1/good-moral/me/requests/current-student"
+    },
+    {
+      "operation_id": "goodMoralCreateMyGraduateRequest",
+      "method": "post",
+      "path": "/api/v1/good-moral/me/requests/graduate"
+    },
+    {
+      "operation_id": "goodMoralGetMyRequest",
+      "method": "get",
+      "path": "/api/v1/good-moral/me/{request_id}"
+    },
+    {
+      "operation_id": "goodMoralCancelMyRequest",
+      "method": "post",
+      "path": "/api/v1/good-moral/me/{request_id}/cancel"
+    },
+    {
+      "operation_id": "goodMoralDownloadMyCertificate",
+      "method": "get",
+      "path": "/api/v1/good-moral/me/{request_id}/pdf"
+    },
+    {
+      "operation_id": "goodMoralListRequests",
+      "method": "get",
+      "path": "/api/v1/good-moral/requests"
+    },
+    {
+      "operation_id": "goodMoralCreateAssistedCurrentStudentRequest",
+      "method": "post",
+      "path": "/api/v1/good-moral/requests/current-student"
+    },
+    {
+      "operation_id": "goodMoralCreateAssistedGraduateRequest",
+      "method": "post",
+      "path": "/api/v1/good-moral/requests/graduate"
+    },
+    {
+      "operation_id": "goodMoralGetRequest",
+      "method": "get",
+      "path": "/api/v1/good-moral/requests/{request_id}"
+    },
+    {
+      "operation_id": "goodMoralUpdateRequest",
+      "method": "patch",
+      "path": "/api/v1/good-moral/requests/{request_id}"
+    },
+    {
+      "operation_id": "goodMoralCancelRequest",
+      "method": "post",
+      "path": "/api/v1/good-moral/requests/{request_id}/cancel"
+    },
+    {
+      "operation_id": "goodMoralIssueRequest",
+      "method": "post",
+      "path": "/api/v1/good-moral/requests/{request_id}/issue"
+    },
+    {
+      "operation_id": "goodMoralDownloadCertificate",
+      "method": "get",
+      "path": "/api/v1/good-moral/requests/{request_id}/pdf"
+    },
+    {
+      "operation_id": "goodMoralPrepareRequest",
+      "method": "post",
+      "path": "/api/v1/good-moral/requests/{request_id}/prepare"
+    },
+    {
+      "operation_id": "goodMoralListEligibleStudents",
+      "method": "get",
+      "path": "/api/v1/good-moral/student-options"
+    },
+    {
+      "operation_id": "graduateTracerGetClassificationOptions",
+      "method": "get",
+      "path": "/api/v1/graduate-tracer/classification-options"
+    },
+    {
+      "operation_id": "graduateTracerGetMyResponse",
+      "method": "get",
+      "path": "/api/v1/graduate-tracer/me"
+    },
+    {
+      "operation_id": "graduateTracerEnsureMyResponse",
+      "method": "post",
+      "path": "/api/v1/graduate-tracer/me"
+    },
+    {
+      "operation_id": "graduateTracerReplaceMyDraft",
+      "method": "put",
+      "path": "/api/v1/graduate-tracer/me"
+    },
+    {
+      "operation_id": "graduateTracerSubmitMyResponse",
+      "method": "post",
+      "path": "/api/v1/graduate-tracer/me/submit"
+    },
+    {
+      "operation_id": "graduateTracerListResponses",
+      "method": "get",
+      "path": "/api/v1/graduate-tracer/responses"
+    },
+    {
+      "operation_id": "graduateTracerGetResponse",
+      "method": "get",
+      "path": "/api/v1/graduate-tracer/responses/{response_id}"
+    },
+    {
+      "operation_id": "guidanceMessagesGetAppointmentContext",
+      "method": "get",
+      "path": "/api/v1/guidance-messages/appointments/{appointment_id}/context"
+    },
+    {
+      "operation_id": "guidanceMessagesOpenCounselingThread",
+      "method": "post",
+      "path": "/api/v1/guidance-messages/appointments/{appointment_id}/counseling-thread"
+    },
+    {
+      "operation_id": "guidanceMessagesEligibleStudents",
+      "method": "get",
+      "path": "/api/v1/guidance-messages/eligible-students"
+    },
+    {
+      "operation_id": "guidanceMessagesOpenMyOfficeThread",
+      "method": "post",
+      "path": "/api/v1/guidance-messages/office-thread"
+    },
+    {
+      "operation_id": "guidanceMessagesRecipientOptions",
+      "method": "get",
+      "path": "/api/v1/guidance-messages/recipient-options"
+    },
+    {
+      "operation_id": "guidanceMessagesOpenStudentOfficeThread",
+      "method": "post",
+      "path": "/api/v1/guidance-messages/students/{student_id}/office-thread"
+    },
+    {
+      "operation_id": "guidanceMessagesListTemplates",
+      "method": "get",
+      "path": "/api/v1/guidance-messages/templates"
+    },
+    {
+      "operation_id": "guidanceMessagesCreateTemplate",
+      "method": "post",
+      "path": "/api/v1/guidance-messages/templates"
+    },
+    {
+      "operation_id": "guidanceMessagesUpdateTemplate",
+      "method": "patch",
+      "path": "/api/v1/guidance-messages/templates/{template_id}"
+    },
+    {
+      "operation_id": "guidanceMessagesArchiveTemplate",
+      "method": "post",
+      "path": "/api/v1/guidance-messages/templates/{template_id}/archive"
+    },
+    {
+      "operation_id": "guidanceMessagesRestoreTemplate",
+      "method": "post",
+      "path": "/api/v1/guidance-messages/templates/{template_id}/restore"
+    },
+    {
+      "operation_id": "guidanceMessagesListThreads",
+      "method": "get",
+      "path": "/api/v1/guidance-messages/threads"
+    },
+    {
+      "operation_id": "guidanceMessagesGetThread",
+      "method": "get",
+      "path": "/api/v1/guidance-messages/threads/{thread_id}"
+    },
+    {
+      "operation_id": "guidanceMessagesListEligibleHandlers",
+      "method": "get",
+      "path": "/api/v1/guidance-messages/threads/{thread_id}/eligible-handlers"
+    },
+    {
+      "operation_id": "guidanceMessagesAssignHandler",
+      "method": "patch",
+      "path": "/api/v1/guidance-messages/threads/{thread_id}/handler"
+    },
+    {
+      "operation_id": "guidanceMessagesListMessages",
+      "method": "get",
+      "path": "/api/v1/guidance-messages/threads/{thread_id}/messages"
+    },
+    {
+      "operation_id": "guidanceMessagesSendMessage",
+      "method": "post",
+      "path": "/api/v1/guidance-messages/threads/{thread_id}/messages"
+    },
+    {
+      "operation_id": "guidanceMessagesMarkRead",
+      "method": "patch",
+      "path": "/api/v1/guidance-messages/threads/{thread_id}/read"
+    },
+    {
+      "operation_id": "guidanceMessagesReopenThread",
+      "method": "post",
+      "path": "/api/v1/guidance-messages/threads/{thread_id}/reopen"
+    },
+    {
+      "operation_id": "guidanceMessagesResolveThread",
+      "method": "post",
+      "path": "/api/v1/guidance-messages/threads/{thread_id}/resolve"
+    },
+    {
+      "operation_id": "guidanceMessagesGetUnreadCount",
+      "method": "get",
+      "path": "/api/v1/guidance-messages/unread-count"
+    },
+    {
+      "operation_id": "guidanceOperationsGet",
+      "method": "get",
+      "path": "/api/v1/guidance-operations"
+    },
+    {
+      "operation_id": "healthLive",
+      "method": "get",
+      "path": "/api/v1/health/live"
+    },
+    {
+      "operation_id": "healthReady",
+      "method": "get",
+      "path": "/api/v1/health/ready"
+    },
+    {
+      "operation_id": "institutionalFormsList",
+      "method": "get",
+      "path": "/api/v1/institutional-forms"
+    },
+    {
+      "operation_id": "institutionalFormsRevisionsList",
+      "method": "get",
+      "path": "/api/v1/institutional-forms/{family_key}/revisions"
+    },
+    {
+      "operation_id": "eCounselingDailyWebhook",
+      "method": "post",
+      "path": "/api/v1/integrations/daily/webhook"
+    },
+    {
+      "operation_id": "inventoryGetMyCurrent",
+      "method": "get",
+      "path": "/api/v1/inventory/me/current"
+    },
+    {
+      "operation_id": "inventoryEnsureMyCurrent",
+      "method": "post",
+      "path": "/api/v1/inventory/me/current"
+    },
+    {
+      "operation_id": "inventoryUpdateMyCurrent",
+      "method": "put",
+      "path": "/api/v1/inventory/me/current"
+    },
+    {
+      "operation_id": "inventorySubmitMyCurrent",
+      "method": "post",
+      "path": "/api/v1/inventory/me/current/submit"
+    },
+    {
+      "operation_id": "inventoryListMyHistory",
+      "method": "get",
+      "path": "/api/v1/inventory/me/history"
+    },
+    {
+      "operation_id": "inventoryGetMyStatus",
+      "method": "get",
+      "path": "/api/v1/inventory/me/status"
+    },
+    {
+      "operation_id": "inventoryGetMyHistoryItem",
+      "method": "get",
+      "path": "/api/v1/inventory/me/{inventory_id}"
+    },
+    {
+      "operation_id": "inventoryDownloadMyPdf",
+      "method": "get",
+      "path": "/api/v1/inventory/me/{inventory_id}/pdf"
+    },
+    {
+      "operation_id": "inventoryGetRecord",
+      "method": "get",
+      "path": "/api/v1/inventory/records/{inventory_id}"
+    },
+    {
+      "operation_id": "inventoryDownloadRecordPdf",
+      "method": "get",
+      "path": "/api/v1/inventory/records/{inventory_id}/pdf"
+    },
+    {
+      "operation_id": "inventoryReopenRecord",
+      "method": "post",
+      "path": "/api/v1/inventory/records/{inventory_id}/reopen"
+    },
+    {
+      "operation_id": "inventoryListStudents",
+      "method": "get",
+      "path": "/api/v1/inventory/students"
+    },
+    {
+      "operation_id": "inventoryListStudentHistory",
+      "method": "get",
+      "path": "/api/v1/inventory/students/{student_id}/history"
+    },
+    {
+      "operation_id": "meListActivity",
+      "method": "get",
+      "path": "/api/v1/me/activity"
+    },
+    {
+      "operation_id": "profileGetMyProfile",
+      "method": "get",
+      "path": "/api/v1/me/profile"
+    },
+    {
+      "operation_id": "profileUpdateMyProfile",
+      "method": "patch",
+      "path": "/api/v1/me/profile"
+    },
+    {
+      "operation_id": "profileRemoveMyPhoto",
+      "method": "delete",
+      "path": "/api/v1/me/profile/photo"
+    },
+    {
+      "operation_id": "profileSetMyPhoto",
+      "method": "put",
+      "path": "/api/v1/me/profile/photo"
+    },
+    {
+      "operation_id": "meListSecurityActivity",
+      "method": "get",
+      "path": "/api/v1/me/security-activity"
+    },
+    {
+      "operation_id": "meListSupervisedStaff",
+      "method": "get",
+      "path": "/api/v1/me/supervised-staff"
+    },
+    {
+      "operation_id": "meListSupervisedStaffActivity",
+      "method": "get",
+      "path": "/api/v1/me/supervised-staff-activity"
+    },
+    {
+      "operation_id": "systemMetadata",
+      "method": "get",
+      "path": "/api/v1/meta"
+    },
+    {
+      "operation_id": "notificationsListMine",
+      "method": "get",
+      "path": "/api/v1/notifications"
+    },
+    {
+      "operation_id": "notificationsGetPreferences",
+      "method": "get",
+      "path": "/api/v1/notifications/preferences"
+    },
+    {
+      "operation_id": "notificationsUpdatePreferences",
+      "method": "patch",
+      "path": "/api/v1/notifications/preferences"
+    },
+    {
+      "operation_id": "notificationsGetPushConfig",
+      "method": "get",
+      "path": "/api/v1/notifications/push/config"
+    },
+    {
+      "operation_id": "notificationsGetPushStatus",
+      "method": "post",
+      "path": "/api/v1/notifications/push/status"
+    },
+    {
+      "operation_id": "notificationsRemovePushSubscription",
+      "method": "delete",
+      "path": "/api/v1/notifications/push/subscription"
+    },
+    {
+      "operation_id": "notificationsRegisterPushSubscription",
+      "method": "post",
+      "path": "/api/v1/notifications/push/subscription"
+    },
+    {
+      "operation_id": "notificationsMarkAllRead",
+      "method": "patch",
+      "path": "/api/v1/notifications/read-all"
+    },
+    {
+      "operation_id": "notificationsGetUnreadCount",
+      "method": "get",
+      "path": "/api/v1/notifications/unread-count"
+    },
+    {
+      "operation_id": "notificationsMarkRead",
+      "method": "patch",
+      "path": "/api/v1/notifications/{notification_id}/read"
+    },
+    {
+      "operation_id": "organizationListCampuses",
+      "method": "get",
+      "path": "/api/v1/organization/campuses"
+    },
+    {
+      "operation_id": "organizationGetCampus",
+      "method": "get",
+      "path": "/api/v1/organization/campuses/{campus_id}"
+    },
+    {
+      "operation_id": "organizationListColleges",
+      "method": "get",
+      "path": "/api/v1/organization/colleges"
+    },
+    {
+      "operation_id": "organizationGetCollege",
+      "method": "get",
+      "path": "/api/v1/organization/colleges/{college_id}"
+    },
+    {
+      "operation_id": "organizationRemoveCollegeCounselor",
+      "method": "delete",
+      "path": "/api/v1/organization/colleges/{college_id}/counselor"
+    },
+    {
+      "operation_id": "organizationSetCollegeCounselor",
+      "method": "put",
+      "path": "/api/v1/organization/colleges/{college_id}/counselor"
+    },
+    {
+      "operation_id": "organizationListCounselorResponsibilities",
+      "method": "get",
+      "path": "/api/v1/organization/counselor-responsibilities"
+    },
+    {
+      "operation_id": "organizationListEligiblePeople",
+      "method": "get",
+      "path": "/api/v1/organization/people"
+    },
+    {
+      "operation_id": "organizationListPrograms",
+      "method": "get",
+      "path": "/api/v1/organization/programs"
+    },
+    {
+      "operation_id": "organizationGetProgram",
+      "method": "get",
+      "path": "/api/v1/organization/programs/{program_id}"
+    },
+    {
+      "operation_id": "organizationListStaffSupervisions",
+      "method": "get",
+      "path": "/api/v1/organization/staff-supervisions"
+    },
+    {
+      "operation_id": "organizationRemoveStaffSupervisor",
+      "method": "delete",
+      "path": "/api/v1/organization/staff/{staff_id}/supervisor"
+    },
+    {
+      "operation_id": "organizationSetStaffSupervisor",
+      "method": "put",
+      "path": "/api/v1/organization/staff/{staff_id}/supervisor"
+    },
+    {
+      "operation_id": "organizationListStudentAffiliations",
+      "method": "get",
+      "path": "/api/v1/organization/student-affiliations"
+    },
+    {
+      "operation_id": "organizationRemoveStudentAffiliation",
+      "method": "delete",
+      "path": "/api/v1/organization/students/{student_id}/affiliation"
+    },
+    {
+      "operation_id": "organizationSetStudentAffiliation",
+      "method": "put",
+      "path": "/api/v1/organization/students/{student_id}/affiliation"
+    },
+    {
+      "operation_id": "overviewGetSummary",
+      "method": "get",
+      "path": "/api/v1/overview"
+    },
+    {
+      "operation_id": "platformOperationsListActivity",
+      "method": "get",
+      "path": "/api/v1/platform/activity"
+    },
+    {
+      "operation_id": "platformOperationsListEmailDeliveries",
+      "method": "get",
+      "path": "/api/v1/platform/email-deliveries"
+    },
+    {
+      "operation_id": "platformOperationsGetEmailDeliverySummary",
+      "method": "get",
+      "path": "/api/v1/platform/email-deliveries/summary"
+    },
+    {
+      "operation_id": "platformOperationsRetryEmailDelivery",
+      "method": "post",
+      "path": "/api/v1/platform/email-deliveries/{delivery_id}/retry"
+    },
+    {
+      "operation_id": "platformOperationsEnvironment",
+      "method": "get",
+      "path": "/api/v1/platform/environment"
+    },
+    {
+      "operation_id": "platformOperationsHealth",
+      "method": "get",
+      "path": "/api/v1/platform/health"
+    },
+    {
+      "operation_id": "platformOperationsWorkerSmoke",
+      "method": "post",
+      "path": "/api/v1/platform/health/worker-smoke"
+    },
+    {
+      "operation_id": "platformOperationsGetMaintenance",
+      "method": "get",
+      "path": "/api/v1/platform/maintenance"
+    },
+    {
+      "operation_id": "platformOperationsDisableMaintenance",
+      "method": "post",
+      "path": "/api/v1/platform/maintenance/disable"
+    },
+    {
+      "operation_id": "platformOperationsEnableMaintenance",
+      "method": "post",
+      "path": "/api/v1/platform/maintenance/enable"
+    },
+    {
+      "operation_id": "platformOperationsCancelMaintenanceSchedule",
+      "method": "delete",
+      "path": "/api/v1/platform/maintenance/schedule"
+    },
+    {
+      "operation_id": "platformOperationsScheduleMaintenance",
+      "method": "put",
+      "path": "/api/v1/platform/maintenance/schedule"
+    },
+    {
+      "operation_id": "platformPublicStatus",
+      "method": "get",
+      "path": "/api/v1/platform/status"
+    },
+    {
+      "operation_id": "privacyGovernanceListActivity",
+      "method": "get",
+      "path": "/api/v1/privacy/activity"
+    },
+    {
+      "operation_id": "privacyGovernanceExportActivity",
+      "method": "get",
+      "path": "/api/v1/privacy/activity/export"
+    },
+    {
+      "operation_id": "privacyGovernanceListMyNotices",
+      "method": "get",
+      "path": "/api/v1/privacy/my-notices"
+    },
+    {
+      "operation_id": "privacyGovernanceAcknowledgeMyNotice",
+      "method": "post",
+      "path": "/api/v1/privacy/my-notices/{revision_id}/acknowledge"
+    },
+    {
+      "operation_id": "privacyGovernanceGetNoticeRevision",
+      "method": "get",
+      "path": "/api/v1/privacy/notice-revisions/{revision_id}"
+    },
+    {
+      "operation_id": "privacyGovernanceUpdateNoticeRevision",
+      "method": "patch",
+      "path": "/api/v1/privacy/notice-revisions/{revision_id}"
+    },
+    {
+      "operation_id": "privacyGovernancePublishNoticeRevision",
+      "method": "post",
+      "path": "/api/v1/privacy/notice-revisions/{revision_id}/publish"
+    },
+    {
+      "operation_id": "privacyGovernanceListNotices",
+      "method": "get",
+      "path": "/api/v1/privacy/notices"
+    },
+    {
+      "operation_id": "privacyGovernanceCreateNotice",
+      "method": "post",
+      "path": "/api/v1/privacy/notices"
+    },
+    {
+      "operation_id": "privacyGovernanceGetNotice",
+      "method": "get",
+      "path": "/api/v1/privacy/notices/{notice_id}"
+    },
+    {
+      "operation_id": "privacyGovernanceUpdateNotice",
+      "method": "patch",
+      "path": "/api/v1/privacy/notices/{notice_id}"
+    },
+    {
+      "operation_id": "privacyGovernanceRetireNotice",
+      "method": "post",
+      "path": "/api/v1/privacy/notices/{notice_id}/retire"
+    },
+    {
+      "operation_id": "privacyGovernanceListNoticeRevisions",
+      "method": "get",
+      "path": "/api/v1/privacy/notices/{notice_id}/revisions"
+    },
+    {
+      "operation_id": "privacyGovernanceCreateNoticeRevision",
+      "method": "post",
+      "path": "/api/v1/privacy/notices/{notice_id}/revisions"
+    },
+    {
+      "operation_id": "privacyGovernanceListPublicNotices",
+      "method": "get",
+      "path": "/api/v1/privacy/public-notices"
+    },
+    {
+      "operation_id": "privacyGovernanceListRetentionPolicies",
+      "method": "get",
+      "path": "/api/v1/privacy/retention/policies"
+    },
+    {
+      "operation_id": "announcementsListPublic",
+      "method": "get",
+      "path": "/api/v1/public/announcements"
+    },
+    {
+      "operation_id": "announcementsGetPublic",
+      "method": "get",
+      "path": "/api/v1/public/announcements/{announcement_id}"
+    },
+    {
+      "operation_id": "resourcesListPublic",
+      "method": "get",
+      "path": "/api/v1/public/resources"
+    },
+    {
+      "operation_id": "resourcesGetPublic",
+      "method": "get",
+      "path": "/api/v1/public/resources/{resource_id}"
+    },
+    {
+      "operation_id": "resourcesDownloadPublicFile",
+      "method": "get",
+      "path": "/api/v1/public/resources/{resource_id}/download"
+    },
+    {
+      "operation_id": "realtimeIssueTicket",
+      "method": "post",
+      "path": "/api/v1/realtime/tickets"
+    },
+    {
+      "operation_id": "referenceDataListPSGCBarangays",
+      "method": "get",
+      "path": "/api/v1/reference-data/psgc/barangays"
+    },
+    {
+      "operation_id": "referenceDataListPSGCCitiesMunicipalities",
+      "method": "get",
+      "path": "/api/v1/reference-data/psgc/cities-municipalities"
+    },
+    {
+      "operation_id": "referenceDataListPSGCProvinces",
+      "method": "get",
+      "path": "/api/v1/reference-data/psgc/provinces"
+    },
+    {
+      "operation_id": "referenceDataListPSGCRegions",
+      "method": "get",
+      "path": "/api/v1/reference-data/psgc/regions"
+    },
+    {
+      "operation_id": "referralsList",
+      "method": "get",
+      "path": "/api/v1/referrals"
+    },
+    {
+      "operation_id": "referralsCreate",
+      "method": "post",
+      "path": "/api/v1/referrals"
+    },
+    {
+      "operation_id": "referralsListEligibleStudents",
+      "method": "get",
+      "path": "/api/v1/referrals/students"
+    },
+    {
+      "operation_id": "referralsGet",
+      "method": "get",
+      "path": "/api/v1/referrals/{referral_id}"
+    },
+    {
+      "operation_id": "referralsRecordAction",
+      "method": "post",
+      "path": "/api/v1/referrals/{referral_id}/actions"
+    },
+    {
+      "operation_id": "referralsDownloadPdf",
+      "method": "get",
+      "path": "/api/v1/referrals/{referral_id}/pdf"
+    },
+    {
+      "operation_id": "referralsUpdateStatus",
+      "method": "patch",
+      "path": "/api/v1/referrals/{referral_id}/status"
+    },
+    {
+      "operation_id": "referralsVoid",
+      "method": "post",
+      "path": "/api/v1/referrals/{referral_id}/void"
+    },
+    {
+      "operation_id": "reportsGetGraduateTracer",
+      "method": "get",
+      "path": "/api/v1/reports/graduate-tracer"
+    },
+    {
+      "operation_id": "reportsDownloadGraduateTracerXlsx",
+      "method": "get",
+      "path": "/api/v1/reports/graduate-tracer/xlsx"
+    },
+    {
+      "operation_id": "reportsGetScope",
+      "method": "get",
+      "path": "/api/v1/reports/scope"
+    },
+    {
+      "operation_id": "reportsGetStudentProfile",
+      "method": "get",
+      "path": "/api/v1/reports/student-profile"
+    },
+    {
+      "operation_id": "reportsDownloadStudentProfilePdf",
+      "method": "get",
+      "path": "/api/v1/reports/student-profile/pdf"
+    },
+    {
+      "operation_id": "reportsDownloadStudentProfileXlsx",
+      "method": "get",
+      "path": "/api/v1/reports/student-profile/xlsx"
+    },
+    {
+      "operation_id": "resourcesListVisible",
+      "method": "get",
+      "path": "/api/v1/resources"
+    },
+    {
+      "operation_id": "resourcesListManaged",
+      "method": "get",
+      "path": "/api/v1/resources/management"
+    },
+    {
+      "operation_id": "resourcesCreateDraft",
+      "method": "post",
+      "path": "/api/v1/resources/management"
+    },
+    {
+      "operation_id": "resourcesGetManaged",
+      "method": "get",
+      "path": "/api/v1/resources/management/{resource_id}"
+    },
+    {
+      "operation_id": "resourcesUpdate",
+      "method": "patch",
+      "path": "/api/v1/resources/management/{resource_id}"
+    },
+    {
+      "operation_id": "resourcesArchive",
+      "method": "post",
+      "path": "/api/v1/resources/management/{resource_id}/archive"
+    },
+    {
+      "operation_id": "resourcesRemoveDraftFile",
+      "method": "delete",
+      "path": "/api/v1/resources/management/{resource_id}/file"
+    },
+    {
+      "operation_id": "resourcesDownloadManagedFile",
+      "method": "get",
+      "path": "/api/v1/resources/management/{resource_id}/file"
+    },
+    {
+      "operation_id": "resourcesAttachDraftFile",
+      "method": "post",
+      "path": "/api/v1/resources/management/{resource_id}/file"
+    },
+    {
+      "operation_id": "resourcesPublish",
+      "method": "post",
+      "path": "/api/v1/resources/management/{resource_id}/publish"
+    },
+    {
+      "operation_id": "resourcesGetVisible",
+      "method": "get",
+      "path": "/api/v1/resources/{resource_id}"
+    },
+    {
+      "operation_id": "resourcesDownloadVisibleFile",
+      "method": "get",
+      "path": "/api/v1/resources/{resource_id}/download"
+    },
+    {
+      "operation_id": "routineInterviewsListAssigned",
+      "method": "get",
+      "path": "/api/v1/routine-interviews"
+    },
+    {
+      "operation_id": "routineInterviewsCreateDirect",
+      "method": "post",
+      "path": "/api/v1/routine-interviews"
+    },
+    {
+      "operation_id": "routineInterviewsGetDirectCreationOptions",
+      "method": "get",
+      "path": "/api/v1/routine-interviews/direct/options"
+    },
+    {
+      "operation_id": "routineInterviewsListDirectStudentCandidates",
+      "method": "get",
+      "path": "/api/v1/routine-interviews/direct/student-candidates"
+    },
+    {
+      "operation_id": "routineInterviewsListMine",
+      "method": "get",
+      "path": "/api/v1/routine-interviews/me"
+    },
+    {
+      "operation_id": "routineInterviewsEnsureMyForAppointment",
+      "method": "post",
+      "path": "/api/v1/routine-interviews/me"
+    },
+    {
+      "operation_id": "routineInterviewsListMyAppointmentCandidates",
+      "method": "get",
+      "path": "/api/v1/routine-interviews/me/appointment-candidates"
+    },
+    {
+      "operation_id": "routineInterviewsGetMine",
+      "method": "get",
+      "path": "/api/v1/routine-interviews/me/{routine_interview_id}"
+    },
+    {
+      "operation_id": "routineInterviewsReplaceMyIntake",
+      "method": "put",
+      "path": "/api/v1/routine-interviews/me/{routine_interview_id}/intake"
+    },
+    {
+      "operation_id": "routineInterviewsSubmitMyIntake",
+      "method": "post",
+      "path": "/api/v1/routine-interviews/me/{routine_interview_id}/submit"
+    },
+    {
+      "operation_id": "routineInterviewsGetAssigned",
+      "method": "get",
+      "path": "/api/v1/routine-interviews/{routine_interview_id}"
+    },
+    {
+      "operation_id": "routineInterviewsListEncounterCandidates",
+      "method": "get",
+      "path": "/api/v1/routine-interviews/{routine_interview_id}/encounter-candidates"
+    },
+    {
+      "operation_id": "routineInterviewsReplaceAssignedEvaluation",
+      "method": "put",
+      "path": "/api/v1/routine-interviews/{routine_interview_id}/evaluation"
+    },
+    {
+      "operation_id": "routineInterviewsFinalizeAssignedEvaluation",
+      "method": "post",
+      "path": "/api/v1/routine-interviews/{routine_interview_id}/evaluation/finalize"
+    },
+    {
+      "operation_id": "servicesList",
+      "method": "get",
+      "path": "/api/v1/services"
+    },
+    {
+      "operation_id": "servicesCreate",
+      "method": "post",
+      "path": "/api/v1/services"
+    },
+    {
+      "operation_id": "servicesListProviderCandidates",
+      "method": "get",
+      "path": "/api/v1/services/provider-candidates"
+    },
+    {
+      "operation_id": "servicesGet",
+      "method": "get",
+      "path": "/api/v1/services/{service_id}"
+    },
+    {
+      "operation_id": "servicesUpdate",
+      "method": "patch",
+      "path": "/api/v1/services/{service_id}"
+    },
+    {
+      "operation_id": "servicesDisable",
+      "method": "post",
+      "path": "/api/v1/services/{service_id}/disable"
+    },
+    {
+      "operation_id": "servicesEnable",
+      "method": "post",
+      "path": "/api/v1/services/{service_id}/enable"
+    },
+    {
+      "operation_id": "servicesGetProviders",
+      "method": "get",
+      "path": "/api/v1/services/{service_id}/providers"
+    },
+    {
+      "operation_id": "studentActionsList",
+      "method": "get",
+      "path": "/api/v1/student-actions"
+    },
+    {
+      "operation_id": "studentSupportGetContext",
+      "method": "get",
+      "path": "/api/v1/student-support/students/{student_id}/context"
+    },
+    {
+      "operation_id": "workQueueList",
+      "method": "get",
+      "path": "/api/v1/work"
+    }
+  ],
+  "schema_count": 650,
+  "schemas_not_reachable_from_paths": [
+    "AssessmentRecordFilters",
+    "OrganizationRole",
+    "StudentActionsQuery",
+    "WorkQueueQuery"
+  ],
+  "note": "Unreferenced schema names are candidates for review, not deletion proof. Security components and generated consumers require separate inspection."
+}

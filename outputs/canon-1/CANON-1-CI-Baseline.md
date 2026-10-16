@@ -23,9 +23,12 @@ run is not accepted as evidence; this slice runs its own reproducible checks.
 
 Backend: register the three files in Activity, Good Moral and Graduate Tracer/Reports bundles;
 include My Activity regression coverage for its source-domain imports; select the complete suite
-on model edits (including retention_models and model packages); discover both pytest naming
+on model edits (including retention_models, Graduate Tracer participation and model packages); discover both pytest naming
 patterns recursively; verify split parts cover each collected node once. Existing settings,
 migration, unrecognized path, always-run safety and transitive helper selection remain intact.
+Validation workflows also cover the future `canon/compass-clean-baseline` target. Contract-sync
+redispatch preserves the actual PR base rather than assuming staging. Deployment remains manual
+and its exact staging-revision guard is unchanged.
 All 167 current files are planned exactly once across six full shards, including every configured
 split part. New unit tests prove the previously missing discovery/selection cases.
 
@@ -53,7 +56,7 @@ API/provider responses. The Next development backend proxy points at an unused l
 
 | Check | Result |
 | --- | --- |
-| CI selection/deployment guard unit tests | 40 passed |
+| CI selection/deployment guard unit tests | 42 passed |
 | backend_ci.py verify | 167 files, six shards, exactly-once coverage passed |
 | Ruff formatting / lint | Passed across backend |
 | Locked dependencies | Installed with uv sync --frozen; lock check passed |
@@ -64,11 +67,12 @@ API/provider responses. The Next development backend proxy points at an unused l
 | Frontend API generation | Passed with locked Orval |
 | Frontend ESLint / typecheck | Passed |
 | Next production build | Passed |
-| Frontend unit baseline | 763 passed / 764; one raw-message-boundary failure |
-| New browser registration tests | Three passed |
-| Full backend regression | Running; no green claim |
-| All browser suites on both engines | Running; no green claim |
-| Exact six-shard CI execution | Awaiting PR workflow evidence |
+| Frontend unit baseline / reviewed rerun | 763/764 before changes; 766/767 after registration tests; same one application failure |
+| New browser registration tests | Three passed; 31 focused registration/feature checks passed |
+| Targeted backend regression | Complete six shards: 1,278 passed, seven failed, zero skipped |
+| Full backend regression | Complete six shards: 4,648 passed, 41 failed, 22 errored, zero skipped |
+| All browser suites on both engines | Complete CI: 26/31 suites passed per engine; 25 individual cases failed |
+| Exact six-shard CI execution | All six finished in run 38859891816; 4,711 unique case IDs match collected function/parameter counts |
 
 The frontend failure names fe/src/features/good-moral/good-moral-assisted-request.ts: its
 invalid_good_moral_request path displays readApiErrorMessage directly. Classification: a real
@@ -78,14 +82,17 @@ historical audit assertions.
 
 ## Remaining CI and application work
 
-36 backend files lack measured durations in the historical duration table and use the supported
-30-second fallback. Coverage remains complete; runtime balance is provisional. Refresh only from
-actual JUnit measurements, preserving failed-test timings and documenting incomplete observations.
-Do not invent estimates to call the metadata current. The full workflow already publishes JUnit
-and duration artifacts; use this slice's completed run to refresh.
+The base duration table lacked observations for 36 files and used the supported 30-second
+fallback. All 167 files now have measured timings from the six complete JUnit reports in run
+38859891816; the plan is rebalanced and its self-tests pass. See evidence/duration-provenance.json.
+Seeder setup failures shorten current execution, so refresh timings again after regression repair.
+No future timings or successful dataset results are inferred from this failing baseline.
 
 Checkpoint A establishes discovery and mandatory execution; it is not application acceptance.
 All required application tests remain registered and failures remain visible. CANON-1B requires
 review/merge of this infrastructure before producing an independent ordinary PR on its repaired
 baseline. Exact-revision full regression remains required for deployment. No check, security
 assertion, browser engine or deployment gate was removed.
+
+See [regression report](CANON-1-Regression-Report.md) for every completed browser failure,
+the development/production printing comparison and confirmed backend fixture failures.

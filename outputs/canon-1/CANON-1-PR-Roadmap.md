@@ -5,7 +5,7 @@ No merge, deployment, live reset, Redis purge, storage deletion or live infrastr
 
 | Slice | Target | Concrete scope | Prerequisites and acceptance |
 | --- | --- | --- | --- |
-| CANON-1A — test discovery and CI coverage | staging | Register three backend files; include My Activity dependencies; select full suite on model edits; match pytest discovery; verify split-node coverage; repair Ruff; discover all browser suites on Chromium/WebKit with attributable failures and four shards per engine; remove workstation-only evidence path | CI self-tests, exact-once coverage, lint, static/contract/migration checks, frontend generation/typecheck/build, classified regression evidence. Application green is a later checkpoint; no valid tests are deleted/skipped. |
+| CANON-1A — test discovery and CI coverage | staging | Register three backend files; include My Activity dependencies; select full suite on model edits; match pytest discovery; verify split-node coverage; repair Ruff; discover all browser suites on Chromium/WebKit with attributable failures and four shards per engine; remove workstation-only evidence path; enable validation on the reset integration target while preserving manual deployment | CI self-tests, exact-once coverage, lint, static/contract/migration checks, frontend generation/typecheck/build, classified regression evidence. Application green is a later checkpoint; no valid tests are deleted/skipped. |
 | CANON-1B — inherited regressions | staging | Fix independently reproduced seed, fixture, contract, migration isolation and user-copy/browser failures by root cause | Review/merge 1A first so ordinary validation uses the repaired planner and all browser suites. Production bugs and fixture updates need separate justification. No blanket assertion rewrites. Full six-shard run and registered browser results required. |
 | CANON-2 — compatible backend cleanup | staging | Review dead stubs/action vocabulary and Routine wrappers; domain-by-domain service/route/validation consumer tracing; capability drift handling | 1A trusted CI, 1B green baseline for attribution. Matrix evidence for each deletion; current policy/encryption/authorization/lifecycle invariants preserved. Retention tombstones and ledger changes excluded. |
 | CANON-3 — frontend/API consumers | staging where compatible, otherwise reset integration | Retired retention redirect; duplicated utilities/presentations; source-owned generated contract; supported deep links and strict error semantics | Domain/API consumer map, regenerated clients, unit/browser/build checks. Removal of currently served API contracts is reset-only if deployed frontend consumers would break. No visual redesign. |
@@ -38,3 +38,33 @@ The existing audit, matrix, CI baseline, migration inventory, regression report 
 have source/command evidence. Do not create a claimed canonical schema comparison, successful
 seeder validation, completed reset runbook/rehearsal or milestone completion report until their
 implementation/evidence exists. A CANON-1A handoff report may explicitly record partial progress.
+
+## Concrete regression PR boundaries after CANON-1A review/merge
+
+1. **CANON-1B-A — backend fixture and contract alignment.** Accounts canonical grants;
+   audit pre-operation baselines; verified OpenAPI operations/query/context/enums; safe release
+   metadata; migration-test restoration. Require exact ownership/authorization/privacy assertions
+   to remain. Diagnose the migration failures from the completed full-shard JUnit reports before
+   choosing their fix; do not rewrite migration history in this compatible PR.
+2. **CANON-1B-B — current seeder input regression.** If the full run confirms missing Graduate
+   Tracer academic classification, supply actual canonical college/program/year data in existing
+   scenarios and preserve synthetic safety and deterministic reruns. This is distinct from the
+   later reset-only retirement of Dataset v1 upgrade machinery. Require focused seeder reports
+   and domain validation; no population expansion is implicitly approved.
+3. **CANON-1B-C — frontend current-contract fixtures and safe copy.** Controlled assisted Good
+   Moral error copy, select-based Good Moral fixtures, badge-aware navigation assertions and
+   request-observed synchronization. Preserve uncertain-result/idempotency and exact payload tests.
+4. **CANON-1B-D — browser/runtime behavior.** Investigate development PDF query lifecycle versus
+   production (five production cases already pass), WebKit popup/device/download/draft behavior,
+   the 320px E-Counseling control row and same-tab freshness timing. Keep these as separate small
+   fixes when their causes differ; no arbitrary waits, timeout inflation or deleted assertions.
+
+These can be independent PRs from the actual repaired staging base when their files/contracts do
+not overlap. A full green baseline remains required before attributing broad canonicalization
+regressions. None are to be implemented on an assumed merge of unreviewed CANON-1A.
+
+5. **CANON-1B-E — explicit notification push decision.** The complete suite found the new
+   GOOD_MORAL_REQUEST_INITIATED event missing from PUSH_POLICY. Its fallback suppresses push.
+   Add an explicit decision consistent with approved current channels; preserve the complete
+   registry assertion, safe lock-screen copy and existing in-app/email behavior. No new push
+   channel is implicitly approved.

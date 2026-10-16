@@ -1,6 +1,6 @@
-........................................
+..........................................
 ----------------------------------------------------------------------
-Ran 40 tests in 13.684s
+Ran 42 tests in 4.774s
 
 OK
 tests/test_inventory_confidential_content_encryption.py: running parts [1]/4 (5 of 19 tests)

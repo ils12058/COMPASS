@@ -1,0 +1,53 @@
+::group::webkit: first.browser.mjs
+::endgroup::
+::group::webkit: second.browser.mjs
+::endgroup::
+webkit: 0/2 suites passed.
+::group::chromium: passing.browser.mjs
+PASS chromium: passing.browser.mjs
+::endgroup::
+chromium: 1/1 suites passed.
+FAIL webkit: first.browser.mjs (1)
+FAIL webkit: second.browser.mjs (SIGTERM)
+Failed suites:
+first.browser.mjs
+second.browser.mjs
+✔ browser discovery includes future and nested suites without a script edit (10.904792ms)
+✔ all current browser suites run exactly once across the four CI shards (8.971ms)
+✔ a failing or interrupted suite cannot hide later failures or produce green (2.110167ms)
+✔ Inventory text limits are the server's limits, and unbounded answers stay unbounded (9.925334ms)
+✔ bounded Inventory fields expose their limit; unbounded fields do not (422.340417ms)
+✔ an answer at its limit says so and is described by that message; a shorter one is not (52.769042ms)
+✔ a transportation row without a frequency blocks submission with a field-level issue (10.496792ms)
+✔ Other frequency keeps its detail field, and an empty detail blocks saving as the server does (6.816209ms)
+✔ a Reported income must be greater than ₱0 before saving or submitting (1.64275ms)
+✔ None and Not specified stay distinct from zero and from a missing answer (0.611708ms)
+✔ the income amount shows the annual-period guidance, a centavo step, and its issue (28.21525ms)
+✔ exact peso amounts keep two decimal places and are never rewritten (5.040917ms)
+✔ daily hours accept two decimals from 0 to 24 (12.577833ms)
+✔ counts and ages are whole numbers of zero or more (38.786291ms)
+✔ submission lists save-time and submit-time issues in section order (0.803625ms)
+✔ contact, height, weight, and attendance years show examples without new rules (82.985583ms)
+✔ Exit Interview contact number shows the same example and keeps multiple numbers (62.386084ms)
+✔ Date referred offers dates up to the institutional today (25.103375ms)
+✔ Year Level labels are display text for the stored numbers 1 through 10 (32.20925ms)
+✔ frontend CI runs the Inventory input checks in both engines on a compiled route (6.127709ms)
+✔ Students get the first daily workspace without a new capability (4.077292ms)
+✔ closed item kinds navigate to their source and use action-specific copy (210.777333ms)
+✔ confirmed queue order renders unchanged as a semantic list with visible links (82.305625ms)
+✔ confirmed empty queue has the requested empty copy (6.582042ms)
+✔ frontend CI runs Student Actions in both engines and compiles its route (12.094792ms)
+✔ all eleven kinds map to canonical routes without raw enums or invented completion (1.094208ms)
+✔ Guidance roles get the first daily workspace without a new capability (5.979166ms)
+✔ closed item kinds navigate to their source and use action-specific copy (39.117292ms)
+✔ confirmed queue order renders unchanged as a semantic list with visible links (41.137709ms)
+✔ confirmed empty queue has the requested empty copy (2.702959ms)
+✔ frontend CI runs Work Queue in both engines and compiles its route (8.753417ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9066.705625

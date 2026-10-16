@@ -1,0 +1,26 @@
+{
+  "scope": "Interrupted local serial baseline; not a full-suite result",
+  "tests": 484,
+  "failures": [
+    {
+      "classname": "tests.test_accounts",
+      "name": "test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions",
+      "message": "assert 95 == 93\n +  where 95 = count()\n +    where count = <django.db.models.manager.Manager object at 0x10ffd61d0>.count\n +      where <django.db.models.manager.Manager object at 0x10ffd61d0> = RoleC"
+    },
+    {
+      "classname": "tests.test_accounts",
+      "name": "test_effective_capabilities_combine_role_designation_and_overrides",
+      "message": "AssertionError: assert frozenset({'a...manage', ...}) == {'academic_ye....manage', ...}\n  \n  Extra items in the left set:\n  'good_moral.initiate'\n  Use -v to get more diff"
+    },
+    {
+      "classname": "tests.test_audit",
+      "name": "test_success_audit_event_rolls_back_with_surrounding_transaction",
+      "message": "assert 1 == 0\n +  where 1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x10a36bc50>.count\n +      where <django.db.models.manager.ManagerFromAuditEve"
+    },
+    {
+      "classname": "tests.test_audit",
+      "name": "test_policy_sync_rolls_back_if_audit_recording_fails",
+      "message": "assert 1 == 0\n +  where 1 = count()\n +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x10a36bc50>.count\n +      where <django.db.models.manager.ManagerFromAuditEve"
+    }
+  ]
+}

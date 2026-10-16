@@ -86,6 +86,12 @@ dynamic dispatch, external consumers and bookmarks; those require runtime/contra
    lack package registration and three more are absent from CI regressions. Model paths selected
    only domain suites. CANON-1A repairs these infrastructure defects and lint without changing
    domain rules or accepting application regressions as correct.
+9. **Contract reachability needs review, not deletion by name.** All 355 operation IDs are unique.
+   Four of 650 schema components have no path-rooted $ref reachability: AssessmentRecordFilters,
+   OrganizationRole, StudentActionsQuery and WorkQueueQuery. Query types may be flattened inline;
+   each is REVIEW_REQUIRED. [Inventory](evidence/contract-inventory.json) records every operation.
+   The task scan identifies 15 shared_task declaration sites ([inventory](evidence/task-inventory.json));
+   it is not a claim that Celery built-ins or dynamic registrations are absent.
 
 ## Infrastructure and clean-reset boundary
 
@@ -109,3 +115,7 @@ confers no disposal permission for those resources. Classification and operator 
 
 No live reset procedure has been rehearsed, and no reset automation is introduced here.
 See the [PR roadmap](CANON-1-PR-Roadmap.md) for prerequisites and later evidence.
+
+The current-history fresh database was introspected read-only: 98 tables, 981 columns, 557 constraints,
+429 indexes and zero user-defined triggers. [Snapshot](evidence/existing-schema.json). It contains
+no account/content records or secrets. No canonical schema comparison has yet been performed.

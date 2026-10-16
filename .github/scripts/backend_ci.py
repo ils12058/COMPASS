@@ -767,6 +767,7 @@ FULL_PATHS = {
     "be/manage.py": "The Django entry point changed.",
     "be/compass/__init__.py": "The application package changed.",
     "be/compass/tasks.py": "The Celery task registry imports every domain.",
+    "be/compass/graduate_tracer/participation.py": "Disposed participation is a database model.",
     "be/tests/conftest.py": "Test configuration applies to every test.",
     "be/tests/settings.py": "Test settings apply to every test.",
     "be/tests/__init__.py": "The test package changed.",

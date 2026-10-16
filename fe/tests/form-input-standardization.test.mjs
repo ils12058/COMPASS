@@ -1,6 +1,7 @@
 // FORM-INPUT-1C: input limits, save-time rules, numeric controls, and field guidance that follow the
 // existing server contracts. Every record here is a synthetic fixture.
 import assert from "node:assert/strict";
+import { assertBrowserSuiteInCI } from "./support/browser-registration.mjs";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { createElement as h } from "react";
@@ -403,11 +404,7 @@ test("Year Level labels are display text for the stored numbers 1 through 10", (
 });
 
 test("frontend CI runs the Inventory input checks in both engines on a compiled route", () => {
-  const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url), "utf8"));
-  assert.match(pkg.scripts["test:ui:forms"], /node tests\/form-input-standardization\.browser\.mjs/);
-  assert.match(pkg.scripts["test:ui:forms"], /COMPASS_UI_BROWSER=webkit node tests\/form-input-standardization\.browser\.mjs/);
-  assert.match(pkg.scripts["test:ui:regressions"], /pnpm test:ui:forms/);
-  const workflow = readFileSync(new URL("../../.github/workflows/frontend-targeted.yml", import.meta.url), "utf8");
+  const workflow = assertBrowserSuiteInCI("form-input-standardization.browser.mjs");
   assert.match(workflow, /\/portal\/inventory\/current/);
   assert.match(workflow, /pnpm test:ui:regressions/);
 });

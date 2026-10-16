@@ -1,0 +1,8 @@
+{
+  "source_run": 38859891816,
+  "source_sha": "8cff975e06deb9e252df0d3d1d7417316661f12b",
+  "reports": 6,
+  "files_measured": 167,
+  "sum_test_seconds": 7046.3,
+  "note": "Actual failing-baseline timings. Setup errors can shorten seed scenarios; refresh after regression repair. No estimates were invented."
+}

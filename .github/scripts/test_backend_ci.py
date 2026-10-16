@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import sys
 import tempfile
 import unittest
@@ -152,9 +153,38 @@ class SelectionTests(unittest.TestCase):
         for path in (
             "be/compass/guidance_messages/models.py",
             "be/compass/privacy_governance/retention_models.py",
+            "be/compass/graduate_tracer/participation.py",
             "be/compass/good_moral/models/request.py",
         ):
             self.assertTrue(selected(path).full, path)
+
+    def test_actual_model_declarations_select_the_complete_suite(self):
+        # Model declarations also live outside models.py (for example participation.py).
+        for path in (backend_ci.BACKEND / "compass").rglob("*.py"):
+            if "migrations" in path.parts:
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            declares_model = any(
+                isinstance(node, ast.ClassDef) and any(
+                    isinstance(base, ast.Attribute) and base.attr == "Model"
+                    and isinstance(base.value, ast.Name) and base.value.id == "models"
+                    for base in node.bases
+                ) for node in ast.walk(tree)
+            )
+            if declares_model:
+                relative = path.relative_to(backend_ci.ROOT).as_posix()
+                self.assertTrue(selected(relative).full, relative)
+
+    def test_reset_integration_receives_ci_without_a_deployment_trigger(self):
+        for name in ("backend-full.yml", "backend-targeted.yml", "frontend-targeted.yml"):
+            workflow = (backend_ci.ROOT / ".github/workflows" / name).read_text()
+            self.assertIn("branches: [staging, canon/compass-clean-baseline]", workflow)
+        targeted = (backend_ci.ROOT / ".github/workflows/backend-targeted.yml").read_text()
+        self.assertIn('base_ref=$PR_BASE_REF', targeted)
+        deploy = (backend_ci.ROOT / ".github/workflows/deploy-staging.yml").read_text()
+        self.assertIn("  workflow_dispatch:", deploy)
+        self.assertNotIn("\n  push:", deploy)
+        self.assertNotIn("\n  pull_request:", deploy)
 
     def test_safety_bundle_always_runs(self):
         result = selected("be/docs/decisions/ADR-001-example.md")
