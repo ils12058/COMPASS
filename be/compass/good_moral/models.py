@@ -19,6 +19,12 @@ class GoodMoralVariant(models.TextChoices):
     GRADUATE = "GRADUATE", "Graduate"
 
 
+class GoodMoralInitiationOrigin(models.TextChoices):
+    STUDENT_SELF = "STUDENT_SELF", "Student self-service"
+    GCO_ASSISTED = "GCO_ASSISTED", "Guidance Office assisted"
+    LEGACY_UNSPECIFIED = "LEGACY_UNSPECIFIED", "Legacy, initiator not verified"
+
+
 class GoodMoralStatus(models.TextChoices):
     REQUESTED = "REQUESTED", "Requested"
     READY_FOR_ISSUANCE = "READY_FOR_ISSUANCE", "Ready for issuance"
@@ -66,6 +72,22 @@ class GoodMoralRequest(models.Model):
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="good_moral_requests",
+    )
+    # A persistent database default allows old application versions to keep inserting safely.
+    initiation_origin = models.CharField(
+        max_length=24,
+        choices=GoodMoralInitiationOrigin.choices,
+        default=GoodMoralInitiationOrigin.LEGACY_UNSPECIFIED,
+        db_default=GoodMoralInitiationOrigin.LEGACY_UNSPECIFIED,
+        editable=False,
+    )
+    initiated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="initiated_good_moral_requests",
+        editable=False,
     )
     variant = models.CharField(max_length=24, choices=GoodMoralVariant.choices)
     status = models.CharField(
@@ -166,6 +188,24 @@ class GoodMoralRequest(models.Model):
             ),
         ]
         constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        initiation_origin=GoodMoralInitiationOrigin.LEGACY_UNSPECIFIED,
+                        initiated_by__isnull=True,
+                    )
+                    | models.Q(
+                        initiation_origin=GoodMoralInitiationOrigin.STUDENT_SELF,
+                        initiated_by__isnull=False,
+                        initiated_by=models.F("student"),
+                    )
+                    | models.Q(
+                        initiation_origin=GoodMoralInitiationOrigin.GCO_ASSISTED,
+                        initiated_by__isnull=False,
+                    )
+                ),
+                name="good_moral_initiation_shape",
+            ),
             models.CheckConstraint(
                 condition=(
                     (

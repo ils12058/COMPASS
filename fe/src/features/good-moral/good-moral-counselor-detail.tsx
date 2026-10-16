@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { goodMoralInitiationLabel } from "./good-moral-shared";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -71,6 +72,8 @@ export function GoodMoralCounselorDetail({
   const hasReceipt = Boolean(item.official_receipt_number || item.official_receipt_date || item.official_receipt_amount !== null);
   // The facts a counselor checks first; the remaining request details follow in the same sheet.
   const keyFacts: RecordFact[] = [
+    { label: "Initiation", value: goodMoralInitiationLabel(item.initiation_origin) },
+    ...(item.initiated_by ? [{ label: "Initiated by", value: item.initiated_by.display_name }] : []),
     { label: "Institutional ID", value: shown(item.student_institutional_id) },
     { label: "Current Student account", value: shown(item.student.display_name) },
     { label: "Requested", value: formatGoodMoralDateTime(item.created_at) },

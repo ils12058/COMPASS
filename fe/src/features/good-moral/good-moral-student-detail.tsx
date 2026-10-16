@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { goodMoralInitiationLabel } from "./good-moral-shared";
 
 import { Notice } from "@/components/ui/notice";
 import { pageBackLinkClass } from "@/components/ui/page-header";
@@ -55,6 +56,7 @@ export function GoodMoralStudentDetail({
     return result.isError ? undefined : result.data?.data;
   };
   const keyFacts: RecordFact[] = [
+    { label: "Initiation", value: goodMoralInitiationLabel(item.initiation_origin) },
     { label: "Requested", value: formatGoodMoralDateTime(item.created_at) },
     ...(item.issued_at ? [{ label: "Issued", value: formatGoodMoralDateTime(item.issued_at) }] : []),
     ...(item.cancelled_at ? [{ label: "Cancelled", value: formatGoodMoralDateTime(item.cancelled_at) }] : []),

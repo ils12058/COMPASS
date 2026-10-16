@@ -9,6 +9,7 @@ import type {
   CallSlipStudentOptionResponse,
   ExitInterviewStudentOptionResponse,
   GuidanceStudentOption,
+  GoodMoralStudentOptionResponse,
   ReferralStudentOptionResponse,
 } from "@/lib/api/generated/model";
 
@@ -17,7 +18,8 @@ export type EligibleStudentOption =
   | ExitInterviewStudentOptionResponse
   | CallSlipStudentOptionResponse
   | ReferralStudentOptionResponse
-  | GuidanceStudentOption;
+  | GuidanceStudentOption
+  | GoodMoralStudentOptionResponse;
 
 export function EligibleStudentPicker({
   search,

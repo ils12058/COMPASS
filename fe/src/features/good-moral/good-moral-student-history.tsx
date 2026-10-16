@@ -3,6 +3,7 @@
 import { FileBadge } from "lucide-react";
 
 import Link from "next/link";
+import { goodMoralInitiationLabel } from "./good-moral-shared";
 
 import { PageActionLink } from "@/components/ui/page-action";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ export function GoodMoralStudentHistory({
                       {item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)} certificate` : `${goodMoralVariantLabel(item.variant)} request`}
                     </Link>
                     <p className="mt-1 break-words text-sm text-muted">{item.applicant_name || "Applicant name not provided"}</p>
+                    <p className="mt-1 text-sm text-muted">{goodMoralInitiationLabel(item.initiation_origin)}</p>
                     <p className="mt-1 text-xs text-muted">Requested {formatGoodMoralDateTime(item.created_at)}</p>
                     {item.issued_at ? <p className="mt-1 text-xs text-muted">Issued {formatGoodMoralDateTime(item.issued_at)}</p> : null}
                     {item.cancelled_at ? <p className="mt-1 text-xs text-muted">Cancelled {formatGoodMoralDateTime(item.cancelled_at)}</p> : null}

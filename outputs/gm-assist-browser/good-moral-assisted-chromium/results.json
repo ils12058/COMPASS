@@ -1,0 +1,54 @@
+{
+  "baseURL": "http://localhost:3137",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "COUNSELOR confirmation, double submit and operational navigation",
+      "passed": true
+    },
+    {
+      "name": "GUIDANCE_SERVICES_STAFF confirmation, double submit and operational navigation",
+      "passed": true
+    },
+    {
+      "name": "Graduate search, pagination, historical date and review",
+      "passed": true
+    },
+    {
+      "name": "good_moral_inventory_required stays on review without false success",
+      "passed": true
+    },
+    {
+      "name": "good_moral_exit_interview_required stays on review without false success",
+      "passed": true
+    },
+    {
+      "name": "good_moral_not_found stays on review without false success",
+      "passed": true
+    },
+    {
+      "name": "good_moral_conflict stays on review without false success",
+      "passed": true
+    },
+    {
+      "name": "uncertain result locks details and retries original identity",
+      "passed": true
+    },
+    {
+      "name": "view-only account has no action or picker",
+      "passed": true
+    },
+    {
+      "name": "changed lifecycle refreshes same search and requires explicit reselection",
+      "passed": true
+    },
+    {
+      "name": "phone layout and keyboard review",
+      "passed": true
+    },
+    {
+      "name": "tablet layout and keyboard review",
+      "passed": true
+    }
+  ]
+}

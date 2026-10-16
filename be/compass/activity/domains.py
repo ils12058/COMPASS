@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from django.db.models import CharField, Q, Subquery
+from django.db.models import CharField, OuterRef, Q, Subquery
 from django.db.models.functions import Cast
 
 from compass.accounts.services import effective_capabilities
@@ -20,7 +20,7 @@ from compass.audit.models import AuditActorType, AuditOutcome
 from compass.call_slips.models import CallSlip
 from compass.call_slips.services import _scope_queryset as scope_call_slips
 from compass.exit_interviews.models import ExitInterview
-from compass.good_moral.models import GoodMoralRequest
+from compass.good_moral.models import GoodMoralInitiationOrigin, GoodMoralRequest
 from compass.inventory.models import StudentInventory
 from compass.inventory.services import _scoped_students as inventory_students
 from compass.referrals.models import Referral, ReferralAction
@@ -122,6 +122,8 @@ DOMAIN_ACTIVITY_POLICIES = {
         "goodmoral.request",
         "Good Moral certificate requested",
         student_self="You requested a Good Moral certificate.",
+        student_affected="The Guidance and Counseling Office started a Good Moral request for you.",
+        staff_self="You started a Good Moral request for a Student.",
     ),
     actions.GOOD_MORAL_REQUEST_UPDATED: DomainActivityPolicy(
         "goodmoral.request",
@@ -280,6 +282,21 @@ def domain_selection_filter(*, user) -> Q:
                 continue
         elif policy.staff_self is None or user.role.code not in policy.staff_roles:
             continue
+        if action == actions.GOOD_MORAL_REQUEST_CREATED:
+            # Affected-party copy requires persisted assisted provenance and the actual initiator.
+            source = source.filter(
+                Q(
+                    student_id=OuterRef("actor_user_id"),
+                    initiation_origin__in=(
+                        GoodMoralInitiationOrigin.STUDENT_SELF,
+                        GoodMoralInitiationOrigin.LEGACY_UNSPECIFIED,
+                    ),
+                )
+                | Q(
+                    initiation_origin=GoodMoralInitiationOrigin.GCO_ASSISTED,
+                    initiated_by_id=OuterRef("actor_user_id"),
+                )
+            )
         target_ids = Subquery(
             source.order_by()
             .annotate(_activity_id=Cast("pk", output_field=CharField(max_length=36)))

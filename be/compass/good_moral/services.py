@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 from dataclasses import dataclass
 from datetime import date, datetime
@@ -64,6 +65,7 @@ from compass.organization.models import StudentAffiliation
 from .models import (
     CANONICAL_SEMESTERS,
     CANONICAL_YEAR_LEVELS,
+    GoodMoralInitiationOrigin,
     GoodMoralRequest,
     GoodMoralStatus,
     GoodMoralVariant,
@@ -216,6 +218,7 @@ def _queryset():
         "academic_year",
         "form_revision",
         "form_revision__family",
+        "initiated_by",
         "issued_by",
         "prepared_by",
         "cancelled_by",
@@ -285,6 +288,7 @@ def _existing_creation_locked(
     student: User,
     digest: str,
     fingerprint: str,
+    initiator: User | None = None,
 ) -> GoodMoralRequest | None:
     existing = (
         GoodMoralRequest.objects.select_for_update().filter(creation_key_digest=digest).first()
@@ -295,6 +299,11 @@ def _existing_creation_locked(
         raise GoodMoralCreationConflict(
             "The Good Moral creation identity belongs to a different Student."
         )
+    if initiator is not None and (
+        existing.initiated_by_id != initiator.pk
+        or existing.initiation_origin != GoodMoralInitiationOrigin.GCO_ASSISTED
+    ):
+        raise GoodMoralCreationConflict("The creation identity belongs to another initiator.")
     if existing.creation_request_fingerprint != fingerprint:
         raise GoodMoralCreationConflict(
             "The Idempotency-Key was already used for a different Good Moral request."
@@ -307,11 +316,13 @@ def _recover_creation_conflict(
     student: User,
     digest: str,
     fingerprint: str,
+    initiator: User | None = None,
 ) -> GoodMoralRequest:
     existing = _existing_creation_locked(
         student=student,
         digest=digest,
         fingerprint=fingerprint,
+        initiator=initiator,
     )
     if existing is not None:
         return existing
@@ -440,6 +451,44 @@ def _graduation_prerequisite(student: User, academic_year_id: UUID):
     return opportunity, interview
 
 
+def _validate_initiator(actor: User) -> None:
+    _validate_operational(actor, "good_moral.initiate")
+    _validate_operational(actor, "good_moral.view")
+
+
+def _validate_creation_student(student: User, *, initiator: User | None) -> None:
+    if initiator is None:
+        _validate_student(student, "good_moral.request_self")
+    elif not student.is_active or student.role.code != "STUDENT":
+        raise GoodMoralNotFound("The Student was not found or is not eligible for this request.")
+
+
+def _reject_assisted_pending(student: User, *, initiator: User | None) -> None:
+    # All creation paths hold the Student row fence. Self-service's existing policy is unchanged.
+    if (
+        initiator is not None
+        and GoodMoralRequest.objects.filter(
+            student=student,
+            status__in=_GOOD_MORAL_QUEUE_STATUSES,
+        ).exists()
+    ):
+        raise GoodMoralConflict(
+            "This Student already has a pending Good Moral request. Open it in the request queue."
+        )
+
+
+def _notify_assisted_creation(item: GoodMoralRequest) -> None:
+    if item.initiation_origin == GoodMoralInitiationOrigin.GCO_ASSISTED:
+        create_notification_for_event(
+            recipient=item.student,
+            event=NotificationEvent.GOOD_MORAL_REQUEST_INITIATED,
+            source_type="good_moral_request",
+            source_id=item.pk,
+            target_type="GOOD_MORAL",
+            target_id=item.pk,
+        )
+
+
 def create_my_current_student(
     *,
     student: User,
@@ -449,12 +498,135 @@ def create_my_current_student(
     request_fingerprint: str,
     context: AuditContext,
 ) -> GoodMoralRequest:
-    _validate_student(student, "good_moral.request_self")
+    return _create_current_student(
+        student=student,
+        year_level=year_level,
+        semester=semester,
+        idempotency_key=idempotency_key,
+        request_fingerprint=request_fingerprint,
+        context=context,
+    )
+
+
+def create_my_graduate(
+    *,
+    student: User,
+    degree: str,
+    major: str,
+    graduation_date: date,
+    idempotency_key: str,
+    request_fingerprint: str,
+    context: AuditContext,
+) -> GoodMoralRequest:
+    return _create_graduate(
+        student=student,
+        degree=degree,
+        major=major,
+        graduation_date=graduation_date,
+        idempotency_key=idempotency_key,
+        request_fingerprint=request_fingerprint,
+        context=context,
+    )
+
+
+def create_assisted_request(
+    *,
+    actor: User,
+    student_id: UUID,
+    variant: GoodMoralVariant,
+    details: dict[str, object],
+    idempotency_key: str,
+    request_fingerprint: str,
+    context: AuditContext,
+) -> GoodMoralRequest:
+    _validate_initiator(actor)
+    _validate_fingerprint(request_fingerprint)
+    if getattr(context.actor, "pk", None) != actor.pk:
+        raise GoodMoralNotPermitted("The audit actor must be the initiating staff member.")
+    with transaction.atomic():
+        # Serialize keys across target Students, then recheck both sources.
+        locked_actor = (
+            User.objects.select_for_update(of=("self",)).select_related("role").get(pk=actor.pk)
+        )
+        _validate_initiator(locked_actor)
+        student = User.objects.select_related("role").filter(pk=student_id).first()
+        if student is None:
+            raise GoodMoralNotFound(
+                "The Student was not found or is not eligible for this request."
+            )
+        if variant == GoodMoralVariant.CURRENT_STUDENT:
+            create = _create_current_student
+        elif variant == GoodMoralVariant.GRADUATE:
+            create = _create_graduate
+        else:
+            raise InvalidGoodMoralInput("The Good Moral variant is not supported.")
+        # Bind the source and variant even for service callers, independently of the wire hash.
+        bound = hashlib.sha256(
+            f"{actor.pk}\0{student_id}\0{variant}\0{request_fingerprint}\0".encode()
+            + json.dumps(details, sort_keys=True, default=str).encode()
+        ).hexdigest()
+        return create(
+            student=student,
+            initiator=locked_actor,
+            context=context,
+            idempotency_key=idempotency_key,
+            request_fingerprint=bound,
+            **details,
+        )
+
+
+def list_eligible_students(
+    *, actor: User, search: str | None = None, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE
+):
+    _validate_initiator(actor)
+    page, page_size = _pagination(page, page_size)
+    term = _clean_optional(search if search is not None else "", "search", MAX_SEARCH_LENGTH)
+    # Good Moral has office-wide authority, including Graduates. Other workflow selectors are
+    # CURRENT-only and governed by their own scope; do not broaden those endpoints.
+    rows = User.objects.filter(
+        is_active=True,
+        role__code="STUDENT",
+        student_lifecycle_status__in=(
+            StudentLifecycleStatus.CURRENT,
+            StudentLifecycleStatus.GRADUATED,
+        ),
+    ).select_related("organization_student_affiliation__college__campus")
+    if term:
+        rows = rows.filter(
+            Q(institutional_id__icontains=term)
+            | Q(first_name__icontains=term)
+            | Q(middle_name__icontains=term)
+            | Q(last_name__icontains=term)
+        )
+    offset = (page - 1) * page_size
+    rows = list(
+        rows.order_by("last_name", "first_name", "institutional_id", "id")[
+            offset : offset + page_size + 1
+        ]
+    )
+    return rows[:page_size], len(rows) > page_size
+
+
+def _create_current_student(
+    *,
+    student: User,
+    year_level: str,
+    semester: str,
+    idempotency_key: str,
+    request_fingerprint: str,
+    context: AuditContext,
+    initiator: User | None = None,
+) -> GoodMoralRequest:
+    _validate_creation_student(student, initiator=initiator)
     key = _validate_idempotency_key(idempotency_key)
     fingerprint = _validate_fingerprint(request_fingerprint)
     year = _clean_required(year_level, "year_level", 64)
     term = _clean_required(semester, "semester", 80)
-    digest = _creation_digest(student_id=student.pk, key=key)
+    digest = (
+        hashlib.sha256(f"gco_assisted\0{initiator.pk}\0{key}".encode()).hexdigest()
+        if initiator
+        else _creation_digest(student_id=student.pk, key=key)
+    )
 
     with transaction.atomic():
         locked_student = (
@@ -465,12 +637,13 @@ def create_my_current_student(
         )
         if locked_student is None:
             raise GoodMoralNotFound("The Student account was not found.")
-        _validate_student(locked_student, "good_moral.request_self")
+        _validate_creation_student(locked_student, initiator=initiator)
 
         existing = _existing_creation_locked(
             student=locked_student,
             digest=digest,
             fingerprint=fingerprint,
+            initiator=initiator,
         )
         if existing is not None:
             return existing
@@ -480,6 +653,7 @@ def create_my_current_student(
         if term not in CANONICAL_SEMESTERS:
             raise InvalidGoodMoralInput("semester is not supported.")
 
+        _reject_assisted_pending(locked_student, initiator=initiator)
         if not is_current_student(locked_student):
             raise GoodMoralCurrentStudentRequired(
                 "Current Student lifecycle is required to request the F4 Good Moral certificate."
@@ -496,6 +670,12 @@ def create_my_current_student(
             with transaction.atomic():
                 item = GoodMoralRequest.objects.create(
                     student=locked_student,
+                    initiated_by=initiator or locked_student,
+                    initiation_origin=(
+                        GoodMoralInitiationOrigin.GCO_ASSISTED
+                        if initiator
+                        else GoodMoralInitiationOrigin.STUDENT_SELF
+                    ),
                     variant=GoodMoralVariant.CURRENT_STUDENT,
                     inventory=inventory,
                     academic_year=inventory.academic_year,
@@ -518,6 +698,7 @@ def create_my_current_student(
                 student=locked_student,
                 digest=digest,
                 fingerprint=fingerprint,
+                initiator=initiator,
             )
 
         record_event(
@@ -526,12 +707,17 @@ def create_my_current_student(
             outcome=AuditOutcome.SUCCESS,
             target_type="goodmoral.request",
             target_id=item.pk,
-            metadata={"variant": item.variant, "transition": "NONE -> REQUESTED"},
+            metadata={
+                "variant": item.variant,
+                "transition": "NONE -> REQUESTED",
+                **({"initiation_origin": item.initiation_origin} if initiator else {}),
+            },
         )
+        _notify_assisted_creation(item)
         return _queryset().get(pk=item.pk)
 
 
-def create_my_graduate(
+def _create_graduate(
     *,
     student: User,
     degree: str,
@@ -540,8 +726,9 @@ def create_my_graduate(
     idempotency_key: str,
     request_fingerprint: str,
     context: AuditContext,
+    initiator: User | None = None,
 ) -> GoodMoralRequest:
-    _validate_student(student, "good_moral.request_self")
+    _validate_creation_student(student, initiator=initiator)
     key = _validate_idempotency_key(idempotency_key)
     fingerprint = _validate_fingerprint(request_fingerprint)
     degree_value = _clean_required(degree, "degree", 255)
@@ -549,7 +736,11 @@ def create_my_graduate(
     graduation_value = _clean_date(graduation_date, "graduation_date", allow_none=False)
     assert graduation_value is not None
     _reject_future_occurred_date(graduation_value, "graduation_date")
-    digest = _creation_digest(student_id=student.pk, key=key)
+    digest = (
+        hashlib.sha256(f"gco_assisted\0{initiator.pk}\0{key}".encode()).hexdigest()
+        if initiator
+        else _creation_digest(student_id=student.pk, key=key)
+    )
 
     with transaction.atomic():
         locked_student = (
@@ -560,16 +751,18 @@ def create_my_graduate(
         )
         if locked_student is None:
             raise GoodMoralNotFound("The Student account was not found.")
-        _validate_student(locked_student, "good_moral.request_self")
+        _validate_creation_student(locked_student, initiator=initiator)
 
         existing = _existing_creation_locked(
             student=locked_student,
             digest=digest,
             fingerprint=fingerprint,
+            initiator=initiator,
         )
         if existing is not None:
             return existing
 
+        _reject_assisted_pending(locked_student, initiator=initiator)
         if locked_student.student_lifecycle_status != StudentLifecycleStatus.GRADUATED:
             raise GoodMoralGraduatedStudentRequired(
                 "Graduated Student lifecycle is required to request the F6 Good Moral certificate."
@@ -580,6 +773,12 @@ def create_my_graduate(
             with transaction.atomic():
                 item = GoodMoralRequest.objects.create(
                     student=locked_student,
+                    initiated_by=initiator or locked_student,
+                    initiation_origin=(
+                        GoodMoralInitiationOrigin.GCO_ASSISTED
+                        if initiator
+                        else GoodMoralInitiationOrigin.STUDENT_SELF
+                    ),
                     variant=GoodMoralVariant.GRADUATE,
                     applicant_name_snapshot=profile.full_name.strip(),
                     degree_snapshot=degree_value,
@@ -593,6 +792,7 @@ def create_my_graduate(
                 student=locked_student,
                 digest=digest,
                 fingerprint=fingerprint,
+                initiator=initiator,
             )
 
         record_event(
@@ -601,8 +801,13 @@ def create_my_graduate(
             outcome=AuditOutcome.SUCCESS,
             target_type="goodmoral.request",
             target_id=item.pk,
-            metadata={"variant": item.variant, "transition": "NONE -> REQUESTED"},
+            metadata={
+                "variant": item.variant,
+                "transition": "NONE -> REQUESTED",
+                **({"initiation_origin": item.initiation_origin} if initiator else {}),
+            },
         )
+        _notify_assisted_creation(item)
         return _queryset().get(pk=item.pk)
 
 

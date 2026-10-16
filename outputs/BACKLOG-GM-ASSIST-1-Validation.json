@@ -1,0 +1,56 @@
+{
+  "base_sha": "9531269c0d34cb99a472a1c6b8c243ab260eb1dd",
+  "branch": "feat/backlog-gco-assisted-good-moral",
+  "runs": {
+    "assisted_backend": {
+      "summary": "46 passed in 317.01s (0:05:17)",
+      "detail": ""
+    },
+    "activity_relationships": {
+      "summary": "29 passed in 184.90s (0:03:04)",
+      "detail": ""
+    },
+    "components": {
+      "summary": "\u2139 duration_ms 49628.335208",
+      "detail": ""
+    },
+    "assisted_chromium": {
+      "summary": "12/12 browser checks passed; artifacts: ../outputs/gm-assist-browser/good-moral-assisted-chromium",
+      "detail": ""
+    },
+    "assisted_webkit": {
+      "summary": "12/12 browser checks passed; artifacts: ../outputs/gm-assist-browser/good-moral-assisted-webkit",
+      "detail": ""
+    },
+    "print_chromium": {
+      "summary": "20/20 browser checks passed; artifacts: /var/folders/tc/9pcbpb_j057_gf64sf1pfgn00000gn/T/compass-good-moral-print-chromium",
+      "detail": ""
+    },
+    "print_webkit": {
+      "summary": "20/20 browser checks passed; artifacts: /var/folders/tc/9pcbpb_j057_gf64sf1pfgn00000gn/T/compass-good-moral-print-webkit",
+      "detail": ""
+    },
+    "initial_good_moral_regressions": {
+      "summary": "80 passed, 1 Activity fixture failure; corrected Activity relationship run: 29 passed.",
+      "detail": "See implementation report for initial failure correction and inherited baseline failures."
+    },
+    "unchanged_baseline": {
+      "summary": "2 failed; both inherited noncanonical preparation fixtures reproduce on unchanged 9531269c.",
+      "detail": "See implementation report for initial failure correction and inherited baseline failures."
+    }
+  },
+  "quality_checks": {
+    "api_generation": "passed",
+    "openapi_check": "passed",
+    "migration_drift": "no changes detected",
+    "migration_compatibility": "passed, including old-model insert after forward migration",
+    "ruff": "passed",
+    "frontend_lint": "passed, 4 inherited unused-variable warnings in untouched portal-navigation-attention.browser.mjs",
+    "frontend_typecheck": "passed",
+    "frontend_production_build": "passed",
+    "diff_check": "passed"
+  },
+  "synthetic_only": true,
+  "merged": false,
+  "deployed": false
+}

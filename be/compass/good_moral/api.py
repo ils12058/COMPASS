@@ -27,7 +27,7 @@ from compass.privacy_governance.releases import (
     record_good_moral_release,
 )
 
-from .models import GoodMoralStatus, GoodMoralVariant
+from .models import GoodMoralInitiationOrigin, GoodMoralStatus, GoodMoralVariant
 from .services import (
     DEFAULT_PAGE_SIZE,
     GoodMoralAffiliationRequired,
@@ -49,11 +49,13 @@ from .services import (
     InvalidGoodMoralInput,
     cancel_request,
     correction_fields,
+    create_assisted_request,
     create_my_current_student,
     create_my_graduate,
     get_mine,
     get_request,
     issue_request,
+    list_eligible_students,
     list_mine,
     list_requests,
     prepare_request,
@@ -106,6 +108,35 @@ class GraduateRequestPayload(StrictSchema):
     graduation_date: date
 
 
+class AssistedCurrentStudentRequestPayload(CurrentStudentRequestPayload):
+    student_id: UUID
+
+
+class AssistedGraduateRequestPayload(GraduateRequestPayload):
+    student_id: UUID
+
+
+class GoodMoralStudentCollegeResponse(StrictSchema):
+    id: UUID
+    code: str
+    name: str
+
+
+class GoodMoralStudentOptionResponse(StrictSchema):
+    id: UUID
+    display_name: str
+    institutional_id: str | None
+    college: GoodMoralStudentCollegeResponse | None
+    variant: GoodMoralVariantValue
+
+
+class GoodMoralStudentOptionPage(StrictSchema):
+    items: list[GoodMoralStudentOptionResponse]
+    page: int
+    page_size: int
+    has_next: bool
+
+
 class GoodMoralCancellationPayload(StrictSchema):
     reason: str
 
@@ -150,7 +181,14 @@ class FormRevisionSummary(StrictSchema):
     internal_schema_version: int
 
 
+class GoodMoralInitiationOriginValue(StrEnum):
+    STUDENT_SELF = GoodMoralInitiationOrigin.STUDENT_SELF
+    GCO_ASSISTED = GoodMoralInitiationOrigin.GCO_ASSISTED
+    LEGACY_UNSPECIFIED = GoodMoralInitiationOrigin.LEGACY_UNSPECIFIED
+
+
 class GoodMoralSummaryResponse(StrictSchema):
+    initiation_origin: GoodMoralInitiationOriginValue
     id: UUID
     variant: GoodMoralVariantValue
     status: GoodMoralStatusValue
@@ -209,6 +247,7 @@ class GoodMoralActionsResponse(StrictSchema):
 
 
 class GoodMoralOperationalDetailResponse(GoodMoralDetailResponse):
+    initiated_by: PersonSummary | None
     student_institutional_id: str | None
     cancellation: GoodMoralCancellationSummary | None
     prepared_by: PersonSummary | None
@@ -300,6 +339,7 @@ def _person(user) -> dict[str, object]:
 def _summary(item) -> dict[str, object]:
     return {
         "id": item.pk,
+        "initiation_origin": item.initiation_origin,
         "variant": item.variant,
         "status": item.status,
         "applicant_name": item.applicant_name_snapshot,
@@ -331,6 +371,7 @@ def _operational_detail(item, actor) -> dict[str, object]:
         }
     return {
         **_detail(item),
+        "initiated_by": _person(item.initiated_by) if item.initiated_by_id else None,
         "student_institutional_id": item.student.institutional_id,
         "cancellation": cancellation,
         "prepared_by": _person(item.prepared_by) if item.prepared_by_id else None,
@@ -455,6 +496,114 @@ def _pdf_response(
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = institutional_pdf_content_disposition("good_moral", item.pk)
     return response
+
+
+# Static operational routes precede UUID detail routes.
+@router.get(
+    "/student-options",
+    response=response_with_errors(GoodMoralStudentOptionPage, 401, 403, 422),
+    auth=session_auth,
+    operation_id="goodMoralListEligibleStudents",
+)
+def good_moral_student_options(
+    request, search: str | None = None, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE
+):
+    _require_operational(request, "good_moral.initiate")
+    try:
+        rows, has_next = list_eligible_students(
+            actor=request.auth_user,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except GoodMoralError as exc:
+        _raise(exc)
+    items = []
+    for student in rows:
+        affiliation = getattr(student, "organization_student_affiliation", None)
+        college = affiliation.college if affiliation else None
+        items.append(
+            {
+                "id": student.pk,
+                "display_name": student.get_full_name(),
+                "institutional_id": student.institutional_id,
+                "college": {"id": college.pk, "code": college.code, "name": college.name}
+                if college and college.is_active and college.campus.is_active
+                else None,
+                "variant": GoodMoralVariant.CURRENT_STUDENT
+                if student.student_lifecycle_status == "CURRENT"
+                else GoodMoralVariant.GRADUATE,
+            }
+        )
+    return {"items": items, "page": page, "page_size": page_size, "has_next": has_next}
+
+
+def _assisted_create(request, payload, variant, route, key):
+    _require_operational(request, "good_moral.initiate")
+    values = payload.model_dump()
+    student_id = values.pop("student_id")
+    try:
+        item = create_assisted_request(
+            actor=request.auth_user,
+            student_id=student_id,
+            variant=variant,
+            details=values,
+            idempotency_key=key,
+            request_fingerprint=request_fingerprint(
+                method="POST",
+                route=route,
+                query_string=request.META.get("QUERY_STRING", ""),
+                body=request.body,
+            ),
+            context=_context(request),
+        )
+    except GoodMoralError as exc:
+        _raise(exc)
+    return Status(201, _operational_detail(item, request.auth_user))
+
+
+@router.post(
+    "/requests/current-student",
+    auth=session_auth,
+    response=response_with_errors(
+        GoodMoralOperationalDetailResponse, 401, 403, 404, 409, 422, success_status=201
+    ),
+    operation_id="goodMoralCreateAssistedCurrentStudentRequest",
+)
+def good_moral_create_assisted_current(
+    request,
+    payload: AssistedCurrentStudentRequestPayload,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
+    return _assisted_create(
+        request,
+        payload,
+        GoodMoralVariant.CURRENT_STUDENT,
+        "/api/v1/good-moral/requests/current-student",
+        idempotency_key,
+    )
+
+
+@router.post(
+    "/requests/graduate",
+    auth=session_auth,
+    response=response_with_errors(
+        GoodMoralOperationalDetailResponse, 401, 403, 404, 409, 422, success_status=201
+    ),
+    operation_id="goodMoralCreateAssistedGraduateRequest",
+)
+def good_moral_create_assisted_graduate(
+    request,
+    payload: AssistedGraduateRequestPayload,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
+    return _assisted_create(
+        request,
+        payload,
+        GoodMoralVariant.GRADUATE,
+        "/api/v1/good-moral/requests/graduate",
+        idempotency_key,
+    )
 
 
 # Static self-service routes are registered before UUID routes.
