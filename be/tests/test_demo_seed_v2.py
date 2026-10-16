@@ -210,6 +210,7 @@ class DemoV2CompositionTests(TestCase):
     def test_v2_feedback_has_optional_text_and_report_counts(self):
         customers = list(CustomerFeedbackResponse.objects.all())
         assert len(customers) == 6
+        assert all(row.respondent_name_snapshot == "" for row in customers)
         assert (
             sum(
                 bool(read_feedback_confidential_content(row).additional_feedback)

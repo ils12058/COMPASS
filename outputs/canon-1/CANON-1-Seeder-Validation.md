@@ -1,44 +1,46 @@
-# CANON-1 seeder validation — blocked current baseline
+# CANON-1 current-contract seeder repair
 
-Inspected base `d353108d1f757386b9020c4d1297e081258d2e4e` on 2026-10-16 (Asia/Manila).
-The current seeder is not validated for a canonical reset. No live seed command was executed.
+Base d353108d1f757386b9020c4d1297e081258d2e4e, repaired 2026-10-16 (Asia/Manila).
+No live seed command was executed. This validates the existing migration/schema path; canonical
+replacement migrations and reset rehearsal remain separate work.
 
-## Source population and safety
+## Population and safety
 
-Existing Dataset v2 documents 57 Students: 11 rich personas and 46 population Students, plus
-separate staff accounts. These are source definitions, not a successfully observed final seeded
-account inventory. Expansion to 85–100 Students remains a proposal requiring owner approval.
-The existing seed_demo_staging command must remain the sole seeder; no parallel seeder is added.
+Existing Dataset v2 defines 57 Students (11 rich personas, 46 population Students), plus staff.
+The existing seed_demo_staging command remains the only seeder. No population expansion or new
+seeder was introduced. Environment allowlisting, live-staging opt-in, operator-controlled demo
+password/domain, advisory exclusion, idempotency, encrypted storage and synthetic isolation remain.
+The additive demo-seed-v1 upgrade namespace is retained until reviewed reset-only cleanup.
 
-The code retains explicit environment allowlisting, live-staging opt-in, configured secure demo
-password handling, synthetic identities/domains/narratives, concurrent-run exclusion and
-idempotency guards. `demo-seed-v1` remains an intentional additive-upgrade namespace. Removal of
-old-upgrade behavior belongs on the reset branch, after a successful current-contract seed.
-No runtime credentials or keyrings were read, printed or rotated. No actual provider media or email delivery was created.
+## Repaired causes
 
-## Confirmed blocker
+The former SCENARIO_ALUMNI failure omitted required Graduate Tracer academic classification.
+The shared scenario helper now resolves the persona's actual canonical program and owning college,
+and every caller supplies its story's completed graduation year (alumni 2025, recent/cohort 2026).
+The strict domain validation is unchanged. Composition checks verify these relationships and years.
 
-Full-regression CI at `8cff975e` fails in SCENARIO_ALUMNI with
-`InvalidGraduateTracerInput: graduated_college is required before submission`.
-The shared `_tracer_values` helper in be/compass/demo_seed/scenarios.py copies private contact
-snapshots, birth date and answer fields but does not supply the canonical academic classification.
-Its consumers include alumni, recent-graduate and population Graduate Tracer scenarios.
-The domain submission service requires graduated college, program and a completed graduation year,
-with the program belonging to the college. Weakening those rules is not a valid seeder fix.
+After that blocker was removed, an EARLY population Exit Interview draft exposed a KeyError:
+its intentionally partial narrative omits college ratings. The helper now filters an empty list
+for that draft; complete submissions still require the saved F9 contract's actual supported items.
+No form identity, revision, service validation or schema was changed.
 
-This is a production seeder input regression. Supply deterministic, coherent canonical academic
-identities and years through the existing scenarios, then rerun complete seed/rerun/safety tests.
-Do not substitute arbitrary unrelated classification values merely to satisfy non-null checks.
+Full rerun testing also exposed an obsolete Customer Feedback name lookup after optional identity
+stopped prefilling. It attempted duplicate submission and undercounted anonymous responses. The
+helper now bounds lookup to the synthetic account's submission audit provenance, course/year and
+existing confidential narrative match; reporting uses that helper too. Names remain anonymous.
+No feedback API, encryption, review masking or raw-response model association was changed.
 
-Separate seed-preflight failures assert absolute audit-event emptiness despite the autouse
-institutional-form synchronization audit. Preserve the no-new-write guarantee relative to the
-initial audit baseline, and keep assertions that secrets are not read before environment refusal.
-Downstream composition tests cannot establish feature coverage while their class seed setup fails.
+Preflight tests preserve the initial institutional-form audit baseline while checking no new audit
+or account writes, because canonical form synchronization already created a legitimate event.
 
-## Evidence still required
+## Evidence
 
-After fixing the current blocker: fresh empty-database initialization with all four configuration
-sync commands; actual account/record counts; scenario integrity and role-scope checks; encrypted
-storage checks; idempotent rerun and concurrent-run exclusion; synthetic email/provider isolation;
-assisted Good Moral plus durable email intent/printing/corrections/Activity/DPO coverage; and the
-later consolidated-schema seed rehearsal. None are marked complete by this report.
+The complete 13-case SeededDemoDatasetTests smoke run passes on isolated local PostgreSQL after
+both production fixes. It exercises coherent histories, relationships, role/lifecycle separation,
+normal API reads, encrypted boundaries, workflow projections, forms and notifications. Full seed,
+rerun, upgrade, concurrency, refusal, secret-hygiene and external-isolation coverage is included in
+the running complete backend regression; its final result is pending.
+
+The later canonical-schema rehearsal, reset-only seeder modernization, assisted Good Moral scenario
+expansion and operator rebuild remain unfinished milestone work. No runtime keyring/credential was
+read, printed or rotated; test keyrings are ephemeral.

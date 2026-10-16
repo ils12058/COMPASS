@@ -1,7 +1,10 @@
 # CANON-1A regression evidence and failure classification
 
 Base: `d353108d1f757386b9020c4d1297e081258d2e4e`. Date: 2026-10-16 (Asia/Manila).
-This is the first infrastructure checkpoint, not completion of the milestone.
+The owner subsequently authorized repairing all exposed regressions on the same draft PR, superseding
+its earlier CI-only stop. Current repair details are in [CANON-1-Regression-Fixes.md](CANON-1-Regression-Fixes.md).
+The failing runs and classifications below are historical baseline evidence, not the final repair status.
+Full validation of the repairs is in progress. The wider canonicalization milestone remains incomplete.
 
 ## Passing checks
 
@@ -64,8 +67,8 @@ executed six shards: **1,278 passed, seven failed, zero errors/skipped**.
   keys (college/program IDs/codes and graduation year). Classification: stale exact metadata
   expectation; verify the safe allowlist before updating, never remove release auditing.
 - OpenAPI operation set: 355 current operations versus the expected 351. The four supported
-  additions are graduateTracerListClassificationOptions, goodMoralListStudentOptions,
-  goodMoralCreateCurrentStudentRequest and goodMoralCreateGraduateRequest.
+  additions are graduateTracerGetClassificationOptions, goodMoralListEligibleStudents,
+  goodMoralCreateAssistedCurrentStudentRequest and goodMoralCreateAssistedGraduateRequest.
 - OpenAPI list filters and report context: expected fields omit the current college, program and
   graduation year additions. Classification: stale contract expectations, verified against current
   exported schema and owning routers; strict fields and authorization must remain.
