@@ -112,8 +112,6 @@ def test_dpo_privacy_authority_is_designation_derived_and_separate_from_roles():
         "privacy_governance.view",
         "privacy_governance.manage",
         "privacy_governance.retention.view",
-        "privacy_governance.retention.manage",
-        "privacy_governance.retention.approve",
     }
 
     assert effective_capabilities(dpo) == frozenset(
@@ -122,8 +120,6 @@ def test_dpo_privacy_authority_is_designation_derived_and_separate_from_roles():
             "privacy_governance.view",
             "privacy_governance.manage",
             "privacy_governance.retention.view",
-            "privacy_governance.retention.manage",
-            "privacy_governance.retention.approve",
         }
     )
     for actor in (plain_officer, admin, counselor, head):

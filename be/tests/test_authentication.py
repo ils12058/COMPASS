@@ -362,8 +362,6 @@ def test_dpo_session_exposes_designation_identity_and_only_effective_dpo_authori
     assert auth_user["capabilities"] == [
         "privacy_governance.activity.export",
         "privacy_governance.manage",
-        "privacy_governance.retention.approve",
-        "privacy_governance.retention.manage",
         "privacy_governance.retention.view",
         "privacy_governance.view",
     ]

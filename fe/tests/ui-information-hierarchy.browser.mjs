@@ -181,29 +181,42 @@ await check("mobile-icon-action-label", `/portal/call-slips/${slip.id}`, { mobil
 });
 
 const retentionAuth = {
-  "/api/v1/auth/session": { user: { ...user("INSTITUTIONAL_OFFICER"), capabilities: ["privacy_governance.retention.view", "privacy_governance.retention.manage", "privacy_governance.retention.approve"] }, session: { id: "synthetic", expires_at: "2099-10-07T00:00:00Z", is_current: true } },
+  "/api/v1/auth/session": { user: { ...user("INSTITUTIONAL_OFFICER"), designations: ["DPO"], capabilities: ["privacy_governance.view", "privacy_governance.manage", "privacy_governance.activity.export", "privacy_governance.retention.view"] }, session: { id: "synthetic", expires_at: "2099-10-07T00:00:00Z", is_current: true } },
+  "/api/v1/privacy/retention/policies": { items: [
+    ["GRADUATE_TRACER", "Graduate Tracer responses"],
+    ["ECOUNSELING_RECORDING", "E-Counseling recordings"],
+    ["ECOUNSELING_TRANSCRIPT", "E-Counseling transcripts"],
+  ].map(([category_code, category_label]) => ({ category_code, category_label, adoption_status: "NOT_ADOPTED", retention_period: null, policy_reference: null, effective_date: null })) },
 };
-const versionedCategories = [1, 2].flatMap((contract_version) => ["ECOUNSELING_RECORDING", "ECOUNSELING_TRANSCRIPT"].map((category) => ({ category, contract_version, label: category.endsWith("RECORDING") ? "E-Counseling recordings" : "E-Counseling stored transcripts", trigger: "MEDIA_READY_AT", action: contract_version === 2 ? "DELETE_MEDIA_ARTIFACT_KEEP_EVIDENCE" : "DELETE_PROVIDER_ARTIFACT_KEEP_EVIDENCE" })));
-await check("v2-retention-rule-contract", "/portal/privacy/retention/rules/new", { role: "INSTITUTIONAL_OFFICER", overrides: {
-  ...retentionAuth,
-  "/api/v1/privacy/retention/categories": versionedCategories,
-} }, async (page, { requests }) => {
-  await page.getByLabel("Rule code", { exact: true }).fill("SYNTHETIC-V2");
-  await page.getByLabel("Administrative label", { exact: true }).fill("Synthetic media policy");
-  await page.getByLabel("Data category", { exact: true }).selectOption("ECOUNSELING_RECORDING");
-  await page.getByLabel("Governance contract", { exact: true }).selectOption("2");
-  await shown(page.getByText("Delete COMPASS media and remaining provider copy, keep evidence", { exact: true }));
-  await page.getByLabel("Whole elapsed days", { exact: true }).fill("30");
-  await page.getByLabel("Effective date", { exact: true }).fill("2026-10-08");
-  await page.getByLabel("Policy / basis reference", { exact: true }).fill("Synthetic test reference");
-  await page.getByRole("button", { name: "Create draft rule", exact: true }).click();
-  await shown(page.getByText("The retention draft could not be saved.", { exact: true }));
-  const request = requests.find((item) => item.method === "POST" && item.pathname.endsWith("/retention/rules"));
-  assert.ok(request);
-  const payload = JSON.parse(request.body);
-  assert.equal(payload.contract_version, 2);
-  assert.equal(payload.action, "DELETE_MEDIA_ARTIFACT_KEEP_EVIDENCE");
-  await screenshot(page, "v2-retention-rule-contract");
-});
+for (const device of ["desktop", "phone"]) {
+  await check(`retention-policies-read-only-${device}`, "/portal/privacy/retention", { role: "INSTITUTIONAL_OFFICER", device, overrides: retentionAuth }, async (page, { requests }) => {
+    await shown(page.getByRole("heading", { level: 1, name: "Retention Policies", exact: true }));
+    await shown(page.getByRole("link", { name: "Retention Policies", exact: true }));
+    for (const name of ["Graduate Tracer responses", "E-Counseling recordings", "E-Counseling transcripts"]) await shown(page.getByRole("heading", { name, exact: true }));
+    assert.equal(await page.getByText("Not adopted", { exact: true }).count(), 3);
+    assert.equal(await page.getByText("No adopted retention policy has been recorded in COMPASS for this category.", { exact: true }).count(), 3);
+    const main = await page.locator("main").innerText();
+    assert.doesNotMatch(main, /Retention & Disposition|Create|Edit|Activate|Approve|Retry|Place hold|Release hold|Disposition cases|Needs review|0 days|N\/A/);
+    const buttons = await page.locator("main").getByRole("button").allInnerTexts();
+    assert.deepEqual(buttons.map((text) => text.trim()), ["Help"]);
+    await page.getByRole("button", { name: "Help: About Retention Policies", exact: true }).click();
+    const help = page.getByRole("dialog", { name: "About Retention Policies", exact: true });
+    assert.match(await help.innerText(), /version-controlled COMPASS code[\s\S]*can’t be created or edited in COMPASS[\s\S]*outside COMPASS/);
+    await page.keyboard.press("Escape");
+    await hidden(help);
+    const privacy = requests.filter((item) => item.pathname.startsWith("/api/v1/privacy/"));
+    assert.ok(privacy.length > 0 && privacy.every((item) => item.method === "GET"), "the oversight page never mutates");
+    assert.ok(!requests.some((item) => /\/retention\/(rules|cases|summary|categories)/.test(item.pathname)));
+    await noHorizontalOverflow(page);
+    await screenshot(page, `retention-policies-${device}`);
+  });
+}
+for (const legacy of ["/portal/privacy/retention/rules", "/portal/privacy/retention/rules/new", "/portal/privacy/retention/cases/dd93953c-e82b-4d07-b3cf-79b204cdb0f3"]) {
+  await check(`retention-legacy-bookmark-${legacy.split("/").slice(4).join("-")}`, legacy, { role: "INSTITUTIONAL_OFFICER", overrides: retentionAuth }, async (page) => {
+    await page.waitForURL((url) => url.pathname === "/portal/privacy/retention");
+    await shown(page.getByRole("heading", { level: 1, name: "Retention Policies", exact: true }));
+    await hidden(page.getByRole("button", { name: /Create draft rule|Approve disposition|Place hold/ }));
+  });
+}
 
 await finish();

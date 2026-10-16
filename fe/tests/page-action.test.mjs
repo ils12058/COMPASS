@@ -133,16 +133,15 @@ test("Back stays a text link above the title, never a button among the page's co
   assert.ok(headers > 50, "the scan reads the portal's page headers");
 });
 
-test("Notifications and Retention use page commands for their header commands", () => {
+test("Notifications uses a page command, and read-only Retention Policies has none", () => {
   const read = (file) => readFileSync(new URL(`../src/features/${file}`, import.meta.url), "utf8");
   const notifications = read("notifications/notification-center/notification-center.tsx");
   assert.match(notifications, /actions=\{hasUnread \? \(\s*<PageAction\s+icon=\{CheckCheck\}/);
   assert.match(notifications, /label=\{markingAll \? "Marking as read…" : "Mark all read"\}/);
   assert.match(notifications, /disabled=\{markingAll\}/);
 
-  const retention = read("privacy-governance/retention/retention-page.tsx");
-  assert.match(retention, /action=\{\s*<PageActionLink\s+href="\/portal\/privacy\/retention\/rules"/);
-  assert.doesNotMatch(retention, /secondaryLinkClass/);
+  const retention = read("privacy-governance/retention/retention-policies-page.tsx");
+  assert.doesNotMatch(retention, /PageAction|action=\{|secondaryLinkClass|<Button/);
 });
 
 

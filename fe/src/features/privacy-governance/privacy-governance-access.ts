@@ -16,14 +16,8 @@ export function hasPrivacyGovernanceWorkspace(user: CapabilityUser): boolean {
   return canViewPrivacyGovernance(user) || canViewRetention(user);
 }
 
+// Read-only oversight of the code-owned retention policy register (ADR-115). No capability
+// manages retention or approves disposition in COMPASS.
 export function canViewRetention(user: CapabilityUser): boolean {
   return user.capabilities.includes("privacy_governance.retention.view");
-}
-
-export function canManageRetention(user: CapabilityUser): boolean {
-  return user.capabilities.includes("privacy_governance.retention.manage");
-}
-
-export function canApproveDisposition(user: CapabilityUser): boolean {
-  return user.capabilities.includes("privacy_governance.retention.approve");
 }

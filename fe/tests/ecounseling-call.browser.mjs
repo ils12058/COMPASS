@@ -468,7 +468,8 @@ await check("student-withdrawal-consequence", ePath, { role: "STUDENT", fakeDail
   const review = page.getByRole("alertdialog");
   const text = await review.innerText();
   assert.match(text, /Recording or transcription that’s running will be asked to stop/);
-  assert.match(text, /aren’t deleted right away; institutional retention rules and holds govern them/);
+  assert.match(text, /Withdrawing doesn’t delete files already created\. They remain subject to the University’s records and privacy requirements, and copies already downloaded can’t be recalled\./);
+  assert.doesNotMatch(text, /retention rules|holds govern|deleted right away/);
   assert.match(text, /Counseling continues/);
   await review.getByRole("button", { name: "Cancel", exact: true }).click();
   await screenshot(page, "student-desktop-approved");

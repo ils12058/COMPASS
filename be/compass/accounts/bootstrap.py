@@ -31,6 +31,9 @@ RETIRED_CAPABILITY_CODES = (
     "institutional_forms.manage",
     "document_branding.view",
     "document_branding.manage",
+    # In-app retention management and disposition approval are retired (ADR-114, ADR-115).
+    "privacy_governance.retention.manage",
+    "privacy_governance.retention.approve",
 )
 
 

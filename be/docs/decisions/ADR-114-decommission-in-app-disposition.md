@@ -8,8 +8,9 @@
 - Preserves: ADR-011 append-only Audit Trail; ADR-045/ADR-061 Privacy Notices and DPO boundary;
   ADR-069 history; ADR-084 Graduate Tracer encryption; ADR-092 consent, custody, provider cleanup
   and assigned access; ADR-112's anonymous-contribution invariant for existing rows
-- Follow-up: PG-1A PR 2, a code-owned retention policy register with capability retirement and a
-  read-only UI; PG-1A PR 3, tombstone removal and a database read-only guard on the legacy ledger
+- Follow-up: PG-1A PR 2, implemented by [ADR-115](ADR-115-code-owned-retention-oversight.md)
+  (code-owned register, capability retirement, read-only UI); PG-1A PR 3, tombstone removal and a
+  database read-only guard on the legacy ledger
 
 ## Context
 

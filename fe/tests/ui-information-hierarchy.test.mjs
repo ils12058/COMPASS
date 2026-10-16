@@ -86,9 +86,12 @@ test("Responsibilities Help includes safe fallback, confidential access and GSS 
   assert.match(html, /Staff do not inherit Head oversight authority/);
 });
 
-test("operator Help retains diagnostic limitations and approval semantics", () => {
+test("operator Help retains diagnostic limitations and the retention oversight boundary", () => {
   assert.match(help(platformHelpSections), /does not establish worker, scheduler, Daily.co, or Turnstile/);
-  assert.match(help(retentionHelpSections), /Eligibility alone never authorizes disposition/);
+  assert.match(help(retentionHelpSections), /version-controlled COMPASS code/);
+  assert.match(help(retentionHelpSections), /can’t be created or edited in COMPASS/);
+  assert.match(help(retentionHelpSections), /doesn’t schedule, approve, or carry out deletion or anonymization/);
+  assert.doesNotMatch(help(retentionHelpSections), /Eligibility|holds?\b|retry/i);
 });
 
 test("active recording and transcription are visible on the call without opening Help and without relying on color", () => {

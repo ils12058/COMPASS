@@ -8,7 +8,8 @@ import { CounselorMediaStrip, GovernedCaptureControls, useCounselorMedia } from 
 import { MediaArtifactDownload, artifactOutcome } from "../src/features/ecounseling/media-artifact-download.tsx";
 import { sessionFileRows } from "../src/features/ecounseling/session-files.tsx";
 import { getECounselingAccess } from "../src/features/ecounseling/ecounseling-access.ts";
-import { dispositionConsequence, dispositionActionLabel } from "../src/features/privacy-governance/retention/retention-shared.tsx";
+import { readFileSync } from "node:fs";
+import { ecounselingV2HelpSections } from "../src/features/ecounseling/session-help.tsx";
 import { getECounselingListMyConsentsQueryKey, getECounselingListAssignedConsentsQueryKey } from "../src/lib/api/generated/e-counseling/e-counseling.ts";
 import { appointmentId, workspace, consents, user } from "./support/ui-hierarchy-fixtures.mjs";
 
@@ -102,9 +103,15 @@ test("session files describe the outcome, not the storage setting", () => {
   assert.deepEqual(sessionFileRows(workspace().media), [], "Nothing captured, nothing listed");
 });
 
-test("V2 disposition names both copies and the limits on downloaded copies", () => {
-  assert.match(dispositionConsequence({ category: "ECOUNSELING_RECORDING", contract_version: 2 }), /COMPASS media file and any remaining provider copy/);
-  assert.match(dispositionConsequence({ category: "ECOUNSELING_RECORDING", contract_version: 2 }), /downloaded copies cannot be recalled/);
-  assert.match(dispositionActionLabel("DELETE_PROVIDER_ARTIFACT_KEEP_EVIDENCE"), /provider artifact/);
-  assert.match(dispositionActionLabel("DELETE_MEDIA_ARTIFACT_KEEP_EVIDENCE"), /COMPASS media/);
+test("withdrawal copy keeps captured files without promising deletion or in-app disposition", () => {
+  const help = ecounselingV2HelpSections.map((section) => section.content).join(" ");
+  assert.match(help, /stops affected capture but doesn’t delete files already captured/);
+  assert.match(help, /subject to the University’s records and privacy requirements/);
+  assert.match(help, /COMPASS doesn’t delete them automatically after a set period/);
+  assert.match(help, /Downloaded copies can’t be recalled/);
+  const panel = readFileSync(new URL("../src/features/ecounseling/student-consent-panel.tsx", import.meta.url), "utf8");
+  assert.match(panel, /Withdrawing doesn’t delete files already created\. They remain subject to the University’s records and privacy requirements, and copies already downloaded can’t be recalled\./);
+  for (const text of [help, panel]) {
+    assert.doesNotMatch(text, /retention rules|holds|deleted right away|after \d+ days|approved disposal|immediately deleted/i);
+  }
 });

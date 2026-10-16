@@ -3,12 +3,11 @@
 import { ContextHelp, type HelpSection } from "@/components/ui/context-help";
 
 export const retentionHelpSections: readonly HelpSection[] = [
-  { heading: "Institutional policy", content: "Use an approved policy reference and duration. No default retention period is supplied. Drafting a rule does not authorize disposition." },
-  { heading: "Versioned media rules", content: "Legacy session rules delete provider artifacts. Media policy v2 rules delete private COMPASS files and any remaining provider copy. Rules for both versions can coexist; each case keeps its reviewed contract and membership." },
-  { heading: "Eligibility and approval", content: "An active rule identifies eligible records. Eligibility alone never authorizes disposition; each approval applies to one fixed record reviewed in its current state." },
-  { heading: "Holds and retries", content: "Active holds block disposition. A failed case requires a fresh review and explicit retry authorization. Consequences remain visible in the approval dialog." },
+  { heading: "Where policies come from", content: "Retention policy definitions are maintained in version-controlled COMPASS code. A definition changes only after the University approves the policy and the change is reviewed and released." },
+  { heading: "Your role", content: "You can review the recorded status here. Retention periods, policy references, and effective dates can’t be created or edited in COMPASS." },
+  { heading: "Records disposition", content: "COMPASS doesn’t schedule, approve, or carry out deletion or anonymization under these policies. Formal records disposition goes through the University’s authorized process outside COMPASS." },
 ];
 
 export function RetentionHelp() {
-  return <ContextHelp title="About Retention and disposition" sections={retentionHelpSections} />;
+  return <ContextHelp title="About Retention Policies" sections={retentionHelpSections} />;
 }

@@ -26,7 +26,7 @@ export const ecounselingV2HelpSections: readonly HelpSection[] = [
   { heading: "Media permission", content: "One student decision allows recording and live transcription for this session; saving a transcript needs a separate decision. Allowing never starts either one. Declining or withdrawing doesn’t affect access to Counseling." },
   { heading: "Recording", content: "The Counselor starts and stops recording from the call controls after reviewing what it does. A completed recording is prepared for private storage before it can be downloaded by the assigned Counselor." },
   { heading: "Live transcription and saved transcripts", content: "Live transcription processes speech as text while it’s on; transcript text isn’t shown during the session. A transcript file is saved only when the student allowed transcript storage and the Counselor chose to save it before starting." },
-  { heading: "Private files", content: "Completed files appear under Session files once they’re prepared. Each download creates a short-lived link. Withdrawing permission stops affected capture; files already captured remain subject to institutional retention rules and holds. Downloaded copies can’t be recalled." },
+  { heading: "Private files", content: "Completed files appear under Session files once they’re prepared. Each download creates a short-lived link. Withdrawing permission stops affected capture but doesn’t delete files already captured. They remain subject to the University’s records and privacy requirements; COMPASS doesn’t delete them automatically after a set period. Downloaded copies can’t be recalled." },
   encounterRecords,
   callAndDevices,
 ];

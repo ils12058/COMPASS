@@ -9,7 +9,7 @@ import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import { getGuidanceMessagesAccess } from "@/features/guidance-messages/guidance-messages-access";
 import { canViewOrganizationStructure } from "@/features/institution-configuration/institution-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
-import { canManagePrivacyGovernance, canManageRetention, canViewPrivacyGovernance, canViewRetention } from "@/features/privacy-governance/privacy-governance-access";
+import { canManagePrivacyGovernance, canViewPrivacyGovernance, canViewRetention } from "@/features/privacy-governance/privacy-governance-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { portalWorkspaceGroups } from "@/features/portal/components/portal-workspaces";
 import type { UserSummary } from "@/lib/api/generated/model";
@@ -93,9 +93,7 @@ export function portalCommandDestinations(user: UserSummary): PortalCommandDesti
   const retentionView = canViewRetention(user);
   deep("/portal/privacy", "/notices", "Privacy Notices", privacyView, ["privacy notice"]);
   deep("/portal/privacy", "/notices/new", "Create Privacy Notice", privacyView && canManagePrivacyGovernance(user));
-  deep("/portal/privacy", "/retention", "Retention & Disposition", retentionView, ["retention", "disposition", "hold"]);
-  deep("/portal/privacy", "/retention/rules", "Retention Rules", retentionView, ["retention rule"]);
-  deep("/portal/privacy", "/retention/rules/new", "Create Retention Rule", retentionView && canManageRetention(user));
+  deep("/portal/privacy", "/retention", "Retention Policies", retentionView, ["retention", "retention policy"]);
   deep("/portal/privacy", "/activity", "Privacy & Security Activity", privacyView, ["privacy activity"]);
   // Platform Operations' root already opens Health. Keep its dock label and a canonical Health
   // entry; both address the same stable route (as Organization and Structure do).

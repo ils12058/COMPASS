@@ -7,6 +7,32 @@
 > decommission with `python manage.py retention_decommission_status` and the separate broker,
 > worker and build checks.
 
+## Current retention oversight (ADR-115)
+
+Retention policies live in the code-owned register
+(`compass/privacy_governance/retention_policy_register.py`). The DPO reads them at
+`GET /api/v1/privacy/retention/policies` and on the Retention Policies page. Nothing is enforced and
+nothing is editable in COMPASS. The legacy ledger stays as internal evidence; no route serves it.
+
+Deploying ADR-115:
+
+1. Pass every check in "Decommission verification" below first. The live-staging preflight for
+   ADR-114 is still outstanding.
+2. Deploy the backend. `deploy-staging.yml` runs `migrate`, then `sync_identity_policy`, then
+   `up -d`. ADR-115 adds no migration, but the build may bundle other undeployed migrations, which
+   need their own review. Sync must report `retired ... deleted` counts for the two retention codes
+   (`privacy_governance.retention.manage`, `.approve`). Compare them with the G9 counts.
+3. Deploy the frontend (`vercel --prod`) after the backend is healthy. Until then the old workspace
+   gets 404 for the retired routes and cannot mutate.
+4. Verify:
+   - the DPO sees three `NOT_ADOPTED` categories;
+   - other roles get 403;
+   - `/api/v1/privacy/retention/rules` returns 404;
+   - Privacy Notices and Privacy & Security Activity still work.
+
+PG-1A PR 3 removes the tombstones only after a drained broker is verified, and may add database
+write protection to the legacy tables.
+
 ## Decommission verification (ADR-114)
 
 Run every check read-only against the environment being deployed, before and after the deploy. Record
@@ -35,7 +61,8 @@ counts only, never identifiers.
    Beat schedule has no `retention-*` entry.
 5. **Custody cleanup (G8).** E-Counseling custody cleanup diagnostics (`PROVIDER_CLEANED`,
    `RECOVERY_SCAN_COMPLETE`) continue.
-6. **Rollback notes (G9).** Record the printed retention grant and override counts for PR 2.
+6. **Rollback notes (G9).** Record the printed retention grant and override counts before ADR-115's
+   sync deletes the retired ones.
 7. **Build identity (G10).** `/api/v1/meta` `build_id` equals the SHA that was preflighted. A build
    that bundles other undeployed commits needs their own release review.
 

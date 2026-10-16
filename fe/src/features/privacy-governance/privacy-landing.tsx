@@ -29,8 +29,8 @@ export function PrivacyLanding() {
     ...(canViewRetention(user)
       ? [{
           href: "/portal/privacy/retention",
-          title: "Retention & Disposition",
-          description: "Retention rules, disposition cases, and holds.",
+          title: "Retention Policies",
+          description: "Retention policy status recorded in COMPASS.",
           icon: Archive,
         }]
       : []),

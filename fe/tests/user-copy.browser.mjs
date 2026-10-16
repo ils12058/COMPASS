@@ -32,9 +32,10 @@ for (const width of [320, 1440]) {
         await shown(page.getByRole('button', { name: 'Retry', exact: true }));
         await hidden(page.getByRole('button', { name: 'Start Exit Interview', exact: true }));
     });
-    await check(`retention-conflict-${width}`, '/portal/privacy/retention/rules', { viewport, overrides: { '/api/v1/auth/session': session({ ...user('IT_ADMIN'), capabilities: ['privacy_governance.view', 'privacy_governance.manage', 'privacy_governance.retention.view', 'privacy_governance.retention.manage'] }), '/api/v1/privacy/retention/rules': error('retention_state_changed', 409) } }, async (page) => {
-        await oneAlert(page, "This retention action can't be completed with the current details.");
+    await check(`retention-unavailable-${width}`, '/portal/privacy/retention', { viewport, overrides: { '/api/v1/auth/session': session({ ...user('INSTITUTIONAL_OFFICER'), capabilities: ['privacy_governance.retention.view'] }), '/api/v1/privacy/retention/policies': error('permission_denied', 403) } }, async (page) => {
+        await oneAlert(page, "You can't perform this privacy action.");
         await shown(page.getByRole('button', { name: 'Retry', exact: true }));
+        await hidden(page.getByText('Not adopted', { exact: true }));
     });
     await check(`referral-create-rejection-${width}`, '/portal/referrals/new', { viewport, overrides: { '/api/v1/auth/session': session(staff), '/api/v1/referrals/students': { ...empty, items: [student] }, 'POST /api/v1/referrals': error('invalid_referral_request') } }, async (page, { requests }) => {
         await page.getByRole('radio', { name: /Maria Santos/ }).check();

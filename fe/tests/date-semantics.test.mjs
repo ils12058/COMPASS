@@ -17,9 +17,7 @@ import { FamilySection } from "../src/features/inventory/editor/family-section.t
 import { PersonalSection } from "../src/features/inventory/editor/personal-section.tsx";
 import { getInventoryDraftIssues, getInventorySubmissionIssues } from "../src/features/inventory/inventory-payload.ts";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
-import { RetentionRuleEditor } from "../src/features/privacy-governance/retention/retention-rule-editor.tsx";
 import { getExitInterviewsGetMyStatusQueryKey } from "../src/lib/api/generated/exit-interviews/exit-interviews.ts";
-import { getPrivacyGovernanceGetRetentionRuleQueryKey, getPrivacyGovernanceRetentionCategoriesQueryKey } from "../src/lib/api/generated/privacy-governance/privacy-governance.ts";
 import { getProfileGetMyProfileQueryKey } from "../src/lib/api/generated/profile/profile.ts";
 import {
   institutionalDateInputValue,
@@ -188,35 +186,4 @@ test("a new unavailability may already have started but must not have ended", ()
 test("a published Announcement's expiry picker starts now; a draft's is unconstrained", () => {
   const source = readFileSync(new URL("../src/features/announcements/announcement-form.tsx", import.meta.url), "utf8");
   assert.match(source, /min=\{isPublished \? institutionalDateTimeInputValue\(\) : undefined\}/);
-});
-
-// --- Policy metadata -------------------------------------------------------------------------
-
-test("a past retention effective date is allowed and explains its immediate effect", () => {
-  const ruleId = "84176b7a-7337-4123-a8f0-f084d7a0b970";
-  const category = { category: "GRADUATE_TRACER", label: "Graduate Tracer", trigger: "SUBMITTED_AT", action: "ANONYMIZE", contract_version: 1 };
-  const rule = (effective_on) => ({
-    id: ruleId, code: "GTS-5Y", label: "Graduate Tracer five years", category: "GRADUATE_TRACER", contract_version: 1,
-    trigger: "SUBMITTED_AT", action: "ANONYMIZE", duration_days: 1825, policy_reference: "Board Resolution 12",
-    effective_on, status: "DRAFT", revision: 1, activated_at: null, retired_at: null,
-    created_at: "2026-10-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z",
-  });
-  const user = { capabilities: ["privacy_governance.retention.view", "privacy_governance.retention.manage"] };
-  const editor = (effective_on) => render(h(RetentionRuleEditor), {
-    user,
-    params: { ruleId },
-    records: [
-      [getPrivacyGovernanceGetRetentionRuleQueryKey(ruleId), rule(effective_on)],
-      [getPrivacyGovernanceRetentionCategoriesQueryKey(), [category]],
-    ],
-  });
-
-  const historical = editor("2021-07-01");
-  const effective = inputTag(historical, "rule-effective");
-  assert.doesNotMatch(effective, /\bmin=|\bmax=/);
-  assert.match(effective, /aria-describedby="rule-effective-warning"/);
-  assert.match(historical, /This effective date is in the past\. When activated, this rule may immediately apply to records whose retention period has already elapsed\./);
-
-  const upcoming = editor(addDays(institutionalDateInputValue(), 30));
-  assert.doesNotMatch(upcoming, /This effective date is in the past/);
 });

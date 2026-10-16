@@ -53,20 +53,7 @@ EXPECTED_OPERATION_IDS = {
     "guidanceMessagesUpdateTemplate",
     "guidanceMessagesArchiveTemplate",
     "guidanceMessagesRestoreTemplate",
-    "privacyGovernanceRetentionCategories",
-    "privacyGovernanceListRetentionRules",
-    "privacyGovernanceCreateRetentionRule",
-    "privacyGovernanceGetRetentionRule",
-    "privacyGovernanceUpdateRetentionRule",
-    "privacyGovernanceActivateRetentionRule",
-    "privacyGovernanceRetireRetentionRule",
-    "privacyGovernanceRetentionSummary",
-    "privacyGovernanceListDispositionCases",
-    "privacyGovernanceGetDispositionCase",
-    "privacyGovernancePlaceDispositionHold",
-    "privacyGovernanceReleaseDispositionHold",
-    "privacyGovernanceApproveDispositionCase",
-    "privacyGovernanceRetryDispositionCase",
+    "privacyGovernanceListRetentionPolicies",
     "healthLive",
     "systemMetadata",
     "healthReady",
@@ -1914,8 +1901,6 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "privacy_governance.manage",
             "privacy_governance.activity.export",
             "privacy_governance.retention.view",
-            "privacy_governance.retention.manage",
-            "privacy_governance.retention.approve",
             "privacy_governance.view",
             "reports.view",
             "resources.manage",
@@ -2880,8 +2865,9 @@ def test_privacy_expansion_contract_keeps_notice_boundaries_and_removes_legacy_r
     assert schemas["AudienceValue"]["enum"] == ["PUBLIC", "STUDENT", "STAFF"]
     assert schemas["RevisionStatusValue"]["enum"] == ["DRAFT", "PUBLISHED", "SUPERSEDED"]
     assert "RetentionPolicyResponse" not in schemas
-    assert "RetentionRuleResponse" in schemas
-    assert "DispositionCaseResponse" in schemas
+    assert "RetentionRuleResponse" not in schemas
+    assert "DispositionCaseResponse" not in schemas
+    assert "RetentionPolicyEntryResponse" in schemas
     assert not any("/privacy/retention-policies" in path for path in schema["paths"])
     for path in (
         "/api/v1/privacy/notices/{notice_id}",

@@ -82,12 +82,6 @@ export function privacyErrorMessage(
 
   if (isPrivacyConflictCode(code)) return conflictCopy[code];
   switch (code) {
-    case "retention_state_changed":
-      return "This retention action can't be completed with the current details. Review the rule or case status before trying again.";
-    case "invalid_retention_rule":
-      return "Check the rule category, trigger, disposition action, duration, code, label, and policy reference, then try again.";
-    case "invalid_disposition_hold":
-      return "Enter an administrative reason of 240 characters or fewer. Do not include sensitive information.";
     case "permission_denied":
       return "You can't perform this privacy action.";
     case "privacy_record_not_found":
