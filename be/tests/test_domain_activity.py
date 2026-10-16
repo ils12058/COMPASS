@@ -216,6 +216,13 @@ def test_allowlisted_actions_have_exact_viewer_relationships(world, action):
     if policy.staff_self:
         if policy.student_self:
             actor = world["counselor"]
+            if action == actions.GOOD_MORAL_REQUEST_CREATED:
+                source = GoodMoralRequest.objects.create(
+                    student=world["student"],
+                    variant="GRADUATE",
+                    initiation_origin="GCO_ASSISTED",
+                    initiated_by=actor,
+                )
             event = emit(actor, action, source)
         assert ids(actor) == [event.id]
         assert get_my_activity(actor).items[0].description == policy.staff_self
@@ -563,3 +570,17 @@ def test_domain_copy_is_bounded_and_all_source_reads_avoid_content(world):
     for query in queries:
         assert "ciphertext" not in query["sql"]
         assert "metadata" not in query["sql"]
+
+
+def test_assisted_creation_requires_persisted_initiator_and_origin(world):
+    request = world["rows"]["student"]["goodmoral.request"]
+    forged = emit(world["counselor"], actions.GOOD_MORAL_REQUEST_CREATED, request)
+    assert forged.pk not in ids(world["student"])
+    assert forged.pk not in ids(world["counselor"])
+    request.initiation_origin = "GCO_ASSISTED"
+    request.initiated_by = world["gss"]
+    request.save(update_fields=["initiation_origin", "initiated_by"])
+    assert forged.pk not in ids(world["student"])
+    verified = emit(world["gss"], actions.GOOD_MORAL_REQUEST_CREATED, request)
+    assert ids(world["student"]) == [verified.pk]
+    assert ids(world["gss"]) == [verified.pk]

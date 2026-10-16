@@ -1,0 +1,8 @@
+{% extends "compass/email/base.txt" %}
+{% block content %}
+A Good Moral certificate request has been started for you by the Guidance and Counseling Office.
+
+Sign in to COMPASS to review the request and its current status.
+
+If you have questions about the request, contact the Guidance and Counseling Office.
+{% endblock %}

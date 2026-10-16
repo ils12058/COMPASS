@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { FilePlus } from "lucide-react";
+import { PageActionLink } from "@/components/ui/page-action";
+import { getGoodMoralAccess } from "./good-moral-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useAcademicYearsList } from "@/lib/api/generated/academic-years/academic-years";
 import { useRouter } from "next/navigation";
@@ -84,7 +87,7 @@ export function GoodMoralOperationalList({ filters }: { filters: GoodMoralOperat
 
   return (
     <section className="space-y-5" aria-labelledby="good-moral-operational-heading">
-      <GoodMoralHeading headingId="good-moral-operational-heading" title="Good Moral" />
+      <GoodMoralHeading headingId="good-moral-operational-heading" title="Good Moral" action={getGoodMoralAccess(user).canInitiate ? <PageActionLink href="/portal/good-moral/start" icon={FilePlus} label="Start request" labelDetail="for Student" /> : undefined} />
 
       <form action="/portal/good-moral" method="get" role="search" aria-label="Good Moral requests" key={JSON.stringify(filters)}>
         {filters.pageSize ? <input type="hidden" name="page_size" value={filters.pageSize} /> : null}

@@ -276,3 +276,9 @@ export function GoodMoralField({ label, value }: { label: string; value: string 
 export function formatGoodMoralAmount(value: string | null | undefined): string {
   return value === null || value === undefined || value === "" ? "Not recorded" : value;
 }
+
+export function goodMoralInitiationLabel(origin: string | undefined): string {
+  if (origin === "GCO_ASSISTED") return "Started by the Guidance and Counseling Office";
+  if (origin === "STUDENT_SELF") return "Requested by Student";
+  return "Initiator not recorded";
+}

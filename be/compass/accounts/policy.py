@@ -412,6 +412,13 @@ CAPABILITY_DEFINITIONS = (
         description="Correct certificate-local Good Moral request facts before issuance.",
     ),
     CapabilityDefinition(
+        code="good_moral.initiate",
+        name="Initiate Good Moral requests for Students",
+        description=(
+            "Initiate an eligible Student request through an authorized Guidance Office workflow."
+        ),
+    ),
+    CapabilityDefinition(
         code="good_moral.prepare",
         name="Prepare Good Moral requests",
         description="Correct clerical certificate facts and mark Good Moral requests ready.",
@@ -567,6 +574,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "good_moral.view",
             "good_moral.manage",
             "good_moral.prepare",
+            "good_moral.initiate",
             "good_moral.issue",
             "announcements.manage",
             "resources.manage",
@@ -595,6 +603,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "call_slips.manage",
             "good_moral.view",
             "good_moral.prepare",
+            "good_moral.initiate",
             "exit_interviews.manage_opportunities",
             "announcements.manage",
             "resources.manage",
@@ -695,6 +704,7 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "good_moral.request_self": frozenset({"good_moral.view_self"}),
     "good_moral.manage": frozenset({"good_moral.view"}),
     "good_moral.prepare": frozenset({"good_moral.view"}),
+    "good_moral.initiate": frozenset({"good_moral.view"}),
     "good_moral.issue": frozenset({"good_moral.view"}),
     "ecounseling.access_media_assigned": frozenset({"ecounseling.view_assigned"}),
     "counseling.manage_assigned": frozenset({"counseling.view_assigned"}),

@@ -43,6 +43,7 @@ class NotificationEvent(StrEnum):
     APPOINTMENT_RESCHEDULED = "appointment.rescheduled"
     APPOINTMENT_REASSIGNED = "appointment.reassigned"
     CALL_SLIP_VOIDED = "call_slip.voided"
+    GOOD_MORAL_REQUEST_INITIATED = "good_moral.request_initiated"
     GOOD_MORAL_ISSUED = "good_moral.issued"
     EXIT_INTERVIEW_REOPENED = "exit_interview.reopened"
     INVENTORY_REOPENED = "inventory.reopened"
@@ -140,6 +141,18 @@ _EVENT_CATALOG = {
         ),
         email_subject="COMPASS Call Slip Withdrawn",
         email_template="call_slip_voided",
+    ),
+    NotificationEvent.GOOD_MORAL_REQUEST_INITIATED: NotificationEventDefinition(
+        event=NotificationEvent.GOOD_MORAL_REQUEST_INITIATED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Good Moral Request Started",
+        message=(
+            "The Guidance and Counseling Office has started a Good Moral certificate "
+            "request for you. Sign in to COMPASS to review the details."
+        ),
+        email_subject="COMPASS Good Moral Request Started",
+        email_template="good_moral_request_initiated",
     ),
     NotificationEvent.GOOD_MORAL_ISSUED: NotificationEventDefinition(
         event=NotificationEvent.GOOD_MORAL_ISSUED,
