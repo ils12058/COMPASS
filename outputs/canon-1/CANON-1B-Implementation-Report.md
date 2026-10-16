@@ -80,7 +80,14 @@ required, with four non-optional shards each. No suite or safety assertion was s
   route-warmup checks). These were updated to verify route absence and compiled production testing;
   they did not represent new product defects. Final frontend unit/lint/type results are recorded by CI.
 
-This document records local evidence, not a claim of exact-head CI success. The implementation PR's
+The first complete production browser run `38893274559` at `fe49a58e` was unsuccessful. Its
+WebKit cancellation/Blob/MIME issues and both engines’ unbounded search-test RSC waits were
+reproduced and corrected; the browser report records exact failure and focused probe evidence.
+These follow-ups preserve the original assertions and change no business or authorization rule.
+Complete UX regressions now pass 60/60 on each engine; the focused native-download MIME-only
+probe passed on Ubuntu WebKit against the same built application.
+
+This document records implementation evidence, not a claim of exact-head CI success. The implementation PR's
 attached checks are the authoritative final revision record: all eight browser jobs, frontend lint,
 unit/type/build and full backend regression must complete successfully before readiness is claimed.
 No earlier revision's result is substituted for the PR head. Any remaining CI failure must be

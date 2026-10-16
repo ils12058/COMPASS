@@ -112,27 +112,49 @@ await check("accounts-explicit-search", "/portal/accounts?search=Old&role=STUDEN
 });
 async function holdSearch(page, path, term) {
   let release; let issued; const pending = new Promise((r) => { release = r; }); const started = new Promise((r) => { issued = r; });
-  await page.route(`**${path}?*`, async (route) => {
+  // Static client pages commit search from the production router cache without an RSC request.
+  // Hold their real canonical API response; Accounts still has a server navigation to hold.
+  const apiPath = {
+    "/portal/services": "/api/v1/services",
+    "/portal/organization/student-affiliations": "/api/v1/organization/student-affiliations",
+    "/portal/availability/providers": "/api/v1/availability/providers",
+  }[path];
+  await page.route(`**${apiPath ?? path}?*`, async (route) => {
     if (new URL(route.request().url()).searchParams.get("search") === term) {
+      if (apiPath) {
+        issued();
+        await pending;
+        const body = worlds[apiPath] ?? (apiPath === "/api/v1/services" ? { ...empty, items: [service] } : empty);
+        await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+        return;
+      }
       // Finish server work before holding the acknowledgement. Releasing then commits the old
       // navigation before a new 350ms debounce can mask the race by issuing its next request.
       const response = await route.fetch();
       issued();
       await pending;
       await route.fulfill({ response });
-    } else await route.continue();
+    } else await route.fallback();
   });
-  return { release, started };
+  return { release, async waitUntilStarted() {
+    let timer;
+    try {
+      await Promise.race([
+        started,
+        new Promise((resolve, reject) => { timer = setTimeout(() => reject(new Error(`Search request did not start: ${apiPath ?? path}`)), 12_000); }),
+      ]);
+    } finally { clearTimeout(timer); }
+  } };
 }
 await check("accounts-older-submit-keeps-new-draft", "/portal/accounts", { overrides: worlds }, async (page) => {
   const input = page.getByLabel("Search accounts", { exact: true }); const hold = await holdSearch(page, "/portal/accounts", "Mar");
-  try { await input.fill("Mar"); await input.press("Enter"); await hold.started; await input.fill("Maria"); hold.release(); await page.waitForURL((u) => u.searchParams.get("search") === "Mar"); assert.equal(await input.inputValue(), "Maria"); await page.waitForTimeout(600); assert.equal(new URL(page.url()).searchParams.get("search"), "Mar"); } finally { hold.release(); }
+  try { await input.fill("Mar"); await input.press("Enter"); await hold.waitUntilStarted(); await input.fill("Maria"); hold.release(); await page.waitForURL((u) => u.searchParams.get("search") === "Mar"); assert.equal(await input.inputValue(), "Maria"); await page.waitForTimeout(600); assert.equal(new URL(page.url()).searchParams.get("search"), "Mar"); } finally { hold.release(); }
 });
 for (const [name, path, label] of [["services", "/portal/services", "Search Services"], ["affiliations", "/portal/organization/student-affiliations", "Search student affiliations"]]) {
   for (const inFlight of [false, true]) {
     await check(`clear-${name}-${inFlight ? "in-flight" : "timer"}`, `${path}?search=Old`, { overrides: worlds }, async (page) => {
       const input = page.getByLabel(label, { exact: true }); const hold = inFlight ? await holdSearch(page, path, "New") : null;
-      try { await input.fill("New"); if (hold) await hold.started; await page.getByRole("button", { name: /^Filters/ }).click(); await page.getByRole("button", { name: "Clear filters", exact: true }).click(); hold?.release(); await page.waitForURL((u) => !u.searchParams.has("search")); await page.waitForTimeout(650); assert.equal(new URL(page.url()).searchParams.has("search"), false); assert.equal(await input.inputValue(), ""); } finally { hold?.release(); }
+      try { await input.fill("New"); if (hold) await hold.waitUntilStarted(); await page.getByRole("button", { name: /^Filters/ }).click(); await page.getByRole("button", { name: "Clear filters", exact: true }).click(); hold?.release(); await page.waitForURL((u) => !u.searchParams.has("search")); await page.waitForTimeout(650); assert.equal(new URL(page.url()).searchParams.has("search"), false); assert.equal(await input.inputValue(), ""); } finally { hold?.release(); }
     });
   }
 }
@@ -140,7 +162,7 @@ for (const [name, path, label] of [["availability", "/portal/availability/provid
   await check(`newest-intent-${name}`, path, { overrides: worlds }, async (page) => {
     const input = page.getByLabel(label, { exact: true }); const original = await input.elementHandle(); const hold = await holdSearch(page, path, "Mar");
     try {
-      await input.fill("Mar"); await hold.started; await input.fill("Maria"); hold.release(); await page.waitForURL((u) => u.searchParams.get("search") === "Mar"); assert.equal(await input.inputValue(), "Maria"); await page.waitForURL((u) => u.searchParams.get("search") === "Maria"); assert.equal(await original.evaluate((e) => e.isConnected && e === document.activeElement), true);
+      await input.fill("Mar"); await hold.waitUntilStarted(); await input.fill("Maria"); hold.release(); await page.waitForURL((u) => u.searchParams.get("search") === "Mar"); assert.equal(await input.inputValue(), "Maria"); await page.waitForURL((u) => u.searchParams.get("search") === "Maria"); assert.equal(await original.evaluate((e) => e.isConnected && e === document.activeElement), true);
       await input.fill(""); await page.waitForURL((u) => !u.searchParams.has("search")); assert.equal(await input.inputValue(), "");
       await page.evaluate((path) => window.history.pushState(null, "", `${path}?search=Historical`), path); await page.waitForURL((u) => u.searchParams.get("search") === "Historical");
       await input.fill("Uncommitted"); await page.goBack(); assert.equal(await input.inputValue(), ""); await page.goForward(); assert.equal(await input.inputValue(), "Historical");

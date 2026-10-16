@@ -571,7 +571,9 @@ let signedRequests = 0;
   const attachment = createServer((request, response) => {
     transfers.push(new URL(request.url, "http://localhost").searchParams.get("token"));
     referrers.push(request.headers.referer ?? null);
-    response.writeHead(200, { "Content-Type": "video/mp4", "Content-Disposition": 'attachment; filename="synthetic.mp4"', "Cache-Control": "no-store" });
+    // These opaque text bytes are an attachment fixture, not an MP4. Linux WebKit sends a
+    // video MIME type to its media plug-in even with attachment disposition, hiding downloads.
+    response.writeHead(200, { "Content-Type": "application/octet-stream", "Content-Disposition": 'attachment; filename="synthetic.mp4"', "Cache-Control": "no-store" });
     response.end(bytes);
   });
   attachment.listen(0, "127.0.0.1");

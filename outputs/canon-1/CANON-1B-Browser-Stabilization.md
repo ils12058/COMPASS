@@ -82,3 +82,21 @@ suites on Chromium and WebKit across eight non-optional jobs, plus frontend unit
 If Linux WebKit downloads, fake-clock navigation, readiness or another assertion still fails, use
 its retained diagnostics to establish the cause before a subsequent run; do not label it generic
 flakiness or remove it from coverage.
+
+## First complete production matrix and follow-up fixes
+
+[Run 38893274559](https://github.com/ils12058/COMPASS/actions/runs/38893274559), revision
+`fe49a58e16f94492f349ab2e61901a03061944ae`, completed all eight jobs. Unit/lint/typecheck, both
+builds and Chromium shards 1/3/4 passed. The run remains unsuccessful evidence. Its failures were
+investigated before the next complete run.
+
+| Confirmed cause | Fix and retained assertions | Focused evidence |
+| --- | --- | --- |
+| Repeated hard reloads in two WebKit Messages checks cancelled pending API/prefetch requests, surfacing fetch access-control errors. | Independent contexts for each viewport/capability projection. Preserve all six widths, revoked management denial, absent management link and available Office picker. No error suppression or app prefetch change. | Baseline reproduced; edited production WebKit checks passed 6/6 and 3/3. |
+| The new outbound HTTP blocker treated Blob resources as external on Linux WebKit, breaking PDF readback. | Allow non-network Blob/data/about resources; external HTTP remains blocked. Preserve exact PDF bytes, popup activation, reuse and revocation checks. | Four issuance/preview/readback variants passed locally after correction; Linux matrix is the final gate. |
+| Opaque synthetic text bytes were served as `video/mp4`. Linux WebKit handed the response to a media plugin and emitted no download event. | Serve the binary fixture as `application/octet-stream`. Preserve real native download events, exact bytes/filename, two fresh link requests and zero referrers. No application download change. | [Ubuntu baseline 38894594808](https://github.com/ils12058/COMPASS/actions/runs/38894594808) failed with plug-in handling; [MIME-only probe 38894846491](https://github.com/ils12058/COMPASS/actions/runs/38894846491) passed against the identical production artifact. This does not certify real video codecs/provider behavior. |
+| UX search tests awaited an RSC request indefinitely. Static production routes reuse their page and issue canonical API reads; no RSC request existed to release. Both processes hit the 10-minute suite limit. | Hold actual API responses for Services/Affiliations/Availability; keep Accounts' dynamic RSC case. Preserve draft, Clear, latest-intent, URL/history and focus assertions. Bound start signals to 12 seconds. | Production trace showed the Services API read with no RSC request. All eight focused races and the complete 60-check UX suite passed on both engines. |
+
+These fixes address reproduced fixture/runtime behavior. No browser file, engine or original
+safety/business assertion was removed. The PR's final exact-head CI checks remain the authoritative
+complete result; earlier/base/focused successes do not certify the final matrix.

@@ -638,14 +638,18 @@ for (const [label, account] of [
   await check(`${label} cannot open the templates page`, TEMPLATES_PAGE, value.options(), async (page) => {
     await shown(page.getByRole("heading", { name: "Message templates unavailable" }));
     assert.equal(backend.templateRequests().length, 0, "No template request");
-    if (account.role === "COUNSELOR") {
-      await page.goto(`${baseURL}/portal/messages`);
+  });
+  if (account.role === "COUNSELOR") {
+    // Check each capability projection in its own document rather than cancelling Next prefetches
+    // through hard navigation from the unavailable page.
+    await check(`${label} has no Templates management link`, "/portal/messages", value.options(), async (page) => {
       await shown(page.getByRole("link", { name: "New message" }));
       assert.equal(await page.getByRole("link", { name: "Templates" }).count(), 0, "No management link");
-      await page.goto(`${baseURL}${OFFICE}`);
+    });
+    await check(`${label} can still use Templates in an Office conversation`, OFFICE, value.options(), async (page) => {
       await shown(templatesButton(page));
-    }
-  });
+    });
+  }
 }
 
 {

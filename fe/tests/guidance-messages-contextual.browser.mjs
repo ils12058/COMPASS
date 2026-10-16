@@ -244,17 +244,15 @@ for (const role of ["STUDENT", "COUNSELOR"]) {
   });
 }
 
-{
+// Each viewport starts with its own document. Repeated hard navigation would cancel pending
+// session reads and Next prefetches, which WebKit can surface as runtime fetch errors.
+for (const width of [320, 375, 390, 430, 768, 1440]) {
   const world = contextualWorld("COUNSELOR", backendFor("COUNSELOR"));
-  await check("no horizontal overflow with Messages open from 320px to 1440px", appointmentPath, world.options(), async (page) => {
-    for (const width of [320, 375, 390, 430, 768, 1440]) {
-      await page.setViewportSize({ width, height: 800 });
-      await page.goto(`${baseURL}${appointmentPath}`);
-      await trigger(page).click();
-      await shown(width >= 1100 ? panel(page) : drawer(page));
-      await shown(page.getByText("Good afternoon, Maria."));
-      await noHorizontalOverflow(page);
-    }
+  await check(`no horizontal overflow with Messages open at ${width}px`, appointmentPath, world.options({ viewport: { width, height: 800 } }), async (page) => {
+    await trigger(page).click();
+    await shown(width >= 1100 ? panel(page) : drawer(page));
+    await shown(page.getByText("Good afternoon, Maria."));
+    await noHorizontalOverflow(page);
   });
 }
 

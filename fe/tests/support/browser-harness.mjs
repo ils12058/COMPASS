@@ -75,7 +75,8 @@ export async function createBrowserHarness(suite) {
     // No browser regression is allowed to reach a provider or live API, even after a missing mock.
     await context.route("**/*", (route) => {
       const url = new URL(route.request().url());
-      return ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+      // Blob/data/about URLs are local browser resources, not outbound network requests.
+      return !["http:", "https:"].includes(url.protocol) || ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
         ? route.continue() : route.abort("blockedbyclient");
     });
     const page = await context.newPage();
