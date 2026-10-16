@@ -1147,15 +1147,25 @@ def test_setting_required_and_file_backed_no_fallback(monkeypatch, tmp_path, fau
         safe(caught.value, "private-invalid-key")
 
 
-def test_demo_tracer_projection_uses_explicit_encrypted_snapshots(world):
+def test_demo_tracer_projection_uses_explicit_encrypted_snapshots(world, monkeypatch):
     from types import SimpleNamespace
 
-    from compass.demo_seed.scenarios import _tracer_values
+    from compass.demo_seed import scenarios
 
     item = filled(world)
     private = content.read_confidential_content(item)
     birthday = date(2001, 2, 3)
-    values = _tracer_values(item, SimpleNamespace(date_of_birth=birthday), {"sex": "MALE"})
+    monkeypatch.setattr(
+        scenarios,
+        "program_for",
+        lambda _persona: SimpleNamespace(college_id=24, pk=42),
+    )
+    values = scenarios._tracer_values(
+        item,
+        SimpleNamespace(date_of_birth=birthday),
+        {"sex": "MALE"},
+        graduation_year=2020,
+    )
     assert values == {
         "name_snapshot": item.name_snapshot,
         "permanent_address_snapshot": private.permanent_address_snapshot,
@@ -1163,5 +1173,8 @@ def test_demo_tracer_projection_uses_explicit_encrypted_snapshots(world):
         "telephone_contact_numbers_snapshot": private.telephone_contact_numbers_snapshot,
         "mobile_number_snapshot": private.mobile_number_snapshot,
         "birth_date": birthday,
+        "graduated_college_id": 24,
+        "graduated_program_id": 42,
+        "graduation_year": 2020,
         "sex": "MALE",
     }

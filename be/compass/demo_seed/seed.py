@@ -410,9 +410,16 @@ def _status_breakdown_with_total(queryset, field_name: str) -> str:
 
 
 def _seeded_customer_feedback(session: SeedSession) -> int:
+    # Reports only count feedback for identities in this run's selected cohort. This also keeps a
+    # v1-to-v2 migration rehearsal from looking up the v2-only synthetic population.
+    values_by_persona = {
+        key: values
+        for key, values in {**CUSTOMER_FEEDBACK, **population_feedback.CUSTOMER_FEEDBACK}.items()
+        if key in session.users
+    }
     return sum(
         sum(1 for _ in matching_customer_feedback(session.user(key), values))
-        for key, values in {**CUSTOMER_FEEDBACK, **population_feedback.CUSTOMER_FEEDBACK}.items()
+        for key, values in values_by_persona.items()
     )
 
 

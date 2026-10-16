@@ -140,7 +140,8 @@ jobs:
       - name: Start development server
         working-directory: fe
         run: |
-          nohup pnpm dev --port 3107 > "$RUNNER_TEMP/next-dev.log" 2>&1 &
+          # Use the supported Webpack dev compiler for stable cold next/font/google resolution.
+          nohup pnpm dev --webpack --port 3107 > "$RUNNER_TEMP/next-dev.log" 2>&1 &
           for attempt in $(seq 1 90); do
             if curl -fsS -o /dev/null http://localhost:3107/login; then exit 0; fi
             sleep 2

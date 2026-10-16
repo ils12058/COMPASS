@@ -63,13 +63,21 @@ export function MediaArtifactDownload({ appointmentId, kind, state, canAccess }:
       const result = await eCounselingAccessAssignedMedia(appointmentId, kind, { cache: "no-store" });
       resourceAccess.assertAuthorized(appointmentId, epoch);
       if (downloadWindow.closed) return;
-      const link = downloadWindow.document.createElement("a");
-      link.href = result.data.url;
-      link.referrerPolicy = "no-referrer";
-      link.rel = "noopener noreferrer";
-      link.textContent = "Download is starting…";
-      downloadWindow.document.body.replaceChildren(link);
-      link.click();
+      const userAgent = navigator.userAgent;
+      const isSafari = /AppleWebKit/i.test(userAgent) && !/(Chrome|Chromium|Edg|OPR|CriOS)/i.test(userAgent);
+      if (isSafari) {
+        // A synthetic anchor click after the async access request is rejected by WebKit when the
+        // transient user activation has expired. Navigate the click-opened page directly instead.
+        downloadWindow.location.replace(result.data.url);
+      } else {
+        const link = downloadWindow.document.createElement("a");
+        link.href = result.data.url;
+        link.referrerPolicy = "no-referrer";
+        link.rel = "noopener noreferrer";
+        link.textContent = "Download is starting…";
+        downloadWindow.document.body.replaceChildren(link);
+        link.click();
+      }
     } catch (caught) {
       downloadWindow.close();
       resourceAccess.requestFailed(caught);

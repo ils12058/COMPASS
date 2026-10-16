@@ -63,7 +63,7 @@ export async function createBrowserHarness(suite) {
     page.setDefaultTimeout(12_000);
     const errors = [];
     const requests = [];
-    page.on("pageerror", (error) => errors.push(error.message));
+    page.on("pageerror", (error) => errors.push(error.stack ?? error.message));
     if (fakeDaily) await page.addInitScript({ content: fakeDailyInitScript(fakeDaily === true ? {} : fakeDaily) });
     for (const script of initScripts) await page.addInitScript({ content: script });
     await context.route(/\/api\/v1(?:\/|\?)/, async (route) => {
