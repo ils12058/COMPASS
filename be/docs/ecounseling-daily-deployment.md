@@ -222,8 +222,9 @@ The new `ecounseling.access_media_assigned` baseline grant belongs only to Couns
 `ecounseling.view_assigned` plus active assigned relationship. DPO, IT, GSS, Students and unrelated
 Head Guidance gain no media access. Confirm identity-policy synchronization before exposing access.
 
-In-app retention rules and disposition are decommissioned (ADR-114). Do not create or activate rules;
-those mutations return 409 `retention_decommissioned`. Custody-transfer provider cleanup continues.
+In-app retention rules and disposition are decommissioned (ADR-114); on the reset-only canonical
+baseline (ADR-116) no rule, case or hold exists at all, and late callbacks are fenced by capture and
+artifact disposal markers plus unknown-room rejection. Custody-transfer provider cleanup continues.
 Stored and provider-held media stay until the University's external disposal process acts. Full Daily/Spaces live-staging verification is separate from local
 fake-provider and synthetic S3 verification.
 

@@ -547,30 +547,3 @@ def test_stale_staff_source_and_mismatched_audit_actor_fail_closed(world):
     with pytest.raises(services.GoodMoralNotPermitted):
         create(world)
     assert not GoodMoralRequest.objects.exists()
-
-
-@pytest.mark.django_db(transaction=True)
-def test_additive_migration_preserves_history_and_old_writer_compatibility(world):
-    from django.db.migrations.executor import MigrationExecutor
-
-    previous = [("good_moral", "0005_merge_20261005_0419")]
-    current = [("good_moral", "0006_initiation_provenance")]
-    executor = MigrationExecutor(connection)
-    executor.migrate(previous)
-    old_model = executor.loader.project_state(previous).apps.get_model(
-        "good_moral", "GoodMoralRequest"
-    )
-    legacy = old_model.objects.create(student_id=world["graduate"].pk, variant="GRADUATE")
-    try:
-        MigrationExecutor(connection).migrate(current)
-        migrated = GoodMoralRequest.objects.get(pk=legacy.pk)
-        assert migrated.initiation_origin == "LEGACY_UNSPECIFIED"
-        assert migrated.initiated_by_id is None
-        assert migrated.student_id == world["graduate"].pk
-        # A still-running old backend omits both columns in its INSERT after migration.
-        old_write = old_model.objects.create(student_id=world["graduate"].pk, variant="GRADUATE")
-        new_read = GoodMoralRequest.objects.get(pk=old_write.pk)
-        assert new_read.initiation_origin == "LEGACY_UNSPECIFIED"
-        assert new_read.initiated_by_id is None
-    finally:
-        MigrationExecutor(connection).migrate(current)

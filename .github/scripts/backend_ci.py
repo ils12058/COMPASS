@@ -62,6 +62,8 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_health.py",
             "test_build_metadata.py",
             "test_request_context.py",
+            # The reset-only canonical migration baseline and its pre-canonical history guard.
+            "test_canonical_baseline.py",
             # Every locking query is scoped to its own rows; database errors map safely.
             "test_lock_scope.py",
             "test_database_error_mapping.py",
@@ -85,7 +87,6 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_account_management.py",
             "test_account_csv_import.py",
             "test_account_profile_confidential_content_encryption.py",
-            "test_capability_rename_migration.py",
             "test_profiles.py",
             "test_profile_photos.py",
             "test_institutional_identity.py",
@@ -197,7 +198,6 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_ecounseling_consent_realtime.py",
             "test_ecounseling_media_realtime.py",
             "test_ecounseling_media_v2.py",
-            "test_ecounseling_media_v2_migration.py",
             "test_daily_integration.py",
             "test_daily_diagnostics.py",
             "test_daily_reconciliation_metadata.py",
@@ -205,11 +205,9 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_ecounseling_state_correctness.py",
             "test_ecounseling_reconciliation.py",
             "test_ecounseling_reconciliation_concurrency.py",
-            "test_ecounseling_reconciliation_migration.py",
             "test_ecounseling_webhook_validation.py",
             "test_ecounseling_webhook_security.py",
             "test_ecounseling_webhook_concurrency.py",
-            "test_ecounseling_webhook_migration.py",
             "test_sensitive_media_storage.py",
         ),
     ),
@@ -238,12 +236,12 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         ),
     ),
     "inventory-encryption": (
-        "Inventory confidential-content encryption and its migrations (slow; split by node id).",
+        "Inventory confidential-content encryption (slow; split by node id).",
         ("test_inventory_confidential_content_encryption.py",),
     ),
     "student-support": (
         "Student Support profiles derived from the Inventory.",
-        ("test_student_support.py", "test_student_support_migrations.py"),
+        ("test_student_support.py",),
     ),
     "exit-interviews": (
         "Exit Interviews, opportunities, documents, and encryption.",
@@ -293,11 +291,10 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_privacy_governance.py",
             "test_privacy_governance_contract.py",
             "test_privacy_governance_expansion.py",
-            "test_privacy_governance_migrations.py",
             "test_privacy_pending_acknowledgment.py",
             "test_privacy_release_audit.py",
             "test_privacy_activity.py",
-            "test_operational_retention.py",
+            "test_disposition_decommission.py",
             "test_retention_policy_register.py",
         ),
     ),
@@ -305,7 +302,6 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Document rendering and every controlled-form PDF that uses it.",
         (
             "test_documents.py",
-            "test_documents_migrations.py",
             "test_inventory_documents.py",
             "test_exit_interview_documents.py",
             "test_student_profiling_pdf.py",
@@ -367,9 +363,9 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "The shared confidential-data primitive and Routine Interview crypto compatibility.",
         ("test_confidential_data_crypto.py", "test_routine_crypto_compatibility.py"),
     ),
-    "demo-seed": (
-        "The staging demo dataset seeders, which drive nearly every domain service.",
-        ("test_demo_seed.py", "test_demo_seed_v2.py"),
+    "staging-seed": (
+        "COMPASS Staging Dataset v1, which drives nearly every domain service.",
+        ("test_staging_seed.py",),
     ),
     "deployment-runtime": (
         "Runtime secrets, compose files, Redis/Celery configuration, and build metadata.",
@@ -493,10 +489,10 @@ DOMAINS: dict[str, Area] = {
         ),
         ("test_exit_interviews.py",),
     ),
-    "demo_seed": domain(
-        "demo_seed",
-        "The demo seeders and the tests that reuse their dataset.",
-        ("demo-seed",),
+    "staging_seed": domain(
+        "staging_seed",
+        "The Staging Dataset v1 seeder and the tests that reuse its helpers.",
+        ("staging-seed",),
         (
             "test_exit_interview_opportunities.py",
             "test_feedback_confidential_content_encryption.py",

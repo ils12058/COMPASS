@@ -2,12 +2,9 @@
 
 from __future__ import annotations
 
-import importlib
 from datetime import timedelta
-from uuid import uuid4
 
 import pytest
-from django.apps import apps as global_apps
 from django.utils import timezone
 
 from compass.call_slips.models import CallSlip, CallSlipIssuanceMode
@@ -19,7 +16,6 @@ from compass.call_slips.services import (
 )
 from compass.counseling.context_services import list_context_history
 from compass.notifications.models import Notification
-from compass.notifications.policy import NotificationPolicy
 from compass.referrals.services import record_action
 from tests.test_call_slips import (
     audit_context,
@@ -28,14 +24,9 @@ from tests.test_call_slips import (
     create_from_referral_for,
     create_referral_for,
     csrf,
-    ensure_call_slip_form_revision,
     make_head,
     setup_scope,
     sync_policy,
-)
-
-provenance_migration = importlib.import_module(
-    "compass.call_slips.migrations.0003_callslip_issuance_mode"
 )
 
 
@@ -152,54 +143,6 @@ def test_operational_api_projects_provenance_and_void_consequence_only_to_guidan
 
 
 @pytest.mark.django_db
-def test_legacy_classification_uses_only_durable_issuance_notification_evidence():
-    sync_policy()
-    counselor, _other, _gss, student, _student_b = setup_scope()
-    notified = create_for(counselor, student, key="evidence", fingerprint="a" * 64)
-    silent = create_for(counselor, student, key="no-evidence", fingerprint="b" * 64)
-    CallSlip.objects.update(issuance_mode=CallSlipIssuanceMode.LEGACY_UNKNOWN)
-    Notification.objects.create(
-        recipient=student,
-        event_code="call_slip.issued",
-        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
-        title="New Call Slip",
-        message="A Call Slip has been issued to you.",
-        source_type="call_slip",
-        source_id=notified.pk,
-        target_type="CALL_SLIP",
-        target_id=notified.pk,
-    )
-    Notification.objects.create(
-        recipient=student,
-        event_code="call_slip.voided",
-        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
-        title="Call Slip withdrawn",
-        message="Withdrawn.",
-        source_type="call_slip",
-        source_id=silent.pk,
-        target_type="CALL_SLIP",
-        target_id=silent.pk,
-    )
-    Notification.objects.create(
-        recipient=student,
-        event_code="call_slip.issued",
-        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
-        title="Unrelated",
-        message="Unrelated.",
-        source_type="call_slip",
-        source_id=uuid4(),
-    )
-
-    provenance_migration.classify_existing_call_slips(global_apps, None)
-
-    notified.refresh_from_db()
-    silent.refresh_from_db()
-    assert notified.issuance_mode == CallSlipIssuanceMode.LIVE
-    # A withdrawal notice is not issuance evidence; unknown intent is never guessed.
-    assert silent.issuance_mode == CallSlipIssuanceMode.LEGACY_UNKNOWN
-
-
-@pytest.mark.django_db
 def test_lifecycle_state_filters_discover_active_completed_and_voided_call_slips():
     sync_policy()
     counselor, _other, _gss, student, _student_b = setup_scope()
@@ -258,39 +201,6 @@ def test_counseling_context_history_marks_voided_call_slips_and_referrals():
     rows = {item.kind: item for item in list_context_history(Access())}
     assert rows["CALL_SLIP"].status == "VOIDED"
     assert rows["REFERRAL"].status == "VOIDED"
-
-
-@pytest.mark.django_db(transaction=True)
-def test_provenance_migration_classifies_existing_rows_without_fabricating_history():
-    from django.db import connection
-    from django.db.migrations.executor import MigrationExecutor
-
-    sync_policy()
-    # Transactional tests run after earlier flushes removed migration-seeded rows.
-    ensure_call_slip_form_revision()
-    counselor, _other, _gss, student, _student_b = setup_scope()
-    live_id = create_for(counselor, student, key="mig-live", fingerprint="1" * 64).pk
-    unknown_id = create_for(counselor, student, key="mig-unknown", fingerprint="2" * 64).pk
-    Notification.objects.create(
-        recipient=student,
-        event_code="call_slip.issued",
-        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
-        title="New Call Slip",
-        message="Issued.",
-        source_type="call_slip",
-        source_id=live_id,
-        target_type="CALL_SLIP",
-        target_id=live_id,
-    )
-
-    executor = MigrationExecutor(connection)
-    executor.migrate([("call_slips", "0002_void_and_reissue")])
-    executor.loader.build_graph()
-    executor.migrate([("call_slips", "0003_callslip_issuance_mode")])
-
-    modes = dict(CallSlip.objects.values_list("id", "issuance_mode"))
-    assert modes[live_id] == CallSlipIssuanceMode.LIVE
-    assert modes[unknown_id] == CallSlipIssuanceMode.LEGACY_UNKNOWN
 
 
 @pytest.mark.django_db

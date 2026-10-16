@@ -2,6 +2,7 @@
 
 - Status: Proposed (PG-1A PR 1). Becomes Accepted on owner approval.
 - Date: 2026-10-16
+- Completed on the reset-only canonical baseline by [ADR-116](ADR-116-canonical-baseline-and-staging-dataset-v1.md): the ledger tables, tombstone tasks, fallback services and preflight command are removed there. The compatible staging runtime keeps them until its operator cutover.
 - Supersedes, for future operation: [ADR-072](ADR-072-operational-retention-and-disposition.md) in
   full, and the "Versioned retention and verified disposition" section of
   [ADR-092](ADR-092-ecounseling-media-governance-v2.md)

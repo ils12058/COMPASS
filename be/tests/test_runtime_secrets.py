@@ -133,8 +133,7 @@ def test_file_metadata(runtime, fault):
         "REDIS_URL",
         "CELERY_BROKER_URL",
         "REDIS_CACHE_URL_FILE",
-        "DEMO_ACCOUNT_PASSWORD",
-        "DEMO_ACCOUNT_PASSWORD_FILE",
+        "STAGING_SEED_ENABLED",
     ],
 )
 def test_forbidden_assignments_never_expose_values(runtime, name):

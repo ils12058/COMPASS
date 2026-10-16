@@ -1,14 +1,17 @@
 """Code-owned retention policy register and read-only DPO oversight (ADR-115).
 
-All data is synthetic. Legacy ledger rows are written directly by
-``tests.legacy_disposition_fixtures``; no test exercises a destructive path.
+All data is synthetic. The canonical baseline has no disposition ledger (CANON-1C); the only
+historical marker these tests write is disposed media, through
+``tests.historical_outcome_fixtures``. No test exercises a destructive path.
 """
 
 import ast
 import dataclasses
 import json
+import uuid
 from datetime import UTC, date, datetime
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -39,12 +42,8 @@ from compass.audit import actions
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.audit.services import record_event
+from compass.graduate_tracer.models import GraduateTracerResponse
 from compass.privacy_governance import retention_policy_register as register
-from compass.privacy_governance.retention_models import (
-    DispositionCase,
-    DispositionHold,
-    OperationalRetentionRule,
-)
 from compass.privacy_governance.retention_policy_register import (
     RetentionAdoptionStatus,
     RetentionPolicy,
@@ -52,13 +51,8 @@ from compass.privacy_governance.retention_policy_register import (
     RetentionPolicyRegisterError,
     validate_register,
 )
-from tests.legacy_disposition_fixtures import (
-    historically_disposed_media,
-    legacy_case,
-    legacy_media_source,
-    legacy_rule,
-)
-from tests.test_operational_retention import tracer
+from tests.historical_outcome_fixtures import historically_disposed_media, legacy_media_source
+from tests.test_disposition_decommission import tracer
 from tests.test_privacy_governance import (
     auth_client,
     make_dpo,
@@ -150,23 +144,23 @@ def not_adopted(**changes):
 
 
 def ledger_snapshot():
+    """The audit trail plus the records whose identifiers must never be served."""
     return (
-        list(OperationalRetentionRule.objects.order_by("pk").values()),
-        list(DispositionCase.objects.order_by("pk").values()),
-        list(DispositionHold.objects.order_by("pk").values()),
+        list(GraduateTracerResponse.objects.order_by("pk").values("pk", "status")),
         list(AuditEvent.objects.order_by("occurred_at", "pk").values("pk", "action", "metadata")),
     )
 
 
 def legacy_world(actor):
-    """An ACTIVE 30-day legacy rule with a QUEUED case, and a COMPLETED disposed-media case."""
-    rule = legacy_rule(actor=actor, status="ACTIVE")
-    queued = legacy_case(rule=rule, source=tracer("legacy-queued@example.edu"), state="QUEUED")
+    """A submitted tracer source and disposed media, with identifiers a retired route once used."""
+    source = tracer("legacy-queued@example.edu")
     capture, _ = legacy_media_source("RECORDING")
     historically_disposed_media(capture)
-    media_rule = legacy_rule(actor=actor, category="ECOUNSELING_RECORDING")
-    completed = legacy_case(rule=media_rule, source=capture, state="COMPLETED")
-    return rule, queued, completed
+    return (
+        SimpleNamespace(pk=uuid.uuid4()),
+        SimpleNamespace(pk=uuid.uuid4(), source_id=source.pk, rule_id=uuid.uuid4()),
+        SimpleNamespace(pk=uuid.uuid4(), source_id=capture.pk),
+    )
 
 
 def module_imports(path, *, names=False):
@@ -290,7 +284,7 @@ def test_register_has_no_enforcement_path():
 # --- Read-only oversight API --------------------------------------------------------------------
 
 
-def test_dpo_reads_the_minimized_register_without_touching_the_legacy_ledger(dpo):
+def test_dpo_reads_the_minimized_register_without_reading_domain_records(dpo):
     _, queued, completed = legacy_world(dpo)
     before = ledger_snapshot()
     client = auth_client(dpo)
@@ -313,7 +307,7 @@ def test_dpo_reads_the_minimized_register_without_touching_the_legacy_ledger(dpo
         }
         for entry in register.REGISTER
     ]
-    # An ACTIVE legacy rule with a duration is not institutional adoption.
+    # Nothing a retired ledger once referenced is served, and no duration is implied.
     serialized = json.dumps(body)
     for value in (queued.source_id, completed.source_id, queued.pk, queued.rule_id, "30"):
         assert str(value) not in serialized

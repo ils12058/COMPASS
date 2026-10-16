@@ -14,7 +14,6 @@ from cryptography.fernet import Fernet
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import connection
-from django.db.migrations.executor import MigrationExecutor
 from pypdf import PdfReader
 
 from compass.accounts.models import Capability, UserCapabilityOverride
@@ -30,7 +29,7 @@ from compass.inventory.correction_targets import (
     normalize_correction_targets,
 )
 from compass.inventory.errors import InvalidInventoryInput
-from compass.inventory.models import FamilyMemberKind, InventoryReopenEvent, StudentInventory
+from compass.inventory.models import FamilyMemberKind, InventoryReopenEvent
 from compass.inventory.services import (
     InventoryNotFound,
     InventoryNotPermitted,
@@ -634,66 +633,6 @@ def test_rotation_reports_unreadable_targets_and_rotates_the_rest(world, setting
 
 
 # --- Migration -----------------------------------------------------------------------------------
-
-
-INVENTORY_BEFORE = [("inventory", "0007_remove_plaintext_confidential_content")]
-INVENTORY_AFTER = [("inventory", "0008_inventoryreopenevent_targets_ciphertext")]
-
-
-def _filenode(table):
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT pg_relation_filenode(%s)", [table])
-        return cursor.fetchone()[0]
-
-
-def _column(table, name):
-    with connection.cursor() as cursor:
-        cursor.execute(
-            "SELECT is_nullable, column_default FROM information_schema.columns "
-            "WHERE table_name = %s AND column_name = %s",
-            [table, name],
-        )
-        return cursor.fetchone()
-
-
-@pytest.mark.django_db(transaction=True)
-def test_migration_keeps_existing_reopen_events_and_adds_empty_targets_without_rewrite():
-    sync_policy()
-    ensure_inventory_form_revision()
-    admin = make_user("corr-migrate-admin@example.edu", "IT_ADMIN")
-    counselor = make_user("corr-migrate-counselor@example.edu", "COUNSELOR")
-    student = make_user("corr-migrate-student@example.edu", "STUDENT")
-    _, college, program = make_org("CORR-MIG")
-    affiliate(student, college, counselor)
-    configure_year(admin)
-    item = submit_inventory(student=student, program=program)
-    reopen_inventory_for_correction(
-        actor=counselor, inventory_id=item.pk, reason=REASON, context=context(counselor)
-    )
-    event = InventoryReopenEvent.objects.get(inventory=item)
-    table = InventoryReopenEvent._meta.db_table
-    reason_before = raw_event(event.pk)["reason_ciphertext"]
-    executor = MigrationExecutor(connection)
-    try:
-        executor.migrate(INVENTORY_BEFORE)
-        assert _column(table, "targets_ciphertext") is None
-        filenode = _filenode(table)
-        executor = MigrationExecutor(connection)
-        executor.migrate(INVENTORY_AFTER)
-        # PostgreSQL 11+ adds a NOT NULL column with a constant default without rewriting rows.
-        assert _filenode(table) == filenode
-        assert _column(table, "targets_ciphertext") == ("NO", None)
-        row = raw_event(event.pk)
-        assert row["reason_ciphertext"] == reason_before and row["targets_ciphertext"] == ""
-        migrated = InventoryReopenEvent.objects.get(pk=event.pk)
-        assert content.read_reopen_reason(migrated) == REASON
-        assert content.read_reopen_targets(migrated) == ()
-        body = auth_client(student).get("/api/v1/inventory/me/status").json()
-        assert body["latest_correction"]["targets"] == []
-    finally:
-        executor = MigrationExecutor(connection)
-        executor.migrate(executor.loader.graph.leaf_nodes())
-        assert StudentInventory.objects.filter(pk=item.pk).exists()
 
 
 # --- Privacy -------------------------------------------------------------------------------------

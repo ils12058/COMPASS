@@ -13,16 +13,12 @@ from cryptography.fernet import Fernet, InvalidToken
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import IntegrityError, connection, transaction
-from django.db.migrations.executor import MigrationExecutor
 from django.test import override_settings
 from django.utils import timezone
 
-from compass.accounts.models import Designation, Role, UserDesignation
+from compass.accounts.models import Designation, UserDesignation
 from compass.audit.models import AuditEvent
 from compass.counseling.models import CounselingEncounter
-from compass.institutional_forms.models import FormFamily, FormRevision
-from compass.inventory.models import StudentInventory
-from compass.organization.models import AcademicYear
 from compass.routine_interviews import content
 from compass.routine_interviews.content import (
     EVALUATION_FIELDS,
@@ -48,8 +44,6 @@ from compass.routine_interviews.services import (
     replace_my_intake,
     submit_my_intake,
 )
-from tests.inventory_encryption_helpers import create_inventory_row
-from tests.profile_fixtures import create_initialized_user
 from tests.test_routine_interviews import (
     auth_client,
     configure_year,
@@ -757,191 +751,3 @@ def test_rotation_rejects_an_unbounded_batch_size():
 
 
 # --- Migration -----------------------------------------------------------------------------
-
-BEFORE = [("routine_interviews", "0001_initial")]
-BACKFILLED = [("routine_interviews", "0002_encrypt_routine_content")]
-AFTER = [("routine_interviews", "0003_remove_plaintext_routine_content")]
-# The current model includes later fields, so checks through it and cleanup use the latest state.
-LATEST = [("routine_interviews", "0004_optional_inventory_and_academic_year")]
-
-
-def _legacy_participants():
-    student_role, _ = Role.objects.get_or_create(
-        code="STUDENT", defaults={"name": "Student", "description": ""}
-    )
-    counselor_role, _ = Role.objects.get_or_create(
-        code="COUNSELOR", defaults={"name": "Counselor", "description": ""}
-    )
-    suffix = uuid4().hex[:8]
-    student = create_initialized_user(
-        email=f"legacy-routine-student-{suffix}@example.edu",
-        password="!",
-        role=student_role,
-        first_name="Legacy",
-        last_name="Student",
-    )
-    counselor = create_initialized_user(
-        email=f"legacy-routine-counselor-{suffix}@example.edu",
-        password="!",
-        role=counselor_role,
-        first_name="Legacy",
-        last_name="Counselor",
-    )
-    family = FormFamily.objects.create(key=f"legacy-routine-{suffix}", title="Legacy Inventory")
-    revision = FormRevision.objects.create(
-        family=family,
-        official_code=f"LEGACY-{suffix}",
-        official_revision="0",
-        internal_schema_version=1,
-    )
-    inventory = create_inventory_row(
-        StudentInventory,
-        student=student,
-        academic_year=AcademicYear.objects.create(label=f"L-{suffix}"),
-        form_revision=revision,
-    )
-    return {"student_id": student.pk, "counselor_id": counselor.pk, "inventory_id": inventory.pk}
-
-
-def _legacy_routine(apps, participants, **values):
-    Legacy = apps.get_model("routine_interviews", "RoutineInterview")
-    return Legacy.objects.create(
-        entry_mode="WALK_IN",
-        delivery_mode="IN_PERSON",
-        intake_submitted_at=timezone.now() - timedelta(days=1),
-        **participants,
-        **values,
-    )
-
-
-def _table_shape() -> tuple[set[str], set[str]]:
-    with connection.cursor() as cursor:
-        columns = {c.name for c in connection.introspection.get_table_description(cursor, TABLE)}
-        constraints = set(connection.introspection.get_constraints(cursor, TABLE))
-    return columns, constraints
-
-
-@pytest.mark.django_db(transaction=True)
-def test_migration_encrypts_verifies_drops_plaintext_and_rolls_back_exactly():
-    executor = MigrationExecutor(connection)
-    executor.migrate(BEFORE)
-    old_apps = executor.loader.project_state(BEFORE).apps
-    participants = _legacy_participants()
-    sensitive = _legacy_routine(old_apps, participants, **SENSITIVE_INTAKE, **SENSITIVE_EVALUATION)
-    blank = _legacy_routine(old_apps, participants)
-    updated_at = {sensitive.pk: sensitive.updated_at, blank.pk: blank.updated_at}
-
-    try:
-        MigrationExecutor(connection).migrate(LATEST)
-
-        columns, constraints = _table_shape()
-        assert columns.isdisjoint({*INTAKE_FIELDS, *EVALUATION_FIELDS})
-        assert not any(name.endswith("_rating_range") for name in constraints)
-        assert {
-            "routine_entry_appointment_consistent",
-            "routine_finalized_requires_encounter",
-            "routine_intake_ciphertext_present",
-            "routine_evaluation_ciphertext_present",
-        } <= constraints
-        migrated = RoutineInterview.objects.get(pk=sensitive.pk)
-        assert read_intake(migrated) == SENSITIVE_INTAKE
-        assert read_evaluation(migrated) == SENSITIVE_EVALUATION
-        empty = RoutineInterview.objects.get(pk=blank.pk)
-        assert read_intake(empty) == empty_intake()
-        assert read_evaluation(empty) == empty_evaluation()
-        for row in RoutineInterview.objects.all():
-            assert row.updated_at == updated_at[row.pk]
-            stored = json.dumps(_raw_row(row.pk), default=str)
-            for sentinel in PLAINTEXT_SENTINELS:
-                assert sentinel not in stored
-        verified, _ = _rotate("--dry-run")
-        assert "Records scanned: 2" in verified
-        assert "Unreadable payloads: 0" in verified
-
-        # A controlled rollback restores exactly the same plaintext.
-        executor = MigrationExecutor(connection)
-        executor.migrate(BEFORE)
-        Restored = executor.loader.project_state(BEFORE).apps.get_model(
-            "routine_interviews", "RoutineInterview"
-        )
-        restored = Restored.objects.get(pk=sensitive.pk)
-        for field, value in {**SENSITIVE_INTAKE, **SENSITIVE_EVALUATION}.items():
-            assert getattr(restored, field) == value
-        assert "student_intake_ciphertext" not in _table_shape()[0]
-    finally:
-        MigrationExecutor(connection).migrate(LATEST)
-
-
-@pytest.mark.django_db(transaction=True)
-def test_migration_reencrypts_plaintext_written_after_the_backfill():
-    executor = MigrationExecutor(connection)
-    executor.migrate(BEFORE)
-    participants = _legacy_participants()
-    early = _legacy_routine(
-        executor.loader.project_state(BEFORE).apps,
-        participants,
-        career_goals="Before the backfill",
-    )
-
-    try:
-        executor = MigrationExecutor(connection)
-        executor.migrate(BACKFILLED)
-        backfilled_apps = executor.loader.project_state(BACKFILLED).apps
-        with pytest.raises(CommandError, match="legacy plaintext"):
-            _rotate("--dry-run")
-
-        # The previous release keeps writing plaintext while the migrations run.
-        Backfilled = backfilled_apps.get_model("routine_interviews", "RoutineInterview")
-        Backfilled.objects.filter(pk=early.pk).update(career_goals="Changed after the backfill")
-        late = _legacy_routine(
-            backfilled_apps,
-            participants,
-            coping_remarks="Created after the backfill",
-            special_concern="Counselor-only special concern",
-        )
-        assert late.student_intake_ciphertext is None
-
-        MigrationExecutor(connection).migrate(LATEST)
-        assert read_intake(RoutineInterview.objects.get(pk=early.pk))["career_goals"] == (
-            "Changed after the backfill"
-        )
-        refreshed = RoutineInterview.objects.get(pk=late.pk)
-        assert read_intake(refreshed)["coping_remarks"] == "Created after the backfill"
-        assert read_evaluation(refreshed)["special_concern"] == "Counselor-only special concern"
-    finally:
-        MigrationExecutor(connection).migrate(LATEST)
-
-
-@pytest.mark.django_db(transaction=True)
-def test_migration_aborts_before_dropping_plaintext_when_content_or_keyring_is_invalid():
-    executor = MigrationExecutor(connection)
-    executor.migrate(BEFORE)
-    Legacy = executor.loader.project_state(BEFORE).apps.get_model(
-        "routine_interviews", "RoutineInterview"
-    )
-    invalid = _legacy_routine(
-        executor.loader.project_state(BEFORE).apps,
-        _legacy_participants(),
-        coping_remarks="Highly private response",
-        concerns=["NOT_A_SOURCE_VALUE"],
-    )
-
-    try:
-        with pytest.raises(RuntimeError, match=f"{invalid.pk} student_intake") as exc:
-            MigrationExecutor(connection).migrate(AFTER)
-        assert "Highly private" not in str(exc.value)
-        assert "NOT_A_SOURCE_VALUE" not in str(exc.value)
-        columns, constraints = _table_shape()
-        assert {*INTAKE_FIELDS, *EVALUATION_FIELDS} <= columns
-        assert "student_intake_ciphertext" not in columns
-        assert "routine_academic_rating_range" in constraints
-        assert Legacy.objects.get(pk=invalid.pk).coping_remarks == "Highly private response"
-
-        Legacy.objects.filter(pk=invalid.pk).update(concerns=["FAMILY"])
-        with override_settings(ROUTINE_INTERVIEW_ENCRYPTION_KEYS=()):
-            with pytest.raises(RuntimeError, match="valid Fernet keyring"):
-                MigrationExecutor(connection).migrate(AFTER)
-        assert "student_intake_ciphertext" not in _table_shape()[0]
-    finally:
-        Legacy.objects.filter(pk=invalid.pk).delete()
-        MigrationExecutor(connection).migrate(LATEST)

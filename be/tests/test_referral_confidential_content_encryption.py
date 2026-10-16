@@ -16,7 +16,6 @@ from cryptography.fernet import Fernet, InvalidToken
 from django.core.management import call_command
 from django.core.management.base import CommandError
 from django.db import IntegrityError, connection, transaction
-from django.db.migrations.executor import MigrationExecutor
 from django.test import override_settings
 from django.utils import timezone
 from pypdf import PdfReader
@@ -27,7 +26,6 @@ from compass.counseling.context_services import list_context_history
 from compass.notifications.models import EmailDelivery, Notification
 from compass.referrals import confidential_content as content
 from compass.referrals.management.commands import rotate_referral_confidential_content as rotation
-from compass.referrals.migrations import _referral_confidential_content_v1 as frozen
 from compass.referrals.models import Referral, ReferralAction, ReferralActionType
 from compass.referrals.services import (
     InvalidReferralInput,
@@ -37,6 +35,7 @@ from compass.referrals.services import (
     update_status_note,
     void_referral,
 )
+from tests.encryption_oracles import referral_confidential_content_v1 as frozen
 from tests.test_referrals import (
     auth_client,
     context,
@@ -61,9 +60,6 @@ PAYLOAD = content.ReferralConfidentialContent(
     void_reason="PRIVATE-VOID-SENTINEL",
 )
 REMARKS = "PRIVATE-ACTION-REMARKS-SENTINEL 🌱"
-BEFORE = [("referrals", "0002_void_provenance")]
-BACKFILLED = [("referrals", "0003_encrypt_confidential_content")]
-AFTER = [("referrals", "0004_remove_plaintext_confidential_content")]
 
 
 @pytest.fixture(autouse=True)
@@ -663,191 +659,6 @@ def test_rotation_corruption_is_unchanged_and_failures_bounded(world):
         rotate("--batch-size", "1001")
 
 
-@pytest.fixture
-def legacy(world, transactional_db):
-    executor = MigrationExecutor(connection)
-    executor.migrate(BEFORE)
-    apps = executor.loader.project_state(BEFORE).apps
-    try:
-        yield apps, world
-    finally:
-        if "reason" in columns(Referral):
-            # Test cleanup after deliberately corrupting a dual-field token; assertions precede it.
-            with connection.cursor() as cursor:
-                for model, column in (
-                    (Referral, "confidential_content_ciphertext"),
-                    (ReferralAction, "remarks_ciphertext"),
-                ):
-                    if column in columns(model):
-                        cursor.execute(f'UPDATE "{model._meta.db_table}" SET "{column}" = NULL')
-        MigrationExecutor(connection).migrate(AFTER)
-
-
-def old_referral(legacy, *, voided=False, ref="REF-2000-000001"):
-    apps, world = legacy
-    from compass.institutional_forms.models import FormRevision
-
-    return apps.get_model("referrals", "Referral").objects.create(
-        reference_code=ref,
-        student_id=world[1].pk,
-        student_name_snapshot="Historical Student",
-        course_year_block_snapshot="Historic 4A",
-        referred_on=timezone.now().date(),
-        form_revision_id=FormRevision.objects.get(family__key="referral_slip", status="ACTIVE").pk,
-        recorded_by_id=world[0].pk,
-        voided_at=timezone.now() if voided else None,
-        voided_by_id=world[0].pk if voided else None,
-        **asdict(PAYLOAD if voided else replace(PAYLOAD, status_note="", void_reason="")),
-    )
-
-
-def old_action(apps, ref, kind=ReferralActionType.CALL_PARENT_GUARDIAN, remarks=REMARKS):
-    return apps.get_model("referrals", "ReferralAction").objects.create(
-        referral_id=ref.pk, action_type=kind, occurred_at=timezone.now(), remarks=remarks
-    )
-
-
-@pytest.mark.django_db(transaction=True)
-def test_migration_forward_controlled_reverse_preserves_all_content_and_metadata(legacy):
-    r1 = old_referral(legacy)
-    r2 = old_referral(legacy, voided=True, ref="REF-2000-000002")
-    actions = [
-        old_action(legacy[0], r2, kind, "" if i == 0 else REMARKS)
-        for i, kind in enumerate(ReferralActionType.values)
-    ]
-    before = {r.pk: raw(Referral, r.pk) for r in (r1, r2)}
-    action_before = {a.pk: raw(ReferralAction, a.pk) for a in actions}
-    counts = AuditEvent.objects.count(), Notification.objects.count(), EmailDelivery.objects.count()
-    MigrationExecutor(connection).migrate(AFTER)
-    assert not set(content.CONTENT_LIMITS).intersection(
-        columns(Referral)
-    ) and "remarks" not in columns(ReferralAction)
-    for row in Referral.objects.all():
-        assert asdict(read(row)) == {k: before[row.pk][k] for k in content.CONTENT_LIMITS}
-        for name, value in raw(Referral, row.pk).items():
-            if name != "confidential_content_ciphertext":
-                assert before[row.pk][name] == value
-    for row in ReferralAction.objects.all():
-        assert read(row) == action_before[row.pk]["remarks"]
-    response = auth_client(legacy[1][0]).get(f"/api/v1/referrals/{r2.pk}")
-    assert response.status_code == 200 and response.json()["void_reason"] == PAYLOAD.void_reason
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    for row in (r1, r2):
-        restored = raw(Referral, row.pk)
-        assert all(restored[name] == value for name, value in before[row.pk].items())
-    for row in actions:
-        restored = raw(ReferralAction, row.pk)
-        assert all(restored[name] == value for name, value in action_before[row.pk].items())
-    MigrationExecutor(connection).migrate(BEFORE)
-    assert "confidential_content_ciphertext" not in columns(Referral)
-    assert counts == (
-        AuditEvent.objects.count(),
-        Notification.objects.count(),
-        EmailDelivery.objects.count(),
-    )
-
-
-@pytest.mark.django_db(transaction=True)
-def test_phase_b_reconciles_old_release_new_rows_status_void_and_actions(legacy):
-    first = old_referral(legacy)
-    existing_action = old_action(
-        legacy[0], first, ReferralActionType.SEND_PARENT_NOTIFICATION_LETTER, "old remarks"
-    )
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    apps = MigrationExecutor(connection).loader.project_state(BACKFILLED).apps
-    Legacy = apps.get_model("referrals", "Referral")
-    apps.get_model("referrals", "ReferralAction").objects.filter(pk=existing_action.pk).update(
-        remarks=REMARKS
-    )
-    Legacy.objects.filter(pk=first.pk).update(
-        status_note=PAYLOAD.status_note,
-        void_reason=PAYLOAD.void_reason,
-        voided_at=timezone.now(),
-        voided_by_id=legacy[1][0].pk,
-    )
-    late = old_referral((apps, legacy[1]), ref="REF-2000-000003")
-    a = old_action(apps, first)
-    MigrationExecutor(connection).migrate(AFTER)
-    assert read(Referral.objects.get(pk=first.pk)) == PAYLOAD
-    assert read(Referral.objects.get(pk=late.pk)).void_reason == ""
-    assert read(ReferralAction.objects.get(pk=a.pk)) == REMARKS
-    assert read(ReferralAction.objects.get(pk=existing_action.pk)) == REMARKS
-
-
-@pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize("kind", ["referral", "action"])
-@pytest.mark.parametrize("fault", ["tamper", "binding", "schema"])
-def test_phase_b_unverifiable_present_token_aborts_atomically(legacy, kind, fault):
-    r = old_referral(legacy)
-    a = old_action(legacy[0], r)
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    model, row, column = (
-        (Referral, r, "confidential_content_ciphertext")
-        if kind == "referral"
-        else (ReferralAction, a, "remarks_ciphertext")
-    )
-    saved = raw(model, row.pk)[column]
-    envelope = json.loads(Fernet(K1).decrypt(saved.encode()))
-    if fault == "binding":
-        envelope["referral_id"] = str(uuid4())
-    elif fault == "schema":
-        envelope["schema_version"] = 99
-    broken = (
-        "private-corrupt"
-        if fault == "tamper"
-        else Fernet(K1).encrypt(json.dumps(envelope).encode()).decode()
-    )
-    with connection.cursor() as cursor:
-        cursor.execute(
-            f'UPDATE "{model._meta.db_table}" SET "{column}" = %s WHERE id = %s', [broken, row.pk]
-        )
-        # A stale Referral is rewritten before a later action failure; all changes must roll back.
-        cursor.execute('UPDATE "referrals_referral" SET status_note = %s', ["old-release-status"])
-    before = raw(Referral, r.pk), raw(ReferralAction, a.pk)
-    with pytest.raises(RuntimeError) as caught:
-        MigrationExecutor(connection).migrate(AFTER)
-    safe(caught.value, broken)
-    assert "reason" in columns(Referral) and "remarks" in columns(ReferralAction)
-    assert before == (raw(Referral, r.pk), raw(ReferralAction, a.pk))
-
-
-@pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize("kind", ["referral", "action"])
-def test_reverse_corruption_rolls_back_schema_and_partial_restoration(legacy, kind):
-    r = old_referral(legacy)
-    a = old_action(legacy[0], r)
-    MigrationExecutor(connection).migrate(AFTER)
-    model, row, column = (
-        (Referral, r, "confidential_content_ciphertext")
-        if kind == "referral"
-        else (ReferralAction, a, "remarks_ciphertext")
-    )
-    original = raw(model, row.pk)[column]
-    model.objects.filter(pk=row.pk).update(**{column: "private-corrupt"})
-    try:
-        with pytest.raises(RuntimeError):
-            MigrationExecutor(connection).migrate(BACKFILLED)
-        assert "reason" not in columns(Referral) and "remarks" not in columns(ReferralAction)
-        assert raw(model, row.pk)[column] == "private-corrupt"
-    finally:
-        model.objects.filter(pk=row.pk).update(**{column: original})
-
-
-@pytest.mark.django_db(transaction=True)
-def test_rotation_refuses_dual_schema_and_migration_bad_keyring(legacy):
-    old_referral(legacy)
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    for args in ((), ("--dry-run",)):
-        with pytest.raises(CommandError, match="Legacy plaintext"):
-            rotate(*args)
-    for keys in ((), ("private-key",), (K1, K1)):
-        with override_settings(REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS=keys):
-            with pytest.raises(RuntimeError) as caught:
-                MigrationExecutor(connection).migrate(AFTER)
-            safe(caught.value, "private-key")
-        assert "reason" in columns(Referral)
-
-
 @pytest.mark.parametrize(
     "field", ["reason", "referrer_name", "status_note", "void_reason", "remarks"]
 )
@@ -930,61 +741,6 @@ def test_call_slip_corrupt_source_remarks_returns_generic_500_and_no_partial_iss
         and response.json()["error"]["code"] == "referral_confidential_content_unavailable"
     )
     assert b"private-broken-source" not in response.content and CallSlip.objects.count() == 0
-
-
-@pytest.mark.django_db(transaction=True)
-def test_phase_b_locks_both_tables_in_parent_order_and_blocks_old_writers(legacy, monkeypatch):
-    import importlib
-
-    from django.db import OperationalError
-
-    phase = importlib.import_module(
-        "compass.referrals.migrations.0004_remove_plaintext_confidential_content"
-    )
-    r = old_referral(legacy)
-    old_action(legacy[0], r)
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    original, seen = phase._lock, []
-
-    def probe(apps, editor):
-        original(apps, editor)
-        probe_connection = connection.copy()
-        try:
-            with probe_connection.cursor() as cursor:
-                cursor.execute("SET lock_timeout = '100ms'")
-                for table in ("referrals_referral", "referrals_referralaction"):
-                    with pytest.raises(OperationalError, match="lock timeout"):
-                        cursor.execute(f'UPDATE "{table}" SET created_at = created_at')
-                    seen.append(table)
-        finally:
-            probe_connection.close()
-
-    with monkeypatch.context() as patch:
-        patch.setattr(phase, "_lock", probe)
-        MigrationExecutor(connection).migrate(AFTER)
-    assert seen == ["referrals_referral", "referrals_referralaction"]
-
-
-@pytest.mark.django_db(transaction=True)
-@pytest.mark.parametrize("field,value", [("reason", " \n "), ("status_note", "x" * 1001)])
-def test_phase_b_invalid_latest_plaintext_aborts_before_destruction(legacy, field, value):
-    r = old_referral(legacy)
-    MigrationExecutor(connection).migrate(BACKFILLED)
-    with connection.cursor() as cursor:
-        cursor.execute(
-            f'UPDATE "referrals_referral" SET "{field}" = %s WHERE id = %s', [value, r.pk]
-        )
-    snapshot = raw(Referral, r.pk)
-    try:
-        with pytest.raises(RuntimeError, match="malformed"):
-            MigrationExecutor(connection).migrate(AFTER)
-        assert raw(Referral, r.pk) == snapshot and "reason" in columns(Referral)
-    finally:
-        with connection.cursor() as cursor:
-            cursor.execute(
-                f'UPDATE "referrals_referral" SET "{field}" = %s WHERE id = %s',
-                [getattr(r, field), r.pk],
-            )
 
 
 def test_rotation_failure_output_is_bounded_across_both_tables(world):
