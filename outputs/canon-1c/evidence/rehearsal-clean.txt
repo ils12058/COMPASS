@@ -1,0 +1,81 @@
+# CANON-1C clean rehearsal on an empty disposable PostgreSQL 17.11 database (2026-10-16T14:01Z)
+## migrate
+applied migrations: 41
+## check --database default
+System check identified no issues (0 silenced).
+## sync_identity_policy
+Identity policy synchronization complete.
+Definitions: roles created=5 updated=0; designations created=2 updated=0; capabilities created=78 updated=0.
+Baseline grants: role grants created=95; designation grants created=20. Unknown database rows were retained.
+Retired capability state: role grants deleted=0; designation grants deleted=0; overrides deleted=0; capabilities deleted=0. Other unknown database rows were retained.
+## sync_canonical_services
+Canonical Counseling Service created (id=f2371d15-c974-4ac4-8ddd-137fc3c1a144).
+## sync_institutional_forms
+Canonical institutional forms updated.
+Families: created=8 updated=0; revisions: created=13 updated=0 activated=8 deactivated=0.
+## sync_organization_catalog
+Synchronized Organization catalog: campuses_created=6, colleges_created=10, programs_created=38
+## seed_staging_dataset seed (first run)
+COMPASS Staging Dataset v1 ready.
+Environment: local-staging
+Dataset version: 1
+Preparation date: 2026-10-16 (Asia/Manila)
+Seed run ID: b96c324f-e0eb-4af3-98f5-121d033316cc (shared by this run's audit events)
+Manifest: 113 accounts, 100 Students
+This run: 492 item(s) created, 96 already present and reused.
+  Academic Years:                              created    3, reused   96
+  Accounts:                                    created  113, reused    0
+  Action-ready units:                          created   18, reused    0
+  Announcements:                               created    6, reused    0
+  Appointments:                                created   25, reused    0
+  Availability exceptions:                     created    2, reused    0
+  Background Appointment stories:              created    8, reused    0
+  CSM responses:                               created    6, reused    0
+  Call Slips:                                  created    5, reused    0
+  Counseling Encounters:                       created   10, reused    0
+  Counseling delivery modes:                   created    1, reused    0
+  Counselor responsibilities:                  created    9, reused    0
+  Customer Feedback:                           created    6, reused    0
+  Disabled accounts:                           created    2, reused    0
+  Exit Interview opportunities:                created    2, reused    0
+  Exit Interviews:                             created   16, reused    0
+  Good Moral Requests:                         created    7, reused    0
+  Graduate Tracer responses:                   created    8, reused    0
+  Guidance Message threads:                    created    1, reused    0
+  Inventories:                                 created  109, reused    0
+  Lifecycle transitions:                       created    3, reused    0
+  Office weekly schedule:                      created    1, reused    0
+  Privacy Notice revisions:                    created    1, reused    0
+  Privacy Notices:                             created    1, reused    0
+  Provider weekly schedules:                   created    4, reused    0
+  Referrals:                                   created    7, reused    0
+  Resources:                                   created    6, reused    0
+  Rich scenario stories:                       created    9, reused    0
+  Routine Interviews:                          created    8, reused    0
+  Secondary Routine stories:                   created    2, reused    0
+  Shared Summaries:                            created    4, reused    0
+  Staff supervision:                           created    3, reused    0
+  Student affiliations:                        created   86, reused    0
+No credential was set. Run 'verify', then 'issue-credentials' for participants.
+real 32.28
+user 15.13
+sys 1.34
+## seed_staging_dataset seed (rerun)
+COMPASS Staging Dataset v1 ready.
+Environment: local-staging
+Dataset version: 1
+Preparation date: 2026-10-16 (Asia/Manila)
+Seed run ID: 8eff7dbe-df3e-4321-8c61-c30e258bf3f4 (shared by this run's audit events)
+Manifest: 113 accounts, 100 Students
+This run: 0 item(s) created, 399 already present and reused.
+No credential was set. Run 'verify', then 'issue-credentials' for participants.
+## seed_staging_dataset verify
+Verification PASSED.
+  Schema readiness                5 passed,   0 failed,   0 warnings
+  Canonical configuration        57 passed,   0 failed,   0 warnings
+  Account readiness            1085 passed,   0 failed,   0 warnings
+  Organization routing           12 passed,   0 failed,   0 warnings
+  Scenario initial states       101 passed,   0 failed,   0 warnings
+  Workflow integrity             40 passed,   0 failed,   0 warnings
+  Privacy and security          142 passed,   0 failed,   0 warnings
+  External side effects           5 passed,   0 failed,   0 warnings

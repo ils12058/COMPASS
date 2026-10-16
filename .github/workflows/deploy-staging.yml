@@ -72,6 +72,18 @@ jobs:
           deploy_sha="$(git rev-parse HEAD)"
           echo "deploy_sha=$deploy_sha" >> "$GITHUB_OUTPUT"
 
+      # The reset-only canonical baseline (CANON-1C, ADR-116) installs only into an empty database
+      # through a separately reviewed rebuild procedure; this workflow migrates the live database.
+      - name: Refuse the reset-only canonical baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          if compgen -G "be/compass/*/migrations/0001_canonical_baseline.py" > /dev/null; then
+            echo "This revision contains the reset-only canonical migration baseline." >&2
+            echo "It must not be deployed with the ordinary staging workflow." >&2
+            exit 1
+          fi
+
       # Pull requests run targeted tests; the complete backend suite is the deployment gate.
       - name: Require Backend full regression for this exact revision
         env:

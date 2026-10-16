@@ -1,0 +1,33 @@
+{
+ "columns": [],
+ "constraints": [
+  {
+   "a": "service_catalog_service_default_duration_minutes_check",
+   "b": "service_catalog_service_default_appointment_duration_minu_check",
+   "change": "renamed",
+   "definition": "CHECK (default_appointment_duration_minutes >= 0)",
+   "table": "service_catalog_service"
+  }
+ ],
+ "extensions": {
+  "only_in_a": [],
+  "only_in_b": []
+ },
+ "functions": {
+  "only_in_a": [],
+  "only_in_b": []
+ },
+ "indexes": [],
+ "sequences": {
+  "only_in_a": [],
+  "only_in_b": []
+ },
+ "shared_tables": 95,
+ "tables_only_in_a": [
+  "privacy_governance_dispositioncase",
+  "privacy_governance_dispositionhold",
+  "privacy_governance_operationalretentionrule"
+ ],
+ "tables_only_in_b": [],
+ "triggers": []
+}
