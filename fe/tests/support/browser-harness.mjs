@@ -43,6 +43,8 @@ export async function createBrowserHarness(suite) {
   const results = [];
   // Keep a fixture even when the initial navigation fails, so diagnostics and cleanup still run.
   const pendingFixtures = new Set();
+  // In-flight fetches per page (API reads and the router's RSC prefetches), for `navigate`.
+  const pageFetches = new WeakMap();
 
 
   async function openPage(path, {
@@ -98,6 +100,16 @@ export async function createBrowserHarness(suite) {
     page.on("framenavigated", (frame) => {
       if (frame === page.mainFrame()) navigation.push(diagnosticURL(frame.url()));
     });
+    const fetches = { pending: new Set(), changedAt: Date.now() };
+    pageFetches.set(page, fetches);
+    page.on("request", (request) => {
+      if (!["fetch", "xhr"].includes(request.resourceType())) return;
+      fetches.pending.add(request);
+      fetches.changedAt = Date.now();
+    });
+    const settled = (request) => { if (fetches.pending.delete(request)) fetches.changedAt = Date.now(); };
+    page.on("requestfinished", settled);
+    page.on("requestfailed", settled);
     if (fakeDaily) await page.addInitScript({ content: fakeDailyInitScript(fakeDaily === true ? {} : fakeDaily) });
     for (const script of initScripts) await page.addInitScript({ content: script });
     await context.route(/\/api\/v1(?:\/|\?)/, async (route) => {
@@ -199,6 +211,21 @@ export async function createBrowserHarness(suite) {
     check,
     openPage,
     finish,
+    // A check's own hard navigation. WebKit reports a fetch cancelled by a document navigation as
+    // an access-control error, which Playwright delivers as a page error. A test must not cancel
+    // the page's in-flight reads or the router's link prefetches itself, so wait until the page's
+    // fetches have been quiet for 500 ms (measured from this call, after which a prefetch for a
+    // just-shown link has started). Bounded: a page that never settles fails the check. Runtime
+    // errors, and errors from navigations the application performs, are still asserted.
+    async navigate(page, path) {
+      const fetches = pageFetches.get(page);
+      const calledAt = Date.now();
+      while (fetches.pending.size || Date.now() - Math.max(fetches.changedAt, calledAt) < 500) {
+        if (Date.now() - calledAt > 12_000) throw new Error(`${fetches.pending.size} page fetches did not settle before navigation`);
+        await new Promise((resolve) => setTimeout(resolve, 50));
+      }
+      await page.goto(`${baseURL}${path}`);
+    },
     async shown(locator) { await locator.waitFor({ state: "visible" }); },
     async hidden(locator) { await locator.waitFor({ state: "hidden" }); },
     async screenshot(page, name) { await page.screenshot({ path: join(artifacts, `${artifactFilename(name)}.png`), fullPage: true }); },
