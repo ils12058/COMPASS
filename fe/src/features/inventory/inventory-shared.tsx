@@ -160,13 +160,15 @@ export function FieldGroup({
   legend,
   children,
   className = "",
+  describedBy,
 }: {
   legend: string;
   children: ReactNode;
   className?: string;
+  describedBy?: string;
 }) {
   return (
-    <fieldset className={`min-w-0 border-t border-border pt-5 ${className}`}>
+    <fieldset className={`min-w-0 border-t border-border pt-5 ${className}`} aria-describedby={describedBy}>
       <legend className="mb-3 px-0 font-semibold text-ink">{legend}</legend>
       {children}
     </fieldset>

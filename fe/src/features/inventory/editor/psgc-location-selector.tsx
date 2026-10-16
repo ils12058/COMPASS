@@ -5,6 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import type { InventorySubmissionIssue } from "@/features/inventory/inventory-payload";
 import { InventoryNotice } from "@/features/inventory/inventory-shared";
+import { InventoryReviewHintText, useInventoryReview } from "@/features/inventory/editor/inventory-review-context";
 import type { GeographicLocationPayload, GeographicLocationKindValue as LocationKind } from "@/lib/api/generated/model";
 import { GeographicLocationKindValue } from "@/lib/api/generated/model";
 import {
@@ -30,6 +31,9 @@ export function PSGCLocationSelector({
   const errorFor = (targetId: string) =>
     validationIssues.find((issue) => issue.targetId === targetId)?.message;
   const choiceError = errorFor(`${prefix}-location-choice`);
+  const blockReview = useInventoryReview(`${prefix}-location`);
+  const choiceReview = useInventoryReview(`${prefix}-location-choice`);
+  const addReview = useInventoryReview(`${prefix}-location-add`);
   const regionError = errorFor(`${prefix}-region`);
   const cityError = errorFor(`${prefix}-city`);
   const mode = !location
@@ -156,7 +160,7 @@ export function PSGCLocationSelector({
     .join(", ");
 
   return (
-    <section className="space-y-4" aria-labelledby={`inventory-${kind.toLowerCase()}-location-heading`}>
+    <section className="space-y-4" aria-labelledby={`inventory-${kind.toLowerCase()}-location-heading`} aria-describedby={blockReview.hint?.id}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h3 id={`inventory-${kind.toLowerCase()}-location-heading`} className="font-semibold text-ink">
@@ -166,6 +170,7 @@ export function PSGCLocationSelector({
           <p className="mt-1 text-xs leading-5 text-muted">
             This is separate from the address written above. {!permanent ? "A response is required before submission." : ""}
           </p>
+          <InventoryReviewHintText hint={blockReview.hint} className="mt-1" />
         </div>
         {permanent && location ? (
           <Button variant="quiet" onClick={() => onChange(undefined)}>
@@ -185,7 +190,7 @@ export function PSGCLocationSelector({
             value={mode}
             aria-required={!permanent || undefined}
             aria-invalid={choiceError ? true : undefined}
-            aria-describedby={choiceError ? `${prefix}-location-choice-error` : undefined}
+            aria-describedby={[choiceReview.describedBy, choiceError ? `${prefix}-location-choice-error` : undefined].filter(Boolean).join(" ") || undefined}
             onChange={(event) => chooseMode(event.target.value)}
           >
             <option value="">Choose how to provide this location</option>
@@ -196,7 +201,9 @@ export function PSGCLocationSelector({
         </div>
       ) : (
         <Button
+          id={`${prefix}-location-add`}
           variant="secondary"
+          aria-describedby={addReview.describedBy}
           onClick={() => onChange({ kind, not_specified: true })}
         >
           Add permanent location details

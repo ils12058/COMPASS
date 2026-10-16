@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { SelectField, TextField } from "@/features/inventory/editor/fields";
+import { InventoryReviewHintText, useInventoryReviewLookup } from "@/features/inventory/editor/inventory-review-context";
 import type { InventorySectionProps } from "@/features/inventory/editor/types";
 import { organizationTextLimits, transportationTextLimits } from "@/features/inventory/inventory-field-limits";
 import { organizationScopeOptions, transportationFrequencyOptions, transportationModes } from "@/features/inventory/inventory-presentation";
@@ -29,6 +30,9 @@ export function OrganizationsSection({ draft, onChange, validationIssues = [] }:
     validationIssues.find((issue) => issue.targetId === targetId)?.message;
   const memberships = draft.organization_memberships ?? emptyOrganizationMemberships;
   const transportation = draft.transportation_entries ?? [];
+  // Memberships are reviewed as whole lists: rows have no identity that survives a save or a move.
+  const review = useInventoryReviewLookup();
+  const modesReview = review("inventory-transport-modes");
   const focusAfterUpdate = useRef<string | null>(null);
 
   useEffect(() => {
@@ -69,9 +73,11 @@ export function OrganizationsSection({ draft, onChange, validationIssues = [] }:
         <div className="space-y-7">
           {organizationScopeOptions.map(([scope, label]) => {
             const rows = rowsForScope(memberships, scope);
+            const listReview = review(`inventory-membership-${scope.toLowerCase()}`);
             return (
-              <section key={scope} aria-labelledby={`inventory-membership-${scope.toLowerCase()}`}>
+              <section key={scope} aria-labelledby={`inventory-membership-${scope.toLowerCase()}`} aria-describedby={listReview.hint?.id}>
                 <h3 id={`inventory-membership-${scope.toLowerCase()}`} className="font-semibold text-ink">{label}</h3>
+                <InventoryReviewHintText hint={listReview.hint} className="mt-1" />
                 <div className="mt-3 divide-y divide-border rounded-sm border border-border">
                   {rows.map((row, index) => (
                     <div key={`${scope}-${index}`} className="grid gap-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
@@ -110,6 +116,7 @@ export function OrganizationsSection({ draft, onChange, validationIssues = [] }:
                   id={`inventory-membership-${scope.toLowerCase()}-add`}
                   variant="secondary"
                   className="mt-3"
+                  aria-describedby={review(`inventory-membership-${scope.toLowerCase()}-add`).describedBy}
                   onClick={() => {
                     focusAfterUpdate.current = `inventory-membership-${scope.toLowerCase()}-${rows.length}-organization`;
                     replaceScopeRows(scope, [...rows, { scope, sort_order: rows.length }]);
@@ -127,7 +134,13 @@ export function OrganizationsSection({ draft, onChange, validationIssues = [] }:
         <p className="mb-4 text-sm leading-6 text-muted">
           Select only the ways you use to travel to and from the university. Each selected mode has its own optional frequency and fare details.
         </p>
-        <div className="grid gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          id="inventory-transport-modes"
+          role="group"
+          aria-label="Transportation modes"
+          aria-describedby={modesReview.describedBy}
+          className="grid gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-3"
+        >
           {transportationModes.map(([mode, label]) => {
             const selected = transportation.some((entry) => entry.mode === mode);
             return (
@@ -143,13 +156,18 @@ export function OrganizationsSection({ draft, onChange, validationIssues = [] }:
             );
           })}
         </div>
+        <InventoryReviewHintText hint={modesReview.hint} />
         <div className="mt-5 divide-y divide-border rounded-sm border border-border">
           {transportationModes.flatMap(([mode, label]) => {
             const entry = transportation.find((item) => item.mode === mode);
             if (!entry) return [];
+            const rowReview = review(`inventory-transport-${mode.toLowerCase()}`);
             return [
-              <section key={mode} className="grid gap-4 px-4 py-5 sm:grid-cols-2" aria-labelledby={`inventory-transport-${mode.toLowerCase()}`}>
-                <h3 id={`inventory-transport-${mode.toLowerCase()}`} className="sm:col-span-2 font-semibold text-ink">{label}</h3>
+              <section key={mode} className="grid gap-4 px-4 py-5 sm:grid-cols-2" aria-labelledby={`inventory-transport-${mode.toLowerCase()}`} aria-describedby={rowReview.hint?.id}>
+                <div className="sm:col-span-2">
+                  <h3 id={`inventory-transport-${mode.toLowerCase()}`} className="font-semibold text-ink">{label}</h3>
+                  <InventoryReviewHintText hint={rowReview.hint} className="mt-1" />
+                </div>
                 <SelectField
                   id={`inventory-transport-${mode.toLowerCase()}-frequency-category`}
                   label="Frequency"

@@ -14,6 +14,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { CounselorInventoryRoster } from "@/features/inventory/counselor/inventory-roster";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
+import { InventoryCorrectionNotice } from "@/features/inventory/inventory-correction-notice";
 import {
   formatInventoryDate,
   InventoryHeading,
@@ -143,10 +144,7 @@ function StudentInventoryHome() {
               <div className="mt-4">
                 {current.correction_pending && current.latest_correction ? (
                   <div className="mb-4">
-                    <InventoryNotice title="Correction requested" tone="warning">
-                      <p className="whitespace-pre-wrap">{current.latest_correction.message}</p>
-                      <p className="mt-2 text-xs text-muted">Requested {formatInventoryDate(current.latest_correction.requested_at)}</p>
-                    </InventoryNotice>
+                    <InventoryCorrectionNotice correction={current.latest_correction} />
                   </div>
                 ) : null}
                 {access.canManageSelf ? null : (

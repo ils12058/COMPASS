@@ -27,11 +27,13 @@ export function InterestsSection({ draft, onChange, validationIssues = [] }: Inv
       <FieldGroup legend="Course choice and educational perception">
         <div className="space-y-6">
           <BooleanField
+            id="inventory-course-first-choice"
             legend="Was your enrolled course your first choice?"
             value={draft.course_first_choice}
             onChange={(value) => onChange({ course_first_choice: value })}
           />
           <CheckboxGroupField
+            id="inventory-course-choice-reasons"
             legend="Reasons for your course choice"
             value={draft.course_choice_reasons}
             options={courseChoiceReasonOptions}
@@ -89,6 +91,7 @@ export function InterestsSection({ draft, onChange, validationIssues = [] }: Inv
       <FieldGroup legend="Interests and daily routine">
         <div className="space-y-6">
           <CheckboxGroupField
+            id="inventory-interests"
             legend="Interests"
             value={draft.interests}
             options={interestOptions}

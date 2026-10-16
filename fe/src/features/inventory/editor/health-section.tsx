@@ -69,6 +69,7 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
         {boarding ? (
           <div className="mt-5 grid gap-4 rounded-sm bg-surface-subtle p-4 sm:grid-cols-2">
             <BooleanField
+              id="inventory-boarding-exclusive"
               legend="Is the boarding house exclusive to one sex?"
               value={draft.boarding_exclusive}
               onChange={(value) => onChange({ boarding_exclusive: value })}
@@ -124,6 +125,7 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
           />
           <div className="sm:col-span-2">
             <CheckboxGroupField
+              id="inventory-immunizations"
               legend="Immunizations you have had"
               value={immunizations}
               options={immunizationOptions}

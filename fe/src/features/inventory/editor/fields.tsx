@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { InventoryReviewHintText, useInventoryReview } from "@/features/inventory/editor/inventory-review-context";
 
 export type FieldOption<T extends string> = readonly [T, string];
 
@@ -61,7 +62,8 @@ export function TextField({
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   const { limitId, atLimit } = limitState(id, value, maxLength);
-  const describedBy = [hintId, atLimit ? limitId : undefined, errorId].filter(Boolean).join(" ") || undefined;
+  const review = useInventoryReview(id);
+  const describedBy = [hintId, review.describedBy, atLimit ? limitId : undefined, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -86,6 +88,7 @@ export function TextField({
         className={readOnly ? "bg-surface-muted" : undefined}
       />
       {hint ? <p id={hintId} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
+      <InventoryReviewHintText hint={review.hint} />
       <LimitMessage id={limitId} atLimit={atLimit} maxLength={maxLength} />
       {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
@@ -116,7 +119,8 @@ export function TextAreaField({
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   const { limitId, atLimit } = limitState(id, value, maxLength);
-  const describedBy = [hintId, atLimit ? limitId : undefined, errorId].filter(Boolean).join(" ") || undefined;
+  const review = useInventoryReview(id);
+  const describedBy = [hintId, review.describedBy, atLimit ? limitId : undefined, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -134,6 +138,7 @@ export function TextAreaField({
         onChange={(event) => onChange(event.target.value)}
       />
       {hint ? <p id={hintId} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
+      <InventoryReviewHintText hint={review.hint} />
       <LimitMessage id={limitId} atLimit={atLimit} maxLength={maxLength} />
       {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
@@ -163,7 +168,8 @@ export function SelectField<T extends string>({
 }) {
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+  const review = useInventoryReview(id);
+  const describedBy = [hintId, review.describedBy, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <div className="min-w-0">
       <Label htmlFor={id}>
@@ -188,6 +194,7 @@ export function SelectField<T extends string>({
         ))}
       </Select>
       {hint ? <p id={hintId} className="mt-1.5 text-xs leading-5 text-muted">{hint}</p> : null}
+      <InventoryReviewHintText hint={review.hint} />
       {error ? <p id={errorId} role="alert" className="mt-1.5 text-xs leading-5 text-danger">{error}</p> : null}
     </div>
   );
@@ -218,7 +225,8 @@ export function CheckboxGroupField<T extends string>({
   const grid = columns === 1 ? "sm:grid-cols-1" : columns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
   const hintId = id && hint ? `${id}-hint` : undefined;
   const errorId = id && error ? `${id}-error` : undefined;
-  const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+  const review = useInventoryReview(id);
+  const describedBy = [hintId, review.describedBy, errorId].filter(Boolean).join(" ") || undefined;
   return (
     <fieldset
       id={id}
@@ -231,6 +239,7 @@ export function CheckboxGroupField<T extends string>({
         {required ? <span aria-hidden="true" className="ml-1 text-danger">*</span> : null}
       </legend>
       {hint ? <p id={hintId} className="mt-1 text-xs leading-5 text-muted">{hint}</p> : null}
+      <InventoryReviewHintText hint={review.hint} className="mt-1" />
       <div className={`mt-3 grid gap-x-5 gap-y-3 ${grid}`}>
         {options.map(([optionValue, labelText]) => {
           const checked = values.includes(optionValue);
@@ -279,6 +288,8 @@ export function BooleanField({
     { id: "unanswered", label: "No response", value: null },
   ] as const;
   const errorId = id && error ? `${id}-error` : undefined;
+  const review = useInventoryReview(id);
+  const describedBy = [review.describedBy, errorId].filter(Boolean).join(" ") || undefined;
 
   return (
     <fieldset
@@ -286,12 +297,13 @@ export function BooleanField({
       role="radiogroup"
       aria-required={required || undefined}
       aria-invalid={error ? true : undefined}
-      aria-describedby={errorId}
+      aria-describedby={describedBy}
     >
       <legend className="text-sm font-semibold text-ink">
         {legend}
         {required ? <span aria-hidden="true" className="ml-1 text-danger">*</span> : null}
       </legend>
+      <InventoryReviewHintText hint={review.hint} className="mt-1" />
       <div className="mt-2 flex flex-wrap gap-x-6 gap-y-3">
         {choices.map((choice) => (
           <label key={choice.id} className="flex min-h-9 items-center gap-2.5 text-sm text-ink">
@@ -300,6 +312,8 @@ export function BooleanField({
               name={id ?? legend}
               className="h-4 w-4 accent-brand"
               checked={value === choice.value}
+              // Focus enters a radio group at one choice, so the choice carries the review hint too.
+              aria-describedby={review.describedBy}
               onChange={() => onChange(choice.value)}
             />
             {choice.label}

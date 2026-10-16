@@ -49,6 +49,7 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
       <FieldGroup legend="Prior counseling experience">
         <div className="space-y-5">
           <BooleanField
+            id="inventory-prior-counseling"
             legend="Have you had a counseling experience before?"
             value={draft.prior_counseling_experience}
             onChange={(value) => onChange({

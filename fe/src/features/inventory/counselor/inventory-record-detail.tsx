@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
+import { InventoryCorrectionTargetChooser } from "@/features/inventory/counselor/inventory-correction-target-chooser";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { InventoryReadOnly } from "@/features/inventory/read-only/inventory-read-only";
 import { InventoryPdfDownload } from "@/features/inventory/inventory-pdf-download";
@@ -33,7 +34,8 @@ import {
   useInventoryListStudentHistory,
   useInventoryReopenRecord,
 } from "@/lib/api/generated/inventory/inventory";
-import { InventoryStatusValue } from "@/lib/api/generated/model";
+import { InventoryStatusValue, type InventoryCorrectionTarget } from "@/lib/api/generated/model";
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { useQueryClient } from "@tanstack/react-query";
 
 export function InventoryRecordDetail({ inventoryId }: { inventoryId: string }) {
@@ -65,6 +67,7 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
   const [historyOpen, setHistoryOpen] = useState(false);
   const [reopenOpen, setReopenOpen] = useState(false);
   const [reason, setReason] = useState("");
+  const [targets, setTargets] = useState<InventoryCorrectionTarget[]>([]);
   const [reopenError, setReopenError] = useState<string | null>(null);
   const [reopenCompleted, setReopenCompleted] = useState(false);
 
@@ -101,7 +104,11 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
     if (!canReopen || !instructions || instructions.length > 1000 || reopen.isPending) return;
     setReopenError(null);
     try {
-      await reopen.mutateAsync({ inventoryId, data: { reason: instructions } });
+      // Targets are optional; a request without them is the same reason-only request as before.
+      await reopen.mutateAsync({
+        inventoryId,
+        data: { reason: instructions, ...(targets.length ? { targets } : {}) },
+      });
       queryClient.removeQueries({ queryKey: getInventoryGetRecordQueryKey(inventoryId) });
       setReopenCompleted(true);
       setReopenOpen(false);
@@ -111,7 +118,10 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
         queryClient.invalidateQueries({ queryKey: getInventoryListStudentHistoryQueryKey(inventory.student.id) }),
       ]);
     } catch (error) {
-      setReopenError(inventoryErrorMessage(error, "This Individual Inventory could not be reopened."));
+      const code = error instanceof CompassApiError ? readApiErrorCode(error.body) : undefined;
+      setReopenError(code === "inventory_invalid"
+        ? "This correction request could not be saved. Check the instructions and the answers to review, then try again."
+        : inventoryErrorMessage(error, "This Individual Inventory could not be reopened."));
     }
   }
 
@@ -193,6 +203,9 @@ function CounselorInventoryRecordDetail({ inventoryId }: { inventoryId: string }
         error={reopenError}
         onOpenChange={setReopenOpen}
         onConfirm={() => void confirmReopen()}
+        choices={
+          <InventoryCorrectionTargetChooser value={targets} onChange={setTargets} disabled={reopen.isPending} />
+        }
       >
         <p>
           The Student will be able to edit and resubmit this current-year
