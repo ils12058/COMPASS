@@ -52,11 +52,14 @@ outside authorization. The earlier failing-run evidence remains historical evide
   which left its native Back cursor out of sync after refusal. Other engines retain early
   cancellation. The native guard listeners stay mounted and consult current registrations, avoiding
   an additional effect-registration gap. A close-event test subscribes before triggering close.
-- Native media attachment links are attached to the document before clicking. The regression uses
-  a real loopback HTTP attachment and observes opener/popup download events, avoiding WebKit's
-  routed-media limitation. It checks exact filename, bytes, fresh URL per click, no prefetch and no
-  signed URL displayed. Speaker-selection tests explicitly supply the mocked browser capability;
-  the separate unsupported-speaker test still verifies the system-default fallback.
+- Media downloads open a blank tab synchronously from the click, then fetch a fresh link and
+  recheck authorization before navigating it; failures close the blank tab. The destination link
+  explicitly sends no referrer. This preserves WebKit's user activation across the async
+  authorization request without caching signed URLs. The regression uses a real loopback HTTP
+  attachment and observes popup download events, avoiding WebKit's routed-media limitation. It
+  checks exact filename, bytes, fresh URL per click, no prefetch, no referrer and no signed URL
+  displayed. Speaker-selection tests explicitly supply the mocked browser capability; the separate
+  unsupported-speaker test still verifies the system-default fallback.
 - Browser fixtures select canonical Year level/Semester options. Navigation assertions omit
   aria-hidden badge decorations while retaining exact labels/order. Same-tab freshness compares
   HTTP reads from before send. Encounter corrections wait for the held intercepted request before
@@ -72,7 +75,9 @@ exactly-once coverage across six planned shards. Ruff format/lint and frontend t
 The extra PDF regression verifies permission loss during an in-flight read, cache discard, and a
 fresh read after authorization is restored. Clean local reruns pass the exposed browser failures:
 18/18 UI hierarchy checks on Chromium and WebKit, 44/44 user-copy checks on Chromium, and 41/41
-Guidance Messages checks on WebKit. The first pushed head's remote frontend tests, targeted frontend
-validation and backend static/contract checks passed; two WebKit shards exposed the dialog focus
-issues now fixed above and a concurrent-load page navigation timeout. Full backend and exact-head
-browser validation are still pending; no full green result is inferred from focused runs.
+Guidance Messages checks on WebKit. The latest exact-head CI passed frontend units and targeted
+frontend checks; Chromium browser shards 1–4 and WebKit shard 4 passed. WebKit shard 3 exposed that
+its Linux browser dropped transient activation while waiting for the signed media link; the updated
+flow passes all 31 E-Counseling call checks locally on WebKit. Its final download case, including a
+no-referrer assertion, passes on both WebKit and Chromium. The exact-head workflow is being rerun
+with this repair; full backend and browser completion are still pending.

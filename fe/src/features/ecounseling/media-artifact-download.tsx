@@ -45,21 +45,33 @@ export function MediaArtifactDownload({ appointmentId, kind, state, canAccess }:
 
   async function download() {
     if (pending || resourceAccess.getDenial(appointmentId)) return;
+    const downloadWindow = window.open("about:blank", "_blank");
+    if (!downloadWindow) {
+      setError("Allow pop-ups for COMPASS, then try again.");
+      return;
+    }
+    downloadWindow.opener = null;
+    const referrerPolicy = downloadWindow.document.createElement("meta");
+    referrerPolicy.name = "referrer";
+    referrerPolicy.content = "no-referrer";
+    downloadWindow.document.head.append(referrerPolicy);
+    downloadWindow.document.body.textContent = "Preparing file…";
     const epoch = resourceAccess.epoch(appointmentId);
     setPending(true);
     setError(null);
     try {
       const result = await eCounselingAccessAssignedMedia(appointmentId, kind, { cache: "no-store" });
       resourceAccess.assertAuthorized(appointmentId, epoch);
-      const link = document.createElement("a");
+      if (downloadWindow.closed) return;
+      const link = downloadWindow.document.createElement("a");
       link.href = result.data.url;
-      link.target = "_blank";
-      link.rel = "noopener noreferrer";
       link.referrerPolicy = "no-referrer";
-      document.body.append(link);
+      link.rel = "noopener noreferrer";
+      link.textContent = "Download is starting…";
+      downloadWindow.document.body.replaceChildren(link);
       link.click();
-      link.remove();
     } catch (caught) {
+      downloadWindow.close();
       resourceAccess.requestFailed(caught);
       if (isSessionEndedError(caught)) requestSessionRevalidation("session");
       setError(ecounselingErrorMessage(caught, "The file isn't available right now. Try again."));

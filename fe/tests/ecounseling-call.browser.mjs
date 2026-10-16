@@ -566,9 +566,11 @@ let signedRequests = 0;
 {
   // Use a real loopback attachment: WebKit does not reliably emit downloads for routed media.
   const transfers = [];
+  const referrers = [];
   const bytes = Buffer.from("synthetic recording attachment");
   const attachment = createServer((request, response) => {
     transfers.push(new URL(request.url, "http://localhost").searchParams.get("token"));
+    referrers.push(request.headers.referer ?? null);
     response.writeHead(200, { "Content-Type": "video/mp4", "Content-Disposition": 'attachment; filename="synthetic.mp4"', "Cache-Control": "no-store" });
     response.end(bytes);
   });
@@ -599,6 +601,7 @@ let signedRequests = 0;
       await shown(button);
       assert.equal(signedRequests, count);
       assert.deepEqual(transfers, Array.from({ length: count }, (_, index) => String(index + 1)));
+      assert.deepEqual(referrers, Array(count).fill(null), "The signed download URL receives no referrer");
     }
     assert.doesNotMatch(await page.locator("main").innerText(), /token=|synthetic-media-download/);
     await screenshot(page, "v2-counselor-session-files");
