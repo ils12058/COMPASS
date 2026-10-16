@@ -22,6 +22,7 @@ live-staging reset was not executed.
 | Reset-only integration branch | `canon/compass-clean-baseline`, created on origin at `3ae47817` |
 | Reset-only PR | [#250](https://github.com/ils12058/COMPASS/pull/250) `codex/canon-1c-schema-uat-dataset` → `canon/compass-clean-baseline` |
 | Commits | `703909b8` browser fix (cherry-pick of #249) · `80c80d75` canonical baseline and PG-1A · `c50b53e4` Staging Dataset v1 · `261119e7` reports and UAT documents · this report |
+| Merges (2026-10-17, owner request) | #249 → `staging` as `775ba133`; #250 → `canon/compass-clean-baseline` as `1ffedab4`; then promoted to `staging` by owner decision (live staging is fully rebuilt) |
 
 ## Implementation
 

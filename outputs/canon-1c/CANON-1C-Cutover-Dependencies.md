@@ -1,8 +1,10 @@
 # CANON-1C — Cutover dependencies and CANON-1D handoff
 
-**RESET-ONLY / NOT SAFE FOR ORDINARY STAGING DEPLOYMENT.** Nothing in CANON-1C was deployed, and
-no live database, Redis, worker, object store, Daily resource, backup or secret was touched. The
-reset itself is a separately authorized operation.
+**RESET-ONLY.** Reviewed in #250 on `canon/compass-clean-baseline` and promoted to `staging` on
+2026-10-17 by owner decision: live staging is fully rebuilt, discarding its old database and
+runtime. Nothing in CANON-1C was deployed, and no live database, Redis, worker, object store,
+Daily resource, backup or secret was touched. The rebuild itself is a separately authorized
+operation.
 
 ## What is incompatible with the current live staging
 
@@ -14,9 +16,12 @@ reset itself is a separately authorized operation.
 | Runtime-secret check rejects a long-running `STAGING_SEED_ENABLED` | Harmless for live staging, but the checker version must match the image. |
 | Frontend/API | **No contract change.** OpenAPI and generated clients are unchanged; the only frontend change (the browser-test harness, [#249](https://github.com/ils12058/COMPASS/pull/249)) is staging-compatible. |
 
-`.github/workflows/deploy-staging.yml` must **not** be used for this branch: it runs `migrate` and
-synchronization while the old web/worker/Beat still run, and gates on a `staging` full-regression
-SHA. The reset needs its own reviewed, non-standard procedure.
+`.github/workflows/deploy-staging.yml` now **refuses** every `staging` revision, because they
+contain the baseline. Its ordinary order (migrate and synchronize while the old web/worker/Beat
+still run) is wrong for the rebuild. The rebuild procedure must lift or replace that refusal only
+once the old runtime is stopped and a fresh, empty database is in place; until then, `staging`
+cannot be deployed. Feature branches cut from the pre-baseline `staging` that add migrations must
+regenerate them on top of `0001_canonical_baseline`.
 
 ## Gates that must be evidenced before the canonical runtime is activated
 

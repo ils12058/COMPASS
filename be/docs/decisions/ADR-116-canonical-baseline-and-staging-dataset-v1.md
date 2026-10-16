@@ -2,8 +2,9 @@
 
 - Status: Proposed (CANON-1C). Becomes Accepted on owner approval of the reset-only branch.
 - Date: 2026-10-16
-- Scope: the `canon/compass-clean-baseline` integration branch only. Not for ordinary `staging`
-  deployment.
+- Scope: reviewed on `canon/compass-clean-baseline` (#250) and promoted to `staging` on
+  2026-10-17 by owner decision, accepting that live staging is fully rebuilt (its database and old
+  runtime are discarded). It is still not deployable over the existing live database.
 - Supersedes, on the canonical baseline: the historical migration graph; the ADR-072 ledger and
   the ADR-114 transition safeguards (tombstones, fallback services, preflight command);
   [ADR-068](ADR-068-staging-demo-dataset-seeder.md) and
@@ -60,8 +61,13 @@ that did not support independent stakeholder UAT.
 
 ## Consequences
 
-- The branch is **RESET-ONLY / NOT SAFE FOR ORDINARY STAGING DEPLOYMENT**. The current deployed
-  runtime keeps ADR-114's tombstones and ledger until its operator cutover.
+- The baseline is **RESET-ONLY**: it cannot be applied to the existing live database. With it on
+  `staging`, `deploy-staging.yml` refuses every revision and `migrate` refuses the old database,
+  so no ordinary staging deployment happens until the clean rebuild; that procedure lifts or
+  replaces the workflow refusal. The current deployed runtime keeps ADR-114's tombstones and
+  ledger until it is shut down.
+- Feature branches cut from the pre-baseline `staging` that add migrations must regenerate them
+  as `0002_…` on top of `0001_canonical_baseline`; their old dependencies no longer exist.
 - Restoring a pre-reset backup into the canonical runtime is unsupported; the history guard
   refuses its migration records, and data-only imports are prohibited by the cutover plan.
 - Tests that replayed historical migrations are retired; canonical-baseline, decommission and
