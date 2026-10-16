@@ -116,7 +116,8 @@ PRIVACY_RETENTION_CREATED = "privacy.retention.created"
 PRIVACY_RETENTION_UPDATED = "privacy.retention.updated"
 PRIVACY_RETENTION_RETIRED = "privacy.retention.retired"
 
-# Operational workflow introduced after the removed descriptive registry. Legacy codes stay intact.
+# Former in-app workflow (ADR-072), retired by ADR-114/ADR-115. Codes and events stay intact as
+# history; descriptions are past tense so none reads as an operation COMPASS still offers.
 RETENTION_RULE_CREATED = "privacy.retention.rule.created"
 RETENTION_RULE_UPDATED = "privacy.retention.rule.updated"
 RETENTION_RULE_ACTIVATED = "privacy.retention.rule.activated"
@@ -142,7 +143,7 @@ RETENTION_PRESENTATIONS = {
     ),
     RETENTION_RULE_ACTIVATED: (
         "Retention rule activated",
-        "An approved operational retention rule was activated.",
+        "An operational retention rule was activated.",
         "privacy.retention.rule",
     ),
     RETENTION_RULE_RETIRED: (
@@ -152,12 +153,12 @@ RETENTION_PRESENTATIONS = {
     ),
     RETENTION_HOLD_PLACED: (
         "Disposition hold placed",
-        "A hold prevents disposition of a reviewed case.",
+        "A hold was placed on a disposition case.",
         "privacy.disposition.case",
     ),
     RETENTION_HOLD_RELEASED: (
         "Disposition hold released",
-        "A hold was released. Disposition requires a new approval.",
+        "A hold on a disposition case was released.",
         "privacy.disposition.case",
     ),
     DISPOSITION_APPROVED: (
@@ -177,7 +178,7 @@ RETENTION_PRESENTATIONS = {
     ),
     DISPOSITION_FAILED: (
         "Disposition unresolved",
-        "Disposition requires retry or reconciliation.",
+        "Disposition did not complete and was left unresolved.",
         "privacy.disposition.case",
     ),
     DISPOSITION_RETRY_AUTHORIZED: (

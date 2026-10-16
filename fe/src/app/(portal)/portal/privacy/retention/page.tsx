@@ -1,3 +1,9 @@
-import { RetentionPage } from "@/features/privacy-governance/retention/retention-page";
+import type { Metadata } from "next";
 
-export default function Page() { return <RetentionPage />; }
+import { RetentionPoliciesPage } from "@/features/privacy-governance/retention/retention-policies-page";
+
+export const metadata: Metadata = { title: "Retention Policies" };
+
+export default function Page() {
+  return <RetentionPoliciesPage />;
+}

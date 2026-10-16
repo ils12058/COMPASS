@@ -8,6 +8,7 @@
   ADR-011 append-only audit, ADR-025 human-authored shared summaries, ADR-091 contextual Help
 - Superseded in part by: [ADR-114](ADR-114-decommission-in-app-disposition.md) ("Versioned retention
   and verified disposition" only; consent, custody, provider cleanup and assigned access remain in force)
+  and [ADR-115](ADR-115-code-owned-retention-oversight.md) (retention routes, capabilities and UI retired)
 
 ## Authority and version boundary
 

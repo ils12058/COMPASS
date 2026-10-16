@@ -107,7 +107,7 @@ function dialogFor(action: StudentAction, isV2: boolean): { title: string; confi
       body: (
         <>
           <p>This withdraws your permission for the rest of this session. Recording or transcription that’s running will be asked to stop.</p>
-          <p>Files already created aren’t deleted right away; institutional retention rules and holds govern them. Counseling continues.</p>
+          <p>Withdrawing doesn’t delete files already created. They remain subject to the University’s records and privacy requirements, and copies already downloaded can’t be recalled. Counseling continues.</p>
         </>
       ),
     };

@@ -1,17 +1,16 @@
-"""Retired in-app retention operations and read helpers for the legacy disposition ledger.
+"""Retired in-app retention operations for the legacy disposition ledger.
 
 COMPASS no longer manages retention rules, places holds, approves disposition or executes it
-(ADR-114). Every mutation below refuses unconditionally, before any lock, write, provider call,
-audit event or task dispatch, so no capability grant or override can make one succeed. The
-legacy rule, case and hold tables stay intact and readable as historical evidence.
+(ADR-114). Their routes are removed (ADR-115); these services remain as a fail-closed fallback
+until PG-1A PR 3. Every one refuses unconditionally, before any lock, write, provider call, audit
+event or task dispatch, so no capability grant or override can make one succeed. The legacy rule,
+case and hold tables stay intact as internal historical evidence.
 """
 
 from compass.common.errors import APIError
 
 from .retention_models import (
     DispositionAction,
-    DispositionCase,
-    OperationalRetentionRule,
     RetentionCategory,
     RetentionTrigger,
 )
@@ -50,20 +49,6 @@ SUPPORTED_CONTRACTS.update(
 
 def decommissioned():
     raise APIError(409, DECOMMISSIONED_CODE, DECOMMISSIONED_MESSAGE)
-
-
-def get_rule(rule_id):
-    item = OperationalRetentionRule.objects.filter(pk=rule_id).first()
-    if item is None:
-        raise APIError(404, "retention_rule_not_found", "Retention rule not found.")
-    return item
-
-
-def get_case(case_id):
-    item = DispositionCase.objects.filter(pk=case_id).first()
-    if item is None:
-        raise APIError(404, "disposition_case_not_found", "Disposition case not found.")
-    return item
 
 
 def create_rule(*, actor, values, context):

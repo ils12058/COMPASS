@@ -284,7 +284,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         ),
     ),
     "privacy-governance": (
-        "Privacy notices, acknowledgments, release audit, and operational retention.",
+        "Privacy notices, acknowledgments, release audit, and retention oversight.",
         (
             "test_privacy_governance.py",
             "test_privacy_governance_contract.py",
@@ -294,6 +294,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_privacy_release_audit.py",
             "test_privacy_activity.py",
             "test_operational_retention.py",
+            "test_retention_policy_register.py",
         ),
     ),
     "documents": (

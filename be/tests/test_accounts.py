@@ -152,7 +152,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
     assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
     assert RoleCapability.objects.count() == 93
-    assert DesignationCapability.objects.count() == 22
+    assert DesignationCapability.objects.count() == 20
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -163,9 +163,9 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 79
+    assert Capability.objects.count() == 78
     assert RoleCapability.objects.count() == 93
-    assert DesignationCapability.objects.count() == 22
+    assert DesignationCapability.objects.count() == 20
 
 
 @pytest.mark.django_db
@@ -175,6 +175,8 @@ def test_policy_sync_removes_all_retired_capability_state():
         "institutional_forms.manage",
         "document_branding.view",
         "document_branding.manage",
+        "privacy_governance.retention.manage",
+        "privacy_governance.retention.approve",
     )
     assert set(retired_codes).isdisjoint(CAPABILITY_CODES)
 
@@ -200,10 +202,10 @@ def test_policy_sync_removes_all_retired_capability_state():
     assert not RoleCapability.objects.filter(capability__code__in=retired_codes).exists()
     assert not DesignationCapability.objects.filter(capability__code__in=retired_codes).exists()
     assert not UserCapabilityOverride.objects.filter(capability__code__in=retired_codes).exists()
-    assert "role grants deleted=3" in output.getvalue()
-    assert "designation grants deleted=3" in output.getvalue()
-    assert "overrides deleted=3" in output.getvalue()
-    assert "capabilities deleted=3" in output.getvalue()
+    assert "role grants deleted=5" in output.getvalue()
+    assert "designation grants deleted=5" in output.getvalue()
+    assert "overrides deleted=5" in output.getvalue()
+    assert "capabilities deleted=5" in output.getvalue()
 
 
 @pytest.mark.django_db
@@ -602,8 +604,6 @@ def test_institutional_officer_is_neutral_and_dpo_adds_only_privacy_capabilities
             "privacy_governance.activity.export",
             "privacy_governance.manage",
             "privacy_governance.retention.view",
-            "privacy_governance.retention.manage",
-            "privacy_governance.retention.approve",
         }
     )
     assert not officer.has_capability("accounts.manage")

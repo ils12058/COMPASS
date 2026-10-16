@@ -30,7 +30,7 @@ const staff = user("GUIDANCE_SERVICES_STAFF", ["exit_interviews.manage_opportuni
 const counselor = user("COUNSELOR", [...staff.capabilities.filter((code) => code !== "exit_interviews.manage_opportunities"), "academic_years.view", "institutional_forms.view", "availability.manage_self", "inventory.view", "inventory.reopen", "counseling.view_assigned", "counseling.manage_assigned", "routine_interviews.view_assigned", "reports.view", "good_moral.view", "good_moral.manage", "good_moral.issue"]);
 const head = { ...counselor, designations: ["HEAD_GUIDANCE_COUNSELOR"], capabilities: [...counselor.capabilities, "exit_interviews.manage_opportunities", "organization.manage", "services.manage", "availability.manage", "academic_years.manage", "exit_interviews.view", "feedback.view_customer_feedback", "feedback.view_csm", "graduate_tracer.view"] };
 const it = user("IT_ADMIN", ["accounts.view", "accounts.manage", "platform_operations.view", "platform_operations.manage", "organization.structure.view", "organization.manage", "services.catalog.view", "services.manage", "availability.view", "availability.manage"]);
-const dpo = user("INSTITUTIONAL_OFFICER", ["privacy_governance.view", "privacy_governance.manage", "privacy_governance.retention.view", "privacy_governance.retention.manage", "privacy_governance.retention.approve", "privacy_governance.activity.export"], { designations: ["DPO"] });
+const dpo = user("INSTITUTIONAL_OFFICER", ["privacy_governance.view", "privacy_governance.manage", "privacy_governance.retention.view", "privacy_governance.activity.export"], { designations: ["DPO"] });
 const hrefs = (account) => commands.portalCommandDestinations(account).map((item) => item.href);
 
 for (const [name, account] of Object.entries({ student, staff, counselor, head, it, dpo })) {
@@ -108,7 +108,10 @@ test("DPO and Platform destinations follow effective capabilities, not role/desi
   const retentionReader = user("INSTITUTIONAL_OFFICER", ["privacy_governance.retention.view"]);
   assert.ok(hrefs(retentionReader).includes("/portal/privacy/retention"));
   assert.ok(!hrefs(retentionReader).includes("/portal/privacy/notices"));
-  assert.ok(!hrefs(retentionReader).includes("/portal/privacy/retention/rules/new"));
+  for (const account of [dpo, retentionReader]) {
+    const retention = commands.portalCommandDestinations(account).filter((item) => item.href.startsWith("/portal/privacy/retention"));
+    assert.deepEqual(retention.map((item) => [item.href, item.label]), [["/portal/privacy/retention", "Retention Policies"]]);
+  }
   for (const slug of ["health", "maintenance", "email-delivery", "environment", "activity"]) assert.ok(hrefs(it).includes(`/portal/platform/${slug}`));
   assert.ok(!hrefs({ ...it, capabilities: it.capabilities.filter((value) => value !== "platform_operations.view") }).some((path) => path.startsWith("/portal/platform")));
 });
@@ -118,7 +121,6 @@ test("deep actions disappear when their actual manage capability is removed", ()
   for (const path of ["/portal/referrals/new", "/portal/call-slips/new", "/portal/resources/new", "/portal/announcements/new", "/portal/services/new"]) assert.ok(!hrefs(readonly).includes(path));
   const privacyReader = { ...dpo, capabilities: dpo.capabilities.filter((value) => !value.endsWith(".manage")) };
   assert.ok(!hrefs(privacyReader).includes("/portal/privacy/notices/new"));
-  assert.ok(!hrefs(privacyReader).includes("/portal/privacy/retention/rules/new"));
 });
 
 const all = commands.portalCommandDestinations({ ...head, capabilities: [...new Set([...student.capabilities, ...head.capabilities, ...it.capabilities, ...dpo.capabilities])] });

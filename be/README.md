@@ -311,7 +311,7 @@ overrides require a non-empty reason and optional future expiry.
 
 Privacy Governance is intentionally limited to implemented COMPASS system controls: versioned
 Privacy Notices, exact-revision acknowledgment, privacy-sensitive release auditing, curated
-Privacy & Security Activity, and the read-only history of the retired in-app disposition engine.
+Privacy & Security Activity, and read-only retention policy oversight.
 Processing Activity,
 Privacy Review/PIA, Privacy Incident, and the descriptive Retention Policy registry are not live
 COMPASS features (ADR-065, ADR-069). The removal migrations fail closed when obsolete tables
@@ -335,8 +335,17 @@ cleanup of the provider copy after verified private storage is unchanged.
 Decommissioning does not settle retention periods or disposal obligations. Until the University
 adopts them, identifiable records and stored media are retained. Before deploying, operators run
 `python manage.py retention_decommission_status` and the broker, worker and build checks in the
-[retention runbook](docs/retention-disposition-runbook.md). A code-owned, read-only retention policy
-register follows in PG-1A PR 2.
+[retention runbook](docs/retention-disposition-runbook.md).
+
+Retention policies are code-owned and read-only
+([ADR-115](docs/decisions/ADR-115-code-owned-retention-oversight.md)):
+- `compass/privacy_governance/retention_policy_register.py` lists each category with its adoption
+  status. Every entry is `NOT_ADOPTED`, with no period, reference or date. An entry changes only
+  through an authorized institutional policy source and a reviewed code change.
+- `GET /api/v1/privacy/retention/policies` needs `privacy_governance.retention.view`. The register
+  enforces nothing, and the legacy rule and case routes are removed.
+- `privacy_governance.retention.manage` and `.approve` are retired. `sync_identity_policy` deletes
+  their persisted grants, overrides and rows.
 
 ## Confidential-content keyrings
 

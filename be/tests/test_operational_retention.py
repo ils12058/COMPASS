@@ -20,7 +20,6 @@ from django.test import override_settings
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
-from compass.accounts.models import Capability, UserCapabilityOverride
 from compass.accounts.services import effective_capabilities
 from compass.audit import actions
 from compass.audit.context import AuditContext
@@ -28,7 +27,6 @@ from compass.audit.models import AuditEvent
 from compass.audit.services import record_event
 from compass.authentication.models import TOTPFactor
 from compass.common.errors import APIError
-from compass.common.institutional_time import institution_today
 from compass.common.json_logging import JsonFormatter
 from compass.ecounseling.media import process_media_webhook_event
 from compass.graduate_tracer.disposition import ANALYTICAL_FIELDS, verify_anonymized
@@ -67,14 +65,14 @@ from tests.test_privacy_governance import (
     make_dpo,
     make_head,
     make_user,
-    patch_json,
     post_json,
     sync_policy,
 )
 
 pytestmark = pytest.mark.django_db
 ROOT = "/api/v1/privacy/retention"
-CAPS = {f"privacy_governance.retention.{suffix}" for suffix in ("view", "manage", "approve")}
+CAPS = {"privacy_governance.retention.view"}
+RETIRED_CAPS = {"privacy_governance.retention.manage", "privacy_governance.retention.approve"}
 TOMBSTONES = (discover_retention, execute_disposition, recover_disposition)
 
 
@@ -82,20 +80,6 @@ TOMBSTONES = (discover_retention, execute_disposition, recover_disposition)
 def dpo():
     sync_policy()
     return make_dpo()
-
-
-def rule_values(category="GRADUATE_TRACER"):
-    trigger, action = retention.SUPPORTED[category]
-    return {
-        "code": "SYNTHETIC-TEST",
-        "label": "Synthetic test rule",
-        "category": category,
-        "trigger": trigger,
-        "action": action,
-        "duration_days": 30,
-        "policy_reference": "TEST FIXTURE ONLY - not institutional policy",
-        "effective_on": institution_today(),
-    }
 
 
 def tracer(email="graduate@example.edu", **values):
@@ -127,15 +111,6 @@ def stepped_up(user):
         user=user, defaults={"encrypted_secret": "test-only", "confirmed_at": timezone.now()}
     )
     return auth_client(user, recent_mfa=True)
-
-
-def grant_overrides(user, effect="GRANT"):
-    for code in CAPS:
-        UserCapabilityOverride.objects.update_or_create(
-            user=user,
-            capability=Capability.objects.get(code=code),
-            defaults={"effect": effect, "reason": "Synthetic exceptional authority"},
-        )
 
 
 def ledger_snapshot():
@@ -289,54 +264,8 @@ def test_tombstone_diagnostic_is_minimized():
 
 
 # --- Mutation refusal ---------------------------------------------------------------------------
-
-
-def mutation_requests(rule, case):
-    update = {k: v for k, v in rule_values().items() if k != "code"}
-    revision = {"expected_revision": 1}
-    return [
-        ("POST", f"{ROOT}/rules", rule_values()),
-        ("PATCH", f"{ROOT}/rules/{rule.pk}", update | revision),
-        ("POST", f"{ROOT}/rules/{rule.pk}/activate", revision),
-        ("POST", f"{ROOT}/rules/{rule.pk}/retire", revision),
-        ("POST", f"{ROOT}/cases/{case.pk}/hold", revision | {"reason": "Synthetic hold"}),
-        ("POST", f"{ROOT}/cases/{case.pk}/release-hold", revision),
-        ("POST", f"{ROOT}/cases/{case.pk}/approve", revision),
-        ("POST", f"{ROOT}/cases/{case.pk}/retry", revision),
-    ]
-
-
-def send(client, method, path, payload):
-    return (post_json if method == "POST" else patch_json)(client, path, payload)
-
-
-@pytest.mark.parametrize("holder", ["dpo", "override"])
-def test_every_retention_mutation_route_is_refused_for_any_authority(
-    dpo, holder, django_capture_on_commit_callbacks
-):
-    rule, cases = legacy_world(dpo)
-    actor = dpo
-    if holder == "override":
-        actor = make_user("exceptional-authority@example.edu")
-        grant_overrides(actor)
-        assert CAPS <= effective_capabilities(actor)
-    client = stepped_up(actor)
-    before = ledger_snapshot()
-    targets = [cases["READY"], cases["ON_HOLD"], cases["FAILED"], cases["QUEUED"]]
-    with (
-        patch("celery.app.task.Task.apply_async") as dispatch,
-        django_capture_on_commit_callbacks(execute=True) as callbacks,
-    ):
-        for case in targets:
-            for method, path, payload in mutation_requests(rule, case):
-                response = send(client, method, path, payload)
-                assert response.status_code == 409, (path, response.content)
-                error = response.json()["error"]
-                assert error["code"] == "retention_decommissioned"
-                assert error["message"] == retention.DECOMMISSIONED_MESSAGE
-    dispatch.assert_not_called()
-    assert callbacks == []
-    assert ledger_snapshot() == before
+# The retention routes are removed (ADR-115, covered by tests/test_retention_policy_register.py).
+# The services stay as a fail-closed fallback until PG-1A PR 3.
 
 
 def test_service_refusal_precedes_every_query_lock_and_write():
@@ -383,34 +312,10 @@ def test_service_refusal_precedes_every_query_lock_and_write():
     assert len(queries) == 0
 
 
-@pytest.mark.parametrize(
-    "role", ["INSTITUTIONAL_OFFICER", "IT_ADMIN", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT"]
-)
-def test_existing_authorization_boundary_still_applies_first(dpo, role):
-    other = make_user("other@example.edu", role=role)
-    assert CAPS.isdisjoint(effective_capabilities(other))
-    client = stepped_up(other)
-    assert client.get(f"{ROOT}/summary").status_code == 403
-    assert post_json(client, f"{ROOT}/rules", rule_values()).status_code == 403
-
-
-def test_step_up_boundary_is_unchanged_before_refusal(dpo):
-    rule, cases = legacy_world(dpo)
-    client = auth_client(dpo)
-    for path in (f"{ROOT}/rules/{rule.pk}/activate", f"{ROOT}/cases/{cases['READY'].pk}/approve"):
-        response = post_json(client, path, {"expected_revision": 1})
-        assert response.status_code == 403
-        assert response.json()["error"]["code"] == "mfa_setup_required"
-    # Drafting routes never required step-up; they now refuse instead of creating a draft.
-    response = post_json(client, f"{ROOT}/rules", rule_values())
-    assert response.status_code == 409
-    assert response.json()["error"]["code"] == "retention_decommissioned"
-    assert not OperationalRetentionRule.objects.filter(code="SYNTHETIC-TEST").exists()
-
-
-def test_dpo_capabilities_unchanged_and_without_confidential_content(dpo):
+def test_dpo_keeps_only_retention_view_and_no_confidential_content(dpo):
     assert CAPS <= effective_capabilities(dpo)
-    assert CAPS.isdisjoint(effective_capabilities(make_head()))
+    assert RETIRED_CAPS.isdisjoint(effective_capabilities(dpo))
+    assert (CAPS | RETIRED_CAPS).isdisjoint(effective_capabilities(make_head()))
     assert not any(
         code.startswith(
             (
@@ -431,29 +336,29 @@ def test_dpo_capabilities_unchanged_and_without_confidential_content(dpo):
 # --- Historical preservation --------------------------------------------------------------------
 
 
-def test_read_endpoints_serve_the_historical_ledger_without_source_identifiers(dpo):
+def test_historical_ledger_stays_stored_but_is_no_longer_served(dpo):
     rule, cases = legacy_world(dpo)
     before = ledger_snapshot()
     client = auth_client(dpo)
-    summary = client.get(f"{ROOT}/summary").json()
-    assert summary["needs_review"] == 1 and summary["on_hold"] == 1
-    assert summary["processing"] == 3 and summary["recently_completed"] == 1
-    assert client.get(f"{ROOT}/categories").status_code == 200
-    rules = client.get(f"{ROOT}/rules").json()["items"]
-    assert {item["status"] for item in rules} == {"ACTIVE", "RETIRED"}
-    assert client.get(f"{ROOT}/rules/{rule.pk}").json()["duration_days"] == 30
-    listed = client.get(f"{ROOT}/cases?page_size=50").json()["items"]
-    assert len(listed) == len(cases)
-    held = client.get(f"{ROOT}/cases/{cases['ON_HOLD'].pk}").json()
-    assert held["holds"][0]["reason"] == "Synthetic administrative hold"
-    detail = client.get(f"{ROOT}/cases/{cases['RECONCILIATION_REQUIRED'].pk}").json()
-    assert detail["state"] == "RECONCILIATION_REQUIRED"
-    assert detail["blocker"] == "PROVIDER_UNVERIFIED"
-    serialized = json.dumps(listed)
+    for path in (
+        f"{ROOT}/summary",
+        f"{ROOT}/rules",
+        f"{ROOT}/rules/{rule.pk}",
+        f"{ROOT}/cases",
+        f"{ROOT}/cases/{cases['ON_HOLD'].pk}",
+    ):
+        assert client.get(path).status_code == 404
+    served = json.dumps(client.get(f"{ROOT}/policies").json())
     for case in cases.values():
-        assert str(case.source_id) not in serialized
-    assert "source_id" not in detail
+        assert str(case.source_id) not in served and str(case.pk) not in served
     assert ledger_snapshot() == before
+    assert DispositionCase.objects.count() == len(cases)
+    assert DispositionHold.objects.filter(released_at__isnull=True).count() == 1
+    held = DispositionCase.objects.get(pk=cases["ON_HOLD"].pk)
+    assert held.holds.get().reason == "Synthetic administrative hold"
+    assert DispositionCase.objects.get(pk=cases["RECONCILIATION_REQUIRED"].pk).blocker == (
+        "PROVIDER_UNVERIFIED"
+    )
 
 
 def test_historical_anonymized_contribution_keeps_its_integrity_and_exclusions(dpo):
@@ -479,6 +384,7 @@ def test_historical_anonymized_contribution_keeps_its_integrity_and_exclusions(d
     analytical = {field: getattr(source, field) for field in ANALYTICAL_FIELDS}
     rule = legacy_rule(actor=dpo)
     case = legacy_case(rule=rule, source=source, state="COMPLETED")
+    source_id = source.pk
     anonymous = historical_anonymized_contribution(source)
 
     for task in TOMBSTONES:
@@ -504,10 +410,11 @@ def test_historical_anonymized_contribution_keeps_its_integrity_and_exclusions(d
         post_json(client, "/api/v1/graduate-tracer/me", {}),
     ):
         assert response.json()["error"]["code"] == "graduate_tracer_disposed"
-    safe = auth_client(dpo).get(f"{ROOT}/cases/{case.pk}").json()
-    assert safe["state"] == "COMPLETED" and safe["affected_count"] == 1
-    assert str(anonymous.pk) not in json.dumps(safe)
-    assert str(source.pk) not in json.dumps(safe)
+    case.refresh_from_db()
+    assert case.state == "COMPLETED" and case.source_id == source_id
+    assert auth_client(dpo).get(f"{ROOT}/cases/{case.pk}").status_code == 404
+    served = json.dumps(auth_client(dpo).get(f"{ROOT}/policies").json())
+    assert str(anonymous.pk) not in served and str(source_id) not in served
     head = auth_client(make_head())
     assert head.get(f"/api/v1/graduate-tracer/responses/{anonymous.pk}").status_code == 404
     assert head.get("/api/v1/graduate-tracer/responses").json()["items"] == []
@@ -587,8 +494,8 @@ def test_historical_audit_trail_is_unchanged_and_still_presented(dpo):
         )
     before = ledger_snapshot()
     client = stepped_up(dpo)
-    for method, path, payload in mutation_requests(rule, cases["QUEUED"]):
-        assert send(client, method, path, payload).status_code == 409
+    for path in (f"{ROOT}/rules/{rule.pk}/activate", f"{ROOT}/cases/{cases['QUEUED'].pk}/approve"):
+        assert post_json(client, path, {"expected_revision": 1}).status_code == 404
     for task in TOMBSTONES:
         task(str(cases["QUEUED"].pk))
     assert ledger_snapshot() == before

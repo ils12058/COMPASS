@@ -108,18 +108,11 @@ CAPABILITY_DEFINITIONS = (
     ),
     CapabilityDefinition(
         code="privacy_governance.retention.view",
-        name="View retention and disposition",
-        description="View minimized retention rules, cases, holds, and disposition outcomes.",
-    ),
-    CapabilityDefinition(
-        code="privacy_governance.retention.manage",
-        name="Manage retention rules and holds",
-        description=("Manage operational retention rules and holds without domain access."),
-    ),
-    CapabilityDefinition(
-        code="privacy_governance.retention.approve",
-        name="Approve disposition",
-        description="Authorize a reviewed frozen disposition case with recent MFA.",
+        name="View retention policy oversight",
+        description=(
+            "View the code-owned retention policy register. Grants no rule, hold, "
+            "approval, or disposition authority."
+        ),
     ),
     CapabilityDefinition(
         code="accounts.view",
@@ -668,8 +661,6 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
         {
             "privacy_governance.activity.export",
             "privacy_governance.retention.view",
-            "privacy_governance.retention.manage",
-            "privacy_governance.retention.approve",
             "privacy_governance.view",
             "privacy_governance.manage",
         }
@@ -693,8 +684,6 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "guidance_messages.manage": frozenset({"guidance_messages.view"}),
     "guidance_messages.templates.manage": frozenset({"guidance_messages.manage"}),
     "privacy_governance.activity.export": frozenset({"privacy_governance.view"}),
-    "privacy_governance.retention.manage": frozenset({"privacy_governance.retention.view"}),
-    "privacy_governance.retention.approve": frozenset({"privacy_governance.retention.view"}),
     "routine_interviews.manage_self": frozenset({"routine_interviews.view_self"}),
     "routine_interviews.manage_assigned": frozenset({"routine_interviews.view_assigned"}),
     "exit_interviews.manage_self": frozenset({"exit_interviews.view_self"}),
