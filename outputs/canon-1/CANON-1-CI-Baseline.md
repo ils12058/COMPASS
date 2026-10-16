@@ -27,7 +27,10 @@ on model edits (including retention_models, Graduate Tracer participation and mo
 patterns recursively; verify split parts cover each collected node once. Existing settings,
 migration, unrecognized path, always-run safety and transitive helper selection remain intact.
 Validation workflows also cover the future `canon/compass-clean-baseline` target. Contract-sync
-redispatch preserves the actual PR base rather than assuming staging. Deployment remains manual
+redispatch preserves the actual PR base rather than assuming staging and explicitly runs frontend
+validation for the synchronized contract head. Frontend concurrency cancels superseded runs.
+The auto-sync dispatch path is guarded by self-tests; it was not triggered because this contract
+already matches the generator. Deployment remains manual
 and its exact staging-revision guard is unchanged.
 All 167 current files are planned exactly once across six full shards, including every configured
 split part. New unit tests prove the previously missing discovery/selection cases.

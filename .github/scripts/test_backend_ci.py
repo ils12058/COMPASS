@@ -181,6 +181,7 @@ class SelectionTests(unittest.TestCase):
             self.assertIn("branches: [staging, canon/compass-clean-baseline]", workflow)
         targeted = (backend_ci.ROOT / ".github/workflows/backend-targeted.yml").read_text()
         self.assertIn('base_ref=$PR_BASE_REF', targeted)
+        self.assertIn('gh workflow run frontend-targeted.yml --ref "$PR_HEAD_REF"', targeted)
         deploy = (backend_ci.ROOT / ".github/workflows/deploy-staging.yml").read_text()
         self.assertIn("  workflow_dispatch:", deploy)
         self.assertNotIn("\n  push:", deploy)

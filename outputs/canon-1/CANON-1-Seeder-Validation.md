@@ -14,7 +14,7 @@ The code retains explicit environment allowlisting, live-staging opt-in, configu
 password handling, synthetic identities/domains/narratives, concurrent-run exclusion and
 idempotency guards. `demo-seed-v1` remains an intentional additive-upgrade namespace. Removal of
 old-upgrade behavior belongs on the reset branch, after a successful current-contract seed.
-No password/key was printed or rotated. No actual provider media or email delivery was created.
+No runtime credentials or keyrings were read, printed or rotated. No actual provider media or email delivery was created.
 
 ## Confirmed blocker
 

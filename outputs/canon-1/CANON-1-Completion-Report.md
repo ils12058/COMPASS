@@ -19,7 +19,8 @@ Branch: codex/canon-1a-ci-coverage. Managed worktree:
 - Adapted three feature coverage tests to the canonical discovery runner while preserving their
   engine, suite and route-compilation requirements; removed a workstation-specific evidence path.
 - Enabled CI on the planned canon/compass-clean-baseline target and preserved its actual diff
-  base after contract-sync dispatch. Deployment remains manual with exact-revision gating.
+  base after contract-sync dispatch. Both backend and frontend validate an auto-synced contract
+  head; superseded frontend runs are cancelled. Deployment remains manual with exact-revision gating.
 - Replaced stale duration metadata with actual observations for all 167 files.
 - Corrected the recovered audit's unsupported counts/results; retained a repository-wide candidate
   matrix, every numbered migration dependency/custom-operation inventory, existing schema,
@@ -67,12 +68,13 @@ comparison and tested reset-runbook deliverables are intentionally not fabricate
 
 ## Live safety and readiness
 
-No merge, deployment, database reset/drop, Redis purge, object-storage deletion, key rotation or
-live infrastructure change occurred. Public staging still reports build
+No merge, deployment, live database reset/drop, live Redis purge, object-storage deletion, key
+rotation or live infrastructure change occurred. Public staging still reports build
 0512e9ec3533f59b9a90038a50b2d5b122b2e5ee. Worker/broker/provider/storage readiness is unverified.
 Transition tombstones, ledgers, media resurrection fences, read-only DPO oversight and capability
 boundaries remain intact. Original working checkouts were preserved; the main checkout is clean.
-Owned temporary local servers and services were stopped without deleting their databases.
+Owned temporary local servers and services were stopped; disposable cluster files remain.
+Test databases use the ordinary pytest-django creation/cleanup lifecycle.
 
 Recommendation: review the foundational CI repair, then fix the recorded regressions from the
 actual updated base. Do not promote a canonical reset release or execute a live reset yet.
