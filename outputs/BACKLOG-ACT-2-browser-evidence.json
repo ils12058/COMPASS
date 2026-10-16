@@ -1,0 +1,118 @@
+{
+  "domain-activity-chromium": {
+    "engine": "chromium",
+    "results": [
+      {
+        "name": "mixed-history-pagination-keyboard-320",
+        "passed": true
+      },
+      {
+        "name": "mixed-history-pagination-keyboard-1440",
+        "passed": true
+      },
+      {
+        "name": "counselor-safe-projection",
+        "passed": true
+      },
+      {
+        "name": "head-safe-projection",
+        "passed": true
+      },
+      {
+        "name": "gss-safe-projection",
+        "passed": true
+      },
+      {
+        "name": "it-safe-projection",
+        "passed": true
+      },
+      {
+        "name": "dpo-safe-projection",
+        "passed": true
+      },
+      {
+        "name": "empty-history",
+        "passed": true
+      },
+      {
+        "name": "backend-unavailable-retry",
+        "passed": true
+      },
+      {
+        "name": "loading-is-not-empty",
+        "passed": true
+      }
+    ]
+  },
+  "domain-activity-webkit": {
+    "engine": "webkit",
+    "results": [
+      {
+        "name": "mixed-history-pagination-keyboard-320",
+        "passed": true
+      },
+      {
+        "name": "mixed-history-pagination-keyboard-1440",
+        "passed": true
+      },
+      {
+        "name": "counselor-safe-projection",
+        "passed": true
+      },
+      {
+        "name": "head-safe-projection",
+        "passed": true
+      },
+      {
+        "name": "gss-safe-projection",
+        "passed": true
+      },
+      {
+        "name": "it-safe-projection",
+        "passed": true
+      },
+      {
+        "name": "dpo-safe-projection",
+        "passed": true
+      },
+      {
+        "name": "empty-history",
+        "passed": true
+      },
+      {
+        "name": "backend-unavailable-retry",
+        "passed": true
+      },
+      {
+        "name": "loading-is-not-empty",
+        "passed": true
+      }
+    ]
+  },
+  "security-activity-chromium": {
+    "engine": "chromium",
+    "results": [
+      {
+        "name": "security-pagination-and-my-activity-320",
+        "passed": true
+      },
+      {
+        "name": "security-pagination-and-my-activity-1440",
+        "passed": true
+      }
+    ]
+  },
+  "security-activity-webkit": {
+    "engine": "webkit",
+    "results": [
+      {
+        "name": "security-pagination-and-my-activity-320",
+        "passed": true
+      },
+      {
+        "name": "security-pagination-and-my-activity-1440",
+        "passed": true
+      }
+    ]
+  }
+}

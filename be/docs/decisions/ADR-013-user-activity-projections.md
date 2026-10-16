@@ -36,3 +36,28 @@ materialization job, no Redis feed cache, and no AuditEvent mutation for read st
 are self-only and do not require a capability because viewing one's own safe account activity is an
 inherent authenticated-account ability. A general Audit Viewer, audit search/export, notifications,
 read/unread state, domain history, and future account-management projections remain deferred.
+
+## BACKLOG-ACT-2 extension (2026-10-16)
+
+My Activity now admits the explicit domain allowlist in `activity/domains.py`. Domain policies
+separate Student self actions, effects on a verified owning Student, and authorized staff self
+actions. They do not overload the account presenter's `actor_scope`. The original actor remains
+in the Audit Trail; static descriptions distinguish "You submitted" from "Your form was returned".
+
+Typed source-model subqueries enforce canonical ownership or current domain read scope before
+the shared event query is ordered and paginated. Referral child events join their scoped parent.
+Only successful USER events qualify. Missing/deleted sources, malformed IDs, mismatched targets,
+revoked read authority and lost scope fail closed. No source content is fetched or decrypted.
+The source authorization helpers remain owned by their domains; My Activity adds no access grant.
+
+Students see eligible effects only for records their existing self-service read capability
+allows. Staff see only their own eligible actions with current role, capability and source scope.
+Head status supplies no organization-wide actor selector. IT Admin and DPO stay account-only.
+Routine professional actions, encounter/evaluation events and Call Slip interview completion are
+excluded, as are Student referral events. The complete evidence and deferrals are recorded in
+`outputs/BACKLOG-ACT-2-Implementation-Report.md` at the repository root.
+
+Security Activity uses its own explicit action allowlist and never consults domain policies;
+session creation remains excluded. Supervised Staff, Privacy and Platform projections retain their
+separate policies. The five-field response, default/max page sizes, deterministic ordering, Audit
+Trail producers and persistence schema are unchanged.
