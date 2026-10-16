@@ -648,3 +648,108 @@ def test_status_runs_as_a_database_read_only_transaction_when_outermost():
     statements = [sql for sql in statements if sql != "BEGIN"]
     assert statements[0] == "SET TRANSACTION READ ONLY"
     assert all(sql.startswith(("SELECT", "SET TRANSACTION", "COMMIT")) for sql in statements)
+
+
+def test_no_production_module_dispatches_retired_tasks_or_writes_the_legacy_ledger():
+    import ast
+    from pathlib import Path
+
+    compass_dir = Path(__file__).resolve().parents[1] / "compass"
+    ledger_models = {"OperationalRetentionRule", "DispositionCase", "DispositionHold"}
+    task_symbols = {"discover_retention", "execute_disposition", "recover_disposition"}
+    write_methods = {
+        "create",
+        "get_or_create",
+        "update_or_create",
+        "bulk_create",
+        "bulk_update",
+        "update",
+        "delete",
+        "save",
+    }
+    ledger_importers = set()
+    task_importers = set()
+
+    for path in compass_dir.rglob("*.py"):
+        if "migrations" in path.parts:
+            continue
+        rel = path.relative_to(compass_dir.parent).as_posix()
+        tree = ast.parse(path.read_text())
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                imported = {alias.name for alias in node.names}
+                if imported & ledger_models:
+                    ledger_importers.add(rel)
+                if imported & task_symbols or (
+                    node.module and node.module.endswith("privacy_governance.tasks")
+                ):
+                    task_importers.add(rel)
+            elif isinstance(node, ast.Constant) and isinstance(node.value, str):
+                if node.value in TOMBSTONE_TASK_NAMES:
+                    assert rel == "compass/privacy_governance/tasks.py", rel
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
+                if node.func.attr in ("delay", "apply_async", "send_task"):
+                    target = ast.unparse(node.func.value)
+                    assert not any(sym in target for sym in task_symbols), (rel, target)
+                if node.func.attr in write_methods:
+                    target = ast.unparse(node.func.value)
+                    assert not any(model in target for model in ledger_models), (rel, target)
+
+    assert task_importers == set()
+    assert ledger_importers == {
+        "compass/ecounseling/artifacts.py",
+        "compass/ecounseling/reconciliation.py",
+        "compass/ecounseling/webhooks.py",
+        "compass/privacy_governance/management/commands/retention_decommission_status.py",
+        "compass/privacy_governance/models.py",
+    }
+
+
+def test_completed_disposition_case_fences_restored_capture_against_webhook_and_reconciliation(
+    dpo,
+):
+    from compass.ecounseling.models import (
+        ECounselingCaptureReconciliation,
+        ECounselingMediaArtifact,
+    )
+    from compass.ecounseling.reconciliation import claim_capture, discover_captures
+
+    source, _ = legacy_media_source("RECORDING")
+    now = timezone.now()
+    # Simulate a pre-completion capture row restored from backup (artifact_disposed_at is still
+    # NULL and no local artifact row exists) while the authoritative DispositionCase ledger holds
+    # the COMPLETED disposition record for source_id.
+    source.status = "STOP_REQUESTED"
+    source.ready_at = None
+    source.artifact_disposed_at = None
+    source.media_authorized_at = now - timedelta(minutes=10)
+    source.stop_requested_at = now - timedelta(minutes=5)
+    source.save()
+    rule = legacy_rule(actor=dpo, category="ECOUNSELING_RECORDING")
+    case = legacy_case(rule=rule, source=source, state="COMPLETED")
+
+    process_media_webhook_event(
+        event_type="recording.ready-to-download",
+        event_id="restored-late-ready",
+        event_ts=now.timestamp(),
+        payload={
+            "room_name": source.room.daily_room_name,
+            "recording_id": "artifact-opaque",
+            "instance_id": "instance-opaque",
+        },
+    )
+    source.refresh_from_db()
+    assert source.status == "STOP_REQUESTED"
+    assert source.ready_at is None
+    assert not ECounselingMediaArtifact.objects.filter(capture=source).exists()
+
+    discover_captures(limit=10)
+    recovery = ECounselingCaptureReconciliation.objects.get(capture=source)
+    recovery.next_attempt_at = now - timedelta(seconds=1)
+    recovery.save(update_fields=["next_attempt_at"])
+    assert claim_capture(source.pk) is None
+    recovery.refresh_from_db()
+    assert recovery.state == "SUPERSEDED"
+    assert recovery.outcome_code == "RECONCILIATION_SUPERSEDED"
+    case.refresh_from_db()
+    assert case.state == "COMPLETED" and case.source_id == source.pk
