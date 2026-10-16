@@ -154,6 +154,21 @@ def test_password_login_is_generic_and_stores_only_a_session_digest():
     assert current.status_code == 200
     assert current.json()["session"]["id"] == str(session.pk)
 
+    # BACKLOG-SEC-1: real login retains both audit facts but presents one sign-in.
+    assert (
+        AuditEvent.objects.filter(
+            action="auth.session.created", actor_user=user, target_id=str(session.pk)
+        ).count()
+        == 1
+    )
+    assert AuditEvent.objects.filter(action="auth.login.success", actor_user=user).count() == 1
+    for path in ("/api/v1/me/security-activity", "/api/v1/me/activity"):
+        activity = client.get(path)
+        assert activity.status_code == 200
+        items = activity.json()["items"]
+        assert [item["type"] for item in items] == ["auth.login"]
+        assert items[0]["title"] == "Signed in to COMPASS"
+
     wrong_password = login(client, email="case.user@example.edu", password="wrong-password")
     unknown_email = login(client, email="unknown@example.edu", password="wrong-password")
     assert wrong_password.status_code == unknown_email.status_code == 401

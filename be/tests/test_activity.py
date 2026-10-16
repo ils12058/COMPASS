@@ -216,11 +216,12 @@ def test_security_activity_is_allowlisted_and_excludes_internal_or_unknown_actio
     items = response.json()["items"]
     assert [item["id"] for item in items] == [
         str(login_event.id),
-        str(session_created.id),
         str(trusted_created.id),
         str(failed_event.id),
     ]
-    assert items[2]["title"] == "Trusted browser added"
+    assert items[1]["title"] == "Trusted browser added"
+    assert AuditEvent.objects.filter(pk=session_created.pk, action=AUTH_SESSION_CREATED).exists()
+    assert all(item["type"] != AUTH_SESSION_CREATED for item in items)
     assert "not-visible" not in response.content.decode()
     assert str(other_session.pk) not in response.content.decode()
 
@@ -343,3 +344,64 @@ def test_security_activity_includes_totp_enrollment_and_logout_but_not_account_o
     assert ids == [str(totp_event.id), str(logout_event.id)]
     assert str(invalid_totp_event.id) not in ids
     assert str(account_only.id) not in ids
+
+
+@pytest.mark.django_db
+def test_security_pagination_filters_session_creation_before_page_slots(client):
+    user = make_user(email="security-pagination@example.edu")
+    authenticate_client(client, user)
+    session = create_auth_session(user).session
+    now = timezone.now()
+    visible = []
+    hidden = []
+    # More hidden records than a page, including records before and between visible entries.
+    for index in range(12):
+        hidden.append(
+            record_user_event(
+                user=user,
+                action=AUTH_SESSION_CREATED,
+                target_type="auth.session",
+                target_id=session.pk,
+                occurred_at=now - timedelta(seconds=index * 2),
+            )
+        )
+        if index % 3 == 0:
+            visible.append(
+                record_user_event(
+                    user=user,
+                    action=AUTH_LOGIN_SUCCESS,
+                    target_type="accounts.user",
+                    target_id=user.pk,
+                    occurred_at=now - timedelta(seconds=index * 2 + 1),
+                )
+            )
+    collected = []
+    for page in (1, 2, 3):
+        response = client.get("/api/v1/me/security-activity", {"page": page, "page_size": 2})
+        assert response.status_code == 200
+        body = response.json()
+        assert body["has_next"] is (page == 1)
+        assert len(body["items"]) == (2 if page < 3 else 0)
+        collected.extend(item["id"] for item in body["items"])
+    assert collected == [str(row.pk) for row in visible]
+    assert AuditEvent.objects.filter(pk__in=[row.pk for row in hidden]).count() == 12
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("invalid", ["anonymous", "other_actor", "other_target", "wrong_outcome"])
+def test_failed_sign_in_requires_attributable_actor_target_and_denied_outcome(client, invalid):
+    user = make_user(email="failed-attribution@example.edu")
+    other = make_user(email="failed-other@example.edu")
+    authenticate_client(client, user)
+    record_event(
+        context=(
+            AuditContext.anonymous()
+            if invalid == "anonymous"
+            else AuditContext.user(other if invalid == "other_actor" else user)
+        ),
+        action=AUTH_LOGIN_FAILED,
+        outcome="SUCCESS" if invalid == "wrong_outcome" else "DENIED",
+        target_type="accounts.user",
+        target_id=other.pk if invalid == "other_target" else user.pk,
+    )
+    assert client.get("/api/v1/me/security-activity").json()["items"] == []

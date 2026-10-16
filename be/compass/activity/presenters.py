@@ -33,7 +33,6 @@ from compass.authentication.actions import (
     AUTH_MFA_TOTP_ENROLLED,
     AUTH_PASSWORD_INITIAL_SET,
     AUTH_PASSWORD_RESET,
-    AUTH_SESSION_CREATED,
     AUTH_SESSION_REVOKED,
     AUTH_TRUSTED_SESSION_CREATED,
     AUTH_TRUSTED_SESSION_REVOKED,
@@ -244,7 +243,8 @@ MY_ACTIVITY_PRESENTERS: dict[str, ActivityPresenter] = {
 
 
 # Security Activity is intentionally narrower in meaning but includes selected historical
-# authentication state changes that are useful when reviewing account security.
+# authentication state changes that are useful when reviewing account security. Session creation
+# stays in the Audit Trail; the canonical sign-in already represents it in this feed.
 SECURITY_ACTIVITY_PRESENTERS: dict[str, ActivityPresenter] = {
     action: presenter
     for action, presenter in MY_ACTIVITY_PRESENTERS.items()
@@ -258,12 +258,6 @@ SECURITY_ACTIVITY_PRESENTERS.update(
             description="An unsuccessful sign-in attempt was detected.",
             target_type=ACCOUNT_TARGET,
             visible_outcomes=_DENIED,
-        ),
-        AUTH_SESSION_CREATED: _presenter(
-            item_type="auth.session.created",
-            title="New session created",
-            description="A new COMPASS session was created for your account.",
-            target_type=AUTH_SESSION_TARGET,
         ),
         AUTH_MFA_RECOVERY_CODE_USED: _presenter(
             item_type="auth.mfa.recovery.code.used",
