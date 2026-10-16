@@ -36,7 +36,7 @@ jobs:
       STAGING_FIREWALL_ID: ${{ vars.STAGING_FIREWALL_ID }}
 
     steps:
-      # This workflow may be dispatched from main, but the deployable source of truth is staging.
+      # Dispatch from staging so both the workflow and its source are the reviewed staging revision.
       - name: Checkout staging branch
         uses: actions/checkout@v4
         with:
@@ -60,6 +60,8 @@ jobs:
             "+refs/heads/staging:refs/remotes/origin/staging"
           remote_sha="$(git rev-parse refs/remotes/origin/staging)"
           expected_sha="${EXPECTED_STAGING_SHA,,}"
+          [[ "$GITHUB_REF" == "refs/heads/staging" ]] || { echo "Dispatch this workflow from staging" >&2; exit 1; }
+          [[ "$GITHUB_SHA" == "$remote_sha" ]] || { echo "Workflow revision differs from current staging" >&2; exit 1; }
 
           if [[ "$remote_sha" != "$expected_sha" ]]; then
             echo "origin/staging moved after the requested SHA was chosen" >&2
@@ -72,17 +74,14 @@ jobs:
           deploy_sha="$(git rev-parse HEAD)"
           echo "deploy_sha=$deploy_sha" >> "$GITHUB_OUTPUT"
 
-      # The reset-only canonical baseline (CANON-1C, ADR-116) installs only into an empty database
-      # through a separately reviewed rebuild procedure; this workflow migrates the live database.
-      - name: Refuse the reset-only canonical baseline
-        shell: bash
+      - name: Require canonical source lineage
+        env:
+          DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
         run: |
           set -euo pipefail
-          if compgen -G "be/compass/*/migrations/0001_canonical_baseline.py" > /dev/null; then
-            echo "This revision contains the reset-only canonical migration baseline." >&2
-            echo "It must not be deployed with the ordinary staging workflow." >&2
-            exit 1
-          fi
+          git merge-base --is-ancestor d86ddc08285f16740848dc5880d9d2285e7dbce8 "$DEPLOY_SHA"
+          git diff --exit-code d86ddc08285f16740848dc5880d9d2285e7dbce8 -- 'be/compass/*/migrations/0001_canonical_baseline.py'
+          python3 -m unittest discover -s .github/scripts
 
       # Pull requests run targeted tests; the complete backend suite is the deployment gate.
       - name: Require Backend full regression for this exact revision
@@ -104,7 +103,9 @@ jobs:
           [[ "$DEPLOY_PATH" == "/opt/compass" ]]
           [[ "$STAGING_DEPLOY_USER" == "compass" ]]
           [[ "$STAGING_DEPLOY_PORT" == "22" ]]
-          [[ "$STAGING_FIREWALL_ID" =~ ^[0-9a-f-]{36}$ ]]
+          [[ "$STAGING_FIREWALL_ID" == "3d6403c7-9acc-4faf-b6a4-fa5bb092e108" ]]
+          [[ "$STAGING_DEPLOY_HOST" == "157.245.60.65" ]]
+          [[ "$DO_REGISTRY_NAME" == "compass" && "$DO_REGISTRY_REPOSITORY" == "compass-backend" ]]
 
       - name: Resolve immutable build metadata
         id: build_metadata
@@ -141,25 +142,32 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push immutable staging image
+      - name: Build or reuse immutable staging image
         id: image
         shell: bash
         env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
           DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
           APP_VERSION: ${{ steps.build_metadata.outputs.version }}
           BUILD_TIME: ${{ steps.build_metadata.outputs.build_time }}
         run: |
           set -euo pipefail
           image="registry.digitalocean.com/$DO_REGISTRY_NAME/$DO_REGISTRY_REPOSITORY:$DEPLOY_SHA"
-          docker buildx build \
-            --platform linux/amd64 \
-            --file be/Containerfile \
-            --build-arg "COMPASS_BUILD_ID=$DEPLOY_SHA" \
-            --build-arg "COMPASS_BUILD_TIME=$BUILD_TIME" \
-            --build-arg "COMPASS_VERSION=$APP_VERSION" \
-            --tag "$image" \
-            --push \
-            be
+          # Existing SHA tags are reused, never overwritten by a rerun with another build time.
+          tags="$RUNNER_TEMP/compass-registry-tags.json"
+          doctl registry repository list-tags "$DO_REGISTRY_REPOSITORY" --registry "$DO_REGISTRY_NAME" --output json > "$tags"
+          existing_digest="$(python3 -c 'import json,sys; rows=[r for r in json.load(open(sys.argv[1])) if r["tag"]==sys.argv[2]]; assert len(rows)<=1; print(rows[0]["manifest_digest"] if rows else "")' "$tags" "$DEPLOY_SHA")"
+          if [[ -z "$existing_digest" ]]; then
+            docker buildx build \
+              --platform linux/amd64 \
+              --file be/Containerfile \
+              --build-arg "COMPASS_BUILD_ID=$DEPLOY_SHA" \
+              --build-arg "COMPASS_BUILD_TIME=$BUILD_TIME" \
+              --build-arg "COMPASS_VERSION=$APP_VERSION" \
+              --tag "$image" \
+              --push \
+              be
+          fi
           digest="$(docker buildx imagetools inspect "$image" --format '{{.Manifest.Digest}}')"
           test -n "$digest"
 
@@ -170,11 +178,14 @@ jobs:
           image_created="$(python -c 'import json,sys; print((json.load(open(sys.argv[1])).get("config",{}).get("Labels") or {}).get("org.opencontainers.image.created",""))' "$image_config")"
           [[ "$image_revision" == "$DEPLOY_SHA" ]]
           [[ "$image_version" == "$APP_VERSION" ]]
-          [[ "$image_created" == "$BUILD_TIME" ]]
+          [[ "$image_created" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$ ]]
+          [[ -z "$existing_digest" || "$existing_digest" == "$digest" ]]
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
 
-          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "image=$image@$digest" >> "$GITHUB_OUTPUT"
+          echo "build_time=$image_created" >> "$GITHUB_OUTPUT"
           echo "digest=$digest" >> "$GITHUB_OUTPUT"
-          echo "Pushed $image ($digest)"
+          echo "Selected $image ($digest)"
 
       - name: Prepare pinned SSH trust material
         shell: bash
@@ -204,170 +215,23 @@ jobs:
           chmod 600 "$docker_config_dir/config.json"
           echo "STAGING_REGISTRY_PULL_CONFIG=$docker_config_dir/config.json" >> "$GITHUB_ENV"
 
-      - name: Open temporary runner SSH access
-        id: runner_firewall
-        shell: bash
+      # One process owns the exact /32 rule for its whole lifetime and revokes it in finally.
+      # The always() step below provides a second cleanup attempt after cancellation/failure.
+      - name: Preflight and deploy onto initialized canonical staging
         env:
           DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
-        run: |
-          set -euo pipefail
-          runner_ip="$(curl --fail --silent --show-error --retry 3 https://api.ipify.org)"
-          [[ "$runner_ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]
-          rule="protocol:tcp,ports:22,address:${runner_ip}/32"
-          doctl compute firewall add-rules "$STAGING_FIREWALL_ID" \
-            --inbound-rules "$rule"
-          echo "runner_ip=$runner_ip" >> "$GITHUB_OUTPUT"
-
-      - name: Upload exact deployment manifests and registry credentials
-        shell: bash
-        env:
           DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
           IMAGE: ${{ steps.image.outputs.image }}
-        run: |
-          set -euo pipefail
-          ssh_opts=(
-            -i "$STAGING_SSH_DIR/id_ed25519"
-            -p "$STAGING_DEPLOY_PORT"
-            -o BatchMode=yes
-            -o ConnectTimeout=15
-            -o StrictHostKeyChecking=yes
-            -o UserKnownHostsFile="$STAGING_SSH_DIR/known_hosts"
-          )
-          release_dir="$DEPLOY_PATH/releases/$DEPLOY_SHA"
-          remote_registry_config="$DEPLOY_PATH/.registry-config-$DEPLOY_SHA.json"
-          scp_opts=(
-            -i "$STAGING_SSH_DIR/id_ed25519"
-            -P "$STAGING_DEPLOY_PORT"
-            -o BatchMode=yes
-            -o ConnectTimeout=15
-            -o StrictHostKeyChecking=yes
-            -o UserKnownHostsFile="$STAGING_SSH_DIR/known_hosts"
-          )
-
-          ssh "${ssh_opts[@]}" "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST" \
-            "test -d '$DEPLOY_PATH' && test -f '$DEPLOY_PATH/.env' && mkdir -p '$release_dir/deploy/runtime-secrets' && chmod 750 '$release_dir'"
-          scp "${scp_opts[@]}" \
-            be/compose.staging.yaml \
-            be/Caddyfile \
-            "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST:$release_dir/"
-          scp "${scp_opts[@]}" \
-            be/deploy/runtime-secrets/redis-start.sh \
-            be/deploy/runtime-secrets/check-runtime-secrets.py \
-            be/deploy/runtime-secrets/runtime_secrets.py \
-            "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST:$release_dir/deploy/runtime-secrets/"
-          scp "${scp_opts[@]}" \
-            "$STAGING_REGISTRY_PULL_CONFIG" \
-            "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST:$remote_registry_config"
-          ssh "${ssh_opts[@]}" "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST" \
-            "chmod 600 '$remote_registry_config'"
-
-      - name: Deploy candidate image on the Droplet
-        shell: bash
-        env:
-          DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
-          IMAGE: ${{ steps.image.outputs.image }}
-        run: |
-          set -euo pipefail
-          ssh_opts=(
-            -i "$STAGING_SSH_DIR/id_ed25519"
-            -p "$STAGING_DEPLOY_PORT"
-            -o BatchMode=yes
-            -o ConnectTimeout=15
-            -o StrictHostKeyChecking=yes
-            -o UserKnownHostsFile="$STAGING_SSH_DIR/known_hosts"
-          )
-          release_dir="$DEPLOY_PATH/releases/$DEPLOY_SHA"
-          remote_registry_config="$DEPLOY_PATH/.registry-config-$DEPLOY_SHA.json"
-
-          ssh "${ssh_opts[@]}" "$STAGING_DEPLOY_USER@$STAGING_DEPLOY_HOST" \
-            "DEPLOY_PATH='$DEPLOY_PATH' DEPLOY_SHA='$DEPLOY_SHA' IMAGE='$IMAGE' RELEASE_DIR='$release_dir' REGISTRY_CONFIG='$remote_registry_config' bash -s" <<'REMOTE'
-          set -euo pipefail
-
-          : "${DEPLOY_PATH:?}"
-          : "${DEPLOY_SHA:?}"
-          : "${IMAGE:?}"
-          : "${RELEASE_DIR:?}"
-          : "${REGISTRY_CONFIG:?}"
-          [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
-          [[ "$IMAGE" == "registry.digitalocean.com/"*":$DEPLOY_SHA" ]]
-          test -d "$DEPLOY_PATH"
-          test -f "$DEPLOY_PATH/.env"
-          test -f "$RELEASE_DIR/compose.staging.yaml"
-          test -f "$RELEASE_DIR/Caddyfile"
-          test -s "$REGISTRY_CONFIG"
-
-          if [ -e "$RELEASE_DIR/.env" ] && [ ! -L "$RELEASE_DIR/.env" ]; then
-            echo "release .env path is not a symlink; refusing to overwrite it" >&2
-            exit 1
-          fi
-          ln -sfn ../../.env "$RELEASE_DIR/.env"
-
-          docker_config_dir="$(mktemp -d "$DEPLOY_PATH/.docker-config.XXXXXX")"
-          cleanup() {
-            rm -rf "$docker_config_dir"
-            rm -f "$REGISTRY_CONFIG"
-          }
-          trap cleanup EXIT
-          install -m 600 "$REGISTRY_CONFIG" "$docker_config_dir/config.json"
-          export DOCKER_CONFIG="$docker_config_dir"
-          export COMPASS_IMAGE="$IMAGE"
-          export COMPASS_SECRETS_DIR="$DEPLOY_PATH/secrets"
-          cd "$RELEASE_DIR"
-          compose=(docker compose -f compose.staging.yaml)
-
-          python3 deploy/runtime-secrets/check-runtime-secrets.py \
-            --secrets-dir "$COMPASS_SECRETS_DIR" \
-            --env-file "$DEPLOY_PATH/.env" --owner compass
-          "${compose[@]}" config >/dev/null
-          "${compose[@]}" pull --quiet web worker beat proxy postgres redis
-          docker image inspect "$IMAGE" >/dev/null
-          "${compose[@]}" run --rm --no-deps -T web python manage.py check </dev/null
-          "${compose[@]}" up -d postgres redis
-          "${compose[@]}" run --rm -T web python manage.py migrate --noinput </dev/null
-          "${compose[@]}" run --rm -T web python manage.py sync_identity_policy </dev/null
-          "${compose[@]}" run --rm -T web python manage.py sync_canonical_services </dev/null
-          "${compose[@]}" run --rm -T web python manage.py sync_institutional_forms </dev/null
-          "${compose[@]}" run --rm -T web python manage.py sync_organization_catalog </dev/null
-          "${compose[@]}" run --rm -T web python manage.py check --deploy </dev/null
-
-          state="$DEPLOY_PATH/.deploy.env"
-          previous_state="$DEPLOY_PATH/.deploy.previous.env"
-          if [ -f "$state" ]; then
-            cp "$state" "$previous_state"
-            chmod 640 "$previous_state"
-          fi
-          state_tmp="$DEPLOY_PATH/.deploy.env.tmp.$$"
-          printf 'COMPASS_IMAGE=%s\n' "$IMAGE" > "$state_tmp"
-          chmod 640 "$state_tmp"
-          mv -f "$state_tmp" "$state"
-
-          "${compose[@]}" up -d --remove-orphans
-
-          web_container="$("${compose[@]}" ps -q web)"
-          test -n "$web_container"
-          ready=false
-          for _ in $(seq 1 60); do
-            health="$(docker inspect --format '{{.State.Health.Status}}' "$web_container" 2>/dev/null || true)"
-            if [ "$health" = "healthy" ]; then
-              ready=true
-              break
-            fi
-            sleep 2
-          done
-          if [ "$ready" != true ]; then
-            "${compose[@]}" ps
-            "${compose[@]}" logs --tail=80 web proxy || true
-            exit 1
-          fi
-
-          echo "Deployed $IMAGE"
-          REMOTE
+          APP_VERSION: ${{ steps.build_metadata.outputs.version }}
+          BUILD_TIME: ${{ steps.image.outputs.build_time }}
+        run: python3 .github/scripts/run_staging_deploy.py
 
       - name: Verify public running build identity
         shell: bash
         env:
           DEPLOY_SHA: ${{ steps.revision.outputs.deploy_sha }}
           APP_VERSION: ${{ steps.build_metadata.outputs.version }}
+          BUILD_TIME: ${{ steps.image.outputs.build_time }}
         run: |
           set -euo pipefail
           metadata="$RUNNER_TEMP/compass-running-meta.json"
@@ -384,15 +248,15 @@ jobs:
           [[ "$build_id" == "$DEPLOY_SHA" ]]
           [[ "$version" == "$APP_VERSION" ]]
           [[ "$environment" == "live-staging" ]]
-          test -n "$built_at"
+          [[ "$built_at" == "$BUILD_TIME" ]]
 
-      - name: Close temporary runner SSH access
-        if: always() && steps.runner_firewall.outputs.runner_ip != ''
-        shell: bash
+      - name: Revoke owned temporary SSH access
+        if: always()
         env:
           DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        run: python3 .github/scripts/run_staging_deploy.py --cleanup
+
+      - name: Clear short-lived credentials and SSH material
+        if: always()
         run: |
-          set -euo pipefail
-          rule="protocol:tcp,ports:22,address:${{ steps.runner_firewall.outputs.runner_ip }}/32"
-          doctl compute firewall remove-rules "$STAGING_FIREWALL_ID" \
-            --inbound-rules "$rule"
+          rm -rf "$RUNNER_TEMP/compass-registry-push" "$RUNNER_TEMP/compass-registry-pull" "$RUNNER_TEMP/compass-staging-ssh"

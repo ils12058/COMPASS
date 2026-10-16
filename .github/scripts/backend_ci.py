@@ -372,6 +372,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         (
             "test_runtime_secrets.py",
             "test_runtime_secrets_compose.py",
+            "test_staging_deployment.py",
             "test_redis_config.py",
             "test_celery.py",
             "test_build_metadata.py",

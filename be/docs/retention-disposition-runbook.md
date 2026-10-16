@@ -1,5 +1,9 @@
 # Retention and disposition deployment / restoration
 
+> **Operational update, 2026-10-17:** COMPASS-LIVE-RESET-1 removed the old live database and
+> runtime. This document preserves the pre-canonical transition/restore history; do not execute
+> its old deployment ordering against canonical staging. Use [routine canonical deployment](staging-deployment.md).
+
 > **Reset-only canonical baseline (CANON-1C, ADR-116).** This runbook applies only to the
 > compatible pre-reset staging runtime. The canonical baseline has no ledger tables, tombstone
 > tasks or `retention_decommission_status` command, and installs only into an empty database; its

@@ -51,7 +51,15 @@ def check_runtime(directory: Path, env_file: Path, owner_uid: int) -> None:
     values = assignments(env_file)
     forbidden = (*SECRET_FILES, *URL_SETTINGS, *(f"{name}_FILE" for name in URL_SETTINGS))
     # Staging Dataset v1 commands are one-off operator runs; never enable them persistently.
-    for name in (*forbidden, "STAGING_SEED_ENABLED"):
+    for name in (
+        *forbidden,
+        "STAGING_SEED_ENABLED",
+        "DEMO_SEEDING_ENABLED",
+        "DEMO_ACCOUNT_PASSWORD",
+        "DEMO_ACCOUNT_PASSWORD_FILE",
+        "DEMO_EMAIL_DOMAIN",
+        "DEMO_ONBOARDING_EMAIL",
+    ):
         if name in values:
             raise SecretCheckError(f"{name}: forbidden in long-running runtime env")
     for setting, filename in SECRET_FILES.items():
