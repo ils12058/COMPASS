@@ -102,7 +102,7 @@ export function ActivityPage() {
           <ActivityList
             data={result}
             onPageChange={view === "my" ? setMyPage : setSecurityPage}
-            emptyText={view === "my" ? "No account activity is available yet." : "No security activity is available yet."}
+            emptyText={view === "my" ? "No activity is available yet." : "No security activity is available yet."}
           />
         ) : null}
       </div>}

@@ -112,8 +112,7 @@ def _presenter(
     )
 
 
-# My Activity contains meaningful account activity. Low-level MFA verification, setup attempts,
-# email OTP operations, and failed security checks are intentionally not part of this broader feed.
+# Account presenters only. Domain relationships live in domains.py, not actor_scope.
 MY_ACTIVITY_PRESENTERS: dict[str, ActivityPresenter] = {
     ACCOUNT_CREATED: _presenter(
         item_type="account.created",
@@ -246,9 +245,26 @@ MY_ACTIVITY_PRESENTERS: dict[str, ActivityPresenter] = {
 # authentication state changes that are useful when reviewing account security. Session creation
 # stays in the Audit Trail; the canonical sign-in already represents it in this feed.
 SECURITY_ACTIVITY_PRESENTERS: dict[str, ActivityPresenter] = {
-    action: presenter
-    for action, presenter in MY_ACTIVITY_PRESENTERS.items()
-    if action not in {ACCOUNT_CREATED, PROFILE_UPDATED}
+    action: MY_ACTIVITY_PRESENTERS[action]
+    for action in (
+        ACCOUNT_UPDATED,
+        ACCOUNT_DISABLED,
+        ACCOUNT_ENABLED,
+        ACCOUNT_ROLE_CHANGED,
+        ACCOUNT_DESIGNATION_ASSIGNED,
+        ACCOUNT_DESIGNATION_REMOVED,
+        ACCOUNT_MFA_RESET,
+        AUTH_LOGIN_SUCCESS,
+        AUTH_LOGOUT,
+        AUTH_SESSION_REVOKED,
+        AUTH_MFA_TOTP_ENROLLED,
+        AUTH_MFA_TOTP_DISABLED,
+        AUTH_MFA_RECOVERY_CODES_REGENERATED,
+        AUTH_PASSWORD_INITIAL_SET,
+        AUTH_PASSWORD_RESET,
+        AUTH_TRUSTED_SESSION_CREATED,
+        AUTH_TRUSTED_SESSION_REVOKED,
+    )
 }
 SECURITY_ACTIVITY_PRESENTERS.update(
     {

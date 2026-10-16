@@ -10,6 +10,7 @@ from django.db.models.functions import Cast
 from compass.audit.models import AuditActorType, AuditEvent
 from compass.authentication.models import AuthSession, RecoveryCode, TOTPFactor, TrustedSession
 
+from .domains import DOMAIN_ACTIVITY_POLICIES, domain_selection_filter
 from .presenters import (
     ACCOUNT_TARGET,
     MY_ACTIVITY_PRESENTERS,
@@ -119,16 +120,20 @@ def _get_activity(
     presenters: dict[str, ActivityPresenter],
     page: int,
     page_size: int,
+    include_domains: bool = False,
 ) -> ActivityPage:
     if not getattr(user, "pk", None):
         raise ValueError("a saved user is required")
     page, page_size = _validate_pagination(page=page, page_size=page_size)
 
     offset = (page - 1) * page_size
+    selection = _selection_filter(user=user, presenters=presenters)
+    if include_domains:
+        selection |= domain_selection_filter(user=user)
     records = list(
-        AuditEvent.objects.filter(_selection_filter(user=user, presenters=presenters)).order_by(
-            "-occurred_at", "-id"
-        )[offset : offset + page_size + 1]
+        AuditEvent.objects.filter(selection)
+        .only("id", "action", "actor_user_id", "occurred_at")
+        .order_by("-occurred_at", "-id")[offset : offset + page_size + 1]
     )
     has_next = len(records) > page_size
     records = records[:page_size]
@@ -138,6 +143,8 @@ def _get_activity(
         presenter = presenters.get(record.action)
         if presenter is not None:
             items.append(presenter.present(record))
+        elif include_domains and record.action in DOMAIN_ACTIVITY_POLICIES:
+            items.append(DOMAIN_ACTIVITY_POLICIES[record.action].present(record, user=user))
 
     return ActivityPage(
         items=tuple(items),
@@ -153,6 +160,7 @@ def get_my_activity(user, *, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE) 
     return _get_activity(
         user=user,
         presenters=MY_ACTIVITY_PRESENTERS,
+        include_domains=True,
         page=page,
         page_size=page_size,
     )

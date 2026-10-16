@@ -48,6 +48,32 @@ test("self Activity stays simple, self-only, and has the original view controls"
   }
 });
 
+test("My Activity renders mixed domain/account copy without adding source details or record links", () => {
+  const records = [
+    { ...event, id: "resubmitted", type: "inventory.resubmitted", title: "Individual Inventory resubmitted", description: "You resubmitted your Individual Inventory." },
+    { ...event, id: "reopened", type: "inventory.reopened", title: "Individual Inventory returned for correction", description: "Your Individual Inventory was returned for correction.", metadata: "SECRET REASON", target_id: "SECRET SOURCE", actor_user_id: "SECRET ACTOR" },
+    { ...event, id: "login", type: "auth.login", title: "Signed in to COMPASS", description: "You signed in to your account." },
+  ];
+  const { html, requested } = render(createElement(ActivityPage), { records: [[getMeListActivityQueryKey({ page: 1, page_size: 20 }), ok(page(records, 1, true))]] });
+  assert.ok(html.indexOf("Individual Inventory resubmitted") < html.indexOf("Individual Inventory returned for correction"));
+  assert.ok(html.indexOf("Individual Inventory returned for correction") < html.indexOf("Signed in to COMPASS"));
+  assert.match(html, /Your Individual Inventory was returned for correction\.|Activity pages|Next/);
+  assert.doesNotMatch(html, /SECRET|José|href=.*inventory/);
+  assert.ok(requested.some((key) => key[0] === "/api/v1/me/activity"));
+});
+
+test("My Activity distinguishes empty history, initial loading and unavailable backend", () => {
+  const key = getMeListActivityQueryKey({ page: 1, page_size: 20 });
+  const empty = render(createElement(ActivityPage), { records: [[key, ok(page([]))]] }).html;
+  assert.match(empty, /No activity is available yet\./);
+  assert.doesNotMatch(empty, /No account activity|Next/);
+  const pending = render(createElement(ActivityPage)).html;
+  assert.match(pending, /Loading activity/);
+  assert.doesNotMatch(pending, /No activity is available/);
+  const failed = render(createElement(ActivityPage), { records: [[key, ok(page([]))]], errors: [[key, apiError(503)]] }).html;
+  assert.match(failed, /Retry/);
+});
+
 test("the supervised tab requires both effective authority and confirmed nonempty scope", () => {
   assert.match(render(createElement(ActivityPage), { capabilities: [supervise], records: scopeRecords() }).html, /Supervised staff/);
   for (const options of [{ capabilities: [], records: scopeRecords() }, { capabilities: [supervise], records: scopeRecords([]) }, { capabilities: [supervise] }]) {

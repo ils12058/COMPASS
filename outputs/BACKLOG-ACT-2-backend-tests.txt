@@ -1,0 +1,47 @@
+........................................................................ [ 38%]
+........................................................................ [ 76%]
+............................F....F...........                            [100%]
+=================================== FAILURES ===================================
+_______ test_success_audit_event_rolls_back_with_surrounding_transaction _______
+
+    @pytest.mark.django_db
+    def test_success_audit_event_rolls_back_with_surrounding_transaction():
+        with pytest.raises(RuntimeError, match="rollback"):
+            with transaction.atomic():
+                record_event(
+                    context=AuditContext.system(),
+                    action="security.check.completed",
+                    outcome=AuditOutcome.SUCCESS,
+                )
+                raise RuntimeError("rollback")
+
+>       assert AuditEvent.objects.count() == 0
+E       assert 1 == 0
+E        +  where 1 = count()
+E        +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x10bcbdd10>.count
+E        +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x10bcbdd10> = AuditEvent.objects
+
+tests/test_audit.py:269: AssertionError
+_____________ test_policy_sync_rolls_back_if_audit_recording_fails _____________
+
+    @pytest.mark.django_db
+    def test_policy_sync_rolls_back_if_audit_recording_fails():
+        with patch(
+            "compass.accounts.bootstrap.record_event",
+            side_effect=RuntimeError("audit database unavailable"),
+        ):
+            with pytest.raises(RuntimeError, match="audit database unavailable"):
+                call_command("sync_identity_policy", stdout=StringIO())
+
+        assert Role.objects.count() == 0
+>       assert AuditEvent.objects.count() == 0
+E       assert 1 == 0
+E        +  where 1 = count()
+E        +    where count = <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x10bcbdd10>.count
+E        +      where <django.db.models.manager.ManagerFromAuditEventQuerySet object at 0x10bcbdd10> = AuditEvent.objects
+
+tests/test_audit.py:394: AssertionError
+=========================== short test summary info ============================
+FAILED tests/test_audit.py::test_success_audit_event_rolls_back_with_surrounding_transaction
+FAILED tests/test_audit.py::test_policy_sync_rolls_back_if_audit_recording_fails
+2 failed, 187 passed in 140.85s (0:02:20)
