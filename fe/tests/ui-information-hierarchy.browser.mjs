@@ -213,7 +213,7 @@ for (const device of ["desktop", "phone"]) {
 }
 for (const legacy of ["/portal/privacy/retention/rules", "/portal/privacy/retention/rules/new", "/portal/privacy/retention/cases/dd93953c-e82b-4d07-b3cf-79b204cdb0f3"]) {
   await check(`retention-legacy-bookmark-${legacy.split("/").slice(4).join("-")}`, legacy, { role: "INSTITUTIONAL_OFFICER", overrides: retentionAuth }, async (page) => {
-    await shown(page.getByRole("heading", { name: "404", exact: true }));
+    await shown(page.getByRole("heading", { level: 1, name: "Page not found", exact: true }));
     assert.equal(new URL(page.url()).pathname, legacy, "Retired URLs are no longer compatibility redirects");
     await hidden(page.getByRole("button", { name: /Create draft rule|Approve disposition|Place hold/ }));
   });
