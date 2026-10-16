@@ -14,7 +14,7 @@ from io import BytesIO
 
 from compass.accounts.models import Designation, Role, StudentLifecycleStatus, User, UserDesignation
 from compass.common.institutional_time import institution_today
-from compass.graduate_tracer.disposition import anonymize_response, verify_anonymized
+from compass.graduate_tracer.disposition import verify_anonymized
 from compass.graduate_tracer.models import (
     GraduateTracerResponse,
     GraduateTracerStatus,
@@ -32,6 +32,7 @@ from compass.reports.graduate_tracer import (
     build_graduate_tracer_report,
 )
 from compass.reports.graduate_tracer_xlsx import render_graduate_tracer_xlsx
+from tests.legacy_disposition_fixtures import historical_anonymized_contribution
 from tests.test_graduate_tracer import (
     auth_client,
     csrf,
@@ -356,13 +357,25 @@ def test_anonymization_retention_invariant_drops_quasi_identifiers():
     assert source.graduated_program_id == prog_a1.pk
     assert source.graduation_year == 2024
 
-    # Perform operational anonymization
-    anonymize_response(source.pk)
+    # The retired executor's committed outcome (ADR-072/112), written directly (ADR-114).
+    historical_anonymized_contribution(source)
 
-    # Anonymized response must have quasi-identifiers dropped (None)
+    # A historical anonymous contribution carries no quasi-identifiers
     retained = GraduateTracerResponse.objects.get(anonymized_at__isnull=False)
     assert retained.student_id is None
     assert retained.graduated_college_id is None
     assert retained.graduated_program_id is None
     assert retained.graduation_year is None
     assert verify_anonymized(retained)
+
+    # ...and the integrity rule rejects one that still carries any of them.
+    for quasi in (
+        {"graduated_college_id": college_a.pk},
+        {"graduated_program_id": prog_a1.pk},
+        {"graduation_year": 2024},
+    ):
+        GraduateTracerResponse.objects.filter(pk=retained.pk).update(**quasi)
+        assert not verify_anonymized(retained)
+        GraduateTracerResponse.objects.filter(pk=retained.pk).update(
+            graduated_college_id=None, graduated_program_id=None, graduation_year=None
+        )

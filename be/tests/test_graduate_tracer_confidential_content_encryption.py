@@ -10,7 +10,7 @@ import importlib
 import json
 import runpy
 from dataclasses import FrozenInstanceError
-from datetime import date, timedelta
+from datetime import date
 from io import BytesIO, StringIO
 from pathlib import Path
 from uuid import uuid4
@@ -31,7 +31,6 @@ from compass.graduate_tracer import confidential_content as content
 from compass.graduate_tracer import services
 from compass.graduate_tracer.disposition import (
     ANALYTICAL_FIELDS,
-    anonymize_response,
     verify_anonymized,
 )
 from compass.graduate_tracer.migrations import _graduate_tracer_confidential_content_v1 as frozen
@@ -41,6 +40,7 @@ from compass.notifications.models import EmailDelivery, Notification
 from compass.reports.graduate_tracer import build_graduate_tracer_report
 from compass.reports.graduate_tracer_xlsx import render_graduate_tracer_xlsx
 from tests.graduate_tracer_test_helpers import encrypted_row
+from tests.legacy_disposition_fixtures import historical_anonymized_contribution
 from tests.test_graduate_tracer import (
     auth_client,
     make_head,
@@ -400,7 +400,7 @@ def test_no_decrypt_aggregate_services_json_xlsx_and_anonymous_population(
     world, settings, monkeypatch
 ):
     item = filled(world, submit=True)
-    anonymize_response(item.pk)
+    historical_anonymized_contribution(item)
     other = encrypted_row(
         GraduateTracerResponse,
         student=make_user("report-identifiable@example.edu"),
@@ -445,25 +445,19 @@ def test_identifiable_database_cipher_invariant(world, family, value):
         model.objects.filter(pk=row.pk).update(confidential_content_ciphertext=value)
 
 
-def test_approved_disposition_corrupt_source_missing_keys_no_crypto_and_four_disposed_operations(
+def test_retired_disposition_never_decrypts_rewrites_or_removes_an_identifiable_source(
     world, settings, monkeypatch, caplog
 ):
-    from compass.accounts.models import Designation, UserDesignation
-    from compass.privacy_governance.tasks import execute_disposition
-    from tests.test_operational_retention import active_rule, approve, discovered_case
-    from tests.test_operational_retention import make_user as retention_user
+    from compass.privacy_governance.tasks import (
+        discover_retention,
+        execute_disposition,
+        recover_disposition,
+    )
+    from tests.legacy_disposition_fixtures import legacy_case, legacy_rule
+    from tests.test_privacy_governance import make_dpo
 
     item = filled(world, submit=True)
-    dpo = retention_user("tracer-retention-dpo@example.edu", role="INSTITUTIONAL_OFFICER")
-    UserDesignation.objects.create(user=dpo, designation=Designation.objects.get(code="DPO"))
-    active_rule(dpo)
-    GraduateTracerResponse.objects.filter(pk=item.pk).update(
-        submitted_at=timezone.now() - timedelta(days=31)
-    )
-    item.refresh_from_db()
-    expected = build_graduate_tracer_report()
-    old_e1 = {name: getattr(item, name) for name in ANALYTICAL_FIELDS}
-    case = approve(dpo, discovered_case(item))
+    case = legacy_case(rule=legacy_rule(actor=make_dpo()), source=item, state="QUEUED")
     for family in NAMES:
         apps.get_model("graduate_tracer", family).objects.update(
             confidential_content_ciphertext="PRIVATE-corrupt-token"
@@ -478,50 +472,19 @@ def test_approved_disposition_corrupt_source_missing_keys_no_crypto_and_four_dis
         "write_confidential_content",
     ]:
         monkeypatch.setattr(content, name, forbid)
-    execute_disposition(str(case.pk))
+    before, counts = raw_all(), effects()
+    for _ in range(2):
+        execute_disposition(str(case.pk))
+        discover_retention()
+        recover_disposition()
     case.refresh_from_db()
-    assert case.state == "COMPLETED"
-    assert not GraduateTracerResponse.objects.filter(pk=item.pk).exists()
-    anonymous = GraduateTracerResponse.objects.get(student__isnull=True)
-    assert anonymous.pk != item.pk and anonymous.confidential_content_ciphertext is None
-    assert verify_anonymized(anonymous)
-    assert {name: getattr(anonymous, name) for name in ANALYTICAL_FIELDS} == old_e1
-    after = build_graduate_tracer_report()
-    assert after["sections"] == expected["sections"]
-    assert after["methodology"] == expected["methodology"]
-    assert after["disclosure_warnings"] == expected["disclosure_warnings"]
-    assert (
-        after["report_context"]["submitted_response_count"]
-        == expected["report_context"]["submitted_response_count"]
-    )
-    assert all(
-        not apps.get_model("graduate_tracer", family).objects.exists() for family in NAMES[1:]
-    )
-    participation = GraduateTracerDisposedParticipation.objects.get(student=world["student"])
-    assert not any(
-        "response" in field.name or "cipher" in field.name or "anonymous" in field.name
-        for field in participation._meta.fields
-    )
-    for result in [
-        world["client"].get("/api/v1/graduate-tracer/me"),
-        post_empty(world["client"], "/api/v1/graduate-tracer/me"),
-        put_json(world["client"], "/api/v1/graduate-tracer/me", valid_unemployed_payload()),
-        post_empty(world["client"], "/api/v1/graduate-tracer/me/submit"),
-    ]:
-        assert (
-            result.status_code == 409
-            and result.json()["error"]["code"] == "graduate_tracer_disposed"
-        )
-    safe(
-        list(AuditEvent.objects.values_list("metadata", flat=True)),
-        "PRIVATE-corrupt-token",
-        str(anonymous.pk),
-    )
+    assert case.state == "QUEUED" and case.completed_at is None
+    assert (raw_all(), effects()) == (before, counts)
+    assert GraduateTracerResponse.objects.filter(pk=item.pk, student=world["student"]).exists()
+    assert not GraduateTracerResponse.objects.filter(student__isnull=True).exists()
+    assert not GraduateTracerDisposedParticipation.objects.exists()
+    safe(list(AuditEvent.objects.values_list("metadata", flat=True)), "PRIVATE-corrupt-token")
     safe(caplog.text, "PRIVATE-corrupt-token")
-    with pytest.raises(IntegrityError), transaction.atomic():
-        GraduateTracerResponse.objects.filter(pk=anonymous.pk).update(
-            confidential_content_ciphertext="any-token"
-        )
 
 
 @pytest.mark.parametrize(

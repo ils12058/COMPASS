@@ -1,20 +1,16 @@
-"""Irreversible, allowlisted aggregate-preserving Graduate Tracer anonymization."""
+"""Integrity rules for historical anonymous Graduate Tracer contributions.
+
+COMPASS no longer anonymizes responses (ADR-114); the executor that produced these rows under
+ADR-072 is retired. Contributions it already created remain part of aggregate reporting, and the
+allowlist and verification below still define what such a row may contain.
+"""
 
 from django.core.exceptions import ValidationError
-from django.db import transaction
 
-from compass.accounts.models import User
-from compass.common.institutional_time import (
-    institution_date,
-    institution_day_start,
-    institution_today,
-)
-
-from .models import GTS_SCHEMA_VERSION, GraduateTracerResponse, GraduateTracerStatus
-from .participation import GraduateTracerDisposedParticipation
+from .models import GraduateTracerStatus
 
 # Every value below is used in the current closed aggregate report. All other survey fields,
-# even coded ones, are removed. A new UUID prevents historical audit targets becoming a lookup.
+# even coded ones, were removed. The independent UUID prevents audit targets becoming a lookup.
 ANALYTICAL_FIELDS = (
     "sex",
     "civil_status",
@@ -72,49 +68,3 @@ def verify_anonymized(item):
     except ValidationError:
         return False
     return True
-
-
-@transaction.atomic
-def anonymize_response(source_id):
-    initial = GraduateTracerResponse.objects.get(pk=source_id)
-    if initial.student_id:
-        User.objects.select_for_update().get(pk=initial.student_id)
-    source = GraduateTracerResponse.objects.select_for_update().get(pk=source_id)
-    if source.anonymized_at is not None:
-        if not verify_anonymized(source):
-            raise ValueError("Anonymization verification failed.")
-        return
-    if (
-        source.status != GraduateTracerStatus.SUBMITTED
-        or source.student_id is None
-        or source.instrument_schema_version != GTS_SCHEMA_VERSION
-    ):
-        raise ValueError("Only identifiable submitted responses may be anonymized.")
-    # Preserve calendar-day report filters without retaining exact submission timestamps. Those
-    # filters use institutional days, so the retained values are institutional day starts.
-    submitted_day = institution_day_start(institution_date(source.submitted_at))
-    operation_day = institution_day_start(institution_today())
-    retained = GraduateTracerResponse.objects.create(
-        student=None,
-        confidential_content_ciphertext=None,
-        instrument_schema_version=GTS_SCHEMA_VERSION,
-        status=GraduateTracerStatus.SUBMITTED,
-        submitted_at=submitted_day,
-        anonymized_at=operation_day,
-        **{field: getattr(source, field) for field in ANALYTICAL_FIELDS},
-    )
-    GraduateTracerResponse.objects.filter(pk=retained.pk).update(
-        created_at=submitted_day, updated_at=operation_day
-    )
-    if not verify_anonymized(retained):
-        raise ValueError("Anonymization verification failed.")
-    GraduateTracerDisposedParticipation.objects.get_or_create(
-        student_id=source.student_id,
-        instrument_schema_version=GTS_SCHEMA_VERSION,
-        defaults={"disposed_on": institution_today()},
-    )
-    # Only the three domain-owned child tables cascade; protected relationships stay intact.
-    source.delete()
-    if GraduateTracerResponse.objects.filter(pk=source_id).exists():
-        raise ValueError("Identifiable source still exists.")
-    # Deliberately return no new identifier and persist no original-to-anonymous mapping.

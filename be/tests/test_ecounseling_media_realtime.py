@@ -27,11 +27,16 @@ from compass.ecounseling.reconciliation import (
 from compass.ecounseling.services import ECounselingProviderUnavailable, create_join_credential
 from compass.integrations.daily import DailyHTTPError, DailyTimeout
 from compass.notifications import services as notifications
-from compass.privacy_governance import retention
 from compass.privacy_governance.tasks import execute_disposition
 from compass.realtime import connection as realtime_connection
 from compass.realtime import publish
 from realtime_service import protocol
+from tests.legacy_disposition_fixtures import (
+    legacy_case,
+    legacy_media_source,
+    legacy_rule,
+    media_category,
+)
 from tests.test_ecounseling_media import FakeMediaDailyClient, context, make_user, setup_session
 from tests.test_ecounseling_media_v2 import (
     ArtifactDaily,
@@ -44,13 +49,6 @@ from tests.test_ecounseling_reconciliation import metadata, pending_capture
 from tests.test_ecounseling_state_correctness import authorized_session
 from tests.test_ecounseling_webhook_security import body_for, signed
 from tests.test_notifications import auth_client
-from tests.test_operational_retention import (
-    CapturingDispositionDaily,
-    active_rule,
-    approve,
-    discovered_case,
-    media_source,
-)
 from tests.test_privacy_governance import make_dpo
 from tests.test_realtime_service import Socket, run
 from tests.test_realtime_tickets import issue
@@ -67,7 +65,6 @@ def synthetic_boundaries(settings, monkeypatch):
     monkeypatch.setattr(notifications, "_safe_kick_email_delivery", lambda _: None)
     monkeypatch.setattr(notifications, "_safe_kick_push_delivery", lambda _: None)
     monkeypatch.setattr(artifacts, "enqueue_artifact", lambda _: None)
-    monkeypatch.setattr(retention, "enqueue", lambda _: None)
 
     def forbidden(*args, **kwargs):
         pytest.fail("Only synthetic provider/storage boundaries are permitted", pytrace=False)
@@ -554,61 +551,28 @@ def test_custody_hints_follow_verified_public_stages_and_ignore_cleanup_bookkeep
         assert media_frames(frames) == []
 
 
-@pytest.mark.parametrize("outcome", ["success", "hold", "storage-failure"])
-def test_disposition_publishes_only_verified_final_availability_loss(frames, monkeypatch, outcome):
+@pytest.mark.parametrize("state", ["APPROVED", "QUEUED", "PROCESSING"])
+def test_retired_disposition_task_publishes_no_hint_and_keeps_availability(frames, state):
     student, counselor, appointment, capture, artifact, storage = ready_artifact(pending=False)
-    dpo, case = v2_case(capture)
-    case = retention.approve_case(
-        actor=dpo, case_id=case.pk, expected_revision=case.revision, context=context(dpo)
-    )
-    if outcome == "hold":
-        retention.change_hold(
-            actor=dpo,
-            case_id=case.pk,
-            expected_revision=case.revision,
-            reason="Synthetic hold",
-            release=False,
-            context=context(dpo),
-        )
-    storage.fail_delete = outcome == "storage-failure"
-    monkeypatch.setattr(
-        "compass.privacy_governance.media_disposition.ObjectStorage", lambda **kwargs: storage
-    )
+    _, case = v2_case(capture, state=state)
     frames.clear()
     execute_disposition(case.pk)
     artifact.refresh_from_db()
-    assert artifact.status == ("DISPOSED" if outcome == "success" else "STORED")
-    if outcome == "success":
-        assert_hints(frames, appointment, [student, counselor])
-        assert not media.get_media_projection(capture.room)["recording"]["artifact_available"]
-        assert (
-            auth_client(counselor)
-            .get(f"/api/v1/e-counseling/appointments/{appointment.pk}/media/RECORDING/access")
-            .status_code
-            == 410
-        )
-    else:
-        assert media_frames(frames) == []
+    assert artifact.status == "STORED" and media_frames(frames) == []
+    assert media.get_media_projection(capture.room)["recording"]["artifact_available"]
 
 
 @pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
-def test_legacy_verified_disposition_also_notifies_saved_workspace_viewers(
-    frames, monkeypatch, kind
-):
-    capture, _ = media_source(kind)
-    appointment = capture.room.appointment
-    dpo = make_dpo()
-    active_rule(dpo, "ECOUNSELING_RECORDING" if kind == "RECORDING" else "ECOUNSELING_TRANSCRIPT")
-    case = approve(dpo, discovered_case(capture))
-    monkeypatch.setattr(
-        "compass.privacy_governance.tasks.DailyClient.from_settings",
-        lambda: CapturingDispositionDaily("success", transcript=kind == "TRANSCRIPTION"),
-    )
+def test_retired_legacy_provider_disposition_publishes_no_hint(frames, kind):
+    capture, _ = legacy_media_source(kind)
+    rule = legacy_rule(actor=make_dpo(), category=media_category(capture))
+    case = legacy_case(rule=rule, source=capture, state="QUEUED")
     frames.clear()
     execute_disposition(case.pk)
     capture.refresh_from_db()
-    assert capture.artifact_disposed_at
-    assert_hints(frames, appointment, [appointment.student, appointment.provider])
+    assert capture.artifact_disposed_at is None
+    assert capture.provider_artifact_id == "artifact-opaque"
+    assert media_frames(frames) == []
 
 
 @pytest.mark.parametrize("operation", ["stop", "withdraw"])

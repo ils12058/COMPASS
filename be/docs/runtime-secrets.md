@@ -498,7 +498,7 @@ keyring. Provision each absent domain under separate live authorization; preserv
 current/previous keys exactly and escrow complete rings in approved independent off-host storage.
 Current exporter utilities reject absent values and never generate keys. Protect and verify
 encrypted database and host rollback backups before destructive migration. Drain old web/worker/beat,
-in-flight and queued retention work, and all operator writers. Deploy only the approved full staging
+any in-flight or queued legacy disposition work (ADR-114: never execute it to drain it), and all operator writers. Deploy only the approved full staging
 SHA. Table locks protect Phase B, but old code must stay stopped until compatible activation.
 Validate authorized raw reads, aggregate JSON/XLSX with decrypt forbidden, and no-decrypt
 anonymization including anonymous ciphertext NULL/no children.
@@ -644,8 +644,8 @@ unchanged, safe failures are capped at twenty, and the command exits nonzero. It
 Notification or realtime event and preserves all business timestamps and read states. Repeat runs
 are idempotent. Verify zero payloads needing rotation and zero unreadable payloads before removing
 an old key; test historical reads with the new keyring and keep recovery material under the adopted
-operator procedure. Key retirement is deliberate, never automated. Retention remains governed
-separately by ADR-072/102.
+operator procedure. Key retirement is deliberate, never automated. Retention is not governed by
+key rotation; in-app disposition is decommissioned (ADR-114).
 
 ## Assessment Records (ADR-108): deferred live provisioning and rotation
 

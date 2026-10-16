@@ -1,5 +1,49 @@
 # Retention and disposition deployment / restoration
 
+> **Historical (ADR-114).** In-app disposition is decommissioned. The deployment, review, approval,
+> dispatch and retry procedures below describe the retired ADR-072 engine and no longer apply.
+> The historical restoration boundary sections still apply to any backup restore, because
+> disposition completed before decommission must not be resurrected. Operators verify the
+> decommission with `python manage.py retention_decommission_status` and the separate broker,
+> worker and build checks.
+
+## Decommission verification (ADR-114)
+
+Run every check read-only against the environment being deployed, before and after the deploy. Record
+counts only, never identifiers.
+
+1. **Database gates.** Run `python manage.py retention_decommission_status` (add `--format json` for
+   machine-readable output). Exit code `3` means a gate is blocked:
+   - G1: no case is PROCESSING;
+   - G2: no case is APPROVED or QUEUED;
+   - G3: no case is FAILED or RECONCILIATION_REQUIRED, unless the owner has recorded a decision to
+     carry each one;
+   - G4: no rule is ACTIVE;
+   - G5: completed cases agree with source state.
+
+   **Approved or queued cases block the release** until authorized institutional personnel review
+   them. A prior DPO approval in COMPASS is not institutional or National Archives disposal authority.
+   Never execute, cancel or rewrite them from a deployment.
+2. **Broker (G6).** Count messages by task name only. Do not print their bodies:
+
+   ```bash
+   docker compose -f compose.staging.yaml exec -T redis sh -c 'export REDISCLI_AUTH="$(cat /run/secrets/redis_password)"; { redis-cli --no-auth-warning -n 0 LRANGE celery 0 -1; redis-cli --no-auth-warning -n 0 HVALS unacked; } | grep -o "compass\.privacy_governance\.[a-z_]*" | sort | uniq -c'
+   ```
+
+3. **Workers (G7).** Run `celery --app config inspect active`. No `execute_disposition` may be running.
+4. **After deploy.** `celery --app config inspect registered` lists the three tombstone names. The
+   Beat schedule has no `retention-*` entry.
+5. **Custody cleanup (G8).** E-Counseling custody cleanup diagnostics (`PROVIDER_CLEANED`,
+   `RECOVERY_SCAN_COMPLETE`) continue.
+6. **Rollback notes (G9).** Record the printed retention grant and override counts for PR 2.
+7. **Build identity (G10).** `/api/v1/meta` `build_id` equals the SHA that was preflighted. A build
+   that bundles other undeployed commits needs their own release review.
+
+A passing result is necessary, not sufficient. If any gate cannot be resolved safely, stop the deploy.
+Do not force state transitions.
+
+## Historical ADR-072 procedures
+
 This runbook accompanies ADR-072. Approval authorizes real irreversible live-data treatment. Use
 synthetic fixtures and fake Daily clients when validating; do not test deletion against counseling
 artifacts without an explicitly dedicated test provider account.

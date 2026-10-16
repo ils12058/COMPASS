@@ -1,12 +1,23 @@
-"""Governance boundaries, real anonymization and fake-only provider disposition."""
+"""In-app disposition is retired (ADR-114): refusal, tombstones, preflight and preserved history.
+
+All data is synthetic. No test exercises a destructive path: the legacy ledger and historical
+outcomes are written directly by ``tests.legacy_disposition_fixtures``.
+"""
 
 import json
+import logging
+import uuid
 from datetime import UTC, date, datetime, timedelta
+from io import StringIO
 from unittest.mock import patch
 
 import pytest
-from django.db import IntegrityError, transaction
+from django.conf import settings
+from django.core.management import call_command
+from django.core.management.base import CommandError
+from django.db import connection
 from django.test import override_settings
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
 from compass.accounts.models import Capability, UserCapabilityOverride
@@ -14,16 +25,13 @@ from compass.accounts.services import effective_capabilities
 from compass.audit import actions
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
+from compass.audit.services import record_event
 from compass.authentication.models import TOTPFactor
 from compass.common.errors import APIError
 from compass.common.institutional_time import institution_today
+from compass.common.json_logging import JsonFormatter
 from compass.ecounseling.media import process_media_webhook_event
-from compass.ecounseling.models import ECounselingConsent, ECounselingMediaCapture, ECounselingRoom
-from compass.graduate_tracer.disposition import (
-    ANALYTICAL_FIELDS,
-    anonymize_response,
-    verify_anonymized,
-)
+from compass.graduate_tracer.disposition import ANALYTICAL_FIELDS, verify_anonymized
 from compass.graduate_tracer.models import (
     GraduateTracerEducation,
     GraduateTracerProfessionalExam,
@@ -31,12 +39,29 @@ from compass.graduate_tracer.models import (
     GraduateTracerTraining,
 )
 from compass.graduate_tracer.participation import GraduateTracerDisposedParticipation
-from compass.integrations.daily import DailyClient, DailyHTTPError, DailyUnavailable
+from compass.integrations.daily import DailyClient
 from compass.privacy_governance import retention
-from compass.privacy_governance.retention_models import DispositionCase, OperationalRetentionRule
-from compass.privacy_governance.tasks import execute_disposition, recover_disposition
+from compass.privacy_governance.retention_models import (
+    DispositionCase,
+    DispositionHold,
+    OperationalRetentionRule,
+)
+from compass.privacy_governance.tasks import (
+    TOMBSTONE_TASK_NAMES,
+    discover_retention,
+    execute_disposition,
+    recover_disposition,
+)
 from compass.reports.graduate_tracer import build_graduate_tracer_report
+from config.celery import app
 from tests.graduate_tracer_test_helpers import encrypted_row
+from tests.legacy_disposition_fixtures import (
+    historical_anonymized_contribution,
+    historically_disposed_media,
+    legacy_case,
+    legacy_media_source,
+    legacy_rule,
+)
 from tests.test_privacy_governance import (
     auth_client,
     make_dpo,
@@ -50,6 +75,7 @@ from tests.test_privacy_governance import (
 pytestmark = pytest.mark.django_db
 ROOT = "/api/v1/privacy/retention"
 CAPS = {f"privacy_governance.retention.{suffix}" for suffix in ("view", "manage", "approve")}
+TOMBSTONES = (discover_retention, execute_disposition, recover_disposition)
 
 
 @pytest.fixture
@@ -70,19 +96,6 @@ def rule_values(category="GRADUATE_TRACER"):
         "policy_reference": "TEST FIXTURE ONLY - not institutional policy",
         "effective_on": institution_today(),
     }
-
-
-def active_rule(dpo, category="GRADUATE_TRACER"):
-    item = retention.create_rule(
-        actor=dpo, values=rule_values(category), context=AuditContext.user(dpo)
-    )
-    return retention.transition_rule(
-        actor=dpo,
-        rule_id=item.pk,
-        expected_revision=item.revision,
-        activate=True,
-        context=AuditContext.user(dpo),
-    )
 
 
 def tracer(email="graduate@example.edu", **values):
@@ -109,30 +122,294 @@ def tracer(email="graduate@example.edu", **values):
     )
 
 
-def discovered_case(source):
-    retention.discover_eligibility()
-    return DispositionCase.objects.get(source_id=source.pk)
-
-
-def approve(dpo, case):
-    return retention.approve_case(
-        actor=dpo, case_id=case.pk, expected_revision=case.revision, context=AuditContext.user(dpo)
+def stepped_up(user):
+    TOTPFactor.objects.get_or_create(
+        user=user, defaults={"encrypted_secret": "test-only", "confirmed_at": timezone.now()}
     )
+    return auth_client(user, recent_mfa=True)
+
+
+def grant_overrides(user, effect="GRANT"):
+    for code in CAPS:
+        UserCapabilityOverride.objects.update_or_create(
+            user=user,
+            capability=Capability.objects.get(code=code),
+            defaults={"effect": effect, "reason": "Synthetic exceptional authority"},
+        )
+
+
+def ledger_snapshot():
+    """Every legacy ledger value plus the audit trail, for exact before/after comparison."""
+    return (
+        list(OperationalRetentionRule.objects.order_by("pk").values()),
+        list(DispositionCase.objects.order_by("pk").values()),
+        list(DispositionHold.objects.order_by("pk").values()),
+        list(AuditEvent.objects.order_by("occurred_at", "pk").values("pk", "action", "metadata")),
+    )
+
+
+def legacy_world(dpo):
+    """A historical ledger with one case in every engine state and an active hold."""
+    rule = legacy_rule(actor=dpo, status="ACTIVE")
+    retired = legacy_rule(actor=dpo, category="ECOUNSELING_RECORDING")
+    cases = {}
+    for index, state in enumerate(
+        (
+            "READY",
+            "ON_HOLD",
+            "BLOCKED",
+            "NO_LONGER_ELIGIBLE",
+            "APPROVED",
+            "QUEUED",
+            "PROCESSING",
+            "FAILED",
+            "RECONCILIATION_REQUIRED",
+        )
+    ):
+        source = tracer(f"legacy-{index}@example.edu")
+        cases[state] = legacy_case(
+            rule=rule,
+            source=source,
+            state=state,
+            blocker="PROVIDER_UNVERIFIED" if state == "RECONCILIATION_REQUIRED" else None,
+            hold_reason="Synthetic administrative hold" if state == "ON_HOLD" else None,
+        )
+    capture, _ = legacy_media_source("RECORDING")
+    historically_disposed_media(capture)
+    cases["COMPLETED"] = legacy_case(rule=retired, source=capture, state="COMPLETED")
+    return rule, cases
+
+
+# --- Celery decommission ------------------------------------------------------------------------
+
+
+def test_beat_schedule_has_no_retention_entries_and_keeps_unrelated_schedules():
+    schedule = settings.CELERY_BEAT_SCHEDULE
+    assert "retention-eligibility-discovery" not in schedule
+    assert "retention-approved-dispatch-recovery" not in schedule
+    assert not any(
+        entry["task"].startswith("compass.privacy_governance.") for entry in schedule.values()
+    )
+    assert {
+        "ecounseling-artifact-recovery": "compass.ecounseling.recover_media_artifacts",
+        "notification-push-recovery": "compass.notifications.push.dispatch_due",
+        "notification-email-recovery": "compass.notifications.email.dispatch_due",
+        "email-change-security-alert-recovery": (
+            "compass.authentication.email_change.recover_unsent_alerts"
+        ),
+    }.items() <= {name: entry["task"] for name, entry in schedule.items()}.items()
+
+
+def test_tombstone_names_stay_registered_beside_unrelated_tasks():
+    app.autodiscover_tasks(force=True)
+    registered = set(app.tasks)
+    assert set(TOMBSTONE_TASK_NAMES) <= registered
+    assert {
+        "compass.ecounseling.ingest_media_artifact",
+        "compass.ecounseling.recover_media_artifacts",
+        "compass.notifications.email.dispatch_due",
+        "compass.infrastructure.noop",
+    } <= registered
+    assert {task.name for task in TOMBSTONES} == set(TOMBSTONE_TASK_NAMES)
+
+
+def test_tombstones_never_touch_the_database_providers_storage_or_the_broker(dpo):
+    rule, cases = legacy_world(dpo)
+    queued = cases["QUEUED"]
+    before = ledger_snapshot()
+    sources = list(GraduateTracerResponse.objects.order_by("pk").values())
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("A retired disposition task reached an external boundary.")
+
+    with (
+        patch.object(DailyClient, "from_settings", side_effect=forbidden),
+        patch("compass.integrations.storage.ObjectStorage.__init__", side_effect=forbidden),
+        patch("celery.app.task.Task.apply_async", side_effect=forbidden),
+        CaptureQueriesContext(connection) as queries,
+    ):
+        for _ in range(2):  # repeated delivery
+            execute_disposition(str(queued.pk))
+            execute_disposition(str(cases["PROCESSING"].pk))
+            discover_retention()
+            recover_disposition()
+    assert len(queries) == 0
+    assert ledger_snapshot() == before
+    assert list(GraduateTracerResponse.objects.order_by("pk").values()) == sources
+    queued.refresh_from_db()
+    assert queued.state == "QUEUED" and queued.completed_at is None
+    assert not GraduateTracerResponse.objects.filter(anonymized_at__isnull=False).exists()
+    assert not GraduateTracerDisposedParticipation.objects.exists()
+
+
+def test_redelivered_broker_messages_are_acknowledged_without_effect(dpo):
+    _, cases = legacy_world(dpo)
+    before = ledger_snapshot()
+    for task, args in (
+        (execute_disposition, [str(cases["QUEUED"].pk)]),
+        (execute_disposition, [str(cases["APPROVED"].pk)]),
+        (discover_retention, []),
+        (recover_disposition, []),
+    ):
+        for redelivered in (False, True, True):
+            result = task.apply(
+                args=args, task_id=str(uuid.uuid4()), headers={"redelivered": redelivered}
+            )
+            assert result.successful() and result.result is None
+    assert ledger_snapshot() == before
+    assert DispositionCase.objects.get(pk=cases["QUEUED"].pk).state == "QUEUED"
+
+
+class CapturingHandler(logging.Handler):
+    def __init__(self):
+        super().__init__()
+        self.records = []
+
+    def emit(self, record):
+        self.records.append(record)
+
+
+def test_tombstone_diagnostic_is_minimized():
+    case_id = str(uuid.uuid4())
+    logger = logging.getLogger("compass.privacy_governance")
+    handler = CapturingHandler()
+    logger.addHandler(handler)
+    try:
+        execute_disposition(case_id)
+        execute_disposition(case_id=case_id)
+    finally:
+        logger.removeHandler(handler)
+    assert len(handler.records) == 2
+    for record in handler.records:
+        payload = json.loads(JsonFormatter().format(record))
+        assert payload["event"] == "retention_task_decommissioned"
+        assert payload["task_name"] == "compass.privacy_governance.execute_disposition"
+        assert payload["outcome_code"] == "DECOMMISSIONED"
+        assert case_id not in json.dumps(payload) and case_id not in record.getMessage()
+
+
+# --- Mutation refusal ---------------------------------------------------------------------------
+
+
+def mutation_requests(rule, case):
+    update = {k: v for k, v in rule_values().items() if k != "code"}
+    revision = {"expected_revision": 1}
+    return [
+        ("POST", f"{ROOT}/rules", rule_values()),
+        ("PATCH", f"{ROOT}/rules/{rule.pk}", update | revision),
+        ("POST", f"{ROOT}/rules/{rule.pk}/activate", revision),
+        ("POST", f"{ROOT}/rules/{rule.pk}/retire", revision),
+        ("POST", f"{ROOT}/cases/{case.pk}/hold", revision | {"reason": "Synthetic hold"}),
+        ("POST", f"{ROOT}/cases/{case.pk}/release-hold", revision),
+        ("POST", f"{ROOT}/cases/{case.pk}/approve", revision),
+        ("POST", f"{ROOT}/cases/{case.pk}/retry", revision),
+    ]
+
+
+def send(client, method, path, payload):
+    return (post_json if method == "POST" else patch_json)(client, path, payload)
+
+
+@pytest.mark.parametrize("holder", ["dpo", "override"])
+def test_every_retention_mutation_route_is_refused_for_any_authority(
+    dpo, holder, django_capture_on_commit_callbacks
+):
+    rule, cases = legacy_world(dpo)
+    actor = dpo
+    if holder == "override":
+        actor = make_user("exceptional-authority@example.edu")
+        grant_overrides(actor)
+        assert CAPS <= effective_capabilities(actor)
+    client = stepped_up(actor)
+    before = ledger_snapshot()
+    targets = [cases["READY"], cases["ON_HOLD"], cases["FAILED"], cases["QUEUED"]]
+    with (
+        patch("celery.app.task.Task.apply_async") as dispatch,
+        django_capture_on_commit_callbacks(execute=True) as callbacks,
+    ):
+        for case in targets:
+            for method, path, payload in mutation_requests(rule, case):
+                response = send(client, method, path, payload)
+                assert response.status_code == 409, (path, response.content)
+                error = response.json()["error"]
+                assert error["code"] == "retention_decommissioned"
+                assert error["message"] == retention.DECOMMISSIONED_MESSAGE
+    dispatch.assert_not_called()
+    assert callbacks == []
+    assert ledger_snapshot() == before
+
+
+def test_service_refusal_precedes_every_query_lock_and_write():
+    calls = [
+        lambda: retention.create_rule(actor=None, values={}, context=None),
+        lambda: retention.update_rule(
+            actor=None, rule_id=uuid.uuid4(), expected_revision=1, values={}, context=None
+        ),
+        lambda: retention.transition_rule(
+            actor=None, rule_id=uuid.uuid4(), expected_revision=1, activate=True, context=None
+        ),
+        lambda: retention.transition_rule(
+            actor=None, rule_id=uuid.uuid4(), expected_revision=1, activate=False, context=None
+        ),
+        lambda: retention.change_hold(
+            actor=None,
+            case_id=uuid.uuid4(),
+            expected_revision=1,
+            reason="x",
+            release=False,
+            context=None,
+        ),
+        lambda: retention.change_hold(
+            actor=None,
+            case_id=uuid.uuid4(),
+            expected_revision=1,
+            reason=None,
+            release=True,
+            context=None,
+        ),
+        lambda: retention.approve_case(
+            actor=None, case_id=uuid.uuid4(), expected_revision=1, context=None
+        ),
+        lambda: retention.approve_case(
+            actor=None, case_id=uuid.uuid4(), expected_revision=1, context=None, retry=True
+        ),
+    ]
+    with CaptureQueriesContext(connection) as queries:
+        for call in calls:
+            with pytest.raises(APIError) as refused:
+                call()
+            assert refused.value.status_code == 409
+            assert refused.value.code == "retention_decommissioned"
+    assert len(queries) == 0
 
 
 @pytest.mark.parametrize(
     "role", ["INSTITUTIONAL_OFFICER", "IT_ADMIN", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT"]
 )
-def test_only_dpo_baseline_and_backend_denies_other_roles(dpo, role):
-    assert CAPS <= effective_capabilities(dpo)
+def test_existing_authorization_boundary_still_applies_first(dpo, role):
     other = make_user("other@example.edu", role=role)
     assert CAPS.isdisjoint(effective_capabilities(other))
-    client = auth_client(other, recent_mfa=True)
+    client = stepped_up(other)
     assert client.get(f"{ROOT}/summary").status_code == 403
     assert post_json(client, f"{ROOT}/rules", rule_values()).status_code == 403
 
 
-def test_dependencies_overrides_and_confidential_content_boundary(dpo):
+def test_step_up_boundary_is_unchanged_before_refusal(dpo):
+    rule, cases = legacy_world(dpo)
+    client = auth_client(dpo)
+    for path in (f"{ROOT}/rules/{rule.pk}/activate", f"{ROOT}/cases/{cases['READY'].pk}/approve"):
+        response = post_json(client, path, {"expected_revision": 1})
+        assert response.status_code == 403
+        assert response.json()["error"]["code"] == "mfa_setup_required"
+    # Drafting routes never required step-up; they now refuse instead of creating a draft.
+    response = post_json(client, f"{ROOT}/rules", rule_values())
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "retention_decommissioned"
+    assert not OperationalRetentionRule.objects.filter(code="SYNTHETIC-TEST").exists()
+
+
+def test_dpo_capabilities_unchanged_and_without_confidential_content(dpo):
+    assert CAPS <= effective_capabilities(dpo)
     assert CAPS.isdisjoint(effective_capabilities(make_head()))
     assert not any(
         code.startswith(
@@ -148,278 +425,41 @@ def test_dependencies_overrides_and_confidential_content_boundary(dpo):
         )
         for code in effective_capabilities(dpo)
     )
+    assert auth_client(dpo).get("/api/v1/graduate-tracer/responses").status_code == 403
+
+
+# --- Historical preservation --------------------------------------------------------------------
+
+
+def test_read_endpoints_serve_the_historical_ledger_without_source_identifiers(dpo):
+    rule, cases = legacy_world(dpo)
+    before = ledger_snapshot()
     client = auth_client(dpo)
-    assert client.get("/api/v1/graduate-tracer/responses").status_code == 403
-    for suffix in ("view", "manage", "approve"):
-        code = f"privacy_governance.retention.{suffix}"
-        UserCapabilityOverride.objects.create(
-            user=dpo,
-            capability=Capability.objects.get(code=code),
-            effect="REVOKE" if suffix == "view" else "GRANT",
-            reason="Test authority",
-        )
-    assert CAPS.isdisjoint(effective_capabilities(dpo))
-    UserCapabilityOverride.objects.filter(
-        user=dpo, capability__code="privacy_governance.retention.view"
-    ).delete()
-    assert CAPS <= effective_capabilities(dpo)
-    officer = make_user("override@example.edu")
-    for code in CAPS:
-        UserCapabilityOverride.objects.create(
-            user=officer,
-            capability=Capability.objects.get(code=code),
-            effect="GRANT",
-            reason="Test exception",
-        )
-    assert CAPS <= effective_capabilities(officer)
+    summary = client.get(f"{ROOT}/summary").json()
+    assert summary["needs_review"] == 1 and summary["on_hold"] == 1
+    assert summary["processing"] == 3 and summary["recently_completed"] == 1
+    assert client.get(f"{ROOT}/categories").status_code == 200
+    rules = client.get(f"{ROOT}/rules").json()["items"]
+    assert {item["status"] for item in rules} == {"ACTIVE", "RETIRED"}
+    assert client.get(f"{ROOT}/rules/{rule.pk}").json()["duration_days"] == 30
+    listed = client.get(f"{ROOT}/cases?page_size=50").json()["items"]
+    assert len(listed) == len(cases)
+    held = client.get(f"{ROOT}/cases/{cases['ON_HOLD'].pk}").json()
+    assert held["holds"][0]["reason"] == "Synthetic administrative hold"
+    detail = client.get(f"{ROOT}/cases/{cases['RECONCILIATION_REQUIRED'].pk}").json()
+    assert detail["state"] == "RECONCILIATION_REQUIRED"
+    assert detail["blocker"] == "PROVIDER_UNVERIFIED"
+    serialized = json.dumps(listed)
+    for case in cases.values():
+        assert str(case.source_id) not in serialized
+    assert "source_id" not in detail
+    assert ledger_snapshot() == before
 
 
-def test_drafting_no_mfa_activation_approval_and_retirement_step_up(dpo):
-    client = auth_client(dpo)
-    result = post_json(client, f"{ROOT}/rules", rule_values())
-    assert result.status_code == 201, result.content
-    item = result.json()
-    result = patch_json(
-        client,
-        f"{ROOT}/rules/{item['id']}",
-        {key: value for key, value in rule_values().items() if key != "code"}
-        | {"expected_revision": item["revision"]},
-    )
-    assert result.status_code == 200
-    item = result.json()
-    url = f"{ROOT}/rules/{item['id']}/activate"
-    result = post_json(client, url, {"expected_revision": item["revision"]})
-    assert result.status_code == 403 and result.json()["error"]["code"] == "mfa_setup_required"
-    TOTPFactor.objects.create(user=dpo, encrypted_secret="test-only", confirmed_at=timezone.now())
-    result = post_json(client, url, {"expected_revision": item["revision"]})
-    assert result.status_code == 403 and result.json()["error"]["code"] == "recent_mfa_required"
-    recent = auth_client(dpo, recent_mfa=True)
-    result = post_json(recent, url, {"expected_revision": item["revision"]})
-    assert result.status_code == 200
-    item = result.json()
-    source = tracer()
-    case = discovered_case(source)
-    result = post_json(
-        client, f"{ROOT}/cases/{case.pk}/approve", {"expected_revision": case.revision}
-    )
-    assert result.status_code == 403 and result.json()["error"]["code"] == "recent_mfa_required"
-    assert (
-        post_json(
-            client, f"{ROOT}/rules/{item['id']}/retire", {"expected_revision": item["revision"]}
-        ).status_code
-        == 403
-    )
-
-
-@pytest.mark.parametrize(
-    "update",
-    [
-        {"duration_days": 0},
-        {"duration_days": -1},
-        {"duration_days": 1.5},
-        {"category": "INVENTORY"},
-        {"action": "DELETE"},
-        {"trigger": "MEDIA_READY_AT"},
-        {"policy_reference": " "},
-    ],
-)
-def test_api_rejects_invalid_or_unsupported_rules(dpo, update):
-    assert post_json(auth_client(dpo), f"{ROOT}/rules", rule_values() | update).status_code == 422
-
-
-def test_historical_effective_date_is_policy_metadata_and_activation_time_stays_real(dpo):
-    source = tracer()
-    effective_on = institution_today() - timedelta(days=730)
-    item = retention.create_rule(
-        actor=dpo,
-        values={**rule_values(), "effective_on": effective_on},
-        context=AuditContext.user(dpo),
-    )
-    assert item.effective_on == effective_on
-    before = timezone.now()
-    item = retention.transition_rule(
-        actor=dpo,
-        rule_id=item.pk,
-        expected_revision=item.revision,
-        activate=True,
-        context=AuditContext.user(dpo),
-    )
-    assert item.effective_on == effective_on
-    # The policy may predate COMPASS; the activation is still recorded when it happened.
-    assert before <= item.activated_at <= timezone.now()
-    # Records whose period already elapsed become eligible at once, still awaiting approval.
-    case = discovered_case(source)
-    assert case.state == "READY" and case.approved_at is None
-
-    drafted = post_json(
-        auth_client(dpo),
-        f"{ROOT}/rules",
-        {**rule_values(), "code": "SYNTHETIC-HISTORICAL", "effective_on": effective_on},
-    )
-    assert drafted.status_code == 201, drafted.content
-    assert drafted.json()["effective_on"] == effective_on.isoformat()
-
-
-@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
-def test_effective_on_starts_on_the_manila_day_under_a_utc_runtime(dpo):
-    source = tracer()
-    item = retention.create_rule(
-        actor=dpo,
-        values={**rule_values(), "effective_on": date(2026, 10, 9)},
-        context=AuditContext.user(dpo),
-    )
-    item = retention.transition_rule(
-        actor=dpo,
-        rule_id=item.pk,
-        expected_revision=item.revision,
-        activate=True,
-        context=AuditContext.user(dpo),
-    )
-    # 15:30 UTC is still 8 October in Manila; 16:30 UTC is already 9 October.
-    before_midnight = datetime(2026, 10, 8, 15, 30, tzinfo=UTC)
-    after_midnight = datetime(2026, 10, 8, 16, 30, tzinfo=UTC)
-    assert not retention.active(item, before_midnight)
-    assert retention.active(item, after_midnight)
-
-    with patch("django.utils.timezone.now", return_value=before_midnight):
-        assert retention.discover_eligibility() == 0
-    GraduateTracerResponse.objects.filter(pk=source.pk).update(
-        submitted_at=after_midnight - timedelta(days=31)
-    )
-    with patch("django.utils.timezone.now", return_value=after_midnight):
-        assert retention.discover_eligibility() == 1
-    # The retention period itself stays exact instant arithmetic.
-    case = DispositionCase.objects.get(source_id=source.pk)
-    assert case.eligible_at == after_midnight - timedelta(days=1)
-
-
-@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
-def test_anonymized_submission_keeps_its_manila_day_for_report_filters(dpo):
-    source = tracer()
-    # 00:30 on 9 October in Manila is still 8 October in UTC.
-    GraduateTracerResponse.objects.filter(pk=source.pk).update(
-        submitted_at=datetime(2026, 10, 8, 16, 30, tzinfo=UTC)
-    )
-    anonymize_response(source.pk)
-
-    anonymous = GraduateTracerResponse.objects.get(anonymized_at__isnull=False)
-    assert anonymous.submitted_at == datetime(2026, 10, 8, 16, 0, tzinfo=UTC)
-    on_the_day = build_graduate_tracer_report(
-        submitted_from=date(2026, 10, 9), submitted_to=date(2026, 10, 9)
-    )
-    day_before = build_graduate_tracer_report(
-        submitted_from=date(2026, 10, 8), submitted_to=date(2026, 10, 8)
-    )
-    assert on_the_day["report_context"]["submitted_response_count"] == 1
-    assert day_before["report_context"]["submitted_response_count"] == 0
-
-
-def test_no_rule_draft_future_retired_and_exact_elapsed_day_boundary(dpo):
-    source = tracer()
-    assert retention.discover_eligibility() == 0
-    item = retention.create_rule(actor=dpo, values=rule_values(), context=AuditContext.user(dpo))
-    assert retention.discover_eligibility() == 0
-    item = retention.transition_rule(
-        actor=dpo,
-        rule_id=item.pk,
-        expected_revision=item.revision,
-        activate=True,
-        context=AuditContext.user(dpo),
-    )
-    OperationalRetentionRule.objects.filter(pk=item.pk).update(
-        effective_on=institution_today() + timedelta(days=1)
-    )
-    assert retention.discover_eligibility() == 0
-    OperationalRetentionRule.objects.filter(pk=item.pk).update(effective_on=institution_today())
-    case = discovered_case(source)
-    assert case.eligible_at == source.submitted_at + timedelta(days=30)
-    assert case.state == "READY" and case.approved_at is None
-    item.refresh_from_db()
-    retention.transition_rule(
-        actor=dpo,
-        rule_id=item.pk,
-        expected_revision=item.revision,
-        activate=False,
-        context=AuditContext.user(dpo),
-    )
-    case.refresh_from_db()
-    assert case.state == "BLOCKED"
-    execute_disposition(str(case.pk))
-    assert GraduateTracerResponse.objects.filter(pk=source.pk).exists()
-
-
-def test_hold_stale_approval_release_and_queued_hold_never_auto_approve(dpo):
-    active_rule(dpo)
-    case = discovered_case(tracer())
-    original_revision = case.revision
-    case = retention.change_hold(
-        actor=dpo,
-        case_id=case.pk,
-        expected_revision=case.revision,
-        reason="Approved administrative review",
-        release=False,
-        context=AuditContext.user(dpo),
-    )
-    with pytest.raises(APIError):
-        retention.approve_case(
-            actor=dpo,
-            case_id=case.pk,
-            expected_revision=original_revision,
-            context=AuditContext.user(dpo),
-        )
-    execute_disposition(str(case.pk))
-    case = retention.change_hold(
-        actor=dpo,
-        case_id=case.pk,
-        expected_revision=case.revision,
-        reason=None,
-        release=True,
-        context=AuditContext.user(dpo),
-    )
-    assert case.state == "READY" and case.approved_at is None
-    case = approve(dpo, case)
-    case = retention.change_hold(
-        actor=dpo,
-        case_id=case.pk,
-        expected_revision=case.revision,
-        reason="Hold queued case",
-        release=False,
-        context=AuditContext.user(dpo),
-    )
-    execute_disposition(str(case.pk))
-    case.refresh_from_db()
-    assert case.state == "ON_HOLD" and case.approved_at is None
-    assert AuditEvent.objects.filter(action="privacy.retention.hold.placed").count() == 2
-    assert AuditEvent.objects.filter(action="privacy.retention.hold.released").count() == 1
-
-
-def test_frozen_single_case_new_source_not_approved_and_dispatch_after_commit(
-    dpo, django_capture_on_commit_callbacks
-):
-    active_rule(dpo)
-    first = tracer()
-    case = discovered_case(first)
-    with patch("compass.privacy_governance.tasks.execute_disposition.delay") as delay:
-        with django_capture_on_commit_callbacks(execute=True):
-            approved = approve(dpo, case)
-            assert not delay.called
-        delay.assert_called_once_with(str(case.pk))
-    second = tracer("second@example.edu")
-    new = discovered_case(second)
-    execute_disposition(str(approved.pk))
-    assert new.state == "READY" and new.approved_at is None
-    assert GraduateTracerResponse.objects.filter(pk=second.pk).exists()
-
-
-def test_anonymization_map_children_aggregate_identity_and_personal_api(dpo):
-    active_rule(dpo)
+def test_historical_anonymized_contribution_keeps_its_integrity_and_exclusions(dpo):
     source = tracer(
-        birth_date=institution_today(),
         undergraduate_degree_reasons=["PEER_INFLUENCE"],
-        advanced_study_reasons=["OTHER"],
-        reasons_for_accepting_first_job=["OTHER"],
         degree_other_reason="Confidential detail",
-        self_employed_college_skills="Identifying skill",
     )
     student = source.student
     for model, values in (
@@ -436,22 +476,18 @@ def test_anonymization_map_children_aggregate_identity_and_personal_api(dpo):
     ):
         encrypted_row(model, response=source, position=1, **values)
     before = build_graduate_tracer_report()
-    case = approve(dpo, discovered_case(source))
-    execute_disposition(str(case.pk))
-    case.refresh_from_db()
-    assert case.state == "COMPLETED"
-    assert not GraduateTracerResponse.objects.filter(pk=source.pk).exists()
-    anonymous = GraduateTracerResponse.objects.get(anonymized_at__isnull=False)
+    analytical = {field: getattr(source, field) for field in ANALYTICAL_FIELDS}
+    rule = legacy_rule(actor=dpo)
+    case = legacy_case(rule=rule, source=source, state="COMPLETED")
+    anonymous = historical_anonymized_contribution(source)
+
+    for task in TOMBSTONES:
+        task(str(case.pk))
     assert verify_anonymized(anonymous) and anonymous.pk != source.pk
-    assert all(getattr(source, field) == getattr(anonymous, field) for field in ANALYTICAL_FIELDS)
+    assert {field: getattr(anonymous, field) for field in ANALYTICAL_FIELDS} == analytical
     assert anonymous.confidential_content_ciphertext is None
-    assert not hasattr(anonymous, "birth_date")
-    assert not hasattr(anonymous, "province")
-    assert not hasattr(anonymous, "undergraduate_degree_reasons")
-    assert not hasattr(anonymous, "advanced_study_reasons")
-    assert not hasattr(anonymous, "curriculum_improvement_suggestions")
     assert all(
-        model.objects.count() == 0
+        not model.objects.exists()
         for model in (
             GraduateTracerEducation,
             GraduateTracerProfessionalExam,
@@ -459,318 +495,112 @@ def test_anonymization_map_children_aggregate_identity_and_personal_api(dpo):
         )
     )
     after = build_graduate_tracer_report()
-    assert before["sections"] == after["sections"]
+    assert after["sections"] == before["sections"]
     assert after["report_context"]["submitted_response_count"] == 1
-    anonymize_response(anonymous.pk)
-    execute_disposition(str(case.pk))
-    assert GraduateTracerResponse.objects.count() == 1
     assert GraduateTracerDisposedParticipation.objects.filter(student=student).exists()
     client = auth_client(student)
-    assert (
-        client.get("/api/v1/graduate-tracer/me").json()["error"]["code"]
-        == "graduate_tracer_disposed"
-    )
-    assert (
-        post_json(client, "/api/v1/graduate-tracer/me", {}).json()["error"]["code"]
-        == "graduate_tracer_disposed"
-    )
+    for response in (
+        client.get("/api/v1/graduate-tracer/me"),
+        post_json(client, "/api/v1/graduate-tracer/me", {}),
+    ):
+        assert response.json()["error"]["code"] == "graduate_tracer_disposed"
     safe = auth_client(dpo).get(f"{ROOT}/cases/{case.pk}").json()
-    assert safe["affected_count"] == 1
-    assert not {"source_id", "student_id", "name_snapshot", "email_snapshot"} & safe.keys()
+    assert safe["state"] == "COMPLETED" and safe["affected_count"] == 1
     assert str(anonymous.pk) not in json.dumps(safe)
+    assert str(source.pk) not in json.dumps(safe)
     head = auth_client(make_head())
-    assert head.get(f"/api/v1/graduate-tracer/responses/{source.pk}").status_code == 404
     assert head.get(f"/api/v1/graduate-tracer/responses/{anonymous.pk}").status_code == 404
     assert head.get("/api/v1/graduate-tracer/responses").json()["items"] == []
+    # The integrity rule still rejects a contribution that carries a quasi-identifier.
+    GraduateTracerResponse.objects.filter(pk=anonymous.pk).update(graduation_year=2024)
+    assert not verify_anonymized(anonymous)
 
 
-class CapturingDispositionDaily:
-    def __init__(self, outcome="success", transcript=False):
-        self.outcome, self.calls, self.transcript = outcome, [], transcript
-
-    def get_recording(self, *, artifact_id):
-        self.calls.append(("GET_RECORDING", artifact_id))
-        return {
-            "id": artifact_id,
-            "status": "finished",
-            **({"storage_provider": "aws"} if self.outcome == "external" else {}),
-        }
-
-    def get_transcript(self, *, artifact_id):
-        self.calls.append(("GET_TRANSCRIPT", artifact_id))
-        return {
-            "transcriptId": artifact_id,
-            "status": "t_deleted" if self.outcome == "already_deleted" else "t_finished",
-            **({"outParams": {"bucket": "external"}} if self.outcome == "external" else {}),
-        }
-
-    def _delete(self, artifact_id):
-        self.calls.append(("DELETE", artifact_id))
-        if self.outcome == "transient":
-            raise DailyUnavailable("Sanitized provider failure")
-        if self.outcome == "permanent":
-            raise DailyHTTPError(403)
-        return (
-            {}
-            if self.outcome == "unverified"
-            else {
-                "deleted": True,
-                "id": artifact_id,
-                "transcriptId": artifact_id,
-                "status": "t_deleted",
-                "temporary_url": "never-store",
-                "token": "never-audit",
-            }
-        )
-
-    def delete_recording(self, *, artifact_id):
-        return self._delete(artifact_id)
-
-    def delete_transcript(self, *, artifact_id):
-        return self._delete(artifact_id)
-
-
-def media_source(kind):
-    from tests.test_ecounseling_media import setup_session
-
-    _, student, counselor, appointment = setup_session(media_policy_version=2)
-    room = ECounselingRoom.objects.create(
-        appointment=appointment,
-        daily_room_name="safe-opaque-room",
-        media_policy_version=1,
-        room_expires_at=timezone.now() - timedelta(days=31),
+@override_settings(TIME_ZONE="UTC", INSTITUTION_TIME_ZONE="Asia/Manila")
+def test_historical_anonymized_submission_keeps_its_manila_report_day():
+    # 00:00 on 9 October in Manila is still 8 October in UTC.
+    GraduateTracerResponse.objects.create(
+        student=None,
+        confidential_content_ciphertext=None,
+        status="SUBMITTED",
+        submitted_at=datetime(2026, 10, 8, 16, 0, tzinfo=UTC),
+        anonymized_at=datetime(2026, 10, 9, 16, 0, tzinfo=UTC),
+        sex="FEMALE",
+        current_employment_state="EMPLOYED",
     )
-    consent = ECounselingConsent.objects.create(
-        room=room,
-        scope="AUDIO_VIDEO_RECORDING" if kind == "RECORDING" else "TRANSCRIPT_STORAGE",
-        requested_by=counselor,
-        decision="APPROVED",
-        decided_at=timezone.now() - timedelta(days=32),
-        withdrawn_at=timezone.now() - timedelta(days=31),
+    on_the_day = build_graduate_tracer_report(
+        submitted_from=date(2026, 10, 9), submitted_to=date(2026, 10, 9)
     )
-    source = ECounselingMediaCapture.objects.create(
-        room=room,
-        kind=kind,
-        status="READY",
-        provider_artifact_id="artifact-opaque",
-        provider_instance_id="instance-opaque",
-        ready_at=timezone.now() - timedelta(days=31),
+    day_before = build_graduate_tracer_report(
+        submitted_from=date(2026, 10, 8), submitted_to=date(2026, 10, 8)
     )
-    return source, consent
+    assert on_the_day["report_context"]["submitted_response_count"] == 1
+    assert day_before["report_context"]["submitted_response_count"] == 0
 
 
 @pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
-@pytest.mark.parametrize(
-    "outcome,expected",
-    [
-        ("success", "COMPLETED"),
-        ("transient", "QUEUED"),
-        ("permanent", "FAILED"),
-        ("unverified", "RECONCILIATION_REQUIRED"),
-        ("external", "RECONCILIATION_REQUIRED"),
-    ],
-)
-def test_provider_disposition_truth_verification_consent_and_idempotency(
-    dpo, kind, outcome, expected
-):
-    source, consent = media_source(kind)
-    category = "ECOUNSELING_RECORDING" if kind == "RECORDING" else "ECOUNSELING_TRANSCRIPT"
-    active_rule(dpo, category)
-    case = discovered_case(source)
-    fake = CapturingDispositionDaily(outcome, transcript=kind == "TRANSCRIPTION")
-    with patch.object(DailyClient, "from_settings", return_value=fake):
-        execute_disposition(str(case.pk))
-        assert fake.calls == []
-        case = approve(dpo, case)
-        execute_disposition(str(case.pk))
-        case.refresh_from_db()
-        assert case.state == expected
-        count = len(fake.calls)
-        execute_disposition(str(case.pk))
-        assert len(fake.calls) == count
+def test_historically_disposed_provider_media_cannot_be_resurrected(dpo, kind):
+    source, consent = legacy_media_source(kind)
+    rule = legacy_rule(
+        actor=dpo,
+        category="ECOUNSELING_RECORDING" if kind == "RECORDING" else "ECOUNSELING_TRANSCRIPT",
+    )
+    case = legacy_case(rule=rule, source=source, state="COMPLETED")
+    historically_disposed_media(source)
+    for task in TOMBSTONES:
+        task(str(case.pk))
+    process_media_webhook_event(
+        event_type="recording.ready-to-download"
+        if kind == "RECORDING"
+        else "transcript.ready-to-download",
+        event_id="late-ready",
+        event_ts=timezone.now().timestamp(),
+        payload={
+            "room_name": source.room.daily_room_name,
+            "recording_id": "artifact-opaque",
+            "transcript_id": "artifact-opaque",
+        },
+    )
     source.refresh_from_db()
-    assert (source.provider_artifact_id is None) == (expected == "COMPLETED")
-    assert (source.artifact_disposed_at is not None) == (expected == "COMPLETED")
+    assert source.provider_artifact_id is None and source.artifact_disposed_at
     consent.refresh_from_db()
     assert consent.decision == "APPROVED" and consent.withdrawn_at
-    metadata = json.dumps(
-        list(
-            AuditEvent.objects.filter(action__startswith="privacy.").values_list(
-                "metadata", flat=True
-            )
-        )
-    )
-    for forbidden in (
-        "never-store",
-        "never-audit",
-        "artifact-opaque",
-        "instance-opaque",
-        "temporary_url",
-        "Confidential",
-    ):
-        assert forbidden not in metadata
-    if expected == "COMPLETED":
-        process_media_webhook_event(
-            event_type="recording.ready-to-download"
-            if kind == "RECORDING"
-            else "transcript.ready-to-download",
-            event_id="late-ready",
-            event_ts=timezone.now().timestamp(),
-            payload={
-                "room_name": source.room.daily_room_name,
-                "recording_id": "artifact-opaque",
-                "transcript_id": "artifact-opaque",
-            },
-        )
-        source.refresh_from_db()
-        assert source.provider_artifact_id is None and source.artifact_disposed_at
-
-
-def test_provider_retries_bounded_and_stale_claim_needs_reconciliation(dpo):
-    source, _ = media_source("RECORDING")
-    active_rule(dpo, "ECOUNSELING_RECORDING")
-    case = approve(dpo, discovered_case(source))
-    fake = CapturingDispositionDaily("transient")
-    with patch.object(DailyClient, "from_settings", return_value=fake):
-        for _ in range(3):
-            DispositionCase.objects.filter(pk=case.pk).update(next_attempt_at=timezone.now())
-            execute_disposition(str(case.pk))
-    case.refresh_from_db()
-    assert case.state == "FAILED" and case.attempts == 3
-    case = retention.approve_case(
-        actor=dpo,
-        case_id=case.pk,
-        expected_revision=case.revision,
-        context=AuditContext.user(dpo),
-        retry=True,
-    )
-    DispositionCase.objects.filter(pk=case.pk).update(
-        state="PROCESSING", started_at=timezone.now() - timedelta(minutes=16)
-    )
-    with patch("compass.privacy_governance.tasks.enqueue"):
-        recover_disposition()
-    case.refresh_from_db()
-    assert case.state == "RECONCILIATION_REQUIRED" and case.blocker == "WORKER_INTERRUPTED"
-
-
-def test_changed_source_rejected_before_approval_and_execution(dpo):
-    active_rule(dpo)
-    source = tracer()
-    case = discovered_case(source)
-    GraduateTracerResponse.objects.filter(pk=source.pk).update(updated_at=timezone.now())
-    with pytest.raises(APIError):
-        approve(dpo, case)
-    retention.discover_eligibility()
-    case.refresh_from_db()
-    case = approve(dpo, case)
-    GraduateTracerResponse.objects.filter(pk=source.pk).update(updated_at=timezone.now())
-    execute_disposition(str(case.pk))
-    case.refresh_from_db()
-    assert (
-        case.state == "NO_LONGER_ELIGIBLE"
-        and GraduateTracerResponse.objects.filter(pk=source.pk).exists()
-    )
-
-
-def test_required_audit_failure_rolls_back_anonymization(dpo):
-    active_rule(dpo)
-    source = tracer()
-    case = approve(dpo, discovered_case(source))
-    original_audit = retention.audit
-
-    def fail_completion(context, action, item, **kwargs):
-        if action == actions.DISPOSITION_COMPLETED:
-            raise RuntimeError("audit unavailable")
-        return original_audit(context, action, item, **kwargs)
-
-    with patch("compass.privacy_governance.tasks.audit", side_effect=fail_completion):
-        with pytest.raises(RuntimeError):
-            execute_disposition(str(case.pk))
-    case.refresh_from_db()
-    assert case.state == "QUEUED" and GraduateTracerResponse.objects.filter(pk=source.pk).exists()
-    assert not GraduateTracerResponse.objects.filter(anonymized_at__isnull=False).exists()
-    assert not GraduateTracerDisposedParticipation.objects.exists()
-    assert not AuditEvent.objects.filter(action=actions.DISPOSITION_STARTED).exists()
-
-
-def test_anonymization_verification_failure_preserves_source_and_records_failure(dpo):
-    active_rule(dpo)
-    source = tracer()
-    case = approve(dpo, discovered_case(source))
-    with patch("compass.graduate_tracer.disposition.verify_anonymized", return_value=False):
-        execute_disposition(str(case.pk))
-    case.refresh_from_db()
-    assert case.state == "FAILED" and case.blocker == "VERIFICATION_FAILED"
-    assert AuditEvent.objects.filter(
-        action="privacy.disposition.failed", target_id=case.pk
-    ).exists()
-    assert GraduateTracerResponse.objects.filter(pk=source.pk, student=source.student).exists()
-    assert not GraduateTracerResponse.objects.filter(anonymized_at__isnull=False).exists()
-    assert not GraduateTracerDisposedParticipation.objects.exists()
-
-
-@pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
-def test_held_provider_case_does_not_call_daily(dpo, kind):
-    source, _ = media_source(kind)
-    category = "ECOUNSELING_RECORDING" if kind == "RECORDING" else "ECOUNSELING_TRANSCRIPT"
-    active_rule(dpo, category)
-    case = approve(dpo, discovered_case(source))
-    retention.change_hold(
-        actor=dpo,
-        case_id=case.pk,
-        expected_revision=case.revision,
-        reason="Administrative hold",
-        release=False,
-        context=AuditContext.user(dpo),
-    )
-    with patch.object(DailyClient, "from_settings") as provider:
-        execute_disposition(str(case.pk))
-        provider.assert_not_called()
-    source.refresh_from_db()
-    assert source.provider_artifact_id and source.artifact_disposed_at is None
-
-
-def test_documented_deleted_transcript_reconciles_without_second_delete(dpo):
-    source, _ = media_source("TRANSCRIPTION")
-    active_rule(dpo, "ECOUNSELING_TRANSCRIPT")
-    case = approve(dpo, discovered_case(source))
-    fake = CapturingDispositionDaily("already_deleted", transcript=True)
-    with patch.object(DailyClient, "from_settings", return_value=fake):
-        execute_disposition(str(case.pk))
     case.refresh_from_db()
     assert case.state == "COMPLETED"
-    assert fake.calls == [("GET_TRANSCRIPT", "artifact-opaque")]
 
 
-def test_approval_setup_step_up_and_exact_lifecycle_audits(dpo):
-    rule = active_rule(dpo)
-    source = tracer()
-    case = discovered_case(source)
-    response = post_json(
-        auth_client(dpo), f"{ROOT}/cases/{case.pk}/approve", {"expected_revision": case.revision}
-    )
-    assert response.status_code == 403 and response.json()["error"]["code"] == "mfa_setup_required"
-    case = approve(dpo, case)
-    execute_disposition(str(case.pk))
-    retention.transition_rule(
-        actor=dpo,
-        rule_id=rule.pk,
-        expected_revision=rule.revision,
-        activate=False,
-        context=AuditContext.user(dpo),
-    )
-    assert list(
-        AuditEvent.objects.filter(action__startswith="privacy.")
-        .order_by("occurred_at", "id")
-        .values_list("action", flat=True)
-    ) == [
-        "privacy.retention.rule.created",
-        "privacy.retention.rule.activated",
-        "privacy.disposition.approved",
-        "privacy.disposition.started",
-        "privacy.disposition.completed",
-        "privacy.retention.rule.retired",
-    ]
+def test_historical_audit_trail_is_unchanged_and_still_presented(dpo):
+    rule, cases = legacy_world(dpo)
+    for action, item in (
+        (actions.RETENTION_RULE_ACTIVATED, rule),
+        (actions.DISPOSITION_APPROVED, cases["QUEUED"]),
+        (actions.DISPOSITION_COMPLETED, cases["COMPLETED"]),
+        (actions.DISPOSITION_FAILED, cases["FAILED"]),
+    ):
+        record_event(
+            context=AuditContext.system(),
+            action=action,
+            outcome="FAILED" if action == actions.DISPOSITION_FAILED else "SUCCESS",
+            target_type="privacy.retention.rule" if item is rule else "privacy.disposition.case",
+            target_id=item.pk,
+            metadata={"category": rule.category, "rule_revision": rule.revision},
+        )
+    before = ledger_snapshot()
+    client = stepped_up(dpo)
+    for method, path, payload in mutation_requests(rule, cases["QUEUED"]):
+        assert send(client, method, path, payload).status_code == 409
+    for task in TOMBSTONES:
+        task(str(cases["QUEUED"].pk))
+    assert ledger_snapshot() == before
+    titles = {
+        item["title"]
+        for item in auth_client(dpo)
+        .get("/api/v1/privacy/activity?category=PRIVACY_GOVERNANCE&page_size=50")
+        .json()["items"]
+    }
+    assert {"Retention rule activated", "Disposition approved", "Disposition completed"} <= titles
+    # FAILED-outcome events were never part of the curated feed; they remain stored as evidence.
+    assert AuditEvent.objects.filter(action=actions.DISPOSITION_FAILED, outcome="FAILED").exists()
 
 
 @pytest.mark.parametrize(
@@ -782,58 +612,132 @@ def test_approval_setup_step_up_and_exact_lifecycle_audits(dpo):
         ("delete_transcript", "/transcript/opaque%2Fid"),
     ],
 )
-def test_daily_disposition_uses_documented_quoted_resource_paths(method, path):
+def test_daily_artifact_resource_paths_used_by_custody_cleanup_stay_documented(method, path):
     client = DailyClient("test-key", base_url="https://api.daily.test/v1", timeout_seconds=1)
     with patch.object(client, "_request", return_value={}) as request:
         getattr(client, method)(artifact_id="opaque/id")
     request.assert_called_once_with("DELETE" if method.startswith("delete") else "GET", path)
 
 
-def test_unknown_tracer_instrument_version_is_never_executable(dpo):
-    active_rule(dpo)
-    with pytest.raises(IntegrityError), transaction.atomic():
-        tracer(instrument_schema_version=2)
-    assert retention.discover_eligibility() == 0
-    assert not DispositionCase.objects.exists()
+# --- Read-only preflight command ----------------------------------------------------------------
 
 
-def test_provider_completion_audit_failure_preserves_evidence_and_reconciles(dpo):
-    source, _ = media_source("TRANSCRIPTION")
-    active_rule(dpo, "ECOUNSELING_TRANSCRIPT")
-    case = approve(dpo, discovered_case(source))
-    fake = CapturingDispositionDaily()
-    original_audit = retention.audit
+def run_status(*args):
+    out = StringIO()
+    try:
+        call_command("retention_decommission_status", *args, stdout=out)
+    except CommandError as exc:
+        return exc.returncode, out.getvalue()
+    return 0, out.getvalue()
 
-    def fail_completion(context, action, item, **kwargs):
-        if action == actions.DISPOSITION_COMPLETED:
-            raise RuntimeError("audit unavailable")
-        return original_audit(context, action, item, **kwargs)
 
-    with patch.object(DailyClient, "from_settings", return_value=fake):
-        with patch("compass.privacy_governance.tasks.audit", side_effect=fail_completion):
-            with pytest.raises(RuntimeError):
-                execute_disposition(str(case.pk))
-    case.refresh_from_db()
-    source.refresh_from_db()
-    assert case.state == "PROCESSING"
-    assert source.provider_artifact_id == "artifact-opaque" and source.artifact_disposed_at is None
-    assert not AuditEvent.objects.filter(action=actions.DISPOSITION_COMPLETED).exists()
-    DispositionCase.objects.filter(pk=case.pk).update(
-        started_at=timezone.now() - timedelta(minutes=16)
+def identifiers(*rows):
+    values = set()
+    for row in rows:
+        values.add(str(row.pk))
+        for name in ("source_id", "student_id", "provider_artifact_id"):
+            value = getattr(row, name, None)
+            if value:
+                values.add(str(value))
+    return values
+
+
+def test_status_passes_on_an_empty_or_terminal_ledger_and_lists_operator_checks(dpo):
+    code, output = run_status()
+    assert code == 0
+    for gate in ("G1", "G2", "G3", "G4", "G5"):
+        assert f"{gate} PASS" in output
+    for gate in ("G6", "G7", "G8", "G9", "G10"):
+        assert f"{gate}:" in output
+    assert "does not by itself certify" in output
+    rule = legacy_rule(actor=dpo, category="ECOUNSELING_RECORDING")
+    capture, _ = legacy_media_source("RECORDING")
+    historically_disposed_media(capture)
+    case = legacy_case(rule=rule, source=capture, state="COMPLETED")
+    code, output = run_status()
+    assert code == 0 and "case_state | COMPLETED | 1" in output
+    assert not identifiers(rule, case, capture, dpo) & set(output.split())
+    assert all(value not in output for value in identifiers(rule, case, capture, dpo))
+
+
+@pytest.mark.parametrize(
+    "state,gate",
+    [
+        ("PROCESSING", "G1"),
+        ("APPROVED", "G2"),
+        ("QUEUED", "G2"),
+        ("FAILED", "G3"),
+        ("RECONCILIATION_REQUIRED", "G3"),
+    ],
+)
+def test_status_blocks_pending_in_flight_and_unresolved_cases(dpo, state, gate):
+    rule = legacy_rule(actor=dpo)
+    source = tracer()
+    case = legacy_case(rule=rule, source=source, state=state)
+    code, output = run_status()
+    assert code == 3
+    assert f"{gate} BLOCKED" in output
+    if gate == "G2":
+        assert "not institutional or National Archives disposal authority" in output
+    for value in identifiers(rule, case, source, dpo):
+        assert value not in output
+
+
+def test_status_blocks_active_rules_and_inconsistent_completed_evidence(dpo):
+    legacy_rule(actor=dpo, status="ACTIVE")
+    code, output = run_status()
+    assert code == 3 and "G4 BLOCKED" in output
+    OperationalRetentionRule.objects.update(status="RETIRED")
+    assert run_status()[0] == 0
+
+    media_rule = legacy_rule(actor=dpo, category="ECOUNSELING_TRANSCRIPT")
+    capture, _ = legacy_media_source("TRANSCRIPTION")
+    legacy_case(rule=media_rule, source=capture, state="COMPLETED")  # marker missing
+    code, output = run_status()
+    assert code == 3 and "G5 BLOCKED" in output
+    assert "completed_media_without_disposed_marker | - | 1" in output
+    historically_disposed_media(capture)
+    assert run_status()[0] == 0
+
+    tracer_rule = OperationalRetentionRule.objects.get(category="GRADUATE_TRACER")
+    legacy_case(rule=tracer_rule, source=tracer(), state="COMPLETED")  # source still present
+    code, output = run_status()
+    assert code == 3 and "completed_tracer_source_still_present | - | 1" in output
+
+
+def test_status_json_is_minimized_and_never_claims_certification(dpo):
+    rule = legacy_rule(actor=dpo)
+    legacy_case(rule=rule, source=tracer(), state="QUEUED")
+    code, output = run_status("--format", "json")
+    assert code == 3
+    report = json.loads(output)
+    assert report["scope"] == "database" and report["blocked"] is True
+    assert report["certifies_deployment"] is False
+    assert {gate["gate"] for gate in report["not_verified"]} == {"G6", "G7", "G8", "G9", "G10"}
+    assert {"item", "bucket", "count"} == set(report["counts"][0])
+
+
+def test_status_issues_only_reads(dpo):
+    _, cases = legacy_world(dpo)
+    before = ledger_snapshot()
+    with CaptureQueriesContext(connection) as queries:
+        run_status()
+    statements = [query["sql"].lstrip().upper() for query in queries]
+    assert statements and all(
+        sql.startswith(("SELECT", "SAVEPOINT", "RELEASE SAVEPOINT")) for sql in statements
     )
-    with patch("compass.privacy_governance.tasks.enqueue"):
-        recover_disposition()
-    case.refresh_from_db()
-    assert case.state == "RECONCILIATION_REQUIRED"
-    case = retention.approve_case(
-        actor=dpo,
-        case_id=case.pk,
-        expected_revision=case.revision,
-        context=AuditContext.user(dpo),
-        retry=True,
-    )
-    fake = CapturingDispositionDaily("already_deleted", transcript=True)
-    with patch.object(DailyClient, "from_settings", return_value=fake):
-        execute_disposition(str(case.pk))
-    case.refresh_from_db()
-    assert case.state == "COMPLETED" and fake.calls == [("GET_TRANSCRIPT", "artifact-opaque")]
+    assert ledger_snapshot() == before
+
+
+@pytest.mark.django_db(transaction=True)
+def test_status_runs_as_a_database_read_only_transaction_when_outermost():
+    sync_policy()
+    dpo = make_dpo("outermost-dpo@example.edu")
+    legacy_rule(actor=dpo)
+    with CaptureQueriesContext(connection) as queries:
+        code, _ = run_status()
+    assert code == 0
+    statements = [query["sql"].strip().upper() for query in queries]
+    statements = [sql for sql in statements if sql != "BEGIN"]
+    assert statements[0] == "SET TRANSACTION READ ONLY"
+    assert all(sql.startswith(("SELECT", "SET TRANSACTION", "COMMIT")) for sql in statements)
