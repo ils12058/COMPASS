@@ -40,8 +40,12 @@ export function GoodMoralPdfDownload({
         <Download aria-hidden="true" size={16} />
         {pending ? "Preparing certificate…" : "Download certificate"}
       </Button>
-      <p className="max-w-lg text-sm leading-6 text-muted">The printed certificate needs the authorized physical signature and dry seal before it is complete. The printed issuer name is not a signature.</p>
+      <GoodMoralFulfillmentNotice />
       {error ? <p role="alert" className="max-w-lg text-sm text-danger">{error}</p> : null}
     </div>
   );
+}
+
+export function GoodMoralFulfillmentNotice() {
+  return <p className="max-w-lg text-sm leading-6 text-muted">The printed certificate needs the authorized physical signature and dry seal before it is complete. The printed issuer name is not a signature.</p>;
 }
