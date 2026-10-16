@@ -1,4 +1,4 @@
-"""Synthetic, fake-only end-to-end tests for consent, custody, access and approved disposition."""
+"""Synthetic, fake-only tests for consent, custody, access and historical disposition evidence."""
 
 import hashlib
 import time
@@ -45,8 +45,13 @@ from compass.integrations.media_download import (
     validate_daily_link,
 )
 from compass.privacy_governance import retention
-from compass.privacy_governance.retention_models import DispositionCase
 from compass.privacy_governance.tasks import execute_disposition
+from tests.legacy_disposition_fixtures import (
+    historically_disposed_media,
+    legacy_case,
+    legacy_rule,
+    media_category,
+)
 from tests.test_ecounseling_media import (
     FakeMediaDailyClient,
     approve_scope,
@@ -54,7 +59,6 @@ from tests.test_ecounseling_media import (
     make_user,
     setup_session,
 )
-from tests.test_operational_retention import rule_values
 from tests.test_privacy_governance import auth_client, make_dpo
 
 pytestmark = pytest.mark.django_db
@@ -62,10 +66,7 @@ pytestmark = pytest.mark.django_db
 
 @pytest.fixture(autouse=True)
 def fake_dispatch():
-    with (
-        patch("compass.ecounseling.artifacts.enqueue_artifact"),
-        patch("compass.privacy_governance.retention.enqueue"),
-    ):
+    with patch("compass.ecounseling.artifacts.enqueue_artifact"):
         yield
 
 
@@ -532,56 +533,20 @@ def test_access_has_no_store_bounded_ttl_and_survives_completed_appointment_serv
     assert not {"object_key", "provider_artifact_id"} & result.json().keys()
 
 
-def v2_case(capture):
+def v2_case(capture, state="QUEUED"):
+    """A historical contract-2 case written directly; COMPASS no longer creates cases."""
     dpo = make_dpo()
-    values = rule_values(
-        "ECOUNSELING_RECORDING" if capture.kind == "RECORDING" else "ECOUNSELING_TRANSCRIPT"
-    )
-    values.update(contract_version=2, action="DELETE_MEDIA_ARTIFACT_KEEP_EVIDENCE")
-    rule = retention.create_rule(actor=dpo, values=values, context=context(dpo))
-    retention.transition_rule(
-        actor=dpo,
-        rule_id=rule.pk,
-        expected_revision=rule.revision,
-        activate=True,
-        context=context(dpo),
-    )
-    retention.discover_eligibility()
-    case = DispositionCase.objects.get(source_id=capture.pk)
-    return dpo, case
+    rule = legacy_rule(actor=dpo, category=media_category(capture), contract_version=2)
+    return dpo, legacy_case(rule=rule, source=capture, state=state)
 
 
 @pytest.mark.parametrize("kind", ["RECORDING", "TRANSCRIPTION"])
-@pytest.mark.parametrize("provider_residue", [False, True])
-def test_v2_disposition_deletes_verified_live_copies_and_late_events_cannot_resurrect(
-    kind, provider_residue
-):
+def test_historically_disposed_v2_media_stays_fenced_against_ingestion_and_late_events(kind):
     _, counselor, appointment, capture, artifact, storage = ready_artifact(kind, pending=False)
-    if provider_residue:
-        capture.provider_artifact_id = "opaque-artifact"
-        capture.save()
-        artifact.provider_deleted_at = None
-        artifact.save()
-    dpo, case = v2_case(capture)
-    retention.approve_case(
-        actor=dpo, case_id=case.pk, expected_revision=case.revision, context=context(dpo)
-    )
+    _, case = v2_case(capture, state="COMPLETED")
+    historically_disposed_media(capture, artifact, storage)
     provider = ArtifactDaily(capture)
-    with (
-        patch("compass.privacy_governance.media_disposition.ObjectStorage", return_value=storage),
-        patch(
-            "compass.privacy_governance.media_disposition.DailyClient.from_settings",
-            return_value=provider,
-        ),
-    ):
-        execute_disposition(case.pk)
-    case.refresh_from_db()
-    artifact.refresh_from_db()
-    capture.refresh_from_db()
-    assert case.state == "COMPLETED" and artifact.status == "DISPOSED"
-    assert not storage.objects and not artifact.object_key and not artifact.sha256
-    assert capture.artifact_disposed_at and capture.provider_artifact_id is None
-    assert ("DELETE" in provider.calls) == provider_residue
+    execute_disposition(case.pk)
     ingest_artifact(artifact.pk, storage=storage, client=provider, download=fake_download)
     process_media_webhook_event(
         event_type="recording.ready-to-download"
@@ -597,95 +562,64 @@ def test_v2_disposition_deletes_verified_live_copies_and_late_events_cannot_resu
     )
     artifact.refresh_from_db()
     capture.refresh_from_db()
-    assert (
-        not storage.objects
-        and artifact.status == "DISPOSED"
-        and capture.provider_artifact_id is None
-    )
+    assert not storage.objects and provider.calls == []
+    assert artifact.status == "DISPOSED" and capture.provider_artifact_id is None
+    key = "recording" if kind == "RECORDING" else "transcription"
+    assert not get_media_projection(capture.room)[key]["artifact_available"]
+    with patch("compass.ecounseling.artifacts.ObjectStorage", return_value=storage):
+        response = auth_client(counselor).get(
+            f"/api/v1/e-counseling/appointments/{appointment.pk}/media/{kind}/access"
+        )
+    assert response.status_code == 410
+    assert response.json()["error"]["code"] == "ecounseling_artifact_disposed"
 
 
-@pytest.mark.parametrize("failure", ["delete", "absence", "provider"])
-def test_uncertain_v2_disposition_never_completes_and_keeps_locations_for_reconciliation(failure):
+@pytest.mark.parametrize("provider_residue", [False, True])
+@pytest.mark.parametrize("state", ["APPROVED", "QUEUED", "PROCESSING", "RECONCILIATION_REQUIRED"])
+def test_retired_executor_never_deletes_stored_media_or_provider_residue(state, provider_residue):
     _, _, _, capture, artifact, storage = ready_artifact(pending=False)
-    capture.provider_artifact_id = "residue"
-    capture.save()
-    if failure == "delete":
-        storage.fail_delete = True
-    if failure == "absence":
-        storage.delete = lambda key: None
-    provider = ArtifactDaily(capture, fail_delete=failure == "provider")
-    dpo, case = v2_case(capture)
-    retention.approve_case(
-        actor=dpo, case_id=case.pk, expected_revision=case.revision, context=context(dpo)
-    )
+    if provider_residue:
+        capture.provider_artifact_id = "residue"
+        capture.save()
+    _, case = v2_case(capture, state=state)
+    storage.calls.clear()
+    provider = ArtifactDaily(capture)
     with (
-        patch("compass.privacy_governance.media_disposition.ObjectStorage", return_value=storage),
-        patch(
-            "compass.privacy_governance.media_disposition.DailyClient.from_settings",
-            return_value=provider,
-        ),
+        patch("compass.ecounseling.artifacts.ObjectStorage", return_value=storage),
+        patch("compass.integrations.daily.DailyClient.from_settings", return_value=provider),
     ):
-        execute_disposition(case.pk)
+        for _ in range(2):
+            execute_disposition(case.pk)
+            execute_disposition.apply(args=[str(case.pk)], headers={"redelivered": True})
+    artifact.refresh_from_db()
+    capture.refresh_from_db()
+    case.refresh_from_db()
+    assert storage.calls == [] and provider.calls == [] and storage.objects
+    assert artifact.status == "STORED" and artifact.object_key and artifact.sha256
+    assert capture.artifact_disposed_at is None
+    assert (capture.provider_artifact_id == "residue") == provider_residue
+    assert case.state == state and case.completed_at is None
+
+
+def test_hold_and_approval_are_refused_and_keep_the_canonical_object():
+    _, _, _, capture, artifact, storage = ready_artifact(pending=False)
+    dpo, case = v2_case(capture, state="QUEUED")
+    common = {"actor": dpo, "case_id": case.pk, "expected_revision": case.revision}
+    for call in (
+        lambda: retention.change_hold(
+            **common, reason="synthetic hold", release=False, context=context(dpo)
+        ),
+        lambda: retention.change_hold(**common, reason=None, release=True, context=context(dpo)),
+        lambda: retention.approve_case(**common, context=context(dpo)),
+        lambda: retention.approve_case(**common, context=context(dpo), retry=True),
+    ):
+        with pytest.raises(APIError) as refused:
+            call()
+        assert refused.value.code == "retention_decommissioned"
     case.refresh_from_db()
     artifact.refresh_from_db()
-    assert case.state == "RECONCILIATION_REQUIRED" and artifact.object_key
-    assert artifact.status == "STORED"
-    assert ("DELETE" in provider.calls) == (failure == "provider")
-
-
-def test_hold_revokes_queued_approval_and_keeps_canonical_object():
-    _, _, _, capture, artifact, storage = ready_artifact(pending=False)
-    dpo, case = v2_case(capture)
-    case = retention.approve_case(
-        actor=dpo, case_id=case.pk, expected_revision=case.revision, context=context(dpo)
-    )
-    retention.change_hold(
-        actor=dpo,
-        case_id=case.pk,
-        expected_revision=case.revision,
-        reason="synthetic hold",
-        release=False,
-        context=context(dpo),
-    )
-    with patch("compass.privacy_governance.media_disposition.ObjectStorage", return_value=storage):
-        execute_disposition(case.pk)
-    case.refresh_from_db()
-    assert case.state == "ON_HOLD" and case.approved_at is None and storage.objects
-    case = retention.change_hold(
-        actor=dpo,
-        case_id=case.pk,
-        expected_revision=case.revision,
-        reason=None,
-        release=True,
-        context=context(dpo),
-    )
-    assert case.state == "READY" and case.approved_at is None
-
-
-def test_unresolved_ingestion_blocks_retention_without_provider_or_storage_calls():
-    _, _, _, capture, artifact, _ = ready_artifact()
-    _, case = v2_case(capture)
-    assert case.state == "BLOCKED" and case.blocker == "INGESTION_INCOMPLETE"
-
-
-def test_versioned_rules_coexist_and_do_not_discover_sources_from_the_other_version():
-    _, _, _, capture, artifact, storage = ready_artifact(pending=False)
-    dpo, case = v2_case(capture)
-    values = rule_values("ECOUNSELING_RECORDING")
-    values["code"] = "LEGACY-SYNTHETIC"
-    legacy = retention.create_rule(actor=dpo, values=values, context=context(dpo))
-    retention.transition_rule(
-        actor=dpo,
-        rule_id=legacy.pk,
-        expected_revision=legacy.revision,
-        activate=True,
-        context=context(dpo),
-    )
-    retention.discover_eligibility()
-    case.refresh_from_db()
-    assert case.contract_version == 2 and case.rule_id != legacy.pk
-    assert not retention.source_queryset("ECOUNSELING_RECORDING", 1).filter(pk=capture.pk).exists()
-    assert retention.source_queryset("ECOUNSELING_RECORDING", 2).filter(pk=capture.pk).exists()
+    assert case.state == "QUEUED" and not case.holds.exists()
+    assert storage.objects and artifact.status == "STORED"
 
 
 @pytest.mark.parametrize(
@@ -976,7 +910,7 @@ def test_stream_validation_rejects_unbounded_or_unverified_content(failure, sett
             pytest.fail("Unverified bytes must not reach storage")
 
 
-def test_storage_namespace_change_blocks_access_and_disposition_of_original_copy():
+def test_storage_namespace_change_blocks_access_and_keeps_the_original_copy():
     _, counselor, appointment, capture, artifact, storage = ready_artifact(pending=False)
     original_binding = artifact.storage_binding
     storage.namespace = "0" * 64
@@ -985,15 +919,9 @@ def test_storage_namespace_change_blocks_access_and_disposition_of_original_copy
             f"/api/v1/e-counseling/appointments/{appointment.pk}/media/RECORDING/access"
         )
     assert response.status_code == 503 and response["Cache-Control"] == "no-store, private"
-    dpo, case = v2_case(capture)
-    retention.approve_case(
-        actor=dpo, case_id=case.pk, expected_revision=case.revision, context=context(dpo)
-    )
-    with patch("compass.privacy_governance.media_disposition.ObjectStorage", return_value=storage):
-        execute_disposition(case.pk)
-    case.refresh_from_db()
+    _, case = v2_case(capture)
+    execute_disposition(case.pk)
     artifact.refresh_from_db()
-    assert case.state == "RECONCILIATION_REQUIRED" and case.blocker == "OBJECT_STORAGE_UNVERIFIED"
     assert storage.objects and artifact.storage_binding == original_binding
     assert artifact.object_key and artifact.status == "STORED"
 
@@ -1015,20 +943,3 @@ def test_ingestion_cannot_adopt_or_delete_using_a_different_storage_namespace():
     artifact.refresh_from_db()
     assert artifact.status == "FAILED" and capture.provider_artifact_id
     assert "DELETE" not in provider.calls and storage.calls.count("SAVE") == count
-
-
-def test_missing_provider_locator_requires_verified_cleanup_evidence_before_disposition():
-    _, _, _, capture, artifact, storage = ready_artifact(pending=False)
-    assert capture.provider_artifact_id is None and artifact.provider_deleted_at is not None
-    dpo, case = v2_case(capture)
-    retention.approve_case(
-        actor=dpo, case_id=case.pk, expected_revision=case.revision, context=context(dpo)
-    )
-    artifact.provider_deleted_at = None
-    artifact.save()
-    with patch("compass.privacy_governance.media_disposition.ObjectStorage", return_value=storage):
-        execute_disposition(case.pk)
-    case.refresh_from_db()
-    artifact.refresh_from_db()
-    assert case.state != "COMPLETED" and case.blocker == "PROVIDER_CLEANUP_UNVERIFIED"
-    assert storage.objects and artifact.object_key and artifact.status == "STORED"

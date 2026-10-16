@@ -6,6 +6,8 @@
   [ADR-072](ADR-072-operational-retention-and-disposition.md), for persisted V2 sessions only
 - Preserves: historical V1 evidence, ADR-024 Daily Prebuilt, ADR-005 S3-compatible storage,
   ADR-011 append-only audit, ADR-025 human-authored shared summaries, ADR-091 contextual Help
+- Superseded in part by: [ADR-114](ADR-114-decommission-in-app-disposition.md) ("Versioned retention
+  and verified disposition" only; consent, custody, provider cleanup and assigned access remain in force)
 
 ## Authority and version boundary
 

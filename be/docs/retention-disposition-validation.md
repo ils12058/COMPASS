@@ -1,5 +1,8 @@
 # Operational retention and disposition implementation report
 
+> **Historical (ADR-114).** This report records the 2026-10-04 ADR-072 implementation. That engine is
+> decommissioned for future operation; its validation results are kept unchanged as history.
+
 Date: 2026-10-04. Repository: `ils12058/COMPASS`. This is a reviewable implementation; no production
 migration, adopted retention schedule, production disposition, merge or deployment is claimed.
 

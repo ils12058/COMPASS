@@ -311,31 +311,32 @@ overrides require a non-empty reason and optional future expiry.
 
 Privacy Governance is intentionally limited to implemented COMPASS system controls: versioned
 Privacy Notices, exact-revision acknowledgment, privacy-sensitive release auditing, curated
-Privacy & Security Activity, and operational retention and disposition. Processing Activity,
+Privacy & Security Activity, and the read-only history of the retired in-app disposition engine.
+Processing Activity,
 Privacy Review/PIA, Privacy Incident, and the descriptive Retention Policy registry are not live
 COMPASS features (ADR-065, ADR-069). The removal migrations fail closed when obsolete tables
 contain rows; those rows require a separate institutional data-disposition decision before
 migration can proceed.
 
-Operational retention ([ADR-072](docs/decisions/ADR-072-operational-retention-and-disposition.md),
-refined for E-Counseling media by
-[ADR-092](docs/decisions/ADR-092-ecounseling-media-governance-v2.md)) treats a record only through
-a reviewed, approved case under an active, effective rule. Holders of the retention capabilities
-(by default the DPO) activate rules and approve cases with recent MFA; COMPASS never seeds a period
-or approves its own cases, so nothing is treated until a rule is active. Holds block treatment.
-Rules exist for exactly three categories:
+COMPASS no longer performs records disposition
+([ADR-114](docs/decisions/ADR-114-decommission-in-app-disposition.md)). Formal authorization,
+disposal and destruction of University records happen outside COMPASS. A state university's
+public records need National Archives authority (RA 9470). The ADR-072/ADR-092 engine is retired:
+- No Beat schedule discovers eligibility or dispatches disposition.
+- Its three Celery task names remain only as non-mutating tombstones.
+- Every rule, hold, approval and retry mutation returns 409 `retention_decommissioned`, whatever
+  capability or override the caller holds.
 
-- **Graduate Tracer:** a submitted response is anonymized. The identifiable live row and its
-  detailed children are removed; only the documented analytical contribution remains, under an
-  independent identifier.
-- **E-Counseling recordings and stored transcripts:** the governed artifact is deleted and minimized
-  evidence is kept. Version-1 media deletes the Daily provider artifact. Version-2 media deletes the
-  COMPASS-stored object and any remaining Daily copy, and completes only after every live copy is
-  verified absent.
+Historical rules, cases, holds and AuditEvents are kept read-only, together with anonymous Graduate
+Tracer contributions and disposed E-Counseling markers. The legacy case ledger is still needed for
+backup-restore reconciliation, and it fences late media events. E-Counseling custody-transfer
+cleanup of the provider copy after verified private storage is unchanged.
 
-AuditEvents are never removed, and disposition does not reach backups, exports, or downloaded
-copies. Operator procedures are in the
-[retention and disposition runbook](docs/retention-disposition-runbook.md).
+Decommissioning does not settle retention periods or disposal obligations. Until the University
+adopts them, identifiable records and stored media are retained. Before deploying, operators run
+`python manage.py retention_decommission_status` and the broker, worker and build checks in the
+[retention runbook](docs/retention-disposition-runbook.md). A code-owned, read-only retention policy
+register follows in PG-1A PR 2.
 
 ## Confidential-content keyrings
 
@@ -577,8 +578,8 @@ by the frontend generator.
 Accepted ADRs are not rewritten when later decisions refine them; follow the newer decision for
 current behavior. In particular, ADR-097 governs UCN civil time where ADR-019, ADR-020, and
 ADR-021 interpret it in `settings.TIME_ZONE`; ADR-089 governs Service booking and Counselor
-qualification over ADR-018 and the scheduling ADRs it lists; ADR-072 with ADR-092 govern
-operational retention after ADR-061, ADR-065, and ADR-069; and ADR-100 refines ADR-071's
+qualification over ADR-018 and the scheduling ADRs it lists; ADR-114 decommissions the
+operational retention of ADR-072 and ADR-092, which followed ADR-061, ADR-065, and ADR-069; and ADR-100 refines ADR-071's
 WebSocket remark with a separate realtime tier. Two documents share the number ADR-057
 and there is no ADR-077, so cite those by title.
 

@@ -4,6 +4,7 @@
 - Date: 2026-10-04
 - Refines/supersedes: ADR-069's live retention boundary for the explicitly supported operational treatments below
 - Preserves: ADR-045 confidential-content boundary, ADR-011 append-only Audit Trail, ADR-026 consent guarantees
+- Superseded for future operation by: [ADR-114](ADR-114-decommission-in-app-disposition.md) (in-app disposition retired; this record of the implemented design is unchanged)
 
 ## Context and authority
 
