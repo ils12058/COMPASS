@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent))
 import run_staging_deploy as runner
+from read_doctl_tag_digest import existing_digest
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = importlib.util.spec_from_file_location(
@@ -19,6 +20,58 @@ SPEC = importlib.util.spec_from_file_location(
 )
 host = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(host)
+
+
+class RegistryTagParserTests(unittest.TestCase):
+    def setUp(self):
+        self.expected = "a" * 40
+        self.digest = "sha256:" + "b" * 64
+
+    def test_existing_sha_tag_returns_its_manifest_digest(self):
+        payload = [
+            {
+                "registry_name": "compass",
+                "repository": "compass-backend",
+                "tag": self.expected,
+                "manifest_digest": self.digest,
+            }
+        ]
+        self.assertEqual(existing_digest(payload, self.expected), self.digest)
+
+    def test_absent_sha_tag_is_empty_and_omitted_empty_tag_is_supported(self):
+        payload = [
+            {"tag": "c" * 40, "manifest_digest": self.digest},
+            # doctl's JSON marshaler omits Go string fields tagged `omitempty`.
+            {"manifest_digest": self.digest},
+        ]
+        self.assertEqual(existing_digest(payload, self.expected), "")
+
+    def test_malformed_tag_responses_fail_closed(self):
+        malformed = [
+            {},
+            ["not a tag record"],
+            [{"tag": self.expected}],
+            [{"tag": self.expected, "manifest_digest": "not-a-digest"}],
+            [{"tag": None, "manifest_digest": self.digest}],
+        ]
+        for payload in malformed:
+            with self.subTest(payload=payload), self.assertRaises(ValueError):
+                existing_digest(payload, self.expected)
+
+    def test_duplicate_sha_tag_fails_closed(self):
+        payload = [
+            {"tag": self.expected, "manifest_digest": self.digest},
+            {"tag": self.expected, "manifest_digest": self.digest},
+        ]
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            existing_digest(payload, self.expected)
+
+    def test_workflow_preserves_immutable_sha_and_digest_verification(self):
+        workflow = (ROOT / ".github/workflows/deploy-staging.yml").read_text()
+        self.assertIn("read_doctl_tag_digest.py \"$tags\" \"$DEPLOY_SHA\"", workflow)
+        self.assertIn('image="registry.digitalocean.com/$DO_REGISTRY_NAME/$DO_REGISTRY_REPOSITORY:$DEPLOY_SHA"', workflow)
+        self.assertIn('[[ -z "$existing_digest" || "$existing_digest" == "$digest" ]]', workflow)
+        self.assertIn('[[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]', workflow)
 
 
 def fixture():

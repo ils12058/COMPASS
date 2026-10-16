@@ -156,7 +156,7 @@ jobs:
           # Existing SHA tags are reused, never overwritten by a rerun with another build time.
           tags="$RUNNER_TEMP/compass-registry-tags.json"
           doctl registry repository list-tags "$DO_REGISTRY_REPOSITORY" --registry "$DO_REGISTRY_NAME" --output json > "$tags"
-          existing_digest="$(python3 -c 'import json,sys; rows=[r for r in json.load(open(sys.argv[1])) if r["tag"]==sys.argv[2]]; assert len(rows)<=1; print(rows[0]["manifest_digest"] if rows else "")' "$tags" "$DEPLOY_SHA")"
+          existing_digest="$(python3 .github/scripts/read_doctl_tag_digest.py "$tags" "$DEPLOY_SHA")"
           if [[ -z "$existing_digest" ]]; then
             docker buildx build \
               --platform linux/amd64 \
