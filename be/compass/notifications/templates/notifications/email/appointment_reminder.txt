@@ -1,0 +1,2 @@
+{% extends "compass/email/base.txt" %}
+{% block content %}You have an upcoming COMPASS appointment. Sign in to COMPASS to review your schedule and details.{% endblock %}

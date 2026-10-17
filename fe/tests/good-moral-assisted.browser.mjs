@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createBrowserHarness } from './support/browser-harness.mjs';
 import { counselor, certificate, requestId } from './support/good-moral-print-fixtures.mjs';
 const engine = process.env.COMPASS_UI_BROWSER ?? 'chromium';
-const { check, shown, hidden, noHorizontalOverflow, screenshot, finish } = await createBrowserHarness(`good-moral-assisted-${engine}`);
+const { check, navigate, shown, hidden, noHorizontalOverflow, screenshot, finish } = await createBrowserHarness(`good-moral-assisted-${engine}`);
 const start = '/portal/good-moral/start';
 const current = { id: '11111111-1111-4111-8111-111111111111', display_name: 'Current Synthetic', institutional_id: 'SYNTHETIC-1', college: { id: 'college', code: 'TEST', name: 'Synthetic College' }, variant: 'CURRENT_STUDENT' };
 const graduate = { ...current, id: '22222222-2222-4222-8222-222222222222', display_name: 'Graduate Synthetic', institutional_id: 'SYNTHETIC-2', variant: 'GRADUATE' };
@@ -114,7 +114,7 @@ for (const errorCode of ['good_moral_inventory_required', 'good_moral_exit_inter
   const f = fixture({ authorized: false });
   await check('view-only account has no action or picker', '/portal/good-moral', f.options, async page => {
     await hidden(page.getByRole('link', { name: /Start request/ }));
-    await page.goto(new URL(start, page.url()).href);
+    await navigate(page, start);
     await shown(page.getByRole('heading', { name: 'Request initiation unavailable' }));
     await hidden(page.getByLabel('Search eligible Students'));
   });

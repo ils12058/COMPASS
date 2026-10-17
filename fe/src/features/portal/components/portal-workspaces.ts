@@ -33,6 +33,7 @@ import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
+import { followupAccess } from "@/features/guidance-followups/followups-access";
 import { getGuidanceMessagesAccess } from "@/features/guidance-messages/guidance-messages-access";
 import { getExitInterviewAccess } from "@/features/exit-interviews/exit-interviews-access";
 import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
@@ -114,6 +115,7 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
       label: "Daily work",
       links: [
         { href: "/portal/actions", label: "My actions", icon: ClipboardList, visible: hasStudentActions(user) },
+        { href: "/portal/follow-ups", label: "Follow-Ups", icon: ListChecks, visible: followupAccess(user).view },
         { href: "/portal/work", label: "My work", icon: ClipboardList, visible: hasWorkQueue(user) },
         { href: "/portal/operations", label: "Guidance operations", icon: ListChecks, visible: hasGuidanceOperations(user) },
       ],

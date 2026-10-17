@@ -102,6 +102,8 @@ test("step-up handling stays on the features whose actions keep it", () => {
     "platform/platform-actions.tsx",
     "privacy-governance/privacy-governance-shared.tsx",
     "services/",
+    // FUP-1A preserves recent MFA for all Follow-Up lifecycle writes.
+    "guidance-followups/",
   ];
   const offenders = sourceFiles(featuresRoot)
     .map((file) => path.relative(featuresRoot, file))

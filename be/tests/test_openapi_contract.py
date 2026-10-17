@@ -21,6 +21,23 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
+    "guidanceFollowupsList",
+    "guidanceFollowupsCreate",
+    "guidanceFollowupsGet",
+    "guidanceFollowupsUpdate",
+    "guidanceFollowupsReassign",
+    "guidanceFollowupsRecordActivity",
+    "guidanceFollowupsComplete",
+    "guidanceFollowupsCancel",
+    "guidanceFollowupsEligibleStudents",
+    "guidanceFollowupsEligibleAssignees",
+    "guidanceFollowupsGetContext",
+    "guidanceFollowupsReport",
+    "guidanceFollowupsHistory",
+    "guidanceFollowupsRecoverable",
+    "appointmentsPreviewReminders",
+    "appointmentsSendReminders",
+    "appointmentsSendReminder",
     "assessmentRecordsList",
     "assessmentRecordsCreate",
     "assessmentRecordsGet",
@@ -162,6 +179,28 @@ EXPECTED_OPERATION_IDS = {
     "servicesDisable",
     "servicesListProviderCandidates",
     "servicesGetProviders",
+    "servicesListSlots",
+    "servicesCreateSlot",
+    "servicesListBookableSlots",
+    "servicesUpdateSlot",
+    "servicesDeleteSlot",
+    "servicesBookSlot",
+    "groupSessionsDiscover",
+    "groupSessionsGetMetrics",
+    "groupSessionsGetMyRegistrations",
+    "groupSessionsListStaff",
+    "groupSessionsCreate",
+    "groupSessionsGetDetail",
+    "groupSessionsUpdate",
+    "groupSessionsPublish",
+    "groupSessionsCancel",
+    "groupSessionsComplete",
+    "groupSessionsDelete",
+    "groupSessionsRegister",
+    "groupSessionsCancelRegistration",
+    "groupSessionsListRegistrations",
+    "groupSessionsRecordAttendance",
+    "groupSessionsExportRoster",
     "availabilityGetOfficeWeekly",
     "availabilityReplaceOfficeWeekly",
     "availabilityListOfficeExceptions",
@@ -422,6 +461,7 @@ SORTABLE_COLLECTIONS = {
     "resourcesListVisible": "ResourceOrdering",
     "routineInterviewsListAssigned": "RoutineInterviewOrdering",
     "servicesList": "ServiceOrdering",
+    "guidanceFollowupsList": "FollowUpOrdering",
 }
 
 
@@ -782,11 +822,13 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "platform-operations",
         "privacy-governance",
         "realtime",
+        "guidance-followups",
         "guidance-messages",
         "assessment-records",
         "work",
         "student-actions",
         "guidance-operations",
+        "group-sessions",
     ]
     assert all(
         isinstance(operation.get("tags"), list)
@@ -1849,6 +1891,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     assert schemas["DesignationCode"]["enum"] == ["DPO", "HEAD_GUIDANCE_COUNSELOR"]
     assert schemas["CapabilityCode"]["enum"] == sorted(
         [
+            "guidance_followups.view",
+            "guidance_followups.manage",
             "guidance_messages.view_self",
             "guidance_messages.manage_self",
             "guidance_messages.view",
@@ -2966,6 +3010,7 @@ def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
     assert set(schema["paths"]["/api/v1/work"]) == {"get"}
     schemas = schema["components"]["schemas"]
     assert schemas["WorkKind"]["enum"] == [
+        "GUIDANCE_FOLLOW_UP",
         "GUIDANCE_MESSAGE_REPLY",
         "ROUTINE_EVALUATION",
         "GOOD_MORAL_PREPARATION",

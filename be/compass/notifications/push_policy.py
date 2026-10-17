@@ -12,9 +12,29 @@ class PushDecision(StrEnum):
 
 
 PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
+    **{
+        event: (PushDecision.PUSH, "You have a Guidance follow-up update.")
+        for event in (
+            NotificationEvent.FOLLOWUP_ASSIGNED,
+            NotificationEvent.FOLLOWUP_REASSIGNED,
+            NotificationEvent.FOLLOWUP_DUE_CHANGED,
+        )
+    },
     NotificationEvent.CALL_SLIP_ISSUED: (PushDecision.PUSH, "You have a new Call Slip."),
     NotificationEvent.CALL_SLIP_VOIDED: (PushDecision.PUSH, "You have a Call Slip update."),
     NotificationEvent.APPOINTMENT_SCHEDULED: (PushDecision.PUSH, "You have an appointment update."),
+    NotificationEvent.APPOINTMENT_REMINDER_24H: (
+        PushDecision.PUSH,
+        "You have an upcoming appointment.",
+    ),
+    NotificationEvent.APPOINTMENT_REMINDER_3H: (
+        PushDecision.PUSH,
+        "You have an upcoming appointment.",
+    ),
+    NotificationEvent.APPOINTMENT_REMINDER_MANUAL: (
+        PushDecision.PUSH,
+        "You have an upcoming appointment.",
+    ),
     NotificationEvent.APPOINTMENT_CANCELLED: (PushDecision.PUSH, "You have an appointment update."),
     NotificationEvent.APPOINTMENT_RESCHEDULED: (
         PushDecision.PUSH,
@@ -23,6 +43,22 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
     NotificationEvent.APPOINTMENT_REASSIGNED: (
         PushDecision.PUSH,
         "You have an appointment update.",
+    ),
+    NotificationEvent.GROUP_SESSION_REGISTERED: (
+        PushDecision.PUSH,
+        "You have a group session update.",
+    ),
+    NotificationEvent.GROUP_SESSION_REGISTRATION_CANCELLED: (
+        PushDecision.PUSH,
+        "You have a group session update.",
+    ),
+    NotificationEvent.GROUP_SESSION_CANCELLED: (
+        PushDecision.PUSH,
+        "You have a group session update.",
+    ),
+    NotificationEvent.GROUP_SESSION_RESCHEDULED: (
+        PushDecision.PUSH,
+        "You have a group session update.",
     ),
     NotificationEvent.GOOD_MORAL_REQUEST_INITIATED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.GOOD_MORAL_ISSUED: (

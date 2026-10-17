@@ -64,6 +64,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_request_context.py",
             # The reset-only canonical migration baseline and its pre-canonical history guard.
             "test_canonical_baseline.py",
+            "test_postbaseline_upgrade.py",
             # Every locking query is scoped to its own rows; database errors map safely.
             "test_lock_scope.py",
             "test_database_error_mapping.py",
@@ -121,18 +122,22 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_canonical_services.py",
             "test_service_provider_qualification.py",
             "test_service_scheduling_consequences.py",
+            "test_fixed_date_slots.py",
+            "test_group_sessions.py",
         ),
     ),
     "scheduling": (
         "Appointments and Availability, including reservations and lifecycle reconciliation.",
         (
             "test_appointments.py",
+            "test_appointment_reminders.py",
             "test_appointment_action_projection.py",
             "test_appointment_management_scope.py",
             "test_appointment_slot_reservations.py",
             "test_availability.py",
             "test_availability_reservation_neutrality.py",
             "test_cross_domain_lifecycle_reconciliation.py",
+            "test_fixed_date_slots.py",
         ),
     ),
     "student-actions": (
@@ -146,6 +151,10 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
     "guidance-operations": (
         "Current aggregate authority and shared actionable source populations.",
         ("test_guidance_operations.py",),
+    ),
+    "guidance-followups": (
+        "Privacy-scoped Guidance Follow-Up domain and lifecycle.",
+        ("test_guidance_followups.py",),
     ),
     "guidance-messages": (
         "Guidance Messages encryption, workload/relationship authorization, commit hints, "
@@ -433,7 +442,8 @@ DOMAINS: dict[str, Area] = {
         "account_management",
         "Account administration also blocks role changes on scheduled work.",
         ("identity-access", "organization"),
-        ("test_appointments.py",),
+        ("test_appointments.py",
+            "test_appointment_reminders.py",),
     ),
     "activity": domain(
         "activity",
@@ -522,6 +532,12 @@ DOMAINS: dict[str, Area] = {
         "Counseling and Good Moral open feedback opportunities.",
         ("feedback", "counseling", "good-moral", "cross-domain-lists"),
     ),
+    "guidance_followups": domain(
+        "guidance_followups",
+        "Assigned Follow-Up lifecycle, encryption, source policy and role scope.",
+        ("guidance-followups", "identity-access", "counseling", "routine-interviews",
+         "referrals-call-slips", "organization", "crypto", "cross-domain-api"),
+    ),
     "guidance_messages": domain(
         "guidance_messages",
         "Messages depends on workload, Counseling Appointment anchors, encryption and realtime.",
@@ -545,6 +561,11 @@ DOMAINS: dict[str, Area] = {
         "graduate_tracer",
         "Tracer responses feed reports, exports, and retention disposition.",
         ("graduate-tracer", "reports", "privacy-governance"),
+    ),
+    "group_sessions": domain(
+        "group_sessions",
+        "Group Sessions depend on Services, counselor qualification, registrations, notifications, and audit.",
+        ("service-catalog", "scheduling", "notifications", "identity-access"),
     ),
     "institutional_forms": domain(
         "institutional_forms",
@@ -578,7 +599,8 @@ DOMAINS: dict[str, Area] = {
             "institutional-forms",
             "cross-domain-lists",
         ),
-        ("test_appointments.py", "test_profiles.py"),
+        ("test_appointments.py",
+            "test_appointment_reminders.py", "test_profiles.py"),
     ),
     "student_actions": domain(
         "student_actions",

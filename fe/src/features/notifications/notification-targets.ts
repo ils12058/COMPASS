@@ -37,6 +37,9 @@ export function notificationDestination(
   if (notification.target_type === NotificationTargetType.E_COUNSELING && notification.target_id) {
     return { href: "/portal/e-counseling/" + notification.target_id, label: "Open E-Counseling" };
   }
+  if (notification.target_type === NotificationTargetType.GUIDANCE_FOLLOW_UP && notification.target_id) {
+    return { href: "/portal/follow-ups/" + notification.target_id, label: "Open follow-up" };
+  }
   if (notification.target_type === NotificationTargetType.APPOINTMENT && notification.target_id) {
     // Scheduling, rescheduling, and reassignment notify each participant; the detail page
     // reloads the Appointment within the recipient's current access.
@@ -47,6 +50,9 @@ export function notificationDestination(
   }
   if (notification.target_type === NotificationTargetType.GOOD_MORAL && notification.target_id) {
     return { href: "/portal/good-moral/" + notification.target_id, label: "Open Good Moral request" };
+  }
+  if (notification.target_type === NotificationTargetType.GROUP_SESSION) {
+    return { href: "/portal/services", label: "Open Services" };
   }
   if (notification.target_type === NotificationTargetType.FEEDBACK) {
     return {

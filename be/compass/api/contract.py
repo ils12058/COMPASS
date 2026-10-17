@@ -46,6 +46,8 @@ CURRENT_API_TAGS = frozenset(
         "privacy-governance",
         "realtime",
         "guidance-messages",
+        "guidance-followups",
+        "group-sessions",
     }
 )
 OPERATION_ID_PATTERN = re.compile(r"^[a-z][A-Za-z0-9]*$", re.ASCII)
@@ -54,6 +56,8 @@ OPERATION_ID_PREFIXES = {
     "student-actions": "studentActions",
     "guidance-operations": "guidanceOperations",
     "guidance-messages": "guidanceMessages",
+    "guidance-followups": "guidanceFollowups",
+    "group-sessions": "groupSessions",
     "health": "health",
     "metadata": "system",
     "auth": "auth",

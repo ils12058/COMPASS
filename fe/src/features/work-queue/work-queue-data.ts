@@ -36,6 +36,9 @@ export function useWorkQueue(user: UserSummary, page = 1, pageSize = 20) {
     }
     seenGeneration.current = generation;
   }, [client, enabled, generation]);
+  useRealtimeEvent("followups.changed", () => {
+    if (enabled) void client.invalidateQueries({ queryKey: workQueueQueryFamily() });
+  });
   useRealtimeEvent("messages.thread_changed", () => {
     if (enabled) void client.invalidateQueries({ queryKey: workQueueQueryFamily() });
   });

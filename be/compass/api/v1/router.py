@@ -25,6 +25,8 @@ from compass.exit_interviews.api import router as exit_interviews_router
 from compass.feedback.api import router as feedback_router
 from compass.good_moral.api import router as good_moral_router
 from compass.graduate_tracer.api import router as graduate_tracer_router
+from compass.group_sessions.api import router as group_sessions_router
+from compass.guidance_followups.api import router as guidance_followups_router
 from compass.guidance_messages.api import router as guidance_messages_router
 from compass.guidance_operations.api import router as guidance_operations_router
 from compass.institutional_forms.api import router as institutional_forms_router
@@ -202,6 +204,10 @@ api = NinjaAPI(
                 ),
             },
             {
+                "name": "guidance-followups",
+                "description": "Scoped staff Guidance Follow-Up lifecycle and history.",
+            },
+            {
                 "name": "guidance-messages",
                 "description": "Encrypted Guidance Office and Counseling communication.",
             },
@@ -217,6 +223,12 @@ api = NinjaAPI(
             {
                 "name": "guidance-operations",
                 "description": "Current authorized Guidance workload and schedule aggregates.",
+            },
+            {
+                "name": "group-sessions",
+                "description": (
+                    "Scheduled group guidance sessions, student registration, and attendance."
+                ),
             },
         ]
     },
@@ -237,6 +249,7 @@ api.add_router("/me", profile_router)
 api.add_router("/accounts", account_management_router)
 api.add_router("/organization", organization_router)
 api.add_router("/services", service_catalog_router)
+api.add_router("/group-sessions", group_sessions_router)
 api.add_router("/availability", availability_router)
 api.add_router("/appointments", appointments_router)
 api.add_router("/counseling", counseling_router)
@@ -273,4 +286,5 @@ api.add_router("/e-counseling", ecounseling_router)
 api.add_router("/integrations/daily", daily_router)
 api.add_router("/realtime", realtime_router)
 api.add_router("/guidance-messages", guidance_messages_router)
+api.add_router("/guidance-followups", guidance_followups_router)
 register_exception_handlers(api)

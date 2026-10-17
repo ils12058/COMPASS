@@ -66,10 +66,12 @@ INSTALLED_APPS = [
     "compass.authentication",
     "compass.organization",
     "compass.service_catalog",
+    "compass.group_sessions",
     "compass.availability",
     "compass.appointments",
     "compass.counseling",
     "compass.guidance_messages",
+    "compass.guidance_followups",
     "compass.institutional_forms",
     "compass.documents",
     "compass.inventory",
@@ -692,6 +694,36 @@ if keyring_reuses_secret(
         "another encryption domain or SECRET_KEY"
     )
 
+
+# Follow-Ups do not require new secrets at process startup. Web-only confidential
+# operations fail closed until the operator provisions and approves a separate keyring.
+# Worker, beat and realtime remain keyless; no notification tasks in FUP-1A.
+GUIDANCE_FOLLOWUPS_ENABLED = env_bool("GUIDANCE_FOLLOWUPS_ENABLED", False)
+GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = env_bool("GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED", False)
+_followup_keys = env("GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS", "")
+GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS = (
+    parse_fernet_keyring(_followup_keys, setting="GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS")
+    if _followup_keys
+    else ()
+)
+if keyring_reuses_secret(
+    GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS,
+    SECRET_KEY,
+    AUTH_TOTP_ENCRYPTION_KEY,
+    WEB_PUSH_STORAGE_KEY,
+    *ROUTINE_INTERVIEW_ENCRYPTION_KEYS,
+    *COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS,
+    *REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+    *GUIDANCE_MESSAGE_ENCRYPTION_KEYS,
+    *ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
+):
+    raise ValueError("GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS must not reuse existing keys or SECRET_KEY")
+
 if not 1 <= NOTIFICATION_EMAIL_MAX_ATTEMPTS <= 20:
     raise ValueError("NOTIFICATION_EMAIL_MAX_ATTEMPTS must be between 1 and 20")
 if not 1 <= NOTIFICATION_EMAIL_RETRY_BASE_SECONDS <= 3_600:
@@ -766,8 +798,14 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_SEND_SENT_EVENT = False
 CELERY_WORKER_SEND_TASK_EVENTS = False
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-CELERY_IMPORTS = ("compass.tasks",)
+CELERY_IMPORTS = ("compass.tasks", "compass.appointments.reminder_tasks")
+# Safe by default in local and live staging; an operator must explicitly enable.
+APPOINTMENT_AUTO_REMINDERS_ENABLED = env_bool("APPOINTMENT_AUTO_REMINDERS_ENABLED", False)
 CELERY_BEAT_SCHEDULE = {
+    "appointment-reminders-dispatch-due": {
+        "task": "compass.appointments.reminders.dispatch_due",
+        "schedule": 60,
+    },
     "ecounseling-artifact-recovery": {
         "task": "compass.ecounseling.recover_media_artifacts",
         "schedule": 60,

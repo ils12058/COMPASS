@@ -49,6 +49,19 @@ SERVICE_CREATED = "service.created"
 SERVICE_UPDATED = "service.updated"
 SERVICE_ENABLED = "service.enabled"
 SERVICE_DISABLED = "service.disabled"
+SERVICE_SLOT_CREATED = "service_slot.created"
+SERVICE_SLOT_UPDATED = "service_slot.updated"
+SERVICE_SLOT_DELETED = "service_slot.deleted"
+GROUP_SESSION_CREATED = "group_session.created"
+GROUP_SESSION_UPDATED = "group_session.updated"
+GROUP_SESSION_PUBLISHED = "group_session.published"
+GROUP_SESSION_CANCELLED = "group_session.cancelled"
+GROUP_SESSION_COMPLETED = "group_session.completed"
+GROUP_SESSION_DELETED = "group_session.deleted"
+GROUP_SESSION_REGISTERED = "group_session.registered"
+GROUP_SESSION_REGISTRATION_CANCELLED = "group_session.registration_cancelled"
+GROUP_SESSION_ATTENDANCE_RECORDED = "group_session.attendance_recorded"
+GROUP_SESSION_ATTENDANCE_CORRECTED = "group_session.attendance_corrected"
 AVAILABILITY_OFFICE_SCHEDULE_UPDATED = "availability.office_schedule.updated"
 AVAILABILITY_OFFICE_EXCEPTION_CREATED = "availability.office_exception.created"
 AVAILABILITY_OFFICE_EXCEPTION_REMOVED = "availability.office_exception.removed"
@@ -61,6 +74,8 @@ APPOINTMENT_RESCHEDULED = "appointment.rescheduled"
 APPOINTMENT_REASSIGNED = "appointment.reassigned"
 APPOINTMENT_COMPLETED = "appointment.completed"
 APPOINTMENT_NO_SHOW = "appointment.no_show"
+APPOINTMENT_REMINDER_ISSUED = "appointment.reminder.issued"
+APPOINTMENT_REMINDERS_BULK = "appointment.reminders.bulk"
 COUNSELING_ENCOUNTER_CREATED = "counseling.encounter.created"
 COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
 COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
@@ -220,6 +235,13 @@ ECOUNSELING_MEDIA_PROVIDER_CLEANED = "ecounseling.media_artifact.provider_cleane
 ECOUNSELING_MEDIA_ARTIFACT_ACCESS_AUTHORIZED = "ecounseling.media_artifact.access_authorized"
 
 # Guidance Messages structural provenance only (ADR-102).
+GUIDANCE_FOLLOWUP_CREATED = "guidance_followup.created"
+GUIDANCE_FOLLOWUP_UPDATED = "guidance_followup.updated"
+GUIDANCE_FOLLOWUP_REASSIGNED = "guidance_followup.reassigned"
+GUIDANCE_FOLLOWUP_ACTIVITY_RECORDED = "guidance_followup.activity_recorded"
+GUIDANCE_FOLLOWUP_COMPLETED = "guidance_followup.completed"
+GUIDANCE_FOLLOWUP_CANCELLED = "guidance_followup.cancelled"
+
 GUIDANCE_MESSAGES_THREAD_CREATED = "guidance_messages.thread.created"
 GUIDANCE_MESSAGES_MESSAGE_SENT = "guidance_messages.message.sent"
 GUIDANCE_MESSAGES_THREAD_ASSIGNED = "guidance_messages.thread.assigned"
@@ -232,6 +254,12 @@ GUIDANCE_MESSAGES_TEMPLATE_ARCHIVED = "guidance_messages.template.archived"
 GUIDANCE_MESSAGES_TEMPLATE_RESTORED = "guidance_messages.template.restored"
 
 __all__ = [
+    "GUIDANCE_FOLLOWUP_CREATED",
+    "GUIDANCE_FOLLOWUP_UPDATED",
+    "GUIDANCE_FOLLOWUP_REASSIGNED",
+    "GUIDANCE_FOLLOWUP_ACTIVITY_RECORDED",
+    "GUIDANCE_FOLLOWUP_COMPLETED",
+    "GUIDANCE_FOLLOWUP_CANCELLED",
     "GUIDANCE_MESSAGES_THREAD_CREATED",
     "GUIDANCE_MESSAGES_MESSAGE_SENT",
     "GUIDANCE_MESSAGES_THREAD_ASSIGNED",
@@ -287,6 +315,19 @@ __all__ = [
     "SERVICE_UPDATED",
     "SERVICE_ENABLED",
     "SERVICE_DISABLED",
+    "SERVICE_SLOT_CREATED",
+    "SERVICE_SLOT_UPDATED",
+    "SERVICE_SLOT_DELETED",
+    "GROUP_SESSION_CREATED",
+    "GROUP_SESSION_UPDATED",
+    "GROUP_SESSION_PUBLISHED",
+    "GROUP_SESSION_CANCELLED",
+    "GROUP_SESSION_COMPLETED",
+    "GROUP_SESSION_DELETED",
+    "GROUP_SESSION_REGISTERED",
+    "GROUP_SESSION_REGISTRATION_CANCELLED",
+    "GROUP_SESSION_ATTENDANCE_RECORDED",
+    "GROUP_SESSION_ATTENDANCE_CORRECTED",
     "AVAILABILITY_OFFICE_SCHEDULE_UPDATED",
     "AVAILABILITY_OFFICE_EXCEPTION_CREATED",
     "AVAILABILITY_OFFICE_EXCEPTION_REMOVED",
@@ -299,6 +340,8 @@ __all__ = [
     "APPOINTMENT_REASSIGNED",
     "APPOINTMENT_COMPLETED",
     "APPOINTMENT_NO_SHOW",
+    "APPOINTMENT_REMINDER_ISSUED",
+    "APPOINTMENT_REMINDERS_BULK",
     "COUNSELING_ENCOUNTER_CREATED",
     "COUNSELING_ENCOUNTER_UPDATED",
     "COUNSELING_SHARED_SUMMARY_PUBLISHED",

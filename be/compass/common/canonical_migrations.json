@@ -1,0 +1,38 @@
+{
+  "baseline_sha256": {
+    "compass/accounts/migrations/0001_canonical_baseline.py": "ebd7b1aaf7d92c8832cc1e98ba9ccff2a980ac0abc2192658b82ff5ed59b2a03",
+    "compass/announcements/migrations/0001_canonical_baseline.py": "d3e86850f4b5bd765ec884c3a7d151576b7b0b9bde88ff56329ff601b9891425",
+    "compass/appointments/migrations/0001_canonical_baseline.py": "9337243ec89a736ac499662be7822a57afc688f9de3e16a7c1949842e7199976",
+    "compass/assessment_records/migrations/0001_canonical_baseline.py": "8fb1832841b48eba2bb1bb172125688877902c3d6907300ac366e306497efafc",
+    "compass/audit/migrations/0001_canonical_baseline.py": "59526de32d7f07c3873e10d643d5694750b5d93f74a91fdef3ed75d96f9585db",
+    "compass/authentication/migrations/0001_canonical_baseline.py": "053ad879e379989b1fe1f42cfb6e9788700122c245dac6fc16798a722d313858",
+    "compass/availability/migrations/0001_canonical_baseline.py": "d0f808bf37651163a0edef60c16073ca88edafec41869297249bfa8349aa6dfd",
+    "compass/call_slips/migrations/0001_canonical_baseline.py": "72b4ace2f8c43e3606fc9f2c69b676a4826f0cc17d0e4b6554c6b6d57ee9425d",
+    "compass/counseling/migrations/0001_canonical_baseline.py": "9b92200f6408c37bcd9a2e60bc74a9be73948d76a0cd5f85deb9e7bbfad3f3cb",
+    "compass/ecounseling/migrations/0001_canonical_baseline.py": "9b98c67c37b1bf65c0a7bdad0716f74d358bf02a3b9f0e96d7df824e9416a538",
+    "compass/exit_interviews/migrations/0001_canonical_baseline.py": "79b7264b114919cc5125bcca05188a4413c317a7147bf2a9b0444144dcc4756b",
+    "compass/feedback/migrations/0001_canonical_baseline.py": "35193ca06f644037431c014c77f883b191c98ff8c18aae892a0da6b150049a5a",
+    "compass/good_moral/migrations/0001_canonical_baseline.py": "19d2027a7f9dfd57925d6853588f508c65211765a0548c7ae4f396aa892b32a6",
+    "compass/graduate_tracer/migrations/0001_canonical_baseline.py": "a699ca97f819f75ed1b82d3053a880af36a40a9a87362d49e999db9079816397",
+    "compass/guidance_messages/migrations/0001_canonical_baseline.py": "d673f60f8de0ef3207faf65ecd674f7bd5a1f259b9fbdb9b676eb67d849f1a65",
+    "compass/institutional_forms/migrations/0001_canonical_baseline.py": "3b097b61600c1fdaa5e19d044e9d50335f3c31e69bd9341da42edb2be71a14c4",
+    "compass/inventory/migrations/0001_canonical_baseline.py": "c87ad29e2e65ac5e2abfe40882caa365788f3225b4f397981790439602867af2",
+    "compass/notifications/migrations/0001_canonical_baseline.py": "fe334ab20e23dfa1e1214b6621cc443722630772e8d5f6c79aaf7e13ec762684",
+    "compass/organization/migrations/0001_canonical_baseline.py": "d821b7ad6004cb083bd08e5410ab8055be19871e08d3977012459e11adf837a9",
+    "compass/platform_ops/migrations/0001_canonical_baseline.py": "925bb6065a883f326ca08aa1009eb3b8322e3e8f305e0836f6634a840f4e76d7",
+    "compass/privacy_governance/migrations/0001_canonical_baseline.py": "7c5a490b13ad19b3e22050b2f5f7cbc7cb8c32685196d0014095ed89588e84dd",
+    "compass/referrals/migrations/0001_canonical_baseline.py": "fc49bab38f000868ebabc449efc1d4c060327ff59be66f51cfeefab96ad8adad",
+    "compass/resources/migrations/0001_canonical_baseline.py": "17e93a071c0381bfc5ab7a159d31c54239ba80f6d68f9bc7291222aef5a96247",
+    "compass/routine_interviews/migrations/0001_canonical_baseline.py": "f68a9e56dcdc03af9cb3fe390cbb35d49ee2800e27423b36b6c82eece3e7a49a",
+    "compass/service_catalog/migrations/0001_canonical_baseline.py": "f35249c551ac5e8f0da733faff013d432572f1cee14037b954c878c03c26776b",
+    "compass/student_support/migrations/0001_canonical_baseline.py": "8a7277317e119ecff73b42e3373444a99a00f8da504a9967b0eab1ba7295e78c"
+  },
+  "additive_migrations": [
+    "appointments/migrations/0002_appointment_reminders.py",
+    "group_sessions/migrations/0001_initial.py",
+    "guidance_followups/migrations/0001_initial.py",
+    "guidance_followups/migrations/0002_guidancefollowupmutation.py",
+    "service_catalog/migrations/0002_booking_pathways.py",
+    "service_catalog/migrations/0003_fixed_date_slots.py"
+  ]
+}

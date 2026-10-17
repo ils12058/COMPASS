@@ -63,6 +63,8 @@ class Appointment(models.Model):
         choices=AppointmentStatus.choices,
         default=AppointmentStatus.SCHEDULED,
     )
+    reminder_revision = models.PositiveIntegerField(default=1)
+    reminder_revision_started_at = models.DateTimeField(null=True, blank=True)
     cancellation_cutoff_minutes = models.PositiveIntegerField(null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -107,6 +109,7 @@ class Appointment(models.Model):
         default_permissions = ()
         ordering = ("starts_at", "reference_code", "id")
         indexes = [
+            models.Index(fields=("status", "starts_at", "id"), name="appt_rem_discovery_idx"),
             models.Index(
                 fields=("provider", "status", "starts_at", "ends_at"),
                 name="appt_provider_time_idx",
@@ -223,5 +226,70 @@ class AppointmentChangeEvent(models.Model):
                     )
                 ),
                 name="appointment_change_event_shape",
+            ),
+        ]
+
+
+class AppointmentReminderKind(models.TextChoices):
+    AUTO_24H = "AUTO_24H", "24-hour automatic"
+    AUTO_3H = "AUTO_3H", "3-hour automatic"
+    MANUAL = "MANUAL", "Manual"
+
+
+class AppointmentReminderOccurrence(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    appointment = models.ForeignKey(
+        Appointment, on_delete=models.PROTECT, related_name="reminder_occurrences"
+    )
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="appointment_reminders_received",
+    )
+    issued_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="appointment_reminders_issued",
+    )
+    kind = models.CharField(max_length=12, choices=AppointmentReminderKind.choices)
+    revision = models.PositiveIntegerField()
+    starts_at = models.DateTimeField()
+    issued_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("-issued_at",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("appointment", "revision", "kind"),
+                condition=models.Q(
+                    kind__in=[AppointmentReminderKind.AUTO_24H, AppointmentReminderKind.AUTO_3H]
+                ),
+                name="appt_rem_auto_window_unique",
+            ),
+        ]
+        indexes = [models.Index(fields=("appointment", "issued_at"), name="appt_rem_cooldown_idx")]
+
+
+class AppointmentReminderBatch(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="appointment_reminder_batches",
+    )
+    request_key = models.UUIDField()
+    selection_digest = models.CharField(max_length=64)
+    result = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=("actor", "request_key"), name="appt_rem_batch_replay_unique"
             ),
         ]

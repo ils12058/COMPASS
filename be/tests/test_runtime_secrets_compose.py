@@ -12,6 +12,7 @@ import pytest
 
 BACKEND = Path(__file__).parents[1]
 SECRET_NAMES = {
+    "guidance_followup_encryption_keys",
     "guidance_message_encryption_keys",
     "assessment_record_confidential_content_encryption_keys",
     "django_secret_key",
@@ -103,7 +104,7 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
         assert config["volumes"][key]["name"] == name
     assert config["networks"]["default"]["external"] is True
     assert config["networks"]["default"]["name"] == "compass_canonical_d86ddc08"
-    assert len(SECRET_NAMES) == 24
+    assert len(SECRET_NAMES) == 25
     assert set(config["secrets"]) == SECRET_NAMES
     for name, source in config["secrets"].items():
         assert source["file"] == str(secrets / name)
@@ -115,10 +116,19 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
             else SECRET_NAMES
             - {
                 "guidance_message_encryption_keys",
+                "guidance_followup_encryption_keys",
                 "assessment_record_confidential_content_encryption_keys",
             }
         )
         assert {grant["source"] for grant in app["secrets"]} == expected_grants
+        if service == "web":
+            assert (
+                app["environment"]["GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS_FILE"]
+                == "/run/secrets/guidance_followup_encryption_keys"
+            )
+        else:
+            assert not app["environment"]["GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS_FILE"]
+            assert not app["environment"]["GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS"]
         if service == "web":
             assert (
                 app["environment"]["GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE"]

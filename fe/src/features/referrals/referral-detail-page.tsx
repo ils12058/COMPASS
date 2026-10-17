@@ -1,5 +1,6 @@
 "use client";
 
+import { FollowupsContext } from "@/features/guidance-followups/followups-context";
 import { PageAction } from "@/components/ui/page-action";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
@@ -244,6 +245,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         </PanelBody>
       </Panel>
       ) : null}
+      <FollowupsContext kind="REFERRAL" id={item.id} />
     </div>
   );
 
