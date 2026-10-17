@@ -38,7 +38,7 @@ export function FollowupsList() {
       <FilterField label="Status" htmlFor="followup-status"><Select id="followup-status" value={filters.status ?? ""} onChange={event => change({ status: event.target.value as StatusValue || undefined, due_window: undefined })}><option value="">All statuses</option>{Object.values(StatusValue).map(value => <option key={value} value={value}>{statusLabel(value)}</option>)}</Select></FilterField>
     </FloatingListTools>
     <Panel>
-      <PanelHeader title="Follow-Ups" context={data ? `${data.items.length} on this page` : "Loading…"} />
+      <PanelHeader title="Assigned follow-ups" context={data ? `${data.items.length} on this page` : "Loading…"} />
       {query.isPending ? <p role="status" className="p-5">Loading follow-ups…</p> : query.isError ? <FollowupFailure error={query.error} retry={() => void query.refetch()} /> : data ? <>
         {data.items.length ? <div className={dataTable.scroll}><table className={dataTable.table}><thead className={dataTable.head}><tr>{["Student", "Category", "Due", "Assignee", "Status"].map(label => <th key={label} scope="col" className={dataTable.headerCell}>{label}</th>)}</tr></thead><tbody>{data.items.map(row => <tr key={row.id} className={dataTable.row}>
           <th scope="row" className={dataTable.cell}><Link className="font-semibold text-brand underline underline-offset-4" href={`/portal/follow-ups/${row.id}`}>{row.student_name}</Link></th>

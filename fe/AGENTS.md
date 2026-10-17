@@ -242,6 +242,9 @@ Routine work (Appointments, Availability, Good Moral issuance, email retry, name
 Privacy Notice drafts) and Referrals and Call Slips have no step-up, so do not add authenticator
 prompts or MFA pre-checks to them.
 
+Follow-Up lifecycle actions retain the FUP-1A backend recent-MFA boundary. Handle its setup/verify
+responses through the shared StepUpDialog, preserve input, and require deliberate resubmission.
+
 ---
 
 # 7. CSRF
