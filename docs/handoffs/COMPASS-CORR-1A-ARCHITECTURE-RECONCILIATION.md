@@ -2,11 +2,11 @@
 
 **Status (2026-10-17): Historical CORR-1A-only snapshot.** CORR-1A implementation commit `a000e9c99231de7c87f6f73d894de3839555ab84` is the unmerged dependency for the consolidated CORR-1B implementation. The open-scope and deferred-verification sections below describe the earlier A-only checkpoint and are superseded by [the integrated CORR-1B handoff](COMPASS-CORR-1B-INTEGRATED-SERVICE-RECONCILIATION.md).
 
-**Repository:** `ils12058/COMPASS`  
-**Base:** `origin/staging` at `9e83a8c2cc5692b4ee504be56fc3d1567cecbc29`  
-**Correction branch:** `fix/service-catalog-corr-1a-security-lifecycle`  
-**Scope:** P0 resource authorization, participant privacy, and non-destructive operational lifecycles.  
-**Deployment / merge:** Not authorized.
+**Repository:** `ils12058/COMPASS`
+**Base:** `origin/staging` at `9e83a8c2cc5692b4ee504be56fc3d1567cecbc29`
+**Correction branch:** `fix/service-catalog-corr-1a-security-lifecycle`
+**Scope:** P0 resource authorization, participant privacy, and non-destructive operational lifecycles.
+**At A-only checkpoint:** Merge and deployment were not authorized; current consolidated CORR-1 merge authorization is recorded in the linked integrated handoff. Deployment remains unauthorized.
 
 ## Audit method and concurrent work
 
@@ -107,25 +107,25 @@ pnpm test:ui
 
 ### CORR-1B — Scheduling and configuration integrity (P1; separate PR)
 
-**Confirmed entry points:** Appointment overlap detection is Appointment-only; fixed-slot creation checks Appointments and other slots but not group events; Group Session creation/update/registration lacks provider and Student overlap checks. Configuration consequence review sees only Appointments.  
-**Work:** Define whether published slots reserve Counselors, whether facilitation blocks individual Availability, how overlapping Student groups/Appointments are rejected, and how cancellation/reschedule restores availability. Enforce under a common PostgreSQL lock order; test publish-vs-book, register-vs-appointment, and reschedule-vs-facilitation races. Add pathway/service/mode/provider-coverage transition guards that report exact dependent slot/session/registration counts and require explicit review. Preserve group registration as independent from Appointment/Encounter.  
+**Confirmed entry points:** Appointment overlap detection is Appointment-only; fixed-slot creation checks Appointments and other slots but not group events; Group Session creation/update/registration lacks provider and Student overlap checks. Configuration consequence review sees only Appointments.
+**Work:** Define whether published slots reserve Counselors, whether facilitation blocks individual Availability, how overlapping Student groups/Appointments are rejected, and how cancellation/reschedule restores availability. Enforce under a common PostgreSQL lock order; test publish-vs-book, register-vs-appointment, and reschedule-vs-facilitation races. Add pathway/service/mode/provider-coverage transition guards that report exact dependent slot/session/registration counts and require explicit review. Preserve group registration as independent from Appointment/Encounter.
 **Dependencies:** CORR-1A resource policies and lifecycle state; institutional decision for whether group attendance is a scheduling commitment and how group schedule scope interacts with Service availability. Suggested ownership: Appointments + Service Catalog + Group Sessions, one coordinated PR after CORR-1A merges.
 
 ### CORR-1C — Organizers and facilitators (P1; separate PR)
 
-**Confirmed entry point:** `GroupSessionFacilitator.counselor` is a protected FK and all create/update validation requires a Service-qualified Counselor.  
-**Work:** Represent internal Counselors and external speakers without fake accounts; keep organizer, individual Appointment provider, and event facilitator as distinct concepts. Define which resource actions belong to organizer, internal facilitator, external facilitator, and GSS. External participation must not create a COMPASS login, Counselor authority, Appointment, or Counseling Encounter. Decide whether external names/contact data require retention or attendee visibility policy before adding fields.  
+**Confirmed entry point:** `GroupSessionFacilitator.counselor` is a protected FK and all create/update validation requires a Service-qualified Counselor.
+**Work:** Represent internal Counselors and external speakers without fake accounts; keep organizer, individual Appointment provider, and event facilitator as distinct concepts. Define which resource actions belong to organizer, internal facilitator, external facilitator, and GSS. External participation must not create a COMPASS login, Counselor authority, Appointment, or Counseling Encounter. Decide whether external names/contact data require retention or attendee visibility policy before adding fields.
 **Dependencies:** CORR-1A session resource permissions; institution must decide which participant data external facilitators may receive and which staff own event governance. Suggested ownership: Group Sessions domain + frontend, with Organization/identity review.
 
 ### CORR-1D — Frontend and operational consistency (P2; separate PR)
 
-**Confirmed findings:** pathway facts still say booking/registration are coming later; GSS facilitator selection depends on `services.manage`; roster export URL is stale; fixed-slot table has a duplicated Counselor cell under a different heading; discovery and error feedback need a complete state review.  
-**Work:** Use a narrowly scoped eligible-Counselor selection contract that does not grant broad catalog management; show only backend-authorized actions; correct export URL; update pathway availability and empty/error states; review status, capacity, registration, and attendance feedback at mobile widths. Confirm whether institutionally defined student audience restrictions exist before adding filters. Preserve the distinctions between service appointment providers and group facilitators.  
+**Confirmed findings:** pathway facts still say booking/registration are coming later; GSS facilitator selection depends on `services.manage`; roster export URL is stale; fixed-slot table has a duplicated Counselor cell under a different heading; discovery and error feedback need a complete state review.
+**Work:** Use a narrowly scoped eligible-Counselor selection contract that does not grant broad catalog management; show only backend-authorized actions; correct export URL; update pathway availability and empty/error states; review status, capacity, registration, and attendance feedback at mobile widths. Confirm whether institutionally defined student audience restrictions exist before adding filters. Preserve the distinctions between service appointment providers and group facilitators.
 **Dependencies:** CORR-1A backend resource-capability response and CORR-1C facilitator model. No College/Program audience limits without an approved institutional basis. Suggested ownership: Frontend + Service Catalog API.
 
 ## Migration and operational safety
 
-The A-scope schema changes are additive and forward-only as listed above. Existing non-null `current_appointment` links are copied into history without changing current pointers. During rolling deployment, a PostgreSQL trigger records pointer changes made by an older application process, while the new application writes history explicitly; a unique pair constraint makes the trigger's duplicate insert harmless. No production-like database, staging data, canonical baseline, or already-applied migration was rewritten in this worktree. PostgreSQL guards reject direct physical deletion of slot, slot-booking-history, and group-session records even when an older application path is present. Deployment and merge remain unauthorized.
+The A-scope schema changes are additive and forward-only as listed above. Existing non-null `current_appointment` links are copied into history without changing current pointers. During rolling deployment, a PostgreSQL trigger records pointer changes made by an older application process, while the new application writes history explicitly; a unique pair constraint makes the trigger's duplicate insert harmless. No production-like database, staging data, canonical baseline, or already-applied migration was rewritten in this worktree. PostgreSQL guards reject direct physical deletion of slot, slot-booking-history, and group-session records even when an older application path is present. No production-like database, staging data, canonical baseline, or already-applied migration was rewritten in this worktree. The current consolidated CORR-1 merge authorization is recorded in the linked integrated handoff; deployment remains unauthorized.
 
 ## Verification record
 

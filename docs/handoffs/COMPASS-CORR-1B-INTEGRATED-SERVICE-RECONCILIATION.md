@@ -9,7 +9,7 @@
 ## A. Baseline and coordination
 
 - Latest fetched `origin/staging`: `18c4b1dc3428c25de127edff8a286d0ab4965dd8`, including CORR-2 PR #267 and CORR-3 PR #269.
-- CORR-1A dependency commit: `a000e9c99231de7c87f6f73d894de3839555ab84`. It is the unmerged parent of this implementation; no separate CORR-1A PR was found. The branch started from staging `9e83a8c2cc5692b4ee504be56fc3d1567cecbc29` and must integrate the newer staging tip before PR creation.
+- CORR-1A dependency commit: `a000e9c99231de7c87f6f73d894de3839555ab84`. It is the unmerged parent of this implementation; no separate CORR-1A PR was found. The branch started from staging `9e83a8c2cc5692b4ee504be56fc3d1567cecbc29`; merge commit `21db2e744050823133a4480ff2397261a2acde12` integrates the newer staging tip before PR creation.
 - The CORR-1A-only [architecture reconciliation](COMPASS-CORR-1A-ARCHITECTURE-RECONCILIATION.md) is a historical snapshot; this document records the consolidated scope.
 - CORR-2 PR [#267](https://github.com/ils12058/COMPASS/pull/267) and CORR-3 PR [#269](https://github.com/ils12058/COMPASS/pull/269) are already represented in the fetched staging branch. The CORR-2 overlap includes OpenAPI, appointment/notification, and frontend paths; preserve both changes during integration.
 
