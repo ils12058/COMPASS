@@ -643,14 +643,14 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         </PanelSection>
       </Panel>
 
-      {(canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || unavailable.length > 0 || (access.canManage && user.role.code !== "STUDENT")) ? (
+      {(canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || unavailable.length > 0 || (access.canManage && user.role !== "STUDENT")) ? (
         <Panel aria-labelledby="appointment-actions-heading">
           <PanelHeader title="Actions" titleId="appointment-actions-heading" />
           <PanelBody className="*:first:mt-0">
           {canCancel || canReschedule || canReassign || canComplete || canMarkNoShow ? (
             // The usual outcome leads; cancelling, the destructive one, comes last.
             <div className="mt-4 flex flex-wrap gap-2">
-              {access.canManage && (user.role.code === "COUNSELOR" || user.role.code === "GSS") ? (
+              {access.canManage && (user.role === "COUNSELOR" || user.role === "GSS") ? (
                 <Button variant="secondary" disabled={pending || detailsUnconfirmed} onClick={() => setReminderOpen(true)}>Send reminder</Button>
               ) : null}
               {canComplete ? <Button disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button> : null}
