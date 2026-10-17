@@ -188,8 +188,60 @@ def authorized(actor, followup, *, manage=False):
 
 
 def scope(actor, queryset):
-    # Coarse bound in SQL; final authorization is reapplied on each returned item.
-    return queryset.filter(assigned_to_id=actor.pk)
+    """Authorize the entire paginated set in SQL before OFFSET/LIMIT.
+
+    Never fetch an unbounded prefix and filter it in Python: that breaks privacy,
+    has_next accuracy and deep paging in the presence of inaccessible source rows.
+    """
+    from django.db.models import Exists, OuterRef, Q
+
+    queryset = queryset.filter(assigned_to_id=actor.pk)
+    if is_head_guidance(actor):
+        operational = Q(visibility=FollowUpVisibility.OPERATIONAL)
+    else:
+        colleges = resolve_operational_responsibility_scope(actor).college_ids
+        operational = Q(pk__in=[])
+        if colleges:
+            operational = Q(
+                visibility=FollowUpVisibility.OPERATIONAL,
+                student__organization_student_affiliation__college_id__in=colleges,
+                student__organization_student_affiliation__college__is_active=True,
+                student__organization_student_affiliation__college__campus__is_active=True,
+            )
+    if actor.role.code != "COUNSELOR":
+        return queryset.filter(operational).distinct()
+
+    confidential = Q(pk__in=[])
+    if actor.has_capability("counseling.view_assigned"):
+        from compass.counseling.models import CounselingEncounter
+
+        matching_encounter = CounselingEncounter.objects.filter(
+            pk=OuterRef("source_id"), student_id=OuterRef("student_id"),
+            counselor_id=actor.pk,
+        )
+        queryset = queryset.alias(_fup_encounter_match=Exists(matching_encounter))
+        confidential |= Q(
+            visibility=FollowUpVisibility.COUNSELOR_CONFIDENTIAL,
+            source_kind=FollowUpSource.COUNSELING_ENCOUNTER,
+            _fup_encounter_match=True,
+        )
+    if actor.has_capability("routine_interviews.view_assigned"):
+        from compass.routine_interviews.models import RoutineInterview
+
+        matching_routine = RoutineInterview.objects.filter(
+            pk=OuterRef("source_id"), student_id=OuterRef("student_id"),
+            counselor_id=actor.pk,
+        ).filter(
+            Q(appointment__isnull=True)
+            | Q(appointment__status__in=["SCHEDULED", "COMPLETED"])
+        )
+        queryset = queryset.alias(_fup_routine_match=Exists(matching_routine))
+        confidential |= Q(
+            visibility=FollowUpVisibility.COUNSELOR_CONFIDENTIAL,
+            source_kind=FollowUpSource.ROUTINE_INTERVIEW,
+            _fup_routine_match=True,
+        )
+    return queryset.filter(operational | confidential).distinct()
 
 
 def require_followup(actor, followup, *, manage=False):

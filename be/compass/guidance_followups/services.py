@@ -221,13 +221,10 @@ def list_followups(
         qs = qs.filter(status=status)
     if student_id is not None:
         qs = qs.filter(student_id=student_id)
-    # Finite sorted prefix: do not decrypt or return unauthorized source records.
-    end = page * page_size
-    limit = min(MAX_PAGE * MAX_PAGE_SIZE + 1, end + 1)
-    candidates = qs.order_by("due_at", "id")[:limit]
-    allowed = [item for item in candidates if policy.authorized(actor, item)]
+    # SQL scope precedes pagination; one fixed-size page plus its has_next proof.
     offset = (page - 1) * page_size
-    return FollowUpPage(tuple(allowed[offset:end]), page, page_size, len(allowed) > end)
+    rows = list(qs.order_by("due_at", "id")[offset : offset + page_size + 1])
+    return FollowUpPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
 
 
 def _lock_for_mutation(*, actor, followup_id, expected_version):
