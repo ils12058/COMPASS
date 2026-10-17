@@ -11,7 +11,7 @@ Updated 2026-10-17. This is an engineering handoff, not merge/deployment approva
 | FUP-1B/1C + scoped report | [260](https://github.com/ils12058/COMPASS/pull/260) | feat/compass-fup-1a-secure-foundation | codex/ops-final-followup-workspace |
 | FUP-1D1/1D2/1E | [261](https://github.com/ils12058/COMPASS/pull/261) | codex/ops-final-followup-workspace | codex/ops-final-followup-work-notifications |
 
-REM head `603b55a5d09d29cb074ccfe857ef09c254a284f7`. Follow-Up heads are being
+REM head `b4902ce7` (latest PR head provides the complete SHA). Follow-Up heads are being
 updated for final verification; use the live PR head, not an earlier snapshot. Review in dependency
 order. All PRs remain drafts pending complete exact-candidate validation. No staging merge is made.
 
@@ -77,18 +77,23 @@ feature history and is not an approved rollout action.
 Full runbooks: `be/docs/decisions/ADR-REM-1-appointment-reminders.md`,
 `be/docs/guidance-followups-workspace.md`, `be/docs/guidance-followups-operations.md`.
 
-## Verification checkpoint
+## Verification checkpoint — local candidate checks complete
 
-- REM frontend exact head 603b55a5: GitHub frontend targeted validation succeeded, including all
-  eight Chromium/WebKit shards. Backend targeted/full regression were still running at this checkpoint.
-- Follow-Up candidate: 775/775 local frontend tests, lint and typecheck passed; final build in progress.
-- New browser scenarios previously passed: REM 3 per engine; FUP 8 per engine. Combined candidate
-  must rerun both suites after consolidated client generation/build.
-- Real PostgreSQL domain/HTTP tests cover lifecycle concurrency/idempotency, current authorization,
-  source confidentiality, tampering/key failure, assignment recovery and key rotation. The Follow-Up PostgreSQL canonical upgrade/additive rollback/re-upgrade rehearsal passed
-  (1 test, 390.66 seconds on the loaded local host). Final combined backend regression is in progress.
-- CI foundation formatting failure and an Inventory browser timing race were identified; fixes
-  are being propagated through the stack and must be checked on new heads.
+- REM frontend exact head 603b55a5: GitHub frontend validation passed all eight browser shards.
+  The subsequent b4902ce7 changes only the email heading/preheader; 101 transactional-email checks passed.
+- Follow-Up stack: lint, typecheck, production build and all 775 frontend checks passed. Eight new
+  browser scenarios passed in each Chromium/WebKit engine on the final production artifact.
+- Combined REM/FUP frontend: consolidated OpenAPI/Orval generation, lint, typecheck and build passed;
+  Reminder 3/3 and Follow-Up 8/8 browser checks passed in each engine against the same build.
+- Real PostgreSQL combined regression: 200 checks passed; 65 runtime-fixture failures were repaired
+  by populating the new required synthetic key file and updating explicit inventory counts.
+  All 91 runtime/Compose checks then passed, preserving production secret guards and keyless workers.
+- Combined transactional email: 110 checks passed after fixing the Reminder HTML heading and
+  Follow-Up plain-text footer. All 38 OpenAPI contract checks passed independently.
+- Combined canonical upgrade/additive rollback/re-upgrade rehearsal passed (1 test, 75.51 seconds).
+  Original baseline hashes and history guards remain intact. Production rollback retains feature data.
+- Exact final-head CI is still required. Prior failed/obsolete runs are documented, not called green.
+  Agent 2's ready SVC-1–5 heads and domain review remain an external integration dependency.
 
 No substantial Service Catalog implementation is owned by Agent 1. Final cross-feature readiness
 requires Agent 2's ready exact heads, its domain review, and passing combined regression. No deadline
