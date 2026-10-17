@@ -14,16 +14,22 @@ import io
 import re
 from pathlib import Path
 
+from compass.organization.canonical import CANONICAL_CAMPUSES
+
 from . import DATASET_NAME, DATASET_VERSION
-from .identities import AccountSpec, StudentGroup, StudentSpec, Suitability
+from .identities import AccountSpec, AuthPlan, Lifecycle, StudentGroup, StudentSpec, Suitability
 from .manifest import (
     ACCOUNTS,
+    ACCOUNTS_BY_KEY,
     SCENARIOS,
     UAT_40_ALLOCATION,
+    UAT_40_STUDENT_COLLEGES,
     Readiness,
     scenarios_for,
     stakeholder,
 )
+from .staff import COUNSELOR_RESPONSIBILITIES, STAFF_SUPERVISION
+from .students import PROMOTED_BACKGROUND
 from .timeline import EARLIEST_ANCHOR, LATEST_ANCHOR
 
 CATALOG = "STAGING-DATASET-v1-ACCOUNT-CATALOG.md"
@@ -31,6 +37,7 @@ ACCOUNTS_CSV = "staging-accounts.csv"
 GUIDE = "UAT-ACCOUNT-SELECTION-GUIDE.md"
 MATRIX = "UAT-SCENARIO-MATRIX.md"
 ASSIGNMENT = "UAT-ACCOUNT-ASSIGNMENT-TEMPLATE.csv"
+UAT_40_ASSIGNMENTS = "COMPASS-UAT-40-ASSIGNMENTS.csv"
 SUMMARY = "STAGING-DATASET-v1-SUMMARY.md"
 
 CSV_COLUMNS = (
@@ -65,6 +72,31 @@ ASSIGNMENT_COLUMNS = (
     "testing_status",
     "notes",
 )
+# The exact 40-person allocation. Prefilled from the manifest and the verified database; the
+# research team fills the blank columns privately and never commits a completed copy.
+UAT_40_COLUMNS = (
+    "participant_reference",
+    "stakeholder_category",
+    "college_academic_unit",
+    "account_key",
+    "institutional_id",
+    "login_email",
+    "canonical_role",
+    "assigned_scenario_ids",
+    "participant_full_name",
+    "account_distributed_by",
+    "credential_handoff_date",
+    "participant_acknowledgement",
+    "first_login_verified",
+    "mfa_enrollment_status",
+    "testing_status",
+    "remarks",
+)
+COLLEGE_NAMES = {
+    college.code: college.name for campus in CANONICAL_CAMPUSES for college in campus.colleges
+}
+# Short display labels; Entienza is the Entienza Campus academic unit.
+COLLEGE_LABELS = {"ENTIENZA": "Entienza"}
 SUITABILITY_LABELS = {
     Suitability.PARTICIPANT: "UAT-ready (assignable)",
     Suitability.BACKGROUND: "Background only",
@@ -218,6 +250,12 @@ def _catalog(result) -> str:
         ("Students — rich scenario (UAT-ready)", lambda s: s.group == StudentGroup.RICH),
         ("Students — action-ready (UAT-ready)", lambda s: s.group == StudentGroup.ACTION_READY),
         (
+            "Students — background population promoted to UAT-ready",
+            lambda s: (
+                s.group == StudentGroup.BACKGROUND and s.suitability == Suitability.PARTICIPANT
+            ),
+        ),
+        (
             "Students — background population",
             lambda s: (
                 s.group == StudentGroup.BACKGROUND and s.suitability == Suitability.BACKGROUND
@@ -264,7 +302,9 @@ GUIDE_NOTES = {
     "Student": (
         "Give each Student evaluator their own action-ready or rich account. Action-ready "
         "accounts (`ar_…`) each start from one pending action, so two evaluators never need the "
-        "same Student. Rich accounts carry multi-domain history for exploratory testing."
+        "same Student. Rich accounts carry multi-domain history for exploratory testing. Seven "
+        "background Students are promoted to UAT-ready so every College is represented; they "
+        "start from their seeded records."
     ),
     "Guidance Counselor": (
         "Three Counselors own separate caseloads (Main CCMS/CAS/COENG, Main CBPA + Abaño COED, "
@@ -307,16 +347,20 @@ def _guide(result) -> str:
         "use one, add it to the manifest as a participant and regenerate.",
         "- Restricted accounts are for negative-authorization tests only. Disabled accounts "
         "cannot receive credentials; the others need `issue-credentials --account <key>`.",
-        "- Record assignments only in the private copy of `UAT-ACCOUNT-ASSIGNMENT-TEMPLATE.csv`; "
-        "never commit evaluator names or contact details.",
+        f"- Record assignments only in a private copy of `{UAT_40_ASSIGNMENTS}` (or "
+        f"`{ASSIGNMENT}` for reserves); never commit evaluator names or contact details.",
         "- Credentials are delivered privately from the protected handoff file; this guide and "
         "the catalog never contain them.",
         "",
-        "## Proposed 40-person allocation",
+        "## 40-person UAT allocation",
         "",
         "Each key below belongs to a different participant. Alumni use the STUDENT role with "
-        "GRADUATED lifecycle; ITSO personnel use IT_ADMIN. This is a selection proposal, not "
-        "authorization to issue credentials. No background or onboarding account is included.",
+        "GRADUATED lifecycle; ITSO personnel use IT_ADMIN. This allocation is not authorization "
+        "to issue credentials. Every current Student is CURRENT and affiliated with the College "
+        "shown; no onboarding, restricted, disabled, former or graduated account fills a "
+        "current-Student slot. Promoted background Students complete the College distribution: "
+        + ", ".join(f"`{key}`" for key in PROMOTED_BACKGROUND)
+        + ".",
         "",
         *_table(
             ("Participant category", "Count", "Exact account keys"),
@@ -326,9 +370,35 @@ def _guide(result) -> str:
             ],
         ),
         "",
+        "### Current Students by College / academic unit",
+        "",
+        *_table(
+            ("College / academic unit", "Name", "Students", "Account keys"),
+            [
+                (
+                    _college_label(college),
+                    COLLEGE_NAMES[college],
+                    len(keys),
+                    ", ".join(f"`{key}`" for key in keys),
+                )
+                for college, keys in UAT_40_STUDENT_COLLEGES.items()
+            ],
+        ),
+        "",
         "Keep one evaluator per account. Confirm mailbox ownership and staff authenticator "
-        "enrollment before issuance; record actual assignments only in the private template. "
-        "The template also lists reserve accounts; only the 40 keys above form this allocation.",
+        f"enrollment before issuance; record actual assignments only in a private copy of "
+        f"`{UAT_40_ASSIGNMENTS}`, which lists exactly these 40 accounts. Reserve UAT-ready "
+        "accounts outside the allocation: " + ", ".join(f"`{key}`" for key in _reserves()) + ".",
+        "",
+        "Issue credentials for exactly these 40 keys, never with an unrestricted command:",
+        "",
+        "```",
+        "seed_staging_dataset issue-credentials --output <new protected handoff file> \\",
+        *(
+            f"  --account {key}" + (" \\" if number < 40 else "")
+            for number, key in enumerate(_allocated(), 1)
+        ),
+        "```",
         "",
     ]
     for role in STAKEHOLDER_ORDER:
@@ -337,6 +407,7 @@ def _guide(result) -> str:
             continue
         lines += [f"## {role}", "", GUIDE_NOTES[role], ""]
         rows = []
+        allocated = set(_allocated())
         for account in accounts:
             if account.suitability == Suitability.BACKGROUND:
                 continue
@@ -348,6 +419,9 @@ def _guide(result) -> str:
                     account.institutional_id,
                     account.label,
                     SUITABILITY_LABELS[account.suitability],
+                    "Allocated"
+                    if account.key in allocated
+                    else ("Reserve" if account.suitability == Suitability.PARTICIPANT else "—"),
                     " ".join(s.id for s in scenarios) or "—",
                     "Yes — state changes" if mutating else "No — read-only",
                     account.summary,
@@ -360,6 +434,7 @@ def _guide(result) -> str:
                 "ID",
                 "Why recommended",
                 "Assignable",
+                "40-person UAT",
                 "Scenarios",
                 "Initial state changes?",
                 "What it starts with",
@@ -384,6 +459,9 @@ def _guide(result) -> str:
         "start from the same submitted interview; run the Head scenario last.",
         "- `ar_05`: CNS-EC-01 (Counselor requests consent) must precede STU-EC-01 (Student "
         "decides); assign both to the same scheduled pair of evaluators.",
+        "- `bg_54`: CNS-GM-04 (counselor_c starts an assisted Good Moral request) must precede "
+        "STU-GM-08; the Student must not request a certificate first, because an open request "
+        "blocks the assisted one.",
         "- `head_guidance`, `dpo`/`dpo_2`: shared catalogs; serialize mutating scenarios.",
         "- Changing Counselor responsibilities, Availability or the current Academic Year affects "
         "most scenarios; keep those out of UAT or run them last.",
@@ -475,6 +553,82 @@ def _assignment_template() -> str:
     return buffer.getvalue()
 
 
+def _college_label(code: str) -> str:
+    return COLLEGE_LABELS.get(code, code)
+
+
+def _allocated() -> list[str]:
+    return [key for keys in UAT_40_ALLOCATION.values() for key in keys]
+
+
+def _reserves() -> list[str]:
+    allocated = set(_allocated())
+    return [
+        a.key
+        for a in ACCOUNTS
+        if a.suitability == Suitability.PARTICIPANT
+        and a.auth == AuthPlan.CREDENTIAL
+        and a.key not in allocated
+    ]
+
+
+def _caseload(counselor_key: str) -> str:
+    colleges = [
+        _college_label(college)
+        for counselor, _campus, college in COUNSELOR_RESPONSIBILITIES
+        if counselor == counselor_key
+    ]
+    return f"{', '.join(colleges)} caseload"
+
+
+def _uat_40_unit(account: AccountSpec) -> str:
+    if isinstance(account, StudentSpec):
+        label = _college_label(account.college_code)
+        return label if account.lifecycle == Lifecycle.CURRENT else f"{label} (graduated)"
+    if "HEAD_GUIDANCE_COUNSELOR" in account.designations:
+        return "Guidance and Counseling Office (institution-wide)"
+    if account.role == "COUNSELOR":
+        return f"Guidance and Counseling Office ({_caseload(account.key)})"
+    if account.role == "GUIDANCE_SERVICES_STAFF":
+        supervisor = dict(STAFF_SUPERVISION)[account.key]
+        return f"Guidance and Counseling Office ({_caseload(supervisor)})"
+    if account.role == "IT_ADMIN":
+        return "ITSO"
+    return "Data Protection Office"
+
+
+def uat_40_rows(result) -> list[dict[str, str]]:
+    """The 40 assignment rows in allocation order; evaluator columns stay blank."""
+
+    rows = []
+    entries = [(category, key) for category, keys in UAT_40_ALLOCATION.items() for key in keys]
+    for number, (category, key) in enumerate(entries, 1):
+        account = ACCOUNTS_BY_KEY[key]
+        facts = result.accounts[key]
+        prefilled = {
+            "participant_reference": f"UAT40-{number:02d}",
+            "stakeholder_category": category,
+            "college_academic_unit": _uat_40_unit(account),
+            "account_key": key,
+            "institutional_id": account.institutional_id,
+            "login_email": facts.email,
+            "canonical_role": facts.role,
+            "assigned_scenario_ids": " ".join(
+                s.id for s in scenarios_for(key) if s.readiness == Readiness.EXECUTABLE
+            ),
+        }
+        rows.append({column: prefilled.get(column, "") for column in UAT_40_COLUMNS})
+    return rows
+
+
+def _uat_40_csv(result) -> str:
+    buffer = io.StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=UAT_40_COLUMNS, lineterminator="\n")
+    writer.writeheader()
+    writer.writerows(uat_40_rows(result))
+    return buffer.getvalue()
+
+
 def _dict_table(title: str, values: dict) -> list[str]:
     return [f"### {title}", "", *_table(("Value", "Count"), list(values.items())), ""]
 
@@ -497,9 +651,15 @@ def _summary(result) -> str:
         f"{', '.join(result.preparation_dates) or 'none'}.",
         f"- Accounts: **{counts['accounts']}** ({counts['students']} Students, "
         f"{counts['staff']} staff).",
-        "- Proposed allocation: **40 independent participants** — 1 Head, 3 Counselors, "
+        "- UAT allocation: **40 independent participants** — 1 Head, 3 Counselors, "
         "2 Guidance Services Staff, 25 current Students, 5 graduated Alumni, 3 ITSO and 1 DPO. "
-        "See the Selection Guide for exact account keys; credential issuance remains separate.",
+        "Current Students by College: "
+        + ", ".join(
+            f"{_college_label(college)} {len(keys)}"
+            for college, keys in UAT_40_STUDENT_COLLEGES.items()
+        )
+        + f". See the Selection Guide and `{UAT_40_ASSIGNMENTS}` for exact account keys; "
+        "credential issuance remains separate.",
         f"- Executable UAT scenarios: **{counts['scenarios_executable']}**; "
         f"pending-implementation scenarios: **{counts['scenarios_pending']}**.",
         f"- Verification: **{'PASSED' if result.passed else 'FAILED'}** — {sections}.",
@@ -580,6 +740,7 @@ def render_reports(result) -> dict[str, str]:
         GUIDE: _guide(result),
         MATRIX: _matrix(result),
         ASSIGNMENT: _assignment_template(),
+        UAT_40_ASSIGNMENTS: _uat_40_csv(result),
         SUMMARY: _summary(result),
     }
     for name, text in documents.items():
@@ -610,6 +771,9 @@ __all__ = [
     "MATRIX",
     "ReportError",
     "SUMMARY",
+    "UAT_40_ASSIGNMENTS",
+    "UAT_40_COLUMNS",
     "render_reports",
+    "uat_40_rows",
     "write_reports",
 ]

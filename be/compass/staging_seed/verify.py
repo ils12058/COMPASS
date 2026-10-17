@@ -53,7 +53,11 @@ from compass.common.canonical_baseline import pre_canonical_history
 from compass.counseling.models import CounselingSharedSummary
 from compass.ecounseling.models import ECounselingRoom
 from compass.exit_interviews.models import ExitInterview, ExitInterviewOpportunity
-from compass.feedback.models import ClientSatisfactionResponse, CustomerFeedbackResponse
+from compass.feedback.models import (
+    ClientSatisfactionResponse,
+    CustomerFeedbackResponse,
+    FeedbackOpportunity,
+)
 from compass.good_moral.models import GoodMoralRequest
 from compass.graduate_tracer.models import GraduateTracerResponse
 from compass.guidance_messages.models import GuidanceThread, GuidanceThreadReadState
@@ -343,6 +347,10 @@ def _predicate(lookup: Lookup, key: str, name: str) -> bool:
     if kind == "availability":
         return ProviderAvailabilityWindow.objects.filter(provider=user).exists()
     if kind == "feedback":
+        if arg == "invitation_pending":
+            return FeedbackOpportunity.objects.filter(
+                student=user, customer_feedback_submitted_at__isnull=True
+            ).exists()
         return (
             CustomerFeedbackResponse.objects.exists()
             and ClientSatisfactionResponse.objects.exists()

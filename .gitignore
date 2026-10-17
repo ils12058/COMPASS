@@ -30,3 +30,6 @@ archived/**/dist/
 archived/**/coverage/
 archived/**/tsconfig.tsbuildinfo
 archived/**/src/lib/api/generated/
+
+# Filled UAT-40 handoff documents hold real participant identities; never commit them.
+outputs/uat-40/handoff/

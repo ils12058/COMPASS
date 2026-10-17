@@ -28,19 +28,51 @@ from .students import STUDENTS
 ACCOUNTS: tuple[AccountSpec, ...] = (*STAFF, *STUDENTS)
 ACCOUNTS_BY_KEY = {account.key: account for account in ACCOUNTS}
 
+# The finalized 40-person UAT: participants per stakeholder category, and the 25 current Students
+# per College / academic unit (Entienza is the Entienza Campus academic unit).
+UAT_40_STAKEHOLDER_COUNTS = {
+    "Head Guidance Counselor": 1,
+    "Guidance Counselor": 3,
+    "Guidance Services Staff": 2,
+    "Current Student": 25,
+    "Alumni": 5,
+    "ITSO Personnel": 3,
+    "Data Protection Officer": 1,
+}
+UAT_40_STUDENT_QUOTA = {
+    "CCMS": 3,
+    "CAS": 3,
+    "CBPA": 3,
+    "COENG": 3,
+    "COED": 3,
+    "CFAST": 3,
+    "CANR": 3,
+    "COTT": 2,
+    "ENTIENZA": 2,
+}
+# Each key is a current Student seeded in that College. bg_… accounts are promoted background
+# Students (see students.PROMOTED_BACKGROUND); the other UAT-ready Students stay reserves.
+UAT_40_STUDENT_COLLEGES = {
+    "CCMS": ("ar_01", "ar_05", "ar_14"),
+    "CAS": ("ar_03", "ar_09", "ar_12"),
+    "CBPA": ("ar_02", "ar_10", "ar_22"),
+    "COENG": ("ar_07", "ar_19", "bg_47"),
+    "COED": ("ar_04", "ar_15", "ar_20"),
+    "CFAST": ("ar_23", "bg_54", "bg_55"),
+    "CANR": ("ar_08", "ar_16", "bg_56"),
+    "COTT": ("bg_58", "bg_59"),
+    "ENTIENZA": ("ar_24", "bg_60"),
+}
+
 # Proposed ownership only: no evaluator identities, credential issuance or live assignment.
 # Alumni retain the canonical STUDENT role; ITSO participants retain IT_ADMIN.
 UAT_40_ALLOCATION = {
     "Head Guidance Counselor": ("head_guidance",),
     "Guidance Counselor": ("counselor_a", "counselor_b", "counselor_c"),
     "Guidance Services Staff": ("gss_a", "gss_b"),
-    "Current Student": (
-        "first_year",
-        "second_year",
-        *(f"ar_{n:02d}" for n in range(1, 25) if n != 13),
-    ),
+    "Current Student": tuple(key for keys in UAT_40_STUDENT_COLLEGES.values() for key in keys),
     "Alumni": ("recent_graduate", "alumni", "ar_13", "ar_25", "ar_26"),
-    "ITSO personnel": ("it_admin", "it_admin_2", "it_admin_3"),
+    "ITSO Personnel": ("it_admin", "it_admin_2", "it_admin_3"),
     "Data Protection Officer": ("dpo",),
 }
 
@@ -1393,6 +1425,118 @@ SCENARIOS: tuple[Scenario, ...] = (
         restrictions="Do not toggle maintenance mode or edit seeded accounts or shared policy.",
         checks=(("it_admin_3", "role:IT_ADMIN"), ("it_admin_3", "capabilities:no_counseling")),
     ),
+    # --- Promoted background Students completing the College distribution -------------------
+    _s(
+        "STU-APT-07",
+        "Appointments",
+        "Book a Counseling Appointment (COENG)",
+        "Student",
+        "bg_47",
+        "/portal/appointments/book",
+        "COENG Student with a submitted Inventory; no Appointments.",
+        "Choose Counseling, counselor_a, a delivery mode and an available slot; confirm.",
+        "The Appointment is SCHEDULED for counselor_a and appears under My appointments.",
+        related=("counselor_a",),
+        restrictions=_LIVE_EMAIL,
+        checks=(("bg_47", "appointment:none"), ("bg_47", "inventory:submitted")),
+    ),
+    _s(
+        "STU-GM-08",
+        "Good Moral",
+        "Follow a GCO-assisted Good Moral request",
+        "Student",
+        "bg_54",
+        "/portal/good-moral",
+        "CFAST Student with a submitted Inventory and no Good Moral request.",
+        "After CNS-GM-04, open the notification and the request counselor_c started.",
+        "The request shows that the Guidance Office started it on the Student's behalf; the "
+        "Student can follow its status.",
+        preconditions="CNS-GM-04 has been performed; do not request a certificate before it.",
+        related=("counselor_c",),
+        mutating=False,
+        checks=(("bg_54", "good_moral:none"),),
+    ),
+    _s(
+        "STU-MSG-03",
+        "Guidance Messages",
+        "Start a conversation with the Guidance Office (satellite caseload)",
+        "Student",
+        "bg_54",
+        "/portal/messages/new",
+        "CFAST Student in counselor_c's caseload; no Office conversation.",
+        "Send a new message to the Guidance Office.",
+        "An Office thread is created and routed to counselor_c.",
+        related=("counselor_c",),
+        checks=(("bg_54", "messages:no_office_thread"),),
+    ),
+    _s(
+        "STU-FB-02",
+        "Feedback",
+        "Give feedback after a completed session (satellite caseload)",
+        "Student",
+        "bg_55",
+        "/portal/feedback",
+        "A completed in-person session with counselor_c and an open feedback invitation.",
+        "Open the feedback invitation and submit the Customer Feedback form.",
+        "One Customer Feedback response is recorded for the completed session.",
+        related=("counselor_c",),
+        checks=(("bg_55", "feedback:invitation_pending"),),
+    ),
+    _s(
+        "STU-APT-08",
+        "Appointments",
+        "Book a Counseling Appointment (CANR)",
+        "Student",
+        "bg_56",
+        "/portal/appointments/book",
+        "CANR Student with a submitted Inventory; no Appointments.",
+        "Choose Counseling, counselor_c, a delivery mode and an available slot; confirm.",
+        "The Appointment is SCHEDULED for counselor_c and appears under My appointments.",
+        related=("counselor_c",),
+        restrictions=_LIVE_EMAIL,
+        checks=(("bg_56", "appointment:none"), ("bg_56", "inventory:submitted")),
+    ),
+    _s(
+        "STU-GM-09",
+        "Good Moral",
+        "Request a current-Student Good Moral certificate (COTT)",
+        "Student",
+        "bg_58",
+        "/portal/good-moral/request",
+        "COTT Student with a submitted Inventory and no request.",
+        "Request a certificate for the current semester.",
+        "A REQUESTED request appears in the office-wide Good Moral queue; the Student can follow "
+        "its status.",
+        checks=(("bg_58", "good_moral:none"), ("bg_58", "inventory:submitted")),
+    ),
+    _s(
+        "STU-APT-09",
+        "Appointments",
+        "Reschedule an upcoming Appointment (satellite caseload)",
+        "Student",
+        "bg_59",
+        "/portal/appointments/my",
+        "An upcoming in-person Counseling Appointment with counselor_c.",
+        "Open the Appointment and reschedule it to another available slot.",
+        "The Appointment moves to the new time; its history records the change.",
+        related=("counselor_c",),
+        restrictions=_LIVE_EMAIL,
+        checks=(("bg_59", "appointment:upcoming:IN_PERSON"),),
+    ),
+    _s(
+        "STU-APT-10",
+        "Appointments",
+        "Book a Counseling Appointment (Entienza)",
+        "Student",
+        "bg_60",
+        "/portal/appointments/book",
+        "Entienza Student with a submitted Inventory; no Appointments.",
+        "Choose Counseling, counselor_c, a delivery mode and an available slot; confirm.",
+        "The Appointment is SCHEDULED for counselor_c and appears under My appointments.",
+        related=("counselor_c",),
+        restrictions=_LIVE_EMAIL,
+        checks=(("bg_60", "appointment:none"), ("bg_60", "inventory:submitted")),
+    ),
     # --- Pending pre-defense features -------------------------------------------------------
     _s(
         "PND-REM-01",
@@ -1501,6 +1645,23 @@ def validate_manifest() -> None:
     allocated = [key for keys in UAT_40_ALLOCATION.values() for key in keys]
     if len(allocated) != 40 or len(set(allocated)) != 40:
         raise ManifestError("The 40-person allocation requires 40 distinct accounts.")
+    if {category: len(keys) for category, keys in UAT_40_ALLOCATION.items()} != (
+        UAT_40_STAKEHOLDER_COUNTS
+    ):
+        raise ManifestError("The 40-person allocation must match the stakeholder distribution.")
+    if {college: len(keys) for college, keys in UAT_40_STUDENT_COLLEGES.items()} != (
+        UAT_40_STUDENT_QUOTA
+    ):
+        raise ManifestError("The current-Student allocation must match the College distribution.")
+    for college, keys in UAT_40_STUDENT_COLLEGES.items():
+        for key in keys:
+            account = ACCOUNTS_BY_KEY.get(key)
+            if (
+                not isinstance(account, StudentSpec)
+                or account.college_code != college
+                or not account.affiliated
+            ):
+                raise ManifestError(f"{key}: not a current {college} Student.")
     for category, keys in UAT_40_ALLOCATION.items():
         for key in keys:
             account = ACCOUNTS_BY_KEY.get(key)
@@ -1510,6 +1671,10 @@ def validate_manifest() -> None:
                 or account.auth != AuthPlan.CREDENTIAL
             ):
                 raise ManifestError(f"{key}: allocation requires a credential-ready participant.")
+            if not any(
+                scenario.readiness == Readiness.EXECUTABLE for scenario in scenarios_for(key)
+            ):
+                raise ManifestError(f"{key}: an allocated participant needs a scenario.")
             if category in {"Current Student", "Alumni"}:
                 expected = (
                     Lifecycle.CURRENT if category == "Current Student" else Lifecycle.GRADUATED
@@ -1517,7 +1682,7 @@ def validate_manifest() -> None:
                 if not isinstance(account, StudentSpec) or account.lifecycle != expected:
                     raise ManifestError(f"{key}: incorrect lifecycle for {category} allocation.")
             elif stakeholder(account) != (
-                "IT Administrator" if category == "ITSO personnel" else category
+                "IT Administrator" if category == "ITSO Personnel" else category
             ):
                 raise ManifestError(f"{key}: incorrect stakeholder for {category} allocation.")
 
@@ -1532,6 +1697,9 @@ __all__ = [
     "SCENARIOS",
     "SCENARIOS_BY_ID",
     "UAT_40_ALLOCATION",
+    "UAT_40_STAKEHOLDER_COUNTS",
+    "UAT_40_STUDENT_COLLEGES",
+    "UAT_40_STUDENT_QUOTA",
     "Scenario",
     "email_for",
     "scenarios_for",

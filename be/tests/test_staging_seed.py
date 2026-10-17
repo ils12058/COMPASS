@@ -11,9 +11,10 @@ import json
 import os
 import stat
 import tempfile
+import uuid
 from contextlib import ExitStack
 from dataclasses import asdict, replace
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from io import StringIO
 from pathlib import Path
 from unittest.mock import patch
@@ -40,8 +41,9 @@ from compass.authentication.actions import AUTH_PASSWORD_INITIAL_SET, AUTH_PASSW
 from compass.authentication.models import AuthSession
 from compass.ecounseling.models import ECounselingRoom
 from compass.exit_interviews.models import ExitInterview
+from compass.feedback.models import CustomerFeedbackResponse, FeedbackOpportunity
 from compass.good_moral.models import GoodMoralRequest
-from compass.good_moral.services import create_my_graduate
+from compass.good_moral.services import create_my_current_student, create_my_graduate
 from compass.graduate_tracer.models import GraduateTracerResponse
 from compass.graduate_tracer.services import replace_my_draft, submit_my_response
 from compass.guidance_messages.models import GuidanceThread
@@ -58,8 +60,12 @@ from compass.staging_seed.guard import StagingSeedingRefused, ensure_seeding_all
 from compass.staging_seed.identities import AuthPlan, Lifecycle, StudentGroup, Suitability
 from compass.staging_seed.manifest import (
     ACCOUNTS,
+    ACCOUNTS_BY_KEY,
     SCENARIOS,
     UAT_40_ALLOCATION,
+    UAT_40_STAKEHOLDER_COUNTS,
+    UAT_40_STUDENT_COLLEGES,
+    UAT_40_STUDENT_QUOTA,
     Readiness,
     scenarios_for,
     validate_manifest,
@@ -69,14 +75,22 @@ from compass.staging_seed.reports import (
     ASSIGNMENT,
     CATALOG,
     CSV_COLUMNS,
+    GUIDE,
     SUMMARY,
+    UAT_40_ASSIGNMENTS,
+    UAT_40_COLUMNS,
     ReportError,
     _scan,
     render_reports,
     write_reports,
 )
 from compass.staging_seed.seed import SEED_RUN_ADVISORY_LOCK_KEY, seed_staging_dataset
-from compass.staging_seed.students import POPULATION_STUDENTS, STUDENTS, STUDENTS_BY_KEY
+from compass.staging_seed.students import (
+    POPULATION_STUDENTS,
+    PROMOTED_BACKGROUND,
+    STUDENTS,
+    STUDENTS_BY_KEY,
+)
 from compass.staging_seed.timeline import StagingTimelineError, resolve_timeline
 from compass.staging_seed.verify import verify_dataset
 from tests.test_authentication import AllowLimiter, login
@@ -91,6 +105,30 @@ PARTICIPANT_CREDENTIAL_KEYS = [
 ]
 EXPANSION_KEYS = {"it_admin_3", "ar_25", "ar_26"}
 EXPANSION_SCENARIOS = {"ITA-PLT-02", "STU-GT-03", "STU-GM-07"}
+# The College-balanced allocation promotes seven background Students and adds their scenarios.
+PROMOTED_KEYS = set(PROMOTED_BACKGROUND)
+COLLEGE_SCENARIOS = {
+    "STU-APT-07",
+    "STU-GM-08",
+    "STU-MSG-03",
+    "STU-FB-02",
+    "STU-APT-08",
+    "STU-GM-09",
+    "STU-APT-09",
+    "STU-APT-10",
+}
+# Catalog text and assignment suitability; seeding never reads them.
+CATALOG_ONLY_FIELDS = {"label", "summary", "limitations", "suitability"}
+UAT_40_KEYS = [key for keys in UAT_40_ALLOCATION.values() for key in keys]
+REPORTS = {
+    CATALOG,
+    ACCOUNTS_CSV,
+    GUIDE,
+    "UAT-SCENARIO-MATRIX.md",
+    ASSIGNMENT,
+    UAT_40_ASSIGNMENTS,
+    SUMMARY,
+}
 
 
 def fingerprint(rows):
@@ -217,19 +255,37 @@ def test_manifest_population_and_uat_rules():
     assert all(not s.checks for s in pending)
 
 
-def test_expansion_preserves_all_original_identity_and_scenario_definitions():
-    # Frozen from staging 8684ea10, excluding only the three additive participants/scenarios.
-    original_accounts = [asdict(a) for a in ACCOUNTS if a.key not in EXPANSION_KEYS]
-    original_scenarios = [asdict(s) for s in SCENARIOS if s.id not in EXPANSION_SCENARIOS]
+def identity(account) -> dict:
+    return {k: v for k, v in asdict(account).items() if k not in CATALOG_ONLY_FIELDS}
+
+
+def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
+    # Frozen from staging 8684ea10 (113 accounts, 91 scenarios) and b917e0c8 (116 accounts,
+    # 94 scenarios). The College promotion changes only catalog text and suitability.
+    original_accounts = [a for a in ACCOUNTS if a.key not in EXPANSION_KEYS]
+    original_scenarios = [
+        asdict(s) for s in SCENARIOS if s.id not in EXPANSION_SCENARIOS | COLLEGE_SCENARIOS
+    ]
     assert len(original_accounts) == 113
     assert len(original_scenarios) == 91
-    assert fingerprint(original_accounts) == (
-        "520a0b48acaae6b51dd7265bae2c77ed80fdb08005bd8b5bbf5d515e73d24477"
+    assert fingerprint([identity(a) for a in ACCOUNTS]) == (
+        "56c9cd98a74255cc05d353346ba5939e40e11faafe8260fa356e99fb0fbbf9d6"
+    )
+    assert fingerprint([asdict(a) for a in original_accounts if a.key not in PROMOTED_KEYS]) == (
+        "6ddaa162ce458270f175d8cb0c8fd3aa257f08ee3c1bfec7fa0f2d7bcf4a8ae7"
     )
     assert fingerprint(original_scenarios) == (
         "1b63b4f8283d740993af7eccdafdc034565e15a5de26263b83b4af6775ddffa8"
     )
-    assert len(ACCOUNTS) == 116 and len(SCENARIOS) == 94
+    assert fingerprint([asdict(s) for s in SCENARIOS if s.id not in COLLEGE_SCENARIOS]) == (
+        "604231c50af3d63ec0f4462ea1939756b48b4d35acf18ce78f4d88ae74412b04"
+    )
+    assert len(ACCOUNTS) == 116 and len(SCENARIOS) == 102
+    for key in PROMOTED_KEYS:
+        student = STUDENTS_BY_KEY[key]
+        assert student.group == StudentGroup.BACKGROUND
+        assert student.suitability == Suitability.PARTICIPANT
+        assert {s.id for s in scenarios_for(key)} <= COLLEGE_SCENARIOS
     names = [account.full_name for account in ACCOUNTS]
     for account in ACCOUNTS:
         if account.key in EXPANSION_KEYS:
@@ -243,13 +299,13 @@ def test_40_person_allocation_has_independent_eligible_account_owners():
         "Guidance Services Staff": 2,
         "Current Student": 25,
         "Alumni": 5,
-        "ITSO personnel": 3,
+        "ITSO Personnel": 3,
         "Data Protection Officer": 1,
     }
-    keys = [key for group in UAT_40_ALLOCATION.values() for key in group]
-    assert len(keys) == len(set(keys)) == 40
-    for key in keys:
-        account = next(a for a in ACCOUNTS if a.key == key)
+    assert UAT_40_STAKEHOLDER_COUNTS == {k: len(v) for k, v in UAT_40_ALLOCATION.items()}
+    assert len(UAT_40_KEYS) == len(set(UAT_40_KEYS)) == 40
+    for key in UAT_40_KEYS:
+        account = ACCOUNTS_BY_KEY[key]
         assert account.suitability == Suitability.PARTICIPANT
         assert account.auth == AuthPlan.CREDENTIAL
         assert any(s.readiness == Readiness.EXECUTABLE for s in scenarios_for(key))
@@ -260,6 +316,70 @@ def test_40_person_allocation_has_independent_eligible_account_owners():
         assert all(
             STUDENTS_BY_KEY[key].lifecycle == lifecycle for key in UAT_40_ALLOCATION[category]
         )
+    alumni = [STUDENTS_BY_KEY[key] for key in UAT_40_ALLOCATION["Alumni"]]
+    assert len({a.institutional_id for a in alumni}) == 5
+    assert all(not a.affiliated and a.auth == AuthPlan.CREDENTIAL for a in alumni)
+
+
+def test_25_current_students_follow_the_finalized_college_distribution():
+    assert UAT_40_STUDENT_QUOTA == {
+        "CCMS": 3,
+        "CAS": 3,
+        "CBPA": 3,
+        "COENG": 3,
+        "COED": 3,
+        "CFAST": 3,
+        "CANR": 3,
+        "COTT": 2,
+        "ENTIENZA": 2,
+    }
+    current = UAT_40_ALLOCATION["Current Student"]
+    assert list(current) == [key for keys in UAT_40_STUDENT_COLLEGES.values() for key in keys]
+    distribution = {}
+    for key in current:
+        student = STUDENTS_BY_KEY[key]
+        assert student.lifecycle == Lifecycle.CURRENT and student.affiliated
+        assert student.auth == AuthPlan.CREDENTIAL
+        assert student.suitability == Suitability.PARTICIPANT
+        distribution[student.college_code] = distribution.get(student.college_code, 0) + 1
+    assert distribution == UAT_40_STUDENT_QUOTA
+    assert sum(distribution.values()) == 25
+    for college, keys in UAT_40_STUDENT_COLLEGES.items():
+        assert {STUDENTS_BY_KEY[key].college_code for key in keys} == {college}
+    # Every promoted background Student is allocated, so none is an unused participant.
+    assert PROMOTED_KEYS <= set(current)
+    assert PROMOTED_KEYS == {"bg_47", "bg_54", "bg_55", "bg_56", "bg_58", "bg_59", "bg_60"}
+
+
+def test_40_person_staff_roles_designations_and_scenario_ownership():
+    expected_staff = {
+        "Head Guidance Counselor": ("COUNSELOR", {"HEAD_GUIDANCE_COUNSELOR"}),
+        "Guidance Counselor": ("COUNSELOR", set()),
+        "Guidance Services Staff": ("GUIDANCE_SERVICES_STAFF", set()),
+        "ITSO Personnel": ("IT_ADMIN", set()),
+        "Data Protection Officer": ("INSTITUTIONAL_OFFICER", {"DPO"}),
+    }
+    for category, (role, designations) in expected_staff.items():
+        for key in UAT_40_ALLOCATION[category]:
+            account = ACCOUNTS_BY_KEY[key]
+            assert (account.role, set(account.designations)) == (role, designations), key
+    for category in ("Current Student", "Alumni"):
+        assert all(ACCOUNTS_BY_KEY[key].role == "STUDENT" for key in UAT_40_ALLOCATION[category])
+    # Every allocated participant owns its scenarios; no scenario has two allocated actors.
+    owners = {}
+    for scenario in SCENARIOS:
+        if scenario.account in UAT_40_KEYS and scenario.readiness == Readiness.EXECUTABLE:
+            owners.setdefault(scenario.id, set()).add(scenario.account)
+    assert all(len(accounts) == 1 for accounts in owners.values())
+    assert {next(iter(a)) for a in owners.values()} == set(UAT_40_KEYS)
+    # A promoted Student's starting state is consumed by at most one mutating scenario.
+    for key in PROMOTED_KEYS:
+        consumers = {}
+        for scenario in SCENARIOS:
+            for subject, predicate in scenario.checks:
+                if subject == key and scenario.mutating:
+                    consumers.setdefault(predicate, []).append(scenario.id)
+        assert all(len(ids) == 1 for ids in consumers.values()), (key, consumers)
 
 
 def test_documentation_scan_rejects_credential_material():
@@ -454,14 +574,7 @@ class SeededDatasetTests(TestCase):
     def test_reports_are_complete_consistent_and_secret_free(self):
         result = self.verify()
         documents = render_reports(result)
-        assert set(documents) == {
-            CATALOG,
-            ACCOUNTS_CSV,
-            "UAT-ACCOUNT-SELECTION-GUIDE.md",
-            "UAT-SCENARIO-MATRIX.md",
-            ASSIGNMENT,
-            SUMMARY,
-        }
+        assert set(documents) == REPORTS
         rows = list(csv.DictReader(StringIO(documents[ACCOUNTS_CSV])))
         assert tuple(rows[0]) == CSV_COLUMNS
         assert [row["account_key"] for row in rows] == [a.key for a in ACCOUNTS]
@@ -477,8 +590,135 @@ class SeededDatasetTests(TestCase):
         assert {row["selected_account_key"] for row in template} == {
             a.key for a in ACCOUNTS if a.suitability == Suitability.PARTICIPANT
         }
+        uat_40 = list(csv.DictReader(StringIO(documents[UAT_40_ASSIGNMENTS])))
+        assert tuple(uat_40[0]) == UAT_40_COLUMNS
+        assert [row["account_key"] for row in uat_40] == UAT_40_KEYS
+        assert [row["participant_reference"] for row in uat_40] == [
+            f"UAT40-{n:02d}" for n in range(1, 41)
+        ]
+        for row in uat_40:
+            account = ACCOUNTS_BY_KEY[row["account_key"]]
+            assert row["institutional_id"] == account.institutional_id
+            assert row["login_email"] == dataset_user(account.key).email
+            assert row["canonical_role"] == account.role
+            assert row["assigned_scenario_ids"]
+            assert all(not row[column] for column in UAT_40_COLUMNS[8:])
+        current = [row for row in uat_40 if row["stakeholder_category"] == "Current Student"]
+        assert {
+            unit: sum(row["college_academic_unit"] == unit for row in current)
+            for unit in {row["college_academic_unit"] for row in current}
+        } == {"Entienza" if c == "ENTIENZA" else c: n for c, n in UAT_40_STUDENT_QUOTA.items()}
+        for key in PROMOTED_KEYS:
+            assert f"| {key} |" in documents[CATALOG]
+        assert "promoted to UAT-ready" in documents[CATALOG]
+        assert "| COTT | College of Trades and Technology | 2 |" in documents[GUIDE]
+        assert documents[GUIDE].count("  --account ") == 40
+        assert "COTT 2, Entienza 2" in documents[SUMMARY]
         with tempfile.TemporaryDirectory() as directory:
-            assert len(write_reports(result, Path(directory))) == 6
+            assert len(write_reports(result, Path(directory))) == 7
+
+    def test_promoted_students_can_complete_their_own_scenarios(self):
+        from compass.appointments.services import (
+            list_bookable_slots,
+            reschedule_appointment,
+        )
+        from compass.feedback.services import create_customer_feedback
+        from compass.good_moral.models import CANONICAL_YEAR_LEVELS
+        from compass.guidance_messages.services import open_office_thread
+        from compass.staging_seed.content import narratives
+        from compass.staging_seed.timeline import academic_semester
+        from compass.staging_seed.workflows import counseling_service
+
+        now = dataset_now()
+        service = counseling_service()
+        counselors = {"bg_47": "counselor_a", "bg_56": "counselor_c", "bg_60": "counselor_c"}
+        for key, counselor in counselors.items():
+            student = dataset_user(key)
+            slots = [
+                slot
+                for offset in range(1, 15)
+                for slot in list_bookable_slots(
+                    student=student,
+                    service_id=service.pk,
+                    provider_id=dataset_user(counselor).pk,
+                    delivery_mode="IN_PERSON",
+                    target_date=ANCHOR + timedelta(days=offset),
+                    now=now,
+                ).items
+            ]
+            assert slots, key
+
+        bg_59 = dataset_user("bg_59")
+        upcoming = Appointment.objects.get(student=bg_59, status="SCHEDULED")
+        assert upcoming.provider_id == dataset_user("counselor_c").pk
+        later = [
+            slot
+            for offset in range(1, 21)
+            for slot in list_bookable_slots(
+                student=bg_59,
+                service_id=service.pk,
+                provider_id=upcoming.provider_id,
+                delivery_mode="IN_PERSON",
+                target_date=ANCHOR + timedelta(days=offset),
+                now=now,
+            ).items
+            if slot.starts_at != upcoming.starts_at
+        ]
+        moved = reschedule_appointment(
+            appointment_id=upcoming.pk,
+            actor=bg_59,
+            starts_at=later[0].starts_at,
+            reason="UAT reschedule",
+            administrative=False,
+            context=AuditContext.user(bg_59),
+            now=now,
+        )
+        assert moved.starts_at == later[0].starts_at and moved.status == "SCHEDULED"
+
+        bg_55 = dataset_user("bg_55")
+        opportunity = FeedbackOpportunity.objects.get(
+            student=bg_55, customer_feedback_submitted_at__isnull=True
+        )
+        values = dict(next(iter(narratives.CUSTOMER_FEEDBACK.values())))
+        responses = CustomerFeedbackResponse.objects.count()
+        create_customer_feedback(
+            student=bg_55,
+            opportunity_id=opportunity.pk,
+            values=values,
+            context=AuditContext.user(bg_55),
+        )
+        opportunity.refresh_from_db()
+        assert opportunity.customer_feedback_submitted_at is not None
+        assert CustomerFeedbackResponse.objects.count() == responses + 1
+
+        bg_58 = dataset_user("bg_58")
+        request = create_my_current_student(
+            student=bg_58,
+            year_level=CANONICAL_YEAR_LEVELS[STUDENTS_BY_KEY["bg_58"].current_year_level - 1],
+            semester=academic_semester(ANCHOR),
+            idempotency_key="uat-college-good-moral",
+            request_fingerprint=hashlib.sha256(b"uat-college-good-moral").hexdigest(),
+            context=AuditContext.user(bg_58),
+        )
+        assert request.status == "REQUESTED"
+
+        bg_54 = dataset_user("bg_54")
+        thread, _message = open_office_thread(
+            actor=bg_54,
+            client_message_id=uuid.uuid4(),
+            body="UAT: a question for the Guidance Office.",
+            context=AuditContext.user(bg_54),
+        )
+        assert thread.kind == "OFFICE" and thread.student_id == bg_54.pk
+        assert thread.assigned_to_id == dataset_user("counselor_c").pk
+
+        assert not self.verify().passed
+        changed = self.verify(allow_uat_changes=True)
+        assert changed.passed
+        # A rescheduled Appointment is still upcoming, so STU-APT-09 stays READY like STU-APT-03.
+        assert changed.scenario_status["STU-APT-09"] == "READY"
+        for scenario in ("STU-FB-02", "STU-GM-09", "STU-MSG-03"):
+            assert any(scenario in w for s in changed.sections for w in s.warnings), scenario
 
     def test_new_alumni_can_complete_their_existing_domain_workflows(self):
         from compass.staging_seed.content.forms import tracer_answers
@@ -543,6 +783,31 @@ class SeededDatasetTests(TestCase):
             admin = dataset_user("it_admin_3")
             assert admin.role.code == "IT_ADMIN" and not admin.designations.exists()
             assert not admin.capability_overrides.exists()
+
+    def test_the_40_person_selection_issues_exactly_40_independent_credentials(self):
+        with tempfile.TemporaryDirectory(prefix="stg-uat-40-") as directory:
+            target = Path(directory) / "uat-40.csv"
+            outcome = issue_credentials(output=target, account_keys=tuple(UAT_40_KEYS))
+            assert (outcome.issued, outcome.skipped) == (40, 0)
+            assert stat.S_IMODE(target.stat().st_mode) == 0o600
+            rows = list(csv.DictReader(target.open()))
+            assert [row["account_key"] for row in rows] == UAT_40_KEYS
+            passwords = [row["temporary_password"] for row in rows]
+            assert len(set(passwords)) == 40
+            for row in rows:
+                user = dataset_user(row["account_key"])
+                assert user.check_password(row["temporary_password"])
+                assert row["email"] == user.email
+            allocated = set(UAT_40_KEYS)
+            assert all(
+                not dataset_user(a.key).has_usable_password()
+                for a in ACCOUNTS
+                if a.key not in allocated
+            )
+            again = issue_credentials(
+                output=Path(directory) / "again.csv", account_keys=tuple(UAT_40_KEYS)
+            )
+            assert (again.issued, again.skipped) == (0, 40)
 
     def test_report_refuses_to_write_after_failed_verification(self):
         dataset_user("head_guidance").designations.clear()
@@ -630,16 +895,7 @@ class SeededDatasetTests(TestCase):
             assert "Verification PASSED." in out.getvalue()
             with tempfile.TemporaryDirectory() as directory:
                 call_command(COMMAND, "report", "--output-dir", directory, stdout=StringIO())
-                assert sorted(os.listdir(directory)) == sorted(
-                    [
-                        CATALOG,
-                        ACCOUNTS_CSV,
-                        "UAT-ACCOUNT-SELECTION-GUIDE.md",
-                        "UAT-SCENARIO-MATRIX.md",
-                        ASSIGNMENT,
-                        SUMMARY,
-                    ]
-                )
+                assert set(os.listdir(directory)) == REPORTS
 
 
 class IncrementalParticipantExpansionTests(TestCase):
@@ -732,6 +988,6 @@ class IncrementalParticipantExpansionTests(TestCase):
         assert result.passed
         assert all(result.scenario_status[key] == "READY" for key in EXPANSION_SCENARIOS)
         with tempfile.TemporaryDirectory() as directory:
-            assert len(write_reports(result, Path(directory))) == 6
+            assert len(write_reports(result, Path(directory))) == 7
         again = seed_once()
         assert sum(again.created.values()) == 0
