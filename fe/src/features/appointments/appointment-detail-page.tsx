@@ -1,7 +1,8 @@
 "use client";
 
 import { NotebookPen, Video } from "lucide-react";
-import { PageActionLink } from "@/components/ui/page-action";
+import { DisclosureSection } from "@/components/ui/disclosure";
+import { PageActionGroup, PageActionLink } from "@/components/ui/page-action";
 import { ReminderSender } from "@/features/appointments/appointment-reminders";
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 
@@ -21,6 +22,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelBody, PanelHeader, PanelMessage, PanelSection, RecordSummary } from "@/components/ui/panel";
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import {
   appointmentSlotFreshness,
@@ -601,24 +603,31 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
 
   return (
     <GuidanceContextualMessages appointmentId={appointment.id} counterpartName={counterpartName} enabled={counseling}>
-    <section aria-labelledby="appointment-detail-heading">
+    <section aria-labelledby="appointment-detail-heading" className={pageSheetWidth}>
       <AppointmentsLocalNavigation />
       <AppointmentsPageHeading
         headingId="appointment-detail-heading"
-        title="Appointment"
-        action={
-          <>
-            {showCounselingLink ? (
-              <PageActionLink href={`/portal/counseling/workspace/appointment/${appointment.id}`} icon={NotebookPen} variant="secondary" label="Open Counseling workspace" />
-            ) : null}
-            {showEcounselingLink ? (
-              <PageActionLink href={`/portal/e-counseling/${appointment.id}`} icon={Video} variant="secondary" label="Open E-Counseling" />
-            ) : null}
-            {counseling ? <GuidanceMessagesTrigger /> : null}
-          </>
-        }
+        title={<span className="break-all font-mono">{appointment.reference_code}</span>}
+        context="Appointment"
+        meta={<AppointmentStatusBadge status={appointment.status} />}
       />
 
+      <div data-page-action-layout="appointment" className="grid gap-4 lg:grid-cols-[7rem_minmax(0,1fr)] lg:gap-5">
+        <PageActionGroup
+          aria-label="Appointment page actions"
+          data-page-action-rail=""
+          className="empty:hidden lg:sticky lg:top-4 lg:flex-col lg:items-center lg:gap-x-0 lg:gap-y-3"
+        >
+          {showCounselingLink ? (
+            <PageActionLink href={`/portal/counseling/workspace/appointment/${appointment.id}`} icon={NotebookPen} variant="secondary" label="Open Counseling" labelDetail="workspace" />
+          ) : null}
+          {showEcounselingLink ? (
+            <PageActionLink href={`/portal/e-counseling/${appointment.id}`} icon={Video} variant="secondary" label="Open E-Counseling" />
+          ) : null}
+          {counseling ? <GuidanceMessagesTrigger /> : null}
+        </PageActionGroup>
+
+        <div className="min-w-0 space-y-4">
       {reminderOpen ? (
         <ReminderSender
           selected={[appointment.id]}
@@ -638,14 +647,12 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       ) : null}
 
       <div className="space-y-5">
-      <Panel aria-labelledby="appointment-reference-heading">
+      <Panel aria-labelledby="appointment-service-heading">
         <RecordSummary
-          label="Appointment"
-          title={<span className="break-all font-mono text-lg">{appointment.reference_code}</span>}
-          titleId="appointment-reference-heading"
-          status={<AppointmentStatusBadge status={appointment.status} />}
+          label="Service"
+          title={appointment.service.name}
+          titleId="appointment-service-heading"
           facts={[
-            { label: "Service", value: appointment.service.name },
             ...(!access.isStudent
               ? [{
                   label: "Student",
@@ -661,12 +668,16 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
             { label: "Date and time", value: formatAppointmentDateTime(appointment.starts_at, appointment.ends_at) },
           ]}
         />
-        <PanelSection title="Details" titleId="appointment-details-heading">
+        <PanelSection title="Session details" titleId="appointment-session-details-heading">
           <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
             <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(appointment.delivery_mode)}</dd></div>
             {appointment.cancellation_cutoff_minutes !== null ? (
               <div><dt className="text-xs font-semibold text-muted">Student change deadline</dt><dd className="mt-1 text-sm text-ink">Students must cancel or reschedule at least {appointment.cancellation_cutoff_minutes} minutes before the appointment starts.</dd></div>
             ) : null}
+          </dl>
+        </PanelSection>
+        <PanelSection title="Operational dates" titleId="appointment-operational-dates-heading">
+          <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
             <div><dt className="text-xs font-semibold text-muted">Created</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.created_at)}</dd></div>
             {appointment.cancelled_at ? <div><dt className="text-xs font-semibold text-muted">Cancelled</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.cancelled_at)}</dd></div> : null}
             {appointment.completed_at ? <div><dt className="text-xs font-semibold text-muted">Completed</dt><dd className="mt-1 text-sm text-ink">{occurredAt(appointment.completed_at)}</dd></div> : null}
@@ -718,14 +729,19 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
             <p role="alert" className="mt-4 text-sm text-danger">{error.message}</p>
           ) : null}
           {unavailable.length > 0 ? (
-            <div className="mt-4 max-w-3xl">
-              <h3 className="text-sm font-semibold text-ink">Not available right now</h3>
-              <ul className="mt-2 space-y-1 text-sm text-muted">
+            <DisclosureSection
+              title="Unavailable actions"
+              status={`${unavailable.length} ${unavailable.length === 1 ? "action" : "actions"}`}
+              level={3}
+              className="mt-4 max-w-3xl"
+              contentClassName="pb-0"
+            >
+              <ul className="space-y-2 text-sm leading-6 text-muted">
                 {unavailable.map((item) => (
                   <li key={item.action}><span className="font-semibold text-ink">{item.action}:</span> {item.reason}</li>
                 ))}
               </ul>
-            </div>
+            </DisclosureSection>
           ) : null}
           </PanelBody>
 
@@ -954,6 +970,8 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           )}
         </Panel>
       ) : null}
+      </div>
+        </div>
       </div>
 
       <ActionConfirmation

@@ -1,7 +1,7 @@
 "use client";
 
 import { FollowupsContext } from "@/features/guidance-followups/followups-context";
-import { PageAction } from "@/components/ui/page-action";
+import { PageAction, PageActionGroup } from "@/components/ui/page-action";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { useState, type ReactNode } from "react";
@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelBody, PanelHeader, PanelSection } from "@/components/ui/panel";
+import { pageSheetWidth } from "@/components/ui/page-width";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { callSlipErrorMessage } from "@/features/call-slips/call-slips-shared";
 import { safeQueryData } from "@/features/freshness/query-freshness";
@@ -54,6 +55,7 @@ import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional
 
 export function ReferralDetailPage({ referralId }: { referralId: string }) {
   const { user } = usePortalSession();
+  const [pdfError, setPdfError] = useState<string | null>(null);
   const referralAccess = getReferralAccess(user);
   const callSlipAccess = getCallSlipAccess(user);
   const canViewSupportContext = canViewStudentSupportContext(user);
@@ -80,7 +82,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
       return <ReferralAccessUnavailable title="Referral not found" message="This referral could not be found or is unavailable to you." />;
     }
     return (
-      <div className="space-y-5">
+        <div className={pageSheetWidth}>
         <ReferralHeading title="Referral" backHref="/portal/referrals" />
         <ReferralQueryError error={referral.error} fallback="Referral detail could not be loaded." onRetry={() => void referral.refetch()} />
       </div>
@@ -102,14 +104,25 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
   }
 
   return (
-    <div className="space-y-5">
+    <div className={pageSheetWidth}>
       <ReferralHeading
         title={item.reference_code}
+        context="Referral"
         help={<ReferralHelp />}
         backHref="/portal/referrals"
-        action={<ReferralPdfDownload referral={item} />}
       />
 
+      <div data-page-action-layout="referral" className="grid gap-4 lg:grid-cols-[7rem_minmax(0,1fr)] lg:gap-5">
+        <PageActionGroup
+          aria-label="Referral page actions"
+          data-page-action-rail=""
+          className="lg:sticky lg:top-4 lg:flex-col lg:items-center lg:gap-x-0 lg:gap-y-3"
+        >
+          <ReferralPdfDownload referral={item} onError={setPdfError} />
+        </PageActionGroup>
+
+        <div className="min-w-0 space-y-5">
+      {pdfError ? <Notice role="alert">{pdfError}</Notice> : null}
       {refreshFailed ? (
         <RefreshFailureNotice
           message="The latest Referral details could not be refreshed. Showing the last confirmed record. Saving the status note and voiding wait until it refreshes."
@@ -128,11 +141,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
 
       {/* One record sheet in the order of the paper referral; the source note follows it. */}
       <Panel as="div">
-      <RecordSection title="Referral identity">
-        <div>
-          <dt className="text-xs font-semibold text-muted">Reference</dt>
-          <dd className="mt-1 font-mono text-sm font-semibold text-ink">{item.reference_code}</dd>
-        </div>
+      <RecordSection title="Referral form">
         <div>
           <dt className="text-xs font-semibold text-muted">Form revision</dt>
           <dd className="mt-1 text-sm text-ink">{item.form_revision.official_code ?? "Official code not recorded"}{item.form_revision.official_revision ? ` · Revision ${item.form_revision.official_revision}` : ""}</dd>
@@ -150,11 +159,6 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         </div>
       </RecordSection>
 
-      <RecordSection title="Current Student account">
-        <div><dt className="text-xs font-semibold text-muted">Name</dt><dd className="mt-1 text-sm text-ink">{item.student.display_name}</dd></div>
-        <div><dt className="text-xs font-semibold text-muted">Institutional ID</dt><dd className="mt-1 text-sm text-ink">{item.student.institutional_id ?? "Not recorded"}</dd></div>
-      </RecordSection>
-
       <RecordSection title="Chronology">
         <div>
           <dt className="text-xs font-semibold text-muted">Date referred</dt>
@@ -169,6 +173,11 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
           <dd className="mt-1 text-sm text-ink">{formatInstitutionalDateTime(item.created_at)}</dd>
         </div>
         <div><dt className="text-xs font-semibold text-muted">Encoded by</dt><dd className="mt-1 text-sm text-ink">{item.recorded_by?.display_name ?? "Not recorded"}</dd></div>
+      </RecordSection>
+
+      <RecordSection title="Current Student account">
+        <div><dt className="text-xs font-semibold text-muted">Name</dt><dd className="mt-1 text-sm text-ink">{item.student.display_name}</dd></div>
+        <div><dt className="text-xs font-semibold text-muted">Institutional ID</dt><dd className="mt-1 text-sm text-ink">{item.student.institutional_id ?? "Not recorded"}</dd></div>
       </RecordSection>
 
       <RecordSection title="Referral">
@@ -246,6 +255,8 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
       </Panel>
       ) : null}
       <FollowupsContext kind="REFERRAL" id={item.id} />
+        </div>
+      </div>
     </div>
   );
 
@@ -259,28 +270,32 @@ function RecordSection({ title, children }: { title: string; children: ReactNode
   );
 }
 
-function ReferralPdfDownload({ referral }: { referral: ReferralDetailResponse }) {
+function ReferralPdfDownload({ referral, onError }: { referral: ReferralDetailResponse; onError: (message: string | null) => void }) {
   const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
   async function download() {
     setPending(true);
-    setError(null);
+    onError(null);
     try {
       const response = await referralsDownloadPdf(referral.id);
       downloadBinaryResponse(response, institutionalPdfFallbackFilename("referralSlip", referral.id));
     } catch (caught) {
-      setError(referralErrorMessage(caught, "The document could not be released right now. Try again later."));
+      onError(referralErrorMessage(caught, "The document could not be released right now. Try again later."));
     } finally {
       setPending(false);
     }
   }
 
   return (
-    <div className="flex flex-col items-start gap-2 sm:items-end">
-      <PageAction icon={Download} variant="secondary" onClick={() => void download()} disabled={pending} aria-busy={pending} label={pending ? "Preparing…" : "Download Referral Slip"} />
-      {error ? <p role="alert" className="max-w-sm text-sm text-danger">{error}</p> : null}
-    </div>
+    <PageAction
+      icon={Download}
+      variant="secondary"
+      onClick={() => void download()}
+      disabled={pending}
+      aria-busy={pending}
+      label={pending ? "Preparing…" : "Download"}
+      labelDetail="Referral Slip"
+    />
   );
 }
 

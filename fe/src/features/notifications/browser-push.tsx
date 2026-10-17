@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
@@ -47,7 +47,7 @@ async function readyServiceWorker(): Promise<ServiceWorkerRegistration> {
   }
 }
 
-export function BrowserPushControls() {
+export function BrowserPushControls({ children }: { children?: ReactNode }) {
   const [state, setState] = useState<PushState>("loading");
   const [publicKey, setPublicKey] = useState("");
   const [busy, setBusy] = useState(false);
@@ -134,6 +134,7 @@ export function BrowserPushControls() {
     <Panel aria-labelledby="preferences-notifications-heading">
       <PanelHeader title="Notifications" titleId="preferences-notifications-heading" />
       <PanelBody>
+        {children ? <div className="mb-6 border-b border-border pb-5">{children}</div> : null}
         <h3 className="font-semibold text-ink">Browser notifications</h3>
         <p className="mt-1 text-sm leading-6 text-muted">Get important COMPASS updates on this device. Your in-app notifications and email settings are separate.</p>
         {state === "loading" ? <p role="status" className="mt-3 text-sm text-muted">Checking this device…</p> : null}

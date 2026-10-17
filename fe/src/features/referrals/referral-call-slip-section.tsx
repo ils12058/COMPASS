@@ -121,7 +121,7 @@ function LinkedCallSlipSummary({
   callSlip: CallSlipOperationalResponse;
 }) {
   return (
-    <div className="mt-4 rounded-sm border border-border bg-surface-subtle px-4 py-3">
+    <div className="mt-4 bg-surface-subtle px-4 py-3">
       <p className="font-semibold text-ink">{callSlipStateLabel(callSlip.state)}</p>
       <p className="mt-1 text-sm text-muted">{callSlip.student_name_snapshot} · {callSlip.course_year_snapshot}</p>
       <p className="mt-1 text-sm text-muted">Report {formatInstitutionalDateTime(callSlip.report_at)} · {callSlip.destination_type === "GUIDANCE_OFFICE" ? "Guidance Office" : callSlip.other_destination}</p>
@@ -154,7 +154,7 @@ function LinkedCallSlipHistory({
       {historical.length === 0 ? (
         <p className="mt-2 text-sm text-muted">No earlier linked Call Slips on this page.</p>
       ) : (
-        <ul className="mt-2 divide-y divide-border rounded-sm border border-border">
+        <ul className="mt-2 divide-y divide-border">
           {historical.map((item) => (
             <li key={item.id} className="flex flex-col gap-2 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
               <div>

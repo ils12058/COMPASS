@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, BellOff, X } from "lucide-react";
+import { X } from "lucide-react";
 import { startTransition, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
@@ -14,6 +14,7 @@ import {
   reconcileNotificationHeadsUp,
   shouldPresentNotificationHeadsUp,
 } from "@/features/notifications/notification-heads-up-state";
+import { useNotificationHeadsUpPreference } from "@/features/notifications/notification-heads-up-preference";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   getNotificationsListMineQueryKey,
@@ -38,7 +39,7 @@ export function NotificationHeadsUp() {
   const { user } = usePortalSession();
   const queryClient = useQueryClient();
   const activeCall = useOptionalActiveECounselingCall();
-  const [muted, setMuted] = useState(false);
+  const preference = useNotificationHeadsUpPreference(user.id);
   const [state, setState] = useState(createNotificationHeadsUpState);
   const notifications = useNotificationsListMine(
     { page: 1, page_size: HEADS_UP_PAGE_SIZE },
@@ -62,7 +63,7 @@ export function NotificationHeadsUp() {
   useEffect(() => {
     if (!notifications.isSuccess || !notifications.data?.data) return;
     const canPresent = shouldPresentNotificationHeadsUp({
-      muted,
+      muted: !preference.ready || !preference.enabled,
       activeCall: activeCall?.live ?? false,
       visible: document.visibilityState === "visible",
       blockingDialogOpen: blockingDialogIsOpen(),
@@ -76,43 +77,20 @@ export function NotificationHeadsUp() {
         ),
       ),
     );
-  }, [activeCall?.live, muted, notifications.data, notifications.isSuccess]);
+  }, [activeCall?.live, notifications.data, notifications.isSuccess, preference.enabled, preference.ready]);
 
   useEffect(() => {
-    if (!muted && !activeCall?.live) return;
+    if (preference.ready && preference.enabled && !activeCall?.live) return;
     startTransition(() =>
       setState((current) => dismissNotificationHeadsUp(current)),
     );
-  }, [activeCall?.live, muted]);
-
-  function toggleMute() {
-    const nextMuted = !muted;
-    setMuted(nextMuted);
-    if (nextMuted) setState((current) => dismissNotificationHeadsUp(current));
-  }
+  }, [activeCall?.live, preference.enabled, preference.ready]);
 
   const message = state.notice ? noticeText(state.notice.count) : "";
 
   return (
     <>
-      <Button
-        type="button"
-        variant="quiet"
-        className="min-h-11 gap-1.5 px-2 sm:px-2.5"
-        aria-label={muted ? "Unmute notification pop-ups" : "Mute notification pop-ups"}
-        aria-pressed={muted}
-        title={muted ? "Unmute notification pop-ups" : "Mute notification pop-ups"}
-        onClick={toggleMute}
-      >
-        {muted ? (
-          <BellOff size={17} aria-hidden="true" />
-        ) : (
-          <Bell size={17} aria-hidden="true" />
-        )}
-        <span className="max-sm:sr-only">{muted ? "Unmute" : "Mute"} pop-ups</span>
-      </Button>
-
-      {state.notice && !muted && !activeCall?.live ? (
+      {state.notice && preference.ready && preference.enabled && !activeCall?.live ? (
         <div className="pointer-events-none fixed inset-x-4 top-16 z-40 flex justify-end">
           <div className="pointer-events-auto w-full max-w-sm">
             <div

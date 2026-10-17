@@ -104,7 +104,7 @@ for (const role of ["STUDENT", "COUNSELOR"]) {
     const link = panel(page).getByRole("link", { name: "Open full conversation" });
     assert.equal(await link.getAttribute("href"), `/portal/messages/${THREAD}`);
     assert.equal(await page.getByRole("dialog").count(), 0, "Docked, not modal");
-    await shown(page.getByRole("heading", { name: "Appointment", level: 1 }));
+    await shown(page.getByRole("heading", { name: "APT-CTX-0001", level: 1 }));
     assert.equal(await page.locator("[inert], [aria-hidden=true] #main-content").count(), 0, "The page stays usable beside the panel");
     assert.equal(await panel(page).getByRole("button", { name: /Resolve conversation/ }).count(), role === "COUNSELOR" ? 1 : 0, "Only staff can resolve");
     await noHorizontalOverflow(page);
@@ -117,7 +117,7 @@ for (const role of ["STUDENT", "COUNSELOR"]) {
 {
   const world = contextualWorld("STUDENT", backendFor("STUDENT"), { serviceCode: "GM-OTHER" });
   await check("a non-Counseling Appointment offers no Messages and asks nothing", appointmentPath, world.options(), async (page) => {
-    await shown(page.getByRole("heading", { name: "Appointment", level: 1 }));
+    await shown(page.getByRole("heading", { name: "APT-CTX-0001", level: 1 }));
     await page.waitForTimeout(1_500);
     assert.equal(await trigger(page).count(), 0);
     assert.equal(world.backend.contexts().length, 0);
@@ -128,7 +128,7 @@ for (const [label, role] of [["concealed context", "STUDENT"], ["GSS", "GUIDANCE
   const backend = backendFor(role, { started: label === "GSS", startable: false });
   const world = contextualWorld(role, backend);
   await check(`${label}: no Messages action and no content`, appointmentPath, world.options(), async (page) => {
-    await shown(page.getByRole("heading", { name: "Appointment", level: 1 }));
+    await shown(page.getByRole("heading", { name: "APT-CTX-0001", level: 1 }));
     await eventually(() => world.backend.contexts().length > 0, "The context is asked once");
     await page.waitForTimeout(800);
     assert.equal(await trigger(page).count(), 0);

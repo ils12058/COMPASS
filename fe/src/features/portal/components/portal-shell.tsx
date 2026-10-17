@@ -53,8 +53,8 @@ export function PortalShell({ children }: { children: ReactNode }) {
       </a>
       {/* The dock stays in view while long pages scroll; its destinations scroll on their own when
           they are taller than the screen. */}
-      <aside className="sticky top-0 hidden h-dvh w-(--portal-dock-width) shrink-0 transition-[width] duration-200 ease-out lg:block">
-        <PortalNavigation expanded={dockExpanded} navigationId={DOCK_NAVIGATION_ID} />
+      <aside className="sticky top-0 hidden h-dvh w-(--portal-dock-width) shrink-0 rounded-r-lg bg-brand-strong transition-[width] duration-200 ease-out lg:block">
+        <PortalNavigation expanded={dockExpanded} navigationId={DOCK_NAVIGATION_ID} className="rounded-r-lg" />
       </aside>
 
       <div className="min-w-0 flex-1">
