@@ -214,3 +214,66 @@ class ServiceBookingPathway(models.Model):
                 name="service_booking_pathway_unique",
             ),
         ]
+
+
+class ServiceAppointmentSlot(models.Model):
+    """A specific published date and time window for an individual Service Appointment (SVC-2).
+
+    Staff publish slots for eligible Services with qualified Counselors.
+    Booking creates a canonical COMPASS Appointment linked via current_appointment.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    service = models.ForeignKey(
+        Service,
+        on_delete=models.CASCADE,
+        related_name="appointment_slots",
+    )
+    provider = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="service_appointment_slots",
+    )
+    delivery_mode = models.CharField(max_length=16, choices=DeliveryMode.choices)
+    starts_at = models.DateTimeField()
+    ends_at = models.DateTimeField()
+    is_published = models.BooleanField(default=True)
+    current_appointment = models.ForeignKey(
+        "appointments.Appointment",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="originating_slot_records",
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_service_appointment_slots",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("starts_at", "id")
+        indexes = [
+            models.Index(
+                fields=("service", "is_published", "starts_at"),
+                name="svc_slot_svc_pub_idx",
+            ),
+            models.Index(
+                fields=("provider", "starts_at", "ends_at"),
+                name="svc_slot_prov_time_idx",
+            ),
+        ]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(starts_at__lt=models.F("ends_at")),
+                name="service_slot_time_order",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        return f"{self.service.code}:{self.provider_id}:{self.starts_at.isoformat()}"

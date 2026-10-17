@@ -13,6 +13,10 @@ import { Notice } from "@/components/ui/notice";
 import { Panel, PanelSection } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
+  ServiceFixedSlotsStaffPanel,
+  ServiceFixedSlotsStudentPanel,
+} from "@/features/services/service-fixed-slots-panel";
+import {
   newECounselingAppointmentsLabel,
   PlatformHealthLink,
 } from "@/features/services/counseling-delivery";
@@ -325,6 +329,18 @@ export function ServiceDetailPage() {
             are not yet available to Students.
           </p>
         </PanelSection>
+
+        {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) &&
+        (canManage || user.capabilities.includes("appointments.manage")) ? (
+          <ServiceFixedSlotsStaffPanel service={service} />
+        ) : null}
+
+        {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) &&
+        !canManage &&
+        !user.capabilities.includes("appointments.manage") &&
+        service.is_active ? (
+          <ServiceFixedSlotsStudentPanel service={service} />
+        ) : null}
 
         <PanelSection title="Provider coverage" titleId="service-provider-heading">
           <p className="mt-3 text-xs leading-5 text-muted">

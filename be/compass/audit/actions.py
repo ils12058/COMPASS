@@ -49,6 +49,9 @@ SERVICE_CREATED = "service.created"
 SERVICE_UPDATED = "service.updated"
 SERVICE_ENABLED = "service.enabled"
 SERVICE_DISABLED = "service.disabled"
+SERVICE_SLOT_CREATED = "service_slot.created"
+SERVICE_SLOT_UPDATED = "service_slot.updated"
+SERVICE_SLOT_DELETED = "service_slot.deleted"
 AVAILABILITY_OFFICE_SCHEDULE_UPDATED = "availability.office_schedule.updated"
 AVAILABILITY_OFFICE_EXCEPTION_CREATED = "availability.office_exception.created"
 AVAILABILITY_OFFICE_EXCEPTION_REMOVED = "availability.office_exception.removed"
@@ -287,6 +290,9 @@ __all__ = [
     "SERVICE_UPDATED",
     "SERVICE_ENABLED",
     "SERVICE_DISABLED",
+    "SERVICE_SLOT_CREATED",
+    "SERVICE_SLOT_UPDATED",
+    "SERVICE_SLOT_DELETED",
     "AVAILABILITY_OFFICE_SCHEDULE_UPDATED",
     "AVAILABILITY_OFFICE_EXCEPTION_CREATED",
     "AVAILABILITY_OFFICE_EXCEPTION_REMOVED",
