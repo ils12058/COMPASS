@@ -8,7 +8,7 @@ from uuid import uuid4
 
 import pytest
 from cryptography.fernet import Fernet
-from django.db import close_old_connections
+from django.db import close_old_connections, connections
 from django.utils import timezone
 
 from compass.accounts.models import Capability, UserCapabilityOverride
@@ -406,7 +406,7 @@ def test_postgres_concurrent_completions_commit_once(world):
         except FollowUpConflict:
             return "CONFLICT"
         finally:
-            close_old_connections()
+            connections.close_all()
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         values = list(pool.map(lambda _idx: run(), range(2)))
@@ -418,3 +418,12 @@ def test_postgres_concurrent_completions_commit_once(world):
         ).count()
         == 1
     )
+
+
+def test_deactivated_student_removes_followup_access(world):
+    item = create(world)
+    item.student.is_active = False
+    item.student.save(update_fields=["is_active"])
+    assert services.list_followups(actor=world[0]).items == ()
+    with pytest.raises(FollowUpNotFound):
+        services.get_followup(actor=world[0], followup_id=item.pk)

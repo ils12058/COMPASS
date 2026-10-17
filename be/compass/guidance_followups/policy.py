@@ -1,5 +1,4 @@
-"""I
-ndependent Follow-Up ACL, with type-specific source authorization.
+"""Independent Follow-Up ACL, with type-specific source authorization.
 
 Follow-Up responsibility does not confer access to a source record.
 """
@@ -166,6 +165,8 @@ def require_assignee(candidate_id, *, student_id, visibility, source_kind=None, 
 
 
 def authorized(actor, followup, *, manage=False):
+    if not followup.student.is_active or followup.student.role.code != "STUDENT":
+        return False
     if followup.assigned_to_id != actor.pk:
         return False
     if followup.visibility == FollowUpVisibility.OPERATIONAL:
@@ -195,7 +196,9 @@ def scope(actor, queryset):
     """
     from django.db.models import Exists, OuterRef, Q
 
-    queryset = queryset.filter(assigned_to_id=actor.pk)
+    queryset = queryset.filter(
+        assigned_to_id=actor.pk, student__is_active=True, student__role__code="STUDENT"
+    )
     if is_head_guidance(actor):
         operational = Q(visibility=FollowUpVisibility.OPERATIONAL)
     else:
@@ -216,7 +219,8 @@ def scope(actor, queryset):
         from compass.counseling.models import CounselingEncounter
 
         matching_encounter = CounselingEncounter.objects.filter(
-            pk=OuterRef("source_id"), student_id=OuterRef("student_id"),
+            pk=OuterRef("source_id"),
+            student_id=OuterRef("student_id"),
             counselor_id=actor.pk,
         )
         queryset = queryset.alias(_fup_encounter_match=Exists(matching_encounter))
@@ -229,11 +233,11 @@ def scope(actor, queryset):
         from compass.routine_interviews.models import RoutineInterview
 
         matching_routine = RoutineInterview.objects.filter(
-            pk=OuterRef("source_id"), student_id=OuterRef("student_id"),
+            pk=OuterRef("source_id"),
+            student_id=OuterRef("student_id"),
             counselor_id=actor.pk,
         ).filter(
-            Q(appointment__isnull=True)
-            | Q(appointment__status__in=["SCHEDULED", "COMPLETED"])
+            Q(appointment__isnull=True) | Q(appointment__status__in=["SCHEDULED", "COMPLETED"])
         )
         queryset = queryset.alias(_fup_routine_match=Exists(matching_routine))
         confidential |= Q(

@@ -62,7 +62,7 @@ def _creation_key(actor, key):
 
 def _load(followup_id, *, lock=False):
     qs = GuidanceFollowUp.objects.select_related(
-        "student",
+        "student__role",
         "assigned_to",
         "created_by",
     )
@@ -112,7 +112,7 @@ def _audit(context, action, item, *, metadata=None):
         context=context,
         action=f"guidance_followup.{action}",
         outcome=AuditOutcome.SUCCESS,
-        target_type="guidance_followups.guidancefollowup",
+        target_type="guidancefollowups.guidancefollowup",
         target_id=item.pk,
         metadata={"version": item.version, **(metadata or {})},
     )
@@ -143,7 +143,6 @@ def create_followup(
     classification = policy.classify(source_kind=source_kind, category=category)
     if visibility is not None and visibility != classification:
         raise FollowUpInvalid("The confidentiality of this follow-up cannot be changed.")
-    _due(due_at, now=at)
     with transaction.atomic():
         # Serializing the actor row also makes same-key retry safe under concurrent requests.
         actor = policy.current_actor(actor, manage=True, lock=True)
@@ -153,6 +152,7 @@ def create_followup(
                 raise FollowUpConflict("This confirmation was already used for another request.")
             policy.require_followup(actor, existing, manage=True)
             return existing
+        _due(due_at, now=at)
         student = policy.valid_student(student_id, lock=True)
         if source_kind:
             policy.require_source(

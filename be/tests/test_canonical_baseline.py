@@ -1,6 +1,8 @@
 """The reset-only canonical migration baseline (CANON-1C) and its fail-closed history guard."""
 
 import ast
+import hashlib
+import json
 from io import StringIO
 from pathlib import Path
 
@@ -26,7 +28,17 @@ def compass_apps():
     return [config for config in apps.get_app_configs() if config.name.startswith("compass.")]
 
 
-def test_every_app_with_models_has_exactly_the_schema_only_baseline():
+def registered_migrations():
+    manifest = json.loads((COMPASS / "common/canonical_migrations.json").read_text())
+    baselines = {name.removeprefix("compass/") for name in manifest["baseline_sha256"]}
+    additions = set(manifest["additive_migrations"])
+    for name, digest in manifest["baseline_sha256"].items():
+        assert hashlib.sha256((COMPASS.parent / name).read_bytes()).hexdigest() == digest, name
+    assert not baselines.intersection(additions)
+    return baselines | additions
+
+
+def test_registered_migrations_preserve_immutable_schema_only_baselines():
     with_models = {config.label for config in compass_apps() if list(config.get_models())}
     migration_files = {
         path.parent.parent.name: sorted(p.name for p in path.parent.glob("0*.py"))
@@ -35,7 +47,10 @@ def test_every_app_with_models_has_exactly_the_schema_only_baseline():
     labels = {config.name.split(".")[1]: config.label for config in compass_apps()}
     present = {labels[name]: files for name, files in migration_files.items() if files}
     assert set(present) == with_models
-    assert all(files == [f"{BASELINE}.py"] for files in present.values()), present
+    actual = {str(path.relative_to(COMPASS)) for path in COMPASS.glob("*/migrations/0*.py")}
+    assert actual == registered_migrations()
+    for name in actual:
+        assert name.endswith(f"{BASELINE}.py") or name in registered_migrations()
     for path in COMPASS.glob(f"*/migrations/{BASELINE}.py"):
         tree = ast.parse(path.read_text())
         calls = {
@@ -56,7 +71,13 @@ def test_the_graph_has_one_leaf_per_app_and_no_model_drift():
     compass_labels = {config.label for config in compass_apps()}
     compass_leaves = [app for app, _ in leaves if app in compass_labels]
     assert len(compass_leaves) == len(set(compass_leaves))
-    assert all(name == BASELINE for app, name in leaves if app in compass_labels)
+    for app, name in leaves:
+        if app in compass_labels:
+            config = apps.get_app_config(app)
+            directory = config.name.split(".")[1]
+            assert f"{directory}/migrations/{name}.py" in registered_migrations()
+            if (COMPASS / directory / "migrations" / f"{BASELINE}.py").exists():
+                assert (app, BASELINE) in loader.graph.forwards_plan((app, name))
     out = StringIO()
     call_command("makemigrations", check=True, dry_run=True, stdout=out)
     assert "No changes detected" in out.getvalue()

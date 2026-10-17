@@ -109,3 +109,22 @@ UAT-40 #257 is merged; seeder allocation and UAT report files are untouched.
 FUP-1B can consume GET/POST/PATCH/POST lifecycle endpoints and typed errors,
 but no frontend implementation is present. Future My Work and Notification changes
 must be in isolated follow-up PRs.
+
+## OPS-FINAL foundation repair
+
+The audit target is `guidancefollowups.guidancefollowup`, consistent with the existing lowercase
+letters/digits dotted target grammar. An invalid target previously rolled back every successful
+creation; PostgreSQL lifecycle tests now execute the authoritative transaction. Lists and detail
+also reject deactivated or non-Student recipients. Create retries check their durable replay before
+rejecting a due date that has since passed. Threaded tests close their PostgreSQL connections.
+
+The common migration registry pins all applied canonical migration bytes and explicitly registers
+`guidance_followups.0001_initial` as a schema-only new-domain addition. It preserves the existing
+pre-canonical history refusal and asserts a single graph leaf and no model/schema drift. REM-1's
+independent registry entry must be retained when combining branches. This does not authorize a
+staging reset, fake history, rewriting an applied baseline, or a deployment.
+
+Verification during foundation repair: Ruff format/lint and 37 PostgreSQL-backed tests across the
+Follow-Up lifecycle/security suite, canonical migration suite, capability dependencies and step-up
+policy passed locally. Candidate commit and remote full-regression evidence are recorded in the
+OPS-FINAL handoff; downstream workspace/notifications are separate dependent implementation slices.
