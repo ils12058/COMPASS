@@ -195,3 +195,22 @@ The mobile Follow-Up detail was visually checked after this change; the layout f
 font families/weights render correctly. All feature candidates include the same #262 commit.
 The final post-font workflow submissions supersede pre-font CI; their queue/results must be checked
 before any ready-for-merge recommendation. No unexplained local failure remains.
+
+
+## Final workflow queue record
+
+The following exact-head runs supersede the earlier pre-font submissions. At this handoff they
+were submitted/queued, not reported as passing:
+
+| Candidate | Backend full | Frontend |
+|---|---|---|
+| Workspace 2b44f6c6 | [39000286178](https://github.com/ils12058/COMPASS/actions/runs/39000286178) | [39000288623](https://github.com/ils12058/COMPASS/actions/runs/39000288623) |
+| Work/notifications d6325b72 | [39000291373](https://github.com/ils12058/COMPASS/actions/runs/39000291373) | [39000293616](https://github.com/ils12058/COMPASS/actions/runs/39000293616) |
+| Combined code/docs candidate 9691ae0c | [39000296919](https://github.com/ils12058/COMPASS/actions/runs/39000296919) | [39000299119](https://github.com/ils12058/COMPASS/actions/runs/39000299119) |
+
+REM 1d8ee677 and foundation 9b678526 trigger their staging-base PR workflows automatically;
+font prerequisite f17140d5 triggers frontend CI on PR #262. This queue record is documentation only,
+with no product-code change after the tested/submitted combined candidate. All owned checkouts
+were clean at handoff and local test servers were stopped. Preserve the worktrees for final Service
+Catalog reconciliation. Final status remains **NOT READY — BLOCKERS REMAIN**: complete CI and obtain
+Agent 2's SVC-2–5 ready heads/domain review before final coordinated approval.
