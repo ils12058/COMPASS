@@ -220,6 +220,13 @@ ECOUNSELING_MEDIA_PROVIDER_CLEANED = "ecounseling.media_artifact.provider_cleane
 ECOUNSELING_MEDIA_ARTIFACT_ACCESS_AUTHORIZED = "ecounseling.media_artifact.access_authorized"
 
 # Guidance Messages structural provenance only (ADR-102).
+GUIDANCE_FOLLOWUP_CREATED = "guidance_followup.created"
+GUIDANCE_FOLLOWUP_UPDATED = "guidance_followup.updated"
+GUIDANCE_FOLLOWUP_REASSIGNED = "guidance_followup.reassigned"
+GUIDANCE_FOLLOWUP_ACTIVITY_RECORDED = "guidance_followup.activity_recorded"
+GUIDANCE_FOLLOWUP_COMPLETED = "guidance_followup.completed"
+GUIDANCE_FOLLOWUP_CANCELLED = "guidance_followup.cancelled"
+
 GUIDANCE_MESSAGES_THREAD_CREATED = "guidance_messages.thread.created"
 GUIDANCE_MESSAGES_MESSAGE_SENT = "guidance_messages.message.sent"
 GUIDANCE_MESSAGES_THREAD_ASSIGNED = "guidance_messages.thread.assigned"
@@ -232,6 +239,12 @@ GUIDANCE_MESSAGES_TEMPLATE_ARCHIVED = "guidance_messages.template.archived"
 GUIDANCE_MESSAGES_TEMPLATE_RESTORED = "guidance_messages.template.restored"
 
 __all__ = [
+    "GUIDANCE_FOLLOWUP_CREATED",
+    "GUIDANCE_FOLLOWUP_UPDATED",
+    "GUIDANCE_FOLLOWUP_REASSIGNED",
+    "GUIDANCE_FOLLOWUP_ACTIVITY_RECORDED",
+    "GUIDANCE_FOLLOWUP_COMPLETED",
+    "GUIDANCE_FOLLOWUP_CANCELLED",
     "GUIDANCE_MESSAGES_THREAD_CREATED",
     "GUIDANCE_MESSAGES_MESSAGE_SENT",
     "GUIDANCE_MESSAGES_THREAD_ASSIGNED",

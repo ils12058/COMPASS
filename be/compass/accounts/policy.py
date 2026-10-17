@@ -72,6 +72,16 @@ DESIGNATION_DEFINITIONS = (
 
 CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
+        code="guidance_followups.view",
+        name="View assigned Guidance Follow-Ups",
+        description="View authorized assigned Follow-Ups without access to their source records.",
+    ),
+    CapabilityDefinition(
+        code="guidance_followups.manage",
+        name="Manage assigned Guidance Follow-Ups",
+        description="Manage operational or Counselor-authorized confidential Follow-Ups.",
+    ),
+    CapabilityDefinition(
         code="guidance_messages.view_self",
         name="View own Guidance Messages",
         description="View own authorized Guidance threads.",
@@ -537,6 +547,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     ),
     "COUNSELOR": frozenset(
         {
+            "guidance_followups.view",
+            "guidance_followups.manage",
             "guidance_messages.view",
             "guidance_messages.manage",
             "guidance_messages.templates.manage",
@@ -579,6 +591,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
     ),
     "GUIDANCE_SERVICES_STAFF": frozenset(
         {
+            "guidance_followups.view",
+            "guidance_followups.manage",
             "guidance_messages.view",
             "guidance_messages.manage",
             "guidance_messages.templates.manage",
@@ -679,6 +693,7 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 # Dependencies constrain whether already-granted authority is effective. They never
 # create prerequisite authority or rewrite persisted grants/overrides.
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
+    "guidance_followups.manage": frozenset({"guidance_followups.view"}),
     "assessment_records.manage": frozenset({"assessment_records.view"}),
     "guidance_messages.manage_self": frozenset({"guidance_messages.view_self"}),
     "guidance_messages.manage": frozenset({"guidance_messages.view"}),

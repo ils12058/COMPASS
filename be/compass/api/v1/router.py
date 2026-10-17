@@ -25,6 +25,7 @@ from compass.exit_interviews.api import router as exit_interviews_router
 from compass.feedback.api import router as feedback_router
 from compass.good_moral.api import router as good_moral_router
 from compass.graduate_tracer.api import router as graduate_tracer_router
+from compass.guidance_followups.api import router as guidance_followups_router
 from compass.guidance_messages.api import router as guidance_messages_router
 from compass.guidance_operations.api import router as guidance_operations_router
 from compass.institutional_forms.api import router as institutional_forms_router
@@ -202,6 +203,10 @@ api = NinjaAPI(
                 ),
             },
             {
+                "name": "guidance-followups",
+                "description": "Scoped staff Guidance Follow-Up lifecycle and history.",
+            },
+            {
                 "name": "guidance-messages",
                 "description": "Encrypted Guidance Office and Counseling communication.",
             },
@@ -273,4 +278,5 @@ api.add_router("/e-counseling", ecounseling_router)
 api.add_router("/integrations/daily", daily_router)
 api.add_router("/realtime", realtime_router)
 api.add_router("/guidance-messages", guidance_messages_router)
+api.add_router("/guidance-followups", guidance_followups_router)
 register_exception_handlers(api)
