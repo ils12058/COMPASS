@@ -740,12 +740,13 @@ def test_booking_pathways_backwards_compatible_create_and_partial_updates():
 
 @pytest.mark.django_db
 def test_independent_booking_pathway_validation_and_no_duplicate_rows():
+    from django.db import IntegrityError, transaction
+
     from compass.service_catalog.models import ServiceBookingPathway
     from compass.service_catalog.services import (
         InvalidServiceCatalogInput,
         service_booking_pathways,
     )
-    from django.db import IntegrityError, transaction
 
     sync_policy()
     admin = make_user("pathway-validator@example.edu", "IT_ADMIN")
@@ -936,8 +937,10 @@ def test_disabling_flexible_pathway_preserves_scheduled_appointment_after_review
 @pytest.mark.django_db
 def test_pathway_backfill_is_idempotent_and_preserves_legacy_rows():
     import importlib
+
     from django.apps import apps
     from django.db import connection
+
     from compass.service_catalog.models import ServiceBookingPathway
 
     legacy = Service.objects.create(

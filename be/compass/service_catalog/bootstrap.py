@@ -16,11 +16,11 @@ from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import (
     MAX_SERVICE_DURATION_MINUTES,
     MIN_SERVICE_DURATION_MINUTES,
+    BookingPathwayCode,
     DeliveryMode,
     Service,
-    ServiceDeliveryMode,
     ServiceBookingPathway,
-    BookingPathwayCode,
+    ServiceDeliveryMode,
     ServiceProviderCoverage,
 )
 from compass.service_catalog.services import (

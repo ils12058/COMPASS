@@ -32,8 +32,8 @@ from compass.service_catalog.services import (
     get_service_providers,
     list_provider_candidates,
     list_services,
-    set_service_active,
     service_booking_pathways,
+    set_service_active,
     update_service,
 )
 

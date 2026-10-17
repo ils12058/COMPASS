@@ -842,7 +842,8 @@ def update_service(
             pathway_booking = BookingPathwayCode.FLEXIBLE_APPOINTMENT in next_pathways
             if "appointment_booking_enabled" in changes and next_booking != pathway_booking:
                 raise InvalidServiceCatalogInput(
-                    "Flexible individual appointment settings must agree with the selected pathways."
+                    "Flexible individual appointment settings must agree with "
+                    "the selected pathways."
                 )
             next_booking = pathway_booking
         else:
