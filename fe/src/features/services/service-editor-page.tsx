@@ -139,8 +139,8 @@ function initialFromService(
     name: service.name,
     description: service.description,
     bookingEnabled: service.appointment_booking_enabled,
-    fixedDateSlots: service.booking_pathways.includes(BookingPathway.FIXED_DATE_SLOT),
-    groupSessions: service.booking_pathways.includes(BookingPathway.GROUP_SESSION),
+    fixedDateSlots: service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) ?? false,
+    groupSessions: service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) ?? false,
     defaultDuration:
       service.default_appointment_duration_minutes === null
         ? ""
@@ -748,7 +748,7 @@ export function EditServicePage() {
       changes.appointment_booking_enabled = values.bookingEnabled;
     }
     const nextPathways = configuredBookingPathways(values);
-    if (!sameStringSet(nextPathways, service.booking_pathways)) {
+    if (!sameStringSet(nextPathways, service.booking_pathways ?? (service.appointment_booking_enabled ? [BookingPathway.FLEXIBLE_APPOINTMENT] : []))) {
       changes.booking_pathways = nextPathways;
     }
     // Turning booking off clears Appointment-only settings on the server.
