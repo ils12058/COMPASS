@@ -1,6 +1,6 @@
-"""Real PostgreSQL rehearsal: fresh schema, canonical upgrade, and additive rollback.
+"""Real PostgreSQL rehearsal: canonical upgrade and data-safe additive migration rollback.
 
-Only pytest's disposable database is touched. Applied canonical files remain immutable.
+Only pytest's disposable database is touched. History-bearing lifecycle protection is not reversed.
 """
 
 from datetime import timedelta

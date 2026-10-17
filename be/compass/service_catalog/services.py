@@ -24,6 +24,7 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.common.ordering import parse_ordering
+from compass.service_catalog.access import slot_provider_scope
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import (
     MAX_SERVICE_DURATION_MINUTES,
@@ -78,11 +79,15 @@ class ServiceSchedulingConsequenceReviewRequired(ServiceCatalogConflict):
         message: str,
         *,
         existing_appointment_dependency_detected: bool,
+        existing_fixed_slot_dependency_detected: bool,
+        existing_group_session_dependency_detected: bool,
         provider_dependency_detected: bool,
         counseling_online_enabled: bool,
     ) -> None:
         super().__init__(message)
         self.existing_appointment_dependency_detected = existing_appointment_dependency_detected
+        self.existing_fixed_slot_dependency_detected = existing_fixed_slot_dependency_detected
+        self.existing_group_session_dependency_detected = existing_group_session_dependency_detected
         self.provider_dependency_detected = provider_dependency_detected
         self.counseling_online_enabled = counseling_online_enabled
 
@@ -151,6 +156,8 @@ class _ServiceConfiguration:
 @dataclass(frozen=True, slots=True)
 class _ServiceSchedulingConsequences:
     existing_appointment_dependency_detected: bool
+    existing_fixed_slot_dependency_detected: bool
+    existing_group_session_dependency_detected: bool
     provider_dependency_detected: bool
     counseling_online_enabled: bool
 
@@ -158,6 +165,8 @@ class _ServiceSchedulingConsequences:
     def requires_review(self) -> bool:
         return (
             self.existing_appointment_dependency_detected
+            or self.existing_fixed_slot_dependency_detected
+            or self.existing_group_session_dependency_detected
             or self.provider_dependency_detected
             or self.counseling_online_enabled
         )
@@ -525,12 +534,16 @@ def _scheduling_consequences(
     service: Service,
     current: _ServiceConfiguration,
     proposed: _ServiceConfiguration,
+    current_pathways: frozenset[str],
+    proposed_pathways: frozenset[str],
     now: datetime,
+    service_deactivating: bool = False,
 ) -> _ServiceSchedulingConsequences:
-    """Detect legal changes whose effect on future scheduled Appointments needs review.
+    """Identify accepted or published work affected by a new-work configuration change.
 
-    Existing Appointments are never changed; review confirms the operator understands they stay
-    scheduled under their saved provenance while new work follows the new configuration.
+    Review acknowledges the effect on existing work. It never mutates Appointments, slot history,
+    registrations, or Group Sessions and cannot override their own lifecycle and authorization
+    rules.
     """
 
     counseling_online_enabled = (
@@ -538,40 +551,84 @@ def _scheduling_consequences(
         and DeliveryMode.ONLINE not in current.delivery_modes
         and DeliveryMode.ONLINE in proposed.delivery_modes
     )
-    if not service.is_active:
-        return _ServiceSchedulingConsequences(False, False, counseling_online_enabled)
-
     from compass.appointments.models import Appointment, AppointmentStatus
+    from compass.group_sessions.models import GroupSession, GroupSessionStatus
+    from compass.service_catalog.models import ServiceAppointmentSlot
 
-    future_scheduled = Appointment.objects.filter(
+    active_scheduled = Appointment.objects.filter(
         service_id=service.pk,
         status=AppointmentStatus.SCHEDULED,
-        starts_at__gt=now,
+        ends_at__gt=now,
     )
-    existing_dependency = False
-    if current.appointment_booking_enabled and not proposed.appointment_booking_enabled:
-        existing_dependency = future_scheduled.exists()
     removed_modes = current.delivery_modes - proposed.delivery_modes
-    if removed_modes and not existing_dependency:
-        existing_dependency = future_scheduled.filter(delivery_mode__in=removed_modes).exists()
+    removed_pathways = current_pathways - proposed_pathways
+    appointment_dependency = bool(
+        (service_deactivating and active_scheduled.exists())
+        or (
+            current.appointment_booking_enabled
+            and not proposed.appointment_booking_enabled
+            and active_scheduled.exists()
+        )
+        or (
+            BookingPathwayCode.FLEXIBLE_APPOINTMENT in removed_pathways
+            and active_scheduled.exists()
+        )
+        or (removed_modes and active_scheduled.filter(delivery_mode__in=removed_modes).exists())
+    )
+
+    active_open_slots = ServiceAppointmentSlot.objects.filter(
+        service_id=service.pk,
+        is_published=True,
+        withdrawn_at__isnull=True,
+        ends_at__gt=now,
+    ).filter(
+        Q(current_appointment__isnull=True)
+        | Q(current_appointment__status=AppointmentStatus.CANCELLED)
+    )
+    fixed_slot_dependency = bool(
+        service_deactivating
+        and active_open_slots.exists()
+        or (BookingPathwayCode.FIXED_DATE_SLOT in removed_pathways and active_open_slots.exists())
+        or (removed_modes and active_open_slots.filter(delivery_mode__in=removed_modes).exists())
+    )
+
+    active_published_sessions = GroupSession.objects.filter(
+        service_id=service.pk,
+        status=GroupSessionStatus.PUBLISHED,
+        ends_at__gt=now,
+    )
+    group_session_dependency = bool(
+        service_deactivating
+        and active_published_sessions.exists()
+        or (
+            BookingPathwayCode.GROUP_SESSION in removed_pathways
+            and active_published_sessions.exists()
+        )
+        or (
+            removed_modes
+            and active_published_sessions.filter(delivery_mode__in=removed_modes).exists()
+        )
+    )
 
     provider_dependency = False
     if (
         current.provider_coverage != proposed.provider_coverage
         or current.selected_counselor_ids != proposed.selected_counselor_ids
     ):
-        providers = User.objects.select_related("role").filter(
-            pk__in=future_scheduled.values("provider_id")
-        )
+        relevant_provider_ids = set(active_scheduled.values_list("provider_id", flat=True))
+        relevant_provider_ids.update(active_open_slots.values_list("provider_id", flat=True))
+        providers = User.objects.select_related("role").filter(pk__in=relevant_provider_ids)
         provider_dependency = any(
             _counselor_eligible_under(current, provider)
             and not _counselor_eligible_under(proposed, provider)
             for provider in providers
         )
     return _ServiceSchedulingConsequences(
-        existing_appointment_dependency_detected=existing_dependency,
+        existing_appointment_dependency_detected=appointment_dependency,
+        existing_fixed_slot_dependency_detected=fixed_slot_dependency,
+        existing_group_session_dependency_detected=group_session_dependency,
         provider_dependency_detected=provider_dependency,
-        counseling_online_enabled=counseling_online_enabled,
+        counseling_online_enabled=counseling_online_enabled and service.is_active,
     )
 
 
@@ -581,6 +638,12 @@ def _require_review(consequences: _ServiceSchedulingConsequences, acknowledged: 
             "Review the scheduling consequences before saving this Service change.",
             existing_appointment_dependency_detected=(
                 consequences.existing_appointment_dependency_detected
+            ),
+            existing_fixed_slot_dependency_detected=(
+                consequences.existing_fixed_slot_dependency_detected
+            ),
+            existing_group_session_dependency_detected=(
+                consequences.existing_group_session_dependency_detected
             ),
             provider_dependency_detected=consequences.provider_dependency_detected,
             counseling_online_enabled=consequences.counseling_online_enabled,
@@ -594,6 +657,14 @@ def _consequence_metadata(consequences: _ServiceSchedulingConsequences) -> dict[
         "scheduling_consequence_acknowledged": True,
         "existing_appointment_dependency_detected": (
             consequences.existing_appointment_dependency_detected
+        ),
+        "existing_fixed_slot_dependency_detected": (
+            consequences.existing_fixed_slot_dependency_detected
+        ),
+        # Audit metadata rejects "session" fragments because they can carry
+        # session secrets. The operator-facing API retains the detailed name.
+        "existing_event_dependency_detected": (
+            consequences.existing_group_session_dependency_detected
         ),
         "provider_dependency_detected": consequences.provider_dependency_detected,
         "counseling_online_enabled": consequences.counseling_online_enabled,
@@ -673,6 +744,49 @@ def list_provider_candidates(
     if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
         raise InvalidServiceCatalogInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
     qs = _active_counselors()
+    if search is not None:
+        if not isinstance(search, str):
+            raise InvalidServiceCatalogInput("search must be text")
+        for token in search.strip()[:160].split():
+            qs = qs.filter(
+                Q(first_name__icontains=token)
+                | Q(middle_name__icontains=token)
+                | Q(last_name__icontains=token)
+            )
+    qs = qs.order_by("last_name", "first_name", "pk")
+    offset = (page - 1) * page_size
+    rows = list(qs[offset : offset + page_size + 1])
+    return ProviderCandidatePage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
+
+
+def list_operational_provider_candidates(
+    *,
+    actor: User,
+    service_id: UUID,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+) -> ProviderCandidatePage:
+    """List currently eligible providers within fixed-slot operational scope."""
+
+    if type(page) is not int or page < 1:
+        raise InvalidServiceCatalogInput("page must be a positive integer")
+    if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
+        raise InvalidServiceCatalogInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
+    service = get_service(service_id)
+    provider_ids = slot_provider_scope(actor)
+    if not provider_ids:
+        raise PermissionError("Appointment operational access is required for this Service.")
+    if (
+        not service.is_active
+        or not ServiceBookingPathway.objects.filter(
+            service_id=service.pk,
+            code=BookingPathwayCode.FIXED_DATE_SLOT,
+        ).exists()
+    ):
+        return ProviderCandidatePage((), page, page_size, False)
+
+    qs = service_eligible_counselors(service).filter(pk__in=provider_ids)
     if search is not None:
         if not isinstance(search, str):
             raise InvalidServiceCatalogInput("search must be text")
@@ -926,7 +1040,12 @@ def update_service(
             return get_service(service.pk)
 
         consequences = _scheduling_consequences(
-            service=service, current=current, proposed=proposed, now=current_time
+            service=service,
+            current=current,
+            proposed=proposed,
+            current_pathways=effective_current_pathways,
+            proposed_pathways=next_pathways,
+            now=current_time,
         )
         _require_review(consequences, acknowledge_scheduling_consequences)
 
@@ -976,20 +1095,29 @@ def set_service_active(
             )
         if service.is_active == is_active:
             return get_service(service.pk)
-        consequences = _ServiceSchedulingConsequences(False, False, False)
+        consequences = _ServiceSchedulingConsequences(
+            existing_appointment_dependency_detected=False,
+            existing_fixed_slot_dependency_detected=False,
+            existing_group_session_dependency_detected=False,
+            provider_dependency_detected=False,
+            counseling_online_enabled=False,
+        )
         if is_active:
             _validate_active_configuration(_current_configuration(service))
         else:
-            from compass.appointments.models import Appointment, AppointmentStatus
-
-            consequences = _ServiceSchedulingConsequences(
-                existing_appointment_dependency_detected=Appointment.objects.filter(
-                    service_id=service.pk,
-                    status=AppointmentStatus.SCHEDULED,
-                    starts_at__gt=current_time,
-                ).exists(),
-                provider_dependency_detected=False,
-                counseling_online_enabled=False,
+            current = _current_configuration(service)
+            current_pathways = _configured_pathways(service.pk)
+            effective_pathways = current_pathways - {BookingPathwayCode.FLEXIBLE_APPOINTMENT}
+            if service.appointment_booking_enabled:
+                effective_pathways |= {BookingPathwayCode.FLEXIBLE_APPOINTMENT}
+            consequences = _scheduling_consequences(
+                service=service,
+                current=current,
+                proposed=current,
+                current_pathways=effective_pathways,
+                proposed_pathways=effective_pathways,
+                now=current_time,
+                service_deactivating=True,
             )
             _require_review(consequences, acknowledge_scheduling_consequences)
         service.is_active = is_active

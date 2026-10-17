@@ -5,20 +5,23 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { withNextRouter } from "./support/next-router.mjs";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
+import { portalWorkspaceGroups } from "../src/features/portal/components/portal-workspaces.ts";
 import { ServiceDetailPage } from "../src/features/services/service-detail-page.tsx";
 import {
   ServiceGroupSessionsStaffPanel,
   ServiceGroupSessionsStudentPanel,
 } from "../src/features/services/service-group-sessions-panel.tsx";
+import { GroupSessionsDiscoveryPage } from "../src/features/group-sessions/group-sessions-discovery-page.tsx";
+import { GroupSessionDetailPage } from "../src/features/group-sessions/group-session-detail-page.tsx";
+import { GroupSessionsHistoryPage } from "../src/features/group-sessions/group-sessions-history-page.tsx";
 import {
   getGroupSessionsListStaffQueryKey,
   getGroupSessionsDiscoverQueryKey,
   getGroupSessionsGetMetricsQueryKey,
+  getGroupSessionsGetDetailQueryKey,
+  getGroupSessionsGetMyRegistrationsQueryKey,
 } from "../src/lib/api/generated/group-sessions/group-sessions.ts";
-import {
-  getServicesGetQueryKey,
-  getServicesGetProvidersQueryKey,
-} from "../src/lib/api/generated/services/services.ts";
+import { getServicesGetQueryKey } from "../src/lib/api/generated/services/services.ts";
 import { UnsavedChangesProvider } from "../src/features/form-safety/unsaved-changes-provider.tsx";
 
 const ok = (data) => ({ data, status: 200, headers: {} });
@@ -86,9 +89,15 @@ const sampleSessions = [
     cancellation_reason: "",
     cancelled_at: null,
     version: 1,
+    schedule_revision: 1,
     facilitators: [
       {
         id: "fac-1",
+        kind: "INTERNAL",
+        internal_user_id: "counselor-1",
+        external_display_name: "",
+        display_name: "Dr. Santos",
+        is_current: true,
         counselor_id: "counselor-1",
         counselor_name: "Dr. Santos",
         is_lead: true,
@@ -142,21 +151,36 @@ function renderWithUser(element, user, seed = () => {}) {
 }
 
 test("Staff panel renders group sessions, metrics, and management controls", () => {
+  const sessionsWithHistory = [
+    {
+      ...sampleSessions[0],
+      facilitators: [
+        ...sampleSessions[0].facilitators,
+        {
+          id: "fac-former",
+          kind: "INTERNAL",
+          internal_user_id: "former-counselor",
+          external_display_name: "",
+          display_name: "Former Counselor",
+          is_current: false,
+          counselor_id: "former-counselor",
+          counselor_name: "Former Counselor",
+          is_lead: false,
+        },
+      ],
+    },
+  ];
   const html = renderWithUser(
     h(ServiceGroupSessionsStaffPanel, { service }),
     manager,
     (client) => {
       client.setQueryData(
         getGroupSessionsListStaffQueryKey({ service_id: SERVICE_ID }),
-        ok(sampleSessions)
+        ok(sessionsWithHistory)
       );
       client.setQueryData(
         getGroupSessionsGetMetricsQueryKey({ service_id: SERVICE_ID }),
         ok(sampleMetrics)
-      );
-      client.setQueryData(
-        getServicesGetProvidersQueryKey(SERVICE_ID),
-        ok({ service_id: SERVICE_ID, provider_coverage: "ALL_COUNSELORS", counselors: [] })
       );
     }
   );
@@ -168,6 +192,7 @@ test("Staff panel renders group sessions, metrics, and management controls", () 
   assert.match(html, /Total Sessions/);
   assert.match(html, /95%/);
   assert.match(html, /Roster &amp; Attendance/);
+  assert.match(html, /Former facilitators: Former Counselor/);
 });
 
 test("Staff panel offers draft withdrawal instead of deletion", () => {
@@ -188,10 +213,6 @@ test("Staff panel offers draft withdrawal instead of deletion", () => {
       client.setQueryData(
         getGroupSessionsGetMetricsQueryKey({ service_id: SERVICE_ID }),
         ok(sampleMetrics)
-      );
-      client.setQueryData(
-        getServicesGetProvidersQueryKey(SERVICE_ID),
-        ok({ service_id: SERVICE_ID, provider_coverage: "ALL_COUNSELORS", counselors: [] })
       );
     }
   );
@@ -251,9 +272,16 @@ test("Student panel renders discoverable group sessions with registration action
       seats_remaining: 15,
       is_full: false,
       is_registered_by_me: false,
+      can_register: true,
+      registration_block_reason: null,
       facilitators: [
         {
           id: "fac-1",
+          kind: "INTERNAL",
+          internal_user_id: "counselor-1",
+          external_display_name: "",
+          display_name: "Dr. Santos",
+          is_current: true,
           counselor_id: "counselor-1",
           counselor_name: "Dr. Santos",
           is_lead: true,
@@ -279,6 +307,131 @@ test("Student panel renders discoverable group sessions with registration action
   assert.match(html, /Register/);
 });
 
+test("Student Group Session discovery is available outside the staff-only Services workspace", () => {
+  const studentWithSchedulingView = {
+    ...student,
+    capabilities: ["appointments.view_self"],
+  };
+  const html = renderWithUser(
+    h(GroupSessionsDiscoveryPage),
+    studentWithSchedulingView,
+    (client) => {
+      client.setQueryData(getGroupSessionsDiscoverQueryKey(), ok(sampleSessions));
+    }
+  );
+
+  assert.match(html, /Group Sessions &amp; Workshops/);
+  assert.match(html, /Resume &amp; Interview Masterclass/);
+  assert.match(html, /My group sessions/);
+  assert.doesNotMatch(html, /Services unavailable/);
+});
+
+test("Group Session discovery stays unavailable outside Student scheduling scope", () => {
+  const html = renderWithUser(
+    h(GroupSessionsDiscoveryPage),
+    { ...student, role: "IT_ADMIN", capabilities: ["appointments.view_self"] }
+  );
+
+  assert.match(html, /Group Sessions unavailable/);
+  assert.doesNotMatch(html, /Upcoming Group Sessions/);
+});
+
+test("Student registration action follows server-derived overlap eligibility", () => {
+  const unavailable = {
+    ...sampleSessions[0],
+    seats_remaining: 10,
+    is_full: false,
+    is_registered_by_me: false,
+    can_register: false,
+    registration_block_reason: "This session overlaps another Appointment or registered Group Session.",
+  };
+  const html = renderWithUser(
+    h(ServiceGroupSessionsStudentPanel, { service }),
+    student,
+    (client) => {
+      client.setQueryData(
+        getGroupSessionsDiscoverQueryKey({ service_id: SERVICE_ID }),
+        ok([unavailable])
+      );
+    }
+  );
+
+  assert.match(html, /Registration unavailable/);
+  assert.match(html, /overlaps another Appointment or registered Group Session/);
+  assert.doesNotMatch(html, />Register<\/button>/);
+});
+
+test("Student history and direct event details remain reachable outside the Service page", () => {
+  const registration = {
+    id: "registration-1",
+    session_id: "gs-1",
+    session_title: "Resume & Interview Masterclass",
+    service_id: SERVICE_ID,
+    starts_at: "2026-11-10T14:00:00Z",
+    ends_at: "2026-11-10T16:00:00Z",
+    student_id: "student-1",
+    student_name: "Student User",
+    student_email: "student@example.test",
+    status: "CANCELLED",
+    registered_at: "2026-10-17T00:00:00Z",
+    cancelled_at: "2026-10-18T00:00:00Z",
+    cancellation_reason: "Facilitator illness",
+    attended: null,
+    attendance_notes: null,
+  };
+  const history = renderWithUser(h(GroupSessionsHistoryPage), student, (client) => {
+    client.setQueryData(getGroupSessionsGetMyRegistrationsQueryKey(), ok([registration]));
+  });
+  assert.match(history, /My group sessions/);
+  assert.match(history, /Cancelled/);
+  assert.match(history, /Facilitator illness/);
+  assert.match(history, /href="\/portal\/group-sessions\/gs-1"/);
+
+  const detailSession = {
+    ...sampleSessions[0],
+    status: "CANCELLED",
+    cancellation_reason: "Facilitator illness",
+    venue_or_meeting_url: "",
+    facilitators: [
+      {
+        id: "fac-external",
+        kind: "EXTERNAL",
+        internal_user_id: null,
+        external_display_name: "Community Speaker",
+        display_name: "Community Speaker",
+        is_current: true,
+        is_lead: true,
+        counselor_id: null,
+        counselor_name: null,
+      },
+      {
+        id: "fac-former",
+        kind: "INTERNAL",
+        internal_user_id: "former-counselor",
+        external_display_name: "",
+        display_name: "Former Counselor",
+        is_current: false,
+        is_lead: false,
+        counselor_id: "former-counselor",
+        counselor_name: "Former Counselor",
+      },
+    ],
+  };
+  const detail = renderWithUser(
+    h(GroupSessionDetailPage, { sessionId: "gs-1" }),
+    student,
+    (client) => {
+      client.setQueryData(getGroupSessionsGetDetailQueryKey("gs-1"), ok(detailSession));
+    }
+  );
+  assert.match(detail, /Community Speaker/);
+  assert.match(detail, /Guest speaker/);
+  assert.match(detail, /Former Counselor/);
+  assert.match(detail, /Former facilitator/);
+  assert.match(detail, /Facilitator illness/);
+  assert.doesNotMatch(detail, /secret-group-room/);
+});
+
 test("ServiceDetailPage integrates group sessions staff panel when pathway is configured", () => {
   const html = renderWithUser(h(ServiceDetailPage), manager, (client) => {
     client.setQueryData(getServicesGetQueryKey(SERVICE_ID), ok(service));
@@ -289,10 +442,6 @@ test("ServiceDetailPage integrates group sessions staff panel when pathway is co
     client.setQueryData(
       getGroupSessionsGetMetricsQueryKey({ service_id: SERVICE_ID }),
       ok(sampleMetrics)
-    );
-    client.setQueryData(
-      getServicesGetProvidersQueryKey(SERVICE_ID),
-      ok({ service_id: SERVICE_ID, provider_coverage: "ALL_COUNSELORS", counselors: [] })
     );
   });
 
@@ -333,12 +482,51 @@ test("ServiceDetailPage hides group session panels for IT_ADMIN and INSTITUTIONA
       body: "Confirmed",
       target_type: NotificationTargetType.GROUP_SESSION,
       target_id: "gs-1",
+      is_current: true,
       is_read: false,
       read_at: null,
       created_at: "2026-10-17T00:00:00Z",
     },
     "student-1"
   );
-  assert.deepEqual(dest, { href: "/portal/services", label: "Open Services" });
+  assert.deepEqual(dest, {
+    href: "/portal/group-sessions/gs-1",
+    label: "Open Group Session",
+  });
+
+  const staleDest = notificationDestination(
+    {
+      target_type: NotificationTargetType.GROUP_SESSION,
+      target_id: "gs-1",
+      is_current: false,
+    },
+    "student-1"
+  );
+  assert.deepEqual(staleDest, {
+    href: "/portal/group-sessions/gs-1",
+    label: "Review current event",
+  });
+
+  const noTargetDest = notificationDestination(
+    { target_type: NotificationTargetType.GROUP_SESSION, target_id: null },
+    "student-1"
+  );
+  assert.deepEqual(noTargetDest, {
+    href: "/portal/group-sessions/my",
+    label: "My group sessions",
+  });
+
+  const studentWithSchedulingView = {
+    ...student,
+    capabilities: ["appointments.view_self", "appointments.manage_self"],
+  };
+  const studentLinks = portalWorkspaceGroups(studentWithSchedulingView)
+    .flatMap((group) => group.links)
+    .map((link) => link.href);
+  assert.ok(studentLinks.includes("/portal/group-sessions/my"));
+  assert.ok(studentLinks.includes("/portal/group-sessions/discover"));
+  assert.ok(!portalWorkspaceGroups(manager).some((group) =>
+    group.links.some((link) => link.href === "/portal/group-sessions/my")
+  ));
 });
 

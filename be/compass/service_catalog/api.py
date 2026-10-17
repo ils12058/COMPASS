@@ -21,6 +21,7 @@ from compass.authentication.api import session_auth
 from compass.authentication.step_up import require_recent_mfa_for_request
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.service_catalog.access import current_slot_staff
 from compass.service_catalog.canonical import is_system_required_service_code
 from compass.service_catalog.fixed_slots_services import (
     CounselorNotQualifiedForService,
@@ -42,7 +43,6 @@ from compass.service_catalog.fixed_slots_services import (
     update_fixed_slot,
     withdraw_fixed_slot,
 )
-from compass.service_catalog.access import current_slot_staff
 from compass.service_catalog.services import (
     DEFAULT_PAGE_SIZE,
     CanonicalServiceRequired,
@@ -57,6 +57,7 @@ from compass.service_catalog.services import (
     create_service,
     get_service,
     get_service_providers,
+    list_operational_provider_candidates,
     list_provider_candidates,
     list_services,
     service_booking_pathways,
@@ -329,6 +330,12 @@ def _raise(exc: ServiceCatalogError) -> NoReturn:
                 "existing_appointment_dependency_detected": (
                     exc.existing_appointment_dependency_detected
                 ),
+                "existing_fixed_slot_dependency_detected": (
+                    exc.existing_fixed_slot_dependency_detected
+                ),
+                "existing_group_session_dependency_detected": (
+                    exc.existing_group_session_dependency_detected
+                ),
                 "provider_dependency_detected": exc.provider_dependency_detected,
                 "counseling_online_enabled": exc.counseling_online_enabled,
             },
@@ -499,6 +506,42 @@ def services_get_providers(request, service_id: UUID):
             {"id": user.pk, "display_name": user.get_full_name(), "is_active": user.is_active}
             for user in result.counselors
         ],
+    }
+
+
+@router.get(
+    "/{service_id}/operational-provider-candidates",
+    response=response_with_errors(ServiceProviderCandidatePage, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="servicesListOperationalProviderCandidates",
+)
+def services_list_operational_provider_candidates(
+    request,
+    service_id: UUID,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    """Read only qualified providers within the caller's Appointment responsibility scope."""
+
+    _require(request, "appointments.manage")
+    try:
+        result = list_operational_provider_candidates(
+            actor=request.auth_user,
+            service_id=service_id,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except PermissionError as exc:
+        raise APIError(403, "permission_denied", str(exc)) from exc
+    except ServiceCatalogError as exc:
+        _raise(exc)
+    return {
+        "items": [{"id": user.pk, "display_name": user.get_full_name()} for user in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
     }
 
 

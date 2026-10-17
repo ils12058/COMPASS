@@ -27,9 +27,18 @@ def prevent_group_session_deletion(apps, schema_editor):
 
 
 def allow_group_session_deletion_migration_reverse(apps, schema_editor):
-    raise RuntimeError(
-        "Group Session lifecycle protection is forward-only; do not reverse this migration."
-    )
+    GroupSession = apps.get_model("group_sessions", "GroupSession")
+    if GroupSession.objects.exists():
+        raise RuntimeError(
+            "Cannot reverse Group Session lifecycle protection while Group Session history exists."
+        )
+
+    if schema_editor.connection.vendor == "postgresql":
+        schema_editor.execute(
+            "DROP TRIGGER IF EXISTS compass_group_session_prevent_delete "
+            "ON group_sessions_groupsession;"
+        )
+        schema_editor.execute("DROP FUNCTION IF EXISTS compass_group_session_prevent_delete();")
 
 
 class Migration(migrations.Migration):

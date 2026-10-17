@@ -18,8 +18,15 @@ from compass.authentication.api import session_auth
 from compass.authentication.step_up import require_recent_mfa_for_request
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.group_sessions.access import (
+    current_group_session_staff,
+    group_session_access,
+    require_group_session_access,
+    scope_group_sessions,
+)
 from compass.group_sessions.models import (
     GroupSession,
+    GroupSessionFacilitatorKind,
     GroupSessionRegistration,
     GroupSessionStatus,
     RegistrationStatus,
@@ -31,28 +38,32 @@ from compass.group_sessions.services import (
     create_group_session,
     export_roster_csv,
     get_group_session_metrics,
+    list_group_facilitator_candidates,
     publish_group_session,
     record_attendance,
     register_student,
     update_group_session,
     withdraw_group_session,
 )
-from compass.group_sessions.access import (
-    current_group_session_staff,
-    group_session_access,
-    require_group_session_access,
-    scope_group_sessions,
-)
 from compass.service_catalog.models import BookingPathwayCode, DeliveryMode
+from compass.service_catalog.scheduling import student_schedule_conflict
+from compass.service_catalog.services import service_supports_delivery_mode
 
 router = Router(tags=["group-sessions"])
+
 
 # Schemas
 class GroupSessionFacilitatorResponse(Schema):
     id: uuid.UUID
-    counselor_id: uuid.UUID
-    counselor_name: str
+    kind: GroupSessionFacilitatorKind
+    internal_user_id: uuid.UUID | None
+    external_display_name: str
+    display_name: str
+    is_current: bool
     is_lead: bool
+    # Compatibility fields remain populated only for internal facilitators.
+    counselor_id: uuid.UUID | None
+    counselor_name: str | None
 
 
 class GroupSessionResponse(Schema):
@@ -75,9 +86,11 @@ class GroupSessionResponse(Schema):
     cancellation_reason: str
     cancelled_at: datetime | None
     version: int
+    schedule_revision: int
     facilitators: list[GroupSessionFacilitatorResponse]
     can_view: bool
     can_manage: bool
+    can_complete: bool
     can_access_participants: bool
     can_record_attendance: bool
     can_export_roster: bool
@@ -101,7 +114,16 @@ class StudentGroupSessionResponse(Schema):
     seats_remaining: int
     is_full: bool
     is_registered_by_me: bool
+    can_register: bool
+    registration_block_reason: str | None
     facilitators: list[GroupSessionFacilitatorResponse]
+
+
+class GroupSessionFacilitatorRequest(Schema):
+    kind: GroupSessionFacilitatorKind
+    internal_user_id: uuid.UUID | None = None
+    external_display_name: str = ""
+    is_lead: bool = False
 
 
 class GroupSessionCreateRequest(Schema):
@@ -116,6 +138,7 @@ class GroupSessionCreateRequest(Schema):
     reg_closes_at: datetime | None = None
     facilitator_ids: list[uuid.UUID] = []
     lead_facilitator_id: uuid.UUID | None = None
+    facilitators: list[GroupSessionFacilitatorRequest] | None = None
 
 
 class GroupSessionUpdateRequest(Schema):
@@ -130,6 +153,7 @@ class GroupSessionUpdateRequest(Schema):
     reg_closes_at: datetime | None = None
     facilitator_ids: list[uuid.UUID] | None = None
     lead_facilitator_id: uuid.UUID | None = None
+    facilitators: list[GroupSessionFacilitatorRequest] | None = None
 
 
 class GroupSessionCancelRequest(Schema):
@@ -144,6 +168,9 @@ class GroupSessionRegistrationResponse(Schema):
     id: uuid.UUID
     session_id: uuid.UUID
     session_title: str
+    service_id: uuid.UUID
+    starts_at: datetime
+    ends_at: datetime
     student_id: uuid.UUID | None
     student_name: str
     student_email: str | None
@@ -178,10 +205,16 @@ class GroupSessionMetricsResponse(Schema):
     total_capacity: int
     total_registrations: int
     cancelled_registrations: int
-    capacity_utilization_percent: float
     attended_count: int
     absent_count: int
+    capacity_utilization_percent: float
     attendance_rate_percent: float
+
+
+class GroupSessionFacilitatorCandidate(Schema):
+    id: uuid.UUID
+    display_name: str
+    role: str
 
 
 def _is_staff_authorized(user: User) -> bool:
@@ -254,7 +287,8 @@ def _raise_group_session_error(exc: ValidationError, *, conflict_default: bool =
             "commenced",
             "closed",
             "cannot ",
-            "only ",
+            "only draft",
+            "only published",
         )
     ):
         raise APIError(409, "group_session_conflict", msg) from exc
@@ -266,21 +300,35 @@ def _serialize_session(
     *,
     actor: User | None = None,
     redact_for_unregistered: bool = False,
+    active_registration: bool = True,
 ) -> dict[str, Any]:
     active_count = session.registrations.filter(status=RegistrationStatus.REGISTERED).count()
+    access = group_session_access(actor, session) if actor is not None else None
+    facilitator_rows = session.facilitators.select_related("internal_user")
+    if (access is None and redact_for_unregistered) or (
+        access is not None and not access.can_manage
+    ):
+        facilitator_rows = facilitator_rows.filter(removed_at__isnull=True)
     facilitators = [
         {
             "id": f.id,
-            "counselor_id": f.counselor_id,
-            "counselor_name": f.counselor.get_full_name() or f.counselor.email,
+            "kind": f.kind,
+            "internal_user_id": f.internal_user_id,
+            "external_display_name": f.external_display_name,
+            "display_name": f.display_name
+            or (f.internal_user.get_full_name() if f.internal_user_id else ""),
+            "is_current": f.is_current,
             "is_lead": f.is_lead,
+            "counselor_id": f.internal_user_id,
+            "counselor_name": (
+                f.display_name or f.internal_user.get_full_name() if f.internal_user_id else None
+            ),
         }
-        for f in session.facilitators.select_related("counselor")
+        for f in facilitator_rows
     ]
     venue_or_url = session.venue_or_meeting_url
-    if redact_for_unregistered and session.delivery_mode == DeliveryMode.ONLINE:
+    if not active_registration and session.delivery_mode == DeliveryMode.ONLINE:
         venue_or_url = ""
-    access = group_session_access(actor, session) if actor is not None else None
     return {
         "id": session.id,
         "service_id": session.service_id,
@@ -301,9 +349,16 @@ def _serialize_session(
         "cancellation_reason": "" if redact_for_unregistered else session.cancellation_reason,
         "cancelled_at": session.cancelled_at,
         "version": session.version,
+        "schedule_revision": session.schedule_revision,
         "facilitators": facilitators,
         "can_view": bool(access and access.can_view),
         "can_manage": bool(access and access.can_manage),
+        "can_complete": bool(
+            access
+            and access.can_manage
+            and session.status == GroupSessionStatus.PUBLISHED
+            and session.ends_at <= timezone.now()
+        ),
         "can_access_participants": bool(access and access.can_access_participants),
         "can_record_attendance": bool(access and access.can_record_attendance),
         "can_export_roster": bool(access and access.can_export_roster),
@@ -339,7 +394,7 @@ def discover_group_sessions(
             starts_at__gt=now,
         )
         .select_related("service")
-        .prefetch_related("facilitators__counselor", "registrations")
+        .prefetch_related("facilitators__internal_user", "registrations")
         .distinct()
     )
     if service_id:
@@ -352,14 +407,43 @@ def discover_group_sessions(
         is_registered = s.registrations.filter(
             student=user, status=RegistrationStatus.REGISTERED
         ).exists()
+        registration_block_reason = None
+        if not is_registered:
+            if not service_supports_delivery_mode(s.service, s.delivery_mode):
+                registration_block_reason = "Registration is unavailable for this delivery mode."
+            elif s.reg_opens_at and s.reg_opens_at > now:
+                registration_block_reason = "Registration has not opened yet."
+            elif s.reg_closes_at and s.reg_closes_at < now:
+                registration_block_reason = "Registration has closed."
+            elif seats_remaining == 0:
+                registration_block_reason = "This session is full."
+            elif student_schedule_conflict(
+                student_id=user.pk,
+                starts_at=s.starts_at,
+                ends_at=s.ends_at,
+                exclude_group_session_id=s.pk,
+            ):
+                registration_block_reason = (
+                    "This session overlaps another Appointment or registered Group Session."
+                )
         facs = [
             {
                 "id": f.id,
-                "counselor_id": f.counselor_id,
-                "counselor_name": f.counselor.get_full_name() or f.counselor.email,
+                "kind": f.kind,
+                "internal_user_id": f.internal_user_id,
+                "external_display_name": f.external_display_name,
+                "display_name": f.display_name
+                or (f.internal_user.get_full_name() if f.internal_user_id else ""),
+                "is_current": True,
                 "is_lead": f.is_lead,
+                "counselor_id": f.internal_user_id,
+                "counselor_name": (
+                    f.display_name or f.internal_user.get_full_name()
+                    if f.internal_user_id
+                    else None
+                ),
             }
-            for f in s.facilitators.all()
+            for f in s.facilitators.select_related("internal_user").filter(removed_at__isnull=True)
         ]
         venue_or_url = s.venue_or_meeting_url
         if s.delivery_mode == DeliveryMode.ONLINE and not is_registered:
@@ -381,6 +465,8 @@ def discover_group_sessions(
                 "seats_remaining": seats_remaining,
                 "is_full": seats_remaining == 0,
                 "is_registered_by_me": is_registered,
+                "can_register": not is_registered and registration_block_reason is None,
+                "registration_block_reason": registration_block_reason,
                 "facilitators": facs,
             }
         )
@@ -420,7 +506,7 @@ def get_my_registrations(request: HttpRequest):
     student = _require_student_view(request)
     regs = (
         GroupSessionRegistration.objects.filter(student=student)
-        .select_related("group_session", "student")
+        .select_related("group_session__service", "student")
         .prefetch_related("attendance")
         .order_by("-registered_at")
     )
@@ -432,6 +518,9 @@ def get_my_registrations(request: HttpRequest):
                 "id": r.id,
                 "session_id": r.group_session_id,
                 "session_title": r.group_session.title,
+                "service_id": r.group_session.service_id,
+                "starts_at": r.group_session.starts_at,
+                "ends_at": r.group_session.ends_at,
                 "student_id": r.student_id,
                 "student_name": r.student.get_full_name() or r.student.email,
                 "student_email": r.student.email or "",
@@ -448,6 +537,31 @@ def get_my_registrations(request: HttpRequest):
 
 
 @router.get(
+    "/facilitator-candidates",
+    response=response_with_errors(list[GroupSessionFacilitatorCandidate], 401, 403, 422),
+    auth=session_auth,
+    operation_id="groupSessionsListFacilitatorCandidates",
+    summary="List facilitator candidates within the actor's direct scope",
+)
+def list_facilitator_candidates(request: HttpRequest, search: str | None = None):
+    actor = _require_staff(request)
+    try:
+        candidates = list_group_facilitator_candidates(actor=actor, search=search)
+    except PermissionError as exc:
+        raise APIError(403, "permission_denied", str(exc)) from exc
+    except ValidationError as exc:
+        _raise_group_session_error(exc)
+    return [
+        {
+            "id": item.pk,
+            "display_name": item.get_full_name() or item.email,
+            "role": item.role.code,
+        }
+        for item in candidates
+    ]
+
+
+@router.get(
     "",
     response=response_with_errors(list[GroupSessionResponse], 401, 403, 422),
     auth=session_auth,
@@ -461,7 +575,7 @@ def list_group_sessions(
 ):
     actor = _require_staff(request)
     qs = GroupSession.objects.select_related("service", "organizer").prefetch_related(
-        "facilitators__counselor", "registrations"
+        "facilitators__internal_user", "registrations"
     )
     qs = scope_group_sessions(qs, actor, permission="view")
     if service_id:
@@ -503,6 +617,11 @@ def create_session(
             capacity=data.capacity,
             reg_opens_at=data.reg_opens_at,
             reg_closes_at=data.reg_closes_at,
+            facilitators=(
+                [item.model_dump() for item in data.facilitators]
+                if data.facilitators is not None
+                else None
+            ),
             facilitator_ids=data.facilitator_ids,
             lead_facilitator_id=data.lead_facilitator_id,
         )
@@ -537,7 +656,7 @@ def get_session(request: HttpRequest, session_id: uuid.UUID):
     session = (
         GroupSession.objects.filter(id=session_id)
         .select_related("service", "organizer")
-        .prefetch_related("facilitators__counselor", "registrations")
+        .prefetch_related("facilitators__internal_user", "registrations")
         .first()
     )
     if not session:
@@ -552,7 +671,11 @@ def get_session(request: HttpRequest, session_id: uuid.UUID):
             session.status != GroupSessionStatus.PUBLISHED or not session.service.is_active
         ):
             raise APIError(404, "group_session_not_found", "Group session not found.")
-        return _serialize_session(session, redact_for_unregistered=not is_active_reg)
+        return _serialize_session(
+            session,
+            redact_for_unregistered=not has_reg,
+            active_registration=is_active_reg,
+        )
 
     if not group_session_access(user, session).can_view:
         raise APIError(404, "group_session_not_found", "Group session not found.")
@@ -585,6 +708,13 @@ def update_session(
             capacity=data.capacity,
             reg_opens_at=data.reg_opens_at,
             reg_closes_at=data.reg_closes_at,
+            reg_opens_at_provided="reg_opens_at" in data.model_fields_set,
+            reg_closes_at_provided="reg_closes_at" in data.model_fields_set,
+            facilitators=(
+                [item.model_dump() for item in data.facilitators]
+                if data.facilitators is not None
+                else None
+            ),
             facilitator_ids=data.facilitator_ids,
             lead_facilitator_id=data.lead_facilitator_id,
         )
@@ -684,6 +814,9 @@ def register(request: HttpRequest, session_id: uuid.UUID):
                 "id": reg.id,
                 "session_id": reg.group_session_id,
                 "session_title": reg.group_session.title,
+                "service_id": reg.group_session.service_id,
+                "starts_at": reg.group_session.starts_at,
+                "ends_at": reg.group_session.ends_at,
                 "student_id": reg.student_id,
                 "student_name": reg.student.get_full_name() or reg.student.email,
                 "student_email": reg.student.email or "",
@@ -714,6 +847,9 @@ def cancel_reg(request: HttpRequest, session_id: uuid.UUID):
             "id": reg.id,
             "session_id": reg.group_session_id,
             "session_title": reg.group_session.title,
+            "service_id": reg.group_session.service_id,
+            "starts_at": reg.group_session.starts_at,
+            "ends_at": reg.group_session.ends_at,
             "student_id": reg.student_id,
             "student_name": reg.student.get_full_name() or reg.student.email,
             "student_email": reg.student.email or "",
@@ -739,10 +875,8 @@ def list_registrations(request: HttpRequest, session_id: uuid.UUID):
     actor = _require_staff(request)
     with transaction.atomic():
         session = (
-            GroupSession.objects.select_for_update(of=("self",))
-            .filter(id=session_id)
+            GroupSession.objects.filter(id=session_id)
             .select_related("service", "organizer__role")
-            .prefetch_related("facilitators")
             .first()
         )
         if session is None:
@@ -773,6 +907,9 @@ def list_registrations(request: HttpRequest, session_id: uuid.UUID):
                     "id": r.id,
                     "session_id": r.group_session_id,
                     "session_title": r.group_session.title,
+                    "service_id": r.group_session.service_id,
+                    "starts_at": r.group_session.starts_at,
+                    "ends_at": r.group_session.ends_at,
                     "student_id": r.student_id if access.can_manage else None,
                     "student_name": (
                         r.student.get_full_name()

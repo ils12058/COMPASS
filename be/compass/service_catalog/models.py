@@ -20,7 +20,7 @@ class DeliveryMode(models.TextChoices):
 
 
 class BookingPathwayCode(models.TextChoices):
-    """Independent entry routes. Fixed slots and groups have no runtime booking yet."""
+    """Independent booking routes that may coexist on the same Service."""
 
     FLEXIBLE_APPOINTMENT = "FLEXIBLE_APPOINTMENT", "Flexible individual appointments"
     FIXED_DATE_SLOT = "FIXED_DATE_SLOT", "Fixed-date appointment slots"

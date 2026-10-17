@@ -319,18 +319,32 @@ export function ServiceDetailPage() {
         <PanelSection title="Booking pathways" titleId="service-booking-pathways-heading">
           <dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <Fact label="Flexible individual appointments">
-              {(service.booking_pathways?.includes(BookingPathway.FLEXIBLE_APPOINTMENT) ?? service.appointment_booking_enabled) ? "Available now" : "Not available"}
+              {service.is_active &&
+              (service.booking_pathways?.includes(BookingPathway.FLEXIBLE_APPOINTMENT) ?? service.appointment_booking_enabled)
+                ? "Available for new bookings"
+                : (service.booking_pathways?.includes(BookingPathway.FLEXIBLE_APPOINTMENT) ?? service.appointment_booking_enabled)
+                  ? "Configured · unavailable while the Service is inactive"
+                  : "Not configured"}
             </Fact>
             <Fact label="Fixed-date appointment slots">
-              {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) ? "Configured · Booking coming later" : "Not configured"}
+              {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT)
+                ? service.is_active
+                  ? "Available when a slot is published"
+                  : "Configured · unavailable while the Service is inactive"
+                : "Not configured"}
             </Fact>
             <Fact label="Group sessions and events">
-              {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) ? "Configured · Registration coming later" : "Not configured"}
+              {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION)
+                ? service.is_active
+                  ? "Available when an event is published"
+                  : "Configured · unavailable while the Service is inactive"
+                : "Not configured"}
             </Fact>
           </dl>
           <p className="mt-4 text-xs leading-5 text-muted">
-            Booking pathways can be enabled together. Fixed-date slots and group registration
-            are not yet available to Students.
+            Pathways can be enabled together. Enabling a pathway does not publish a slot or event;
+            Students can book or register only when the Service is active and an eligible offering
+            is available.
           </p>
         </PanelSection>
 
@@ -360,8 +374,8 @@ export function ServiceDetailPage() {
 
         <PanelSection title="Provider coverage" titleId="service-provider-heading">
           <p className="mt-3 text-xs leading-5 text-muted">
-            These are individual appointment providers. Group-session organizers and
-            facilitators are configured separately when event scheduling is available.
+            These Counselors provide individual Appointments. Group Session organizers,
+            internal facilitators, and external guests are assigned separately to each event.
           </p>
           <dl className="mt-4 grid gap-5 sm:grid-cols-2">
             <Fact label="Provider type">Counselor</Fact>

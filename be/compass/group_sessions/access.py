@@ -22,7 +22,9 @@ class GroupSessionAccess:
     can_export_roster: bool = False
 
 
-def current_group_session_staff(actor: User | None, *, lock_supervision: bool = False) -> User | None:
+def current_group_session_staff(
+    actor: User | None, *, lock_supervision: bool = False
+) -> User | None:
     """Reload the actor, effective capability, and current GSS supervision relationship."""
 
     actor_id = getattr(actor, "pk", None)
@@ -116,8 +118,11 @@ def group_session_access(
         current, session, lock_supervision=lock_supervision
     )
     facilitates = (
-        current.role.code == "COUNSELOR"
-        and session.facilitators.filter(counselor_id=current.pk).exists()
+        current.role.code in GROUP_SESSION_STAFF_ROLES
+        and session.facilitators.filter(
+            internal_user_id=current.pk,
+            removed_at__isnull=True,
+        ).exists()
     )
     can_access_participants = manages or facilitates
     return GroupSessionAccess(
@@ -156,8 +161,11 @@ def scope_group_sessions(queryset: QuerySet, actor: User | None, *, permission: 
             organizer__organization_staff_supervision__supervisor_id=current.pk,
         )
 
-    if permission in {"view", "participants"} and current.role.code == "COUNSELOR":
-        allowed |= Q(facilitators__counselor_id=current.pk)
+    if permission in {"view", "participants"}:
+        allowed |= Q(
+            facilitators__internal_user_id=current.pk,
+            facilitators__removed_at__isnull=True,
+        )
     elif permission not in {"view", "participants", "manage"}:
         raise ValueError("Unknown Group Session collection permission.")
 

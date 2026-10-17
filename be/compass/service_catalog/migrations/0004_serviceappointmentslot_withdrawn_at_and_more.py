@@ -22,9 +22,12 @@ def backfill_slot_booking_history(apps, schema_editor):
 
 
 def prevent_slot_history_rollback(apps, schema_editor):
-    raise RuntimeError(
-        "Fixed Slot booking history is forward-only; do not reverse this migration."
-    )
+    Slot = apps.get_model("service_catalog", "ServiceAppointmentSlot")
+    Booking = apps.get_model("service_catalog", "ServiceAppointmentSlotBooking")
+    if Slot.objects.exists() or Booking.objects.exists():
+        raise RuntimeError(
+            "Cannot reverse Fixed Slot lifecycle protection while slot or booking history exists."
+        )
 
 
 def prevent_slot_record_deletion(apps, schema_editor):

@@ -519,7 +519,7 @@ function ServiceForm({
               checked={values.fixedDateSlots}
               onChange={(event) => setValues((current) => ({ ...current, fixedDateSlots: event.target.checked }))} />
             <span><strong>Fixed-date appointment slots</strong>
-              <span className="block text-muted">For future scheduled slots with qualified Counselors. Student booking is not available yet.</span>
+              <span className="block text-muted">Students can book once an eligible Counselor publishes a slot and the Service is active.</span>
             </span>
           </label>
           <label className="flex items-start gap-3 text-sm text-ink">
@@ -527,7 +527,7 @@ function ServiceForm({
               checked={values.groupSessions}
               onChange={(event) => setValues((current) => ({ ...current, groupSessions: event.target.checked }))} />
             <span><strong>Group sessions and events</strong>
-              <span className="block text-muted">For future events with organizers and facilitators. Registration is not available yet.</span>
+              <span className="block text-muted">Students can register once an event is published, registration is open, and the Service is active.</span>
             </span>
           </label>
         </fieldset>
@@ -684,6 +684,8 @@ function reviewedChange(
   changes: ServiceUpdateRequest,
 ): ServiceConsequenceChange {
   const nextModes = changes.delivery_modes;
+  const nextPathways = changes.booking_pathways;
+  const currentPathways = service.booking_pathways ?? [];
   return {
     counselingOnlineRemoved:
       service.is_system_required &&
@@ -692,6 +694,16 @@ function reviewedChange(
       !nextModes.includes(DeliveryMode.ONLINE),
     bookingTurnedOff:
       service.appointment_booking_enabled && changes.appointment_booking_enabled === false,
+    fixedSlotPathwayRemoved:
+      currentPathways.includes(BookingPathway.FIXED_DATE_SLOT) &&
+      Array.isArray(nextPathways) &&
+      !nextPathways.includes(BookingPathway.FIXED_DATE_SLOT),
+    groupSessionPathwayRemoved:
+      currentPathways.includes(BookingPathway.GROUP_SESSION) &&
+      Array.isArray(nextPathways) &&
+      !nextPathways.includes(BookingPathway.GROUP_SESSION),
+    deliveryModeRemoved:
+      Array.isArray(nextModes) && service.delivery_modes.some((mode) => !nextModes.includes(mode)),
   };
 }
 

@@ -20,7 +20,7 @@ import {
   useServicesCreateSlot,
   useServicesUpdateSlot,
   useServicesWithdrawSlot,
-  useServicesGetProviders,
+  useServicesListOperationalProviderCandidates,
   useServicesListBookableSlots,
   useServicesBookSlot,
   getServicesListSlotsQueryKey,
@@ -35,7 +35,6 @@ import {
 
 export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceResponse }) {
   const { user } = usePortalSession();
-  const canManageServices = user.capabilities.includes("services.manage");
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [withdrawSlot, setWithdrawSlot] = useState<ServiceSlotResponse | null>(null);
@@ -53,32 +52,28 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
   const [durationMinutes, setDurationMinutes] = useState(
     service.default_appointment_duration_minutes ?? 60
   );
+  const [providerSearch, setProviderSearch] = useState("");
+  const [providerPage, setProviderPage] = useState(1);
 
   const slotsQuery = useServicesListSlots(service.id, undefined, {
     query: { retry: false },
   });
-  const providersQuery = useServicesGetProviders(service.id, {
-    query: { retry: false, enabled: canManageServices },
-  });
+  const providersQuery = useServicesListOperationalProviderCandidates(
+    service.id,
+    {
+      ...(providerSearch.trim() ? { search: providerSearch.trim() } : {}),
+      page: providerPage,
+      page_size: 50,
+    },
+    { query: { retry: false } },
+  );
 
   const createMutation = useServicesCreateSlot();
   const updateMutation = useServicesUpdateSlot();
   const withdrawMutation = useServicesWithdrawSlot();
 
   const slots = slotsQuery.data?.data ?? [];
-  const fetchedProviders = providersQuery.data?.data.counselors ?? [];
-  const providers =
-    fetchedProviders.length > 0
-      ? fetchedProviders
-      : user.role === "COUNSELOR"
-        ? [
-            {
-              id: user.id,
-              display_name: `${user.first_name} ${user.last_name}`.trim() || user.email,
-              is_active: true,
-            },
-          ]
-        : [];
+  const providers = providersQuery.data?.data.items ?? [];
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -178,6 +173,7 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
             setErrorMessage(null);
             setCreateOpen(true);
           }}
+          disabled={!service.is_active || providers.length === 0}
         >
           <Plus className="mr-1.5 h-4 w-4" />
           Publish slot
@@ -192,6 +188,19 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
       {errorMessage ? (
         <Notice role="alert" tone="danger" className="mt-4">
           {errorMessage}
+        </Notice>
+      ) : null}
+      {!service.is_active ? (
+        <p className="mt-3 text-xs text-muted">
+          Existing appointments remain on record. Enable this Service before publishing new slots.
+        </p>
+      ) : null}
+      {providersQuery.isError ? (
+        <Notice role="alert" tone="danger" className="mt-4">
+          Eligible Counselors could not be loaded. Retry before publishing a slot. {" "}
+          <Button variant="quiet" onClick={() => void providersQuery.refetch()}>
+            Retry
+          </Button>
         </Notice>
       ) : null}
 
@@ -286,6 +295,18 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
             <div className="grid gap-4 py-4">
               <div>
                 <Label htmlFor="slot-provider">Counselor Provider</Label>
+                <Input
+                  id="slot-provider-search"
+                  aria-label="Search eligible Counselors"
+                  value={providerSearch}
+                  onChange={(event) => {
+                    setProviderSearch(event.target.value);
+                    setProviderId("");
+                    setProviderPage(1);
+                  }}
+                  placeholder="Search eligible Counselors"
+                  className="mt-1 w-full"
+                />
                 <Select
                   id="slot-provider"
                   value={providerId}
@@ -293,13 +314,41 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
                   className="mt-1 w-full"
                   required
                 >
-                  <option value="">Select a qualified Counselor…</option>
+                  <option value="">
+                    {providersQuery.isPending
+                      ? "Loading Counselors…"
+                      : "Select a qualified Counselor…"}
+                  </option>
                   {providers.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.display_name}
                     </option>
                   ))}
                 </Select>
+                {providerPage > 1 || providersQuery.data?.data.has_next ? (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-muted">
+                    <Button
+                      type="button"
+                      variant="quiet"
+                      disabled={providerPage <= 1}
+                      onClick={() => setProviderPage((page) => Math.max(1, page - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <span>Page {providerPage}</span>
+                    <Button
+                      type="button"
+                      variant="quiet"
+                      disabled={!providersQuery.data?.data.has_next}
+                      onClick={() => setProviderPage((page) => page + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                ) : null}
+                <p className="mt-1 text-xs text-muted">
+                  The list follows your Appointment responsibility scope and this Service’s current provider eligibility.
+                </p>
               </div>
 
               <div>

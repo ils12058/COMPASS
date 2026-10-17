@@ -37,6 +37,12 @@ from compass.notifications.services import create_notification_for_event
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import DeliveryMode, Service
+from compass.service_catalog.scheduling import (
+    lock_schedule_users,
+    provider_schedule_conflict,
+    schedule_busy_intervals,
+    student_schedule_conflict,
+)
 from compass.service_catalog.services import (
     ELIGIBLE_PROVIDER_ROLE_CODES,
     service_counselor_eligible,
@@ -601,17 +607,10 @@ def _resolve_booking_provider(student: User, provider_id: UUID | None) -> User:
 
 
 def _lock_users(*user_ids: UUID) -> dict[UUID, User]:
-    unique_ids = sorted(set(user_ids), key=str)
-    rows = list(
-        User.objects.select_for_update(of=("self",))
-        .select_related("role")
-        .filter(pk__in=unique_ids)
-        .order_by("pk")
-    )
-    by_id = {row.pk: row for row in rows}
-    if len(by_id) != len(unique_ids):
-        raise AppointmentNotSchedulable("A booking participant no longer exists.")
-    return by_id
+    try:
+        return lock_schedule_users(*user_ids)
+    except ValueError as exc:
+        raise AppointmentNotSchedulable("A booking participant no longer exists.") from exc
 
 
 def _validate_booking_users(student: User, provider: User) -> None:
@@ -689,15 +688,13 @@ def _candidate_slots(
         return ()
     first_start = min(window.starts_at for window in windows)
     last_end = max(window.ends_at for window in windows)
-    reservations = Appointment.objects.filter(
-        Q(provider_id=provider_id) | Q(student_id=student_id),
-        status=AppointmentStatus.SCHEDULED,
-        starts_at__lt=last_end,
-        ends_at__gt=first_start,
+    busy_intervals = schedule_busy_intervals(
+        provider_id=provider_id,
+        student_id=student_id,
+        starts_at=first_start,
+        ends_at=last_end,
+        exclude_appointment_id=exclude_appointment_id,
     )
-    if exclude_appointment_id is not None:
-        reservations = reservations.exclude(pk=exclude_appointment_id)
-    busy_intervals = tuple(reservations.values_list("starts_at", "ends_at"))
     items: list[BookableSlot] = []
     local_now = now.astimezone(institution_zone())
     for window in windows:
@@ -951,6 +948,28 @@ def create_student_appointment(
             ends_at=ends_at,
         ):
             raise AppointmentTimeConflict("The Student already has an overlapping Appointment.")
+        provider_conflict = provider_schedule_conflict(
+            provider_id=locked_provider.pk,
+            starts_at=normalized_start,
+            ends_at=ends_at,
+        )
+        if provider_conflict == "fixed_slot":
+            raise AppointmentTimeConflict("The Counselor has an overlapping published Fixed Slot.")
+        if provider_conflict == "group_session":
+            raise AppointmentTimeConflict(
+                "The Counselor is assigned to an overlapping published Group Session."
+            )
+        if (
+            student_schedule_conflict(
+                student_id=locked_student.pk,
+                starts_at=normalized_start,
+                ends_at=ends_at,
+            )
+            == "group_session"
+        ):
+            raise AppointmentTimeConflict(
+                "The Student is registered for an overlapping published Group Session."
+            )
 
         reference_code = _allocate_reference(at=current)
         appointment = Appointment.objects.create(
@@ -1275,6 +1294,30 @@ def reschedule_appointment(
             exclude_appointment_id=item.pk,
         ):
             raise AppointmentTimeConflict("The Student already has an overlapping Appointment.")
+        provider_conflict = provider_schedule_conflict(
+            provider_id=item.provider_id,
+            starts_at=normalized_start,
+            ends_at=new_ends_at,
+            exclude_appointment_id=item.pk,
+        )
+        if provider_conflict == "fixed_slot":
+            raise AppointmentTimeConflict("The Counselor has an overlapping published Fixed Slot.")
+        if provider_conflict == "group_session":
+            raise AppointmentTimeConflict(
+                "The Counselor is assigned to an overlapping published Group Session."
+            )
+        if (
+            student_schedule_conflict(
+                student_id=item.student_id,
+                starts_at=normalized_start,
+                ends_at=new_ends_at,
+                exclude_appointment_id=item.pk,
+            )
+            == "group_session"
+        ):
+            raise AppointmentTimeConflict(
+                "The Student is registered for an overlapping published Group Session."
+            )
 
         previous_starts_at = item.starts_at
         previous_ends_at = item.ends_at
@@ -1379,14 +1422,11 @@ def reassign_appointment(
 
         _require_reassignment_relationships_clear(item)
 
-        new_provider = (
-            User.objects.select_for_update(of=("self",))
-            .select_related("role")
-            .filter(pk=provider_id)
-            .first()
-        )
+        participants = _lock_users(item.student_id, item.provider_id, provider_id)
+        new_provider = participants.get(provider_id)
         if new_provider is None:
             raise AppointmentNotSchedulable("The selected Counselor was not found.")
+        _validate_booking_users(participants[item.student_id], new_provider)
         service = Service.objects.select_for_update().get(pk=item.service_id)
         _validate_existing_service(
             service=service,
@@ -1412,6 +1452,20 @@ def reassign_appointment(
         ):
             raise AppointmentTimeConflict(
                 "The selected Counselor already has an overlapping Appointment."
+            )
+        provider_conflict = provider_schedule_conflict(
+            provider_id=new_provider.pk,
+            starts_at=item.starts_at,
+            ends_at=item.ends_at,
+            exclude_appointment_id=item.pk,
+        )
+        if provider_conflict == "fixed_slot":
+            raise AppointmentTimeConflict(
+                "The selected Counselor has an overlapping published Fixed Slot."
+            )
+        if provider_conflict == "group_session":
+            raise AppointmentTimeConflict(
+                "The selected Counselor is assigned to an overlapping published Group Session."
             )
 
         previous_provider = item.provider

@@ -19,6 +19,11 @@ class GroupSessionStatus(models.TextChoices):
     COMPLETED = "COMPLETED", "Completed"
 
 
+class GroupSessionFacilitatorKind(models.TextChoices):
+    INTERNAL = "INTERNAL", "Internal COMPASS person"
+    EXTERNAL = "EXTERNAL", "External guest"
+
+
 class GroupSession(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     service = models.ForeignKey(
@@ -52,6 +57,9 @@ class GroupSession(models.Model):
     cancellation_reason = models.TextField(blank=True, default="")
     cancelled_at = models.DateTimeField(blank=True, null=True)
     version = models.PositiveIntegerField(default=1)
+    # Advances only when the schedule or delivery details change. Reschedule
+    # notifications carry this revision so a later change makes older notices stale.
+    schedule_revision = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -84,27 +92,89 @@ class GroupSessionFacilitator(models.Model):
         on_delete=models.PROTECT,
         related_name="facilitators",
     )
-    counselor = models.ForeignKey(
+    internal_user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
         related_name="facilitated_group_sessions",
+        db_column="counselor_id",
+        null=True,
+        blank=True,
+    )
+    kind = models.CharField(
+        max_length=16,
+        choices=GroupSessionFacilitatorKind.choices,
+        default=GroupSessionFacilitatorKind.INTERNAL,
+        db_default=GroupSessionFacilitatorKind.INTERNAL,
+    )
+    external_display_name = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        db_default="",
+    )
+    display_name_snapshot = models.CharField(
+        max_length=255,
+        blank=True,
+        default="",
+        db_default="",
     )
     is_lead = models.BooleanField(default=False)
+    removed_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         default_permissions = ()
-        ordering = ("-is_lead", "counselor__last_name", "counselor__first_name")
+        ordering = ("-is_lead", "created_at", "id")
         constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        kind=GroupSessionFacilitatorKind.INTERNAL,
+                        internal_user__isnull=False,
+                        external_display_name="",
+                    )
+                    | models.Q(
+                        kind=GroupSessionFacilitatorKind.EXTERNAL,
+                        internal_user__isnull=True,
+                    )
+                    & ~models.Q(external_display_name="")
+                ),
+                name="grp_fac_identity_matches_kind",
+            ),
             models.UniqueConstraint(
-                fields=["group_session", "counselor"],
-                name="grp_facil_session_counselor_uniq",
+                fields=["group_session", "internal_user"],
+                condition=models.Q(
+                    kind=GroupSessionFacilitatorKind.INTERNAL,
+                    removed_at__isnull=True,
+                ),
+                name="grp_fac_active_internal_uniq",
+            ),
+            models.UniqueConstraint(
+                fields=["group_session"],
+                condition=models.Q(is_lead=True, removed_at__isnull=True),
+                name="grp_fac_active_lead_uniq",
             ),
         ]
 
+    def save(self, *args, **kwargs):
+        if not self.display_name_snapshot:
+            if self.kind == GroupSessionFacilitatorKind.INTERNAL and self.internal_user_id:
+                self.display_name_snapshot = self.internal_user.get_full_name().strip()
+            elif self.kind == GroupSessionFacilitatorKind.EXTERNAL:
+                self.display_name_snapshot = self.external_display_name.strip()
+        super().save(*args, **kwargs)
+
+    @property
+    def is_current(self) -> bool:
+        return self.removed_at is None
+
+    @property
+    def display_name(self) -> str:
+        return self.display_name_snapshot or self.external_display_name
+
     def __str__(self) -> str:
         lead_flag = " (Lead)" if self.is_lead else ""
-        return f"{self.counselor}{lead_flag} @ {self.group_session.title}"
+        return f"{self.display_name}{lead_flag} @ {self.group_session.title}"
 
 
 class RegistrationStatus(models.TextChoices):

@@ -124,6 +124,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_service_scheduling_consequences.py",
             "test_fixed_date_slots.py",
             "test_group_sessions.py",
+            "test_service_cross_pathway_scheduling.py",
         ),
     ),
     "scheduling": (
@@ -138,6 +139,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_availability_reservation_neutrality.py",
             "test_cross_domain_lifecycle_reconciliation.py",
             "test_fixed_date_slots.py",
+            "test_service_cross_pathway_scheduling.py",
         ),
     ),
     "student-actions": (

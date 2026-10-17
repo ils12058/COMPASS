@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Calendar,
@@ -25,7 +26,11 @@ import { Select } from "@/components/ui/select";
 import { PanelSection } from "@/components/ui/panel";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { usePortalSession } from "@/features/portal/components/portal-session";
-import { formatInstitutionalDateTime } from "@/lib/institutional-time";
+import {
+  formatInstitutionalDateTime,
+  institutionalDateTimeInputToISO,
+  isoToInstitutionalDateTimeInput,
+} from "@/lib/institutional-time";
 import {
   useGroupSessionsListStaff,
   useGroupSessionsDiscover,
@@ -39,12 +44,14 @@ import {
   useGroupSessionsRegister,
   useGroupSessionsCancelRegistration,
   useGroupSessionsRecordAttendance,
+  useGroupSessionsUpdate,
+  useGroupSessionsListFacilitatorCandidates,
   getGroupSessionsListStaffQueryKey,
   getGroupSessionsDiscoverQueryKey,
   getGroupSessionsGetMetricsQueryKey,
   getGroupSessionsListRegistrationsQueryKey,
+  getGroupSessionsGetMyRegistrationsQueryKey,
 } from "@/lib/api/generated/group-sessions/group-sessions";
-import { useServicesGetProviders } from "@/lib/api/generated/services/services";
 import {
   DeliveryMode,
   type ServiceResponse,
@@ -52,13 +59,20 @@ import {
   type StudentGroupSessionResponse,
 } from "@/lib/api/generated/model";
 
+type ExternalFacilitatorDraft = { key: string; name: string };
+
+function dateTimeInput(value: string): string {
+  return isoToInstitutionalDateTimeInput(value);
+}
+
 // --- STAFF PANEL ---
 
 export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceResponse }) {
   const { user } = usePortalSession();
-  const canManageServices = user.capabilities.includes("services.manage");
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
+  const [editingSession, setEditingSession] = useState<GroupSessionResponse | null>(null);
+  const [scheduleReviewOpen, setScheduleReviewOpen] = useState(false);
   const [cancelModalSession, setCancelModalSession] = useState<GroupSessionResponse | null>(null);
   const [cancelReason, setCancelReason] = useState("");
   const [withdrawSession, setWithdrawSession] = useState<GroupSessionResponse | null>(null);
@@ -79,9 +93,16 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
   const [capacity, setCapacity] = useState(20);
   const [regOpensAt, setRegOpensAt] = useState("");
   const [regClosesAt, setRegClosesAt] = useState("");
-  const [leadCounselorId, setLeadCounselorId] = useState(
-    user.role === "COUNSELOR" ? user.id : ""
+  const [facilitatorSearch, setFacilitatorSearch] = useState("");
+  const [internalFacilitatorIds, setInternalFacilitatorIds] = useState<string[]>(
+    user.role === "COUNSELOR" ? [user.id] : [],
   );
+  const [externalFacilitators, setExternalFacilitators] = useState<ExternalFacilitatorDraft[]>([]);
+  const [externalNameDraft, setExternalNameDraft] = useState("");
+  const [leadFacilitatorKey, setLeadFacilitatorKey] = useState(
+    user.role === "COUNSELOR" ? `internal:${user.id}` : "",
+  );
+  const [facilitatorsTouched, setFacilitatorsTouched] = useState(false);
 
   const sessionsQuery = useGroupSessionsListStaff(
     { service_id: service.id },
@@ -91,11 +112,13 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
     { service_id: service.id },
     { query: { retry: false } }
   );
-  const providersQuery = useServicesGetProviders(service.id, {
-    query: { retry: false, enabled: canManageServices },
-  });
+  const facilitatorCandidatesQuery = useGroupSessionsListFacilitatorCandidates(
+    undefined,
+    { query: { retry: false, enabled: createOpen } },
+  );
 
   const createMutation = useGroupSessionsCreate();
+  const updateMutation = useGroupSessionsUpdate();
   const publishMutation = useGroupSessionsPublish();
   const cancelMutation = useGroupSessionsCancel();
   const completeMutation = useGroupSessionsComplete();
@@ -103,19 +126,10 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
 
   const sessions = sessionsQuery.data?.data ?? [];
   const metrics = metricsQuery.data?.data;
-  const fetchedProviders = providersQuery.data?.data.counselors ?? [];
-  const providers =
-    fetchedProviders.length > 0
-      ? fetchedProviders
-      : user.role === "COUNSELOR"
-        ? [
-            {
-              id: user.id,
-              display_name: `${user.first_name} ${user.last_name}`.trim() || user.email,
-              is_active: true,
-            },
-          ]
-        : [];
+  const facilitatorCandidates = facilitatorCandidatesQuery.data?.data ?? [];
+  const visibleFacilitatorCandidates = facilitatorCandidates.filter((candidate) =>
+    candidate.display_name.toLocaleLowerCase().includes(facilitatorSearch.trim().toLocaleLowerCase()),
+  );
 
   const invalidateAll = async () => {
     await Promise.all([
@@ -131,8 +145,85 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
     ]);
   };
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const resetForm = () => {
+    setEditingSession(null);
+    setTitle("");
+    setDescription("");
+    setDeliveryMode(service.delivery_modes[0] ?? DeliveryMode.IN_PERSON);
+    setVenueOrUrl("");
+    setStartDateTime("");
+    setEndDateTime("");
+    setCapacity(20);
+    setRegOpensAt("");
+    setRegClosesAt("");
+    setInternalFacilitatorIds(user.role === "COUNSELOR" ? [user.id] : []);
+    setExternalFacilitators([]);
+    setExternalNameDraft("");
+    setLeadFacilitatorKey(user.role === "COUNSELOR" ? `internal:${user.id}` : "");
+    setFacilitatorsTouched(false);
+    setFacilitatorSearch("");
+    setErrorMessage(null);
+  };
+
+  const openCreate = () => {
+    resetForm();
+    setCreateOpen(true);
+  };
+
+  const openEdit = (session: GroupSessionResponse) => {
+    setEditingSession(session);
+    setTitle(session.title);
+    setDescription(session.description);
+    setDeliveryMode(session.delivery_mode as DeliveryMode);
+    setVenueOrUrl(session.venue_or_meeting_url);
+    setStartDateTime(dateTimeInput(session.starts_at));
+    setEndDateTime(dateTimeInput(session.ends_at));
+    setCapacity(session.capacity);
+    setRegOpensAt(session.reg_opens_at ? dateTimeInput(session.reg_opens_at) : "");
+    setRegClosesAt(session.reg_closes_at ? dateTimeInput(session.reg_closes_at) : "");
+    const activeFacilitators = session.facilitators.filter((facilitator) => facilitator.is_current);
+    const internalIds = activeFacilitators.flatMap((facilitator) =>
+      facilitator.kind === "INTERNAL" && facilitator.internal_user_id
+        ? [facilitator.internal_user_id]
+        : [],
+    );
+    const guests = activeFacilitators.flatMap((facilitator) =>
+      facilitator.kind === "EXTERNAL"
+        ? [{ key: facilitator.id, name: facilitator.external_display_name }]
+        : [],
+    );
+    setInternalFacilitatorIds(internalIds);
+    setExternalFacilitators(guests);
+    const lead = activeFacilitators.find((facilitator) => facilitator.is_lead);
+    setLeadFacilitatorKey(
+      lead?.kind === "INTERNAL" && lead.internal_user_id
+        ? `internal:${lead.internal_user_id}`
+        : lead?.kind === "EXTERNAL"
+          ? `external:${lead.id}`
+          : "",
+    );
+    setFacilitatorsTouched(false);
+    setFacilitatorSearch("");
+    setErrorMessage(null);
+    setCreateOpen(true);
+  };
+
+  const scheduleWillChange = () => {
+    if (editingSession?.status !== "PUBLISHED") return false;
+    const nextStartsAt = institutionalDateTimeInputToISO(startDateTime);
+    const nextEndsAt = institutionalDateTimeInputToISO(endDateTime);
+    if (!nextStartsAt || !nextEndsAt) return false;
+    return (
+      new Date(nextStartsAt).getTime() !== new Date(editingSession.starts_at).getTime() ||
+      new Date(nextEndsAt).getTime() !== new Date(editingSession.ends_at).getTime() ||
+      deliveryMode !== editingSession.delivery_mode ||
+      venueOrUrl.trim() !== editingSession.venue_or_meeting_url
+    );
+  };
+
+  const handleSaveForm = async (e?: React.FormEvent, scheduleReviewed = false) => {
+    e?.preventDefault();
+    if (scheduleReviewed) setScheduleReviewOpen(false);
     setErrorMessage(null);
     setSuccessMessage(null);
 
@@ -144,8 +235,20 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
       setErrorMessage("Please specify both start and end dates/times.");
       return;
     }
-    const startsAt = new Date(startDateTime);
-    const endsAt = new Date(endDateTime);
+    const startsAtIso = institutionalDateTimeInputToISO(startDateTime);
+    const endsAtIso = institutionalDateTimeInputToISO(endDateTime);
+    if (!startsAtIso || !endsAtIso) {
+      setErrorMessage("Enter valid dates and times in Philippine Time.");
+      return;
+    }
+    const regOpensAtIso = regOpensAt ? institutionalDateTimeInputToISO(regOpensAt) : null;
+    const regClosesAtIso = regClosesAt ? institutionalDateTimeInputToISO(regClosesAt) : null;
+    if ((regOpensAt && !regOpensAtIso) || (regClosesAt && !regClosesAtIso)) {
+      setErrorMessage("Enter valid registration dates and times in Philippine Time.");
+      return;
+    }
+    const startsAt = new Date(startsAtIso);
+    const endsAt = new Date(endsAtIso);
     if (startsAt >= endsAt) {
       setErrorMessage("Session start time must be before end time.");
       return;
@@ -154,42 +257,73 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
       setErrorMessage("Capacity must be at least 1.");
       return;
     }
-    if (!leadCounselorId) {
-      setErrorMessage("Please select a qualified Lead Facilitator.");
+    if (facilitatorsTouched || !editingSession) {
+      const hasLead = leadFacilitatorKey && (
+        internalFacilitatorIds.some((id) => `internal:${id}` === leadFacilitatorKey) ||
+        externalFacilitators.some((item) => `external:${item.key}` === leadFacilitatorKey)
+      );
+      if (!hasLead) {
+        setErrorMessage("Assign at least one facilitator and choose the lead facilitator.");
+        return;
+      }
+    }
+    if (editingSession && scheduleWillChange() && !scheduleReviewed) {
+      setScheduleReviewOpen(true);
       return;
     }
 
     try {
-      await createMutation.mutateAsync({
-        serviceId: service.id,
-        data: {
-          title: title.trim(),
-          description: description.trim(),
-          delivery_mode: deliveryMode,
-          venue_or_meeting_url: venueOrUrl.trim(),
-          starts_at: startsAt.toISOString(),
-          ends_at: endsAt.toISOString(),
-          capacity,
-          reg_opens_at: regOpensAt ? new Date(regOpensAt).toISOString() : null,
-          reg_closes_at: regClosesAt ? new Date(regClosesAt).toISOString() : null,
-          facilitator_ids: [leadCounselorId],
-          lead_facilitator_id: leadCounselorId,
-        },
-      });
+      const facilitatorAssignments = [
+        ...internalFacilitatorIds.map((id) => ({
+          kind: "INTERNAL" as const,
+          internal_user_id: id,
+          external_display_name: "",
+          is_lead: leadFacilitatorKey === `internal:${id}`,
+        })),
+        ...externalFacilitators.map((item) => ({
+          kind: "EXTERNAL" as const,
+          internal_user_id: null,
+          external_display_name: item.name,
+          is_lead: leadFacilitatorKey === `external:${item.key}`,
+        })),
+      ];
+      const common = {
+        title: title.trim(),
+        description: description.trim(),
+        delivery_mode: deliveryMode,
+        venue_or_meeting_url: venueOrUrl.trim(),
+        starts_at: startsAtIso,
+        ends_at: endsAtIso,
+        capacity,
+        reg_opens_at: regOpensAtIso,
+        reg_closes_at: regClosesAtIso,
+      };
+      if (editingSession) {
+        await updateMutation.mutateAsync({
+          sessionId: editingSession.id,
+          data: {
+            ...common,
+            ...(facilitatorsTouched ? { facilitators: facilitatorAssignments } : {}),
+          },
+        });
+      } else {
+        await createMutation.mutateAsync({
+          serviceId: service.id,
+          data: { ...common, facilitators: facilitatorAssignments },
+        });
+      }
 
       await invalidateAll();
-      setSuccessMessage("Group session created in Draft status.");
+      setSuccessMessage(
+        editingSession
+          ? `Group Session "${editingSession.title}" updated.`
+          : "Group Session created in Draft status.",
+      );
       setCreateOpen(false);
-      setTitle("");
-      setDescription("");
-      setVenueOrUrl("");
-      setStartDateTime("");
-      setEndDateTime("");
-      setCapacity(20);
-      setRegOpensAt("");
-      setRegClosesAt("");
+      setScheduleReviewOpen(false);
+      resetForm();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to create group session.";
+      const msg = err instanceof Error ? err.message : "Could not save the Group Session.";
       setErrorMessage(msg);
     }
   };
@@ -311,15 +445,13 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
 
         <div className="flex items-center justify-between">
           <p className="text-xs text-muted">
-            Manage scheduled workshops, seminars, and group counseling activities for this Service.
+            Manage each event’s schedule, registration window, capacity, and facilitator assignments. A pathway alone does not create a bookable event.
           </p>
           <Button
             className="min-h-8 px-3 py-1 text-xs"
-            onClick={() => {
-              setErrorMessage(null);
-              setSuccessMessage(null);
-              setCreateOpen(true);
-            }}
+            onClick={openCreate}
+            disabled={!service.is_active}
+            title={!service.is_active ? "Enable the Service before creating events." : undefined}
           >
             <Plus className="mr-1.5 h-4 w-4" />
             Schedule Group Session
@@ -364,6 +496,16 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
                     </div>
 
                     <div className="flex items-center gap-2">
+                      {(sess.status === "DRAFT" || sess.status === "PUBLISHED") &&
+                      sess.can_manage ? (
+                        <Button
+                          className="min-h-8 px-2.5 py-1 text-xs"
+                          variant="secondary"
+                          onClick={() => openEdit(sess)}
+                        >
+                          Edit
+                        </Button>
+                      ) : null}
                       {sess.status === "DRAFT" && sess.can_manage && (
                         <>
                           <Button
@@ -392,7 +534,8 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
                             className="min-h-8 px-2.5 py-1 text-xs"
                             variant="secondary"
                             onClick={() => handleComplete(sess)}
-                            disabled={completeMutation.isPending}
+                          disabled={completeMutation.isPending || !sess.can_complete}
+                          title={!sess.can_complete ? "Available after the event ends." : undefined}
                           >
                             <UserCheck className="mr-1.5 h-3.5 w-3.5 text-success" />
                             Complete
@@ -427,7 +570,9 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
                   <div className="grid grid-cols-1 gap-2 pt-2 border-t border-border/50 text-xs sm:grid-cols-3 text-muted">
                     <div className="flex items-center gap-1.5">
                       <Calendar className="h-3.5 w-3.5 text-muted" />
-                      <span>{formatInstitutionalDateTime(sess.starts_at)}</span>
+                      <span>
+                        {formatInstitutionalDateTime(sess.starts_at)} – {formatInstitutionalDateTime(sess.ends_at)}
+                      </span>
                     </div>
 
                     <div className="flex items-center gap-1.5">
@@ -446,7 +591,21 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
                       <Users className="h-3.5 w-3.5 text-muted" />
                       <span>
                         Facilitators:{" "}
-                        {sess.facilitators.map((f) => f.counselor_name).join(", ") || "None"}
+                        {sess.facilitators
+                          .filter((facilitator) => facilitator.is_current)
+                          .map((facilitator) =>
+                            `${facilitator.display_name}${facilitator.is_lead ? " (Lead)" : ""}${facilitator.kind === "EXTERNAL" ? " · Guest" : ""}`,
+                          )
+                          .join(", ") || "None"}
+                        {sess.facilitators.some((facilitator) => !facilitator.is_current) ? (
+                          <span className="block">
+                            Former facilitators:{" "}
+                            {sess.facilitators
+                              .filter((facilitator) => !facilitator.is_current)
+                              .map((facilitator) => facilitator.display_name)
+                              .join(", ")}
+                          </span>
+                        ) : null}
                       </span>
                     </div>
                   </div>
@@ -458,10 +617,16 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
       </div>
 
       {/* CREATE SESSION MODAL */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogTitle>Schedule Group Session</DialogTitle>
-          <form onSubmit={handleCreate} className="mt-4 flex flex-col gap-4">
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) setScheduleReviewOpen(false);
+        }}
+      >
+        <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
+          <DialogTitle>{editingSession ? "Edit Group Session" : "Schedule Group Session"}</DialogTitle>
+          <form onSubmit={(event) => void handleSaveForm(event)} className="mt-4 flex flex-col gap-4">
             <div>
               <Label htmlFor="session-title">Title *</Label>
               <Input
@@ -552,22 +717,143 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="session-facilitator">Lead Facilitator *</Label>
-              <Select
-                id="session-facilitator"
-                required
-                value={leadCounselorId}
-                onChange={(e) => setLeadCounselorId(e.target.value)}
-              >
-                <option value="">Select qualified counselor...</option>
-                {providers.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.display_name}
-                  </option>
-                ))}
-              </Select>
-            </div>
+            <fieldset className="rounded-md border border-border p-3">
+              <legend className="px-1 text-sm font-semibold text-ink">Facilitators</legend>
+              <p className="mb-3 text-xs leading-5 text-muted">
+                Internal assignments grant event access only. They do not qualify someone to provide individual Appointments. External guests do not need COMPASS accounts.
+              </p>
+              {facilitatorCandidatesQuery.isPending ? (
+                <p className="text-sm text-muted">Loading eligible internal facilitators…</p>
+              ) : facilitatorCandidatesQuery.isError ? (
+                <Notice role="alert" tone="danger">
+                  Facilitators could not be loaded. {" "}
+                  <Button
+                    type="button"
+                    variant="quiet"
+                    onClick={() => void facilitatorCandidatesQuery.refetch()}
+                  >
+                    Retry
+                  </Button>
+                </Notice>
+              ) : (
+                <>
+                  <Label htmlFor="facilitator-search">Search internal facilitators</Label>
+                  <Input
+                    id="facilitator-search"
+                    value={facilitatorSearch}
+                    onChange={(event) => setFacilitatorSearch(event.target.value)}
+                    placeholder="Search name"
+                    className="mt-1"
+                  />
+                  <ul className="mt-2 max-h-40 space-y-1 overflow-y-auto rounded-sm border border-border p-2">
+                    {visibleFacilitatorCandidates.map((candidate) => (
+                      <li key={candidate.id}>
+                        <label className="flex items-center gap-2 py-1 text-sm text-ink">
+                          <input
+                            type="checkbox"
+                            checked={internalFacilitatorIds.includes(candidate.id)}
+                            onChange={(event) => {
+                              const checked = event.target.checked;
+                              const key = `internal:${candidate.id}`;
+                              setFacilitatorsTouched(true);
+                              setInternalFacilitatorIds((current) => checked
+                                ? [...current, candidate.id]
+                                : current.filter((id) => id !== candidate.id));
+                              if (!checked && leadFacilitatorKey === key) setLeadFacilitatorKey("");
+                              else if (checked && !leadFacilitatorKey) setLeadFacilitatorKey(key);
+                            }}
+                          />
+                          <span>
+                            {candidate.display_name} <span className="text-xs text-muted">· {candidate.role === "COUNSELOR" ? "Counselor" : "Guidance Services Staff"}</span>
+                          </span>
+                        </label>
+                      </li>
+                    ))}
+                    {visibleFacilitatorCandidates.length === 0 ? (
+                      <li className="py-1 text-sm text-muted">No matching internal facilitators.</li>
+                    ) : null}
+                  </ul>
+                </>
+              )}
+              <div className="mt-3">
+                <Label htmlFor="external-facilitator">External guest or speaker</Label>
+                <div className="mt-1 flex gap-2">
+                  <Input
+                    id="external-facilitator"
+                    value={externalNameDraft}
+                    maxLength={255}
+                    onChange={(event) => setExternalNameDraft(event.target.value)}
+                    placeholder="Name to display for this event"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    disabled={!externalNameDraft.trim()}
+                    onClick={() => {
+                      const name = externalNameDraft.trim();
+                      if (externalFacilitators.some((item) => item.name.toLocaleLowerCase() === name.toLocaleLowerCase())) {
+                        setErrorMessage("This external facilitator is already listed.");
+                        return;
+                      }
+                      const key = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+                      setExternalFacilitators((current) => [...current, { key, name }]);
+                      if (!leadFacilitatorKey) setLeadFacilitatorKey(`external:${key}`);
+                      setFacilitatorsTouched(true);
+                      setExternalNameDraft("");
+                    }}
+                  >
+                    Add
+                  </Button>
+                </div>
+                {externalFacilitators.length ? (
+                  <ul className="mt-2 space-y-1">
+                    {externalFacilitators.map((facilitator) => (
+                      <li key={facilitator.key} className="flex items-center justify-between gap-2 text-sm">
+                        <span>{facilitator.name} <span className="text-xs text-muted">· Guest</span></span>
+                        <Button
+                          type="button"
+                          variant="quiet"
+                          onClick={() => {
+                            setExternalFacilitators((current) => current.filter((item) => item.key !== facilitator.key));
+                            if (leadFacilitatorKey === `external:${facilitator.key}`) setLeadFacilitatorKey("");
+                            setFacilitatorsTouched(true);
+                          }}
+                        >
+                          Remove
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+              <div className="mt-3">
+                <Label htmlFor="session-facilitator">Lead facilitator *</Label>
+                <Select
+                  id="session-facilitator"
+                  required
+                  value={leadFacilitatorKey}
+                  onChange={(event) => {
+                    setLeadFacilitatorKey(event.target.value);
+                    setFacilitatorsTouched(true);
+                  }}
+                >
+                  <option value="">Choose a lead facilitator…</option>
+                  {internalFacilitatorIds.map((id) => {
+                    const candidate = facilitatorCandidates.find((item) => item.id === id);
+                    return candidate ? (
+                      <option key={id} value={`internal:${id}`}>
+                        {candidate.display_name} · {candidate.role === "COUNSELOR" ? "Counselor" : "Guidance Services Staff"}
+                      </option>
+                    ) : null;
+                  })}
+                  {externalFacilitators.map((item) => (
+                    <option key={item.key} value={`external:${item.key}`}>
+                      {item.name} · Guest
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </fieldset>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
@@ -594,13 +880,32 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
               <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={createMutation.isPending}>
-                {createMutation.isPending ? "Creating..." : "Create Session (Draft)"}
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+                {createMutation.isPending || updateMutation.isPending
+                  ? "Saving…"
+                  : editingSession
+                    ? "Save changes"
+                    : "Create Session (Draft)"}
               </Button>
             </div>
           </form>
         </DialogContent>
       </Dialog>
+
+      <ConsequentialActionDialog
+        open={scheduleReviewOpen}
+        title="Notify registered students about this change?"
+        confirmLabel="Save and notify"
+        pendingLabel="Saving…"
+        pending={updateMutation.isPending}
+        error={errorMessage}
+        onOpenChange={setScheduleReviewOpen}
+        onConfirm={() => void handleSaveForm(undefined, true)}
+      >
+        <p className="text-sm text-muted">
+          Registered students will receive an in-app notice to review the current event details. The schedule change will be rejected if it conflicts with a facilitator or a student’s existing booking.
+        </p>
+      </ConsequentialActionDialog>
 
       {/* CANCEL SESSION DIALOG */}
       <ConsequentialActionDialog
@@ -689,6 +994,7 @@ function GroupSessionRosterModal({
   >({});
   const [initialized, setInitialized] = useState(false);
   const [saveStatus, setSaveStatus] = useState<string | null>(null);
+  const [exportError, setExportError] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   // Sync initial attendance state when data arrives
@@ -728,8 +1034,9 @@ function GroupSessionRosterModal({
 
   const handleExportCsv = async () => {
     setIsExporting(true);
+    setExportError(null);
     try {
-      const res = await fetch(`/api/v1/group-sessions/${session.id}/roster.csv`, {
+      const res = await fetch(`/api/v1/group-sessions/${session.id}/roster/export`, {
         credentials: "include",
       });
       if (!res.ok) throw new Error("CSV export failed");
@@ -744,7 +1051,7 @@ function GroupSessionRosterModal({
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch {
-      alert("Failed to export participant roster.");
+      setExportError("The participant roster could not be exported. Try again.");
     } finally {
       setIsExporting(false);
     }
@@ -773,6 +1080,12 @@ function GroupSessionRosterModal({
           <strong className="text-ink">{session.capacity}</strong> · Registered:{" "}
           <strong className="text-ink">{regs.filter((r) => r.status === "REGISTERED").length}</strong>
         </div>
+
+        {exportError ? (
+          <Notice role="alert" tone="danger" className="my-2">
+            {exportError}
+          </Notice>
+        ) : null}
 
         {saveStatus && (
           <Notice
@@ -892,7 +1205,11 @@ function GroupSessionRosterModal({
 
 // --- STUDENT PANEL ---
 
-export function ServiceGroupSessionsStudentPanel({ service }: { service: ServiceResponse }) {
+export function ServiceGroupSessionsStudentPanel({
+  service,
+}: {
+  service?: ServiceResponse;
+}) {
   const queryClient = useQueryClient();
   const [registeringId, setRegisteringId] = useState<string | null>(null);
   const [cancellingSession, setCancellingSession] = useState<StudentGroupSessionResponse | null>(
@@ -901,10 +1218,10 @@ export function ServiceGroupSessionsStudentPanel({ service }: { service: Service
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const discoverQuery = useGroupSessionsDiscover(
-    { service_id: service.id },
-    { query: { retry: false } }
-  );
+  const discoveryParams = service ? { service_id: service.id } : undefined;
+  const discoverQuery = useGroupSessionsDiscover(discoveryParams, {
+    query: { retry: false },
+  });
 
   const registerMutation = useGroupSessionsRegister();
   const cancelRegMutation = useGroupSessionsCancelRegistration();
@@ -918,7 +1235,10 @@ export function ServiceGroupSessionsStudentPanel({ service }: { service: Service
     try {
       await registerMutation.mutateAsync({ sessionId: session.id });
       await queryClient.invalidateQueries({
-        queryKey: getGroupSessionsDiscoverQueryKey({ service_id: service.id }),
+        queryKey: getGroupSessionsDiscoverQueryKey(discoveryParams),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getGroupSessionsGetMyRegistrationsQueryKey(),
       });
       setSuccessMessage(`Successfully registered for "${session.title}"!`);
     } catch (err: unknown) {
@@ -936,7 +1256,10 @@ export function ServiceGroupSessionsStudentPanel({ service }: { service: Service
     try {
       await cancelRegMutation.mutateAsync({ sessionId: cancellingSession.id });
       await queryClient.invalidateQueries({
-        queryKey: getGroupSessionsDiscoverQueryKey({ service_id: service.id }),
+        queryKey: getGroupSessionsDiscoverQueryKey(discoveryParams),
+      });
+      await queryClient.invalidateQueries({
+        queryKey: getGroupSessionsGetMyRegistrationsQueryKey(),
       });
       setSuccessMessage(`Your registration for "${cancellingSession.title}" has been cancelled.`);
       setCancellingSession(null);
@@ -949,7 +1272,7 @@ export function ServiceGroupSessionsStudentPanel({ service }: { service: Service
   return (
     <PanelSection
       title="Upcoming Group Sessions & Workshops"
-      titleId="service-group-sessions-student-heading"
+      titleId="group-sessions-student-heading"
       className="mt-6"
     >
       <div className="flex flex-col gap-4">
@@ -964,15 +1287,27 @@ export function ServiceGroupSessionsStudentPanel({ service }: { service: Service
           </Notice>
         )}
 
-        <p className="text-xs text-muted">
-          Browse upcoming group sessions for this Service and secure your seat. Capacity is limited.
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="text-xs text-muted">
+            {service
+              ? `Browse upcoming group sessions for ${service.name} and secure your seat. Capacity is limited.`
+              : "Browse upcoming group sessions and secure your seat. Capacity is limited."}
+          </p>
+          <Link
+            href="/portal/group-sessions/my"
+            className="min-h-10 inline-flex items-center text-sm font-semibold text-brand underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+          >
+            My group sessions
+          </Link>
+        </div>
 
         {discoverQuery.isLoading ? (
           <p className="text-sm text-muted">Loading upcoming group sessions...</p>
         ) : sessions.length === 0 ? (
           <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
-            No upcoming group sessions are currently scheduled for this Service.
+            {service
+              ? "No upcoming group sessions are currently scheduled for this Service."
+              : "No upcoming group sessions are currently scheduled."}
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -983,7 +1318,14 @@ export function ServiceGroupSessionsStudentPanel({ service }: { service: Service
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <h4 className="font-semibold text-ink text-base">{sess.title}</h4>
+                    <h4 className="font-semibold text-ink text-base">
+                      <Link
+                        href={`/portal/group-sessions/${sess.id}`}
+                        className="underline decoration-brand-line underline-offset-4 hover:decoration-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                      >
+                        {sess.title}
+                      </Link>
+                    </h4>
                     {sess.description && (
                       <p className="mt-1 text-sm text-muted line-clamp-2">{sess.description}</p>
                     )}
@@ -1004,11 +1346,7 @@ export function ServiceGroupSessionsStudentPanel({ service }: { service: Service
                           Cancel Registration
                         </Button>
                       </div>
-                    ) : sess.is_full ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-critical/10 px-2.5 py-0.5 text-xs font-semibold text-critical border border-critical/20">
-                        Session Full
-                      </span>
-                    ) : (
+                    ) : sess.can_register ? (
                       <Button
                         className="min-h-8 px-3 py-1 text-xs"
                         onClick={() => handleRegister(sess)}
@@ -1016,6 +1354,17 @@ export function ServiceGroupSessionsStudentPanel({ service }: { service: Service
                       >
                         {registeringId === sess.id ? "Registering..." : "Register"}
                       </Button>
+                    ) : (
+                      <div className="text-right">
+                        <span className="inline-flex items-center rounded-full border border-border bg-surface-muted px-2.5 py-0.5 text-xs font-semibold text-muted">
+                          {sess.is_full ? "Session Full" : "Registration unavailable"}
+                        </span>
+                        {sess.registration_block_reason ? (
+                          <p className="mt-1 max-w-56 text-xs text-muted">
+                            {sess.registration_block_reason}
+                          </p>
+                        ) : null}
+                      </div>
                     )}
                   </div>
                 </div>

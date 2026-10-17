@@ -149,6 +149,16 @@ class SelectionTests(unittest.TestCase):
         ):
             self.assertIn(expected, selected(path).files)
 
+    def test_cross_pathway_scheduling_races_run_for_each_booking_domain(self):
+        for path in (
+            "be/compass/appointments/services.py",
+            "be/compass/group_sessions/services.py",
+            "be/compass/service_catalog/scheduling.py",
+        ):
+            result = selected(path)
+            self.assertFalse(result.full)
+            self.assertIn("test_service_cross_pathway_scheduling.py", result.files)
+
     def test_every_model_layout_selects_the_complete_suite(self):
         for path in (
             "be/compass/guidance_messages/models.py",

@@ -1,5 +1,7 @@
 # COMPASS CORR-1A — Architecture Reconciliation
 
+**Status (2026-10-17): Historical CORR-1A-only snapshot.** CORR-1A implementation commit `a000e9c99231de7c87f6f73d894de3839555ab84` is the unmerged dependency for the consolidated CORR-1B implementation. The open-scope and deferred-verification sections below describe the earlier A-only checkpoint and are superseded by [the integrated CORR-1B handoff](COMPASS-CORR-1B-INTEGRATED-SERVICE-RECONCILIATION.md).
+
 **Repository:** `ils12058/COMPASS`  
 **Base:** `origin/staging` at `9e83a8c2cc5692b4ee504be56fc3d1567cecbc29`  
 **Correction branch:** `fix/service-catalog-corr-1a-security-lifecycle`  

@@ -76,9 +76,7 @@ def supervised_counselor(staff: User | None, *, lock: bool = False) -> User | No
     return supervisor
 
 
-def slot_provider_scope(
-    actor: User | None, *, lock_supervision: bool = False
-) -> tuple[UUID, ...]:
+def slot_provider_scope(actor: User | None, *, lock_supervision: bool = False) -> tuple[UUID, ...]:
     """Return provider IDs the current actor may manage, without Head designation overrides."""
 
     current = current_slot_staff(actor, lock_supervision=lock_supervision)

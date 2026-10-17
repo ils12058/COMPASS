@@ -178,6 +178,7 @@ EXPECTED_OPERATION_IDS = {
     "servicesEnable",
     "servicesDisable",
     "servicesListProviderCandidates",
+    "servicesListOperationalProviderCandidates",
     "servicesGetProviders",
     "servicesListSlots",
     "servicesCreateSlot",
@@ -189,6 +190,7 @@ EXPECTED_OPERATION_IDS = {
     "groupSessionsGetMetrics",
     "groupSessionsGetMyRegistrations",
     "groupSessionsListStaff",
+    "groupSessionsListFacilitatorCandidates",
     "groupSessionsCreate",
     "groupSessionsGetDetail",
     "groupSessionsUpdate",
@@ -840,6 +842,57 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         and len(operation["tags"]) == 1
         and operation["tags"][0] in CURRENT_API_TAGS
         for _, _, operation in operations
+    )
+
+
+def test_service_operational_and_group_facilitator_contracts_are_explicit() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    service_path = "/api/v1/services/{service_id}/operational-provider-candidates"
+    service_operation = _operation(schema, service_path, "get")
+    assert service_operation["operationId"] == "servicesListOperationalProviderCandidates"
+    assert set(schema["paths"][service_path]) == {"get"}
+    service_parameters = {item["name"] for item in service_operation["parameters"]}
+    assert {"search", "page", "page_size"} <= service_parameters
+    assert set(schemas["ServiceProviderCandidatePage"]["properties"]) == {
+        "items",
+        "page",
+        "page_size",
+        "has_next",
+    }
+
+    facilitator_path = "/api/v1/group-sessions/facilitator-candidates"
+    facilitator_operation = _operation(schema, facilitator_path, "get")
+    assert facilitator_operation["operationId"] == "groupSessionsListFacilitatorCandidates"
+    assert set(schema["paths"][facilitator_path]) == {"get"}
+    assert set(schemas["GroupSessionFacilitatorCandidate"]["properties"]) == {
+        "id",
+        "display_name",
+        "role",
+    }
+    assert set(schemas["GroupSessionFacilitatorRequest"]["properties"]) == {
+        "kind",
+        "internal_user_id",
+        "external_display_name",
+        "is_lead",
+    }
+    facilitator_response = schemas["GroupSessionFacilitatorResponse"]["properties"]
+    assert {
+        "kind",
+        "internal_user_id",
+        "external_display_name",
+        "display_name",
+        "is_current",
+    } <= set(facilitator_response)
+    assert {"schedule_revision", "facilitators", "can_complete"} <= set(
+        schemas["GroupSessionResponse"]["properties"]
+    )
+    assert {"can_register", "registration_block_reason"} <= set(
+        schemas["StudentGroupSessionResponse"]["properties"]
+    )
+    assert {"attended_count", "absent_count"} <= set(
+        schemas["GroupSessionMetricsResponse"]["properties"]
     )
 
 

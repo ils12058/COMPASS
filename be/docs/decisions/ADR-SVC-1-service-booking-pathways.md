@@ -96,18 +96,77 @@ facilitator roles and separate resource authorization; neither GSS nor a
 Head Guidance designation gains Counselor-only or institution-wide access
 through the flags.
 
+## CORR-1 scheduling and facilitator reconciliation
+
+The three pathway relationships remain independent and may coexist. Flexible
+Appointment booking and a booked Fixed Slot both create the canonical
+`Appointment`; a Group Session registration remains a separate record and
+creates no Appointment or Counseling Encounter.
+
+Scheduling commitments use half-open intervals. A scheduled Appointment
+reserves its Student and Counselor. An available Fixed Slot reserves its
+Counselor only while it is published, not withdrawn, and unbooked or linked to
+a cancelled Appointment; once booked, the canonical Appointment is the only
+hold. A published Group Session reserves each assigned internal facilitator,
+and its registered Students. An internal Counselor therefore cannot overlap
+an Appointment, an available Fixed Slot, or another published Group Session;
+an external guest is never a COMPASS scheduling resource. A Student cannot
+hold overlapping scheduled Appointments or registered published events.
+Cancelled, completed, withdrawn, and unpublished records remain preserved but
+do not reserve future intervals. Adjacent intervals are allowed.
+
+Cross-pathway mutations serialize on participating User rows in UUID order,
+then lock the Service and relevant slot or Group Session rows. Appointment
+reschedule and reassignment retain their canonical Appointment row lock and
+also lock participants before checking cross-pathway commitments. Conflict
+reads do not take reverse Appointment row locks. This keeps the existing
+Appointment model and Availability resolver authoritative without creating a
+general scheduling engine.
+
+Service activation, pathway, delivery-mode, and provider-coverage changes may
+require an explicit consequence review when upcoming Appointments, available
+Fixed Slots, or published Group Sessions are affected. Acknowledgement records
+that review only; it never deletes, cancels, rewrites, or reassigns an existing
+commitment. New work still checks current Service configuration and resource
+authorization. Existing registrations and direct event history remain
+available when new registration is disabled.
+
+The event organizer owns event coordination under resource-level authority.
+Internal facilitators receive only the event access granted to an assigned
+facilitator; they do not become individual Appointment providers. A GSS's
+candidate scope follows current direct supervision. Counselor qualification
+remains role-based, and College responsibility does not restrict an explicit
+Counselor choice (ADR-089). External facilitators are display-name-only guest
+records with no COMPASS account, login, Appointment qualification, or
+Counseling authority. If no lead is supplied, the first listed facilitator is
+the lead; only one active lead is allowed. Replacements end old facilitator
+rows and preserve name snapshots for authorized event history.
+
+New reschedule notifications identify the Group Session schedule revision.
+A later time or delivery-detail change makes older queued or displayed update
+notices stale. Stale notices remain privacy-safe and link to the current event
+details.
+
+Lifecycle migration reverse paths are data-guarded. Rollback is permitted only
+when the related operational tables contain no slots, slot bookings, or Group
+Sessions; when history exists, the migration raises before removing its
+database protection or schema. The existing canonical baseline remains
+unchanged.
+
 ## Concurrent PR and operational implications
 
-The parallel Appointment Reminders PR #256 modifies `appointments/`,
-`notifications/`, `audit/actions.py`, `config/settings.py`, and Appointment
-frontend pages. SVC-1 modifies **only** `service_catalog/`, its frontend
-administrator views, dedicated tests and this ADR. No shared changed files,
-no reminder migration dependency, and no new reminder/notification event codes.
+The concurrent CORR-2 PR #267 is still open. It modifies Appointment reminder,
+Guidance Follow-up, work-queue, Notification, OpenAPI, and frontend files.
+CORR-1 touches `contracts/openapi.json` and `be/tests/test_openapi_contract.py`
+in common with that PR; no CORR-2 application changes are included here. After
+the intended CORR-1 and CORR-2 backend changes are integrated, regenerate and
+verify the combined OpenAPI contract and generated client.
 
 Deploy only through reviewed standard migrations. PostgreSQL, Redis, encryption
 keys, Celery, runtime secrets, existing user accounts, credentials and UAT
-participant allocation are unchanged. The new pathway options are safe metadata
-configuration only; no external messages or calendar invitations are emitted.
+participant allocation are unchanged. The new workflow emits only the defined
+in-app Group Session notifications; no external messages or calendar invitations
+are emitted.
 
 Run the canonical migration consistency check, complete backend Service Catalog
 and Appointments regressions, regenerate the Orval client, lint/typecheck/build,
