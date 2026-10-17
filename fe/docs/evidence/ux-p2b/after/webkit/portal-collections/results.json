@@ -1,0 +1,34 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "appointments-responsive-collections",
+      "passed": true
+    },
+    {
+      "name": "referrals-responsive-collections",
+      "passed": true
+    },
+    {
+      "name": "call-slips-responsive-collections",
+      "passed": true
+    },
+    {
+      "name": "service-catalog-responsive-collections",
+      "passed": true
+    },
+    {
+      "name": "referrals-applied-filter",
+      "passed": true
+    },
+    {
+      "name": "service-catalog-no-results",
+      "passed": true
+    },
+    {
+      "name": "student-call-slips-list",
+      "passed": true
+    }
+  ]
+}

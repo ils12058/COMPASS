@@ -329,17 +329,28 @@ function OperationalCallSlipsPage({ filters }: { filters: CallSlipListFilters })
                 </li>
               ))}
             </ul>
-            <div className={`${dataTable.scroll} hidden md:block`}>
+            <div
+              className={`${dataTable.scroll} hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus md:block`}
+              role="region"
+              aria-label="Call Slips. Scroll horizontally to view all columns."
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+                event.preventDefault();
+                event.currentTarget.scrollLeft += event.key === "ArrowRight" ? 160 : -160;
+              }}
+            >
+              <p aria-hidden="true" className="px-4 py-2 text-xs text-muted 2xl:hidden">Scroll horizontally to see all columns.</p>
               <table className={`${dataTable.table} min-w-[850px]`}>
                 <caption className="sr-only">Call Slips</caption>
                 <thead className={dataTable.head}><tr>
-                  <SortableColumnHeader label="Student" ascending={CallSlipOrdering.STUDENT_ASC} descending={CallSlipOrdering.STUDENT_DESC} ascendingLabel="Student A–Z" descendingLabel="Student Z–A" current={ordering} onSort={setOrdering} className={dataTable.headerCell} />
+                  <SortableColumnHeader label="Student" ascending={CallSlipOrdering.STUDENT_ASC} descending={CallSlipOrdering.STUDENT_DESC} ascendingLabel="Student A–Z" descendingLabel="Student Z–A" current={ordering} onSort={setOrdering} className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`} />
                   <th scope="col" className={dataTable.headerCell}>Course / Year</th>
                   <SortableColumnHeader label="Report" ascending={CallSlipOrdering.EARLIEST_REPORT} descending={CallSlipOrdering.LATEST_REPORT} ascendingLabel="Earliest report time first" descendingLabel="Latest report time first" current={ordering} onSort={setOrdering} className={dataTable.headerCell} /><th scope="col" className={dataTable.headerCell}>Destination</th><th scope="col" className={dataTable.headerCell}>Issuer</th><th scope="col" className={dataTable.headerCell}>State</th><th scope="col" className={dataTable.headerCell}>Referral</th>
                 </tr></thead>
                 <tbody className={dataTable.body}>{items.map((slip) => (
                   <tr key={slip.id} className={dataTable.row}>
-                    <th scope="row" className={`${dataTable.cell} font-normal`}><Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.student_name_snapshot}</Link>{slip.student_institutional_id ? <span className="mt-1 block text-xs text-muted">{slip.student_institutional_id}</span> : null}</th>
+                    <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-normal`}><Link href={`/portal/call-slips/${slip.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.student_name_snapshot}</Link>{slip.student_institutional_id ? <span className="mt-1 block text-xs text-muted">{slip.student_institutional_id}</span> : null}</th>
                     <td className={`${dataTable.cell} text-ink`}>{slip.course_year_snapshot}</td><td className={`${dataTable.cell} text-ink`}>{formatInstitutionalDateTime(slip.report_at)}</td><td className={`${dataTable.cell} text-ink`}>{callSlipDestinationLabel(slip.destination_type, slip.other_destination)}</td><td className={`${dataTable.cell} text-ink`}>{slip.issued_by_name_snapshot}</td><td className={`${dataTable.cell} text-ink`}>{callSlipStateLabel(slip.state)}</td>
                     <td className={`${dataTable.cell} text-ink`}>{slip.referral ? referralAccess.canView ? <Link href={`/portal/referrals/${slip.referral.id}`} className="font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{slip.referral.reference_code}</Link> : slip.referral.reference_code : <span className="text-muted">—</span>}</td>
                   </tr>
