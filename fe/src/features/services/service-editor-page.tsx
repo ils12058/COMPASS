@@ -40,6 +40,7 @@ import {
   type SelectedCounselor,
 } from "@/features/services/service-provider-picker";
 import {
+  BookingPathway,
   DeliveryMode,
   ServiceProviderCoverage,
   type ServiceCreateRequest,
@@ -62,6 +63,8 @@ type ServiceFormState = {
   name: string;
   description: string;
   bookingEnabled: boolean;
+  fixedDateSlots: boolean;
+  groupSessions: boolean;
   defaultDuration: string;
   cancellationCutoff: string;
   requiresCurrentInventory: boolean;
@@ -98,12 +101,22 @@ function selectedIds(values: ServiceFormState): string[] {
 // What saving would send: Appointment-only settings count only while booking is on, and the
 // selected Counselors only with selected coverage. The draft is unsaved when this differs from the
 // saved Service.
+function configuredBookingPathways(values: ServiceFormState): BookingPathway[] {
+  const pathways: BookingPathway[] = [];
+  if (values.bookingEnabled) pathways.push(BookingPathway.FLEXIBLE_APPOINTMENT);
+  if (values.fixedDateSlots) pathways.push(BookingPathway.FIXED_DATE_SLOT);
+  if (values.groupSessions) pathways.push(BookingPathway.GROUP_SESSION);
+  return pathways;
+}
+
 function savedShape(values: ServiceFormState) {
   return {
     code: values.code,
     name: values.name,
     description: values.description,
     bookingEnabled: values.bookingEnabled,
+    fixedDateSlots: values.fixedDateSlots,
+    groupSessions: values.groupSessions,
     defaultDuration: values.bookingEnabled ? values.defaultDuration.trim() : "",
     cancellationCutoff: values.bookingEnabled ? values.cancellationCutoff.trim() : "",
     requiresCurrentInventory: values.bookingEnabled && values.requiresCurrentInventory,
@@ -126,6 +139,8 @@ function initialFromService(
     name: service.name,
     description: service.description,
     bookingEnabled: service.appointment_booking_enabled,
+    fixedDateSlots: service.booking_pathways.includes(BookingPathway.FIXED_DATE_SLOT),
+    groupSessions: service.booking_pathways.includes(BookingPathway.GROUP_SESSION),
     defaultDuration:
       service.default_appointment_duration_minutes === null
         ? ""
@@ -492,6 +507,36 @@ function ServiceForm({
         </label>
       </PanelSection>
 
+      <PanelSection title="Additional booking pathways" titleId="service-additional-pathways-heading">
+        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+          Choose which future booking options this Service may offer. These settings do not
+          create appointment slots, sessions, or registrations.
+        </p>
+        <fieldset className="mt-4 space-y-4">
+          <legend className="sr-only">Additional booking pathways</legend>
+          <label className="flex items-start gap-3 text-sm text-ink">
+            <input type="checkbox" className="mt-1 h-4 w-4 accent-brand"
+              checked={values.fixedDateSlots}
+              onChange={(event) => setValues((current) => ({ ...current, fixedDateSlots: event.target.checked }))} />
+            <span><strong>Fixed-date appointment slots</strong>
+              <span className="block text-muted">For future scheduled slots with qualified Counselors. Student booking is not available yet.</span>
+            </span>
+          </label>
+          <label className="flex items-start gap-3 text-sm text-ink">
+            <input type="checkbox" className="mt-1 h-4 w-4 accent-brand"
+              checked={values.groupSessions}
+              onChange={(event) => setValues((current) => ({ ...current, groupSessions: event.target.checked }))} />
+            <span><strong>Group sessions and events</strong>
+              <span className="block text-muted">For future events with organizers and facilitators. Registration is not available yet.</span>
+            </span>
+          </label>
+        </fieldset>
+        <p className="mt-4 text-xs leading-5 text-muted">
+          Options can be selected together. Existing appointments are not changed.
+          Flexible individual booking is controlled above.
+        </p>
+      </PanelSection>
+
       <PanelSection title="Provider coverage" titleId="service-provider-heading">
         <dl className="mt-4">
           <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Provider type</dt>
@@ -555,6 +600,8 @@ const emptyCreateState: ServiceFormState = {
   name: "",
   description: "",
   bookingEnabled: false,
+  fixedDateSlots: false,
+  groupSessions: false,
   defaultDuration: "",
   cancellationCutoff: "",
   requiresCurrentInventory: false,
@@ -576,6 +623,7 @@ export function CreateServicePage() {
       name: values.name,
       description: values.description,
       appointment_booking_enabled: values.bookingEnabled,
+      booking_pathways: configuredBookingPathways(values),
       default_appointment_duration_minutes: values.bookingEnabled
         ? nullableInteger(values.defaultDuration)
         : null,
@@ -698,6 +746,10 @@ export function EditServicePage() {
     }
     if (values.bookingEnabled !== service.appointment_booking_enabled) {
       changes.appointment_booking_enabled = values.bookingEnabled;
+    }
+    const nextPathways = configuredBookingPathways(values);
+    if (!sameStringSet(nextPathways, service.booking_pathways)) {
+      changes.booking_pathways = nextPathways;
     }
     // Turning booking off clears Appointment-only settings on the server.
     if (values.bookingEnabled) {
