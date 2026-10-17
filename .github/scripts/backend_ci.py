@@ -127,6 +127,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Appointments and Availability, including reservations and lifecycle reconciliation.",
         (
             "test_appointments.py",
+            "test_appointment_reminders.py",
             "test_appointment_action_projection.py",
             "test_appointment_management_scope.py",
             "test_appointment_slot_reservations.py",
@@ -437,7 +438,8 @@ DOMAINS: dict[str, Area] = {
         "account_management",
         "Account administration also blocks role changes on scheduled work.",
         ("identity-access", "organization"),
-        ("test_appointments.py",),
+        ("test_appointments.py",
+            "test_appointment_reminders.py",),
     ),
     "activity": domain(
         "activity",
@@ -588,7 +590,8 @@ DOMAINS: dict[str, Area] = {
             "institutional-forms",
             "cross-domain-lists",
         ),
-        ("test_appointments.py", "test_profiles.py"),
+        ("test_appointments.py",
+            "test_appointment_reminders.py", "test_profiles.py"),
     ),
     "student_actions": domain(
         "student_actions",

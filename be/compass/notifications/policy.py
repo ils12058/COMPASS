@@ -46,6 +46,9 @@ class NotificationEvent(StrEnum):
     APPOINTMENT_CANCELLED = "appointment.cancelled"
     APPOINTMENT_RESCHEDULED = "appointment.rescheduled"
     APPOINTMENT_REASSIGNED = "appointment.reassigned"
+    APPOINTMENT_REMINDER_24H = "appointment.reminder_24h"
+    APPOINTMENT_REMINDER_3H = "appointment.reminder_3h"
+    APPOINTMENT_REMINDER_MANUAL = "appointment.reminder_manual"
     CALL_SLIP_VOIDED = "call_slip.voided"
     GOOD_MORAL_REQUEST_INITIATED = "good_moral.request_initiated"
     GOOD_MORAL_ISSUED = "good_moral.issued"
@@ -152,6 +155,33 @@ _EVENT_CATALOG = {
         ),
         email_subject="COMPASS Appointment Assignment Updated",
         email_template="appointment_reassigned",
+    ),
+    NotificationEvent.APPOINTMENT_REMINDER_24H: NotificationEventDefinition(
+        event=NotificationEvent.APPOINTMENT_REMINDER_24H,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Appointment Reminder",
+        message="You have an upcoming COMPASS appointment. Sign in to review the details.",
+        email_subject="COMPASS Appointment Reminder",
+        email_template="appointment_reminder",
+    ),
+    NotificationEvent.APPOINTMENT_REMINDER_3H: NotificationEventDefinition(
+        event=NotificationEvent.APPOINTMENT_REMINDER_3H,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Appointment Reminder",
+        message="You have an upcoming COMPASS appointment. Sign in to review the details.",
+        email_subject="COMPASS Appointment Reminder",
+        email_template="appointment_reminder",
+    ),
+    NotificationEvent.APPOINTMENT_REMINDER_MANUAL: NotificationEventDefinition(
+        event=NotificationEvent.APPOINTMENT_REMINDER_MANUAL,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Appointment Reminder",
+        message="You have an upcoming COMPASS appointment. Sign in to review the details.",
+        email_subject="COMPASS Appointment Reminder",
+        email_template="appointment_reminder",
     ),
     NotificationEvent.CALL_SLIP_VOIDED: NotificationEventDefinition(
         event=NotificationEvent.CALL_SLIP_VOIDED,

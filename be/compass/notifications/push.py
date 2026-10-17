@@ -234,7 +234,7 @@ def deliver_push_delivery(delivery_id: uuid.UUID) -> str:
             not settings.WEB_PUSH_ENABLED
             or not sub.active
             or not delivery.notification.recipient.is_active
-            or not notification_is_current(delivery.notification)
+            or not notification_is_current(delivery.notification, now=now)
             or sub.user_id != delivery.notification.recipient_id
             or session.user_id != sub.user_id
             or session.revoked_at is not None

@@ -151,9 +151,12 @@ def create_notification_for_event(
 
 
 def _current_notifications(actor):
+    from compass.appointments.reminders import scope_current_reminder_notifications
     from compass.guidance_followups.integration import scope_current_followup_notifications
 
-    return scope_current_followup_notifications(Notification.objects.all(), actor=actor)
+    return scope_current_followup_notifications(
+        scope_current_reminder_notifications(Notification.objects.all()), actor=actor
+    )
 
 
 def list_my_notifications(

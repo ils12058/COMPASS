@@ -1818,6 +1818,177 @@
         "title": "AppointmentReassignmentCandidateList",
         "type": "object"
       },
+      "AppointmentReminderBulkRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Appointment Ids",
+            "type": "array"
+          },
+          "request_key": {
+            "format": "uuid",
+            "title": "Request Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "appointment_ids",
+          "request_key"
+        ],
+        "title": "AppointmentReminderBulkRequest",
+        "type": "object"
+      },
+      "AppointmentReminderBulkResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "title": "Accepted",
+            "type": "integer"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AppointmentReminderRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "skipped": {
+            "title": "Skipped",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "accepted",
+          "skipped"
+        ],
+        "title": "AppointmentReminderBulkResponse",
+        "type": "object"
+      },
+      "AppointmentReminderPreviewResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AppointmentReminderRow"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "AppointmentReminderPreviewResponse",
+        "type": "object"
+      },
+      "AppointmentReminderRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "request_key": {
+            "format": "uuid",
+            "title": "Request Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "request_key"
+        ],
+        "title": "AppointmentReminderRequest",
+        "type": "object"
+      },
+      "AppointmentReminderRow": {
+        "additionalProperties": false,
+        "properties": {
+          "accepted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accepted"
+          },
+          "appointment_id": {
+            "format": "uuid",
+            "title": "Appointment Id",
+            "type": "string"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "issued_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued At"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "reference_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reference Code"
+          },
+          "student_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Name"
+          }
+        },
+        "required": [
+          "appointment_id",
+          "eligible",
+          "reason"
+        ],
+        "title": "AppointmentReminderRow",
+        "type": "object"
+      },
+      "AppointmentReminderSelection": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment_ids": {
+            "items": {
+              "format": "uuid",
+              "type": "string"
+            },
+            "title": "Appointment Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "appointment_ids"
+        ],
+        "title": "AppointmentReminderSelection",
+        "type": "object"
+      },
       "AppointmentRescheduleRequest": {
         "additionalProperties": false,
         "properties": {
@@ -29577,6 +29748,140 @@
         ]
       }
     },
+    "/api/v1/appointments/reminders/preview": {
+      "post": {
+        "operationId": "appointmentsPreviewReminders",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppointmentReminderSelection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentReminderPreviewResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments Preview Reminders",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
+    "/api/v1/appointments/reminders/send": {
+      "post": {
+        "operationId": "appointmentsSendReminders",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppointmentReminderBulkRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentReminderBulkResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments Send Reminders",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
     "/api/v1/appointments/{appointment_id}": {
       "get": {
         "operationId": "appointmentsGet",
@@ -30168,6 +30473,94 @@
           }
         ],
         "summary": "Appointments List Reassignment Candidates",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
+    "/api/v1/appointments/{appointment_id}/reminder": {
+      "post": {
+        "operationId": "appointmentsSendReminder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AppointmentReminderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentReminderRow"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments Send Reminder",
         "tags": [
           "appointments"
         ]
