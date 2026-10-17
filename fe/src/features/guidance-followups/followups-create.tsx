@@ -28,6 +28,8 @@ export function FollowupsCreate() {
   const params = useSearchParams();
   const sourceKind = params.get("source_kind");
   const sourceId = params.get("source_id");
+  const initialStudentId = params.get("student_id") ?? undefined;
+  const initialStudentName = params.get("student_name") ?? undefined;
   const hasSource = Boolean(sourceKind || sourceId);
   const validSource = Object.values(SourceKind).includes(sourceKind as SourceKind) && Boolean(sourceId);
   const context = useGuidanceFollowupsGetContext({ source_kind: sourceKind as SourceKind, source_id: sourceId ?? "" }, { query: { enabled: followupAccess(user).manage && hasSource && validSource, retry: false } });
@@ -35,15 +37,15 @@ export function FollowupsCreate() {
   if (hasSource && !validSource) return <FollowupFailure error={null} />;
   if (hasSource && context.isPending) return <p role="status">Checking the related record…</p>;
   if (hasSource && (context.isError || !context.data?.data.can_create)) return <FollowupFailure error={context.error} />;
-  return <CreateForm source={hasSource ? context.data?.data : undefined} />;
+  return <CreateForm source={hasSource ? context.data?.data : undefined} initialStudentId={initialStudentId} initialStudentName={initialStudentName} />;
 }
 
 type Source = SourceContext;
-function CreateForm({ source }: { source?: Source }) {
+function CreateForm({ source, initialStudentId, initialStudentName }: { source?: Source; initialStudentId?: string; initialStudentName?: string }) {
   const { user } = usePortalSession();
   const router = useRouter();
   const client = useQueryClient();
-  const [studentId, setStudentId] = useState(source?.student_id ?? "");
+  const [studentId, setStudentId] = useState(source?.student_id ?? initialStudentId ?? "");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [assigneePage, setAssigneePage] = useState(1);
@@ -81,7 +83,13 @@ function CreateForm({ source }: { source?: Source }) {
         {source ? <p>{source.student_name} · Related record verified. {source.visibility === "COUNSELOR_CONFIDENTIAL" ? "Counselor-confidential" : "Operational coordination"}.</p> : <>
           <Label htmlFor="followup-student-search">Find a Student</Label><Input id="followup-student-search" value={search} disabled={Boolean(submission)} onChange={event => { setSearch(event.target.value); setPage(1); setStudentId(""); setAssignee(""); }} />
           {students.isPending ? <p role="status">Loading Students…</p> : students.isError ? <FollowupFailure error={students.error} retry={() => void students.refetch()} /> : <>
-            <Label htmlFor="followup-student">Student</Label><Select id="followup-student" required value={studentId} disabled={Boolean(submission)} onChange={event => { setStudentId(event.target.value); setAssignee(""); setAssigneePage(1); }}><option value="">Choose a Student</option>{students.data?.data.items.map(row => <option key={row.id} value={row.id}>{row.display_name}{row.institutional_id ? ` · ${row.institutional_id}` : ""}</option>)}</Select>
+            <Label htmlFor="followup-student">Student</Label><Select id="followup-student" required value={studentId} disabled={Boolean(submission)} onChange={event => { setStudentId(event.target.value); setAssignee(""); setAssigneePage(1); }}>
+              <option value="">Choose a Student</option>
+              {studentId && !students.data?.data.items.some(row => row.id === studentId) ? (
+                <option value={studentId}>{initialStudentName || `Selected Student (${studentId.slice(0, 8)}…)`}</option>
+              ) : null}
+              {students.data?.data.items.map(row => <option key={row.id} value={row.id}>{row.display_name}{row.institutional_id ? ` · ${row.institutional_id}` : ""}</option>)}
+            </Select>
             {students.data ? <CanonicalPagination page={students.data.data.page} hasNext={students.data.data.has_next} onPageChange={page => { setPage(page); setStudentId(""); setAssignee(""); }} /> : null}
           </>}
         </>}

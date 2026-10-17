@@ -82,8 +82,16 @@ def _base_reason(item: Appointment, at) -> str:
 
 
 def _cooldown(item: Appointment, at) -> bool:
+    """Manual-to-manual anti-spam only (CORR-2A).
+
+    Automatic 24-hour/3-hour occurrences are independently idempotent by
+    (appointment, revision, window) and neither count toward nor are suppressed
+    by this cooldown. The cooldown spans schedule revisions on purpose: a
+    reschedule must not become a way to repeat manual outreach immediately.
+    """
     return AppointmentReminderOccurrence.objects.filter(
         appointment=item,
+        kind=AppointmentReminderKind.MANUAL,
         issued_at__gt=at - MANUAL_COOLDOWN,
         issued_at__lte=at,
     ).exists()
@@ -148,6 +156,87 @@ def preview_reminders(*, actor: User, appointment_ids: list[UUID], now=None) -> 
         else:
             results.append(_decision(item, at).as_dict())
     return results
+
+
+HISTORY_LIMIT = 50
+_IN_FLIGHT = {"PENDING", "PROCESSING"}
+
+
+def _delivery_state(statuses) -> str:
+    """Honest roll-up of existing transport rows; never implies recipient receipt.
+
+    ``SENT`` only means the transport accepted the hand-off. A row that is still
+    queued or claimed is ``PENDING``; no row at all is ``NOT_REQUESTED``.
+    """
+    values = set(statuses)
+    if not values:
+        return "NOT_REQUESTED"
+    if values & _IN_FLIGHT:
+        return "PENDING"
+    if "SENT" in values:
+        return "SENT"
+    if "FAILED" in values:
+        return "FAILED"
+    return "CANCELLED"
+
+
+def reminder_history(*, actor: User, appointment_id: UUID, now=None) -> list[dict] | None:
+    """Read-only staff history for one authorized Appointment, or ``None`` if unavailable.
+
+    Reuses occurrence, Notification, EmailDelivery and PushDelivery rows; no notification
+    subsystem is added. Transport diagnostics (failure codes, endpoints, claim state),
+    read receipts and any other Student's notifications are never selected.
+    """
+    if not _manager(actor):
+        raise PermissionError("Appointment management access is required.")
+    item = _visible_item(actor, appointment_id)
+    if item is None:
+        return None
+    from compass.notifications.models import EmailDelivery, Notification, PushDelivery
+
+    occurrences = list(
+        AppointmentReminderOccurrence.objects.filter(appointment=item)
+        .select_related("issued_by")
+        .order_by("-issued_at", "-pk")[:HISTORY_LIMIT]
+    )
+    ids = [row.pk for row in occurrences]
+    notifications = {
+        (row.source_id, row.recipient_id): row.pk
+        for row in Notification.objects.filter(
+            source_type="appointment_reminder", source_id__in=ids
+        ).only("id", "source_id", "recipient_id")
+    }
+    notification_ids = list(notifications.values())
+    email: dict = {}
+    for notification_id, status in EmailDelivery.objects.filter(
+        notification_id__in=notification_ids
+    ).values_list("notification_id", "status"):
+        email.setdefault(notification_id, []).append(status)
+    push: dict = {}
+    for notification_id, status in PushDelivery.objects.filter(
+        notification_id__in=notification_ids
+    ).values_list("notification_id", "status"):
+        push.setdefault(notification_id, []).append(status)
+    current = set(
+        current_reminder_occurrences(now=now).filter(pk__in=ids).values_list("pk", flat=True)
+    )
+    rows = []
+    for occurrence in occurrences:
+        notification_id = notifications.get((occurrence.pk, occurrence.recipient_id))
+        rows.append(
+            {
+                "id": occurrence.pk,
+                "kind": occurrence.kind,
+                "issued_at": occurrence.issued_at,
+                "scheduled_start": occurrence.starts_at,
+                "issued_by": occurrence.issued_by,
+                "is_current": occurrence.pk in current,
+                "in_app": "CREATED" if notification_id else "NOT_CREATED",
+                "email": _delivery_state(email.get(notification_id, [])),
+                "push": _delivery_state(push.get(notification_id, [])),
+            }
+        )
+    return rows
 
 
 def _issue_locked(
@@ -343,13 +432,6 @@ def dispatch_due_reminders(*, now=None) -> int:
         candidates = list(
             Appointment.objects.alias(
                 revision_started=Coalesce("reminder_revision_started_at", "created_at"),
-                recently_issued=Exists(
-                    AppointmentReminderOccurrence.objects.filter(
-                        appointment_id=OuterRef("pk"),
-                        issued_at__gt=at - MANUAL_COOLDOWN,
-                        issued_at__lte=at,
-                    )
-                ),
                 already_issued=Exists(
                     AppointmentReminderOccurrence.objects.filter(
                         appointment_id=OuterRef("pk"),
@@ -361,7 +443,6 @@ def dispatch_due_reminders(*, now=None) -> int:
             .filter(
                 revision_started__lte=F("starts_at") - lead,
                 already_issued=False,
-                recently_issued=False,
                 student__is_active=True,
                 student__role__code="STUDENT",
                 status=AppointmentStatus.SCHEDULED,
@@ -387,8 +468,7 @@ def dispatch_due_reminders(*, now=None) -> int:
                     continue
                 if not item.student.is_active or item.student.role.code != "STUDENT":
                     continue
-                if _cooldown(item, at):
-                    continue
+                # Idempotent per (appointment, revision, window); never a manual cooldown.
                 if AppointmentReminderOccurrence.objects.filter(
                     appointment=item,
                     revision=item.reminder_revision,

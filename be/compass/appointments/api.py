@@ -16,9 +16,11 @@ from compass.appointments.reminders import (
     issue_bulk_reminders,
     issue_manual_reminder,
     preview_reminders,
+    reminder_history,
 )
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
+from compass.authentication.step_up import require_recent_mfa_for_request
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import (
@@ -118,6 +120,48 @@ class AppointmentReminderBulkResponse(StrictSchema):
     items: list[AppointmentReminderRow]
     accepted: int
     skipped: int
+
+
+class AppointmentReminderHistoryKind(StrEnum):
+    AUTO_24H = "AUTO_24H"
+    AUTO_3H = "AUTO_3H"
+    MANUAL = "MANUAL"
+
+
+class AppointmentReminderInAppState(StrEnum):
+    CREATED = "CREATED"
+    NOT_CREATED = "NOT_CREATED"
+
+
+class AppointmentReminderTransportState(StrEnum):
+    """``SENT`` means handed to the transport; it never confirms recipient receipt."""
+
+    NOT_REQUESTED = "NOT_REQUESTED"
+    PENDING = "PENDING"
+    SENT = "SENT"
+    FAILED = "FAILED"
+    CANCELLED = "CANCELLED"
+
+
+class AppointmentReminderIssuer(StrictSchema):
+    id: UUID
+    display_name: str
+
+
+class AppointmentReminderHistoryEntry(StrictSchema):
+    id: UUID
+    kind: AppointmentReminderHistoryKind
+    issued_at: datetime
+    scheduled_start: datetime
+    issued_by: AppointmentReminderIssuer | None
+    is_current: bool
+    in_app: AppointmentReminderInAppState
+    email: AppointmentReminderTransportState
+    push: AppointmentReminderTransportState
+
+
+class AppointmentReminderHistoryResponse(StrictSchema):
+    items: list[AppointmentReminderHistoryEntry]
 
 
 class AppointmentHistoryEventType(StrEnum):
@@ -425,11 +469,14 @@ def _abandon_or_503(store, reservation) -> None:
         ) from exc
 
 
-def _require_reminder_manager(request):
+def _require_reminder_manager(request, *, recent_mfa: bool = False):
     user = request.auth_user
     if not user.is_active or user.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}:
         raise APIError(403, "permission_denied", "Appointment management access is required.")
     _require(request, "appointments.manage")
+    if recent_mfa:
+        # Authorization first, so an unauthorized actor learns nothing about step-up state.
+        require_recent_mfa_for_request(request)
 
 
 @router.post(
@@ -461,7 +508,7 @@ def appointments_preview_reminders(request, payload: AppointmentReminderSelectio
     operation_id="appointmentsSendReminders",
 )
 def appointments_send_reminders(request, payload: AppointmentReminderBulkRequest):
-    _require_reminder_manager(request)
+    _require_reminder_manager(request, recent_mfa=True)
     try:
         return issue_bulk_reminders(
             actor=request.auth_user,
@@ -484,7 +531,7 @@ def appointments_send_reminders(request, payload: AppointmentReminderBulkRequest
     operation_id="appointmentsSendReminder",
 )
 def appointments_send_reminder(request, appointment_id: UUID, payload: AppointmentReminderRequest):
-    _require_reminder_manager(request)
+    _require_reminder_manager(request, recent_mfa=True)
     try:
         return issue_manual_reminder(
             actor=request.auth_user,
@@ -498,6 +545,48 @@ def appointments_send_reminder(request, appointment_id: UUID, payload: Appointme
         ) from exc
     except ValueError as exc:
         raise APIError(422, "invalid_reminder_selection", str(exc)) from exc
+
+
+@router.get(
+    "/{appointment_id}/reminders",
+    response=response_with_errors(AppointmentReminderHistoryResponse, 401, 403, 404),
+    auth=session_auth,
+    operation_id="appointmentsListReminders",
+)
+def appointments_list_reminders(request, appointment_id: UUID):
+    _require_reminder_manager(request)
+    try:
+        rows = reminder_history(actor=request.auth_user, appointment_id=appointment_id)
+    except PermissionError as exc:
+        raise APIError(
+            403, "permission_denied", "Appointment management access is required."
+        ) from exc
+    if rows is None:
+        # Same concealment as a missing Appointment: no existence or scope oracle.
+        raise APIError(404, "appointment_not_found", "The appointment was not found.")
+    return {
+        "items": [
+            {
+                "id": row["id"],
+                "kind": row["kind"],
+                "issued_at": _institutional(row["issued_at"]),
+                "scheduled_start": _institutional(row["scheduled_start"]),
+                "issued_by": (
+                    {
+                        "id": row["issued_by"].pk,
+                        "display_name": row["issued_by"].get_full_name(),
+                    }
+                    if row["issued_by"]
+                    else None
+                ),
+                "is_current": row["is_current"],
+                "in_app": row["in_app"],
+                "email": row["email"],
+                "push": row["push"],
+            }
+            for row in rows
+        ]
+    }
 
 
 @router.get(

@@ -16,6 +16,7 @@ from compass.organization.models import StudentAffiliation
 
 from . import policy
 from .errors import FollowUpInvalid, FollowUpNotFound
+from .integration import DUE_SOON_HORIZON_DAYS
 from .models import FollowUpCategory, FollowUpSource, FollowUpStatus, GuidanceFollowUp
 
 
@@ -150,7 +151,7 @@ def eligible_assignees(
     return OptionPage(tuple(accepted[:page_size]), page, page_size, count > end)
 
 
-def reporting(*, actor, period_start=None, period_end=None, horizon_days=7):
+def reporting(*, actor, period_start=None, period_end=None, horizon_days=DUE_SOON_HORIZON_DAYS):
     actor = policy.current_actor(actor)
     now = timezone.now()
     if not 1 <= horizon_days <= 90:

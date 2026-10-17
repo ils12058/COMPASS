@@ -1869,6 +1869,119 @@
         "title": "AppointmentReminderBulkResponse",
         "type": "object"
       },
+      "AppointmentReminderHistoryEntry": {
+        "additionalProperties": false,
+        "properties": {
+          "email": {
+            "$ref": "#/components/schemas/AppointmentReminderTransportState"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "in_app": {
+            "$ref": "#/components/schemas/AppointmentReminderInAppState"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "issued_at": {
+            "format": "date-time",
+            "title": "Issued At",
+            "type": "string"
+          },
+          "issued_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AppointmentReminderIssuer"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AppointmentReminderHistoryKind"
+          },
+          "push": {
+            "$ref": "#/components/schemas/AppointmentReminderTransportState"
+          },
+          "scheduled_start": {
+            "format": "date-time",
+            "title": "Scheduled Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "issued_at",
+          "scheduled_start",
+          "issued_by",
+          "is_current",
+          "in_app",
+          "email",
+          "push"
+        ],
+        "title": "AppointmentReminderHistoryEntry",
+        "type": "object"
+      },
+      "AppointmentReminderHistoryKind": {
+        "enum": [
+          "AUTO_24H",
+          "AUTO_3H",
+          "MANUAL"
+        ],
+        "title": "AppointmentReminderHistoryKind",
+        "type": "string"
+      },
+      "AppointmentReminderHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/AppointmentReminderHistoryEntry"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "AppointmentReminderHistoryResponse",
+        "type": "object"
+      },
+      "AppointmentReminderInAppState": {
+        "enum": [
+          "CREATED",
+          "NOT_CREATED"
+        ],
+        "title": "AppointmentReminderInAppState",
+        "type": "string"
+      },
+      "AppointmentReminderIssuer": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "AppointmentReminderIssuer",
+        "type": "object"
+      },
       "AppointmentReminderPreviewResponse": {
         "additionalProperties": false,
         "properties": {
@@ -1988,6 +2101,18 @@
         ],
         "title": "AppointmentReminderSelection",
         "type": "object"
+      },
+      "AppointmentReminderTransportState": {
+        "description": "``SENT`` means handed to the transport; it never confirms recipient receipt.",
+        "enum": [
+          "NOT_REQUESTED",
+          "PENDING",
+          "SENT",
+          "FAILED",
+          "CANCELLED"
+        ],
+        "title": "AppointmentReminderTransportState",
+        "type": "string"
       },
       "AppointmentRescheduleRequest": {
         "additionalProperties": false,
@@ -31651,6 +31776,74 @@
           }
         ],
         "summary": "Appointments Send Reminder",
+        "tags": [
+          "appointments"
+        ]
+      }
+    },
+    "/api/v1/appointments/{appointment_id}/reminders": {
+      "get": {
+        "operationId": "appointmentsListReminders",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AppointmentReminderHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Appointments List Reminders",
         "tags": [
           "appointments"
         ]

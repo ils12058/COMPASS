@@ -98,7 +98,9 @@ export function useOverviewAttention(
         id: item.id, ...presentWork(item, workData?.generated_at), subject: item.student.display_name,
         rank: {
           priority: item.priority === "TIME_SENSITIVE" ? AttentionPriority.TIME_SENSITIVE : AttentionPriority.ACTION_REQUIRED,
-          dueAt: item.due_at, waitingSince: item.waiting_since, stableKey: item.id,
+          // Backend priority decides urgency; a non-urgent due date must not jump the queue.
+          dueAt: item.priority === "TIME_SENSITIVE" ? item.due_at : null,
+          waitingSince: item.waiting_since, stableKey: item.id,
         },
       });
     }

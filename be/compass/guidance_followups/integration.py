@@ -1,5 +1,7 @@
 """Read-only work projection and content-free, transactional staff event integration."""
 
+from datetime import timedelta
+
 from django.conf import settings
 from django.db.models import Exists, F, OuterRef, Q, Subquery
 
@@ -9,6 +11,16 @@ from compass.realtime.publish import publish_to_user_on_commit
 from . import policy
 from .errors import FollowUpPermissionDenied
 from .models import FollowUpEventType, GuidanceFollowUp, GuidanceFollowUpEvent
+
+# The single definition of "due soon" for Follow-Ups. The Follow-Up report defaults to the same
+# horizon, so the number a Counselor sees there matches what My Work treats as time-sensitive.
+DUE_SOON_HORIZON_DAYS = 7
+
+
+def followup_is_time_sensitive(due_at, now) -> bool:
+    """Overdue or due within the horizon. Every Follow-Up has a due date, so having one is not
+    urgency by itself; only an approaching or passed deadline is."""
+    return due_at <= now + timedelta(days=DUE_SOON_HORIZON_DAYS)
 
 
 def pending_followups(*, actor, limit):

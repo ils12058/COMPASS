@@ -66,12 +66,14 @@ import {
   getAppointmentsListBookableSlotsQueryKey,
   getAppointmentsListManagedQueryKey,
   getAppointmentsListMyQueryKey,
+  getAppointmentsListRemindersQueryKey,
   getAppointmentsListRescheduleSlotsQueryKey,
   useAppointmentsCancel,
   useAppointmentsComplete,
   useAppointmentsGet,
   useAppointmentsGetHistory,
   useAppointmentsListReassignmentCandidates,
+  useAppointmentsListReminders,
   useAppointmentsListRescheduleSlots,
   useAppointmentsMarkNoShow,
   useAppointmentsReassign,
@@ -105,6 +107,22 @@ function eventLabel(eventType: string): string {
     NO_SHOW: "Marked no-show",
   };
   return labels[eventType] ?? "Appointment updated";
+}
+
+function reminderKindLabel(kind: string): string {
+  if (kind === "AUTOMATIC_24H") return "Automatic 24-hour reminder";
+  if (kind === "AUTOMATIC_3H") return "Automatic 3-hour reminder";
+  if (kind === "MANUAL") return "Manual reminder";
+  return "Reminder";
+}
+
+function transportStateLabel(state: string): string {
+  if (state === "SENT") return "Sent to provider";
+  if (state === "PENDING") return "Pending send";
+  if (state === "FAILED") return "Send failed";
+  if (state === "CANCELLED") return "Cancelled";
+  if (state === "NOT_REQUESTED") return "Not requested";
+  return state;
 }
 
 function eventContext(entry: {
@@ -249,6 +267,12 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const historyQuery = useAppointmentsGetHistory(appointmentId, {
     query: { enabled: appointmentQuery.isSuccess, retry: false },
   });
+  const canViewReminders =
+    access.canManage &&
+    (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF");
+  const remindersQuery = useAppointmentsListReminders(appointmentId, {
+    query: { enabled: Boolean(appointmentQuery.isSuccess && canViewReminders), retry: false },
+  });
   const cancel = useAppointmentsCancel();
   const reschedule = useAppointmentsReschedule();
   const reassign = useAppointmentsReassign();
@@ -336,6 +360,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       invalidateGuidanceWork(queryClient),
       queryClient.invalidateQueries({ queryKey: getAppointmentsGetQueryKey(appointmentId) }),
       queryClient.invalidateQueries({ queryKey: getAppointmentsGetHistoryQueryKey(appointmentId) }),
+      queryClient.invalidateQueries({ queryKey: getAppointmentsListRemindersQueryKey(appointmentId) }),
       queryClient.invalidateQueries({ queryKey: getAppointmentsListMyQueryKey() }),
       queryClient.invalidateQueries({ queryKey: getAppointmentsListManagedQueryKey() }),
     ];
@@ -594,7 +619,14 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         }
       />
 
-      {reminderOpen ? <ReminderSender selected={[appointment.id]} open={reminderOpen} onClose={() => setReminderOpen(false)} /> : null}
+      {reminderOpen ? (
+        <ReminderSender
+          selected={[appointment.id]}
+          open={reminderOpen}
+          onClose={() => setReminderOpen(false)}
+          onComplete={() => void refreshAppointmentQueries()}
+        />
+      ) : null}
       {notice ? <Notice role="status" tone="success" className="mb-4">{notice}</Notice> : null}
       {updatedNotice ? <Notice role="status" tone="info" className="mb-4">{updatedNotice}</Notice> : null}
       {detailsUnconfirmed ? (
@@ -866,6 +898,62 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           </ol>
         )}
       </Panel>
+
+      {canViewReminders ? (
+        <Panel aria-labelledby="appointment-reminders-heading">
+          <PanelHeader title="Reminder history" titleId="appointment-reminders-heading" />
+          {remindersQuery.isPending ? (
+            <RowsSkeleton label="Loading reminder history…" rows={2} />
+          ) : remindersQuery.isError ? (
+            <PanelMessage
+              role="alert"
+              tone="danger"
+              action={<Button variant="secondary" onClick={() => void remindersQuery.refetch()}>Retry reminder history</Button>}
+            >
+              Reminder history could not be loaded.
+            </PanelMessage>
+          ) : (remindersQuery.data?.data.items ?? []).length === 0 ? (
+            <PanelMessage>No reminders have been issued yet.</PanelMessage>
+          ) : (
+            <ol className="divide-y divide-border">
+              {(remindersQuery.data?.data.items ?? []).map((entry) => (
+                <li key={entry.id} className="px-4 py-3.5 sm:px-5">
+                  <article>
+                    <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+                      <h3 className="font-semibold text-ink">{reminderKindLabel(entry.kind)}</h3>
+                      <time dateTime={entry.issued_at} className="text-xs text-muted">
+                        {occurredAt(entry.issued_at)}
+                      </time>
+                    </div>
+                    {entry.issued_by ? (
+                      <p className="mt-1 text-sm text-muted">Issued by {entry.issued_by.display_name}</p>
+                    ) : (
+                      <p className="mt-1 text-sm text-muted">Automatic system reminder</p>
+                    )}
+                    {!entry.is_current ? (
+                      <p className="mt-1 text-xs text-warning">Superseded by appointment reschedule</p>
+                    ) : null}
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-3 text-xs">
+                      <div>
+                        <span className="font-semibold text-muted">In-app:</span>{" "}
+                        <span className="text-ink">{entry.in_app === "CREATED" ? "Created" : "Not created"}</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-muted">Email:</span>{" "}
+                        <span className="text-ink">{transportStateLabel(entry.email)}</span>
+                      </div>
+                      <div>
+                        <span className="font-semibold text-muted">Browser push:</span>{" "}
+                        <span className="text-ink">{transportStateLabel(entry.push)}</span>
+                      </div>
+                    </div>
+                  </article>
+                </li>
+              ))}
+            </ol>
+          )}
+        </Panel>
+      ) : null}
       </div>
 
       <ActionConfirmation
