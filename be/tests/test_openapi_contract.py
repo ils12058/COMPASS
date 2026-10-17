@@ -796,6 +796,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "platform-operations",
         "privacy-governance",
         "realtime",
+        "guidance-followups",
         "guidance-messages",
         "assessment-records",
         "work",
