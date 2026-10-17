@@ -1,16 +1,16 @@
-import { Outfit, Plus_Jakarta_Sans } from "next/font/google";
+import localFont from "next/font/local";
 
-export const plusJakarta = Plus_Jakarta_Sans({
+export const plusJakarta = localFont({
+  src: "./fonts/plus-jakarta-sans.ttf",
   variable: "--font-plus-jakarta",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: "400 700",
   display: "swap",
 });
 
-export const outfit = Outfit({
+export const outfit = localFont({
+  src: "./fonts/outfit.ttf",
   variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: ["500", "600", "700", "800"],
+  weight: "500 800",
   display: "swap",
 });
 
