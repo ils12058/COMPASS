@@ -446,6 +446,10 @@ def appointments_preview_reminders(request, payload: AppointmentReminderSelectio
                 actor=request.auth_user, appointment_ids=payload.appointment_ids
             )
         }
+    except PermissionError as exc:
+        raise APIError(
+            403, "permission_denied", "Appointment management access is required."
+        ) from exc
     except ValueError as exc:
         raise APIError(422, "invalid_reminder_selection", str(exc)) from exc
 
@@ -465,6 +469,10 @@ def appointments_send_reminders(request, payload: AppointmentReminderBulkRequest
             request_key=payload.request_key,
             context=_context(request),
         )
+    except PermissionError as exc:
+        raise APIError(
+            403, "permission_denied", "Appointment management access is required."
+        ) from exc
     except ValueError as exc:
         raise APIError(422, "invalid_reminder_selection", str(exc)) from exc
 
@@ -484,6 +492,10 @@ def appointments_send_reminder(request, appointment_id: UUID, payload: Appointme
             request_key=payload.request_key,
             context=_context(request),
         )
+    except PermissionError as exc:
+        raise APIError(
+            403, "permission_denied", "Appointment management access is required."
+        ) from exc
     except ValueError as exc:
         raise APIError(422, "invalid_reminder_selection", str(exc)) from exc
 

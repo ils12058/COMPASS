@@ -185,6 +185,7 @@ function ManagedAppointmentFilters({
 
 function ManagedAppointmentsList() {
   const { user } = usePortalSession();
+  const canSendReminders = user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF";
   const [reminderOpen, setReminderOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const router = useRouter();
@@ -374,12 +375,12 @@ function ManagedAppointmentsList() {
                 <caption className="sr-only">Managed appointments</caption>
                 <thead className={dataTable.head}>
                   <tr>
-                    <th scope="col" className={dataTable.headerCell}>
+                    {canSendReminders ? <th scope="col" className={dataTable.headerCell}>
                       <input type="checkbox" aria-label="Select eligible appointments on this page"
                         disabled={selectable.length === 0}
                         checked={selectable.length > 0 && selectable.every((item) => selectedIds.includes(item.id))}
                         onChange={(event) => setSelectedIds(event.target.checked ? selectable.slice(0, 25).map((item) => item.id) : [])} />
-                    </th>
+                    </th> : null}
                     <th scope="col" className={dataTable.headerCell}>Appointment</th>
                     <th scope="col" className={dataTable.headerCell}>Student</th>
                     <th scope="col" className={dataTable.headerCell}>Service</th>
@@ -401,10 +402,10 @@ function ManagedAppointmentsList() {
                 <tbody className={dataTable.body}>
                   {items.map((appointment) => (
                     <tr key={appointment.id} className={dataTable.row}>
-                      <td className={dataTable.cell}><input type="checkbox" aria-label={`Select ${appointment.reference_code}`}
+                      {canSendReminders ? <td className={dataTable.cell}><input type="checkbox" aria-label={`Select ${appointment.reference_code}`}
                         checked={selectedIds.includes(appointment.id)}
                         disabled={!selectable.some((item) => item.id === appointment.id) || (!selectedIds.includes(appointment.id) && selectedIds.length >= 25)}
-                        onChange={(event) => setSelectedIds((previous) => event.target.checked ? [...previous, appointment.id] : previous.filter((id) => id !== appointment.id))} /></td>
+                        onChange={(event) => setSelectedIds((previous) => event.target.checked ? [...previous, appointment.id] : previous.filter((id) => id !== appointment.id))} /></td> : null}
                       <th scope="row" className={`${dataTable.cell} font-normal`}>
                         <Link href={`/portal/appointments/${appointment.id}`} className="font-mono text-xs font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{appointment.reference_code}</Link>
                       </th>
@@ -426,12 +427,12 @@ function ManagedAppointmentsList() {
               {items.map((appointment) => (
                 <li key={appointment.id} className="px-4 py-4">
                   <article>
-                    <label className="mb-2 flex items-center gap-2 text-sm">
+                    {canSendReminders ? <label className="mb-2 flex items-center gap-2 text-sm">
                       <input type="checkbox" checked={selectedIds.includes(appointment.id)}
                         disabled={!selectable.some((item) => item.id === appointment.id) || (!selectedIds.includes(appointment.id) && selectedIds.length >= 25)}
                         onChange={(event) => setSelectedIds((previous) => event.target.checked ? [...previous, appointment.id] : previous.filter((id) => id !== appointment.id))} />
                       Select appointment
-                    </label>
+                    </label> : null}
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <Link href={`/portal/appointments/${appointment.id}`} className="break-all font-mono text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{appointment.reference_code}</Link>

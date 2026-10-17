@@ -16,6 +16,7 @@ from uuid import UUID
 from django.conf import settings
 from django.db import transaction
 from django.db.models import Exists, F, OuterRef, Q
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -253,7 +254,9 @@ def issue_bulk_reminders(
     at = now or timezone.now()
     with transaction.atomic():
         # Serialize same-actor batches before checking the durable replay token.
-        User.objects.select_for_update(of=("self",)).get(pk=actor.pk)
+        actor = User.objects.select_for_update(of=("self",)).select_related("role").get(pk=actor.pk)
+        if not _manager(actor):
+            raise PermissionError("Appointment management access is required.")
         previous = AppointmentReminderBatch.objects.filter(
             actor=actor, request_key=request_key
         ).first()
@@ -339,6 +342,7 @@ def dispatch_due_reminders(*, now=None) -> int:
         latest = at + lead
         candidates = list(
             Appointment.objects.alias(
+                revision_started=Coalesce("reminder_revision_started_at", "created_at"),
                 recently_issued=Exists(
                     AppointmentReminderOccurrence.objects.filter(
                         appointment_id=OuterRef("pk"),
@@ -355,6 +359,7 @@ def dispatch_due_reminders(*, now=None) -> int:
                 ),
             )
             .filter(
+                revision_started__lte=F("starts_at") - lead,
                 already_issued=False,
                 recently_issued=False,
                 student__is_active=True,

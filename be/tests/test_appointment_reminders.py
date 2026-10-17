@@ -321,3 +321,28 @@ def test_manual_http_uses_canonical_role_and_durable_request_id(reminder_case):
         )
         assert response.status_code == 200, response.content
     assert AppointmentReminderOccurrence.objects.count() == 1
+
+
+@pytest.mark.django_db
+@override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=True)
+def test_bounded_scheduler_does_not_starve_behind_short_notice_rows(reminder_case):
+    from compass.appointments.models import Appointment
+
+    _, student, item, now = reminder_case
+    Appointment.objects.filter(pk=item.pk).update(
+        created_at=now + timedelta(seconds=1),
+        starts_at=now + timedelta(hours=24) - timedelta(seconds=1),
+    )
+    valid = Appointment.objects.create(
+        reference_code="REM-VALID-BEHIND-LATE",
+        student=student,
+        provider=item.provider,
+        service=item.service,
+        delivery_mode="IN_PERSON",
+        starts_at=item.starts_at,
+        ends_at=item.ends_at,
+        reminder_revision_started_at=now - timedelta(days=2),
+    )
+    with patch("compass.appointments.reminders.SCAN_BATCH", 1):
+        assert dispatch_due_reminders(now=now) == 1
+    assert AppointmentReminderOccurrence.objects.get().appointment_id == valid.pk
