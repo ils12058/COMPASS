@@ -78,6 +78,9 @@ def test_backward_and_non_atomic_plans_are_refused():
         "compass.group_sessions.migrations.0001_initial",
         "compass.service_catalog.migrations.0002_booking_pathways",
         "compass.service_catalog.migrations.0003_fixed_date_slots",
+        "compass.group_sessions.migrations.0002_alter_groupsessionfacilitator_group_session",
+        "compass.group_sessions.migrations.0003_group_session_scheduling_and_external_facilitators",
+        "compass.service_catalog.migrations.0004_serviceappointmentslot_withdrawn_at_and_more",
     ],
 )
 def test_exact_reviewed_migration_sources_allow_their_pinned_operations(module_name):
@@ -93,5 +96,22 @@ def test_reviewed_migration_source_digest_must_match(monkeypatch):
     ).Migration("0002_booking_pathways", "service_catalog")
     key = f"{migration.app_label}/{migration.name}"
     monkeypatch.setitem(guard.REVIEWED_MIGRATIONS, key, "0" * 64)
+    with pytest.raises(guard.Refused):
+        guard.validate_operations([(migration, False)])
+
+
+@pytest.mark.parametrize(
+    "module_name",
+    [
+        "compass.group_sessions.migrations.0002_alter_groupsessionfacilitator_group_session",
+        "compass.group_sessions.migrations.0003_group_session_scheduling_and_external_facilitators",
+        "compass.service_catalog.migrations.0004_serviceappointmentslot_withdrawn_at_and_more",
+    ],
+)
+def test_corr_lifecycle_migrations_are_refused_without_their_reviewed_pin(module_name, monkeypatch):
+    app_label = module_name.split(".")[1]
+    migration_name = module_name.rsplit(".", 1)[1]
+    migration = importlib.import_module(module_name).Migration(migration_name, app_label)
+    monkeypatch.delitem(guard.REVIEWED_MIGRATIONS, f"{app_label}/{migration_name}")
     with pytest.raises(guard.Refused):
         guard.validate_operations([(migration, False)])
