@@ -21,6 +21,9 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
+    "appointmentsPreviewReminders",
+    "appointmentsSendReminders",
+    "appointmentsSendReminder",
     "assessmentRecordsList",
     "assessmentRecordsCreate",
     "assessmentRecordsGet",
