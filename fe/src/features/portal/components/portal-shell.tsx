@@ -10,10 +10,12 @@ import { PrivacyNoticePrompt } from "@/features/account/privacy/privacy-notice-p
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { NotificationFreshness } from "@/features/notifications/notification-freshness";
+import { NotificationHeadsUp } from "@/features/notifications/notification-heads-up";
 import { MaintenanceNotice } from "@/features/platform/maintenance-presentation";
 import { PortalNavigation } from "@/features/portal/components/portal-navigation";
 import { PortalCommandPalette } from "@/features/portal/components/portal-command-palette";
 import { PortalUserMenu } from "@/features/portal/components/portal-user-menu";
+import { usePortalSession } from "@/features/portal/components/portal-session";
 import { cn } from "@/lib/utils/cn";
 
 const DOCK_NAVIGATION_ID = "portal-dock-navigation";
@@ -27,6 +29,7 @@ const DOCK_NAVIGATION_ID = "portal-dock-navigation";
 // or a record, bounds its own width. `--portal-content-inset` is where the workspace starts, so
 // controls that float over a page (FloatingListTools) center on the workspace, not the window.
 export function PortalShell({ children }: { children: ReactNode }) {
+  const { user } = usePortalSession();
   const [mobileOpen, setMobileOpen] = useState(false);
   // Labels show from the start; the reader can fold the dock to an icon rail for more room.
   const [dockExpanded, setDockExpanded] = useState(true);
@@ -106,6 +109,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
           <div className="flex shrink-0 items-center gap-1 sm:gap-2">
             <AccessibilityControl placement="header" />
             <NotificationBell />
+            <NotificationHeadsUp key={user.id} />
             <PortalUserMenu />
           </div>
         </header>

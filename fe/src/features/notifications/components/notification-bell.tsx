@@ -7,13 +7,22 @@ import { useEffect } from "react";
 
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { reconcileNotificationAuth } from "@/features/notifications/notification-auth";
-import { useNotificationsGetUnreadCount } from "@/lib/api/generated/notifications/notifications";
+import { usePortalSession } from "@/features/portal/components/portal-session";
+import {
+  getNotificationsGetUnreadCountQueryKey,
+  useNotificationsGetUnreadCount,
+} from "@/lib/api/generated/notifications/notifications";
 
 export function NotificationBell() {
   const pathname = usePathname();
+  const { user } = usePortalSession();
   const queryClient = useQueryClient();
   const unread = useNotificationsGetUnreadCount({
-    query: { retry: false, staleTime: 8_000 },
+    query: {
+      retry: false,
+      staleTime: 8_000,
+      queryKey: [...getNotificationsGetUnreadCountQueryKey(), user.id],
+    },
   });
   const count = unread.data?.data.unread_count;
   const label = count && count > 0 ? `Notifications, ${count} unread` : "Notifications";

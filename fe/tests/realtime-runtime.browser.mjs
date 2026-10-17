@@ -206,6 +206,7 @@ const notification = (id, title, read = false) => ({
 });
 const firstId = "10000000-0000-4000-8000-000000000001";
 const nextId = "10000000-0000-4000-8000-000000000002";
+const thirdId = "10000000-0000-4000-8000-000000000003";
 const changed = { v: 1, type: "notifications.changed" };
 const notificationRequests = (requests, path) => requests.filter((r) => r.method === "GET" && r.pathname === path).length;
 function notificationWorld() {
@@ -231,16 +232,36 @@ function notificationWorld() {
     await shown(page.getByRole("heading", { name: "Initial HTTP notification", exact: true }));
     await eventually(() => world.sockets.length === 1 && world.sockets[0].serverFrames.length > 0, "ready received");
     await page.waitForTimeout(300);
+    assert.equal(await page.locator("[data-notification-heads-up]").count(), 0, "Existing notifications establish a silent baseline");
+    await page.setViewportSize({ width: 320, height: 640 });
+    const muteButton = page.getByRole("button", { name: "Mute notification pop-ups" });
+    await muteButton.focus();
+    const focusedBeforeArrival = await page.evaluate(() => document.activeElement?.getAttribute("aria-label"));
     const beforeUnread = notificationRequests(requests, "/api/v1/notifications/unread-count");
     const beforeList = notificationRequests(requests, "/api/v1/notifications");
     world.notifications.push(notification(nextId, "New HTTP notification"));
     world.changed();
     await shown(page.getByRole("link", { name: "Notifications, 2 unread", exact: true }));
     await shown(page.getByRole("heading", { name: "New HTTP notification", exact: true }));
+    const headsUp = page.locator("[data-notification-heads-up]");
+    await shown(headsUp.getByText("You have a new COMPASS notification.", { exact: true }));
+    assert.equal(await headsUp.getByText("New HTTP notification", { exact: true }).count(), 0, "The toast does not expose a raw title");
+    assert.equal(await headsUp.getByText("Canonical HTTP body for New HTTP notification", { exact: true }).count(), 0, "The toast does not expose a message body");
+    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("aria-label")), focusedBeforeArrival, "The toast does not move keyboard focus");
+    const bounds = await headsUp.boundingBox();
+    assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 320, "The heads-up fits a narrow mobile viewport");
     assert.ok(notificationRequests(requests, "/api/v1/notifications/unread-count") > beforeUnread);
     assert.ok(notificationRequests(requests, "/api/v1/notifications") > beforeList);
     assert.deepEqual(world.sockets[0].serverFrames.filter((f) => f.type !== "ready"), [changed], "No Notification content on the wire");
     assert.equal(world.sockets.length, 1, "Consumer never opens another socket");
+
+    await page.getByRole("button", { name: "Dismiss notification heads-up" }).click();
+    assert.equal(await page.locator("[data-notification-heads-up]").count(), 0, "Dismissal closes only the heads-up");
+    assert.equal(await page.getByRole("link", { name: "Notifications, 2 unread", exact: true }).count(), 1, "Unread count stays authoritative");
+    assert.equal(requests.filter((request) => request.method === "PATCH" && request.pathname.includes("/notifications/")).length, 0, "Dismissal does not mark the record as read");
+    world.changed();
+    await page.waitForTimeout(300);
+    assert.equal(await page.locator("[data-notification-heads-up]").count(), 0, "A repeated refetch does not resurrect a dismissed ID");
 
     await page.evaluate(() => window.next.router.push("/portal/services"));
     await page.waitForURL(/\/portal\/services$/);
@@ -251,6 +272,35 @@ function notificationWorld() {
     await page.evaluate(() => window.next.router.push("/portal/notifications"));
     await shown(page.getByRole("heading", { name: "Updated HTTP notification", exact: true }));
     assert.equal(world.sockets.length, 1, "Navigation and cached Center reuse the portal socket");
+  });
+}
+
+{
+  const world = notificationWorld();
+  await check("muting suppresses heads-up only, and keyboard unmute restores future notices", "/portal/notifications", {
+    initScripts: [enableRealtime], overrides: world.overrides, beforeNavigate: world.beforeNavigate,
+  }, async (page) => {
+    await shown(page.getByRole("link", { name: "Notifications, 1 unread", exact: true }));
+    await eventually(() => world.sockets.length === 1 && world.sockets[0].serverFrames.length > 0, "ready received");
+    await page.getByRole("button", { name: "Mute notification pop-ups" }).focus();
+    await page.keyboard.press("Enter");
+    const unmute = page.getByRole("button", { name: "Unmute notification pop-ups" });
+    await shown(unmute);
+    assert.equal(await unmute.getAttribute("aria-pressed"), "true");
+
+    world.notifications.push(notification(nextId, "Mandatory operational notice"));
+    world.changed();
+    await shown(page.getByRole("heading", { name: "Mandatory operational notice", exact: true }));
+    assert.equal(await page.locator("[data-notification-heads-up]").count(), 0, "Muted notifications remain in the Notification Center");
+    assert.equal(await page.getByRole("link", { name: "Notifications, 2 unread", exact: true }).count(), 1);
+    assert.equal(await page.getByRole("button", { name: "Mark as read" }).count(), 2);
+
+    await unmute.focus();
+    await page.keyboard.press("Enter");
+    await shown(page.getByRole("button", { name: "Mute notification pop-ups" }));
+    world.notifications.push(notification(thirdId, "Another operational notice"));
+    world.changed();
+    await shown(page.locator("[data-notification-heads-up]").getByText("You have a new COMPASS notification.", { exact: true }));
   });
 }
 
@@ -309,6 +359,7 @@ for (const unavailable of ["runtime disabled", "server disabled", "Redis unavail
     await page.clock.fastForward(8_100);
     await shown(page.getByRole("link", { name: "Notifications, 2 unread", exact: true }));
     await shown(page.getByRole("heading", { name: "Polled HTTP notification", exact: true }));
+    await shown(page.locator("[data-notification-heads-up]").getByText("You have a new COMPASS notification.", { exact: true }));
     assert.equal(await page.locator("#main-content [role=alert]").count(), 0, "No visible transport error");
     assert.equal(world.sockets.length, 0);
   });

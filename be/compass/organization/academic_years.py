@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
@@ -29,12 +30,26 @@ class AcademicYearConflict(AcademicYearError):
     pass
 
 
+_CANONICAL_ACADEMIC_YEAR_LABEL = re.compile(r"(?P<start>[0-9]{4})-(?P<end>[0-9]{4})\Z")
+
+
 def normalize_academic_year_label(value: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise InvalidAcademicYearInput("label is required")
     label = value.strip()
     if len(label) > 32:
         raise InvalidAcademicYearInput("label is too long")
+    match = _CANONICAL_ACADEMIC_YEAR_LABEL.fullmatch(label)
+    if match is None:
+        raise InvalidAcademicYearInput(
+            "label must use the canonical YYYY-YYYY format with consecutive years"
+        )
+    start_year = int(match.group("start"))
+    end_year = int(match.group("end"))
+    if start_year < 1 or start_year > 9998 or end_year != start_year + 1:
+        raise InvalidAcademicYearInput(
+            "label must use the canonical YYYY-YYYY format with consecutive years"
+        )
     return label
 
 
