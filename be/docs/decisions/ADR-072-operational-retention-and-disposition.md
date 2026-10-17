@@ -153,7 +153,8 @@ Official Daily documentation was checked on 2026-10-04:
 
 No invented endpoint, artifact URL, download, playback or media copy exists. Daily-owned cloud
 artifacts can be disposed using these verified contracts. Customer-managed storage markers
-(`storage_provider` for recordings or nonempty transcript `outParams`) trigger truthful external
+(`storage_provider` for recordings, or transcript `outParams` other than Daily's own
+`daily-co-transcription` bucket per ADR-092's EC-FIX-1 note) trigger truthful external
 reconciliation. This slice cannot prove deletion from deployment-owned S3/OCI copies and never marks
 such a case completed automatically. A missing/unavailable recording after a lost delete response
 also remains unresolved rather than treating any 404 as verified erasure.

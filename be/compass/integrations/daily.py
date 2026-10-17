@@ -274,11 +274,13 @@ class DailyClient:
             payload={"instanceId": instance_id, "type": "cloud"},
         )
 
-    def stop_recording(self, *, room_name: str) -> dict[str, object]:
-        # Current Daily REST semantics stop the active room recording and accept no instanceId body.
+    def stop_recording(self, *, room_name: str, instance_id: str) -> dict[str, object]:
+        # A recording started with an instanceId must be stopped with the same ID. Without it Daily
+        # targets its reserved default instance and returns HTTP 400 while ours keeps recording.
         return self._request(
             "POST",
             f"/rooms/{quote(room_name, safe='')}/recordings/stop",
+            payload={"instanceId": instance_id},
         )
 
     def start_transcription(self, *, room_name: str, instance_id: str) -> dict[str, object]:

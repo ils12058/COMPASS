@@ -110,11 +110,11 @@ def test_daily_media_control_payloads_match_documented_rest_boundary():
         {"instanceId": "recording-instance", "type": "cloud"},
     )
 
-    client.stop_recording(room_name="ec-opaque")
+    client.stop_recording(room_name="ec-opaque", instance_id="recording-instance")
     assert client.calls[-1] == (
         "POST",
         "/rooms/ec-opaque/recordings/stop",
-        None,
+        {"instanceId": "recording-instance"},
     )
 
     client.update_room(

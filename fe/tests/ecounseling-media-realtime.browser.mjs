@@ -158,9 +158,16 @@ async function openSection(page, label) {
 
 {
   const w = world({ recording: "ACTIVE", stopFailure: true });
-  await check("provider Stop failure preserves pending Stopping without claiming physical completion", PATH, w.options("COUNSELOR"), async (page) => {
+  await check("provider Stop failure is shown as not confirmed, keeps Stop intent and never claims completion", PATH, w.options("COUNSELOR"), async (page) => {
     await join(page); await page.getByRole("button", { name: "Stop recording", exact: true }).click();
     await shown(stage(page).getByText("Recording stopping…", { exact: true }));
+    // The failed request is not presented as progress: the control says so and can be sent again.
+    const retry = page.getByRole("button", { name: "Recording stop not confirmed. Stop recording again", exact: true });
+    await shown(retry);
+    assert.equal(await retry.isDisabled(), false);
+    assert.equal(await stage(page).getByRole("button", { name: "Stopping…", exact: true }).count(), 0);
+    assert.equal(w.state.commands.length, 1, "A failed Stop is never repeated automatically");
+    // The dock's own Stop has sent nothing, so it shows only COMPASS's recorded Stop intent.
     await page.getByRole("link", { name: "Services", exact: true }).first().click();
     await shown(dock(page));
     assert.equal(await dock(page).getByRole("button", { name: "Stopping…", exact: true }).isDisabled(), true);

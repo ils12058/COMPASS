@@ -213,9 +213,11 @@ Before enabling the new worker or issuing downloads:
    plus bounded S3 multipart buffers. Ingestion has 30-minute soft and 35-minute hard task limits.
    Configure process/task supervision to terminate a worker that
    loses its PostgreSQL session while network IO is in progress before recovering the claim.
-7. Verify the Daily account's recording/transcription features and the documented default Daily
-   S3 download host/metadata shape. Unsupported/custom storage fails closed; direct Daily-to-Spaces
-   output is not assumed. Recording deletion 404 without prior verified acknowledgement requires
+7. Verify the Daily account's recording/transcription features, that the Daily domain has no
+   custom `recordings_bucket` or `transcription_bucket`, and the accepted download host and metadata
+   shape: signed links on `c.daily.co` (or the legacy default Daily S3 hosts) and transcript
+   `outParams` naming Daily's own `daily-co-transcription` bucket (ADR-092, EC-FIX-1). Unsupported or
+   custom storage fails closed; direct Daily-to-Spaces output is not assumed. Recording deletion 404 without prior verified acknowledgement requires
    operator reconciliation. Preserve the provider reference when evidence is uncertain.
 
 The new `ecounseling.access_media_assigned` baseline grant belongs only to Counselors and requires

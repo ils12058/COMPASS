@@ -78,13 +78,14 @@ The operator readout counts unverified historical bindings. No reset/verificatio
 
 ## Mitigation safety
 
-The [recording Stop](https://docs.daily.co/reference/rest-api/rooms/recordings/stop) is room-scoped;
-the [transcription Stop](https://docs.daily.co/reference/rest-api/rooms/transcription/stop) accepts
-`instanceId`. No unknown/foreign event may trigger either operation or provider deletion. Existing
+The [recording Stop](https://docs.daily.co/reference/rest-api/rooms/recordings/stop) and the
+[transcription Stop](https://docs.daily.co/reference/rest-api/rooms/transcription/stop) both send the
+capture's persisted `instanceId` (recording since EC-FIX-1; without it Daily targets its default
+instance and rejects the Stop). No unknown/foreign event may trigger either operation or provider deletion. Existing
 authorized consent-withdrawal Stop/storage-disable behavior remains. The existing targeted transcription webhook policy
 Stop is permitted only for an exact historically authorized reservation with ineffective consent,
-without an existing Stop intent or conflicting/protected binding. The room-scoped recording
-webhook backstop is withheld because a delayed Start cannot prove which capture is currently active;
+without an existing Stop intent or conflicting/protected binding. The recording webhook backstop
+is withheld because a delayed Start cannot prove which capture is currently active;
 it receives urgent review evidence instead. Explicit authorized recording withdrawal operations
 remain unchanged. One durable transcription attempt is reserved
 before I/O; duplicate deliveries, process loss and unknown outcomes do not replay it. An ACK means

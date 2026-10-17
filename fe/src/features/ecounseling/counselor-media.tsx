@@ -37,7 +37,7 @@ import {
   ECounselingConsentStatus,
 } from "@/lib/api/generated/model";
 import { cn } from "@/lib/utils/cn";
-import { captureSafetyState } from "./runtime/runtime-model";
+import { captureSafetyState, stopControlState } from "./runtime/runtime-model";
 
 
 function latestConsent(rows: ConsentResponse[], scope: ECounselingConsentScope): ConsentResponse | undefined {
@@ -268,6 +268,7 @@ export function useCounselorMedia({
     canStart,
     canStop,
     stopping: capture.stopping,
+    stopFailed: capture.failed,
     starting,
     requesting,
     storageApproved,
@@ -312,8 +313,13 @@ function stopLabel(kind: CaptureKind) {
 function captureTile(media: CounselorMedia, kind: CaptureKind): Tile {
   const copy = tileCopy[kind];
   const status = media.status[kind];
-  if (media.stopping[kind] || status === ECounselingCaptureStatus.STOP_REQUESTED) {
+  const stopState = stopControlState(status, { stopping: media.stopping[kind], failed: media.stopFailed[kind] });
+  if (stopState === "stopping") {
     return { label: "Stopping…", icon: LoaderCircle, tone: "default", disabled: true };
+  }
+  if (stopState === "not-confirmed") {
+    // COMPASS still records Stop intent, but this request failed: capture may still be running.
+    return { label: "Stop not confirmed", accessibleName: kind === "recording" ? "Recording stop not confirmed. Stop recording again" : "Transcription stop not confirmed. Stop transcription again", icon: kind === "recording" ? Square : copy.icon, tone: "live", disabled: false, problem: true, onClick: () => void media.stop(kind) };
   }
   if (media.canStop[kind]) {
     return { label: stopLabel(kind), accessibleName: kind === "recording" ? "Stop recording" : "Stop transcription", icon: kind === "recording" ? Square : copy.icon, tone: "live", disabled: false, onClick: () => void media.stop(kind) };

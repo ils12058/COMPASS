@@ -857,7 +857,14 @@ def _execute_provider_stop(
     client = _daily_client(daily_client)
     try:
         if capture.kind == MediaCaptureKind.RECORDING:
-            _provider_ack(client.stop_recording(room_name=room.daily_room_name))
+            if not capture.provider_instance_id:
+                raise DailyInvalidResponse("Recording instance ID is unavailable.")
+            _provider_ack(
+                client.stop_recording(
+                    room_name=room.daily_room_name,
+                    instance_id=capture.provider_instance_id,
+                )
+            )
             # Daily has no recording-stopped webhook in the selected subscription. Keep
             # STOP_REQUESTED until artifact readiness/provider reconciliation advances the state.
         else:

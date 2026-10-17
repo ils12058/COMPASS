@@ -107,6 +107,25 @@ def custody_audit(action, artifact):
     )
 
 
+# Daily reports its own transcript storage in outParams too (live staging, 2026-10-17, with no
+# custom transcription_bucket on the domain). Only this exact Daily-owned bucket is accepted.
+DAILY_TRANSCRIPT_BUCKETS = frozenset({"daily-co-transcription"})
+
+
+def daily_owned_transcript_storage(out_params):
+    """Absent outParams or Daily's own bucket; any other location is customer-managed storage."""
+    if not out_params:
+        return True
+    if not isinstance(out_params, dict):
+        return False
+    bucket = out_params.get("bucket")
+    return (
+        isinstance(bucket, str)
+        and bucket in DAILY_TRANSCRIPT_BUCKETS
+        and out_params.get("storage_provider") in (None, "aws")
+    )
+
+
 def provider_metadata(source, client, *, allow_deleted=False):
     """Exact artifact/room/session identity; reject customer-managed transcript storage."""
     if (
@@ -134,7 +153,7 @@ def provider_metadata(source, client, *, allow_deleted=False):
             and item.get("status") in terminal
             and source.room.daily_room_id
             and item.get("roomId") == source.room.daily_room_id
-            and not item.get("outParams")
+            and daily_owned_transcript_storage(item.get("outParams"))
             and (item.get("status") == "t_deleted" or item.get("isVttAvailable") is True)
         )
     if source.provider_session_id:
@@ -165,7 +184,7 @@ def delete_v2_provider(source, client):
         if (
             result.get("transcriptId") != artifact_id
             or result.get("status") != "t_deleted"
-            or result.get("outParams")
+            or not daily_owned_transcript_storage(result.get("outParams"))
         ):
             raise ArtifactVerificationError("Provider deletion could not be verified.")
 

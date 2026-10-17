@@ -427,7 +427,7 @@ export function ActiveECounselingRuntimeProvider({
     audio: { blocked: audioBlocked, resume: () => void resumeAudio() },
     canonical: { media, current: canonicalCurrent },
     captureWarnings: activeCapture,
-    capture: { canStop, stopping: capture.stopping, error: capture.error, stop: capture.stop },
+    capture: { canStop, stopping: capture.stopping, failed: capture.failed, error: capture.error, stop: capture.stop },
     presentStage,
   };
   const stagePresented = appointmentId !== null && (stageCounts[appointmentId] ?? 0) > 0;
