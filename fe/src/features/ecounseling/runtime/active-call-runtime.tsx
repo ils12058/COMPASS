@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { useQueryClient } from "@tanstack/react-query";
 
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
-import { activeCallPhases, type CallPhase } from "@/features/ecounseling/call/call-model";
+import { activeCallPhases, previewCallPhases, type CallPhase } from "@/features/ecounseling/call/call-model";
 import { DailyCallSession } from "@/features/ecounseling/call/daily-call-session";
 import { useRemoteAudioPlayback } from "@/features/ecounseling/call/participant-media";
 import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
@@ -76,13 +76,17 @@ export function ActiveECounselingRuntimeProvider({
   const snapshot = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot);
   const otherTabActive = useSyncExternalStore(coordinator.subscribe, coordinator.getSnapshot, () => false);
   const [activation, setActivation] = useState<Activation | null>(null);
+  const [previewAppointmentId, setPreviewAppointmentId] = useState<string | null>(null);
+  const previewAppointmentRef = useRef<string | null>(null);
   const [claiming, setClaiming] = useState(false);
   const [stageCounts, setStageCounts] = useState<Record<string, number>>({});
+  const stageCountsRef = useRef<Record<string, number>>({});
   const [leaveOpen, setLeaveOpen] = useState(false);
   const [endedNotice, setEndedNotice] = useState<string | null>(null);
   const [dismissedDenial, setDismissedDenial] = useState<ResourceDenial | null>(null);
   const appointmentId = activation?.appointmentId ?? null;
-  const denial = useECounselingResourceDenial(appointmentId);
+  const trackedAppointmentId = appointmentId ?? previewAppointmentId;
+  const denial = useECounselingResourceDenial(trackedAppointmentId);
   const access = user ? getECounselingAccess(user) : null;
   const role = access?.isStudent ? "STUDENT" : access?.isCounselor ? "COUNSELOR" : null;
   // A session the server confirmed is gone has no call, whatever was active a moment ago.
@@ -235,6 +239,7 @@ export function ActiveECounselingRuntimeProvider({
     if (authState !== "signed-out") return;
     joinAttempt.current += 1;
     coordinator.release();
+    previewAppointmentRef.current = null;
     void session.dispose();
   }, [authState, coordinator, session]);
 
@@ -244,17 +249,28 @@ export function ActiveECounselingRuntimeProvider({
     if (!denial) return;
     joinAttempt.current += 1;
     coordinator.release();
+    previewAppointmentRef.current = null;
     void session.dispose();
   }, [coordinator, denial, session]);
 
   useEffect(() => resourceAccess.subscribe(() => {
-    if (!resourceAccess.getDenial(appointmentId)) return;
+    const currentTracked = appointmentId ?? previewAppointmentRef.current;
+    if (!resourceAccess.getDenial(currentTracked)) return;
     joinAttempt.current += 1;
     coordinator.release();
     setLeaveOpen(false);
+    previewAppointmentRef.current = null;
+    setPreviewAppointmentId(null);
     setActivation((current) => current ? { ...current, participantName: "Your session" } : null);
     void session.dispose();
   }), [appointmentId, coordinator, resourceAccess, session]);
+
+  // Another tab acquiring a live call closes any local device preview in this tab.
+  useEffect(() => {
+    if (otherTabActive && previewCallPhases.has(snapshot.phase)) {
+      void session.closePreview();
+    }
+  }, [otherTabActive, session, snapshot.phase]);
 
   // The tab's lease follows the call; a call that ended or never connected releases it.
   useEffect(() => {
@@ -282,10 +298,32 @@ export function ActiveECounselingRuntimeProvider({
     else if (activeCallPhases.has(snapshot.phase) || snapshot.phase === "requesting") setEndedNotice(null);
   }
 
+  const startPreview = useCallback(async (targetAppointmentId: string) => {
+    if (authState === "signed-out" || resourceAccess.getDenial(targetAppointmentId) || otherTabActive) return;
+    if (isLiveRuntime(runtimeState({ activated, claiming, phase: session.getSnapshot().phase }))) return;
+    if (previewAppointmentRef.current && previewAppointmentRef.current !== targetAppointmentId) {
+      await session.dispose();
+    }
+    previewAppointmentRef.current = targetAppointmentId;
+    setPreviewAppointmentId(targetAppointmentId);
+    await session.startPreview();
+  }, [activated, authState, claiming, otherTabActive, resourceAccess, session]);
+
+  const closePreview = useCallback(async (targetAppointmentId?: string) => {
+    if (targetAppointmentId && previewAppointmentRef.current && previewAppointmentRef.current !== targetAppointmentId) return;
+    await session.closePreview();
+  }, [session]);
+
   const join = useCallback(async (target: Activation) => {
     if (authState === "signed-out" || resourceAccess.getDenial(target.appointmentId)) return;
     if (isLiveRuntime(runtimeState({ activated, claiming, phase: session.getSnapshot().phase }))) return;
     const attempt = ++joinAttempt.current;
+    if (previewAppointmentRef.current && previewAppointmentRef.current !== target.appointmentId) {
+      previewAppointmentRef.current = null;
+      setPreviewAppointmentId(null);
+      await session.dispose();
+      if (attempt !== joinAttempt.current || resourceAccess.getDenial(target.appointmentId)) return;
+    }
     const epoch = resourceAccess.epoch(target.appointmentId);
     setEndedNotice(null);
     setActivation(target);
@@ -299,6 +337,7 @@ export function ActiveECounselingRuntimeProvider({
     setClaiming(false);
     if (!acquired) {
       setActivation(null);
+      void session.closePreview();
       return;
     }
     const studentRole = role === "STUDENT";
@@ -336,16 +375,30 @@ export function ActiveECounselingRuntimeProvider({
   const end = useCallback(async () => {
     joinAttempt.current += 1;
     coordinator.release();
+    previewAppointmentRef.current = null;
+    setPreviewAppointmentId(null);
     await session.dispose();
   }, [coordinator, session]);
 
   const presentStage = useCallback((stageAppointmentId: string) => {
+    stageCountsRef.current[stageAppointmentId] = (stageCountsRef.current[stageAppointmentId] ?? 0) + 1;
     setStageCounts((counts) => ({ ...counts, [stageAppointmentId]: (counts[stageAppointmentId] ?? 0) + 1 }));
-    return () => setStageCounts((counts) => ({ ...counts, [stageAppointmentId]: Math.max(0, (counts[stageAppointmentId] ?? 1) - 1) }));
-  }, []);
+    return () => {
+      const next = Math.max(0, (stageCountsRef.current[stageAppointmentId] ?? 1) - 1);
+      stageCountsRef.current[stageAppointmentId] = next;
+      setStageCounts((counts) => ({ ...counts, [stageAppointmentId]: next }));
+      queueMicrotask(() => {
+        if ((stageCountsRef.current[stageAppointmentId] ?? 0) === 0 && previewAppointmentRef.current === stageAppointmentId) {
+          void session.closePreview();
+        }
+      });
+    };
+  }, [session]);
 
   // Stable for the life of the portal, so views (such as the device dialog) can depend on them.
   const actions = useMemo(() => ({
+    startPreview: () => session.startPreview(),
+    closePreview: () => session.closePreview(),
     setMicrophone: (on: boolean) => session.setMicrophone(on),
     setCamera: (on: boolean) => session.setCamera(on),
     refreshDevices: () => session.refreshDevices(),
@@ -360,10 +413,13 @@ export function ActiveECounselingRuntimeProvider({
     state,
     live,
     appointmentId,
+    previewAppointmentId: authState !== "signed-out" && !denial ? previewAppointmentId : null,
     participantName: protectedUnavailable ? null : sessionParticipant ?? activation?.participantName ?? null,
     call,
     otherTabActive,
     availabilityFor: (target) => joinAvailability({ appointmentId: target, activeAppointmentId: appointmentId, state, otherTabActive }),
+    startPreview,
+    closePreview,
     join,
     timing,
     requestLeave,

@@ -29,7 +29,8 @@ export type DailyCallClient = Pick<
   | "setOutputDeviceAsync"
   | "on"
   | "off"
->;
+> &
+  Partial<Pick<DailyCall, "startCamera" | "startLocalAudioLevelObserver" | "stopLocalAudioLevelObserver">>;
 
 export type DailyCallClientFactory = {
   createCallObject(options?: DailyFactoryOptions): DailyCallClient;
@@ -42,6 +43,8 @@ export type CallCredential = { roomUrl: string; token: string; expiresAt: string
 // One closed lifecycle for the call, so the stage never derives its state from loose flags.
 export type CallPhase =
   | "idle" // not in the call; the stage offers Join when the session is open
+  | "starting-preview" // initializing local camera/microphone for pre-join device check
+  | "preview" // local pre-join device check is active; never connected to a room
   | "requesting" // asking the COMPASS backend for a fresh join credential
   | "joining" // Daily is connecting
   | "joined"
@@ -51,6 +54,7 @@ export type CallPhase =
   | "failed"; // the attempt or the call ended with an error; Try again asks the backend again
 
 export const activeCallPhases: ReadonlySet<CallPhase> = new Set(["joining", "joined", "reconnecting"]);
+export const previewCallPhases: ReadonlySet<CallPhase> = new Set(["starting-preview", "preview"]);
 
 export type CallFailureKind = "credential" | "connection" | "expired" | "replaced" | "unavailable" | "full" | "unsupported" | "unknown";
 export type CallFailure = { kind: CallFailureKind; message: string };
@@ -110,6 +114,10 @@ export type CallSnapshot = {
   // What this person turned on or off. A problem with the device is reported separately.
   microphoneOn: boolean;
   cameraOn: boolean;
+  // Local microphone input activity (0..1) while testing devices before joining.
+  localAudioLevel: number;
+  // Whether this person completed a local device check before joining.
+  deviceCheckCompleted: boolean;
   network: NetworkState;
   devices: CallDevices;
   mediaProblem: MediaProblem | null;
@@ -132,6 +140,8 @@ export const initialCallSnapshot: CallSnapshot = {
   remote: null,
   microphoneOn: true,
   cameraOn: true,
+  localAudioLevel: 0,
+  deviceCheckCompleted: false,
   network: "unknown",
   devices: emptyDevices,
   mediaProblem: null,
