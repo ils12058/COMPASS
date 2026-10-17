@@ -25,7 +25,9 @@ All new background-dispatch and rollout-gated capabilities ship **disabled by de
 
 1. **Database Backup**: Take a point-in-time PostgreSQL snapshot of the target environment prior to running migrations.
 2. **Environment Configuration Verification**:
-   - Confirm `FIELD_ENCRYPTION_KEYS` is configured and matches existing active encryption key material.
+   - Confirm the independent `GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS_FILE` points to
+     `/run/secrets/guidance_followup_encryption_keys`. The Follow-Up keyring must be distinct from
+     existing encryption domains and mounted only in the web/operator context.
    - Confirm `GUIDANCE_FOLLOWUPS_ENABLED=False`, `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED=False`, and `APPOINTMENT_AUTO_REMINDERS_ENABLED=False` for initial dark-deploy rollout.
    - Confirm Redis broker connectivity (`CELERY_BROKER_URL`) and worker/Beat process health.
 
@@ -45,12 +47,12 @@ python manage.py sync_identity_policy
 # 3. Synchronize canonical services (COUNSELING service and default pathways)
 python manage.py sync_canonical_services
 
-# 4. Synchronize default institutional forms
-python manage.py sync_default_forms
+# 4. Synchronize institutional forms
+python manage.py sync_institutional_forms
 
-# 5. Verify existing encrypted fields and follow-up encryption readiness
-python manage.py verify_encrypted_fields --check
-python manage.py verify_followup_encryption --check
+# 5. Do not rotate keys during initial provisioning. If protected Follow-Up records exist,
+#    inspect them in the web/operator context only.
+python manage.py rotate_guidance_followup_encryption --dry-run
 
 # 6. Run Django system check
 python manage.py check
@@ -69,15 +71,18 @@ python manage.py check
   - `compass.notifications.tasks` dispatches email and web push notifications for `appointment.reminder_*`, `guidance_follow_up.*`, and `group_session.*` events, verifying `notification_is_current(notification)` before external provider handoff.
 
 ### Follow-Up Encryption Verification & Key Rotation
-- To audit Follow-Up ciphertext integrity at any time:
+- The merged application provides `rotate_guidance_followup_encryption`. Its dry run verifies
+  protected records without changing ciphertext. For newly initialized tables, inspect whether
+  protected records exist before interpreting a zero-record result:
   ```bash
-  python manage.py verify_followup_encryption --check
+  python manage.py rotate_guidance_followup_encryption --dry-run
   ```
-- During key rotation (after prepending a new primary key to `FIELD_ENCRYPTION_KEYS`):
+- During an approved rotation, prepend the new primary to all still-required keys in
+  `GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS`, retain the existing keys, and use the same command:
   ```bash
-  python manage.py rotate_followup_encryption --dry-run
-  python manage.py rotate_followup_encryption
-  python manage.py verify_followup_encryption --check
+  python manage.py rotate_guidance_followup_encryption --dry-run
+  python manage.py rotate_guidance_followup_encryption
+  python manage.py rotate_guidance_followup_encryption --dry-run
   ```
 
 ---
@@ -115,4 +120,8 @@ After deploying with flags disabled and completing baseline smoke checks:
   - Set `APPOINTMENT_AUTO_REMINDERS_ENABLED=False`, `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED=False`, or `GUIDANCE_FOLLOWUPS_ENABLED=False` and restart web/worker processes to immediately disable automatic reminders or follow-up workflows without database rollback.
   - Disable `FIXED_DATE_SLOT` or `GROUP_SESSION` pathways on individual Services via the Service editor if a pathway needs to be withdrawn for new bookings.
 - **Database Migration Rollback**:
-  - All 6 migrations (`appointments.0002`, `audit.0002`, `followups.0001`, `group_sessions.0001`, `notifications.0002`, `service_catalog.0002`, `service_catalog.0003`) are strictly additive (new tables and expanded `AuditEvent.action` choice metadata) and do not mutate or drop any pre-existing columns or rows.
+  - The six staged migrations are `appointments.0002`, `guidance_followups.0001`,
+    `guidance_followups.0002`, `group_sessions.0001`, `service_catalog.0002`, and
+    `service_catalog.0003`. They add reminder fields/tables, new feature tables and constraints,
+    and a Service Booking Pathway backfill. Do not reverse them after schema changes; use reviewed
+    forward recovery while preserving the canonical database and UAT records.

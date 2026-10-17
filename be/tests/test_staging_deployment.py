@@ -1,5 +1,6 @@
 """Forward-migration boundaries for routine canonical deployment, never a live database."""
 
+import importlib
 import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
@@ -47,6 +48,10 @@ def test_additive_forward_operations_pass(operation):
         migrations.AlterField("example", "note", models.TextField()),
         migrations.AddField("example", "note", models.TextField()),
         migrations.AddField("example", "note", models.TextField(null=True, default="rewrite")),
+        migrations.AddConstraint(
+            "example",
+            models.UniqueConstraint(fields=["id"], name="example_unique"),
+        ),
         migrations.RunSQL("SELECT 1"),
         migrations.RunPython(migrations.RunPython.noop),
         migrations.SeparateDatabaseAndState(),
@@ -62,3 +67,31 @@ def test_backward_and_non_atomic_plans_are_refused():
     for options in [{"backwards": True}, {"atomic": False}]:
         with pytest.raises(guard.Refused):
             guard.validate_operations(plan(operation, **options))
+
+
+@pytest.mark.parametrize(
+    "module_name",
+    [
+        "compass.appointments.migrations.0002_appointment_reminders",
+        "compass.guidance_followups.migrations.0001_initial",
+        "compass.guidance_followups.migrations.0002_guidancefollowupmutation",
+        "compass.group_sessions.migrations.0001_initial",
+        "compass.service_catalog.migrations.0002_booking_pathways",
+        "compass.service_catalog.migrations.0003_fixed_date_slots",
+    ],
+)
+def test_exact_reviewed_migration_sources_allow_their_pinned_operations(module_name):
+    app_label = module_name.split(".")[1]
+    migration_name = module_name.rsplit(".", 1)[1]
+    migration = importlib.import_module(module_name).Migration(migration_name, app_label)
+    guard.validate_operations([(migration, False)])
+
+
+def test_reviewed_migration_source_digest_must_match(monkeypatch):
+    migration = importlib.import_module(
+        "compass.service_catalog.migrations.0002_booking_pathways"
+    ).Migration("0002_booking_pathways", "service_catalog")
+    key = f"{migration.app_label}/{migration.name}"
+    monkeypatch.setitem(guard.REVIEWED_MIGRATIONS, key, "0" * 64)
+    with pytest.raises(guard.Refused):
+        guard.validate_operations([(migration, False)])

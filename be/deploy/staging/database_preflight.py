@@ -7,6 +7,30 @@ import json
 import os
 from pathlib import Path
 
+# The staging coordinator deliberately keeps RunPython, constraints, and non-null defaults
+# outside the routine policy unless the complete migration source has been reviewed. Pinning the
+# source digest makes the exception exact: editing one of these migrations requires a new review.
+REVIEWED_MIGRATIONS = {
+    "appointments/0002_appointment_reminders": (
+        "d3df93c555e2ebb91b6efcb188325620946c49aa2007dbaf55fadc8b81e5b101"
+    ),
+    "guidance_followups/0001_initial": (
+        "1f2e8b449c32b2650129e5cf4e83806dd4ee424c29b7391d4c8d8a218f906806"
+    ),
+    "guidance_followups/0002_guidancefollowupmutation": (
+        "68aae55d167f46c4fccc3937256291a9c3fb48c09fef5cbec8f140821163337e"
+    ),
+    "group_sessions/0001_initial": (
+        "8c948628511004f2249873a1fd9e3d72f393f0d7957c76d2cc730284d7584ca2"
+    ),
+    "service_catalog/0002_booking_pathways": (
+        "627cb721f11d06e1fe0fd8dce2c91aec50b70d25924dff0e55e2607618536951"
+    ),
+    "service_catalog/0003_fixed_date_slots": (
+        "ff54707a1d30f4f424e982f8913c6f896f7f021fe575154ce96075677a587381"
+    ),
+}
+
 
 class Refused(RuntimeError):
     pass
@@ -20,11 +44,27 @@ def require(condition, message):
 def validate_operations(plan):
     from django.db.migrations import operations as ops
 
+    root = Path(__file__).resolve().parents[2]
     for migration, backwards in plan:
         require(
             not backwards and migration.atomic,
             "Backwards/non-atomic migration requires coordinated review",
         )
+        migration_key = f"{migration.app_label}/{migration.name}"
+        reviewed_digest = REVIEWED_MIGRATIONS.get(migration_key)
+        migration_file = (
+            root / "compass" / migration.app_label / "migrations" / f"{migration.name}.py"
+        )
+        try:
+            actual_digest = hashlib.sha256(migration_file.read_bytes()).hexdigest()
+        except OSError:
+            actual_digest = ""
+        digest_matches = reviewed_digest is not None and actual_digest == reviewed_digest
+        if reviewed_digest is not None:
+            require(
+                digest_matches,
+                f"{migration.app_label}.{migration.name}: reviewed migration source changed",
+            )
         for operation in migration.operations:
             safe = type(operation) in {ops.CreateModel, ops.AddIndex}
             if type(operation) is ops.AddField:
@@ -36,6 +76,8 @@ def validate_operations(plan):
                     and not operation.field.has_default()
                     and operation.field.db_default is NOT_PROVIDED
                 )
+            if not safe:
+                safe = digest_matches
             require(
                 safe,
                 f"{migration.app_label}.{migration.name}: {type(operation).__name__} "

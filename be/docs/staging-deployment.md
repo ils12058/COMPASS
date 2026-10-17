@@ -90,6 +90,35 @@ or backward plans fail **before downtime**. There is no bypass input. Plan and s
 coordinated migration procedure for those changes, including preservation of UAT data and queued
 work; do not weaken this guard to push a release through.
 
+### Reviewed COMPASS-INT-FINAL exceptions
+
+The following six additive migrations are individually source-digest pinned in
+`database_preflight.py`. The exception is limited to these exact files and forward, atomic plans;
+editing a reviewed migration changes its digest and fails preflight until it is reviewed again.
+It does not permit arbitrary constraints, defaults, `RunPython`, or `RunSQL`:
+
+- `appointments.0002_appointment_reminders` adds reminder revision fields to existing
+  appointments and creates new occurrence/batch tables with their indexes and uniqueness rules.
+  The existing-row revision value is `1`; reminder dispatch remains disabled by default.
+- `guidance_followups.0001_initial` and `guidance_followups.0002_guidancefollowupmutation` create
+  new Follow-Up tables and constraints. They do not import or rewrite existing records.
+- `group_sessions.0001_initial` creates new Group Session tables, indexes, and constraints.
+- `service_catalog.0002_booking_pathways` creates the pathway table and backfills
+  `FLEXIBLE_APPOINTMENT` for existing Services whose legacy booking flag is enabled. The reviewed
+  backfill reads in batches of 500 and uses conflict-safe inserts; it does not enable new pathways.
+- `service_catalog.0003_fixed_date_slots` creates the new fixed-date slot table, indexes, and
+  time-order constraint.
+
+All six migrations use Django's atomic migration behavior on PostgreSQL. The deployment stops
+application producers before applying them and never starts or recreates PostgreSQL or Redis.
+Each migration and its migration-history row commit together; an interrupted atomic migration is
+rolled back by PostgreSQL, while previously committed migrations remain recorded for forward
+recovery. The deployment does not roll back schema or restart an old application image after the
+migration boundary. Before the first live rollout, rehearse this exact six-migration plan on a
+disposable database with the canonical baseline and representative pre-existing appointments and
+bookable Services; record row-preservation, resulting pathway rows, transaction recovery, and
+observed migration duration in the execution report.
+
 Order for an accepted routine release:
 
 1. Stop proxy/web, Beat and active realtime; allow current requests to finish. Keep the worker
