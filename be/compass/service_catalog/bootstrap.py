@@ -19,6 +19,8 @@ from compass.service_catalog.models import (
     DeliveryMode,
     Service,
     ServiceDeliveryMode,
+    ServiceBookingPathway,
+    BookingPathwayCode,
     ServiceProviderCoverage,
 )
 from compass.service_catalog.services import (
@@ -102,6 +104,9 @@ def sync_canonical_services() -> CanonicalServiceSyncResult:
             service = Service.objects.select_for_update().get(code=COUNSELING_SERVICE_CODE)
         else:
             ServiceDeliveryMode.objects.create(service=service, mode=DeliveryMode.IN_PERSON)
+            ServiceBookingPathway.objects.create(
+                service=service, code=BookingPathwayCode.FLEXIBLE_APPOINTMENT
+            )
             _validate_active_configuration(_current_configuration(service))
             record_event(
                 context=AuditContext.system(),

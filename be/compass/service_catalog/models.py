@@ -19,6 +19,14 @@ class DeliveryMode(models.TextChoices):
     ONLINE = "ONLINE", "Online"
 
 
+class BookingPathwayCode(models.TextChoices):
+    """Independent entry routes. Fixed slots and groups have no runtime booking yet."""
+
+    FLEXIBLE_APPOINTMENT = "FLEXIBLE_APPOINTMENT", "Flexible individual appointments"
+    FIXED_DATE_SLOT = "FIXED_DATE_SLOT", "Fixed-date appointment slots"
+    GROUP_SESSION = "GROUP_SESSION", "Group sessions and events"
+
+
 class ServiceProviderCoverage(models.TextChoices):
     """Which active Counselors are qualified to provide new work for a Service (ADR-089)."""
 
@@ -179,3 +187,28 @@ class ServiceCounselorProvider(models.Model):
 
     def __str__(self) -> str:
         return f"{self.service.code}:{self.counselor_id}"
+
+
+class ServiceBookingPathway(models.Model):
+    """Enabled booking/discovery route, not a reservation or group registration.
+
+    A missing row means disabled. Each pathway may be enabled independently.
+    Appointment's existing compatibility flag remains the flexible booking contract.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    service = models.ForeignKey(
+        Service, on_delete=models.CASCADE, related_name="booking_pathways",
+    )
+    code = models.CharField(max_length=32, choices=BookingPathwayCode.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("code",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("service", "code"),
+                name="service_booking_pathway_unique",
+            ),
+        ]
