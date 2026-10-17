@@ -29,7 +29,6 @@ EXPECTED_OPERATION_IDS = {
     "guidanceFollowupsRecordActivity",
     "guidanceFollowupsComplete",
     "guidanceFollowupsCancel",
-
     "assessmentRecordsList",
     "assessmentRecordsCreate",
     "assessmentRecordsGet",
