@@ -38,7 +38,7 @@ async function noManagement(page) {
   assert.equal(await page.getByRole("alertdialog").count(), 0);
 }
 async function readable(page) {
-  await shown(page.getByRole("heading", { name: "Permit details", exact: true }));
+  await shown(page.getByRole("heading", { name: "Maria Santos", exact: true }));
   for (const text of ["Maria Santos", "BSIT / 4", "Guidance Office", "TEST-CS", "Revision 1"]) await shown(page.getByRole("main").getByText(text, { exact: true }).first());
   const download = page.getByRole("button", { name: "Download Call Slip", exact: true });
   await download.focus();

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { Pencil } from "lucide-react";
-import { PageActionLink } from "@/components/ui/page-action";
+import { PageActionGroup, PageActionLink } from "@/components/ui/page-action";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelSection, RecordSummary } from "@/components/ui/panel";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
@@ -36,16 +36,6 @@ export function AssessmentRecordDetailPage({ recordId }: { recordId: string }) {
             Back to Assessment Records
           </Link>
         }
-        actions={
-          record && access.canManage ? (
-            <PageActionLink
-              href={`/portal/assessment-records/${record.id}/edit`}
-              icon={Pencil}
-              label="Edit"
-              labelDetail="assessment record"
-            />
-          ) : undefined
-        }
       />
       {!record ? (
         query.isPending ? (
@@ -65,39 +55,55 @@ export function AssessmentRecordDetailPage({ recordId }: { recordId: string }) {
               retrying={query.isFetching}
             />
           ) : null}
-          <Panel aria-labelledby="assessment-student">
-            <RecordSummary
-              label="Student"
-              title={record.student.display_name}
-              titleId="assessment-student"
-              facts={[
-                {
-                  label: "Institutional ID",
-                  value: record.student.institutional_id ?? "Not available",
-                },
-                {
-                  label: "Assessment Type",
-                  value: (
-                    <>
-                      {record.assessment_type.name}
-                      {!record.assessment_type.is_active ? (
-                        <span className="block text-xs text-muted">
-                          Inactive type · historical record
-                        </span>
-                      ) : null}
-                    </>
-                  ),
-                },
-                {
-                  label: "Administered on",
-                  value: formatDateOnly(record.administered_on),
-                },
-                {
-                  label: "Recorded by",
-                  value: record.recorded_by.display_name,
-                },
-              ]}
-            />
+          <div data-page-action-layout="assessment-record" className={access.canManage ? "grid gap-4 lg:grid-cols-[7rem_minmax(0,1fr)] lg:gap-5" : ""}>
+            {access.canManage ? (
+              <PageActionGroup
+                aria-label="Assessment Record page actions"
+                data-page-action-rail=""
+                className="empty:hidden lg:sticky lg:top-4 lg:flex-col lg:items-center lg:gap-x-0 lg:gap-y-3"
+              >
+                <PageActionLink
+                  href={`/portal/assessment-records/${record.id}/edit`}
+                  icon={Pencil}
+                  variant="secondary"
+                  label="Edit"
+                  labelDetail="assessment record"
+                />
+              </PageActionGroup>
+            ) : null}
+            <Panel aria-labelledby="assessment-student" className="min-w-0">
+              <RecordSummary
+                label="Student"
+                title={record.student.display_name}
+                titleId="assessment-student"
+                facts={[
+                  {
+                    label: "Institutional ID",
+                    value: record.student.institutional_id ?? "Not available",
+                  },
+                  {
+                    label: "Assessment Type",
+                    value: (
+                      <>
+                        {record.assessment_type.name}
+                        {!record.assessment_type.is_active ? (
+                          <span className="block text-xs text-muted">
+                            Inactive type · historical record
+                          </span>
+                        ) : null}
+                      </>
+                    ),
+                  },
+                  {
+                    label: "Administered on",
+                    value: formatDateOnly(record.administered_on),
+                  },
+                  {
+                    label: "Recorded by",
+                    value: record.recorded_by.display_name,
+                  },
+                ]}
+              />
             <PanelSection
               title="Assessment result"
               titleId="assessment-content"
@@ -138,7 +144,8 @@ export function AssessmentRecordDetailPage({ recordId }: { recordId: string }) {
                 </div>
               </dl>
             </PanelSection>
-          </Panel>
+            </Panel>
+          </div>
         </>
       )}
     </>

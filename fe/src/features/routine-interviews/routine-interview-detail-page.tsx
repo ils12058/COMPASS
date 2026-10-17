@@ -2,7 +2,7 @@
 
 import { FollowupsContext } from "@/features/guidance-followups/followups-context";
 import { NotebookPen } from "lucide-react";
-import { PageActionLink } from "@/components/ui/page-action";
+import { PageActionGroup, PageActionLink } from "@/components/ui/page-action";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -46,7 +46,7 @@ function routineWorkflowMessage(state: RoutineWorkflowState): string | null {
 function RoutineLifecycleNotice({ message }: { message: string | null }) {
   if (!message) return null;
   return (
-    <Notice role="status" className="mb-5">
+    <Notice role="status">
       {message} The record remains available as historical context.
     </Notice>
   );
@@ -106,7 +106,7 @@ function StudentRoutineDetail({
   }
 
   return (
-    <div>
+    <div className="space-y-5">
       <RoutinePageHeading
         title="Routine Interview"
         back={<RoutineBackLink />}
@@ -187,12 +187,23 @@ function CounselorRoutineDetail({
     : null;
 
   return (
-    <div>
+    <div className="space-y-5">
       <RoutinePageHeading
         title="Routine Interview"
         back={<RoutineBackLink />}
-        action={workspaceHref ? <PageActionLink as={GuardedPortalLink} href={workspaceHref} icon={NotebookPen} variant="secondary" label="Open Counseling workspace" /> : undefined}
       />
+      <div
+        data-page-action-layout="routine-interview"
+        className={`grid gap-4 ${workspaceHref ? "lg:grid-cols-[7rem_minmax(0,1fr)] lg:gap-5" : ""}`}
+      >
+        <PageActionGroup
+          aria-label="Routine Interview page actions"
+          data-page-action-rail=""
+          className="empty:hidden lg:sticky lg:top-4 lg:flex-col lg:items-center lg:gap-x-0 lg:gap-y-3"
+        >
+          {workspaceHref ? <PageActionLink as={GuardedPortalLink} href={workspaceHref} icon={NotebookPen} variant="secondary" label="Open Counseling workspace" /> : null}
+        </PageActionGroup>
+        <div className="min-w-0 space-y-5">
       <RoutineContextSummary
         personName={detail.inventory_context?.full_name ?? detail.student.display_name}
         academicYear={detail.academic_year}
@@ -274,6 +285,8 @@ function CounselorRoutineDetail({
       )}
       </div>
       <FollowupsContext kind="ROUTINE_INTERVIEW" id={routineInterviewId} />
+        </div>
+      </div>
     </div>
   );
 }

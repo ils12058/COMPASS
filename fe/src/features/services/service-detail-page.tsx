@@ -1,6 +1,6 @@
 "use client";
 
-import { PageActionLink } from "@/components/ui/page-action";
+import { PageActionGroup, PageActionLink } from "@/components/ui/page-action";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams, useSearchParams } from "next/navigation";
 import { useState, type ReactNode } from "react";
@@ -258,11 +258,6 @@ export function ServiceDetailPage() {
         help={<ServiceHelp counseling={systemRequired} />}
         backHref="/portal/services"
         backLabel="Services"
-        action={
-          canManage ? (
-            <PageActionLink href={"/portal/services/" + service.id + "/edit"} icon={Pencil} variant="secondary" label="Edit" labelDetail="Service" />
-          ) : null
-        }
       >
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <p className="min-w-0 [overflow-wrap:anywhere] font-mono text-xs text-muted">{service.code}</p>
@@ -293,7 +288,21 @@ export function ServiceDetailPage() {
         </Notice>
       ) : null}
 
-      <Panel as="div" className="mt-5">
+      <div
+        data-page-action-layout="service"
+        className={canManage ? "mt-5 grid gap-4 lg:grid-cols-[7rem_minmax(0,1fr)] lg:gap-5" : "mt-5"}
+      >
+        {canManage ? (
+          <PageActionGroup
+            aria-label="Service page actions"
+            data-page-action-rail=""
+            className="empty:hidden lg:sticky lg:top-4 lg:flex-col lg:items-center lg:gap-x-0 lg:gap-y-3"
+          >
+            <PageActionLink href={"/portal/services/" + service.id + "/edit"} icon={Pencil} variant="secondary" label="Edit" labelDetail="Service" />
+          </PageActionGroup>
+        ) : null}
+        <div className="min-w-0 space-y-5">
+        <Panel as="div">
         {service.description.trim() ? <PanelSection title="Description" titleId="service-description-heading">
           <p className="mt-3 max-w-4xl whitespace-pre-wrap text-sm leading-7 text-muted">
             {service.description.trim()}
@@ -348,30 +357,6 @@ export function ServiceDetailPage() {
           </p>
         </PanelSection>
 
-        {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) &&
-        user.capabilities.includes("appointments.manage") &&
-        (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF") ? (
-          <ServiceFixedSlotsStaffPanel service={service} />
-        ) : null}
-
-        {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) &&
-        user.role === "STUDENT" &&
-        service.is_active ? (
-          <ServiceFixedSlotsStudentPanel service={service} />
-        ) : null}
-
-        {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) &&
-        user.capabilities.includes("appointments.manage") &&
-        (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF") ? (
-          <ServiceGroupSessionsStaffPanel service={service} />
-        ) : null}
-
-        {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) &&
-        user.role === "STUDENT" &&
-        service.is_active ? (
-          <ServiceGroupSessionsStudentPanel service={service} />
-        ) : null}
-
         <PanelSection title="Provider coverage" titleId="service-provider-heading">
           <p className="mt-3 text-xs leading-5 text-muted">
             These Counselors provide individual Appointments. Group Session organizers,
@@ -397,8 +382,34 @@ export function ServiceDetailPage() {
         ) : null}
       </Panel>
 
+        <div className="space-y-5">
+          {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) &&
+          user.capabilities.includes("appointments.manage") &&
+          (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF") ? (
+            <Panel as="div"><ServiceFixedSlotsStaffPanel service={service} /></Panel>
+          ) : null}
+
+          {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) &&
+          user.role === "STUDENT" &&
+          service.is_active ? (
+            <Panel as="div"><ServiceFixedSlotsStudentPanel service={service} /></Panel>
+          ) : null}
+
+          {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) &&
+          user.capabilities.includes("appointments.manage") &&
+          (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF") ? (
+            <Panel as="div"><ServiceGroupSessionsStaffPanel service={service} /></Panel>
+          ) : null}
+
+          {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) &&
+          user.role === "STUDENT" &&
+          service.is_active ? (
+            <Panel as="div"><ServiceGroupSessionsStudentPanel service={service} /></Panel>
+          ) : null}
+        </div>
+
       {canManage ? (
-        <Panel className="mt-5" aria-label="Service actions">
+        <Panel aria-label="Service actions">
           <PanelSection title="Actions" titleId="service-actions-heading">
             <div>
               {systemRequired && service.is_active ? (
@@ -422,6 +433,8 @@ export function ServiceDetailPage() {
           </PanelSection>
         </Panel>
       ) : null}
+        </div>
+      </div>
 
       <ConsequentialActionDialog
         open={lifecycleOpen}
