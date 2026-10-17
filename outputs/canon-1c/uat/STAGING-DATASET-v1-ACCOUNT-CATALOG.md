@@ -1,6 +1,6 @@
 # Staging Dataset v1 — Account Catalog
 
-COMPASS Staging Dataset v1 (dataset version 1). Generated 2026-10-17T01:06:10+00:00 by `seed_staging_dataset report` from the manifest and a passing read-only verification of the local-staging database. Do not edit by hand: change `be/compass/staging_seed/` and regenerate.
+COMPASS Staging Dataset v1 (dataset version 1). Generated 2026-10-17T09:32:05+08:00 by `seed_staging_dataset report` from the manifest and a passing read-only verification of the live-staging database. Do not edit by hand: change `be/compass/staging_seed/` and regenerate.
 
 All names, identifiers, addresses and email addresses are synthetic. This document contains no passwords, MFA secrets, tokens, confidential form answers or counseling content, and no evaluator identities.
 

@@ -1,8 +1,8 @@
 # UAT-40 — College allocation correction and participant handoff
 
 2026-10-17, Asia/Manila. Branch `feat/uat-40-college-allocation`; base `staging` @ `b917e0c8`
-(also the deployed backend build). No migration, deployment, reset, credential issuance or live
-database write was performed.
+(also the deployed backend build). No migration, deployment, reset, seed, credential issuance or
+live database write was performed.
 
 ## What was wrong
 
@@ -84,13 +84,32 @@ warnings (122 scenario checks), `report` wrote all seven documents, and a `pg_du
 byte-identical before and after. A `seed` rerun created **0 items** and also left the data
 identical. **No live database write is required** to apply the corrected allocation.
 
-The repository reports under `outputs/canon-1c/uat` were regenerated from that rehearsal, so their
-header names the local-staging database; account, email and record facts match live. They will be
-replaced by a live-generated set if the read-only live run below is authorized.
+## Authorized read-only live run
 
-**Not yet done on live:** the read-only `verify`/`report` with the corrected code. It needs the
-temporary SSH access the owner authorizes separately. Public `/api/v1/meta` reports build
-`b917e0c8`, live-staging.
+The owner authorized temporary SSH access from the operator's exact /32 and a read-only
+verify/report with the corrected seeder (no seed, no credentials). One session, 09:31 Asia/Manila:
+
+- Temporary firewall rule `136.158.101.147/32` added, then removed. The firewall was restored
+  exactly; only the pre-existing SSH rule remains.
+- The host deployment lock (`/opt/compass/.live-reset.lock`) was held throughout. No freeze file.
+- Public `/api/v1/meta` and the running image both reported `b917e0c8`, live-staging.
+- Compatibility: the uploaded seeder (`c7e1fb9f`, SHA-256-checked archive) had the same 37 files as
+  the image's `/app/compass/staging_seed`. Only `manifest.py`, `reports.py`, `students.py` and
+  `verify.py` differ; the running manifest was the 116-account, 94-scenario one.
+- One-off `--rm --no-deps --pull never` containers on the existing image, with the corrected
+  `staging_seed` mounted read-only over the image's copy. Application containers were untouched.
+- Strict `verify`: **PASSED, zero warnings** (122 scenario checks). `report` wrote all seven documents.
+- A read-only fingerprint of **93 models / 3,652 rows** was identical before and after. Migrations
+  were unchanged (41), and there were 116 accounts with **0 usable passwords** both times.
+- Container IDs, start times, images, volumes and network were unchanged. No one-off container
+  was left.
+
+**No live database write was required or made.** The seven live reports replace the repository
+copies under `outputs/canon-1c/uat`. Every downloaded file matched its remote SHA-256. They are
+byte-identical to the rehearsal set apart from the generated-at/database header line, and the two
+CSVs are identical. Live copies stay at
+`/opt/compass/operator/uat40-college-c7e1fb9f9d26354ac39db50938f7eaaf529c76e1-20261017T013139Z/reports`
+(mode 0700), with the fingerprints and verification output beside them.
 
 ## Handoff documents
 
@@ -108,7 +127,7 @@ committed. None contains a password, MFA secret, recovery code or token.
 
 ## Credential issuance readiness (not executed)
 
-1. Live read-only `verify` with the corrected code passes (pending the access authorization).
+1. Live read-only `verify` with the corrected code passes. Done 2026-10-17 (see above).
 2. Owner authorizes issuance for exactly the 40 keys in the Selection Guide.
 3. The deployed build already accepts all 40 keys: explicit `--account` selection needs only the
    CREDENTIAL plan, which every allocated account has. No deployment is required for issuance.
