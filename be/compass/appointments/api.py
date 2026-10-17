@@ -10,6 +10,7 @@ from uuid import UUID
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpResponse, JsonResponse
 from ninja import Header, Router, Schema
+from compass.appointments.reminders import preview_reminders, issue_manual_reminder, issue_bulk_reminders
 from pydantic import ConfigDict
 
 from compass.audit.context import AuditContext
@@ -81,6 +82,34 @@ class AppointmentStatus(StrEnum):
     CANCELLED = "CANCELLED"
     COMPLETED = "COMPLETED"
     NO_SHOW = "NO_SHOW"
+
+
+class AppointmentReminderSelection(StrictSchema):
+    appointment_ids: list[UUID]
+
+
+class AppointmentReminderBulkRequest(AppointmentReminderSelection):
+    request_key: UUID
+
+
+class AppointmentReminderRow(StrictSchema):
+    appointment_id: UUID
+    reference_code: str | None = None
+    student_name: str | None = None
+    eligible: bool
+    reason: str
+    issued_at: datetime | None = None
+    accepted: bool | None = None
+
+
+class AppointmentReminderPreviewResponse(StrictSchema):
+    items: list[AppointmentReminderRow]
+
+
+class AppointmentReminderBulkResponse(StrictSchema):
+    items: list[AppointmentReminderRow]
+    accepted: int
+    skipped: int
 
 
 class AppointmentHistoryEventType(StrEnum):
@@ -386,6 +415,57 @@ def _abandon_or_503(store, reservation) -> None:
             "idempotency_unavailable",
             "The booking replay boundary could not be released safely.",
         ) from exc
+
+
+
+def _require_reminder_manager(request):
+    user = request.auth_user
+    if not user.is_active or user.role.code not in {"COUNSELOR", "GSS"}:
+        raise APIError(403, "permission_denied", "Appointment management access is required.")
+    _require(request, "appointments.manage")
+
+
+@router.post(
+    "/reminders/preview",
+    response=response_with_errors(AppointmentReminderPreviewResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="appointmentsPreviewReminders",
+)
+def appointments_preview_reminders(request, payload: AppointmentReminderSelection):
+    _require_reminder_manager(request)
+    try:
+        return {"items": preview_reminders(actor=request.auth_user, appointment_ids=payload.appointment_ids)}
+    except ValueError as exc:
+        raise APIError(422, "invalid_reminder_selection", str(exc)) from exc
+
+
+@router.post(
+    "/reminders/send",
+    response=response_with_errors(AppointmentReminderBulkResponse, 401, 403, 422),
+    auth=session_auth,
+    operation_id="appointmentsSendReminders",
+)
+def appointments_send_reminders(request, payload: AppointmentReminderBulkRequest):
+    _require_reminder_manager(request)
+    try:
+        return issue_bulk_reminders(actor=request.auth_user, appointment_ids=payload.appointment_ids,
+                                    request_key=payload.request_key, context=_context(request))
+    except ValueError as exc:
+        raise APIError(422, "invalid_reminder_selection", str(exc)) from exc
+
+
+@router.post(
+    "/{appointment_id}/reminder",
+    response=response_with_errors(AppointmentReminderRow, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="appointmentsSendReminder",
+)
+def appointments_send_reminder(request, appointment_id: UUID):
+    _require_reminder_manager(request)
+    try:
+        return issue_manual_reminder(actor=request.auth_user, appointment_id=appointment_id, context=_context(request))
+    except LookupError as exc:
+        raise APIError(404, "appointment_not_found", "Appointment not found.") from exc
 
 
 @router.get(

@@ -19,6 +19,7 @@ from compass.integrations.mail import Mailer
 
 from .models import EmailDelivery, EmailDeliveryStatus
 from .policy import get_event_definition
+from compass.appointments.reminders import reminder_notification_is_current
 
 logger = logging.getLogger("compass.notifications")
 DELIVERY_BATCH_SIZE = 100
@@ -74,9 +75,9 @@ def claim_email_delivery(
             return None
 
         recipient = delivery.notification.recipient
-        if not recipient.is_active:
+        if not recipient.is_active or not reminder_notification_is_current(delivery.notification, now=current):
             delivery.status = EmailDeliveryStatus.CANCELLED
-            delivery.failure_code = "recipient_inactive"
+            delivery.failure_code = "recipient_or_appointment_ineligible"
             delivery.next_attempt_at = None
             _clear_claim(delivery)
             delivery.save(
@@ -239,6 +240,12 @@ def deliver_email_delivery(delivery_id: UUID) -> str:
         _log_delivery_result(
             claim, status=EmailDeliveryStatus.FAILED, failure_code="template_error"
         )
+        return EmailDeliveryStatus.FAILED
+
+    if not reminder_notification_is_current(
+        EmailDelivery.objects.select_related("notification").get(pk=claim.delivery_id).notification
+    ):
+        _record_failure(claim, failure_code="appointment_changed", retryable=False)
         return EmailDeliveryStatus.FAILED
 
     try:

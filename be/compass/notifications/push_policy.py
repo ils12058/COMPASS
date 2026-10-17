@@ -15,6 +15,9 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
     NotificationEvent.CALL_SLIP_ISSUED: (PushDecision.PUSH, "You have a new Call Slip."),
     NotificationEvent.CALL_SLIP_VOIDED: (PushDecision.PUSH, "You have a Call Slip update."),
     NotificationEvent.APPOINTMENT_SCHEDULED: (PushDecision.PUSH, "You have an appointment update."),
+    NotificationEvent.APPOINTMENT_REMINDER_24H: (PushDecision.PUSH, "You have an upcoming appointment."),
+    NotificationEvent.APPOINTMENT_REMINDER_3H: (PushDecision.PUSH, "You have an upcoming appointment."),
+    NotificationEvent.APPOINTMENT_REMINDER_MANUAL: (PushDecision.PUSH, "You have an upcoming appointment."),
     NotificationEvent.APPOINTMENT_CANCELLED: (PushDecision.PUSH, "You have an appointment update."),
     NotificationEvent.APPOINTMENT_RESCHEDULED: (
         PushDecision.PUSH,
