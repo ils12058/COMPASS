@@ -56,6 +56,7 @@ def create(
     source_kind=None,
     source_id=None,
     category="ADMINISTRATIVE",
+    due_at=None,
     now=None,
     visibility=None,
 ):
@@ -67,7 +68,7 @@ def create(
         student_id=(student or s).pk,
         assigned_to_id=(assignee or actor).pk,
         category=category,
-        due_at=now + timedelta(days=3),
+        due_at=due_at if due_at is not None else now + timedelta(days=3),
         source_kind=source_kind,
         source_id=source_id,
         description=description,
@@ -769,3 +770,71 @@ def test_http_lifecycle_requires_recent_mfa_and_replays_durably(world, action, f
             assert result.json()["description"] is None
             assert result.json()["events"] == []
     assert item.events.count() == 2
+
+
+def test_work_queue_prioritization_distinguishes_time_sensitive_and_action_required(world):
+    from compass.work_queue.schemas import WorkPriority
+    from compass.work_queue.services import list_work
+
+    counselor, _, _, student, *_ = world
+    now = timezone.now()
+
+    # Overdue follow-up (created with future date, updated in DB to simulate elapsed time)
+    overdue = create(world, due_at=now + timedelta(days=1), now=now)
+    GuidanceFollowUp.objects.filter(pk=overdue.pk).update(due_at=now - timedelta(days=1))
+    # Due soon (3 days, within 7-day horizon)
+    due_soon = create(world, due_at=now + timedelta(days=3), now=now)
+    # Due later (14 days, beyond 7-day horizon)
+    due_later = create(world, due_at=now + timedelta(days=14), now=now)
+
+    work_items = [
+        row for row in list_work(actor=counselor).items if row.kind == "GUIDANCE_FOLLOW_UP"
+    ]
+    work_by_id = {row.source_id: row for row in work_items}
+
+    assert work_by_id[overdue.pk].priority == WorkPriority.TIME_SENSITIVE
+    assert work_by_id[due_soon.pk].priority == WorkPriority.TIME_SENSITIVE
+    assert work_by_id[due_later.pk].priority == WorkPriority.ACTION_REQUIRED
+
+    # TIME_SENSITIVE items rank before ACTION_REQUIRED items in the queue
+    overdue_idx = next(i for i, r in enumerate(work_items) if r.source_id == overdue.pk)
+    due_soon_idx = next(i for i, r in enumerate(work_items) if r.source_id == due_soon.pk)
+    due_later_idx = next(i for i, r in enumerate(work_items) if r.source_id == due_later.pk)
+    assert overdue_idx < due_later_idx
+    assert due_soon_idx < due_later_idx
+
+
+def test_standalone_student_followup_and_student_support_boundary(world):
+    counselor, _, gss, student, *_ = world
+    now = timezone.now()
+
+    # Standalone follow-up without linked source record
+    standalone = create(
+        world,
+        actor=counselor,
+        student=student,
+        category="STUDENT_CONTACT",
+        due_at=now + timedelta(days=2),
+        source_kind=None,
+        source_id=None,
+        description="Follow-up initiated from student context",
+        now=now,
+    )
+    assert standalone.source_kind is None
+    assert standalone.source_id is None
+    assert standalone.visibility == "OPERATIONAL"
+
+    # Counselor (assignee in scope) can view and manage
+    assert services.get_followup(actor=counselor, followup_id=standalone.pk).pk == standalone.pk
+
+    # Operational follow-up can be reassigned to GSS in scope, transferring access
+    services.reassign_followup(
+        actor=counselor,
+        followup_id=standalone.pk,
+        expected_version=standalone.version,
+        assigned_to_id=gss.pk,
+        context=context(counselor),
+    )
+    assert services.get_followup(actor=gss, followup_id=standalone.pk).pk == standalone.pk
+    with pytest.raises(FollowUpNotFound):
+        services.get_followup(actor=counselor, followup_id=standalone.pk)

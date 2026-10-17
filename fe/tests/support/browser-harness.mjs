@@ -142,6 +142,7 @@ export async function createBrowserHarness(suite) {
       }
       if (pathname === `/api/v1/appointments/${appointmentId}`) return reply(appointment);
       if (pathname === `/api/v1/appointments/${appointmentId}/history`) return reply({ items: [] });
+      if (pathname === `/api/v1/appointments/${appointmentId}/reminders`) return reply({ items: [] });
       if (pathname === `/api/v1/appointments/${appointmentId}/reassignment-candidates`) return reply({ items: [{ id: "other-counselor", display_name: "Ana Cruz" }] });
       if (pathname === `/api/v1/appointments/${appointmentId}/reschedule-slots`) return reply({ items: [{ starts_at: `${url.searchParams.get("date")}T04:00:00Z`, ends_at: `${url.searchParams.get("date")}T05:00:00Z` }], timezone: "Asia/Manila" });
       if (pathname === "/api/v1/appointments") return reply({ ...emptyPage, items: [appointment], ordering: url.searchParams.get("ordering") ?? "EARLIEST_START" });

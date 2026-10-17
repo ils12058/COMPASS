@@ -299,7 +299,17 @@ def test_postgresql_concurrent_issuers_produce_one_occurrence(reminder_case, rac
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         list(pool.map(run, range(2)))
-    assert AppointmentReminderOccurrence.objects.count() == 1
+    if race == "auto_manual":
+        auto_count = AppointmentReminderOccurrence.objects.filter(
+            kind=AppointmentReminderKind.AUTO_24H
+        ).count()
+        manual_count = AppointmentReminderOccurrence.objects.filter(
+            kind=AppointmentReminderKind.MANUAL
+        ).count()
+        assert auto_count == 1
+        assert manual_count == 1
+    else:
+        assert AppointmentReminderOccurrence.objects.count() == 1
 
 
 @pytest.mark.django_db
@@ -309,7 +319,7 @@ def test_manual_http_uses_canonical_role_and_durable_request_id(reminder_case):
     from tests.test_appointment_management_scope import auth_client, csrf
 
     staff, _, item, _ = reminder_case
-    client = auth_client(staff)
+    client = auth_client(staff, recent_mfa=True)
     key = str(uuid4())
     path = f"/api/v1/appointments/{item.pk}/reminder"
     for _ in range(2):
@@ -346,3 +356,162 @@ def test_bounded_scheduler_does_not_starve_behind_short_notice_rows(reminder_cas
     with patch("compass.appointments.reminders.SCAN_BATCH", 1):
         assert dispatch_due_reminders(now=now) == 1
     assert AppointmentReminderOccurrence.objects.get().appointment_id == valid.pk
+
+
+@pytest.mark.django_db
+@override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=True)
+def test_manual_reminder_does_not_block_later_automatic_reminder(reminder_case):
+    from compass.appointments.models import Appointment
+
+    _, _, item, now = reminder_case
+    # Appointment starts at now + 24 hours.
+    # Send a manual reminder at now.
+    send_case(reminder_case, now=now)
+    manual_count = AppointmentReminderOccurrence.objects.filter(
+        kind=AppointmentReminderKind.MANUAL
+    ).count()
+    assert manual_count == 1
+
+    # Advance to now + 21 hours (appointment starts at 3 hours from this point).
+    at_3h_window = now + timedelta(hours=21)
+    Appointment.objects.filter(pk=item.pk).update(starts_at=at_3h_window + timedelta(hours=3))
+    # Automatic 3h window is due. The prior manual reminder must not block the auto reminder.
+    dispatched = dispatch_due_reminders(now=at_3h_window)
+    assert dispatched == 1
+    auto_3h_count = AppointmentReminderOccurrence.objects.filter(
+        kind=AppointmentReminderKind.AUTO_3H
+    ).count()
+    assert auto_3h_count == 1
+
+
+@pytest.mark.django_db
+@override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=True)
+def test_prior_automatic_reminder_does_not_block_manual_reminder(reminder_case):
+    _, _, item, now = reminder_case
+    # Dispatch automatic 24h reminder
+    assert dispatch_due_reminders(now=now) == 1
+    auto_24h_count = AppointmentReminderOccurrence.objects.filter(
+        kind=AppointmentReminderKind.AUTO_24H
+    ).count()
+    assert auto_24h_count == 1
+
+    # 10 minutes later, counselor sends a manual reminder.
+    # It must not be blocked by the automatic reminder cooldown.
+    result = send_case(reminder_case, now=now + timedelta(minutes=10))
+    assert result["accepted"] is True
+    manual_count = AppointmentReminderOccurrence.objects.filter(
+        kind=AppointmentReminderKind.MANUAL
+    ).count()
+    assert manual_count == 1
+
+
+@pytest.mark.django_db
+def test_manual_to_manual_reminder_enforces_three_hour_cooldown(reminder_case):
+    _, _, item, now = reminder_case
+    # First manual reminder accepted
+    first = send_case(reminder_case, now=now)
+    assert first["accepted"] is True
+
+    # Second manual reminder 1 hour later rejected due to COOLDOWN
+    second = send_case(reminder_case, now=now + timedelta(hours=1))
+    assert second["accepted"] is False
+    assert second["reason"] == "COOLDOWN"
+
+    # Third manual reminder after 3 hours and 1 minute is accepted
+    third = send_case(reminder_case, now=now + timedelta(hours=3, minutes=1))
+    assert third["accepted"] is True
+
+
+@pytest.mark.django_db
+def test_reminder_send_endpoints_require_recent_mfa(reminder_case):
+    import json
+
+    from tests.test_appointment_management_scope import auth_client, csrf
+
+    staff, _, item, _ = reminder_case
+    stale_client = auth_client(staff, recent_mfa=False)
+    single_path = f"/api/v1/appointments/{item.pk}/reminder"
+    bulk_path = "/api/v1/appointments/reminders/send"
+    preview_path = "/api/v1/appointments/reminders/preview"
+
+    # Single-send without recent MFA returns 403 mfa_setup_required / recent_mfa_required
+    resp = stale_client.post(
+        single_path,
+        data=json.dumps({"request_key": str(uuid4())}),
+        content_type="application/json",
+        **csrf(stale_client),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] in ("mfa_setup_required", "recent_mfa_required")
+
+    # Bulk-send without recent MFA returns 403
+    resp = stale_client.post(
+        bulk_path,
+        data=json.dumps({"appointment_ids": [str(item.pk)], "request_key": str(uuid4())}),
+        content_type="application/json",
+        **csrf(stale_client),
+    )
+    assert resp.status_code == 403
+    assert resp.json()["error"]["code"] in ("mfa_setup_required", "recent_mfa_required")
+
+    # Preview is read-only and does not require recent MFA
+    resp = stale_client.post(
+        preview_path,
+        data=json.dumps({"appointment_ids": [str(item.pk)]}),
+        content_type="application/json",
+        **csrf(stale_client),
+    )
+    assert resp.status_code == 200
+
+    # With recent MFA, send succeeds
+    fresh_client = auth_client(staff, recent_mfa=True)
+    resp = fresh_client.post(
+        single_path,
+        data=json.dumps({"request_key": str(uuid4())}),
+        content_type="application/json",
+        **csrf(fresh_client),
+    )
+    assert resp.status_code == 200
+    assert resp.json()["accepted"] is True
+
+
+@pytest.mark.django_db
+def test_reminder_history_visibility_and_boundary(reminder_case):
+    from compass.appointments.models import Appointment
+    from tests.test_appointment_management_scope import auth_client, make_user
+
+    staff, student, item, now = reminder_case
+    # Issue a manual reminder
+    send_case(reminder_case, now=now)
+
+    client = auth_client(staff)
+    history_path = f"/api/v1/appointments/{item.pk}/reminders"
+    resp = client.get(history_path)
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data["items"]) == 1
+    entry = data["items"][0]
+    assert entry["kind"] == "MANUAL"
+    assert entry["is_current"] is True
+    assert entry["issued_by"]["id"] == str(staff.pk)
+    assert entry["in_app"] == "CREATED"
+    assert entry["email"] in ("PENDING", "SENT", "NOT_REQUESTED")
+    # Verify no leaked transports, secrets, tokens, or recipient email in payload
+    assert "token" not in str(data)
+    assert "ciphertext" not in str(data)
+    assert student.email not in str(data)
+
+    # Reschedule changes revision and marks historical reminder not current
+    Appointment.objects.filter(pk=item.pk).update(reminder_revision=2)
+    resp = client.get(history_path)
+    assert resp.status_code == 200
+    assert resp.json()["items"][0]["is_current"] is False
+
+    # Student cannot view staff reminder history (forbidden or concealed)
+    student_client = auth_client(student)
+    assert student_client.get(history_path).status_code in (403, 404)
+
+    # Unrelated counselor cannot view appointment reminders (404 concealment)
+    other = make_user("rem-unrelated@example.test", "COUNSELOR")
+    other_client = auth_client(other)
+    assert other_client.get(history_path).status_code == 404

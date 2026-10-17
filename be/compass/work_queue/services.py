@@ -7,7 +7,7 @@ from django.utils import timezone
 from compass.accounts.models import User
 from compass.call_slips.work import due_call_slips
 from compass.good_moral.work import issuance_requests, preparation_requests
-from compass.guidance_followups.integration import pending_followups
+from compass.guidance_followups.integration import followup_is_time_sensitive, pending_followups
 from compass.guidance_messages.work import reply_needed_threads
 from compass.routine_interviews.work import pending_evaluations
 
@@ -26,11 +26,11 @@ class WorkQueueAccessDenied(PermissionError):
     pass
 
 
-def _item(kind, record, *, waiting=None, due=None, conversation=None):
+def _item(kind, record, *, waiting=None, due=None, conversation=None, priority=None):
     return WorkItem(
         id=f"{kind.value.lower().replace('_', '-')}:{record.pk}",
         kind=kind,
-        priority=WorkPriority.TIME_SENSITIVE if due else WorkPriority.ACTION_REQUIRED,
+        priority=priority or (WorkPriority.TIME_SENSITIVE if due else WorkPriority.ACTION_REQUIRED),
         source_id=record.pk,
         student=WorkStudent(id=record.student_id, display_name=record.student.get_full_name()),
         conversation_kind=conversation,
@@ -39,12 +39,26 @@ def _item(kind, record, *, waiting=None, due=None, conversation=None):
     )
 
 
+def _followup_item(row, now):
+    # Every Follow-Up has a due date, so a due date alone is not urgency (CORR-2B): overdue and
+    # due-soon work is TIME_SENSITIVE; later work stays actionable but not urgent.
+    priority = (
+        WorkPriority.TIME_SENSITIVE
+        if followup_is_time_sensitive(row.due_at, now)
+        else WorkPriority.ACTION_REQUIRED
+    )
+    return _item(WorkKind.GUIDANCE_FOLLOW_UP, row, due=row.due_at, priority=priority)
+
+
 def _rank(item):
     missing = datetime.max.replace(tzinfo=UTC)
+    urgent = item.priority == WorkPriority.TIME_SENSITIVE
     return (
-        0 if item.priority == WorkPriority.TIME_SENSITIVE else 1,
-        item.due_at or missing,
+        0 if urgent else 1,
+        # A deadline orders only urgent work; later Follow-Ups tie-break after waiting work.
+        (item.due_at or missing) if urgent else missing,
         item.waiting_since or missing,
+        item.due_at or missing,
         item.id,
     )
 
@@ -65,10 +79,7 @@ def list_work(*, actor, page=1, page_size=20):
     # Never count/load whole sources. N+1 from each ordered source proves the global N+1 prefix.
     # Unexpected source failures propagate: an incomplete projection cannot claim 'caught up'.
     items = [
-        *(
-            _item(WorkKind.GUIDANCE_FOLLOW_UP, row, due=row.due_at)
-            for row in pending_followups(actor=actor, limit=limit)
-        ),
+        *(_followup_item(row, now) for row in pending_followups(actor=actor, limit=limit)),
         *(
             _item(
                 WorkKind.GUIDANCE_MESSAGE_REPLY,

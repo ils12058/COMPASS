@@ -24,15 +24,29 @@ The Beat dispatcher runs every 60 seconds and accepts only
 window target do not qualify. This intentionally does not backfill downtime.
 
 Manual issuance requires at least 15 minutes before start and a three-hour
-cooldown from *any* issued reminder. It never blocks later automatic windows.
+anti-spam cooldown from prior *manual* reminders on that Appointment (CORR-2A).
+Automatic 24-hour and 3-hour windows remain independently idempotent by
+`(appointment, revision, window)`. An automatic reminder never prohibits an
+authorized manual reminder, and a prior manual reminder never silently suppresses
+a subsequent automatic reminder window.
 
 ## Authorization and safe content
 
-Only active Counselor/GSS staff with `appointments.manage` may request a
-reminder; existing resource scope is evaluated for each Appointment. Preview
-does not expose unauthorized recipients or details. The Student must match the
-Appointment and remain active. Neither staff notifications nor My Work items
-are created.
+Only active Counselor/GSS staff with `appointments.manage` may request, preview,
+or review reminder history; existing resource scope is evaluated for each Appointment.
+Manual single and bulk reminder submissions require recent MFA through the
+established `require_recent_mfa_for_request` convention, ensuring durable confirmation
+replays cannot bypass active step-up policy. Preview and reminder history are read-only
+and do not require step-up. Preview does not expose unauthorized recipients or details.
+The Student must match the Appointment and remain active. Neither staff notifications
+nor My Work items are created.
+
+A read-only staff reminder history (`GET /api/v1/appointments/{appointment_id}/reminders`)
+reports occurrence issuance, in-app notification creation, and external email and
+browser-push states (`NOT_REQUESTED`, `PENDING`, `SENT`, `FAILED`, `CANCELLED`).
+`SENT` honestly reflects successful hand-off to the transport provider, not confirmed
+recipient delivery. Transport diagnostics, tokens, and other students' notification
+records are never exposed.
 
 All outbound reminder wording is generic and uses the existing notification,
 email and browser-push channels. No reason, referral, notes, or counseling
@@ -84,9 +98,13 @@ The final database read and external provider submission cannot be atomic: an ac
 message cannot be recalled, and a worker interrupted after provider acceptance may retry. Durable
 claims prevent concurrent sends; SMTP/web-push do not guarantee exactly-once external delivery.
 
-Automatic/manual concurrency uses the existing three-hour cooldown. Bulk confirmation previews are
-advisory; submission rechecks each Appointment under its row lock. Reassignment/rescheduling creates
-a new Appointment revision. Group registrations are outside this Appointment-only producer.
+Automatic/manual concurrency isolates independent automatic window idempotency from manual
+anti-spam: manual reminders enforce a three-hour manual-to-manual cooldown, while automatic
+24-hour and 3-hour windows evaluate only their own unique window occurrence. An automatic
+reminder does not prevent a manual reminder, and a manual reminder does not block a scheduled
+automatic window. Bulk confirmation previews are advisory; submission rechecks each Appointment
+under its row lock and validates recent MFA. Reassignment/rescheduling creates a new Appointment
+revision. Group registrations are outside this Appointment-only producer.
 
 ## Enablement, migration and rollback
 

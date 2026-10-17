@@ -102,6 +102,8 @@ test("step-up handling stays on the features whose actions keep it", () => {
     "platform/platform-actions.tsx",
     "privacy-governance/privacy-governance-shared.tsx",
     "services/",
+    // CORR-2A reconciles recent MFA for appointment reminder issuance.
+    "appointments/appointment-reminders.tsx",
     // FUP-1A preserves recent MFA for all Follow-Up lifecycle writes.
     "guidance-followups/",
   ];
