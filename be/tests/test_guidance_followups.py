@@ -279,7 +279,8 @@ def test_capability_deactivation_and_direct_object_scope(world):
         services.get_followup(actor=gss, followup_id=item.pk)
     capability = Capability.objects.get(code="guidance_followups.manage")
     UserCapabilityOverride.objects.create(
-        user=counselor, capability=capability, effect="DENY",
+        user=counselor, capability=capability, effect="REVOKE",
+        reason="Regression test capability revoke",
     )
     with pytest.raises(FollowUpPermissionDenied):
         services.complete_followup(
@@ -287,7 +288,7 @@ def test_capability_deactivation_and_direct_object_scope(world):
             outcome="Denied", context=context(counselor),
         )
     other = create(world, actor=gss, student=student_a, assignee=gss)
-    StudentAffiliation.objects.filter(student=student_a).update(college_id=None) if False else None
+    StaffSupervision.objects.filter(staff=gss).update(supervisor=counselor)
     # Student B and unaffiliated Student are never addressable by GSS.
     with pytest.raises(FollowUpNotFound):
         create(world, actor=gss, student=student_b, assignee=gss)

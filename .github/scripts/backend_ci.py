@@ -147,6 +147,10 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Current aggregate authority and shared actionable source populations.",
         ("test_guidance_operations.py",),
     ),
+    "guidance-followups": (
+        "Privacy-scoped Guidance Follow-Up domain and lifecycle.",
+        ("test_guidance_followups.py",),
+    ),
     "guidance-messages": (
         "Guidance Messages encryption, workload/relationship authorization, commit hints, "
         "Office handler eligibility and Message templates.",
@@ -521,6 +525,12 @@ DOMAINS: dict[str, Area] = {
         "feedback",
         "Counseling and Good Moral open feedback opportunities.",
         ("feedback", "counseling", "good-moral", "cross-domain-lists"),
+    ),
+    "guidance_followups": domain(
+        "guidance_followups",
+        "Assigned Follow-Up lifecycle, encryption, source policy and role scope.",
+        ("guidance-followups", "identity-access", "counseling", "routine-interviews",
+         "referrals-call-slips", "organization", "crypto", "cross-domain-api"),
     ),
     "guidance_messages": domain(
         "guidance_messages",

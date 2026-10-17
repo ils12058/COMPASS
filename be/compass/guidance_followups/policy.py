@@ -4,8 +4,6 @@ Follow-Up responsibility does not confer access to a source record.
 """
 from __future__ import annotations
 
-from django.db.models import Q
-
 from compass.accounts.models import User
 from compass.organization.access_scope import (
     is_head_guidance,

@@ -218,8 +218,9 @@ def update_followup(*, actor, followup_id, expected_version, context,
         if not changed:
             return item
         item.version += 1
-        item.save(update_fields=[*changed[:0], "due_at", "category", "description_ciphertext",
-                                 "version", "updated_at"])
+        item.save(
+            update_fields=["due_at", "category", "description_ciphertext", "version", "updated_at"]
+        )
         _event(item, actor=actor, kind=FollowUpEventType.UPDATED, old_due=old_due,
                new_due=item.due_at)
         _audit(context, "updated", item, metadata={"fields": changed})
