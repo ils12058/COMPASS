@@ -1,9 +1,10 @@
 # Host-managed live-staging runtime secrets
 
-Current repository target: **24** sources (ADR-108). All older numbered cutover sections
+Current repository target: **25** sources (ADR-108 and ADR-FUP-1A). All older numbered cutover sections
 are historical domain procedures; ADR-085/086 gates continue for the original 22 sources,
 and ADR-105 requires the web-only Messages host secret before live deployment.
-ADR-108 also requires a separate web-only Assessment key before live deployment.
+ADR-108 also requires a separate web-only Assessment key, and ADR-FUP-1A requires a separate
+web-only Follow-Up key before the current Compose manifest passes deployment preflight.
 No implementation merge establishes live readiness.
 
 
@@ -15,7 +16,7 @@ secret-management service.
 ## Host directory and service grants
 
 `/opt/compass/secrets` is persistent outside `/opt/compass/releases`, owned by `compass:compass`,
-mode `0700`. All 24 source files must be regular files, not symlinks, owned by `compass`, mode
+mode `0700`. All 25 source files must be regular files, not symlinks, owned by `compass`, mode
 `0444`. Never put this directory in Git, a checkout, an image, or a release symlink.
 
 The host parent directory is the confidentiality boundary: other unprivileged users cannot traverse
@@ -49,20 +50,24 @@ remain trusted. A compromised authorized process can read its own grants.
 | `FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `feedback_confidential_content_encryption_keys` | yes |
 | `WEB_PUSH_PRIVATE_KEY` | `web_push_private_key` | when enabled |
 | `WEB_PUSH_STORAGE_KEY` | `web_push_storage_key` | when enabled |
+| `GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS` | `guidance_followup_encryption_keys` | required non-empty by live deployment preflight; web only |
 | `GUIDANCE_MESSAGE_ENCRYPTION_KEYS` | `guidance_message_encryption_keys` | required non-empty by live deployment preflight; web only |
 | `ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `assessment_record_confidential_content_encryption_keys` | required non-empty by live deployment preflight; web only |
 
 | Service | Explicit grants |
 | --- | --- |
-| `web` | original 22 plus Messages and Assessment keys (24 total) |
-| `worker`, `beat` | original 22; Messages and Assessment key/path explicitly empty, neither grant |
+| `web` | original 22 plus Follow-Up, Messages and Assessment keys (25 total) |
+| `worker`, `beat` | original 22; Follow-Up, Messages and Assessment key/path explicitly empty, none of those key grants |
 | `postgres` | `postgres_password` only |
 | `redis` | `redis_password` only |
 | `realtime` (optional `realtime` profile, ADR-100) | `redis_password` only; no `.env` file |
 | `proxy` | none |
 
-Keep all optional files present, even when empty. Django retains existing enabled-feature checks;
-preflight does not reimplement them. Names, hostnames, feature flags, public VAPID keys, SMTP
+Keep all optional files present, even when empty. The Follow-Up key is a required, non-empty source
+for this deployment contract even while `GUIDANCE_FOLLOWUPS_ENABLED=false`; this file requirement
+does not constitute institutional approval to expose the feature. Provision the independent keyring
+through the approved secret procedure and mount it to web only. Django retains existing enabled-feature
+checks; preflight does not reimplement them. Names, hostnames, feature flags, public VAPID keys, SMTP
 host/port, S3 bucket/endpoint/region, timeouts and limits remain ordinary configuration.
 `COMPASS_SECRETS_DIR` defaults to `/opt/compass/secrets`; synthetic validation can override it.
 The deployment workflow pins that path to `$DEPLOY_PATH/secrets` and checks any `.env` assignment
@@ -653,7 +658,7 @@ key rotation; in-app disposition is decommissioned (ADR-114).
 
 The greenfield Assessment domain requires its own ordered Fernet keyring, delivered only to web
 as `/run/secrets/assessment_record_confidential_content_encryption_keys`. The current checker
-requires all 24 files and rejects an absent/empty Assessment file, a wrong `_FILE` pointer or a
+requires all 25 files and rejects an absent/empty Assessment file, a wrong `_FILE` pointer or a
 direct value. Worker and beat explicitly clear both the key and pointer and boot without it.
 An empty local/non-web setting is allowed; confidential reads/writes fail closed. Non-empty
 malformed/duplicate keys or reuse of any existing domain/security secret fail safely at startup.
@@ -674,3 +679,16 @@ A failed/interrupted batch rolls back, committed batches can be resumed, and rep
 idempotent. Business timestamps, provenance and audits remain unchanged. Resolve all failures,
 confirm zero old-key rows and test historical reads before deliberate key retirement. This phase
 adds no retention or disposition executor and no live key, migration or deployment.
+
+## Guidance Follow-Ups (ADR-FUP-1A; CORR-5)
+
+The current runtime contract requires a non-empty `guidance_followup_encryption_keys` source and
+maps it to `GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS_FILE=/run/secrets/guidance_followup_encryption_keys`.
+Compose grants this independent ordered Fernet keyring to `web` only; worker and Beat have both key
+forms cleared and receive no mount. Provision it through the approved host secret procedure, never
+in Git or by the deployment helper. The required file is a deployment prerequisite, not institutional
+approval to expose Follow-Ups. Keep `GUIDANCE_FOLLOWUPS_ENABLED=false` until the written GCO/DPO/Records
+decisions, web keyring, identity-policy sync and other ADR-FUP-1A prerequisites are verified.
+Missing keys continue to fail protected reads/writes closed; no existing domain key or plaintext
+fallback may be used. This repository audit did not inspect or establish the current host file's
+presence. See [the Follow-Up activation runbook](guidance-followups-operations.md).

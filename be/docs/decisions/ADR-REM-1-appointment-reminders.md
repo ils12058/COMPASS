@@ -108,11 +108,34 @@ revision. Group registrations are outside this Appointment-only producer.
 
 ## Enablement, migration and rollback
 
-`APPOINTMENT_AUTO_REMINDERS_ENABLED=false` remains the default in every environment. Web, worker and
-Beat must agree on the flag. Existing email/SMTP and opt-in `WEB_PUSH_*` settings apply; no new secret
+`APPOINTMENT_AUTO_REMINDERS_ENABLED=false` remains the default in every environment. The worker
+executing the dispatcher task must load the approved value. Beat continues to register and enqueue
+the task every 60 seconds regardless of this value; it does not evaluate the switch. Existing
+email/SMTP and opt-in `WEB_PUSH_*` settings apply; no new secret
 or keyring is required. Before enabling automatic dispatch, an operator must verify the approved
 recipient destinations and delivery integration. Tests use synthetic recipients and mocked transports.
 No Student enrollment, UAT allocation or canonical data change is required.
+
+### Operator control
+
+This setting is an explicit pause for **creation of new automatic reminder occurrences**. When false,
+`dispatch_due_reminders` returns before discovering appointments. When true, the existing task checks
+the 24-hour and 3-hour windows every 60 seconds, issues each `(appointment, revision, window)` at most
+once, and skips expired windows rather than backfilling. It does not control manual issuance, and
+manual issuance does not suppress an automatic window. Turning the switch off does not retract an
+already-created occurrence or automatically cancel its pending email/push delivery; those deliveries
+continue through the existing notification recovery and currentness checks.
+
+Before a change, verify the approved recipient destinations, email preference and opted-in push
+subscriptions, the registered task `compass.appointments.reminders.dispatch_due`, one healthy Beat,
+and workers able to process that task. Change the value in the worker's effective configuration and
+reload/restart the worker that executes the task. No web restart is needed for automatic dispatch;
+manual issuance remains independent. Do not disable or restart Beat to pause reminders: it must keep
+registering/enqueuing the 60-second task, whose worker returns zero while the switch is false. To pause
+after an incident, set the worker value false and confirm dispatch returns zero while the task remains
+registered. Review existing occurrence and Notification delivery states separately; already accepted
+provider messages cannot be recalled. Resume only after the incident is resolved and the delivery
+destinations and currentness safeguards are verified again. Do not backfill skipped windows.
 
 Apply schema-only `appointments.0002_appointment_reminders` after the immutable canonical baseline,
 before deploying producers. It adds revision fields, two durable intent/replay tables, constraints
@@ -122,8 +145,8 @@ registers additions; unknown historical migrations continue to fail closed. Agen
 its independent additions and preserve one graph leaf per app; any shared Appointment leaf needs
 an explicit merge migration with both parents. Never fake, reset or drop canonical data.
 
-Rollback: disable automatic dispatch in web/worker/Beat first, drain or stop relevant workers,
-then roll back application code while retaining additive tables and occurrence history. Reversing
+Rollback: disable automatic dispatch in the worker first, drain or stop relevant workers, then roll
+back application code while retaining additive tables and occurrence history. Reversing
 0002 drops reminder history/replay tables and requires a separate approved recovery plan.
 Smoke: check task registration, preview one synthetic eligible/ineligible selection, issue/replay
 the same key, verify one in-app occurrence and safe email/push fixture, then reschedule/cancel
