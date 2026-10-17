@@ -9,7 +9,7 @@ import {
   CheckCircle,
   XCircle,
   Download,
-  Trash2,
+  Ban,
   UserCheck,
   MapPin,
   Video,
@@ -35,7 +35,7 @@ import {
   useGroupSessionsPublish,
   useGroupSessionsCancel,
   useGroupSessionsComplete,
-  useGroupSessionsDelete,
+  useGroupSessionsWithdraw,
   useGroupSessionsRegister,
   useGroupSessionsCancelRegistration,
   useGroupSessionsRecordAttendance,
@@ -61,7 +61,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
   const [createOpen, setCreateOpen] = useState(false);
   const [cancelModalSession, setCancelModalSession] = useState<GroupSessionResponse | null>(null);
   const [cancelReason, setCancelReason] = useState("");
-  const [deleteSession, setDeleteSession] = useState<GroupSessionResponse | null>(null);
+  const [withdrawSession, setWithdrawSession] = useState<GroupSessionResponse | null>(null);
   const [rosterSession, setRosterSession] = useState<GroupSessionResponse | null>(null);
 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -99,7 +99,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
   const publishMutation = useGroupSessionsPublish();
   const cancelMutation = useGroupSessionsCancel();
   const completeMutation = useGroupSessionsComplete();
-  const deleteMutation = useGroupSessionsDelete();
+  const withdrawMutation = useGroupSessionsWithdraw();
 
   const sessions = sessionsQuery.data?.data ?? [];
   const metrics = metricsQuery.data?.data;
@@ -241,15 +241,18 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
     }
   };
 
-  const handleDelete = async () => {
-    if (!deleteSession) return;
+  const handleWithdraw = async () => {
+    if (!withdrawSession) return;
     try {
-      await deleteMutation.mutateAsync({ sessionId: deleteSession.id });
+      await withdrawMutation.mutateAsync({
+        sessionId: withdrawSession.id,
+        data: { reason: "Draft withdrawn by staff." },
+      });
       await invalidateAll();
-      setSuccessMessage(`Draft session "${deleteSession.title}" deleted.`);
-      setDeleteSession(null);
+      setSuccessMessage(`Draft session "${withdrawSession.title}" withdrawn. Its record is preserved.`);
+      setWithdrawSession(null);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to delete session.";
+      const msg = err instanceof Error ? err.message : "Failed to withdraw session.";
       setErrorMessage(msg);
     }
   };
@@ -361,7 +364,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {sess.status === "DRAFT" && (
+                      {sess.status === "DRAFT" && sess.can_manage && (
                         <>
                           <Button
                             className="min-h-8 px-2.5 py-1 text-xs"
@@ -375,14 +378,15 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
                           <Button
                             className="min-h-8 px-2 py-1 text-xs"
                             variant="secondary"
-                            onClick={() => setDeleteSession(sess)}
+                            onClick={() => setWithdrawSession(sess)}
                           >
-                            <Trash2 className="h-3.5 w-3.5 text-critical" />
+                            <Ban className="mr-1 h-3.5 w-3.5 text-critical" />
+                            Withdraw
                           </Button>
                         </>
                       )}
 
-                      {sess.status === "PUBLISHED" && (
+                      {sess.status === "PUBLISHED" && sess.can_manage && (
                         <>
                           <Button
                             className="min-h-8 px-2.5 py-1 text-xs"
@@ -407,14 +411,16 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
                         </>
                       )}
 
-                      <Button
-                        className="min-h-8 px-2.5 py-1 text-xs"
-                        variant="secondary"
-                        onClick={() => setRosterSession(sess)}
-                      >
-                        <Users className="mr-1.5 h-3.5 w-3.5" />
-                        Roster & Attendance ({sess.active_registrations_count}/{sess.capacity})
-                      </Button>
+                      {sess.can_access_participants ? (
+                        <Button
+                          className="min-h-8 px-2.5 py-1 text-xs"
+                          variant="secondary"
+                          onClick={() => setRosterSession(sess)}
+                        >
+                          <Users className="mr-1.5 h-3.5 w-3.5" />
+                          Roster & Attendance ({sess.active_registrations_count}/{sess.capacity})
+                        </Button>
+                      ) : null}
                     </div>
                   </div>
 
@@ -628,22 +634,23 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
         </div>
       </ConsequentialActionDialog>
 
-      {/* DELETE DRAFT SESSION DIALOG */}
+      {/* WITHDRAW DRAFT SESSION DIALOG */}
       <ConsequentialActionDialog
-        open={deleteSession !== null}
-        title="Delete Draft Session"
-        confirmLabel="Delete Draft"
-        pendingLabel="Deleting..."
+        open={withdrawSession !== null}
+        title="Withdraw Draft Session"
+        confirmLabel="Withdraw Draft"
+        pendingLabel="Withdrawing..."
         error={errorMessage}
         variant="danger"
-        pending={deleteMutation.isPending}
+        pending={withdrawMutation.isPending}
         onOpenChange={(open) => {
-          if (!open) setDeleteSession(null);
+          if (!open) setWithdrawSession(null);
         }}
-        onConfirm={handleDelete}
+        onConfirm={handleWithdraw}
       >
         <p className="text-sm text-muted">
-          Are you sure you want to delete draft session &quot;{deleteSession?.title}&quot;? This cannot be undone.
+          Withdraw draft session &quot;{withdrawSession?.title}&quot; from the active workflow? Its identifier,
+          facilitator assignments, and audit history will be retained.
         </p>
       </ConsequentialActionDialog>
 
@@ -702,7 +709,7 @@ function GroupSessionRosterModal({
     const records = Object.entries(attendanceState).map(([regId, state]) => ({
       registration_id: regId,
       attended: state.attended,
-      notes: state.notes,
+      ...(session.can_manage ? { notes: state.notes } : {}),
     }));
 
     try {
@@ -748,15 +755,17 @@ function GroupSessionRosterModal({
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
         <DialogTitle className="flex items-center justify-between">
           <span>Participant Roster & Attendance</span>
-          <Button
-            className="min-h-8 px-2.5 py-1 text-xs"
-            variant="secondary"
-            onClick={handleExportCsv}
-            disabled={isExporting}
-          >
-            <Download className="mr-1.5 h-3.5 w-3.5" />
-            {isExporting ? "Exporting..." : "Export CSV Roster"}
-          </Button>
+          {session.can_export_roster ? (
+            <Button
+              className="min-h-8 px-2.5 py-1 text-xs"
+              variant="secondary"
+              onClick={handleExportCsv}
+              disabled={isExporting}
+            >
+              <Download className="mr-1.5 h-3.5 w-3.5" />
+              {isExporting ? "Exporting..." : "Export CSV Roster"}
+            </Button>
+          ) : null}
         </DialogTitle>
 
         <div className="text-xs text-muted">
@@ -788,9 +797,9 @@ function GroupSessionRosterModal({
                 <tr className="border-b border-border bg-subtle text-muted uppercase font-semibold">
                   <th className="py-2 px-3">Student</th>
                   <th className="py-2 px-3">Status</th>
-                  <th className="py-2 px-3">Registered At</th>
+                  {session.can_manage ? <th className="py-2 px-3">Registered At</th> : null}
                   <th className="py-2 px-3 text-center">Attended</th>
-                  <th className="py-2 px-3">Notes</th>
+                  {session.can_manage ? <th className="py-2 px-3">Notes</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -805,7 +814,9 @@ function GroupSessionRosterModal({
                     <tr key={r.id} className="border-b border-border/50 hover:bg-subtle/50">
                       <td className="py-2 px-3">
                         <div className="font-semibold text-ink">{r.student_name}</div>
-                        <div className="text-muted text-[11px]">{r.student_email}</div>
+                        {session.can_manage && r.student_email ? (
+                          <div className="text-muted text-[11px]">{r.student_email}</div>
+                        ) : null}
                       </td>
                       <td className="py-2 px-3">
                         <span
@@ -818,9 +829,11 @@ function GroupSessionRosterModal({
                           {r.status}
                         </span>
                       </td>
-                      <td className="py-2 px-3 text-muted">
-                        {formatInstitutionalDateTime(r.registered_at)}
-                      </td>
+                      {session.can_manage ? (
+                        <td className="py-2 px-3 text-muted">
+                          {r.registered_at ? formatInstitutionalDateTime(r.registered_at) : "—"}
+                        </td>
+                      ) : null}
                       <td className="py-2 px-3 text-center">
                         <input
                           type="checkbox"
@@ -835,20 +848,22 @@ function GroupSessionRosterModal({
                           className="h-4 w-4 rounded border-border text-accent focus:ring-accent"
                         />
                       </td>
-                      <td className="py-2 px-3">
-                        <Input
-                          disabled={!isRegistered}
-                          value={state.notes}
-                          onChange={(e) =>
-                            setAttendanceState((prev) => ({
-                              ...prev,
-                              [r.id]: { ...state, notes: e.target.value },
-                            }))
-                          }
-                          placeholder="Optional notes..."
-                          className="h-7 text-xs"
-                        />
-                      </td>
+                      {session.can_manage ? (
+                        <td className="py-2 px-3">
+                          <Input
+                            disabled={!isRegistered}
+                            value={state.notes}
+                            onChange={(e) =>
+                              setAttendanceState((prev) => ({
+                                ...prev,
+                                [r.id]: { ...state, notes: e.target.value },
+                              }))
+                            }
+                            placeholder="Optional notes..."
+                            className="h-7 text-xs"
+                          />
+                        </td>
+                      ) : null}
                     </tr>
                   );
                 })}
@@ -863,7 +878,9 @@ function GroupSessionRosterModal({
           </Button>
           <Button
             onClick={handleSaveAttendance}
-            disabled={attendanceMutation.isPending || regs.length === 0}
+            disabled={
+              !session.can_record_attendance || attendanceMutation.isPending || regs.length === 0
+            }
           >
             {attendanceMutation.isPending ? "Saving..." : "Save Attendance"}
           </Button>

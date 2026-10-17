@@ -226,7 +226,7 @@ class ServiceAppointmentSlot(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     service = models.ForeignKey(
         Service,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name="appointment_slots",
     )
     provider = models.ForeignKey(
@@ -238,9 +238,10 @@ class ServiceAppointmentSlot(models.Model):
     starts_at = models.DateTimeField()
     ends_at = models.DateTimeField()
     is_published = models.BooleanField(default=True)
+    withdrawn_at = models.DateTimeField(blank=True, null=True)
     current_appointment = models.ForeignKey(
         "appointments.Appointment",
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         related_name="originating_slot_records",
@@ -277,3 +278,30 @@ class ServiceAppointmentSlot(models.Model):
 
     def __str__(self) -> str:
         return f"{self.service.code}:{self.provider_id}:{self.starts_at.isoformat()}"
+
+
+class ServiceAppointmentSlotBooking(models.Model):
+    """Append-only Appointment provenance for every booking made from a fixed slot."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    slot = models.ForeignKey(
+        ServiceAppointmentSlot,
+        on_delete=models.PROTECT,
+        related_name="booking_history",
+    )
+    appointment = models.ForeignKey(
+        "appointments.Appointment",
+        on_delete=models.PROTECT,
+        related_name="fixed_slot_booking_history",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("created_at", "id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("slot", "appointment"),
+                name="service_slot_booking_pair_uniq",
+            ),
+        ]

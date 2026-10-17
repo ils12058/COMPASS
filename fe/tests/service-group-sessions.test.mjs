@@ -94,6 +94,11 @@ const sampleSessions = [
         is_lead: true,
       },
     ],
+    can_view: true,
+    can_manage: true,
+    can_access_participants: true,
+    can_record_attendance: true,
+    can_export_roster: true,
     created_at: "2026-10-17T00:00:00Z",
     updated_at: "2026-10-17T00:00:00Z",
   },
@@ -163,6 +168,69 @@ test("Staff panel renders group sessions, metrics, and management controls", () 
   assert.match(html, /Total Sessions/);
   assert.match(html, /95%/);
   assert.match(html, /Roster &amp; Attendance/);
+});
+
+test("Staff panel offers draft withdrawal instead of deletion", () => {
+  const draft = {
+    ...sampleSessions[0],
+    status: "DRAFT",
+    can_manage: true,
+    can_access_participants: false,
+  };
+  const html = renderWithUser(
+    h(ServiceGroupSessionsStaffPanel, { service }),
+    manager,
+    (client) => {
+      client.setQueryData(
+        getGroupSessionsListStaffQueryKey({ service_id: SERVICE_ID }),
+        ok([draft])
+      );
+      client.setQueryData(
+        getGroupSessionsGetMetricsQueryKey({ service_id: SERVICE_ID }),
+        ok(sampleMetrics)
+      );
+      client.setQueryData(
+        getServicesGetProvidersQueryKey(SERVICE_ID),
+        ok({ service_id: SERVICE_ID, provider_coverage: "ALL_COUNSELORS", counselors: [] })
+      );
+    }
+  );
+
+  assert.match(html, /Withdraw/);
+  assert.doesNotMatch(html, /Delete Draft/);
+});
+
+test("Facilitator session controls follow resource capabilities", () => {
+  const facilitator = {
+    ...manager,
+    capabilities: ["appointments.manage"],
+  };
+  const assignedDraft = {
+    ...sampleSessions[0],
+    status: "DRAFT",
+    can_manage: false,
+    can_access_participants: true,
+    can_record_attendance: true,
+    can_export_roster: false,
+  };
+  const html = renderWithUser(
+    h(ServiceGroupSessionsStaffPanel, { service }),
+    facilitator,
+    (client) => {
+      client.setQueryData(
+        getGroupSessionsListStaffQueryKey({ service_id: SERVICE_ID }),
+        ok([assignedDraft])
+      );
+      client.setQueryData(
+        getGroupSessionsGetMetricsQueryKey({ service_id: SERVICE_ID }),
+        ok(sampleMetrics)
+      );
+    }
+  );
+
+  assert.match(html, /Roster &amp; Attendance/);
+  assert.doesNotMatch(html, /Publish Draft/);
+  assert.doesNotMatch(html, /Withdraw/);
 });
 
 test("Student panel renders discoverable group sessions with registration action", () => {

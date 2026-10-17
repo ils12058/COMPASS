@@ -7,6 +7,7 @@ from datetime import datetime
 from typing import Any, NoReturn
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
 from ninja import Router, Schema, Status
@@ -28,20 +29,23 @@ from compass.group_sessions.services import (
     cancel_student_registration,
     complete_group_session,
     create_group_session,
-    delete_group_session,
     export_roster_csv,
     get_group_session_metrics,
     publish_group_session,
     record_attendance,
     register_student,
     update_group_session,
+    withdraw_group_session,
+)
+from compass.group_sessions.access import (
+    current_group_session_staff,
+    group_session_access,
+    require_group_session_access,
+    scope_group_sessions,
 )
 from compass.service_catalog.models import BookingPathwayCode, DeliveryMode
 
 router = Router(tags=["group-sessions"])
-
-STAFF_GROUP_SESSION_ROLES = frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
-
 
 # Schemas
 class GroupSessionFacilitatorResponse(Schema):
@@ -72,6 +76,11 @@ class GroupSessionResponse(Schema):
     cancelled_at: datetime | None
     version: int
     facilitators: list[GroupSessionFacilitatorResponse]
+    can_view: bool
+    can_manage: bool
+    can_access_participants: bool
+    can_record_attendance: bool
+    can_export_roster: bool
     created_at: datetime
     updated_at: datetime
 
@@ -127,15 +136,19 @@ class GroupSessionCancelRequest(Schema):
     reason: str
 
 
+class GroupSessionWithdrawRequest(Schema):
+    reason: str = ""
+
+
 class GroupSessionRegistrationResponse(Schema):
     id: uuid.UUID
     session_id: uuid.UUID
     session_title: str
-    student_id: uuid.UUID
+    student_id: uuid.UUID | None
     student_name: str
-    student_email: str
+    student_email: str | None
     status: str
-    registered_at: datetime
+    registered_at: datetime | None
     cancelled_at: datetime | None
     cancellation_reason: str
     attended: bool | None
@@ -172,12 +185,7 @@ class GroupSessionMetricsResponse(Schema):
 
 
 def _is_staff_authorized(user: User) -> bool:
-    role_code = getattr(getattr(user, "role", None), "code", None)
-    return bool(
-        user.is_active
-        and role_code in STAFF_GROUP_SESSION_ROLES
-        and user.has_capability("appointments.manage")
-    )
+    return current_group_session_staff(user) is not None
 
 
 def _require_staff(request: HttpRequest, *, recent_mfa: bool = False) -> User:
@@ -254,7 +262,10 @@ def _raise_group_session_error(exc: ValidationError, *, conflict_default: bool =
 
 
 def _serialize_session(
-    session: GroupSession, *, redact_for_unregistered: bool = False
+    session: GroupSession,
+    *,
+    actor: User | None = None,
+    redact_for_unregistered: bool = False,
 ) -> dict[str, Any]:
     active_count = session.registrations.filter(status=RegistrationStatus.REGISTERED).count()
     facilitators = [
@@ -269,6 +280,7 @@ def _serialize_session(
     venue_or_url = session.venue_or_meeting_url
     if redact_for_unregistered and session.delivery_mode == DeliveryMode.ONLINE:
         venue_or_url = ""
+    access = group_session_access(actor, session) if actor is not None else None
     return {
         "id": session.id,
         "service_id": session.service_id,
@@ -290,6 +302,11 @@ def _serialize_session(
         "cancelled_at": session.cancelled_at,
         "version": session.version,
         "facilitators": facilitators,
+        "can_view": bool(access and access.can_view),
+        "can_manage": bool(access and access.can_manage),
+        "can_access_participants": bool(access and access.can_access_participants),
+        "can_record_attendance": bool(access and access.can_record_attendance),
+        "can_export_roster": bool(access and access.can_export_roster),
         "created_at": session.created_at,
         "updated_at": session.updated_at,
     }
@@ -383,8 +400,13 @@ def get_metrics(
     from_date: datetime | None = None,
     to_date: datetime | None = None,
 ):
-    _require_staff(request)
-    return get_group_session_metrics(service_id=service_id, from_date=from_date, to_date=to_date)
+    actor = _require_staff(request)
+    return get_group_session_metrics(
+        actor=actor,
+        service_id=service_id,
+        from_date=from_date,
+        to_date=to_date,
+    )
 
 
 @router.get(
@@ -437,16 +459,17 @@ def list_group_sessions(
     service_id: uuid.UUID | None = None,
     status: str | None = None,
 ):
-    _require_staff(request)
+    actor = _require_staff(request)
     qs = GroupSession.objects.select_related("service", "organizer").prefetch_related(
         "facilitators__counselor", "registrations"
     )
+    qs = scope_group_sessions(qs, actor, permission="view")
     if service_id:
         qs = qs.filter(service_id=service_id)
     if status:
         qs = qs.filter(status=status)
 
-    return [_serialize_session(s) for s in qs]
+    return [_serialize_session(s, actor=actor) for s in qs]
 
 
 # --- CREATION ROUTE ---
@@ -483,7 +506,7 @@ def create_session(
             facilitator_ids=data.facilitator_ids,
             lead_facilitator_id=data.lead_facilitator_id,
         )
-        return Status(201, _serialize_session(session))
+        return Status(201, _serialize_session(session, actor=actor))
     except ValidationError as exc:
         _raise_group_session_error(exc)
 
@@ -500,7 +523,7 @@ def create_session(
 )
 def get_session(request: HttpRequest, session_id: uuid.UUID):
     user = request.auth_user
-    is_staff = _is_staff_authorized(user)
+    is_staff = current_group_session_staff(user) is not None
     role_code = getattr(getattr(user, "role", None), "code", None)
     if not is_staff and not (
         user.is_active and role_code == "STUDENT" and user.has_capability("appointments.view_self")
@@ -531,7 +554,9 @@ def get_session(request: HttpRequest, session_id: uuid.UUID):
             raise APIError(404, "group_session_not_found", "Group session not found.")
         return _serialize_session(session, redact_for_unregistered=not is_active_reg)
 
-    return _serialize_session(session)
+    if not group_session_access(user, session).can_view:
+        raise APIError(404, "group_session_not_found", "Group session not found.")
+    return _serialize_session(session, actor=user)
 
 
 @router.patch(
@@ -563,7 +588,7 @@ def update_session(
             facilitator_ids=data.facilitator_ids,
             lead_facilitator_id=data.lead_facilitator_id,
         )
-        return _serialize_session(session)
+        return _serialize_session(session, actor=actor)
     except ValidationError as exc:
         _raise_group_session_error(exc)
 
@@ -579,7 +604,7 @@ def publish_session(request: HttpRequest, session_id: uuid.UUID):
     actor = _require_staff(request, recent_mfa=True)
     try:
         session = publish_group_session(session_id=session_id, actor=actor)
-        return _serialize_session(session)
+        return _serialize_session(session, actor=actor)
     except ValidationError as exc:
         _raise_group_session_error(exc)
 
@@ -595,7 +620,7 @@ def cancel_session(request: HttpRequest, session_id: uuid.UUID, data: GroupSessi
     actor = _require_staff(request, recent_mfa=True)
     try:
         session = cancel_group_session(session_id=session_id, actor=actor, reason=data.reason)
-        return _serialize_session(session)
+        return _serialize_session(session, actor=actor)
     except ValidationError as exc:
         _raise_group_session_error(exc)
 
@@ -611,23 +636,31 @@ def complete_session(request: HttpRequest, session_id: uuid.UUID):
     actor = _require_staff(request, recent_mfa=True)
     try:
         session = complete_group_session(session_id=session_id, actor=actor)
-        return _serialize_session(session)
+        return _serialize_session(session, actor=actor)
     except ValidationError as exc:
         _raise_group_session_error(exc)
 
 
-@router.delete(
-    "/{session_id}",
-    response=response_with_errors(None, 401, 403, 404, 409, 422, success_status=204),
+@router.post(
+    "/{session_id}/withdraw",
+    response=response_with_errors(GroupSessionResponse, 401, 403, 404, 409, 422),
     auth=session_auth,
-    operation_id="groupSessionsDelete",
-    summary="Delete a draft group session",
+    operation_id="groupSessionsWithdraw",
+    summary="Withdraw a draft group session",
 )
-def delete_session(request: HttpRequest, session_id: uuid.UUID):
+def withdraw_session(
+    request: HttpRequest,
+    session_id: uuid.UUID,
+    data: GroupSessionWithdrawRequest,
+):
     actor = _require_staff(request, recent_mfa=True)
     try:
-        delete_group_session(session_id=session_id, actor=actor)
-        return Status(204, None)
+        session = withdraw_group_session(
+            session_id=session_id,
+            actor=actor,
+            reason=data.reason,
+        )
+        return _serialize_session(session, actor=actor)
     except ValidationError as exc:
         _raise_group_session_error(exc)
 
@@ -703,36 +736,58 @@ def cancel_reg(request: HttpRequest, session_id: uuid.UUID):
     summary="List registrations and attendance for a group session",
 )
 def list_registrations(request: HttpRequest, session_id: uuid.UUID):
-    _require_staff(request)
-    if not GroupSession.objects.filter(id=session_id).exists():
-        raise APIError(404, "group_session_not_found", "Group session not found.")
-    regs = (
-        GroupSessionRegistration.objects.filter(group_session_id=session_id)
-        .select_related("group_session", "student")
-        .prefetch_related("attendance")
-        .order_by("registered_at")
-    )
-    results = []
-    for r in regs:
-        attended = r.attendance.attended if hasattr(r, "attendance") and r.attendance else None
-        notes = r.attendance.notes if hasattr(r, "attendance") and r.attendance else None
-        results.append(
-            {
-                "id": r.id,
-                "session_id": r.group_session_id,
-                "session_title": r.group_session.title,
-                "student_id": r.student_id,
-                "student_name": r.student.get_full_name() or r.student.email,
-                "student_email": r.student.email or "",
-                "status": r.status,
-                "registered_at": r.registered_at,
-                "cancelled_at": r.cancelled_at,
-                "cancellation_reason": r.cancellation_reason,
-                "attended": attended,
-                "attendance_notes": notes,
-            }
+    actor = _require_staff(request)
+    with transaction.atomic():
+        session = (
+            GroupSession.objects.select_for_update(of=("self",))
+            .filter(id=session_id)
+            .select_related("service", "organizer__role")
+            .prefetch_related("facilitators")
+            .first()
         )
-    return results
+        if session is None:
+            raise APIError(404, "group_session_not_found", "Group session not found.")
+        try:
+            access = require_group_session_access(
+                actor=actor,
+                session=session,
+                permission="can_access_participants",
+                lock_supervision=True,
+            )
+        except ValidationError as exc:
+            _raise_group_session_error(exc)
+        regs = (
+            GroupSessionRegistration.objects.filter(group_session_id=session_id)
+            .select_related("group_session", "student")
+            .prefetch_related("attendance")
+            .order_by("registered_at")
+        )
+        if not access.can_manage:
+            regs = regs.filter(status=RegistrationStatus.REGISTERED)
+        results = []
+        for r in regs:
+            attended = r.attendance.attended if hasattr(r, "attendance") and r.attendance else None
+            notes = r.attendance.notes if hasattr(r, "attendance") and r.attendance else None
+            results.append(
+                {
+                    "id": r.id,
+                    "session_id": r.group_session_id,
+                    "session_title": r.group_session.title,
+                    "student_id": r.student_id if access.can_manage else None,
+                    "student_name": (
+                        r.student.get_full_name()
+                        or (r.student.email if access.can_manage else "Student")
+                    ),
+                    "student_email": (r.student.email or "") if access.can_manage else None,
+                    "status": r.status,
+                    "registered_at": r.registered_at if access.can_manage else None,
+                    "cancelled_at": r.cancelled_at if access.can_manage else None,
+                    "cancellation_reason": r.cancellation_reason if access.can_manage else "",
+                    "attended": attended,
+                    "attendance_notes": notes if access.can_manage else None,
+                }
+            )
+        return results
 
 
 @router.post(

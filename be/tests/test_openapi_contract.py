@@ -183,7 +183,7 @@ EXPECTED_OPERATION_IDS = {
     "servicesCreateSlot",
     "servicesListBookableSlots",
     "servicesUpdateSlot",
-    "servicesDeleteSlot",
+    "servicesWithdrawSlot",
     "servicesBookSlot",
     "groupSessionsDiscover",
     "groupSessionsGetMetrics",
@@ -195,7 +195,7 @@ EXPECTED_OPERATION_IDS = {
     "groupSessionsPublish",
     "groupSessionsCancel",
     "groupSessionsComplete",
-    "groupSessionsDelete",
+    "groupSessionsWithdraw",
     "groupSessionsRegister",
     "groupSessionsCancelRegistration",
     "groupSessionsListRegistrations",
@@ -789,6 +789,11 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
     assert len(operation_ids) == len(set(operation_ids))
     assert all(OPERATION_ID_PATTERN.fullmatch(operation_id) for operation_id in operation_ids)
     assert all("compass" not in operation_id.lower() for operation_id in operation_ids)
+    paths = schema["paths"]
+    assert "delete" not in paths["/api/v1/group-sessions/{session_id}"]
+    assert "post" in paths["/api/v1/group-sessions/{session_id}/withdraw"]
+    assert "delete" not in paths["/api/v1/services/{service_id}/slots/{slot_id}"]
+    assert "post" in paths["/api/v1/services/{service_id}/slots/{slot_id}/withdraw"]
     assert [tag["name"] for tag in schema["tags"]] == [
         "health",
         "metadata",

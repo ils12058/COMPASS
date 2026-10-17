@@ -20,11 +20,11 @@ from compass.audit.actions import (
     GROUP_SESSION_CANCELLED,
     GROUP_SESSION_COMPLETED,
     GROUP_SESSION_CREATED,
-    GROUP_SESSION_DELETED,
     GROUP_SESSION_PUBLISHED,
     GROUP_SESSION_REGISTERED,
     GROUP_SESSION_REGISTRATION_CANCELLED,
     GROUP_SESSION_UPDATED,
+    GROUP_SESSION_WITHDRAWN,
     REPORT_EXPORT_RELEASED,
 )
 from compass.audit.context import AuditContext
@@ -37,6 +37,11 @@ from compass.group_sessions.models import (
     GroupSessionRegistration,
     GroupSessionStatus,
     RegistrationStatus,
+)
+from compass.group_sessions.access import (
+    current_group_session_staff,
+    require_group_session_access,
+    scope_group_sessions,
 )
 from compass.notifications.models import Notification
 from compass.notifications.policy import NotificationEvent, NotificationTargetType
@@ -125,14 +130,6 @@ def create_group_session(
     lead_facilitator_id: uuid.UUID | None = None,
 ) -> GroupSession:
     """Create a new group session in DRAFT status."""
-    service = Service.objects.filter(id=service_id).first()
-    if not service:
-        raise ValidationError("Service does not exist.")
-    if not service.booking_pathways.filter(code=BookingPathwayCode.GROUP_SESSION).exists():
-        raise ValidationError("This Service does not have the Group Sessions pathway enabled.")
-    if not service_supports_delivery_mode(service, delivery_mode):
-        raise ValidationError(f"Delivery mode '{delivery_mode}' is not supported by this Service.")
-
     cleaned_title = title.strip()
     if not cleaned_title:
         raise ValidationError("Session title is required.")
@@ -153,15 +150,26 @@ def create_group_session(
     # Deduplicate while preserving order
     fac_ids = list(dict.fromkeys(fac_ids))
 
-    # Validate facilitators
-    for fac_id in fac_ids:
-        if not is_counselor_qualified(service, fac_id):
-            raise ValidationError(f"Counselor {fac_id} is not qualified for this Service.")
-
     with transaction.atomic():
+        current_organizer = current_group_session_staff(organizer, lock_supervision=True)
+        if current_organizer is None:
+            raise ValidationError("Group session not found.")
+        service = Service.objects.select_for_update().filter(id=service_id).first()
+        if not service:
+            raise ValidationError("Service does not exist.")
+        if not service.booking_pathways.filter(code=BookingPathwayCode.GROUP_SESSION).exists():
+            raise ValidationError("This Service does not have the Group Sessions pathway enabled.")
+        if not service_supports_delivery_mode(service, delivery_mode):
+            raise ValidationError(
+                f"Delivery mode '{delivery_mode}' is not supported by this Service."
+            )
+        for fac_id in fac_ids:
+            if not is_counselor_qualified(service, fac_id):
+                raise ValidationError(f"Counselor {fac_id} is not qualified for this Service.")
+
         session = GroupSession.objects.create(
             service=service,
-            organizer=organizer,
+            organizer=current_organizer,
             title=cleaned_title,
             description=description.strip(),
             delivery_mode=delivery_mode,
@@ -185,7 +193,7 @@ def create_group_session(
             )
 
         record_event(
-            context=AuditContext.user(organizer),
+            context=AuditContext.user(current_organizer),
             action=GROUP_SESSION_CREATED,
             outcome=AuditOutcome.SUCCESS,
             target_type="service.group.session",
@@ -221,9 +229,20 @@ def update_group_session(
 ) -> GroupSession:
     """Update an existing group session and notify registered students on material reschedule."""
     with transaction.atomic():
-        session = GroupSession.objects.select_for_update().filter(id=session_id).first()
+        session = (
+            GroupSession.objects.select_for_update(of=("self",))
+            .select_related("service", "organizer__role")
+            .filter(id=session_id)
+            .first()
+        )
         if not session:
             raise ValidationError("Group session not found.")
+        require_group_session_access(
+            actor=actor,
+            session=session,
+            permission="can_manage",
+            lock_supervision=True,
+        )
         if session.status in (GroupSessionStatus.CANCELLED, GroupSessionStatus.COMPLETED):
             raise ValidationError(f"Cannot update a session with status {session.status}.")
 
@@ -346,9 +365,20 @@ def update_group_session(
 def publish_group_session(*, session_id: uuid.UUID, actor: User) -> GroupSession:
     """Publish a draft group session."""
     with transaction.atomic():
-        session = GroupSession.objects.select_for_update().filter(id=session_id).first()
+        session = (
+            GroupSession.objects.select_for_update(of=("self",))
+            .select_related("service", "organizer__role")
+            .filter(id=session_id)
+            .first()
+        )
         if not session:
             raise ValidationError("Group session not found.")
+        require_group_session_access(
+            actor=actor,
+            session=session,
+            permission="can_manage",
+            lock_supervision=True,
+        )
         if session.status != GroupSessionStatus.DRAFT:
             raise ValidationError("Only DRAFT sessions can be published.")
 
@@ -392,16 +422,27 @@ def publish_group_session(*, session_id: uuid.UUID, actor: User) -> GroupSession
 
 
 def cancel_group_session(*, session_id: uuid.UUID, actor: User, reason: str) -> GroupSession:
-    """Cancel an active or draft group session and notify registered students."""
+    """Cancel a published group session and notify registered students."""
     if not reason.strip():
         raise ValidationError("Cancellation reason is required.")
 
     with transaction.atomic():
-        session = GroupSession.objects.select_for_update().filter(id=session_id).first()
+        session = (
+            GroupSession.objects.select_for_update(of=("self",))
+            .select_related("organizer__role")
+            .filter(id=session_id)
+            .first()
+        )
         if not session:
             raise ValidationError("Group session not found.")
-        if session.status in (GroupSessionStatus.CANCELLED, GroupSessionStatus.COMPLETED):
-            raise ValidationError(f"Cannot cancel a session with status {session.status}.")
+        require_group_session_access(
+            actor=actor,
+            session=session,
+            permission="can_manage",
+            lock_supervision=True,
+        )
+        if session.status != GroupSessionStatus.PUBLISHED:
+            raise ValidationError("Only PUBLISHED sessions can be cancelled; withdraw a DRAFT.")
 
         now = timezone.now()
         session.status = GroupSessionStatus.CANCELLED
@@ -455,12 +496,68 @@ def cancel_group_session(*, session_id: uuid.UUID, actor: User, reason: str) -> 
     return session
 
 
+def withdraw_group_session(
+    *, session_id: uuid.UUID, actor: User, reason: str = ""
+) -> GroupSession:
+    """Withdraw a DRAFT session into the existing CANCELLED lifecycle without deleting it."""
+
+    with transaction.atomic():
+        session = (
+            GroupSession.objects.select_for_update(of=("self",))
+            .select_related("organizer__role")
+            .filter(id=session_id)
+            .first()
+        )
+        if not session:
+            raise ValidationError("Group session not found.")
+        require_group_session_access(
+            actor=actor,
+            session=session,
+            permission="can_manage",
+            lock_supervision=True,
+        )
+        if session.status != GroupSessionStatus.DRAFT:
+            raise ValidationError("Only DRAFT sessions can be withdrawn.")
+        if session.registrations.filter(status=RegistrationStatus.REGISTERED).exists():
+            raise ValidationError("A draft with active registrations cannot be withdrawn.")
+
+        now = timezone.now()
+        cleaned_reason = reason.strip()[:1000] or "Draft withdrawn by staff."
+        session.status = GroupSessionStatus.CANCELLED
+        session.cancelled_at = now
+        session.cancellation_reason = cleaned_reason
+        session.version += 1
+        session.save(
+            update_fields=["status", "cancelled_at", "cancellation_reason", "version", "updated_at"]
+        )
+        record_event(
+            context=AuditContext.user(actor),
+            action=GROUP_SESSION_WITHDRAWN,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="service.group.session",
+            target_id=session.id,
+            metadata={"title": session.title, "reason": cleaned_reason},
+        )
+        return session
+
+
 def complete_group_session(*, session_id: uuid.UUID, actor: User) -> GroupSession:
     """Mark a published group session as COMPLETED."""
     with transaction.atomic():
-        session = GroupSession.objects.select_for_update().filter(id=session_id).first()
+        session = (
+            GroupSession.objects.select_for_update(of=("self",))
+            .select_related("organizer__role")
+            .filter(id=session_id)
+            .first()
+        )
         if not session:
             raise ValidationError("Group session not found.")
+        require_group_session_access(
+            actor=actor,
+            session=session,
+            permission="can_manage",
+            lock_supervision=True,
+        )
         if session.status != GroupSessionStatus.PUBLISHED:
             raise ValidationError("Only PUBLISHED sessions can be completed.")
 
@@ -478,30 +575,6 @@ def complete_group_session(*, session_id: uuid.UUID, actor: User) -> GroupSessio
         )
 
     return session
-
-
-def delete_group_session(*, session_id: uuid.UUID, actor: User) -> None:
-    """Delete a DRAFT group session."""
-    with transaction.atomic():
-        session = GroupSession.objects.select_for_update().filter(id=session_id).first()
-        if not session:
-            raise ValidationError("Group session not found.")
-        if session.status != GroupSessionStatus.DRAFT:
-            raise ValidationError("Only DRAFT sessions can be deleted.")
-
-        session_id = session.id
-        session_title = session.title
-        session.facilitators.all().delete()
-        session.delete()
-
-        record_event(
-            context=AuditContext.user(actor),
-            action=GROUP_SESSION_DELETED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="service.group.session",
-            target_id=session_id,
-            metadata={"title": session_title},
-        )
 
 
 def register_student(*, session_id: uuid.UUID, student: User) -> GroupSessionRegistration:
@@ -640,9 +713,20 @@ def record_attendance(
 ) -> list[GroupSessionAttendance]:
     """Record or correct participant attendance for a session."""
     with transaction.atomic():
-        session = GroupSession.objects.select_for_update().filter(id=session_id).first()
+        session = (
+            GroupSession.objects.select_for_update(of=("self",))
+            .select_related("organizer__role")
+            .filter(id=session_id)
+            .first()
+        )
         if not session:
             raise ValidationError("Group session not found.")
+        access = require_group_session_access(
+            actor=actor,
+            session=session,
+            permission="can_record_attendance",
+            lock_supervision=True,
+        )
         if session.status not in (GroupSessionStatus.PUBLISHED, GroupSessionStatus.COMPLETED):
             raise ValidationError(
                 "Attendance can only be recorded for PUBLISHED or COMPLETED sessions."
@@ -656,12 +740,16 @@ def record_attendance(
             attended = bool(item.get("attended", True))
             notes = str(item.get("notes", "")).strip()
 
-            registration = session.registrations.filter(
-                id=reg_id,
-                status=RegistrationStatus.REGISTERED,
-            ).first()
+            registration = (
+                session.registrations.select_for_update(of=("self",))
+                .filter(id=reg_id, status=RegistrationStatus.REGISTERED)
+                .first()
+            )
             if not registration:
-                raise ValidationError(f"Active registration {reg_id} not found in this session.")
+                raise ValidationError("Active registration not found for this session.")
+
+            if not access.can_manage and notes:
+                raise ValidationError("Only session organizers may manage attendance notes.")
 
             attendance, created = GroupSessionAttendance.objects.get_or_create(
                 registration=registration,
@@ -675,8 +763,11 @@ def record_attendance(
                 is_correction = True
                 attendance.attended = attended
                 attendance.marked_by = actor
-                attendance.notes = notes
-                attendance.save(update_fields=["attended", "marked_by", "notes", "updated_at"])
+                update_fields = ["attended", "marked_by", "updated_at"]
+                if access.can_manage:
+                    attendance.notes = notes
+                    update_fields.append("notes")
+                attendance.save(update_fields=update_fields)
 
             updated_attendances.append(attendance)
 
@@ -703,79 +794,85 @@ def record_attendance(
 
 def export_roster_csv(*, session_id: uuid.UUID, actor: User) -> str:
     """Generate participant roster CSV with formula injection defense."""
-    session = (
-        GroupSession.objects.filter(id=session_id)
-        .select_related("service")
-        .prefetch_related(
-            "registrations__student",
-            "registrations__attendance",
+    with transaction.atomic():
+        session = (
+            GroupSession.objects.select_for_update(of=("self",))
+            .filter(id=session_id)
+            .select_related("service", "organizer__role")
+            .prefetch_related("facilitators", "registrations__student", "registrations__attendance")
+            .first()
         )
-        .first()
-    )
-    if not session:
-        raise ValidationError("Group session not found.")
+        if not session:
+            raise ValidationError("Group session not found.")
+        require_group_session_access(
+            actor=actor,
+            session=session,
+            permission="can_export_roster",
+            lock_supervision=True,
+        )
 
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    writer.writerow(
-        [
-            "Student Name",
-            "Institutional ID",
-            "Email",
-            "Registration Status",
-            "Registration Time",
-            "Attendance",
-            "Attendance Notes",
-        ]
-    )
-
-    for reg in session.registrations.all().order_by("registered_at"):
-        student = reg.student
-        student_id = getattr(student, "institutional_id", "") or ""
-        email = student.email or ""
-        name = f"{student.last_name}, {student.first_name}"
-        status = reg.status
-        reg_time = reg.registered_at.strftime("%Y-%m-%d %H:%M:%S")
-
-        attendance_status = "Not Marked"
-        notes = ""
-        if hasattr(reg, "attendance") and reg.attendance:
-            attendance_status = "Present" if reg.attendance.attended else "Absent"
-            notes = reg.attendance.notes
+        output = io.StringIO()
+        writer = csv.writer(output)
 
         writer.writerow(
             [
-                sanitize_csv_cell(name),
-                sanitize_csv_cell(student_id),
-                sanitize_csv_cell(email),
-                sanitize_csv_cell(status),
-                sanitize_csv_cell(reg_time),
-                sanitize_csv_cell(attendance_status),
-                sanitize_csv_cell(notes),
+                "Student Name",
+                "Institutional ID",
+                "Email",
+                "Registration Status",
+                "Registration Time",
+                "Attendance",
+                "Attendance Notes",
             ]
         )
 
-    record_event(
-        context=AuditContext.user(actor),
-        action=REPORT_EXPORT_RELEASED,
-        outcome=AuditOutcome.SUCCESS,
-        target_type="service.group.roster",
-        target_id=session.id,
-        metadata={"title": session.title},
-    )
+        for reg in session.registrations.all().order_by("registered_at"):
+            student = reg.student
+            student_id = getattr(student, "institutional_id", "") or ""
+            email = student.email or ""
+            name = f"{student.last_name}, {student.first_name}"
+            status = reg.status
+            reg_time = reg.registered_at.strftime("%Y-%m-%d %H:%M:%S")
 
-    return output.getvalue()
+            attendance_status = "Not Marked"
+            notes = ""
+            if hasattr(reg, "attendance") and reg.attendance:
+                attendance_status = "Present" if reg.attendance.attended else "Absent"
+                notes = reg.attendance.notes
+
+            writer.writerow(
+                [
+                    sanitize_csv_cell(name),
+                    sanitize_csv_cell(student_id),
+                    sanitize_csv_cell(email),
+                    sanitize_csv_cell(status),
+                    sanitize_csv_cell(reg_time),
+                    sanitize_csv_cell(attendance_status),
+                    sanitize_csv_cell(notes),
+                ]
+            )
+
+        record_event(
+            context=AuditContext.user(actor),
+            action=REPORT_EXPORT_RELEASED,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="service.group.roster",
+            target_id=session.id,
+            metadata={"title": session.title},
+        )
+
+        return output.getvalue()
 
 
 def get_group_session_metrics(
     *,
+    actor: User,
     from_date: datetime | None = None,
     to_date: datetime | None = None,
     service_id: uuid.UUID | None = None,
 ) -> dict[str, Any]:
     """Calculate operational reporting metrics for group sessions."""
-    qs = GroupSession.objects.all()
+    qs = scope_group_sessions(GroupSession.objects.all(), actor, permission="manage")
     if service_id:
         qs = qs.filter(service_id=service_id)
     if from_date:
