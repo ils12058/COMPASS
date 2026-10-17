@@ -650,7 +650,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           {canCancel || canReschedule || canReassign || canComplete || canMarkNoShow ? (
             // The usual outcome leads; cancelling, the destructive one, comes last.
             <div className="mt-4 flex flex-wrap gap-2">
-              {access.canManage && (user.role === "COUNSELOR" || user.role === "GSS") ? (
+              {access.canManage && (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF") ? (
                 <Button variant="secondary" disabled={pending || detailsUnconfirmed} onClick={() => setReminderOpen(true)}>Send reminder</Button>
               ) : null}
               {canComplete ? <Button disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button> : null}

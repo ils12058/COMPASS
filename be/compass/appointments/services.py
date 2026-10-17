@@ -1293,7 +1293,15 @@ def reschedule_appointment(
         item.ends_at = new_ends_at
         item.reminder_revision += 1
         item.reminder_revision_started_at = current
-        item.save(update_fields=["starts_at", "ends_at", "reminder_revision", "reminder_revision_started_at", "updated_at"])
+        item.save(
+            update_fields=[
+                "starts_at",
+                "ends_at",
+                "reminder_revision",
+                "reminder_revision_started_at",
+                "updated_at",
+            ]
+        )
         record_event(
             context=context,
             action=APPOINTMENT_RESCHEDULED,
@@ -1419,7 +1427,14 @@ def reassign_appointment(
         item.provider = new_provider
         item.reminder_revision += 1
         item.reminder_revision_started_at = current
-        item.save(update_fields=["provider", "reminder_revision", "reminder_revision_started_at", "updated_at"])
+        item.save(
+            update_fields=[
+                "provider",
+                "reminder_revision",
+                "reminder_revision_started_at",
+                "updated_at",
+            ]
+        )
         record_event(
             context=context,
             action=APPOINTMENT_REASSIGNED,

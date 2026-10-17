@@ -1,21 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { compassFetch } from "@/lib/api/client";
-
-type Row = {
-  appointment_id: string;
-  reference_code: string | null;
-  student_name: string | null;
-  eligible: boolean;
-  reason: string;
-  accepted?: boolean;
-};
-type Preview = { data: { items: Row[] } };
-type Result = { data: { items: Row[]; accepted: number; skipped: number } };
+import {
+  appointmentsPreviewReminders,
+  getAppointmentsPreviewRemindersMutationKey,
+  useAppointmentsSendReminders,
+} from "@/lib/api/generated/appointments/appointments";
 
 export const reminderReason = (code: string): string => ({
   ELIGIBLE: "Ready to send",
@@ -27,84 +20,48 @@ export const reminderReason = (code: string): string => ({
   NOT_AVAILABLE: "This appointment is not available to you.",
 }[code] ?? "This appointment is not available for reminders.");
 
-export function ReminderSender({
-  selected, onClose, open, onComplete,
-}: { selected: string[]; open: boolean; onClose: () => void; onComplete?: () => void }) {
-  const queryClient = useQueryClient();
-  const [preview, setPreview] = useState<Row[] | null>(null);
-  const [results, setResults] = useState<Row[] | null>(null);
-  const [requestKey, setRequestKey] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const selection = selected.join(",");
+type Props = { selected: string[]; open: boolean; onClose: () => void; onComplete?: () => void };
 
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    setPreview(null);
-    setResults(null);
-    setError(null);
-    setRequestKey(crypto.randomUUID());
-    void compassFetch<Preview>("/api/v1/appointments/reminders/preview", {
-      method: "POST", headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ appointment_ids: selected }),
-    }).then((response) => {
-      if (!cancelled) setPreview(response.data.items);
-    }).catch(() => {
-      if (!cancelled) setError("We couldn't check the selected appointments. Close and try again.");
-    });
-    return () => { cancelled = true; };
-  // The caller must keep the selection unchanged while the preview is displayed.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, selection]);
+export function ReminderSender(props: Props) {
+  return props.open ? <ReminderConfirmation key={props.selected.join(",")} {...props} /> : null;
+}
 
-  async function send() {
-    if (!preview || busy || results) return;
-    setBusy(true);
-    setError(null);
-    try {
-      const response = await compassFetch<Result>("/api/v1/appointments/reminders/send", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ appointment_ids: selected, request_key: requestKey }),
-      });
-      setResults(response.data.items);
-      await queryClient.invalidateQueries({ queryKey: ["/api/v1/appointments"] });
-      onComplete?.();
-    } catch {
-      setError("We couldn't confirm the reminder request. Try again using the same confirmation.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const rows = results ?? preview ?? [];
+function ReminderConfirmation({ selected, onClose, onComplete }: Props) {
+  const [requestKey] = useState(() => crypto.randomUUID());
+  const preview = useQuery({
+    queryKey: [...getAppointmentsPreviewRemindersMutationKey(), selected],
+    queryFn: ({ signal }) => appointmentsPreviewReminders({ appointment_ids: selected }, { signal }),
+    staleTime: 0,
+    gcTime: 0,
+    retry: false,
+  });
+  const send = useAppointmentsSendReminders();
+  const rows = send.data?.data.items ?? preview.data?.data.items ?? [];
   const available = rows.filter((item) => item.eligible).length;
-  return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next && !busy) onClose(); }}>
-      <DialogContent dismissible={!busy}>
-        <DialogTitle>{selected.length === 1 ? "Send appointment reminder" : "Send appointment reminders"}</DialogTitle>
-        <DialogDescription>
-          Review the students below before sending. Reminders appear in COMPASS first; email and browser notifications may still be pending.
-        </DialogDescription>
-        {preview === null && !error ? <p role="status" className="mt-4 text-sm text-muted">Checking appointments…</p> : null}
-        <ul className="mt-4 max-h-72 space-y-3 overflow-y-auto text-sm" aria-label="Reminder recipients">
-          {rows.map((row) => (
-            <li key={row.appointment_id} className="rounded-md border border-border p-3">
-              <p className="font-medium text-ink">{row.student_name ?? "Unavailable appointment"}</p>
-              {row.reference_code ? <p className="text-muted">{row.reference_code}</p> : null}
-              <p className="mt-1 text-muted">{results && row.accepted ? "Reminder queued. Email and browser delivery are pending." : reminderReason(row.reason)}</p>
-            </li>
-          ))}
-        </ul>
-        {results ? <p role="status" className="mt-3 text-sm">{results.filter((r) => r.accepted).length} accepted, {results.filter((r) => !r.accepted).length} skipped.</p> : null}
-        {error ? <p role="alert" className="mt-3 text-sm text-danger">{error}</p> : null}
-        <div className="mt-5 flex flex-wrap gap-2">
-          {!results ? <Button onClick={() => void send()} disabled={!preview || available === 0 || busy} aria-busy={busy}>
-            {busy ? "Sending requests…" : `Confirm ${available} reminder${available === 1 ? "" : "s"}`}
-          </Button> : null}
-          <Button variant="secondary" disabled={busy} onClick={onClose}>{results ? "Done" : "Cancel"}</Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
+  const recipients = <ul className="divide-y divide-border text-sm" aria-label="Reminder recipients">
+    {rows.map((row) => <li key={row.appointment_id} className="py-2">
+      <p className="font-medium text-ink">{row.student_name ?? "Unavailable appointment"}</p>
+      {row.reference_code ? <p>{row.reference_code}</p> : null}
+      <p>{send.isSuccess && row.accepted ? "Reminder queued." : reminderReason(row.reason)}</p>
+    </li>)}
+  </ul>;
+  return <ConsequentialActionDialog
+    open title={selected.length === 1 ? "Send appointment reminder" : "Send appointment reminders"}
+    confirmLabel={`Send ${available} reminder${available === 1 ? "" : "s"}`}
+    pendingLabel="Sending requests…" pending={send.isPending}
+    confirmDisabled={!preview.isSuccess || preview.isFetching || available === 0}
+    error={send.isError ? "We couldn't confirm the request. Retry keeps the same confirmation and prevents duplicate reminders." : null}
+    onOpenChange={(next) => { if (!next) onClose(); }}
+    onConfirm={() => send.mutate({ data: { appointment_ids: selected, request_key: requestKey } }, { onSuccess: () => onComplete?.() })}
+    choices={!send.isSuccess ? <>
+      {preview.isPending ? <p role="status">Checking appointments…</p> : null}
+      {preview.isError ? <p role="alert">We could not check the appointments. <Button variant="secondary" onClick={() => void preview.refetch()}>Retry</Button></p> : recipients}
+    </> : undefined}
+    completed={send.isSuccess ? { title: "Reminder requests received", children: <>
+      <p>{send.data.data.accepted} accepted, {send.data.data.skipped} skipped. Email and browser delivery may still be pending.</p>
+      {recipients}
+    </> } : null}
+  >
+    <p>Review the students before sending. Each eligible student receives a reminder in COMPASS. Email and browser notifications follow when available.</p>
+  </ConsequentialActionDialog>;
 }

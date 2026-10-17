@@ -146,6 +146,12 @@ def create_notification_for_event(
     return notification
 
 
+def _current_notifications():
+    from compass.appointments.reminders import scope_current_reminder_notifications
+
+    return scope_current_reminder_notifications(Notification.objects.all())
+
+
 def list_my_notifications(
     *,
     actor: User,
@@ -158,9 +164,9 @@ def list_my_notifications(
         raise InvalidNotificationInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
     offset = (page - 1) * page_size
     rows = list(
-        Notification.objects.filter(recipient=actor).order_by("-created_at", "-id")[
-            offset : offset + page_size + 1
-        ]
+        _current_notifications()
+        .filter(recipient=actor)
+        .order_by("-created_at", "-id")[offset : offset + page_size + 1]
     )
     return NotificationPage(
         items=tuple(rows[:page_size]),
@@ -171,7 +177,7 @@ def list_my_notifications(
 
 
 def unread_count_for(*, actor: User) -> int:
-    return Notification.objects.filter(recipient=actor, read_at__isnull=True).count()
+    return _current_notifications().filter(recipient=actor, read_at__isnull=True).count()
 
 
 def mark_my_notification_read(

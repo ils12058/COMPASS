@@ -1,6 +1,9 @@
 """Periodic discovery of due Student Appointment reminders."""
+
 from celery import shared_task
+
 from compass.tasks import CorrelationTask
+
 from .reminders import dispatch_due_reminders
 
 

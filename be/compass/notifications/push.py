@@ -14,11 +14,11 @@ from urllib.parse import urlsplit
 from cryptography.fernet import Fernet
 from django.conf import settings
 from django.db import transaction
-from compass.appointments.reminders import reminder_notification_is_current
 from django.db.models import Q
 from django.utils import timezone
 from pywebpush import WebPushException, webpush
 
+from .current import notification_is_current
 from .models import PushDelivery, PushDeliveryStatus, PushSubscription
 from .push_policy import push_body_for
 
@@ -234,7 +234,7 @@ def deliver_push_delivery(delivery_id: uuid.UUID) -> str:
             not settings.WEB_PUSH_ENABLED
             or not sub.active
             or not delivery.notification.recipient.is_active
-            or not reminder_notification_is_current(delivery.notification, now=now)
+            or not notification_is_current(delivery.notification, now=now)
             or sub.user_id != delivery.notification.recipient_id
             or session.user_id != sub.user_id
             or session.revoked_at is not None
@@ -263,7 +263,7 @@ def deliver_push_delivery(delivery_id: uuid.UUID) -> str:
     status = PushDeliveryStatus.SENT
     failure_code = ""
     try:
-        if not reminder_notification_is_current(delivery.notification):
+        if not notification_is_current(delivery.notification):
             status, failure_code = PushDeliveryStatus.CANCELLED, "appointment_changed"
         else:
             _send(sub, body)

@@ -4,6 +4,7 @@ A revision is incremented by schedule/assignment edits. An occurrence has its ow
 UUID as Notification source identity, but the Appointment remains the destination.
 Serializing on the Appointment row makes concurrent API and Beat issuers idempotent.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -14,6 +15,7 @@ from uuid import UUID
 
 from django.conf import settings
 from django.db import transaction
+from django.db.models import Exists, F, OuterRef, Q
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -26,8 +28,11 @@ from compass.notifications.services import create_notification_for_event
 
 from .access import appointment_management_access_allowed
 from .models import (
-    Appointment, AppointmentReminderBatch, AppointmentReminderKind,
-    AppointmentReminderOccurrence, AppointmentStatus,
+    Appointment,
+    AppointmentReminderBatch,
+    AppointmentReminderKind,
+    AppointmentReminderOccurrence,
+    AppointmentStatus,
 )
 
 AUTO_WINDOWS = (
@@ -88,14 +93,20 @@ def _decision(item: Appointment, at) -> ReminderDecision:
     if not reason and _cooldown(item, at):
         reason = "COOLDOWN"
     return ReminderDecision(
-        item.pk, item.reference_code, item.student.get_full_name(),
-        not bool(reason), reason or "ELIGIBLE",
+        item.pk,
+        item.reference_code,
+        item.student.get_full_name(),
+        not bool(reason),
+        reason or "ELIGIBLE",
     )
 
 
 def _visible_item(actor: User, appointment_id: UUID):
-    item = (Appointment.objects.select_related("student__role", "provider__role", "service")
-            .filter(pk=appointment_id).first())
+    item = (
+        Appointment.objects.select_related("student__role", "provider__role", "service")
+        .filter(pk=appointment_id)
+        .first()
+    )
     if item is None or not appointment_management_access_allowed(actor, item):
         return None
     return item
@@ -103,7 +114,9 @@ def _visible_item(actor: User, appointment_id: UUID):
 
 def _manager(actor: User) -> bool:
     return bool(
-        actor and actor.is_active and actor.role.code in {"COUNSELOR", "GSS"}
+        actor
+        and actor.is_active
+        and actor.role.code in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
         and actor.has_capability("appointments.manage")
     )
 
@@ -111,7 +124,9 @@ def _manager(actor: User) -> bool:
 def preview_reminders(*, actor: User, appointment_ids: list[UUID], now=None) -> list[dict]:
     if not _manager(actor):
         raise PermissionError("Appointment management access is required.")
-    if not 1 <= len(appointment_ids) <= MAX_BULK or len(set(appointment_ids)) != len(appointment_ids):
+    if not 1 <= len(appointment_ids) <= MAX_BULK or len(set(appointment_ids)) != len(
+        appointment_ids
+    ):
         raise ValueError("Choose between 1 and 25 different appointments.")
     at = now or timezone.now()
     results = []
@@ -119,19 +134,32 @@ def preview_reminders(*, actor: User, appointment_ids: list[UUID], now=None) -> 
         item = _visible_item(actor, appointment_id)
         if item is None:
             # Do not disclose even the student's name for inaccessible records.
-            results.append({"appointment_id": str(appointment_id), "reference_code": None,
-                            "student_name": None, "eligible": False, "reason": "NOT_AVAILABLE",
-                            "issued_at": None})
+            results.append(
+                {
+                    "appointment_id": str(appointment_id),
+                    "reference_code": None,
+                    "student_name": None,
+                    "eligible": False,
+                    "reason": "NOT_AVAILABLE",
+                    "issued_at": None,
+                }
+            )
         else:
             results.append(_decision(item, at).as_dict())
     return results
 
 
-def _issue_locked(item: Appointment, *, kind: str, at, context: AuditContext | None) -> AppointmentReminderOccurrence:
+def _issue_locked(
+    item: Appointment, *, kind: str, at, context: AuditContext | None
+) -> AppointmentReminderOccurrence:
     # Called only with the Appointment row locked, after all eligibility checks.
     occurrence = AppointmentReminderOccurrence.objects.create(
-        appointment=item, recipient=item.student, kind=kind,
-        revision=item.reminder_revision, starts_at=item.starts_at, issued_at=at,
+        appointment=item,
+        recipient=item.student,
+        kind=kind,
+        revision=item.reminder_revision,
+        starts_at=item.starts_at,
+        issued_at=at,
         issued_by=(context.actor if context and context.actor_type == "USER" else None),
     )
     event = (
@@ -142,9 +170,12 @@ def _issue_locked(item: Appointment, *, kind: str, at, context: AuditContext | N
         else NotificationEvent.APPOINTMENT_REMINDER_MANUAL
     )
     create_notification_for_event(
-        recipient=item.student, event=event,
-        source_type="appointment_reminder", source_id=occurrence.pk,
-        target_type="APPOINTMENT", target_id=item.pk,
+        recipient=item.student,
+        event=event,
+        source_type="appointment_reminder",
+        source_id=occurrence.pk,
+        target_type="APPOINTMENT",
+        target_id=item.pk,
     )
     record_event(
         context=context or AuditContext.system(),
@@ -152,83 +183,146 @@ def _issue_locked(item: Appointment, *, kind: str, at, context: AuditContext | N
         outcome=AuditOutcome.SUCCESS,
         target_type="appointments.appointment",
         target_id=item.pk,
-        metadata={"occurrence_id": str(occurrence.pk), "kind": kind, "revision": item.reminder_revision},
+        metadata={
+            "occurrence_id": str(occurrence.pk),
+            "kind": kind,
+            "revision": item.reminder_revision,
+        },
     )
     return occurrence
 
 
-def issue_manual_reminder(*, actor: User, appointment_id: UUID,
-                          context: AuditContext, now=None) -> dict:
-    if not _manager(actor):
-        raise PermissionError("Appointment management access is required.")
-    at = now or timezone.now()
-    with transaction.atomic():
-        item = (Appointment.objects.select_for_update(of=("self",))
-                .select_related("student__role", "provider__role", "service")
-                .filter(pk=appointment_id).first())
-        if item is None or not appointment_management_access_allowed(actor, item):
-            raise LookupError("Appointment not found.")
-        decision = _decision(item, at)
-        if not decision.eligible:
-            return {**decision.as_dict(), "accepted": False}
-        occurrence = _issue_locked(item, kind=AppointmentReminderKind.MANUAL,
-                                   at=at, context=context)
-        return {**decision.as_dict(), "accepted": True,
-                "reason": "QUEUED", "issued_at": occurrence.issued_at.isoformat()}
+def issue_manual_reminder(
+    *, actor: User, appointment_id: UUID, request_key: UUID, context: AuditContext, now=None
+) -> dict:
+    return issue_bulk_reminders(
+        actor=actor,
+        appointment_ids=[appointment_id],
+        request_key=request_key,
+        context=context,
+        now=now,
+    )["items"][0]
 
 
-def issue_bulk_reminders(*, actor: User, appointment_ids: list[UUID],
-                         request_key: UUID, context: AuditContext, now=None) -> dict:
+def _replay_result(actor, result):
+    # Never persist names or return earlier access after a scope/role change.
+    rows = []
+    for row in result["items"]:
+        item = _visible_item(actor, row["appointment_id"])
+        if item is None:
+            rows.append(
+                {
+                    "appointment_id": row["appointment_id"],
+                    "reference_code": None,
+                    "student_name": None,
+                    "eligible": False,
+                    "accepted": False,
+                    "reason": "NOT_AVAILABLE",
+                    "issued_at": None,
+                }
+            )
+        else:
+            rows.append(
+                {
+                    **row,
+                    "reference_code": item.reference_code,
+                    "student_name": item.student.get_full_name(),
+                }
+            )
+    return {
+        "items": rows,
+        "accepted": sum(bool(x["accepted"]) for x in rows),
+        "skipped": sum(not x["accepted"] for x in rows),
+    }
+
+
+def issue_bulk_reminders(
+    *, actor: User, appointment_ids: list[UUID], request_key: UUID, context: AuditContext, now=None
+) -> dict:
     if not _manager(actor):
         raise PermissionError("Appointment management access is required.")
-    if not 1 <= len(appointment_ids) <= MAX_BULK or len(set(appointment_ids)) != len(appointment_ids):
+    if not 1 <= len(appointment_ids) <= MAX_BULK or len(set(appointment_ids)) != len(
+        appointment_ids
+    ):
         raise ValueError("Choose between 1 and 25 different appointments.")
     # The token is a durable logical submission identity. It cannot be reused
     # with a different selection, even after the 3-hour manual cooldown.
-    fingerprint = hashlib.sha256(json.dumps(sorted(str(x) for x in appointment_ids)).encode()).hexdigest()
+    fingerprint = hashlib.sha256(
+        json.dumps(sorted(str(x) for x in appointment_ids)).encode()
+    ).hexdigest()
     at = now or timezone.now()
     with transaction.atomic():
         # Serialize same-actor batches before checking the durable replay token.
         User.objects.select_for_update(of=("self",)).get(pk=actor.pk)
-        previous = AppointmentReminderBatch.objects.filter(actor=actor, request_key=request_key).first()
+        previous = AppointmentReminderBatch.objects.filter(
+            actor=actor, request_key=request_key
+        ).first()
         if previous:
             if previous.selection_digest != fingerprint:
                 raise ValueError("This confirmation was already used for another selection.")
-            return previous.result
+            return _replay_result(actor, previous.result)
         results_by_id = {}
         # Deterministic lock order also prevents overlapping concurrent bulk deadlocks.
         for appointment_id in sorted(appointment_ids, key=str):
-            item = (Appointment.objects.select_for_update(of=("self",))
-                    .select_related("student__role", "provider__role", "service")
-                    .filter(pk=appointment_id).first())
+            item = (
+                Appointment.objects.select_for_update(of=("self",))
+                .select_related("student__role", "provider__role", "service")
+                .filter(pk=appointment_id)
+                .first()
+            )
             if item is None or not appointment_management_access_allowed(actor, item):
                 results_by_id[str(appointment_id)] = {
-                    "appointment_id": str(appointment_id), "reference_code": None,
-                    "student_name": None, "eligible": False, "reason": "NOT_AVAILABLE",
-                    "accepted": False, "issued_at": None,
+                    "appointment_id": str(appointment_id),
+                    "reference_code": None,
+                    "student_name": None,
+                    "eligible": False,
+                    "reason": "NOT_AVAILABLE",
+                    "accepted": False,
+                    "issued_at": None,
                 }
                 continue
             decision = _decision(item, at)
             if decision.eligible:
-                occurrence = _issue_locked(item, kind=AppointmentReminderKind.MANUAL,
-                                           at=at, context=context)
+                occurrence = _issue_locked(
+                    item, kind=AppointmentReminderKind.MANUAL, at=at, context=context
+                )
                 results_by_id[str(appointment_id)] = {
-                    **decision.as_dict(), "accepted": True, "reason": "QUEUED",
+                    **decision.as_dict(),
+                    "accepted": True,
+                    "reason": "QUEUED",
                     "issued_at": occurrence.issued_at.isoformat(),
                 }
             else:
                 results_by_id[str(appointment_id)] = {**decision.as_dict(), "accepted": False}
         results = [results_by_id[str(x)] for x in appointment_ids]
-        response = {"items": results, "accepted": sum(int(x["accepted"]) for x in results),
-                    "skipped": sum(int(not x["accepted"]) for x in results)}
+        response = {
+            "items": results,
+            "accepted": sum(int(x["accepted"]) for x in results),
+            "skipped": sum(int(not x["accepted"]) for x in results),
+        }
         AppointmentReminderBatch.objects.create(
-            actor=actor, request_key=request_key, selection_digest=fingerprint, result=response,
+            actor=actor,
+            request_key=request_key,
+            selection_digest=fingerprint,
+            result={
+                **response,
+                "items": [
+                    {k: v for k, v in row.items() if k not in {"student_name", "reference_code"}}
+                    for row in results
+                ],
+            },
         )
         record_event(
-            context=context, action=APPOINTMENT_REMINDERS_BULK, outcome=AuditOutcome.SUCCESS,
-            target_type="appointments.reminder_batch", target_id=str(request_key),
-            metadata={"accepted": response["accepted"], "skipped": response["skipped"],
-                      "request_key": str(request_key)},
+            context=context,
+            action=APPOINTMENT_REMINDERS_BULK,
+            outcome=AuditOutcome.SUCCESS,
+            target_type="appointments.reminderbatch",
+            target_id=str(request_key),
+            metadata={
+                "accepted": response["accepted"],
+                "skipped": response["skipped"],
+                "request_key": str(request_key),
+            },
         )
         return response
 
@@ -244,16 +338,42 @@ def dispatch_due_reminders(*, now=None) -> int:
         earliest = at + lead - LATE_WINDOW
         latest = at + lead
         candidates = list(
-            Appointment.objects.filter(
+            Appointment.objects.alias(
+                recently_issued=Exists(
+                    AppointmentReminderOccurrence.objects.filter(
+                        appointment_id=OuterRef("pk"),
+                        issued_at__gt=at - MANUAL_COOLDOWN,
+                        issued_at__lte=at,
+                    )
+                ),
+                already_issued=Exists(
+                    AppointmentReminderOccurrence.objects.filter(
+                        appointment_id=OuterRef("pk"),
+                        revision=OuterRef("reminder_revision"),
+                        kind=kind,
+                    )
+                ),
+            )
+            .filter(
+                already_issued=False,
+                recently_issued=False,
+                student__is_active=True,
+                student__role__code="STUDENT",
                 status=AppointmentStatus.SCHEDULED,
-                starts_at__gte=earliest, starts_at__lte=latest,
-            ).order_by("starts_at", "pk").values_list("pk", flat=True)[:SCAN_BATCH]
+                starts_at__gte=earliest,
+                starts_at__lte=latest,
+            )
+            .order_by("starts_at", "pk")
+            .values_list("pk", flat=True)[:SCAN_BATCH]
         )
         for appointment_id in candidates:
             with transaction.atomic():
-                item = (Appointment.objects.select_for_update(of=("self",))
-                        .select_related("student__role")
-                        .filter(pk=appointment_id).first())
+                item = (
+                    Appointment.objects.select_for_update(of=("self",))
+                    .select_related("student__role")
+                    .filter(pk=appointment_id)
+                    .first()
+                )
                 if item is None or item.status != AppointmentStatus.SCHEDULED:
                     continue
                 due = item.starts_at - lead
@@ -262,8 +382,12 @@ def dispatch_due_reminders(*, now=None) -> int:
                     continue
                 if not item.student.is_active or item.student.role.code != "STUDENT":
                     continue
+                if _cooldown(item, at):
+                    continue
                 if AppointmentReminderOccurrence.objects.filter(
-                    appointment=item, revision=item.reminder_revision, kind=kind,
+                    appointment=item,
+                    revision=item.reminder_revision,
+                    kind=kind,
                 ).exists():
                     continue
                 _issue_locked(item, kind=kind, at=at, context=None)
@@ -276,9 +400,13 @@ def reminder_notification_is_current(notification, *, now=None) -> bool:
     if notification.source_type != "appointment_reminder":
         return True
     at = now or timezone.now()
-    occurrence = (AppointmentReminderOccurrence.objects.select_related(
-        "appointment", "recipient__role", "appointment__student"
-    ).filter(pk=notification.source_id).first())
+    occurrence = (
+        AppointmentReminderOccurrence.objects.select_related(
+            "appointment", "recipient__role", "appointment__student"
+        )
+        .filter(pk=notification.source_id)
+        .first()
+    )
     if occurrence is None:
         return False
     item = occurrence.appointment
@@ -288,5 +416,29 @@ def reminder_notification_is_current(notification, *, now=None) -> bool:
         and item.starts_at == occurrence.starts_at
         and item.reminder_revision == occurrence.revision
         and item.student_id == occurrence.recipient_id == notification.recipient_id
-        and occurrence.recipient.is_active and occurrence.recipient.role.code == "STUDENT"
+        and occurrence.recipient.is_active
+        and occurrence.recipient.role.code == "STUDENT"
     )
+
+
+def current_reminder_occurrences(*, now=None):
+    return AppointmentReminderOccurrence.objects.filter(
+        appointment__status=AppointmentStatus.SCHEDULED,
+        appointment__starts_at__gt=now or timezone.now(),
+        appointment__starts_at=F("starts_at"),
+        appointment__reminder_revision=F("revision"),
+        appointment__student_id=F("recipient_id"),
+        recipient__is_active=True,
+        recipient__role__code="STUDENT",
+    )
+
+
+def scope_current_reminder_notifications(queryset):
+    return queryset.alias(
+        current_reminder=Exists(
+            current_reminder_occurrences().filter(
+                pk=OuterRef("source_id"),
+                recipient_id=OuterRef("recipient_id"),
+            )
+        )
+    ).filter(~Q(source_type="appointment_reminder") | Q(current_reminder=True))

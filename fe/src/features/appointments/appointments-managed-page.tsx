@@ -266,7 +266,7 @@ function ManagedAppointmentsList() {
   const hasFilters = Boolean(search || serviceId || mode || fromDate || toDate || (statusParam !== null && statusParam !== "ALL"));
   // The order the rows are in: the reader's choice, or the default the backend applied.
   const ordering = requestedOrdering ?? pageData?.ordering;
-  const selectable = items.filter((item) => item.status === AppointmentStatus.SCHEDULED && new Date(item.starts_at).getTime() - Date.now() >= 15 * 60_000);
+  const selectable = items.filter((item) => item.status === AppointmentStatus.SCHEDULED);
 
   return (
     <section aria-labelledby="manage-appointments-heading">

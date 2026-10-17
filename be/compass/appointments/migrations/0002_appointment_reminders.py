@@ -13,6 +13,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
+        migrations.AddIndex(model_name="appointment", index=models.Index(
+            fields=("status", "starts_at", "id"), name="appt_rem_discovery_idx")),
         migrations.AddField(
             model_name="appointment", name="reminder_revision",
             field=models.PositiveIntegerField(default=1),

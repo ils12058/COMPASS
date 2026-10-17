@@ -66,3 +66,47 @@ Run backend Django migration checks, tests including multi-worker PostgreSQL
 concurrency, Ruff; regenerate the frontend Orval API client; run frontend
 lint, TypeScript, build and browser regression tests. Verify email/push stale
 intent races, MFA applicability, and operational outbound suppression.
+
+## OPS-FINAL repair and integration contract
+
+The persisted staff role is `GUIDANCE_SERVICES_STAFF`. Single and bulk requests require a UUID
+confirmation key; one durable actor/key/selection record survives the cooldown and worker retries.
+Stored replay results omit names and reference codes; responses recheck current resource access.
+All issuers serialize on the Appointment. Automatic discovery excludes issued and recent occurrences
+before its 500-row limit, so a repeated scheduler progresses. A `(status, starts_at, id)` index
+supports discovery. Both lead windows are half-open 15-minute windows, with no retrospective backfill.
+Existing `CELERY_IMPORTS` explicitly registers the Reminder task module.
+
+In-app lists and unread counts suppress obsolete occurrences in SQL before pagination. Email and
+push revalidate source ownership, revision, active Student recipient and scheduled future status at
+claim and immediately before external handoff. Email also rechecks claim ownership and destination.
+The final database read and external provider submission cannot be atomic: an accepted provider
+message cannot be recalled, and a worker interrupted after provider acceptance may retry. Durable
+claims prevent concurrent sends; SMTP/web-push do not guarantee exactly-once external delivery.
+
+Automatic/manual concurrency uses the existing three-hour cooldown. Bulk confirmation previews are
+advisory; submission rechecks each Appointment under its row lock. Reassignment/rescheduling creates
+a new Appointment revision. Group registrations are outside this Appointment-only producer.
+
+## Enablement, migration and rollback
+
+`APPOINTMENT_AUTO_REMINDERS_ENABLED=false` remains the default in every environment. Web, worker and
+Beat must agree on the flag. Existing email/SMTP and opt-in `WEB_PUSH_*` settings apply; no new secret
+or keyring is required. Before enabling automatic dispatch, an operator must verify the approved
+recipient destinations and delivery integration. Tests use synthetic recipients and mocked transports.
+No Student enrollment, UAT allocation or canonical data change is required.
+
+Apply schema-only `appointments.0002_appointment_reminders` after the immutable canonical baseline,
+before deploying producers. It adds revision fields, two durable intent/replay tables, constraints
+and a discovery index. It does not rewrite canonical migrations or run data mutations.
+`compass/common/canonical_migrations.json` pins every canonical migration checksum and explicitly
+registers additions; unknown historical migrations continue to fail closed. Agent 2 must register
+its independent additions and preserve one graph leaf per app; any shared Appointment leaf needs
+an explicit merge migration with both parents. Never fake, reset or drop canonical data.
+
+Rollback: disable automatic dispatch in web/worker/Beat first, drain or stop relevant workers,
+then roll back application code while retaining additive tables and occurrence history. Reversing
+0002 drops reminder history/replay tables and requires a separate approved recovery plan.
+Smoke: check task registration, preview one synthetic eligible/ineligible selection, issue/replay
+the same key, verify one in-app occurrence and safe email/push fixture, then reschedule/cancel
+before dispatch and verify cancellation. No test may contact real participants.
