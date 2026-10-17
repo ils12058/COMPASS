@@ -130,6 +130,7 @@ export async function createBrowserHarness(suite) {
       if (pathname === "/api/v1/me/profile") return reply({ full_name: "Example User", photo: null });
       if (pathname === "/api/v1/platform/status") return reply({ status: "operational", starts_at: null, ends_at: null, message: null });
       if (pathname === "/api/v1/notifications/unread-count") return reply({ unread_count: 0 });
+      if (pathname === "/api/v1/notifications") return reply(emptyPage);
       if (pathname === "/api/v1/notifications/push/config") return reply({ enabled: false, vapid_public_key: null });
       if (pathname === "/api/v1/privacy/my-notices") return reply(emptyPage);
       if (/\/e-counseling\/(?:me\/)?appointments\/[^/]+\/consents$/.test(pathname)) return reply({ items: consents(decision) });
@@ -141,6 +142,7 @@ export async function createBrowserHarness(suite) {
       }
       if (pathname === `/api/v1/appointments/${appointmentId}`) return reply(appointment);
       if (pathname === `/api/v1/appointments/${appointmentId}/history`) return reply({ items: [] });
+      if (pathname === `/api/v1/appointments/${appointmentId}/reminders`) return reply({ items: [] });
       if (pathname === `/api/v1/appointments/${appointmentId}/reassignment-candidates`) return reply({ items: [{ id: "other-counselor", display_name: "Ana Cruz" }] });
       if (pathname === `/api/v1/appointments/${appointmentId}/reschedule-slots`) return reply({ items: [{ starts_at: `${url.searchParams.get("date")}T04:00:00Z`, ends_at: `${url.searchParams.get("date")}T05:00:00Z` }], timezone: "Asia/Manila" });
       if (pathname === "/api/v1/appointments") return reply({ ...emptyPage, items: [appointment], ordering: url.searchParams.get("ordering") ?? "EARLIEST_START" });

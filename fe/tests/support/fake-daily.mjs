@@ -10,6 +10,7 @@ export function installFakeDaily(target, options = {}) {
   let trackCounter = 0;
   let sessionCounter = 0;
   let joinGate = null;
+  let previewGate = null;
 
   function makeTrack(kind) {
     trackCounter += 1;
@@ -64,6 +65,7 @@ export function installFakeDaily(target, options = {}) {
       this.destroyed = false;
       this.audioOn = true;
       this.videoOn = true;
+      this.audioLevelObserverRunning = false;
       this.localTracks = { audio: makeTrack("audio"), video: makeTrack("video") };
       this.localSession = `local-session-${++sessionCounter}`;
       this.remote = null;
@@ -117,6 +119,33 @@ export function installFakeDaily(target, options = {}) {
       if (remote) result[remote.session_id] = remote;
       return result;
     }
+    async startCamera(properties) {
+      log.push(["startCamera", properties ?? null]);
+      if (properties?.startVideoOff !== undefined) this.videoOn = !properties.startVideoOff;
+      if (properties?.startAudioOff !== undefined) this.audioOn = !properties.startAudioOff;
+      if (previewGate) await previewGate.promise;
+      if (options.previewCameraError) {
+        this.emit("camera-error", {
+          error: options.previewCameraError,
+          errorMsg: { errorMsg: "NotReadableError: raw provider detail", audioOk: true, videoOk: false },
+        });
+      }
+      if (options.previewFailure) {
+        throw new Error("Synthetic preview failure");
+      }
+      if (this.destroyed) throw new Error("Call object was destroyed");
+      this.emit("started-camera");
+      this.emit("participant-updated", { participant: this.localParticipant() });
+      return this.getInputDevices();
+    }
+    async startLocalAudioLevelObserver(interval = 100) {
+      log.push(["startLocalAudioLevelObserver", interval]);
+      this.audioLevelObserverRunning = true;
+    }
+    stopLocalAudioLevelObserver() {
+      log.push(["stopLocalAudioLevelObserver"]);
+      this.audioLevelObserverRunning = false;
+    }
     async join(properties) {
       log.push(["join", { url: properties?.url, token: properties?.token }]);
       this.state = "joining-meeting";
@@ -139,6 +168,9 @@ export function installFakeDaily(target, options = {}) {
     }
     async destroy() {
       log.push(["destroy"]);
+      this.audioLevelObserverRunning = false;
+      this.localTracks.audio?.stop?.();
+      this.localTracks.video?.stop?.();
       this.destroyed = true;
       this.state = "left-meeting";
     }
@@ -220,6 +252,21 @@ export function installFakeDaily(target, options = {}) {
       joinGate?.release();
       joinGate = null;
     },
+    holdPreview() {
+      let release;
+      const promise = new Promise((resolve) => { release = resolve; });
+      previewGate = { promise, release };
+    },
+    releasePreview() {
+      previewGate?.release();
+      previewGate = null;
+    },
+    localAudioLevel(audioLevel) {
+      const call = current();
+      if (call.audioLevelObserverRunning) {
+        call.emit("local-audio-level", { audioLevel });
+      }
+    },
     liveListenerCount() { return live()?.listenerCount() ?? 0; },
     remoteJoin({ userId = "remote-user", name = "Remote", video = true, audio = true } = {}) {
       const call = current();
@@ -266,6 +313,7 @@ export function installFakeDaily(target, options = {}) {
       call.emit("available-devices-updated", { availableDevices: devices });
     },
   };
+  if (options.holdPreview) controller.holdPreview();
   target.__COMPASS_FAKE_DAILY__ = controller;
   return controller;
 }

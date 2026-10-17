@@ -27,10 +27,25 @@ Follow-Up/revision pair. No arbitrary metadata payload or plaintext is recorded.
 | Referral | Same Student, live Referral and scoped `referrals.view/manage` | OPERATIONAL |
 | E-Counseling | Link through canonical Counseling Encounter only | COUNSELOR_CONFIDENTIAL |
 
-Unknown sources, raw Appointments, Student Support, Guidance Messages, Daily media and
+Unknown sources, raw Appointments, Guidance Messages, Daily media and
 group registrations are not allowed. Source IDs are not returned in summary pages and
 are included in detail only after independent source authorization. Source policy is
 evaluated on each read, not inherited through Follow-Up assignment.
+
+### Student Support reconciliation (CORR-2B)
+
+Current Student Support (ADR-048) is a privacy-minimized context derived on-the-fly
+from annual Individual Inventory records, not an independent general case-management domain.
+There is no persistent case entity or source incident to reference by UUID without either
+tying the follow-up to an annual inventory snapshot or inventing a synthetic case model.
+Furthermore, `student_support.view` is restricted exclusively to Counselors, whereas Follow-ups
+support operational coordination by Guidance Services Staff within College scope. Exposing
+a Student Support source reference on operational follow-ups would leak profiling context
+to GSS or create inconsistent source re-authorization on read. Therefore, no fake `STUDENT_SUPPORT`
+case model or source kind is introduced. Authorized staff in a Student Support context
+reference the Student directly via Standalone Student follow-ups (`source_kind=None, source_id=None`)
+within operational College scope, or initiate canonical Counseling, Routine Interview, or
+Referral workflows where appropriate.
 
 ## Authorization
 
@@ -128,3 +143,22 @@ Verification during foundation repair: Ruff format/lint and 37 PostgreSQL-backed
 Follow-Up lifecycle/security suite, canonical migration suite, capability dependencies and step-up
 policy passed locally. Candidate commit and remote full-regression evidence are recorded in the
 OPS-FINAL handoff; downstream workspace/notifications are separate dependent implementation slices.
+
+## CORR-2B reconciliation — Work Queue prioritization and notifications
+
+My Work priority projection separates genuine urgency from future scheduled tasks.
+Every Follow-Up has a mandatory due date, so having a due date is not sufficient to
+qualify as `TIME_SENSITIVE`. Only Follow-Ups that are overdue or due within the shared
+7-day horizon (`DUE_SOON_HORIZON_DAYS = 7`, aligning with the Follow-Up reporting default)
+are projected as `TIME_SENSITIVE`. Far-future follow-ups are projected as `ACTION_REQUIRED`
+and tie-break behind work already waiting.
+
+Notification correctness guarantees:
+- Material events (`CREATED`, `REASSIGNED`, material `UPDATED` due date change) create
+  immutable notification intents.
+- Outdated material events are superseded: a reassigned or rescheduled follow-up suppresses
+  stale notification events in SQL before pagination.
+- Content minimization is preserved: notifications contain generic product copy with no
+  student names, encrypted notes, or source narratives.
+- Outbound external delivery is deactivated by default (`GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED=false`)
+  pending approved operational rollout.

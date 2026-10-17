@@ -319,3 +319,175 @@ test("attaching a replacement track never lets the old cleanup clear it, and no 
   assert.equal(element.srcObject, null);
   assert.equal(streams.length, 2);
 });
+
+test("pre-join preview starts only on explicit action, never calls join or requests a credential, and is local-only", async () => {
+  const { daily, session, issued } = setup();
+  // Constructing the session activates nothing.
+  assert.equal(daily.count("createCallObject"), 0);
+  assert.equal(daily.count("startCamera"), 0);
+  assert.equal(daily.count("join"), 0);
+  assert.equal(issued(), 0);
+  assert.equal(session.getSnapshot().phase, "idle");
+
+  await session.startPreview();
+  const snapshot = session.getSnapshot();
+  assert.equal(snapshot.phase, "preview");
+  assert.equal(snapshot.deviceCheckCompleted, true);
+  assert.equal(snapshot.local.video.playable, true);
+  assert.equal(snapshot.remote, null);
+  assert.equal(daily.count("createCallObject"), 1);
+  assert.equal(daily.count("startCamera"), 1);
+  assert.equal(daily.count("startLocalAudioLevelObserver"), 1);
+  assert.equal(daily.count("join"), 0, "Pre-join never joins a Daily room");
+  assert.equal(issued(), 0, "Pre-join never requests a meeting credential");
+
+  // Local microphone meter updates locally while microphone is on, and resets when muted.
+  daily.localAudioLevel(0.64);
+  assert.equal(session.getSnapshot().localAudioLevel, 0.64);
+  session.setMicrophone(false);
+  assert.equal(session.getSnapshot().localAudioLevel, 0);
+  daily.localAudioLevel(0.8);
+  assert.equal(session.getSnapshot().localAudioLevel, 0, "Muted mic ignores audio level events");
+});
+
+test("closing pre-join preview releases local tracks and audio observer, while active calls ignore closePreview", async () => {
+  const { daily, session, join } = setup();
+  await session.startPreview();
+  const previewCall = daily.instances[0];
+  const videoTrack = previewCall.localTracks.video;
+  const audioTrack = previewCall.localTracks.audio;
+  assert.equal(videoTrack.readyState, "live");
+  assert.equal(audioTrack.readyState, "live");
+
+  await session.closePreview();
+  assert.equal(session.getSnapshot().phase, "idle");
+  assert.equal(session.getSnapshot().local, null);
+  assert.equal(session.getSnapshot().localAudioLevel, 0);
+  assert.equal(previewCall.isDestroyed(), true);
+  assert.equal(videoTrack.readyState, "ended");
+  assert.equal(audioTrack.readyState, "ended");
+  assert.equal(daily.count("stopLocalAudioLevelObserver") >= 1, true);
+
+  // Once a real call is active, closePreview() is a no-op and never tears down the active call.
+  await join();
+  const activeCall = daily.instances[1];
+  assert.equal(session.getSnapshot().phase, "joined");
+  await session.closePreview();
+  assert.equal(session.getSnapshot().phase, "joined");
+  assert.equal(activeCall.isDestroyed(), false);
+  assert.equal(activeCall.localTracks.video.readyState, "live");
+});
+
+test("device selections and mic/camera off states carry into the real call both directly from preview and after closing preview", async () => {
+  const devices = [
+    { deviceId: "cam-1", kind: "videoinput", label: "Built-in camera", groupId: "a" },
+    { deviceId: "cam-2", kind: "videoinput", label: "USB camera", groupId: "b" },
+    { deviceId: "mic-1", kind: "audioinput", label: "Built-in microphone", groupId: "a" },
+    { deviceId: "mic-2", kind: "audioinput", label: "Headset microphone", groupId: "b" },
+    { deviceId: "spk-1", kind: "audiooutput", label: "Built-in speakers", groupId: "a" },
+    { deviceId: "spk-2", kind: "audiooutput", label: "External speakers", groupId: "b" },
+  ];
+
+  // Case 1: Joining directly from an open preview reuses the single Call Object and transfers track ownership.
+  const direct = setup({ devices });
+  await direct.session.startPreview();
+  const previewCall = direct.daily.instances[0];
+  await direct.session.selectCamera("cam-2");
+  await direct.session.selectMicrophone("mic-2");
+  await direct.session.selectSpeaker("spk-2");
+  direct.session.setCamera(false);
+  direct.session.setMicrophone(false);
+  await direct.join();
+  const joinedDirect = direct.session.getSnapshot();
+  assert.equal(joinedDirect.phase, "joined");
+  assert.equal(direct.daily.count("createCallObject"), 1, "Reuses the preview Call Object without creating a second one");
+  assert.equal(previewCall.isDestroyed(), false);
+  assert.equal(previewCall.localTracks.audio.readyState, "live", "Local track ownership transfers without stopping tracks");
+  assert.equal(joinedDirect.devices.camera, "cam-2");
+  assert.equal(joinedDirect.devices.microphone, "mic-2");
+  assert.equal(joinedDirect.devices.speaker, "spk-2");
+  assert.equal(joinedDirect.cameraOn, false);
+  assert.equal(joinedDirect.microphoneOn, false);
+
+  // Case 2: Closing preview first releases tracks, then joining applies the saved preferences to the new Call Object.
+  const afterClose = setup({ devices });
+  await afterClose.session.startPreview();
+  await afterClose.session.selectCamera("cam-2");
+  await afterClose.session.selectMicrophone("mic-2");
+  await afterClose.session.selectSpeaker("spk-2");
+  afterClose.session.setCamera(false);
+  afterClose.session.setMicrophone(false);
+  await afterClose.session.closePreview();
+  assert.equal(afterClose.daily.instances[0].isDestroyed(), true);
+  assert.equal(afterClose.daily.instances[0].localTracks.video.readyState, "ended");
+
+  await afterClose.join();
+  const joinedAfterClose = afterClose.session.getSnapshot();
+  assert.equal(joinedAfterClose.phase, "joined");
+  assert.equal(afterClose.daily.count("createCallObject"), 2);
+  assert.equal(joinedAfterClose.devices.camera, "cam-2");
+  assert.equal(joinedAfterClose.devices.microphone, "mic-2");
+  assert.equal(joinedAfterClose.devices.speaker, "spk-2");
+  assert.equal(joinedAfterClose.cameraOn, false);
+  assert.equal(joinedAfterClose.microphoneOn, false);
+});
+
+test("closing preview or disposing during a pending permission request does not leak tracks or reactivate preview", async () => {
+  const { daily, session } = setup();
+  daily.holdPreview();
+  const pending = session.startPreview();
+  while (!daily.count("startCamera")) await tick();
+  const call = daily.instances[0];
+  await session.closePreview();
+  daily.releasePreview();
+  await pending;
+  await tick();
+  assert.equal(session.getSnapshot().phase, "idle");
+  assert.equal(session.getSnapshot().local, null);
+  assert.equal(call.isDestroyed(), true);
+  assert.equal(call.localTracks.video.readyState, "ended");
+  assert.equal(call.localTracks.audio.readyState, "ended");
+});
+
+test("rapid preview open/close actions and joining while preview is initializing never create duplicate live call objects", async () => {
+  const { daily, session, join } = setup();
+  const p1 = session.startPreview();
+  const p2 = session.closePreview();
+  const p3 = session.startPreview();
+  await Promise.all([p1, p2, p3]);
+  assert.equal(session.getSnapshot().phase, "preview");
+  assert.equal(daily.instances.filter((call) => !call.isDestroyed()).length, 1);
+  await session.closePreview();
+  assert.equal(daily.instances.filter((call) => !call.isDestroyed()).length, 0);
+
+  // Pressing Join while preview initialization is still pending transitions cleanly into the call.
+  daily.holdPreview();
+  const pendingPreview = session.startPreview();
+  while (!daily.count("startCamera")) await tick();
+  const pendingJoin = join();
+  daily.releasePreview();
+  await Promise.all([pendingPreview, pendingJoin]);
+  assert.equal(session.getSnapshot().phase, "joined");
+  assert.equal(daily.instances.filter((call) => !call.isDestroyed()).length, 1);
+});
+
+test("missing devices and permission errors during pre-join produce recoverable plain-language feedback without crashing", async () => {
+  const empty = setup({ devices: [] });
+  await empty.session.startPreview();
+  assert.equal(empty.session.getSnapshot().phase, "preview");
+  assert.equal(empty.session.getSnapshot().mediaProblem?.message, "No camera or microphone is connected.");
+  empty.daily.addDevice({ deviceId: "mic-usb", kind: "audioinput", label: "USB microphone" });
+  await tick();
+  assert.equal(empty.session.getSnapshot().mediaProblem?.message, "No camera is connected.");
+  empty.daily.addDevice({ deviceId: "cam-usb", kind: "videoinput", label: "USB camera" });
+  await tick();
+  assert.equal(empty.session.getSnapshot().mediaProblem, null);
+
+  const denied = setup({
+    previewCameraError: { type: "permissions", blockedBy: "browser", blockedMedia: ["video", "audio"], msg: "NotAllowedError: raw" },
+  });
+  await denied.session.startPreview();
+  assert.equal(denied.session.getSnapshot().phase, "preview");
+  assert.match(denied.session.getSnapshot().mediaProblem?.message ?? "", /^Camera and microphone access is blocked in your browser/);
+  assert.doesNotMatch(denied.session.getSnapshot().mediaProblem?.message ?? "", /NotAllowedError|raw/);
+});

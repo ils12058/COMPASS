@@ -9,6 +9,7 @@ import {
   fatalCallFailure,
   initialCallSnapshot,
   joinConnectionFailure,
+  previewCallPhases,
   projectDevices,
   projectParticipants,
   sameParticipant,
@@ -37,6 +38,7 @@ export const subscribedCallEvents = [
   "camera-error",
   "available-devices-updated",
   "selected-devices-updated",
+  "local-audio-level",
   "recording-started",
   "recording-stopped",
   "recording-error",
@@ -95,11 +97,12 @@ export type CallSessionOptions = {
 // (ADR-094) owns the only instance and binds it to React with useSyncExternalStore, so the call
 // outlives any one page.
 //
-// Each join is an attempt with its own number. Every asynchronous continuation and Daily event
-// checks that its attempt is still current, so a late credential, a slow join or an event from a
-// call being destroyed can never replace newer state. Construction has no side effects and nothing
-// joins without a person pressing Join, so React Strict Mode's repeated renders and effects cannot
-// create a second call object or a second join.
+// Each join or pre-join device preview is an attempt with its own number. Every asynchronous
+// continuation and Daily event checks that its attempt is still current, so a late credential, a
+// slow permission prompt, a slow join or an event from a call being destroyed can never replace
+// newer state. Construction has no side effects and nothing starts devices or joins without explicit
+// user action, so React Strict Mode's repeated renders and effects cannot create a second call
+// object or a second join.
 export class DailyCallSession {
   private snapshot: CallSnapshot = initialCallSnapshot;
   private readonly listeners = new Set<() => void>();
@@ -110,6 +113,15 @@ export class DailyCallSession {
   // A mute or camera toggle Daily has not reported back yet, so an unrelated participant update
   // carrying the previous state does not flip the control back.
   private requested: { microphone?: { on: boolean; at: number }; camera?: { on: boolean; at: number } } = {};
+  // Ephemeral in-memory device and mute choices made during pre-join testing, carried into join().
+  private preferred: {
+    camera?: string;
+    microphone?: string;
+    speaker?: string;
+    cameraOn?: boolean;
+    microphoneOn?: boolean;
+  } = {};
+  private prePreviewPhase: "idle" | "left" = "idle";
   private readonly loadFactory: () => Promise<DailyCallClientFactory>;
   private readonly supportsSpeakerSelection: () => boolean;
   private readonly now: () => number;
@@ -145,26 +157,25 @@ export class DailyCallSession {
     return attempt === this.attempt && (call === undefined || call === this.call);
   }
 
-  async join({ fetchCredential, describeCredentialError }: JoinRequest): Promise<void> {
+  // Starts a strictly local pre-join device check on the single Call Object without requesting a
+  // meeting credential or joining a Daily room.
+  async startPreview(): Promise<void> {
     const phase = this.snapshot.phase;
     if (phase !== "idle" && phase !== "left" && phase !== "failed") return;
+    this.prePreviewPhase = phase === "left" ? "left" : "idle";
     const attempt = ++this.attempt;
-    this.update({ ...initialCallSnapshot, phase: "requesting" });
-
-    let credential: CallCredential | null;
-    try {
-      credential = await fetchCredential();
-    } catch (error) {
-      if (this.isCurrent(attempt)) this.update({ phase: "failed", failure: { kind: "credential", message: describeCredentialError(error) } });
-      return;
-    }
-    // A credential that arrives for a superseded attempt is dropped unused.
-    if (!this.isCurrent(attempt)) return;
-    const expiresAt = Date.parse(credential.expiresAt);
-    if (!credential.roomUrl || !credential.token || !Number.isFinite(expiresAt) || expiresAt <= this.now()) {
-      this.update({ phase: "failed", failure: expiredCredentialFailure });
-      return;
-    }
+    const cameraOn = this.preferred.cameraOn ?? this.snapshot.cameraOn;
+    const microphoneOn = this.preferred.microphoneOn ?? this.snapshot.microphoneOn;
+    this.update({
+      phase: "starting-preview",
+      failure: null,
+      local: null,
+      remote: null,
+      cameraOn,
+      microphoneOn,
+      localAudioLevel: 0,
+      mediaProblem: null,
+    });
 
     let call: DailyCallClient | null = null;
     try {
@@ -172,14 +183,203 @@ export class DailyCallSession {
       if (!this.isCurrent(attempt)) return;
       const factory = await this.loadFactory();
       if (!this.isCurrent(attempt)) return;
-      // Defensive: never run beside a call object that an earlier page instance left behind.
       const orphan = factory.getCallInstance?.();
       if (orphan && !orphan.isDestroyed()) await orphan.destroy().catch(() => undefined);
       if (!this.isCurrent(attempt)) return;
       call = factory.createCallObject({});
       this.call = call;
       this.bind(call, attempt);
-      this.update({ phase: "joining" });
+      const { camera: preferredCamera, microphone: preferredMicrophone, speaker: preferredSpeaker } = this.preferred;
+      if (preferredSpeaker && this.supportsSpeakerSelection()) {
+        await call.setOutputDeviceAsync({ outputDeviceId: preferredSpeaker }).catch(() => undefined);
+        this.preferred.speaker = preferredSpeaker;
+      }
+      if (!this.isCurrent(attempt, call)) {
+        this.stopLocalTracks(call);
+        return;
+      }
+      if (preferredCamera || preferredMicrophone) {
+        await call.setInputDevicesAsync({
+          ...(preferredCamera ? { videoDeviceId: preferredCamera } : {}),
+          ...(preferredMicrophone ? { audioDeviceId: preferredMicrophone } : {}),
+        }).catch(() => undefined);
+      }
+      if (!this.isCurrent(attempt, call)) {
+        this.stopLocalTracks(call);
+        return;
+      }
+      if (call.startCamera) {
+        await call.startCamera({
+          startVideoOff: !cameraOn,
+          startAudioOff: !microphoneOn,
+        });
+      }
+      if (!this.isCurrent(attempt, call)) {
+        this.stopLocalTracks(call);
+        if (!call.isDestroyed()) await call.destroy().catch(() => undefined);
+        return;
+      }
+      if (!cameraOn) {
+        this.requested.camera = { on: false, at: this.now() };
+        call.setLocalVideo(false);
+      }
+      if (!microphoneOn) {
+        this.requested.microphone = { on: false, at: this.now() };
+        call.setLocalAudio(false);
+      }
+      if (call.startLocalAudioLevelObserver) {
+        await call.startLocalAudioLevelObserver(100).catch(() => undefined);
+      }
+      if (!this.isCurrent(attempt, call)) {
+        this.stopLocalTracks(call);
+        return;
+      }
+      this.update({ phase: "preview", deviceCheckCompleted: true });
+      this.refreshParticipants(call);
+      await this.refreshDevices();
+    } catch {
+      if (!this.isCurrent(attempt)) {
+        if (call) {
+          this.stopLocalTracks(call);
+          if (!call.isDestroyed()) await call.destroy().catch(() => undefined);
+        }
+        return;
+      }
+      const problem = this.snapshot.mediaProblem ?? {
+        camera: true,
+        microphone: true,
+        source: "camera-error" as const,
+        message: "Your camera and microphone couldn't be started.",
+      };
+      void this.teardown();
+      this.update({
+        phase: "preview",
+        local: null,
+        localAudioLevel: 0,
+        deviceCheckCompleted: true,
+        mediaProblem: problem,
+      });
+    }
+  }
+
+  // Closes a local device preview and releases its local media tracks and audio observer while
+  // keeping the selected device and mute preferences in memory for the upcoming join. Never touches
+  // an active or connecting call.
+  async closePreview(): Promise<void> {
+    if (!previewCallPhases.has(this.snapshot.phase)) return;
+    this.attempt += 1;
+    const done = this.teardown();
+    this.requested = {};
+    this.update({
+      phase: this.prePreviewPhase,
+      failure: null,
+      local: null,
+      remote: null,
+      localAudioLevel: 0,
+      mediaProblem: null,
+    });
+    await done;
+  }
+
+  async join({ fetchCredential, describeCredentialError }: JoinRequest): Promise<void> {
+    const phase = this.snapshot.phase;
+    if (phase !== "idle" && phase !== "left" && phase !== "failed" && !previewCallPhases.has(phase)) return;
+    const cameraOn = this.preferred.cameraOn ?? this.snapshot.cameraOn;
+    const microphoneOn = this.preferred.microphoneOn ?? this.snapshot.microphoneOn;
+    const deviceCheckCompleted = this.snapshot.deviceCheckCompleted;
+    const devices = this.snapshot.devices;
+    const reusablePreviewCall = phase === "preview" && this.call && !this.call.isDestroyed() ? this.call : null;
+    const attempt = ++this.attempt;
+    if (reusablePreviewCall) {
+      for (const unsubscribe of this.unsubscribers.splice(0)) unsubscribe();
+      try {
+        reusablePreviewCall.stopLocalAudioLevelObserver?.();
+      } catch {
+        // Best effort.
+      }
+      this.bind(reusablePreviewCall, attempt);
+    } else if (this.call) {
+      void this.teardown();
+    }
+    this.update({
+      ...initialCallSnapshot,
+      phase: "requesting",
+      cameraOn,
+      microphoneOn,
+      deviceCheckCompleted,
+      devices,
+    });
+
+    let credential: CallCredential | null;
+    try {
+      credential = await fetchCredential();
+    } catch (error) {
+      if (this.isCurrent(attempt)) {
+        void this.teardown();
+        this.update({
+          ...initialCallSnapshot,
+          cameraOn,
+          microphoneOn,
+          deviceCheckCompleted,
+          devices,
+          phase: "failed",
+          failure: { kind: "credential", message: describeCredentialError(error) },
+        });
+      }
+      return;
+    }
+    // A credential that arrives for a superseded attempt is dropped unused.
+    if (!this.isCurrent(attempt)) return;
+    const expiresAt = Date.parse(credential.expiresAt);
+    if (!credential.roomUrl || !credential.token || !Number.isFinite(expiresAt) || expiresAt <= this.now()) {
+      void this.teardown();
+      this.update({
+        ...initialCallSnapshot,
+        cameraOn,
+        microphoneOn,
+        deviceCheckCompleted,
+        devices,
+        phase: "failed",
+        failure: expiredCredentialFailure,
+      });
+      return;
+    }
+
+    let call: DailyCallClient | null = null;
+    try {
+      if (reusablePreviewCall && !reusablePreviewCall.isDestroyed() && this.call === reusablePreviewCall) {
+        call = reusablePreviewCall;
+      } else {
+        await pendingTeardown;
+        if (!this.isCurrent(attempt)) return;
+        const factory = await this.loadFactory();
+        if (!this.isCurrent(attempt)) return;
+        // Defensive: never run beside a call object that an earlier page instance left behind.
+        const orphan = factory.getCallInstance?.();
+        if (orphan && !orphan.isDestroyed()) await orphan.destroy().catch(() => undefined);
+        if (!this.isCurrent(attempt)) return;
+        call = factory.createCallObject({});
+        this.call = call;
+        this.bind(call, attempt);
+        const { camera: preferredCamera, microphone: preferredMicrophone, speaker: preferredSpeaker } = this.preferred;
+        if (preferredSpeaker && this.supportsSpeakerSelection()) {
+          await call.setOutputDeviceAsync({ outputDeviceId: preferredSpeaker }).catch(() => undefined);
+          this.preferred.speaker = preferredSpeaker;
+        }
+        if (!this.isCurrent(attempt, call)) return;
+        if (preferredCamera || preferredMicrophone) {
+          await call.setInputDevicesAsync({
+            ...(preferredCamera ? { videoDeviceId: preferredCamera } : {}),
+            ...(preferredMicrophone ? { audioDeviceId: preferredMicrophone } : {}),
+          }).catch(() => undefined);
+        }
+        if (!this.isCurrent(attempt, call)) return;
+        if (!cameraOn) call.setLocalVideo(false);
+        if (!microphoneOn) call.setLocalAudio(false);
+      }
+      if (!cameraOn) this.requested.camera = { on: false, at: this.now() };
+      if (!microphoneOn) this.requested.microphone = { on: false, at: this.now() };
+      this.update({ phase: "joining", localAudioLevel: 0 });
       const { roomUrl, token } = credential;
       // The credential is used once, by this join, and is not kept anywhere else.
       credential = null;
@@ -188,7 +388,14 @@ export class DailyCallSession {
       credential = null;
       if (!this.isCurrent(attempt)) return;
       void this.teardown();
-      this.update({ ...initialCallSnapshot, phase: "failed", failure: joinConnectionFailure });
+      this.update({
+        ...initialCallSnapshot,
+        cameraOn,
+        microphoneOn,
+        deviceCheckCompleted,
+        phase: "failed",
+        failure: joinConnectionFailure,
+      });
       return;
     }
     if (call && this.isCurrent(attempt, call) && this.snapshot.phase === "joining") this.markJoined(call);
@@ -199,7 +406,7 @@ export class DailyCallSession {
     if (!call || !activeCallPhases.has(this.snapshot.phase)) return;
     // Leaving supersedes the join attempt: its late result and the call's own events are ignored.
     const attempt = ++this.attempt;
-    this.update({ phase: "leaving" });
+    this.update({ phase: "leaving", localAudioLevel: 0 });
     try {
       await call.leave();
     } catch {
@@ -208,6 +415,8 @@ export class DailyCallSession {
     if (!this.isCurrent(attempt)) return;
     await this.teardown();
     if (!this.isCurrent(attempt)) return;
+    this.preferred = {};
+    this.prePreviewPhase = "idle";
     this.update({ ...initialCallSnapshot, phase: "left" });
   }
 
@@ -219,23 +428,33 @@ export class DailyCallSession {
     this.attempt += 1;
     const done = this.teardown();
     this.requested = {};
+    this.preferred = {};
+    this.prePreviewPhase = "idle";
     this.update(initialCallSnapshot);
     return done;
   }
 
   setMicrophone(on: boolean) {
+    const phase = this.snapshot.phase;
+    if (!activeCallPhases.has(phase) && !previewCallPhases.has(phase)) return;
+    this.preferred.microphoneOn = on;
     const call = this.call;
-    if (!call || !activeCallPhases.has(this.snapshot.phase)) return;
-    call.setLocalAudio(on);
-    this.requested.microphone = { on, at: this.now() };
-    this.update({ microphoneOn: on });
+    if (call && (activeCallPhases.has(phase) || phase === "preview")) {
+      call.setLocalAudio(on);
+      this.requested.microphone = { on, at: this.now() };
+    }
+    this.update({ microphoneOn: on, ...(on ? {} : { localAudioLevel: 0 }) });
   }
 
   setCamera(on: boolean) {
+    const phase = this.snapshot.phase;
+    if (!activeCallPhases.has(phase) && !previewCallPhases.has(phase)) return;
+    this.preferred.cameraOn = on;
     const call = this.call;
-    if (!call || !activeCallPhases.has(this.snapshot.phase)) return;
-    call.setLocalVideo(on);
-    this.requested.camera = { on, at: this.now() };
+    if (call && (activeCallPhases.has(phase) || phase === "preview")) {
+      call.setLocalVideo(on);
+      this.requested.camera = { on, at: this.now() };
+    }
     this.update({ cameraOn: on });
   }
 
@@ -246,20 +465,31 @@ export class DailyCallSession {
     try {
       const [{ devices }, selected] = await Promise.all([call.enumerateDevices(), call.getInputDevices()]);
       if (!this.isCurrent(attempt, call)) return;
-      const next = projectDevices(devices, selected, this.supportsSpeakerSelection(), this.snapshot.devices.speaker);
+      const next = projectDevices(devices, selected, this.supportsSpeakerSelection(), this.preferred.speaker ?? this.snapshot.devices.speaker);
+      if (this.preferred.camera && !next.cameras.some((option) => option.id === this.preferred.camera)) {
+        this.preferred.camera = next.camera ?? undefined;
+      }
+      if (this.preferred.microphone && !next.microphones.some((option) => option.id === this.preferred.microphone)) {
+        this.preferred.microphone = next.microphone ?? undefined;
+      }
+      if (this.preferred.speaker && !next.speakers.some((option) => option.id === this.preferred.speaker)) {
+        this.preferred.speaker = next.speaker ?? undefined;
+      }
       this.update({ devices: next, mediaProblem: this.deviceAvailabilityProblem(next) });
     } catch {
       // Device lists are refreshed again on the next device change; the call itself is unaffected.
     }
   }
 
-  // A device disconnected during the call. Daily moves to another device on its own; a notice is
-  // needed only when none of that kind is left.
+  // A device disconnected during the call, or none of that kind is connected during pre-join check.
+  // Daily moves to another device on its own when one remains; a notice is needed only when none of
+  // that kind is left.
   private deviceAvailabilityProblem(devices: typeof emptyDevices) {
     const current = this.snapshot.mediaProblem;
     if (current && current.source === "camera-error") return current;
-    const camera = devices.cameras.length === 0 && this.snapshot.devices.cameras.length > 0;
-    const microphone = devices.microphones.length === 0 && this.snapshot.devices.microphones.length > 0;
+    const inPreview = previewCallPhases.has(this.snapshot.phase);
+    const camera = devices.cameras.length === 0 && (inPreview || this.snapshot.devices.cameras.length > 0);
+    const microphone = devices.microphones.length === 0 && (inPreview || this.snapshot.devices.microphones.length > 0);
     if (camera || microphone) {
       return { camera, microphone, source: "device-missing" as const, message: camera && microphone ? "No camera or microphone is connected." : camera ? "No camera is connected." : "No microphone is connected." };
     }
@@ -271,14 +501,22 @@ export class DailyCallSession {
     const call = this.requireCall();
     const attempt = this.attempt;
     const selected = await call.setInputDevicesAsync({ videoDeviceId: deviceId });
-    if (this.isCurrent(attempt, call)) this.update({ devices: selectedDevices(this.snapshot.devices, selected) });
+    if (this.isCurrent(attempt, call)) {
+      const next = selectedDevices(this.snapshot.devices, selected);
+      this.preferred.camera = next.camera ?? undefined;
+      this.update({ devices: next });
+    }
   }
 
   async selectMicrophone(deviceId: string) {
     const call = this.requireCall();
     const attempt = this.attempt;
     const selected = await call.setInputDevicesAsync({ audioDeviceId: deviceId });
-    if (this.isCurrent(attempt, call)) this.update({ devices: selectedDevices(this.snapshot.devices, selected) });
+    if (this.isCurrent(attempt, call)) {
+      const next = selectedDevices(this.snapshot.devices, selected);
+      this.preferred.microphone = next.microphone ?? undefined;
+      this.update({ devices: next });
+    }
   }
 
   // Daily records the output device; the stage also applies it to the remote audio element it owns.
@@ -286,16 +524,21 @@ export class DailyCallSession {
     const call = this.requireCall();
     const attempt = this.attempt;
     await call.setOutputDeviceAsync({ outputDeviceId: deviceId });
-    if (this.isCurrent(attempt, call)) this.update({ devices: { ...this.snapshot.devices, speaker: deviceId } });
+    if (this.isCurrent(attempt, call)) {
+      this.preferred.speaker = deviceId;
+      this.update({ devices: { ...this.snapshot.devices, speaker: deviceId } });
+    }
   }
 
   private requireCall(): DailyCallClient {
-    if (!this.call || !activeCallPhases.has(this.snapshot.phase)) throw new Error("The call is not active.");
+    if (!this.call || (!activeCallPhases.has(this.snapshot.phase) && this.snapshot.phase !== "preview")) {
+      throw new Error("The call is not active.");
+    }
     return this.call;
   }
 
   private markJoined(call: DailyCallClient) {
-    this.update({ phase: "joined", failure: null });
+    this.update({ phase: "joined", failure: null, localAudioLevel: 0 });
     this.refreshParticipants(call);
     void this.refreshDevices();
   }
@@ -381,7 +624,20 @@ export class DailyCallSession {
           listen(event, () => void this.refreshDevices());
           break;
         case "selected-devices-updated":
-          listen(event, (payload) => this.update({ devices: selectedDevices(this.snapshot.devices, payload.devices) }));
+          listen(event, (payload) => {
+            const next = selectedDevices(this.snapshot.devices, payload.devices);
+            if (next.camera) this.preferred.camera = next.camera;
+            if (next.microphone) this.preferred.microphone = next.microphone;
+            if (next.speaker) this.preferred.speaker = next.speaker;
+            this.update({ devices: next });
+          });
+          break;
+        case "local-audio-level":
+          listen(event, (payload) => {
+            if (!previewCallPhases.has(this.snapshot.phase) || !this.snapshot.microphoneOn) return;
+            const level = typeof payload.audioLevel === "number" && Number.isFinite(payload.audioLevel) ? Math.max(0, Math.min(1, payload.audioLevel)) : 0;
+            this.update({ localAudioLevel: level });
+          });
           break;
         default:
           if (providerMediaEvents.has(event)) listen(event, () => this.onProviderMediaEvent());
@@ -389,13 +645,32 @@ export class DailyCallSession {
     }
   }
 
-  // Unsubscribes every listener, leaves when still connected, and always destroys the call object.
+  private stopLocalTracks(call: DailyCallClient) {
+    try {
+      call.stopLocalAudioLevelObserver?.();
+    } catch {
+      // Best effort.
+    }
+    try {
+      const local = call.participants()?.local;
+      const videoTrack = local?.tracks?.video?.persistentTrack ?? local?.tracks?.video?.track;
+      const audioTrack = local?.tracks?.audio?.persistentTrack ?? local?.tracks?.audio?.track;
+      videoTrack?.stop?.();
+      audioTrack?.stop?.();
+    } catch {
+      // Best effort; Daily's destroy() also stops tracks.
+    }
+  }
+
+  // Unsubscribes every listener, stops local preview tracks/observers, leaves when still connected,
+  // and always destroys the call object.
   private teardown(): Promise<void> {
     const call = this.call;
     if (!call) return pendingTeardown;
     this.call = null;
     this.requested = {};
     for (const unsubscribe of this.unsubscribers.splice(0)) unsubscribe();
+    this.stopLocalTracks(call);
     const done = (async () => {
       try {
         const state = call.meetingState();

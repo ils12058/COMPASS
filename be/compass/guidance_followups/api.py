@@ -446,7 +446,7 @@ def report(
     request,
     period_start: datetime | None = None,
     period_end: datetime | None = None,
-    horizon_days: int = 7,
+    horizon_days: int = workspace.DUE_SOON_HORIZON_DAYS,
 ):
     _enabled()
     _strict_query(request, ["period_start", "period_end", "horizon_days"])

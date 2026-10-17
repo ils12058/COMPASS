@@ -10,6 +10,8 @@ import type { ActiveECounselingTiming } from "./session-timing";
 
 // Local call controls: they act on the Call Object directly and never on institutional records.
 export type CallControls = CallSnapshot & {
+  startPreview: () => Promise<void>;
+  closePreview: () => Promise<void>;
   setMicrophone: (on: boolean) => void;
   setCamera: (on: boolean) => void;
   refreshDevices: () => Promise<void>;
@@ -27,10 +29,14 @@ export type ActiveECounselingCall = {
   live: boolean;
   // The Appointment of the current or last call in this portal session, kept in memory only.
   appointmentId: string | null;
+  // The Appointment whose local pre-join device check or preferences are active in this session.
+  previewAppointmentId: string | null;
   participantName: string | null;
   call: CallControls;
   otherTabActive: boolean;
   availabilityFor: (appointmentId: string) => JoinAvailability;
+  startPreview: (appointmentId: string) => Promise<void>;
+  closePreview: (appointmentId?: string) => Promise<void>;
   join: (target: { appointmentId: string; participantName: string; endsAt?: string }) => Promise<void>;
   // Informational scheduled-end warning and overtime awareness (EC-1 Option A).
   timing: ActiveECounselingTiming;

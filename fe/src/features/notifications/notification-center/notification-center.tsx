@@ -47,8 +47,21 @@ export function NotificationCenter({ page }: { page: number }) {
   const { user } = usePortalSession();
   const queryClient = useQueryClient();
   const router = useRouter();
-  const notifications = useNotificationsListMine({ page, page_size: PAGE_SIZE }, { query: { retry: false } });
-  const unread = useNotificationsGetUnreadCount({ query: { retry: false } });
+  const notifications = useNotificationsListMine(
+    { page, page_size: PAGE_SIZE },
+    {
+      query: {
+        retry: false,
+        queryKey: [...getNotificationsListMineQueryKey({ page, page_size: PAGE_SIZE }), user.id],
+      },
+    },
+  );
+  const unread = useNotificationsGetUnreadCount({
+    query: {
+      retry: false,
+      queryKey: [...getNotificationsGetUnreadCountQueryKey(), user.id],
+    },
+  });
   const markAll = useNotificationsMarkAllRead();
   const [actionError, setActionError] = useState<string | null>(null);
   const [refreshingAfterMarkAll, setRefreshingAfterMarkAll] = useState(false);
@@ -65,7 +78,7 @@ export function NotificationCenter({ page }: { page: number }) {
     setRefreshingAfterMarkAll(true);
     try {
       await markAll.mutateAsync();
-      cacheConfirmedAllRead(queryClient);
+      cacheConfirmedAllRead(queryClient, user.id);
     } catch (caught) {
       reconcileNotificationAuth(caught, queryClient);
       setActionError("Notifications could not be marked as read. Please try again.");

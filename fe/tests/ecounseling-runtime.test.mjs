@@ -28,8 +28,10 @@ import { media } from "./support/ui-hierarchy-fixtures.mjs";
 
 test("runtime state is one closed model, separate from what COMPASS records about capture", () => {
   assert.equal(runtimeState({ activated: false, claiming: false, phase: "joined" }), "inactive");
+  assert.equal(runtimeState({ activated: false, claiming: false, phase: "starting-preview" }), "inactive");
+  assert.equal(runtimeState({ activated: false, claiming: false, phase: "preview" }), "inactive");
   assert.equal(runtimeState({ activated: true, claiming: true, phase: "idle" }), "activating");
-  const expected = { requesting: "joining", joining: "joining", joined: "active", reconnecting: "reconnecting", leaving: "leaving", left: "ended", failed: "failed", idle: "inactive" };
+  const expected = { requesting: "joining", joining: "joining", joined: "active", reconnecting: "reconnecting", leaving: "leaving", left: "ended", failed: "failed", idle: "inactive", "starting-preview": "inactive", preview: "inactive" };
   for (const [phase, state] of Object.entries(expected)) assert.equal(runtimeState({ activated: true, claiming: false, phase }), state, phase);
   assert.deepEqual(["inactive", "activating", "joining", "active", "reconnecting", "leaving", "ended", "failed"].filter(isLiveRuntime), ["activating", "joining", "active", "reconnecting", "leaving"]);
 });
@@ -205,7 +207,7 @@ test("the call is owned by the portal runtime, not by a page", () => {
   assert.equal((runtime.match(/<audio /g) ?? []).length, 1, "One remote-audio owner");
   const boundary = source("features/portal/components/portal-boundary.tsx");
   assert.match(boundary, /<ActiveECounselingRuntimeProvider[\s\S]*\{content\}[\s\S]*<\/ActiveECounselingRuntimeProvider>/, "The runtime wraps the loading, verification and maintenance presentations");
-  for (const path of ["features/ecounseling/runtime/active-call-runtime.tsx", "features/ecounseling/runtime/cross-tab-call-coordinator.ts", "features/ecounseling/runtime/global-call-dock.tsx"]) {
+  for (const path of ["features/ecounseling/runtime/active-call-runtime.tsx", "features/ecounseling/runtime/cross-tab-call-coordinator.ts", "features/ecounseling/runtime/global-call-dock.tsx", "features/ecounseling/call/prejoin-device-check.tsx"]) {
     assert.doesNotMatch(source(path), /localStorage|sessionStorage|indexedDB|startRecording|startTranscription|transcription-message/, path);
   }
 });

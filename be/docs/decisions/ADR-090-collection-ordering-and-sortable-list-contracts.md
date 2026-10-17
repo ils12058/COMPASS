@@ -159,10 +159,10 @@ Notes on these choices:
 | A Student's own Routine Interviews, Good Moral requests, and Inventory history | HISTORY | newest first |
 | Reports | ANALYTICS | report-owned |
 
-**Academic Years:** labels are validated only for length, not format, so `label DESC` relies on
-the institution's chronological labels (`2026-2027`). There is no date field to order by, and none
-is added solely for sorting. The current Academic Year is marked explicitly wherever it appears,
-whatever its position.
+**Academic Years:** newly created labels use the canonical consecutive-year format `YYYY-YYYY`;
+historical labels remain readable as stored. `label DESC` follows the chronological label sequence.
+There is no date field to order by, and none is added solely for sorting. The current Academic Year
+is marked explicitly wherever it appears, whatever its position.
 
 ### Overview "Needs your attention"
 

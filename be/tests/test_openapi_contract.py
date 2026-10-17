@@ -38,6 +38,7 @@ EXPECTED_OPERATION_IDS = {
     "appointmentsPreviewReminders",
     "appointmentsSendReminders",
     "appointmentsSendReminder",
+    "appointmentsListReminders",
     "assessmentRecordsList",
     "assessmentRecordsCreate",
     "assessmentRecordsGet",

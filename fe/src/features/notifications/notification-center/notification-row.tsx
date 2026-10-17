@@ -31,7 +31,7 @@ export function NotificationRow({ notification, currentUserId }: { notification:
     }
     try {
       const response = await markRead.mutateAsync({ notificationId: notification.id });
-      cacheConfirmedRead(queryClient, response.data);
+      cacheConfirmedRead(queryClient, response.data, currentUserId);
     } catch (caught) {
       reconcileNotificationAuth(caught, queryClient);
       setError("This notification could not be marked as read. Please try again.");

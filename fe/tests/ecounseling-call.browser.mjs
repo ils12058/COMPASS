@@ -16,12 +16,15 @@ const STUDENT = "Maria Santos";
 const COUNSELOR = "Maria Reyes";
 
 // A session whose capture and consent state a test can change while the page is open.
-function liveSession({ student = false, version = 2, recording = "NOT_STARTED", transcription = "NOT_STARTED", decision = "APPROVED", storage = null, artifact = null, context = false } = {}) {
-  const state = { recording, transcription, decision, storage, artifact, failWorkspace: false, joins: 0, workspaceReads: 0 };
+function liveSession({ student = false, version = 2, recording = "NOT_STARTED", transcription = "NOT_STARTED", decision = "APPROVED", storage = null, artifact = null, context = false, joinState = "OPEN", roomProvisioned = true, joinAllowed = true } = {}) {
+  const state = { recording, transcription, decision, storage, artifact, failWorkspace: false, joins: 0, workspaceReads: 0, joinState, roomProvisioned, joinAllowed };
   const prefix = `/api/v1/e-counseling/${student ? "me/" : ""}appointments/${appointmentId}`;
   const data = () => {
     const value = workspace();
     value.counseling_context_available = context;
+    value.provider_readiness.join_state = state.joinState;
+    value.provider_readiness.room_provisioned = state.roomProvisioned;
+    value.provider_readiness.join_allowed = state.joinAllowed;
     value.media.media_policy_version = version;
     value.media.recording.capture_status = state.recording;
     value.media.transcription.capture_status = state.transcription;
@@ -619,5 +622,123 @@ let signedRequests = 0;
     await shown(page.getByRole("alert").filter({ hasText: "file" }));
   });
 }
+
+{
+  const session = liveSession({ student: true, joinState: "TOO_EARLY", roomProvisioned: false, joinAllowed: false });
+  await check("prejoin-device-check-student-too-early", ePath, { role: "STUDENT", fakeDaily: true, overrides: session.overrides }, async (page, { requests }) => {
+    await shown(stage(page).getByText(/^You can join starting /));
+    await hidden(page.getByRole("button", { name: "Join session", exact: true }));
+    const trigger = stage(page).getByRole("button", { name: "Check devices", exact: true });
+    await shown(trigger);
+    await trigger.click();
+
+    await shown(stage(page).getByText("Checking devices", { exact: true }));
+    await shown(stage(page).getByText(`Local preview only · ${COUNSELOR} cannot see or hear you`, { exact: true }));
+    await hidden(page.getByRole("button", { name: "Join session", exact: true }));
+    await hidden(tray(page));
+    assert.equal(requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/join")).length, 0, "Device check never requests a meeting credential");
+    assert.equal(await fakeCount(page, "startCamera"), 1);
+    assert.equal(await fakeCount(page, "join"), 0);
+
+    const previewVideo = stage(page).locator("video").first();
+    await shown(previewVideo);
+    const ids = await fakeTrackIds(page);
+    assert.deepEqual(await attachedTrack(previewVideo), [ids.localVideo]);
+    assert.equal(await previewVideo.evaluate((element) => element.muted), true);
+
+    const meter = stage(page).getByRole("meter", { name: "Microphone level", exact: true });
+    await shown(meter);
+    await fake(page, "localAudioLevel", 0.75);
+    await page.waitForFunction(() => document.querySelector("[role='meter'][aria-label='Microphone level']")?.getAttribute("aria-valuenow") === "75");
+    await shown(stage(page).getByText("Microphone is picking up sound", { exact: true }));
+
+    await stage(page).getByRole("button", { name: "Close preview", exact: true }).click();
+    await shown(stage(page).getByText(/^You can join starting /));
+    await shown(stage(page).getByText("Device check complete · Camera on, Mic on", { exact: true }));
+    assert.equal(await fakeCount(page, "destroy"), 1);
+    assert.deepEqual(
+      await page.evaluate(() => {
+        const call = window.__COMPASS_FAKE_DAILY__.instances[0];
+        return [call.localTracks.video.readyState, call.localTracks.audio.readyState];
+      }),
+      ["ended", "ended"],
+      "Closing the preview stops local capture tracks"
+    );
+    await page.waitForFunction((element) => element === document.activeElement, await trigger.elementHandle());
+    await noHorizontalOverflow(page);
+    await screenshot(page, "student-too-early-device-checked");
+  });
+}
+
+await check("prejoin-device-check-and-join-transition", ePath, {
+  fakeDaily: true,
+  initScripts: [`
+    window.__sinkIds = [];
+    HTMLMediaElement.prototype.setSinkId = async function (id) {
+      window.__sinkIds.push(id);
+    };
+  `],
+  overrides: liveSession().overrides,
+}, async (page, { requests }) => {
+  await stage(page).getByRole("button", { name: "Check devices", exact: true }).click();
+  await shown(stage(page).getByText("Checking devices", { exact: true }));
+
+  await fake(page, "addDevice", { deviceId: "cam-2", kind: "videoinput", label: "USB camera" });
+  await fake(page, "addDevice", { deviceId: "mic-2", kind: "audioinput", label: "USB headset mic" });
+  await fake(page, "addDevice", { deviceId: "spk-2", kind: "audiooutput", label: "External speakers" });
+  await page.waitForFunction(() => [...document.querySelectorAll("option")].some((option) => option.textContent === "External speakers"));
+
+  await stage(page).getByRole("combobox", { name: "Camera", exact: true }).selectOption({ label: "USB camera" });
+  await stage(page).getByRole("combobox", { name: "Microphone", exact: true }).selectOption({ label: "USB headset mic" });
+  await stage(page).getByRole("combobox", { name: "Speaker", exact: true }).selectOption({ label: "External speakers" });
+  assert.doesNotMatch(await stage(page).innerText(), /cam-2|mic-2|spk-1|spk-2/, "Raw device IDs are never displayed");
+
+  await page.evaluate(() => { window.__sinkIds = []; });
+  const testSound = stage(page).getByRole("button", { name: "Play test sound", exact: true });
+  await testSound.click();
+  const stopSound = stage(page).getByRole("button", { name: "Stop test sound", exact: true });
+  await shown(stopSound);
+  assert.deepEqual(await page.evaluate(() => window.__sinkIds), ["spk-2"]);
+  await stopSound.click();
+  await shown(testSound);
+
+  const controls = stage(page).getByRole("group", { name: "Pre-join device controls" });
+  await controls.getByRole("button", { name: "Microphone", exact: true }).click();
+  await controls.getByRole("button", { name: "Camera", exact: true }).click();
+  await shown(stage(page).getByText("Camera off", { exact: true }).first());
+  await shown(stage(page).getByText("Microphone is off", { exact: true }));
+  assert.equal(requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/join")).length, 0);
+
+  await stage(page).getByRole("button", { name: "Join session", exact: true }).click();
+  await shown(stage(page).getByText(`Waiting for ${STUDENT}…`, { exact: true }).first());
+  await shown(tray(page));
+  assert.equal(await fakeCount(page, "createCallObject"), 1, "Joining from preview reuses the single Call Object");
+  assert.equal(await fakeCount(page, "join"), 1);
+  assert.equal(requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/join")).length, 1);
+  assert.equal(await tray(page).getByRole("button", { name: "Microphone", exact: true }).getAttribute("aria-pressed"), "false");
+  assert.equal(await tray(page).getByRole("button", { name: "Camera", exact: true }).getAttribute("aria-pressed"), "false");
+  await shown(stage(page).locator("figure").getByText("You, camera off", { exact: true }));
+  assert.equal(await page.evaluate(() => Object.keys(sessionStorage).length + Object.keys(localStorage).filter((key) => /device|cam|mic|spk|token|daily|room/i.test(key)).length), 0);
+  await screenshot(page, "counselor-prejoin-joined-preferences");
+});
+
+await check("prejoin-navigation-cancels-pending-permission", ePath, {
+  fakeDaily: { holdPreview: true },
+  overrides: liveSession().overrides,
+}, async (page) => {
+  await stage(page).getByRole("button", { name: "Check devices", exact: true }).click();
+  await shown(stage(page).getByText("Checking devices…", { exact: true }));
+  await page.getByRole("link", { name: "Back to appointment", exact: true }).click();
+  await page.waitForFunction(() => window.location.pathname.startsWith("/portal/appointments/"));
+  await fake(page, "releasePreview");
+  await page.waitForFunction(() => window.__COMPASS_FAKE_DAILY__.instances[0]?.isDestroyed() === true);
+  assert.deepEqual(
+    await page.evaluate(() => {
+      const call = window.__COMPASS_FAKE_DAILY__.instances[0];
+      return [call.localTracks.video.readyState, call.localTracks.audio.readyState];
+    }),
+    ["ended", "ended"]
+  );
+});
 
 await finish();
