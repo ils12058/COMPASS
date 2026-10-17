@@ -15181,8 +15181,8 @@
           "daily_hours_class": {
             "anyOf": [
               {
-                "maximum": 24,
-                "minimum": 0,
+                "maximum": 24.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -15198,8 +15198,8 @@
           "daily_hours_library": {
             "anyOf": [
               {
-                "maximum": 24,
-                "minimum": 0,
+                "maximum": 24.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -15215,8 +15215,8 @@
           "daily_hours_other": {
             "anyOf": [
               {
-                "maximum": 24,
-                "minimum": 0,
+                "maximum": 24.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -15232,8 +15232,8 @@
           "daily_hours_recreation": {
             "anyOf": [
               {
-                "maximum": 24,
-                "minimum": 0,
+                "maximum": 24.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -15249,8 +15249,8 @@
           "daily_hours_rest": {
             "anyOf": [
               {
-                "maximum": 24,
-                "minimum": 0,
+                "maximum": 24.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
@@ -15266,8 +15266,8 @@
           "daily_hours_studying": {
             "anyOf": [
               {
-                "maximum": 24,
-                "minimum": 0,
+                "maximum": 24.0,
+                "minimum": 0.0,
                 "type": "number"
               },
               {
