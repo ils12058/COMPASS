@@ -9,8 +9,8 @@ import { PageAction } from "@/components/ui/page-action";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select } from "@/components/ui/select";
 import { InstitutionActionFeedback, InstitutionWorkspaceUnavailable } from "@/features/institution-configuration/institution-shared";
 import { canManageAcademicYears, canViewAcademicYears } from "@/features/institution-configuration/institution-access";
 import { useInstitutionConfigurationAction, institutionConfigurationErrorMessage } from "@/features/institution-configuration/institution-action";
@@ -27,6 +27,12 @@ import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
+import {
+  academicYearLabel,
+  academicYearOptions,
+  currentInstitutionCalendarYear,
+  suggestedAcademicYearStart,
+} from "@/features/institution-configuration/academic-year-options";
 
 export function AcademicYearsPage() {
   const { user } = usePortalSession();
@@ -45,24 +51,34 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
   const setCurrentYear = useAcademicYearsSetCurrent();
   const action = useInstitutionConfigurationAction();
   const [createOpen, setCreateOpen] = useState(false);
-  const [label, setLabel] = useState("");
+  const [startingYear, setStartingYear] = useState(() => String(currentInstitutionCalendarYear()));
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [confirmYear, setConfirmYear] = useState<AcademicYearResponse | null>(null);
   const [pageNotice, setPageNotice] = useState<string | null>(null);
 
   const items = years.data?.data.items ?? [];
   const currentYear = items.find((year) => year.is_current);
+  const institutionYear = currentInstitutionCalendarYear();
+  const yearOptions = academicYearOptions(institutionYear, items.map((year) => year.label));
+  const availableStartingYear = yearOptions.some(
+    (option) => String(option.startYear) === startingYear && !option.exists,
+  )
+    ? Number(startingYear)
+    : suggestedAcademicYearStart(institutionYear, yearOptions);
+  const generatedLabel = academicYearLabel(availableStartingYear);
 
   async function submitCreate(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const submittedLabel = label.trim();
-    if (!submittedLabel || submittedLabel.length > 32) {
-      action.setError("Enter an Academic Year label of up to 32 characters.");
+    const selectedOption = yearOptions.find(
+      (option) => option.startYear === availableStartingYear,
+    );
+    if (!selectedOption || selectedOption.exists) {
+      action.setError("Choose an available starting year.");
       return;
     }
 
     const created = await action.run(
-      () => createYear.mutateAsync({ data: { label: submittedLabel } }),
+      () => createYear.mutateAsync({ data: { label: generatedLabel } }),
       "The Academic Year could not be added.",
       {
         onStepUpRequired: () => setCreateOpen(false),
@@ -72,7 +88,7 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
     if (!created) return;
 
     setCreateOpen(false);
-    setLabel("");
+    setStartingYear(String(currentInstitutionCalendarYear()));
     setPageNotice(
       `${created.data.label} was added. Set it as current separately when appropriate.`,
     );
@@ -236,24 +252,35 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
           </DialogDescription>
           <form className="mt-6 space-y-5" onSubmit={submitCreate}>
             <div className="grid gap-2">
-              <Label htmlFor="academic-year-label">Label</Label>
-              <Input
-                id="academic-year-label"
-                autoComplete="off"
-                maxLength={32}
+              <Label htmlFor="academic-year-start">Starting year</Label>
+              <Select
+                id="academic-year-start"
+                value={String(availableStartingYear)}
                 required
-                value={label}
-                onChange={(event) => setLabel(event.target.value)}
+                onChange={(event) => setStartingYear(event.target.value)}
                 aria-invalid={action.error ? true : undefined}
                 aria-describedby={
                   action.error
-                    ? "academic-year-label-help academic-year-create-error"
-                    : "academic-year-label-help"
+                    ? "academic-year-start-help academic-year-create-error"
+                    : "academic-year-start-help"
                 }
                 disabled={createYear.isPending}
-              />
-              <p id="academic-year-label-help" className="text-sm text-muted">
-                Up to 32 characters. Example: 2026-2027. Leading and trailing spaces are removed when saved.
+              >
+                {yearOptions.map((option) => (
+                  <option
+                    key={option.startYear}
+                    value={option.startYear}
+                    disabled={option.exists}
+                  >
+                    {option.label}{option.exists ? " — already added" : ""}
+                  </option>
+                ))}
+              </Select>
+              <p id="academic-year-start-help" className="text-sm text-muted">
+                COMPASS creates the next consecutive year automatically. Available choices include historical years from 1900 and the next ten years.
+              </p>
+              <p className="text-sm text-ink">
+                Academic Year to be added: <span className="font-semibold">{generatedLabel}</span>
               </p>
             </div>
             <InstitutionActionFeedback

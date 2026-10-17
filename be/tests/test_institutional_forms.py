@@ -447,6 +447,8 @@ def test_academic_year_mutations_still_require_head_capability_and_recent_mfa():
         **csrf(client),
     )
     assert created.status_code == 201
+    assert created.json()["label"] == "2026-2027"
+    assert created.json()["is_current"] is False
     year_id = created.json()["id"]
     current = client.post(
         f"/api/v1/academic-years/{year_id}/set-current",
@@ -456,6 +458,57 @@ def test_academic_year_mutations_still_require_head_capability_and_recent_mfa():
     )
     assert current.status_code == 200
     assert current.json()["is_current"] is True
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "label",
+    ["2026", "2026-2028", "AY 2026-2027", "2026–2027", "0000-0001", "9999-10000"],
+)
+def test_academic_year_creation_rejects_noncanonical_or_nonconsecutive_labels(label: str):
+    sync_policy()
+    head = make_head()
+    client = auth_client(head, recent_mfa=True)
+    response = client.post(
+        "/api/v1/academic-years",
+        data=json.dumps({"label": label}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_academic_year_request"
+    assert not AcademicYear.objects.exists()
+
+
+@pytest.mark.django_db
+def test_academic_year_creation_keeps_historical_labels_readable_and_duplicate_guarded():
+    sync_policy()
+    historical = AcademicYear.objects.create(label="AY 2023")
+    head = make_head()
+    client = auth_client(head, recent_mfa=True)
+
+    listed = client.get("/api/v1/academic-years")
+    assert listed.status_code == 200
+    assert {row["label"] for row in listed.json()["items"]} == {"AY 2023"}
+
+    created = client.post(
+        "/api/v1/academic-years",
+        data=json.dumps({"label": "2025-2026"}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert created.status_code == 201
+    assert created.json()["is_current"] is False
+
+    duplicate = client.post(
+        "/api/v1/academic-years",
+        data=json.dumps({"label": "2025-2026"}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert duplicate.status_code == 409
+    assert AcademicYear.objects.get(pk=historical.pk).label == "AY 2023"
+    assert AcademicYear.objects.filter(is_current=True).count() == 0
 
 
 @pytest.mark.django_db

@@ -130,6 +130,7 @@ export async function createBrowserHarness(suite) {
       if (pathname === "/api/v1/me/profile") return reply({ full_name: "Example User", photo: null });
       if (pathname === "/api/v1/platform/status") return reply({ status: "operational", starts_at: null, ends_at: null, message: null });
       if (pathname === "/api/v1/notifications/unread-count") return reply({ unread_count: 0 });
+      if (pathname === "/api/v1/notifications") return reply(emptyPage);
       if (pathname === "/api/v1/notifications/push/config") return reply({ enabled: false, vapid_public_key: null });
       if (pathname === "/api/v1/privacy/my-notices") return reply(emptyPage);
       if (/\/e-counseling\/(?:me\/)?appointments\/[^/]+\/consents$/.test(pathname)) return reply({ items: consents(decision) });
