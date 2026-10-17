@@ -46,6 +46,7 @@ _FIELD_NAME = re.compile(r"[a-z][a-z_]*")
 PUBLIC_EVENT_FIELDS: Mapping[str, frozenset[str]] = MappingProxyType(
     {
         "notifications.changed": frozenset(),
+        "followups.changed": frozenset(),
         "messages.thread_changed": frozenset({"thread_id"}),
         "ecounseling.consent.changed": frozenset({"appointment_id"}),
         "ecounseling.media.changed": frozenset({"appointment_id"}),

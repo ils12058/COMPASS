@@ -55,6 +55,7 @@ services:
       - graduate_tracer_confidential_content_encryption_keys
       - web_push_private_key
       - web_push_storage_key
+      - guidance_followup_encryption_keys
       - guidance_message_encryption_keys
       - assessment_record_confidential_content_encryption_keys
     pull_policy: never
@@ -95,6 +96,8 @@ services:
   worker:
     <<: *app
     environment:
+      GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS_FILE: ""
+      GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS: ""
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE: ""
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS: ""
       ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE: ""
@@ -118,6 +121,8 @@ services:
   beat:
     <<: *app
     environment:
+      GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS_FILE: ""
+      GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS: ""
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE: ""
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS: ""
       ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE: ""
@@ -318,6 +323,9 @@ secrets:
 
   assessment_record_confidential_content_encryption_keys:
     file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/assessment_record_confidential_content_encryption_keys
+
+  guidance_followup_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/guidance_followup_encryption_keys
 
   guidance_message_encryption_keys:
     file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/guidance_message_encryption_keys

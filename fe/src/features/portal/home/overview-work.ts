@@ -95,7 +95,7 @@ export function useOverviewAttention(
   if (workEnabled) {
     for (const item of workData?.items ?? []) {
       items.push({
-        id: item.id, ...presentWork(item), subject: item.student.display_name,
+        id: item.id, ...presentWork(item, workData?.generated_at), subject: item.student.display_name,
         rank: {
           priority: item.priority === "TIME_SENSITIVE" ? AttentionPriority.TIME_SENSITIVE : AttentionPriority.ACTION_REQUIRED,
           dueAt: item.due_at, waitingSince: item.waiting_since, stableKey: item.id,

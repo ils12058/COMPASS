@@ -33,7 +33,7 @@ import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
-import { followupAccess } from "@/features/guidance-followups/followups-shared";
+import { followupAccess } from "@/features/guidance-followups/followups-access";
 import { getGuidanceMessagesAccess } from "@/features/guidance-messages/guidance-messages-access";
 import { getExitInterviewAccess } from "@/features/exit-interviews/exit-interviews-access";
 import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";

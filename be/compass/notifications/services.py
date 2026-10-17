@@ -13,6 +13,7 @@ from compass.accounts.models import User
 from compass.common.correlation import get_current_request_id
 from compass.realtime.publish import publish_to_user_on_commit
 
+from .current import external_delivery_enabled
 from .models import EmailDelivery, Notification, NotificationPreference
 from .policy import (
     NotificationChannel,
@@ -116,6 +117,9 @@ def create_notification_for_event(
 
     if created:
         publish_to_user_on_commit(notification.recipient_id, "notifications.changed")
+    if not external_delivery_enabled(notification):
+        return notification
+    if created:
         try:
             # Optional transport setup is isolated from the authoritative transaction.
             with transaction.atomic():
@@ -146,6 +150,12 @@ def create_notification_for_event(
     return notification
 
 
+def _current_notifications(actor):
+    from compass.guidance_followups.integration import scope_current_followup_notifications
+
+    return scope_current_followup_notifications(Notification.objects.all(), actor=actor)
+
+
 def list_my_notifications(
     *,
     actor: User,
@@ -158,9 +168,9 @@ def list_my_notifications(
         raise InvalidNotificationInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
     offset = (page - 1) * page_size
     rows = list(
-        Notification.objects.filter(recipient=actor).order_by("-created_at", "-id")[
-            offset : offset + page_size + 1
-        ]
+        _current_notifications(actor)
+        .filter(recipient=actor)
+        .order_by("-created_at", "-id")[offset : offset + page_size + 1]
     )
     return NotificationPage(
         items=tuple(rows[:page_size]),
@@ -171,7 +181,7 @@ def list_my_notifications(
 
 
 def unread_count_for(*, actor: User) -> int:
-    return Notification.objects.filter(recipient=actor, read_at__isnull=True).count()
+    return _current_notifications(actor).filter(recipient=actor, read_at__isnull=True).count()
 
 
 def mark_my_notification_read(

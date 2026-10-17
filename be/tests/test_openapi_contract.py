@@ -34,6 +34,7 @@ EXPECTED_OPERATION_IDS = {
     "guidanceFollowupsGetContext",
     "guidanceFollowupsReport",
     "guidanceFollowupsHistory",
+    "guidanceFollowupsRecoverable",
     "assessmentRecordsList",
     "assessmentRecordsCreate",
     "assessmentRecordsGet",
@@ -796,6 +797,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "platform-operations",
         "privacy-governance",
         "realtime",
+        "guidance-followups",
         "guidance-messages",
         "assessment-records",
         "work",
@@ -2982,6 +2984,7 @@ def test_work_queue_contract_is_read_only_closed_and_privacy_minimized():
     assert set(schema["paths"]["/api/v1/work"]) == {"get"}
     schemas = schema["components"]["schemas"]
     assert schemas["WorkKind"]["enum"] == [
+        "GUIDANCE_FOLLOW_UP",
         "GUIDANCE_MESSAGE_REPLY",
         "ROUTINE_EVALUATION",
         "GOOD_MORAL_PREPARATION",

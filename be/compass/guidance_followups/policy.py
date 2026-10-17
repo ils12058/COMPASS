@@ -188,7 +188,7 @@ def authorized(actor, followup, *, manage=False):
     return False
 
 
-def scope(actor, queryset):
+def scope(actor, queryset, *, manage=False):
     """Authorize the entire paginated set in SQL before OFFSET/LIMIT.
 
     Never fetch an unbounded prefix and filter it in Python: that breaks privacy,
@@ -215,7 +215,7 @@ def scope(actor, queryset):
         return queryset.filter(operational).distinct()
 
     confidential = Q(pk__in=[])
-    if actor.has_capability("counseling.view_assigned"):
+    if actor.has_capability("counseling.manage_assigned" if manage else "counseling.view_assigned"):
         from compass.counseling.models import CounselingEncounter
 
         matching_encounter = CounselingEncounter.objects.filter(
@@ -229,7 +229,9 @@ def scope(actor, queryset):
             source_kind=FollowUpSource.COUNSELING_ENCOUNTER,
             _fup_encounter_match=True,
         )
-    if actor.has_capability("routine_interviews.view_assigned"):
+    if actor.has_capability(
+        "routine_interviews.manage_assigned" if manage else "routine_interviews.view_assigned"
+    ):
         from compass.routine_interviews.models import RoutineInterview
 
         matching_routine = RoutineInterview.objects.filter(

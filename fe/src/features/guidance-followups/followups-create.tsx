@@ -1,5 +1,6 @@
 "use client";
 
+import { invalidateFollowups } from "./followups-data";
 import { GuardedPortalLink as Link } from "@/features/form-safety/guarded-portal-link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
@@ -16,7 +17,7 @@ import { CanonicalPagination } from "@/features/portal/components/canonical-pagi
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { StepUpDialog } from "@/features/account/security/security-shared";
 import { stepUpRequirement, type StepUpRequirement } from "@/features/account/security/step-up";
-import { guidanceFollowupsCreate, useGuidanceFollowupsGetContext, useGuidanceFollowupsEligibleStudents, useGuidanceFollowupsEligibleAssignees, getGuidanceFollowupsListQueryKey } from "@/lib/api/generated/guidance-followups/guidance-followups";
+import { guidanceFollowupsCreate, useGuidanceFollowupsGetContext, useGuidanceFollowupsEligibleStudents, useGuidanceFollowupsEligibleAssignees } from "@/lib/api/generated/guidance-followups/guidance-followups";
 import { CompassApiError } from "@/lib/api/errors";
 import { Category, SourceKind, type FollowUpCreate, type SourceContext } from "@/lib/api/generated/model";
 import { institutionalDateTimeInputToISO } from "@/lib/institutional-time";
@@ -65,7 +66,7 @@ function CreateForm({ source }: { source?: Source }) {
     setSubmission(value);
     try {
       const response = await create.mutateAsync(value);
-      await client.invalidateQueries({ queryKey: getGuidanceFollowupsListQueryKey() });
+      await invalidateFollowups(client);
       router.push(response.data.assigned_to_id === user.id ? `/portal/follow-ups/${response.data.id}` : "/portal/follow-ups");
     } catch (caught) {
       const requirement = stepUpRequirement(caught);

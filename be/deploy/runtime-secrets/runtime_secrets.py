@@ -6,6 +6,7 @@ import stat
 from pathlib import Path
 
 SECRET_FILES = {
+    "GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS": "guidance_followup_encryption_keys",
     "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
         "assessment_record_confidential_content_encryption_keys"
     ),
@@ -46,6 +47,7 @@ SECRET_FILES = {
     "WEB_PUSH_STORAGE_KEY": "web_push_storage_key",
 }
 REQUIRED_SECRETS = {
+    "GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS",
     "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
     "GUIDANCE_MESSAGE_ENCRYPTION_KEYS",
     "FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",

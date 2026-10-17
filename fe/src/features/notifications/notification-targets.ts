@@ -37,6 +37,9 @@ export function notificationDestination(
   if (notification.target_type === NotificationTargetType.E_COUNSELING && notification.target_id) {
     return { href: "/portal/e-counseling/" + notification.target_id, label: "Open E-Counseling" };
   }
+  if (notification.target_type === NotificationTargetType.GUIDANCE_FOLLOW_UP && notification.target_id) {
+    return { href: "/portal/follow-ups/" + notification.target_id, label: "Open follow-up" };
+  }
   if (notification.target_type === NotificationTargetType.APPOINTMENT && notification.target_id) {
     // Scheduling, rescheduling, and reassignment notify each participant; the detail page
     // reloads the Appointment within the recipient's current access.

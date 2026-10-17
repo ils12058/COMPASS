@@ -1,15 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import type { UserSummary, Category, SourceReference } from "@/lib/api/generated/model";
+import type { Category, SourceReference } from "@/lib/api/generated/model";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { Button } from "@/components/ui/button";
 import { PanelMessage } from "@/components/ui/panel";
 
-export function followupAccess(user: Pick<UserSummary, "role" | "capabilities">) {
-  const staff = user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF";
-  return { view: staff && user.capabilities.includes("guidance_followups.view"), manage: staff && user.capabilities.includes("guidance_followups.manage") };
-}
+export { followupAccess } from "./followups-access";
 export const categoryLabel = (category: Category) => ({ ADMINISTRATIVE: "Administrative coordination", STUDENT_CONTACT: "Student contact", COUNSELING: "Counseling follow-up", REFERRAL_ACTION: "Referral coordination" }[category]);
 export const statusLabel = (status: string) => ({ PENDING: "Pending", COMPLETED: "Completed", CANCELLED: "Cancelled" }[status] ?? status);
 export function sourceDestination(source: SourceReference) {

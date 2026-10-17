@@ -1,8 +1,9 @@
 "use client";
 
+import { useFollowupsFreshness, followupQueryFreshness } from "./followups-data";
 import Link from "next/link";
 import { useState } from "react";
-import { Plus, ChartColumn } from "lucide-react";
+import { Plus, ChartColumn, UsersRound } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageActionLink } from "@/components/ui/page-action";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -20,14 +21,16 @@ import { categoryLabel, statusLabel, followupAccess, FollowupRestricted, Followu
 export function FollowupsList() {
   const { user } = usePortalSession();
   const access = followupAccess(user);
+  useFollowupsFreshness(access.view);
   const [filters, setFilters] = useState<FollowUpQuery>({ status: StatusValue.PENDING, page: 1 });
-  const query = useGuidanceFollowupsList(filters, { query: { enabled: access.view, refetchOnWindowFocus: true } });
+  const query = useGuidanceFollowupsList(filters, { query: { ...followupQueryFreshness, enabled: access.view, refetchOnWindowFocus: "always" } });
   const data = query.data?.data;
   function change(next: Partial<FollowUpQuery>) { setFilters(previous => ({ ...previous, ...next, page: 1 })); }
   if (!access.view) return <FollowupRestricted />;
   return <>
     <PageHeader title="Follow-Ups" description="Your assigned Guidance follow-ups. Due dates use Philippine Time." actions={<>
       {access.manage ? <PageActionLink href="/portal/follow-ups/new" icon={Plus} label="Create" labelDetail="follow-up" /> : null}
+      {access.manage ? <PageActionLink href="/portal/follow-ups/reassignment" icon={UsersRound} label="Reassign" labelDetail="follow-ups needing responsibility" variant="secondary" /> : null}
       <PageActionLink href="/portal/follow-ups/report" icon={ChartColumn} label="Report" variant="secondary" />
     </>} />
     <FloatingListTools compact label="Follow-up filters" filters={<>
@@ -38,7 +41,7 @@ export function FollowupsList() {
       <FilterField label="Status" htmlFor="followup-status"><Select id="followup-status" value={filters.status ?? ""} onChange={event => change({ status: event.target.value as StatusValue || undefined, due_window: undefined })}><option value="">All statuses</option>{Object.values(StatusValue).map(value => <option key={value} value={value}>{statusLabel(value)}</option>)}</Select></FilterField>
     </FloatingListTools>
     <Panel>
-      <PanelHeader title="Follow-Ups" context={data ? `${data.items.length} on this page` : "Loading…"} />
+      <PanelHeader title="Assigned follow-ups" context={data ? `${data.items.length} on this page` : "Loading…"} />
       {query.isPending ? <p role="status" className="p-5">Loading follow-ups…</p> : query.isError ? <FollowupFailure error={query.error} retry={() => void query.refetch()} /> : data ? <>
         {data.items.length ? <div className={dataTable.scroll}><table className={dataTable.table}><thead className={dataTable.head}><tr>{["Student", "Category", "Due", "Assignee", "Status"].map(label => <th key={label} scope="col" className={dataTable.headerCell}>{label}</th>)}</tr></thead><tbody>{data.items.map(row => <tr key={row.id} className={dataTable.row}>
           <th scope="row" className={dataTable.cell}><Link className="font-semibold text-brand underline underline-offset-4" href={`/portal/follow-ups/${row.id}`}>{row.student_name}</Link></th>

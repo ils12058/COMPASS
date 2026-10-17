@@ -17,6 +17,7 @@ from compass.common.correlation import get_current_request_id
 from compass.common.email import RenderedEmail, render_email
 from compass.integrations.mail import Mailer
 
+from .current import notification_is_current
 from .models import EmailDelivery, EmailDeliveryStatus
 from .policy import get_event_definition
 
@@ -74,9 +75,13 @@ def claim_email_delivery(
             return None
 
         recipient = delivery.notification.recipient
-        if not recipient.is_active:
+        if not recipient.is_active or not notification_is_current(
+            delivery.notification, now=current
+        ):
             delivery.status = EmailDeliveryStatus.CANCELLED
-            delivery.failure_code = "recipient_inactive"
+            delivery.failure_code = (
+                "recipient_inactive" if not recipient.is_active else "source_ineligible"
+            )
             delivery.next_attempt_at = None
             _clear_claim(delivery)
             delivery.save(
@@ -227,6 +232,43 @@ def _log_delivery_result(
     )
 
 
+def _email_claim_is_current(claim):
+    with transaction.atomic():
+        delivery = (
+            EmailDelivery.objects.select_for_update(of=("self",))
+            .select_related("notification__recipient")
+            .filter(
+                pk=claim.delivery_id,
+                claim_token=claim.claim_token,
+                status=EmailDeliveryStatus.PROCESSING,
+            )
+            .first()
+        )
+        if delivery is None:
+            return False
+        if (
+            notification_is_current(delivery.notification)
+            and delivery.notification.recipient.email == claim.recipient_email
+            and delivery.claim_expires_at > timezone.now()
+        ):
+            return True
+        delivery.status = EmailDeliveryStatus.CANCELLED
+        delivery.failure_code = "source_or_recipient_changed"
+        delivery.next_attempt_at = None
+        _clear_claim(delivery)
+        delivery.save(
+            update_fields=[
+                "status",
+                "failure_code",
+                "next_attempt_at",
+                "claim_token",
+                "claim_expires_at",
+                "updated_at",
+            ]
+        )
+        return False
+
+
 def deliver_email_delivery(delivery_id: UUID) -> str:
     claim = claim_email_delivery(delivery_id)
     if claim is None:
@@ -240,6 +282,9 @@ def deliver_email_delivery(delivery_id: UUID) -> str:
             claim, status=EmailDeliveryStatus.FAILED, failure_code="template_error"
         )
         return EmailDeliveryStatus.FAILED
+
+    if not _email_claim_is_current(claim):
+        return EmailDeliveryStatus.CANCELLED
 
     try:
         sent = Mailer().send(

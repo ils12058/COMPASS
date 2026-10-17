@@ -18831,6 +18831,7 @@
       "NotificationTargetType": {
         "description": "Closed set of in-app destinations a Notification may point at.",
         "enum": [
+          "GUIDANCE_FOLLOW_UP",
           "ACCOUNT_SECURITY",
           "APPOINTMENT",
           "CALL_SLIP",
@@ -25677,6 +25678,7 @@
       },
       "WorkKind": {
         "enum": [
+          "GUIDANCE_FOLLOW_UP",
           "GUIDANCE_MESSAGE_REPLY",
           "ROUTINE_EVALUATION",
           "GOOD_MORAL_PREPARATION",
@@ -43737,6 +43739,94 @@
         ]
       }
     },
+    "/api/v1/guidance-followups/recoverable": {
+      "get": {
+        "operationId": "guidanceFollowupsRecoverable",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowUpPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Recoverable",
+        "tags": [
+          "guidance-followups"
+        ]
+      }
+    },
     "/api/v1/guidance-followups/report": {
       "get": {
         "operationId": "guidanceFollowupsReport",
@@ -43938,6 +44028,15 @@
               "title": "Followup Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -44044,6 +44143,15 @@
             "schema": {
               "format": "uuid",
               "title": "Followup Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
               "type": "string"
             }
           }
@@ -44154,6 +44262,15 @@
               "title": "Followup Id",
               "type": "string"
             }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
           }
         ],
         "requestBody": {
@@ -44260,6 +44377,15 @@
             "schema": {
               "format": "uuid",
               "title": "Followup Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
               "type": "string"
             }
           }
@@ -44466,6 +44592,15 @@
             "schema": {
               "format": "uuid",
               "title": "Followup Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
               "type": "string"
             }
           }
