@@ -24,6 +24,11 @@ class MediaDownloadError(RuntimeError):
         self.failure = failure
 
 
+# Daily serves signed downloads of its own recording and transcript storage from this exact host
+# (live staging, 2026-10-17). Legacy direct-S3 links stay accepted; no other Daily host is trusted.
+DAILY_SIGNED_LINK_HOSTS = frozenset({"c.daily.co"})
+
+
 class NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         raise MediaDownloadError("Provider media redirects are unsupported.")
@@ -47,14 +52,18 @@ def validate_daily_link(payload, *, kind, artifact_id):
     bucket = "daily-meeting-recordings" if kind == "RECORDING" else "daily-meeting-transcripts"
     try:
         parts = urlsplit(url)
+        host = parts.hostname or ""
         valid = (
             parts.scheme == "https"
             and not parts.username
             and not parts.password
             and parts.port in (None, 443)
             and not parts.fragment
-            and re.fullmatch(
-                re.escape(bucket) + r"\.s3(?:[.-][a-z0-9-]+)?\.amazonaws\.com", parts.hostname or ""
+            and (
+                host in DAILY_SIGNED_LINK_HOSTS
+                or re.fullmatch(
+                    re.escape(bucket) + r"\.s3(?:[.-][a-z0-9-]+)?\.amazonaws\.com", host
+                )
             )
         )
     except ValueError:

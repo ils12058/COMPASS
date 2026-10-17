@@ -83,7 +83,7 @@ batch and 30-minute stale-claim threshold. A code does not guarantee that a retr
 | `PROVIDER_METADATA_FAILED` | Client construction, metadata retrieval/JSON failed. | A provider API defect or artifact absence. | Durable, existing retry. |
 | `PROVIDER_IDENTITY_UNVERIFIED` | Artifact/room/session provenance check failed. | Which upstream field is wrong, or that ingestion may bypass identity. | Durable, existing retry. |
 | `ACCESS_LINK_FAILED` | Existing provider access-link acquisition failed. | That no link was issued upstream. | Durable, existing retry. |
-| `ACCESS_LINK_UNVERIFIED` | Link destination, expiry or identity validation failed. | Permission to use a different host/URL. | Durable, existing retry. |
+| `ACCESS_LINK_UNVERIFIED` | Link destination, expiry or identity validation failed. Accepted hosts are exactly `c.daily.co` and the legacy default Daily S3 hosts. | Permission to use a different host/URL. | Durable, existing retry. |
 | `MEDIA_TRANSFER_FAILED` | Transfer/protected-spool IO, timeout or finalization failed. | A more specific transport cause or provider data loss. | Durable, existing retry. |
 | `DOWNLOAD_UNVERIFIED` | Content type/signature/length/size validation failed. | That invalid bytes may be uploaded. | Durable, existing retry. |
 | `PRE_CUSTODY_COMMIT_UNVERIFIED` | Preparation metadata transaction failed. | That the transaction definitely rolled back. | Durable if retry transaction succeeds. |

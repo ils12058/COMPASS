@@ -53,6 +53,7 @@ export type ActiveECounselingCall = {
   capture: {
     canStop: Record<CaptureKind, boolean>;
     stopping: Record<CaptureKind, boolean>;
+    failed: Record<CaptureKind, boolean>;
     error: string | null;
     stop: (kind: CaptureKind) => Promise<void>;
   };

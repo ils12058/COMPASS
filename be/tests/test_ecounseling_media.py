@@ -58,7 +58,7 @@ class FakeMediaDailyClient:
         self.tokens: list[tuple[str, str, str, int]] = []
         self.room_updates: list[tuple[str, dict[str, object]]] = []
         self.recording_starts: list[tuple[str, str]] = []
-        self.recording_stops: list[str] = []
+        self.recording_stops: list[tuple[str, str]] = []
         self.transcription_starts: list[tuple[str, str]] = []
         self.transcription_stops: list[tuple[str, str]] = []
 
@@ -108,8 +108,8 @@ class FakeMediaDailyClient:
         self.recording_starts.append((room_name, instance_id))
         return {"status": "sent"}
 
-    def stop_recording(self, *, room_name: str):
-        self.recording_stops.append(room_name)
+    def stop_recording(self, *, room_name: str, instance_id: str):
+        self.recording_stops.append((room_name, instance_id))
         if self.fail_stop:
             raise DailyUnavailable("provider unavailable")
         return {"status": "sent"}

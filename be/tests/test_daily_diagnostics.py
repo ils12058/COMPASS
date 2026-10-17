@@ -118,7 +118,7 @@ def test_http_errors_have_closed_codes_and_safe_tracebacks(
 
     monkeypatch.setattr("compass.integrations.daily.urlopen", reject)
     with pytest.raises(DailyHTTPError) as caught:
-        daily_client().stop_recording(room_name="opaque-room")
+        daily_client().stop_recording(room_name="opaque-room", instance_id="opaque-instance")
     assert caught.value.status_code == status
     assert safe_daily_failure_code(caught.value).value == expected
     assert_private_absent(visible_errors(caught.value, caplog))
@@ -159,9 +159,7 @@ def test_no_active_hint_is_stop_specific_exact_and_bounded(monkeypatch):
             )
 
         monkeypatch.setattr("compass.integrations.daily.urlopen", reject)
-        args = {"room_name": "opaque-room"}
-        if method == "start_recording":
-            args["instance_id"] = "opaque-instance"
+        args = {"room_name": "opaque-room", "instance_id": "opaque-instance"}
         with pytest.raises(DailyHTTPError) as caught:
             getattr(daily_client(), method)(**args)
         assert safe_daily_failure_code(caught.value).value == expected
@@ -249,9 +247,7 @@ def test_confirmed_no_active_phrase_and_existing_hints_remain_exact_and_private(
         raise HTTPError(PRIVATE_VALUES[1], 400, PRIVATE_TEXT, {}, BytesIO(raw))
 
     monkeypatch.setattr("compass.integrations.daily.urlopen", reject)
-    args = {"room_name": "opaque-room"}
-    if method != "stop_recording":
-        args["instance_id"] = "opaque-instance"
+    args = {"room_name": "opaque-room", "instance_id": "opaque-instance"}
     with pytest.raises(DailyHTTPError) as caught:
         getattr(daily_client(), method)(**args)
     assert safe_daily_failure_code(caught.value).value == expected
@@ -267,7 +263,7 @@ def test_malformed_no_active_envelopes_fail_closed(raw, monkeypatch):
 
     monkeypatch.setattr("compass.integrations.daily.urlopen", reject)
     with pytest.raises(DailyHTTPError) as caught:
-        daily_client().stop_recording(room_name="opaque-room")
+        daily_client().stop_recording(room_name="opaque-room", instance_id="opaque-instance")
     assert caught.value.diagnostic_code == DailyFailureCode.INVALID_REQUEST
 
 
@@ -330,7 +326,7 @@ def test_transport_failure_and_timeout_are_safe_distinct_unknown_outcomes(
 
     monkeypatch.setattr("compass.integrations.daily.urlopen", unavailable)
     with pytest.raises(DailyUnavailable) as caught:
-        daily_client().stop_recording(room_name="opaque-room")
+        daily_client().stop_recording(room_name="opaque-room", instance_id="opaque-instance")
     assert safe_daily_failure_code(caught.value).value == expected
     assert_private_absent(visible_errors(caught.value, caplog))
 
@@ -343,7 +339,7 @@ def test_invalid_json_and_response_shapes_are_classified(raw, monkeypatch, caplo
         "compass.integrations.daily.urlopen", lambda *_args, **_kwargs: Response(raw)
     )
     with pytest.raises(DailyInvalidResponse) as caught:
-        daily_client().stop_recording(room_name="opaque-room")
+        daily_client().stop_recording(room_name="opaque-room", instance_id="opaque-instance")
     assert safe_daily_failure_code(caught.value) == DailyFailureCode.INVALID_RESPONSE
     assert_private_absent(visible_errors(caught.value, caplog))
 
@@ -358,7 +354,9 @@ def test_documented_acknowledgments_still_work(payload, monkeypatch):
         "compass.integrations.daily.urlopen",
         lambda *_args, **_kwargs: Response(json.dumps(payload).encode()),
     )
-    _provider_ack(daily_client().stop_recording(room_name="opaque-room"))
+    _provider_ack(
+        daily_client().stop_recording(room_name="opaque-room", instance_id="opaque-instance")
+    )
 
 
 @pytest.mark.parametrize(

@@ -9,11 +9,10 @@ import { CaptureIndicators } from "@/features/ecounseling/call/capture-indicator
 import { DeviceDialog } from "@/features/ecounseling/call/device-dialog";
 import { ParticipantVideo, PlayAudioPrompt } from "@/features/ecounseling/call/participant-media";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
-import { ECounselingCaptureStatus } from "@/lib/api/generated/model";
 import { cn } from "@/lib/utils/cn";
 
 import { useActiveECounselingCall } from "./active-call-context";
-import { consentEndedNotice, isConnected, pendingConsentCue, sessionPath } from "./runtime-model";
+import { consentEndedNotice, isConnected, pendingConsentCue, sessionPath, stopControlState } from "./runtime-model";
 
 const iconButton = "inline-flex size-11 shrink-0 items-center justify-center rounded-md text-ink hover:bg-surface-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
@@ -128,11 +127,13 @@ export function GlobalCallDock({
       {stops.length ? (
         <div className="flex flex-wrap gap-2">
           {stops.map((kind) => {
-            // Stopping holds until COMPASS confirms the stop, as on the session page.
-            const stopping = runtime.capture.stopping[kind] || runtime.canonical.media?.[kind].capture_status === ECounselingCaptureStatus.STOP_REQUESTED;
+            // Stopping holds until COMPASS confirms the stop, as on the session page. A failed Stop
+            // request says so and can be sent again.
+            const stopState = stopControlState(runtime.canonical.media?.[kind].capture_status, { stopping: runtime.capture.stopping[kind], failed: runtime.capture.failed[kind] });
+            const subject = kind === "recording" ? "recording" : "transcription";
             return (
-              <Button key={kind} variant="secondary" className="min-h-9 px-3 py-1" disabled={stopping} onClick={() => void runtime.capture.stop(kind)}>
-                {stopping ? "Stopping…" : kind === "recording" ? "Stop recording" : "Stop transcription"}
+              <Button key={kind} variant="secondary" className="min-h-9 px-3 py-1" disabled={stopState === "stopping"} aria-label={stopState === "not-confirmed" ? `${kind === "recording" ? "Recording" : "Transcription"} stop not confirmed. Stop ${subject} again` : undefined} onClick={() => void runtime.capture.stop(kind)}>
+                {stopState === "stopping" ? "Stopping…" : stopState === "not-confirmed" ? "Stop not confirmed · Retry" : `Stop ${subject}`}
               </Button>
             );
           })}

@@ -111,6 +111,37 @@ export function captureSafetyState(kind: "recording" | "transcription", status: 
   }
 }
 
+// What a Stop control shows. "stopping" while this person's request is in flight or COMPASS awaits
+// completion of a Stop it accepted; "not-confirmed" when this person's Stop request itself failed
+// while COMPASS still records Stop intent, so capture may still be running and Stop may be retried.
+// Neither is a completed state: only the refreshed capture status shows Recorded or Transcribed.
+export type StopControlState = "stopping" | "not-confirmed" | null;
+
+export function stopControlState(status: ECounselingCaptureStatus | undefined, local: { stopping: boolean; failed: boolean }): StopControlState {
+  if (local.stopping) return "stopping";
+  if (status !== ECounselingCaptureStatus.STOP_REQUESTED) return null;
+  return local.failed ? "not-confirmed" : "stopping";
+}
+
+// One Stop request, then a re-read of COMPASS. A failed re-read never leaves the control pending:
+// the session's safety refresh keeps checking COMPASS. A failed Stop is reported, never repeated.
+export async function settleCaptureStop(
+  send: () => Promise<unknown>,
+  refresh: () => Promise<unknown> | void,
+  onFailed: (caught: unknown) => void,
+): Promise<void> {
+  try {
+    await send();
+  } catch (caught) {
+    onFailed(caught);
+  }
+  try {
+    await refresh();
+  } catch {
+    // Shown state stays as last confirmed until the next refresh succeeds.
+  }
+}
+
 // Only capture types, without names, references or other protected session details. Safe to retain
 // as a warning when access is lost; local call cleanup is never evidence of capture cessation.
 export function activeCaptureKinds(media: MediaWorkspaceState | undefined): Array<"recording" | "transcription"> {

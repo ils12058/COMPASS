@@ -14,9 +14,9 @@ to receive Counseling, and declining media capture must never cancel or degrade 
 
 Current Daily REST and webhook documentation was rechecked before implementation. Recording is
 started with `POST /rooms/{name}/recordings/start` and a caller-supplied `instanceId`; recording stop
-uses `POST /rooms/{name}/recordings/stop` without an instance body. Transcription start and stop use
-`POST /rooms/{name}/transcription/start` and `/transcription/stop`; both use an `instanceId` for the
-capture instance. The selected media webhook events are `recording.started`,
+uses `POST /rooms/{name}/recordings/stop` with that same `instanceId` (corrected by EC-FIX-1, see
+below). Transcription start and stop use `POST /rooms/{name}/transcription/start` and
+`/transcription/stop`; both use an `instanceId` for the capture instance. The selected media webhook events are `recording.started`,
 `recording.ready-to-download`, `recording.error`, `transcript.started`,
 `transcript.ready-to-download`, and `transcript.error`.
 
@@ -117,9 +117,16 @@ safe Audit event. The database transaction is committed before Daily HTTP begins
 stale-approval start from racing past a concurrent withdrawal and gives webhook/provider
 reconciliation a stable capture identity when an HTTP response is lost.
 
-Recording stop follows Daily's current room-level stop REST contract and therefore does not send an
-invented `instanceId`. Transcription stop sends the persisted transcription `instanceId` as currently
-documented. No database transaction is held open across Daily network calls.
+Recording stop and transcription stop each send the capture's persisted provider `instanceId`. A
+capture without one fails closed as an invalid provider response, before any provider call. No
+database transaction is held open across Daily network calls.
+
+EC-FIX-1 correction (2026-10-17): this ADR originally sent recording stop without an `instanceId`,
+assuming a room-level stop. On live staging Daily answered that request with HTTP 400 and the
+recording continued until the meeting ended, because Daily's multi-instance contract requires an
+instance started with an `instanceId` to be stopped with the same ID; without one Daily targets its
+reserved default instance. A Stop acknowledgment remains a command receipt only: `STOP_REQUESTED`
+becomes `READY` only from correlated completion evidence (`recording.ready-to-download`).
 
 `STOPPED` means provider capture is no longer intentionally running and no artifact is required for
 that mode. This is a normal terminal state for live transcription with storage disabled. `READY`

@@ -60,12 +60,16 @@ uses bounded multipart buffers and two SDK retries. Workers need adequate tempor
 concurrency must be sized against this per-job bound. No media bytes or provider links enter Celery
 arguments/results, audit metadata, persistent state, logs or frontend state.
 
-Only HTTPS default Daily recording/transcript S3 hosts, port 443, are accepted. Redirects, embedded
-credentials, unexpected hosts and contradictory link fields fail closed. No Daily bearer token is
-forwarded to storage. Recording access links require a future documented expiry. Transcript access
-links accept either documented `link` or `download_link`, rejecting conflicting values. Metadata
-rejects custom transcript `outParams` and unsupported storage providers. A different Daily-owned host
-or storage shape requires an explicit reviewed adapter change; it is not silently accepted.
+Only HTTPS links on the exact Daily signed-download host `c.daily.co` or on the legacy default Daily
+recording/transcript S3 hosts, port 443, are accepted. Other Daily subdomains, lookalike hosts,
+redirects, embedded credentials, fragments and contradictory link fields fail closed. No Daily bearer
+token is forwarded to storage. Recording access links require a future documented expiry. Transcript
+access links accept either documented `link` or `download_link`, rejecting conflicting values.
+Transcript metadata and deletion verification accept `outParams` only when absent or when it names
+Daily's own transcript bucket (`daily-co-transcription`, with no storage provider other than `aws`);
+any other bucket, provider or shape is customer-managed storage and fails closed. Recording metadata
+still rejects unsupported storage providers. Any further Daily-owned host or storage shape requires
+an explicit reviewed adapter change; it is not silently accepted.
 
 ### Official provider evidence
 
@@ -85,6 +89,27 @@ The following official REST references were checked on 2026-10-08:
 
 Daily default custody is the supported source. This design does not assume Daily can directly write
 to DigitalOcean Spaces or treat Daily custom AWS bucket configuration as Spaces-compatible.
+
+### Live provider evidence (EC-FIX-1, 2026-10-17)
+
+A read-only live-staging investigation (COMPASS-EC-INV-1) found that the shapes above, taken from the
+reference examples, did not match live Daily-hosted responses. Both artifacts failed closed before
+any transfer:
+
+- Signed recording and transcript links are served from `https://c.daily.co` (the reference examples
+  show `b.daily.co`; that host has not been observed and stays untrusted). The recording access link
+  also carries `s3_bucket`, `s3_key`, `s3_region` and `data_outputs`; the transcript access link
+  carries `link`, `transcriptId`, `outParams`, `status` and `isVttAvailable`.
+- Daily-hosted transcripts report `outParams` `{bucket, key, region}` naming Daily's own
+  `daily-co-transcription` bucket while the Daily domain has no custom `transcription_bucket` or
+  `recordings_bucket`. The original rule treated every non-empty `outParams` as customer-managed.
+
+The correction keeps every other control: provider identity and session checks, VTT availability,
+no redirects, bounded server-side transfer, COMPASS-verified integrity, custody before provider
+deletion, and assigned-Counselor access. Capture completion, artifact custody and authorized download
+availability remain three separate facts. Transfer redirects, transferred `Content-Type`, Spaces upload
+compatibility and live deletion acknowledgment shapes were not reached on live staging and remain to be
+verified on the deployed pipeline.
 
 ### Storage policy
 
