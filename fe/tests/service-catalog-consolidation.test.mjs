@@ -38,6 +38,7 @@ const service = {
   name: "Psychological Testing",
   description: "",
   appointment_booking_enabled: true,
+  booking_pathways: ["FLEXIBLE_APPOINTMENT"],
   default_appointment_duration_minutes: null,
   cancellation_cutoff_minutes: null,
   requires_current_inventory: false,
@@ -147,4 +148,31 @@ test("consequence review explains that existing Appointments stay as booked", ()
   assert.match(html, /stay scheduled and can still take place as booked/);
   assert.match(html, /will not receive new Appointments for this Service/);
   assert.doesNotMatch(html, /Online Counseling/);
+});
+
+
+test("Service editor displays independently configurable future pathways with clear availability", () => {
+  const html = render(h(CreateServicePage));
+  assert.match(html, /Fixed-date appointment slots/);
+  assert.match(html, /Group sessions and events/);
+  assert.match(html, /Student booking is not available yet/);
+  assert.match(html, /Registration is not available yet/);
+  assert.match(html, /Flexible individual booking is controlled above/);
+});
+
+test("Service details distinguish saved pathway configuration from a working booking feature", () => {
+  const html = render(h(ServiceDetailPage), {
+    params: { serviceId: SERVICE },
+    seed: (client) => {
+      client.setQueryData(getServicesGetQueryKey(SERVICE), ok({
+        ...service,
+        booking_pathways: ["FLEXIBLE_APPOINTMENT", "FIXED_DATE_SLOT", "GROUP_SESSION"],
+        provider_coverage: "ALL_COUNSELORS",
+      }));
+    },
+  });
+  assert.match(html, /Available now/);
+  assert.match(html, /Configured · Booking coming later/);
+  assert.match(html, /Configured · Registration coming later/);
+  assert.match(html, /not yet available to Students/);
 });

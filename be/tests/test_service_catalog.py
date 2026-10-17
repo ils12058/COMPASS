@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import uuid
+from datetime import timedelta
 
 import pytest
 from django.core.management import call_command
@@ -246,6 +247,7 @@ def test_turning_booking_off_clears_appointment_settings_atomically():
     event = AuditEvent.objects.filter(action="service.updated").latest("occurred_at")
     assert set(event.metadata["changed_fields"]) == {
         "appointment_booking_enabled",
+        "booking_pathways",
         "default_appointment_duration_minutes",
         "cancellation_cutoff_minutes",
         "requires_current_inventory",
@@ -689,3 +691,276 @@ def test_strict_api_rejects_retired_and_activation_fields_and_has_no_delete_endp
         **headers,
     )
     assert deleted.status_code == 405
+
+
+# COMPASS-SVC-1: independent booking configuration, legacy API and scheduling guards.
+@pytest.mark.django_db
+def test_booking_pathways_backwards_compatible_create_and_partial_updates():
+    from compass.service_catalog.models import ServiceBookingPathway
+    from compass.service_catalog.services import service_booking_pathways
+
+    sync_policy()
+    admin = make_user("pathway-admin@example.edu", "IT_ADMIN")
+    flexible = configured_service(admin, active=True)
+    assert service_booking_pathways(flexible) == ("FLEXIBLE_APPOINTMENT",)
+    assert list(
+        ServiceBookingPathway.objects.filter(service=flexible).values_list("code", flat=True)
+    ) == ["FLEXIBLE_APPOINTMENT"]
+
+    updated = update_service(
+        service_id=flexible.pk,
+        changes={"booking_pathways": ["FLEXIBLE_APPOINTMENT", "FIXED_DATE_SLOT", "GROUP_SESSION"]},
+        context=context(admin),
+    )
+    assert updated.appointment_booking_enabled is True
+    assert set(service_booking_pathways(updated)) == {
+        "FLEXIBLE_APPOINTMENT",
+        "FIXED_DATE_SLOT",
+        "GROUP_SESSION",
+    }
+
+    # Legacy callers may update flexible booking without resetting other pathways.
+    updated = update_service(
+        service_id=flexible.pk,
+        changes={"description": "New description"},
+        context=context(admin),
+    )
+    assert len(service_booking_pathways(updated)) == 3
+    updated = update_service(
+        service_id=flexible.pk,
+        changes={"appointment_booking_enabled": False},
+        context=context(admin),
+    )
+    assert not updated.appointment_booking_enabled
+    assert set(service_booking_pathways(updated)) == {"FIXED_DATE_SLOT", "GROUP_SESSION"}
+    assert updated.default_appointment_duration_minutes is None
+    assert updated.cancellation_cutoff_minutes is None
+    assert ServiceBookingPathway.objects.filter(service=flexible).count() == 2
+
+
+@pytest.mark.django_db
+def test_independent_booking_pathway_validation_and_no_duplicate_rows():
+    from django.db import IntegrityError, transaction
+
+    from compass.service_catalog.models import ServiceBookingPathway
+    from compass.service_catalog.services import (
+        InvalidServiceCatalogInput,
+        service_booking_pathways,
+    )
+
+    sync_policy()
+    admin = make_user("pathway-validator@example.edu", "IT_ADMIN")
+    service = create_service(
+        code="GROUP_FUTURE",
+        name="Group future",
+        delivery_modes=["IN_PERSON"],
+        booking_pathways=["GROUP_SESSION", "FIXED_DATE_SLOT"],
+        context=context(admin),
+    )
+    assert service_booking_pathways(service) == ("FIXED_DATE_SLOT", "GROUP_SESSION")
+    assert not service.appointment_booking_enabled
+    assert service.default_appointment_duration_minutes is None
+    assert set_service_active(
+        service_id=service.pk, is_active=True, context=context(admin)
+    ).is_active
+
+    for invalid in (["GROUP_SESSION", "GROUP_SESSION"], ["BAD_PATHWAY"], "GROUP_SESSION"):
+        with pytest.raises(InvalidServiceCatalogInput):
+            update_service(
+                service_id=service.pk,
+                changes={"booking_pathways": invalid},
+                context=context(admin),
+            )
+    with pytest.raises(InvalidServiceCatalogInput):
+        update_service(
+            service_id=service.pk,
+            changes={
+                "appointment_booking_enabled": False,
+                "booking_pathways": ["FLEXIBLE_APPOINTMENT"],
+            },
+            context=context(admin),
+        )
+    with pytest.raises(IntegrityError), transaction.atomic():
+        ServiceBookingPathway.objects.create(service=service, code="GROUP_SESSION")
+
+
+@pytest.mark.django_db
+def test_pathway_api_permissions_mfa_and_student_active_only_visibility():
+    sync_policy()
+    admin = make_user("pathway-api-admin@example.edu", "IT_ADMIN")
+    student = make_user("pathway-api-student@example.edu", "STUDENT")
+    cold = auth_client(admin, recent_mfa=False)
+    client = auth_client(admin)
+    payload = {
+        "code": "PATHWAY_API",
+        "name": "Pathway API",
+        "delivery_modes": ["IN_PERSON"],
+        "booking_pathways": ["FIXED_DATE_SLOT", "GROUP_SESSION"],
+    }
+    rejected = cold.post(
+        "/api/v1/services",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **csrf(cold),
+    )
+    assert rejected.status_code == 403
+    created = client.post(
+        "/api/v1/services",
+        data=json.dumps(payload),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert created.status_code == 201
+    item = created.json()
+    assert item["appointment_booking_enabled"] is False
+    assert item["booking_pathways"] == ["FIXED_DATE_SLOT", "GROUP_SESSION"]
+    assert item["activation_blockers"] == []
+    student_client = auth_client(student)
+    assert student_client.get(f"/api/v1/services/{item['id']}").status_code == 404
+    assert (
+        student_client.patch(
+            f"/api/v1/services/{item['id']}",
+            data=json.dumps({"booking_pathways": ["GROUP_SESSION"]}),
+            content_type="application/json",
+            **csrf(student_client),
+        ).status_code
+        == 403
+    )
+    enabled = client.post(
+        f"/api/v1/services/{item['id']}/enable",
+        data=json.dumps({}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert enabled.status_code == 200
+    visible = student_client.get(f"/api/v1/services/{item['id']}")
+    assert visible.status_code == 200
+    assert visible.json()["booking_pathways"] == ["FIXED_DATE_SLOT", "GROUP_SESSION"]
+
+    # Contradictory old+new fields and duplicate pathways fail closed.
+    conflict = client.patch(
+        f"/api/v1/services/{item['id']}",
+        data=json.dumps(
+            {"appointment_booking_enabled": True, "booking_pathways": ["GROUP_SESSION"]}
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert conflict.status_code == 422
+    duplicate = client.patch(
+        f"/api/v1/services/{item['id']}",
+        data=json.dumps({"booking_pathways": ["GROUP_SESSION", "GROUP_SESSION"]}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert duplicate.status_code == 422
+
+
+@pytest.mark.django_db
+def test_pathway_only_change_is_audited_once_with_noop_idempotence():
+    from compass.service_catalog.services import service_booking_pathways
+
+    sync_policy()
+    admin = make_user("pathway-audit@example.edu", "IT_ADMIN")
+    service = configured_service(admin, active=True)
+    previous = AuditEvent.objects.filter(action="service.updated").count()
+    altered = update_service(
+        service_id=service.pk,
+        changes={"booking_pathways": ["FLEXIBLE_APPOINTMENT", "GROUP_SESSION"]},
+        context=context(admin),
+    )
+    assert service_booking_pathways(altered) == ("FLEXIBLE_APPOINTMENT", "GROUP_SESSION")
+    assert AuditEvent.objects.filter(action="service.updated").count() == previous + 1
+    assert (
+        "booking_pathways"
+        in AuditEvent.objects.filter(action="service.updated")
+        .latest("occurred_at")
+        .metadata["changed_fields"]
+    )
+    update_service(
+        service_id=service.pk,
+        changes={"booking_pathways": ["FLEXIBLE_APPOINTMENT", "GROUP_SESSION"]},
+        context=context(admin),
+    )
+    assert AuditEvent.objects.filter(action="service.updated").count() == previous + 1
+
+
+@pytest.mark.django_db
+def test_disabling_flexible_pathway_preserves_scheduled_appointment_after_review():
+    from compass.appointments.models import Appointment, AppointmentStatus
+    from compass.service_catalog.services import (
+        ServiceSchedulingConsequenceReviewRequired,
+        service_booking_pathways,
+    )
+
+    sync_policy()
+    admin = make_user("pathways-review@example.edu", "IT_ADMIN")
+    student = make_user("pathways-reservation-student@example.edu", "STUDENT")
+    counselor = make_user("pathways-reservation-counselor@example.edu", "COUNSELOR")
+    service = configured_service(admin, active=True)
+    starts = timezone.now() + timedelta(days=3)
+    appointment = Appointment.objects.create(
+        reference_code="APT-2026-888801",
+        student=student,
+        provider=counselor,
+        service=service,
+        service_name_snapshot=service.name,
+        delivery_mode="IN_PERSON",
+        starts_at=starts,
+        ends_at=starts + timedelta(hours=1),
+        status=AppointmentStatus.SCHEDULED,
+    )
+
+    with pytest.raises(ServiceSchedulingConsequenceReviewRequired) as caught:
+        update_service(
+            service_id=service.pk,
+            changes={"booking_pathways": ["FIXED_DATE_SLOT", "GROUP_SESSION"]},
+            context=context(admin),
+        )
+    assert caught.value.existing_appointment_dependency_detected
+    assert service_booking_pathways(service) == ("FLEXIBLE_APPOINTMENT",)
+
+    altered = update_service(
+        service_id=service.pk,
+        changes={"booking_pathways": ["FIXED_DATE_SLOT", "GROUP_SESSION"]},
+        context=context(admin),
+        acknowledge_scheduling_consequences=True,
+    )
+    appointment.refresh_from_db()
+    assert appointment.starts_at == starts
+    assert appointment.status == AppointmentStatus.SCHEDULED
+    assert appointment.service_id == altered.pk
+    assert not altered.appointment_booking_enabled
+    assert set(service_booking_pathways(altered)) == {"FIXED_DATE_SLOT", "GROUP_SESSION"}
+
+
+@pytest.mark.django_db
+def test_pathway_backfill_is_idempotent_and_preserves_legacy_rows():
+    import importlib
+
+    from django.apps import apps
+    from django.db import connection
+
+    from compass.service_catalog.models import ServiceBookingPathway
+
+    legacy = Service.objects.create(
+        code="BACKFILL_LEGACY",
+        name="Previously bookable",
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=30,
+    )
+    no_booking = Service.objects.create(code="BACKFILL_UNAVAILABLE", name="Not bookable")
+    assert not ServiceBookingPathway.objects.filter(service=legacy).exists()
+    operation = importlib.import_module("compass.service_catalog.migrations.0002_booking_pathways")
+    # Reuse the active test database's schema through a minimal migration editor proxy.
+    editor = type("Editor", (), {"connection": connection})()
+    operation.backfill_flexible_bookings(apps, editor)
+    operation.backfill_flexible_bookings(apps, editor)
+    assert (
+        ServiceBookingPathway.objects.filter(service=legacy, code="FLEXIBLE_APPOINTMENT").count()
+        == 1
+    )
+    assert not ServiceBookingPathway.objects.filter(service=no_booking).exists()
+    legacy.refresh_from_db()
+    assert legacy.appointment_booking_enabled
+    assert legacy.default_appointment_duration_minutes == 30

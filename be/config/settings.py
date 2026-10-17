@@ -66,6 +66,7 @@ INSTALLED_APPS = [
     "compass.authentication",
     "compass.organization",
     "compass.service_catalog",
+    "compass.group_sessions",
     "compass.availability",
     "compass.appointments",
     "compass.counseling",
