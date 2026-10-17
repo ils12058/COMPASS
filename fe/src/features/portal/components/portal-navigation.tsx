@@ -44,7 +44,8 @@ function useDockTips(enabled: boolean) {
       if (!enabled) return;
       cancelHide();
       const rect = target.getBoundingClientRect();
-      setTip({ label, top: rect.top + rect.height / 2, left: rect.right + 10 });
+      const dockRight = target.closest("aside")?.getBoundingClientRect().right ?? rect.right;
+      setTip({ label, top: rect.top + rect.height / 2, left: Math.max(rect.right, dockRight) + 10 });
     },
     [cancelHide, enabled],
   );
@@ -155,10 +156,12 @@ export function PortalNavigation({
   expanded,
   navigationId,
   onNavigate,
+  className,
 }: {
   expanded: boolean;
   navigationId?: string;
   onNavigate?: () => void;
+  className?: string;
 }) {
   const { user } = usePortalSession();
   const pathname = usePathname();
@@ -177,7 +180,7 @@ export function PortalNavigation({
   }, [pathname, expanded]);
 
   return (
-    <div className="flex h-full min-h-full flex-col overflow-hidden bg-brand-strong text-on-brand">
+    <div className={cn("flex h-full min-h-full flex-col bg-brand-strong text-on-brand", className)}>
       <GuardedPortalLink
         href="/portal"
         onNavigate={onNavigate}

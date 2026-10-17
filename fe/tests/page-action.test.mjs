@@ -61,6 +61,14 @@ test("commands wrap as a group instead of scrolling sideways", () => {
   assert.doesNotMatch(html, /overflow-x/);
 });
 
+test("a contextual action group has a named group role and can turn into a desktop rail", () => {
+  const html = render(createElement(PageActionGroup, { "aria-label": "Appointment page actions", "data-page-action-rail": "", className: "lg:flex-col" }, createElement(PageAction, { icon: Plus, label: "Open" })));
+  assert.match(html, /role="group" aria-label="Appointment page actions"/);
+  assert.match(html, /data-page-action-rail=""/);
+  assert.match(html, /lg:flex-col/);
+  assert.equal(visibleText(html), "Open");
+});
+
 const featuresRoot = fileURLToPath(new URL("../src/features/", import.meta.url));
 function sources(dir) {
   return readdirSync(dir).flatMap((name) => {

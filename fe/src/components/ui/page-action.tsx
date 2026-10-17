@@ -1,12 +1,12 @@
 import type { LucideIcon } from "lucide-react";
 import Link from "next/link";
-import { forwardRef, type ButtonHTMLAttributes, type ComponentProps, type ComponentType, type ReactNode } from "react";
+import { forwardRef, type ButtonHTMLAttributes, type ComponentProps, type ComponentType, type HTMLAttributes } from "react";
 
 import { cn } from "@/lib/utils/cn";
 
 // A page's major commands — Create, Record, Import, Export, Refresh — drawn as a square icon surface
 // with a short visible label below it, so the page's principal work reads at a glance. Reserve it
-// for one to three commands in a PageHeader. Saving, cancelling, submitting, retrying, dialog
+// for one to three page-level commands near a heading. Saving, cancelling, submitting, retrying, dialog
 // confirmations, row actions, and actions that belong to one region stay ordinary Buttons, and Back
 // stays a text link.
 //
@@ -102,7 +102,17 @@ export const PageAction = forwardRef<
 ));
 PageAction.displayName = "PageAction";
 
-// Holds a page's one to three commands; they wrap rather than scroll on narrow screens.
-export function PageActionGroup({ className, children }: { className?: string; children: ReactNode }) {
-  return <div className={cn("flex flex-wrap items-start gap-x-4 gap-y-2", className)}>{children}</div>;
+// Holds a page's one to three commands; they wrap rather than scroll on narrow screens. A detail
+// page can place the same group under its heading on phones and in a vertical rail on desktop.
+export function PageActionGroup({ className, children, role, "aria-label": ariaLabel, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return (
+    <div
+      className={cn("flex flex-wrap items-start gap-x-4 gap-y-2", className)}
+      role={role ?? (ariaLabel ? "group" : undefined)}
+      aria-label={ariaLabel}
+      {...props}
+    >
+      {children}
+    </div>
+  );
 }

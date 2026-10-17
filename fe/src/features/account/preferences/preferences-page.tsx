@@ -10,6 +10,8 @@ import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { accountErrorMessage } from "@/features/account/components/account-errors";
 import { BrowserPushControls } from "@/features/notifications/browser-push";
+import { setNotificationHeadsUpPreference, useNotificationHeadsUpPreference } from "@/features/notifications/notification-heads-up-preference";
+import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   getNotificationsGetPreferencesQueryKey,
   useNotificationsGetPreferences,
@@ -17,6 +19,8 @@ import {
 } from "@/lib/api/generated/notifications/notifications";
 
 export function PreferencesPage() {
+  const { user } = usePortalSession();
+  const headsUpPreference = useNotificationHeadsUpPreference(user.id);
   const queryClient = useQueryClient();
   const preferences = useNotificationsGetPreferences({ query: { retry: false } });
   const update = useNotificationsUpdatePreferences();
@@ -72,7 +76,32 @@ export function PreferencesPage() {
           </PanelBody>
         </Panel>
       ) : null}
-      <div className="mt-5"><BrowserPushControls /></div>
+      <div className="mt-5">
+        <BrowserPushControls>
+          <fieldset>
+            <legend className="font-semibold text-ink">In-app pop-up alerts</legend>
+            <label className="mt-2 flex min-h-11 items-start gap-4">
+              <input
+                type="checkbox"
+                className="mt-1 size-5 shrink-0 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                checked={headsUpPreference.enabled}
+                disabled={!headsUpPreference.ready}
+                aria-describedby="notification-heads-up-description notification-heads-up-device-note"
+                onChange={(event) => setNotificationHeadsUpPreference(user.id, event.target.checked)}
+              />
+              <span>
+                <span className="block font-semibold text-ink">Show pop-up alerts</span>
+                <span id="notification-heads-up-description" className="mt-1 block text-sm leading-6 text-muted">
+                  Show a brief alert when new notifications arrive while using COMPASS.
+                </span>
+                <span id="notification-heads-up-device-note" className="mt-1 block text-sm leading-6 text-muted">
+                  This setting is saved on this device for this signed-in account. It does not sync to other devices.
+                </span>
+              </span>
+            </label>
+          </fieldset>
+        </BrowserPushControls>
+      </div>
     </section>
   );
 }

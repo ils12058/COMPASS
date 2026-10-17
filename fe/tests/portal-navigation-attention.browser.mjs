@@ -69,6 +69,12 @@ const stateDesktop = createAttentionMockState("COUNSELOR");
 await check("Desktop expanded sidebar renders attention badges", "/portal/work", stateDesktop.options({ viewport: { width: 1440, height: 900 } }), async (page) => {
   const aside = page.locator("aside");
   await shown(aside);
+  const corners = await aside.evaluate((element) => ({
+    topLeft: getComputedStyle(element).borderTopLeftRadius,
+    topRight: getComputedStyle(element).borderTopRightRadius,
+    bottomRight: getComputedStyle(element).borderBottomRightRadius,
+  }));
+  assert.deepEqual(corners, { topLeft: "0px", topRight: "8px", bottomRight: "8px" });
 
   // My work link with badge count 5 and accessible label
   const myWorkLink = aside.getByRole("link", { name: "My work, 5 items requiring attention" });
@@ -105,11 +111,23 @@ await check("Desktop collapsed rail renders badge chips with pointer-events-none
   await page.waitForTimeout(300);
 
   const aside = page.locator("aside");
+  assert.equal(await aside.evaluate((element) => Math.round(element.getBoundingClientRect().width)), 76, "collapsed dock keeps its icon rail width");
   const myWorkLink = aside.getByRole("link", { name: "My work, 5 items requiring attention" });
   await shown(myWorkLink);
 
   const messagesLink = aside.getByRole("link", { name: "Messages, 3 unread conversations" });
   await shown(messagesLink);
+
+  await myWorkLink.focus();
+  const tip = page.locator("div.fixed[aria-hidden='true']").filter({ hasText: "My work" });
+  await shown(tip);
+  const tipVisibleOutsideDock = await tip.evaluate((element) => {
+    const tipBox = element.getBoundingClientRect();
+    const dockBox = document.querySelector("aside").getBoundingClientRect();
+    const hit = document.elementFromPoint(tipBox.left + tipBox.width / 2, tipBox.top + tipBox.height / 2);
+    return tipBox.left >= dockBox.right && Boolean(hit && element.contains(hit));
+  });
+  assert.equal(tipVisibleOutsideDock, true, "the focused rail label is visible outside the dock's rounded clip");
 
   // Capture screenshot of collapsed rail
   const screenshotPath = join(artifacts, "nav-badges-desktop-collapsed.png");
@@ -127,6 +145,7 @@ await check("Mobile drawer renders badges in navigation items", "/portal/work", 
 
   const dialog = page.getByRole("dialog");
   await shown(dialog);
+  assert.equal(await dialog.evaluate((element) => getComputedStyle(element).borderTopRightRadius), "0px", "mobile drawer remains square-edged");
 
   const myWorkLink = dialog.getByRole("link", { name: "My work, 5 items requiring attention" });
   await shown(myWorkLink);

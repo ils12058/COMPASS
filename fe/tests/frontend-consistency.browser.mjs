@@ -20,8 +20,10 @@ const overrides = {
 };
 async function commands(page, labels) {
   const header = page.locator("[data-page-header]").first(); await shown(header);
+  const headerActions = header.locator("[data-page-header-actions]");
+  const actionRegion = (await headerActions.count()) ? headerActions : page.locator("[data-page-action-rail]").first();
   for (const label of labels) {
-    const command = header.getByRole("button", { name: label, exact: true }).or(header.getByRole("link", { name: label, exact: true }));
+    const command = actionRegion.getByRole("button", { name: label, exact: true }).or(actionRegion.getByRole("link", { name: label, exact: true }));
     await shown(command);
     const text = command.locator("[data-page-action-label]"); await shown(text);
     assert.ok((await text.innerText()).trim().length > 0);
@@ -31,7 +33,6 @@ async function commands(page, labels) {
     assert.ok(await command.evaluate((el) => getComputedStyle(el).boxShadow !== "none"), "Keyboard focus has a visible ring");
   }
   // Every rendered command in an ordinary action slot uses the same labeled surface.
-  const actionRegion = header.locator("[data-page-header-actions]");
   for (const command of await actionRegion.locator("button, a").all()) assert.equal(await command.locator("[data-page-action-label]").count(), 1);
   await noHorizontalOverflow(page);
 }

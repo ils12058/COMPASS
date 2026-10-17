@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { user } from "./support/ui-hierarchy-fixtures.mjs";
 
-const { baseURL, check, shown, finish } = await createBrowserHarness("realtime-runtime");
+const { baseURL, check, shown, screenshot, finish } = await createBrowserHarness("realtime-runtime");
 
 const PAGE = "/portal/services";
 const SOCKET_URL = `${baseURL.replace(/^http/, "ws")}/api/realtime/v1/socket`;
@@ -211,7 +211,13 @@ const changed = { v: 1, type: "notifications.changed" };
 const notificationRequests = (requests, path) => requests.filter((r) => r.method === "GET" && r.pathname === path).length;
 function notificationWorld() {
   const world = realtimeWorld(accountUser("A"));
-  world.notifications = [notification(firstId, "Initial HTTP notification")];
+  const notificationsByAccount = new Map([[world.account.id, [notification(firstId, "Initial HTTP notification")]]]);
+  Object.defineProperty(world, "notifications", {
+    get() { return notificationsByAccount.get(world.account?.id) ?? []; },
+    set(items) { notificationsByAccount.set(world.account?.id, items); },
+  });
+  world.overrides["/api/v1/me/profile"] = ({ reply }) => reply({ full_name: "Synthetic Counselor", photo: null });
+  world.overrides["/api/v1/notifications/preferences"] = ({ reply }) => reply({ optional_email_enabled: true });
   world.overrides["/api/v1/notifications/unread-count"] = ({ reply }) => reply({ unread_count: world.notifications.filter((n) => !n.is_read).length });
   world.overrides["/api/v1/notifications"] = ({ reply }) => reply({ items: world.notifications, page: 1, page_size: 20, has_next: false });
   world.changed = () => world.open().forEach((socket) => world.send(socket, changed));
@@ -234,9 +240,9 @@ function notificationWorld() {
     await page.waitForTimeout(300);
     assert.equal(await page.locator("[data-notification-heads-up]").count(), 0, "Existing notifications establish a silent baseline");
     await page.setViewportSize({ width: 320, height: 640 });
-    const muteButton = page.getByRole("button", { name: "Mute notification pop-ups" });
-    await muteButton.focus();
-    const focusedBeforeArrival = await page.evaluate(() => document.activeElement?.getAttribute("aria-label"));
+    const pageContent = page.locator("#main-content");
+    await pageContent.focus();
+    const focusedBeforeArrival = await page.evaluate(() => document.activeElement?.id);
     const beforeUnread = notificationRequests(requests, "/api/v1/notifications/unread-count");
     const beforeList = notificationRequests(requests, "/api/v1/notifications");
     world.notifications.push(notification(nextId, "New HTTP notification"));
@@ -247,7 +253,7 @@ function notificationWorld() {
     await shown(headsUp.getByText("You have a new COMPASS notification.", { exact: true }));
     assert.equal(await headsUp.getByText("New HTTP notification", { exact: true }).count(), 0, "The toast does not expose a raw title");
     assert.equal(await headsUp.getByText("Canonical HTTP body for New HTTP notification", { exact: true }).count(), 0, "The toast does not expose a message body");
-    assert.equal(await page.evaluate(() => document.activeElement?.getAttribute("aria-label")), focusedBeforeArrival, "The toast does not move keyboard focus");
+    assert.equal(await page.evaluate(() => document.activeElement?.id), focusedBeforeArrival, "The toast does not move keyboard focus");
     const bounds = await headsUp.boundingBox();
     assert.ok(bounds && bounds.x >= 0 && bounds.x + bounds.width <= 320, "The heads-up fits a narrow mobile viewport");
     assert.ok(notificationRequests(requests, "/api/v1/notifications/unread-count") > beforeUnread);
@@ -277,30 +283,89 @@ function notificationWorld() {
 
 {
   const world = notificationWorld();
-  await check("muting suppresses heads-up only, and keyboard unmute restores future notices", "/portal/notifications", {
+  await check("Account Preferences controls persistent pop-up alerts without changing notification delivery", "/portal/notifications", {
     initScripts: [enableRealtime], overrides: world.overrides, beforeNavigate: world.beforeNavigate,
-  }, async (page) => {
+  }, async (page, { requests }) => {
     await shown(page.getByRole("link", { name: "Notifications, 1 unread", exact: true }));
     await eventually(() => world.sockets.length === 1 && world.sockets[0].serverFrames.length > 0, "ready received");
-    await page.getByRole("button", { name: "Mute notification pop-ups" }).focus();
-    await page.keyboard.press("Enter");
-    const unmute = page.getByRole("button", { name: "Unmute notification pop-ups" });
-    await shown(unmute);
-    assert.equal(await unmute.getAttribute("aria-pressed"), "true");
+    assert.equal(await page.getByRole("button", { name: /(?:Mute|Unmute) notification pop-ups/ }).count(), 0, "No standalone header mute button");
+    assert.equal(await page.getByRole("link", { name: "Notifications, 1 unread", exact: true }).count(), 1, "The notification bell remains available");
+
+    await page.evaluate(() => window.next.router.push("/portal/account/preferences"));
+    const preference = page.getByRole("checkbox", { name: "Show pop-up alerts" });
+    await shown(preference);
+    assert.equal(await page.getByRole("group", { name: "In-app pop-up alerts" }).count(), 1, "The preference is organized inside the Notifications panel");
+    assert.equal(await preference.isChecked(), true, "Pop-up alerts are enabled by default");
+    const emailPreference = page.getByRole("checkbox", { name: "Optional informational email" });
+    await shown(emailPreference);
+    assert.equal(await emailPreference.isChecked(), true, "Email preference remains independent");
+    await shown(page.getByText("Show a brief alert when new notifications arrive while using COMPASS.", { exact: true }));
+    await shown(page.getByText(/saved on this device for this signed-in account/));
+    await screenshot(page, "account-notification-preferences");
+    await preference.uncheck();
+    assert.equal(await preference.isChecked(), false, "The setting changes immediately");
+    assert.equal(await emailPreference.isChecked(), true, "Disabling pop-ups does not change email notifications");
+    assert.equal(await page.evaluate(() => window.localStorage.getItem("compass-notification-heads-up-v1:account-A")), "false");
 
     world.notifications.push(notification(nextId, "Mandatory operational notice"));
     world.changed();
-    await shown(page.getByRole("heading", { name: "Mandatory operational notice", exact: true }));
-    assert.equal(await page.locator("[data-notification-heads-up]").count(), 0, "Muted notifications remain in the Notification Center");
-    assert.equal(await page.getByRole("link", { name: "Notifications, 2 unread", exact: true }).count(), 1);
-    assert.equal(await page.getByRole("button", { name: "Mark as read" }).count(), 2);
+    await shown(page.getByRole("link", { name: "Notifications, 2 unread", exact: true }));
+    assert.equal(await page.locator("[data-notification-heads-up]").count(), 0, "Disabled pop-ups do not hide notification delivery");
 
-    await unmute.focus();
-    await page.keyboard.press("Enter");
-    await shown(page.getByRole("button", { name: "Mute notification pop-ups" }));
+    await page.reload();
+    const afterReload = page.getByRole("checkbox", { name: "Show pop-up alerts" });
+    await shown(afterReload);
+    await page.waitForFunction(() => {
+      const checkbox = document.querySelector('input[aria-describedby="notification-heads-up-description notification-heads-up-device-note"]');
+      return checkbox instanceof HTMLInputElement && !checkbox.disabled;
+    });
+    assert.equal(await afterReload.isChecked(), false, "The preference survives reload");
+
+    world.account = accountUser("B");
+    await page.reload();
+    const accountB = page.getByRole("checkbox", { name: "Show pop-up alerts" });
+    await shown(accountB);
+    await page.waitForFunction(() => {
+      const checkbox = document.querySelector('input[aria-describedby="notification-heads-up-description notification-heads-up-device-note"]');
+      return checkbox instanceof HTMLInputElement && !checkbox.disabled;
+    });
+    assert.equal(await accountB.isChecked(), true, "A second account starts with its own enabled default");
+    await accountB.uncheck();
+    assert.equal(await page.evaluate(() => window.localStorage.getItem("compass-notification-heads-up-v1:account-B")), "false");
+    assert.equal(await page.evaluate(() => window.localStorage.getItem("compass-notification-heads-up-v1:account-A")), "false", "Account B cannot overwrite Account A's setting");
+
+    world.account = accountUser("A");
+    await page.reload();
+    const accountA = page.getByRole("checkbox", { name: "Show pop-up alerts" });
+    await shown(accountA);
+    await page.waitForFunction(() => {
+      const checkbox = document.querySelector('input[aria-describedby="notification-heads-up-description notification-heads-up-device-note"]');
+      return checkbox instanceof HTMLInputElement && !checkbox.disabled;
+    });
+    assert.equal(await accountA.isChecked(), false, "Account A recovers its own saved setting");
+    await accountA.check();
+    assert.equal(await accountA.isChecked(), true, "Re-enabling also takes effect immediately");
+    assert.equal(await page.locator("[data-notification-heads-up]").count(), 0, "Previously suppressed notices are not replayed when re-enabled");
+    assert.equal(await page.evaluate(() => window.localStorage.getItem("compass-notification-heads-up-v1:account-A")), null, "Enabled is the device-local default");
+
     world.notifications.push(notification(thirdId, "Another operational notice"));
     world.changed();
     await shown(page.locator("[data-notification-heads-up]").getByText("You have a new COMPASS notification.", { exact: true }));
+    assert.equal(await page.locator("[data-notification-heads-up]").count(), 1, "Only one global heads-up presenter is mounted");
+    await shown(page.getByRole("link", { name: "Notifications, 3 unread", exact: true }));
+    await page.getByRole("button", { name: "Dismiss notification heads-up" }).click();
+    await accountA.uncheck();
+    await accountA.check();
+    assert.equal(await page.locator("[data-notification-heads-up]").count(), 0, "Re-enabling does not replay a dismissed pop-up");
+    world.changed();
+    await page.waitForTimeout(250);
+    assert.equal(await page.locator("[data-notification-heads-up]").count(), 0, "A dismissed notice is not replayed by refetch");
+    assert.equal(requests.filter((request) => request.method === "PATCH" && request.pathname.includes("/notifications/")).length, 0, "Pop-up settings and dismissal do not mark notifications read");
+    assert.equal(requests.filter((request) => request.method !== "GET" && request.pathname.includes("/notifications/preferences")).length, 0, "This device-local setting uses no account preference API");
+    assert.equal(await page.getByRole("link", { name: "Notifications, 3 unread", exact: true }).count(), 1, "Unread count stays authoritative");
+
+    await page.getByRole("link", { name: "Notifications, 3 unread", exact: true }).click();
+    await shown(page.getByRole("heading", { name: "Another operational notice", exact: true }));
   });
 }
 
