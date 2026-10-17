@@ -20,14 +20,15 @@ No staging merge, deployment, live secret operation, UAT reset or outbound enabl
 
 | PR | Base | Exact head at checkpoint | Changed files | Dependency and CI |
 |---|---|---|---:|---|
-| [#256](https://github.com/ils12058/COMPASS/pull/256) | staging | b4902ce7eee9a7d00c1737f7eaf522c0b347f331 | 27 | Independent REM; frontend CI passed on 603b55a5; email heading failure repaired in latest head; fresh CI pending |
-| [#259](https://github.com/ils12058/COMPASS/pull/259) | staging | 8e6acbfb3df3c5b449759fa5e1b515a42528e083 | 24 | Foundation; fresh CI pending after formatting and two browser race repairs |
-| [#260](https://github.com/ils12058/COMPASS/pull/260) | feat/compass-fup-1a-secure-foundation | 1a8edb39f3f25761c7b47d805eb0a1960978981b | 24 | After #259; exact-head manual workflows dispatched |
-| [#261](https://github.com/ils12058/COMPASS/pull/261) | codex/ops-final-followup-workspace | 7dac089db51b7cf1f96da14432646d3c61015bbc | 56 | After #260; adjacent work/notifications/hardening share occurrence and recovery contracts; exact-head workflows dispatched |
+| [#256](https://github.com/ils12058/COMPASS/pull/256) | staging | 1d8ee6775ddad1c6f4a85c6f3f0d9f914953f553 | 33 | Independent REM; frontend CI passed on 603b55a5; email heading failure repaired in latest head; fresh CI pending |
+| [#259](https://github.com/ils12058/COMPASS/pull/259) | staging | 9b67852670695b54bc44b991ab8812b05d33044d | 30 | Foundation; fresh CI pending after formatting and two browser race repairs |
+| [#260](https://github.com/ils12058/COMPASS/pull/260) | feat/compass-fup-1a-secure-foundation | 2b44f6c6cfe40dc9f687fcb369bb65f03f71bb03 | 24 | After #259; exact-head manual workflows dispatched |
+| [#261](https://github.com/ils12058/COMPASS/pull/261) | codex/ops-final-followup-workspace | d6325b7286a44df3a4059a2a9b2812e3def899b2 | 56 | After #260; adjacent work/notifications/hardening share occurrence and recovery contracts; exact-head workflows dispatched |
+| [#262](https://github.com/ils12058/COMPASS/pull/262) | staging | f17140d58d3bb91159fb15678027df187a0a8fce | 6 | Independent font build prerequisite; merge before feature PRs; CI pending |
 
 All remain draft. Retarget stacked bases only after predecessor integration, preserving review history.
 Do not squash a predecessor underneath dependents without reconciling their ancestry.
-Combined code candidate: `3914be81945d37b0eb09c549790698bb557ec676`, branch
+Combined code candidate: `1f54cd6507166e4e40a63185f52e5614989cd36d`, branch
 `codex/ops-final-integration`, worktree
 `/Users/reynantlntno/.codex/worktrees/ops-final-integration/COMPASS`.
 
@@ -142,3 +143,55 @@ with corresponding keys; never fake migration history or reset UAT data.
   was invented. These require separate policy if requested; they are not silently implemented.
 
 Recommendation remains **NOT READY — BLOCKERS REMAIN** until engineering and integration gates pass.
+
+
+## Preliminary SVC-1 compatibility result
+
+A separate snapshot combines REM/FUP with Agent 2's committed SVC-1
+`33fe0117d694ba675b8214b2be3aec978a91e93e`:
+`909c945592da721f8316038f856caeba370ade84`, branch `codex/ops-final-svc1-compatibility`,
+worktree `/Users/reynantlntno/.codex/worktrees/ops-final-svc1-compat/COMPASS`.
+Only the additive registry conflict was resolved (union with unchanged baseline hashes), and
+OpenAPI was regenerated. Agent 2's business files and active checkout were not edited.
+
+On that exact snapshot, **121 PostgreSQL/domain/API/migration checks passed** (195.49 seconds),
+covering Service Catalog, Reminders, Follow-Ups, canonical/history/schema constraints, the existing
+canonical upgrade/additive rollback/re-upgrade rehearsal including the flexible-pathway backfill,
+and OpenAPI. Ruff lint/format passed (763 files). Consolidated Orval generation/typecheck and all
+8 Service Catalog frontend checks passed. This is preliminary SVC-1 compatibility evidence only;
+it does not validate uncommitted SVC-2 or future Group/Registration/Service-notification slices.
+
+Pre-font REM/FUP workflow submissions (superseded by the final font-bearing heads above):
+- Workspace 1a8edb39: [backend full](https://github.com/ils12058/COMPASS/actions/runs/38999430928),
+  [frontend](https://github.com/ils12058/COMPASS/actions/runs/38999432623).
+- Work/notifications 7dac089d: [backend full](https://github.com/ils12058/COMPASS/actions/runs/38999434715),
+  [frontend](https://github.com/ils12058/COMPASS/actions/runs/38999436742).
+- Combined 7182a862: [backend full](https://github.com/ils12058/COMPASS/actions/runs/38999438734),
+  [frontend](https://github.com/ils12058/COMPASS/actions/runs/38999441074).
+  Combined static/contract job succeeded; the six regression shards were still queued at the last check.
+  This supplemental report is documentation only; product code matches that submitted candidate.
+
+The primary checkout remains clean for tracked files on staging
+`d41637a705eb7ff7b66cbb5340ffc81f411224d0`. Existing untracked artifacts were left untouched.
+
+Additional UAT safety evidence: all **60 staging deployment/seeding regression checks passed**
+(148.62 seconds) against disposable PostgreSQL fixtures. No participant credentials were issued
+outside those isolated tests and no live dataset was used.
+
+The combined frontend workflow passed unit tests and its ordinary production build, but its separate
+synthetic build hit the intermittent Next/font extensionless Google URL parsing defect. The failed
+job was rerun and a local synthetic build passed. This is tracked upstream at
+https://github.com/vercel/next.js/issues/99114. The permanent fix is PR #262, bundling the existing families from pinned official Google Fonts
+sources with original OFL licenses and hashes. CSS variables, weight ranges, swap and upstream glyph
+coverage remain. The original TTFs total 287,172 bytes before HTTP compression; no font-provider
+request occurs during builds. Normal production and combined synthetic builds both passed locally.
+The fix is merged into each owned feature candidate for CI, while remaining independently reviewable
+in #262. Controlled merge order starts with #262; exact final-head CI remains required.
+
+
+Final local frontend evidence with bundled fonts: normal font-fix production build and combined
+synthetic build passed. Reminder 3/3 and Follow-Up 8/8 browser checks passed again in each engine.
+The mobile Follow-Up detail was visually checked after this change; the layout fits and the existing
+font families/weights render correctly. All feature candidates include the same #262 commit.
+The final post-font workflow submissions supersede pre-font CI; their queue/results must be checked
+before any ready-for-merge recommendation. No unexplained local failure remains.
