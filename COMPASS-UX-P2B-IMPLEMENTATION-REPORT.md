@@ -51,7 +51,7 @@ Criteria are grouped as follows: **1–3** search, filter organization, and appl
 
 ## Visual evidence
 
-The before captures use the unmodified base commit with the same synthetic records as the after captures. After captures are available from Chromium and WebKit; before captures are from Chromium. The baseline browser check reproduced the missing named/focusable table region on the three desktop tables.
+The before captures use the unmodified base commit with the same synthetic records as the after captures. After captures are available from Chromium and WebKit; before captures are from Chromium. The before images are a visual comparison only: the baseline browser run could not verify the three table pages because the local server was unavailable. The after browser checks were rerun against the production build and passed in both engines.
 
 | Collection | Desktop 1440px | Mobile 375px | Narrow desktop 1024px |
 |---|---|---|---|
