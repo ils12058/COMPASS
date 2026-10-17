@@ -21,6 +21,15 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
+    "guidanceFollowupsList",
+    "guidanceFollowupsCreate",
+    "guidanceFollowupsGet",
+    "guidanceFollowupsUpdate",
+    "guidanceFollowupsReassign",
+    "guidanceFollowupsRecordActivity",
+    "guidanceFollowupsComplete",
+    "guidanceFollowupsCancel",
+
     "assessmentRecordsList",
     "assessmentRecordsCreate",
     "assessmentRecordsGet",
@@ -782,6 +791,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "platform-operations",
         "privacy-governance",
         "realtime",
+        "guidance-followups",
         "guidance-messages",
         "assessment-records",
         "work",
@@ -1849,6 +1859,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     assert schemas["DesignationCode"]["enum"] == ["DPO", "HEAD_GUIDANCE_COUNSELOR"]
     assert schemas["CapabilityCode"]["enum"] == sorted(
         [
+            "guidance_followups.view",
+            "guidance_followups.manage",
             "guidance_messages.view_self",
             "guidance_messages.manage_self",
             "guidance_messages.view",
