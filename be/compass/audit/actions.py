@@ -61,6 +61,8 @@ APPOINTMENT_RESCHEDULED = "appointment.rescheduled"
 APPOINTMENT_REASSIGNED = "appointment.reassigned"
 APPOINTMENT_COMPLETED = "appointment.completed"
 APPOINTMENT_NO_SHOW = "appointment.no_show"
+APPOINTMENT_REMINDER_ISSUED = "appointment.reminder.issued"
+APPOINTMENT_REMINDERS_BULK = "appointment.reminders.bulk"
 COUNSELING_ENCOUNTER_CREATED = "counseling.encounter.created"
 COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
 COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
@@ -299,6 +301,8 @@ __all__ = [
     "APPOINTMENT_REASSIGNED",
     "APPOINTMENT_COMPLETED",
     "APPOINTMENT_NO_SHOW",
+    "APPOINTMENT_REMINDER_ISSUED",
+    "APPOINTMENT_REMINDERS_BULK",
     "COUNSELING_ENCOUNTER_CREATED",
     "COUNSELING_ENCOUNTER_UPDATED",
     "COUNSELING_SHARED_SUMMARY_PUBLISHED",

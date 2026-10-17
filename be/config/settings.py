@@ -766,8 +766,14 @@ CELERY_TASK_TRACK_STARTED = True
 CELERY_TASK_SEND_SENT_EVENT = False
 CELERY_WORKER_SEND_TASK_EVENTS = False
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
-CELERY_IMPORTS = ("compass.tasks",)
+CELERY_IMPORTS = ("compass.tasks", "compass.appointments.reminder_tasks")
+# Safe by default in local and live staging; an operator must explicitly enable.
+APPOINTMENT_AUTO_REMINDERS_ENABLED = env_bool("APPOINTMENT_AUTO_REMINDERS_ENABLED", False)
 CELERY_BEAT_SCHEDULE = {
+    "appointment-reminders-dispatch-due": {
+        "task": "compass.appointments.reminders.dispatch_due",
+        "schedule": 60,
+    },
     "ecounseling-artifact-recovery": {
         "task": "compass.ecounseling.recover_media_artifacts",
         "schedule": 60,
