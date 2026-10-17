@@ -115,6 +115,7 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
       label: "Daily work",
       links: [
         { href: "/portal/actions", label: "My actions", icon: ClipboardList, visible: hasStudentActions(user) },
+        { href: "/portal/follow-ups", label: "Follow-Ups", icon: ListChecks, visible: followupAccess(user).view },
         { href: "/portal/work", label: "My work", icon: ClipboardList, visible: hasWorkQueue(user) },
         { href: "/portal/operations", label: "Guidance operations", icon: ListChecks, visible: hasGuidanceOperations(user) },
       ],
