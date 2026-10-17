@@ -5,7 +5,7 @@ import { ContextHelp, type HelpSection } from "@/components/ui/context-help";
 
 const callAndDevices: HelpSection = {
   heading: "Call and devices",
-  content: "Use Devices to choose a camera, microphone or, where your browser allows it, a speaker. If the browser blocks your camera or microphone, allow access in its site settings, then rejoin. You can leave and rejoin while the session is open; leaving doesn’t complete the Appointment, and it doesn’t stop recording or transcription.",
+  content: "Use Check devices before joining to test your camera, microphone, and speaker locally on your device, or use Devices during a call to switch them. If the browser blocks your camera or microphone, allow access in its site settings, then rejoin. You can leave and rejoin while the session is open; leaving doesn’t complete the Appointment, and it doesn’t stop recording or transcription.",
 };
 
 const encounterRecords: HelpSection = {

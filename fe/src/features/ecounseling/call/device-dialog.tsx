@@ -9,7 +9,7 @@ import { Select } from "@/components/ui/select";
 
 import type { CallDevices, DeviceOption } from "./call-model";
 
-type DeviceKind = "camera" | "microphone" | "speaker";
+export type DeviceKind = "camera" | "microphone" | "speaker";
 
 const failureCopy: Record<DeviceKind, string> = {
   camera: "Couldn’t switch to that camera. Choose another one.",
@@ -17,7 +17,7 @@ const failureCopy: Record<DeviceKind, string> = {
   speaker: "Couldn’t switch to that speaker. Your system default is still used.",
 };
 
-function DeviceField({
+export function DeviceField({
   kind,
   label,
   options,

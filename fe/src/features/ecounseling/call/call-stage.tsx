@@ -1,7 +1,7 @@
 "use client";
 
 import { Clock, LoaderCircle, Maximize, Mic, MicOff, Minimize, PhoneOff, Settings2, Video, VideoOff, WifiLow } from "lucide-react";
-import { useRef, useState, type MouseEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { formatECounselingDateTime } from "@/features/ecounseling/ecounseling-shared";
@@ -9,13 +9,14 @@ import { ECounselingJoinState, type MediaWorkspaceState, type ProviderReadiness 
 import { cn } from "@/lib/utils/cn";
 
 import { CallControl, CallTray } from "./call-control";
-import { activeCallPhases, type ParticipantView } from "./call-model";
+import { activeCallPhases, previewCallPhases, type ParticipantView } from "./call-model";
 import { CaptureIndicators } from "./capture-indicators";
 import { DeviceDialog } from "./device-dialog";
 import type { CallControls } from "@/features/ecounseling/runtime/active-call-context";
 import type { ActiveECounselingTiming } from "@/features/ecounseling/runtime/session-timing";
 
 import { ParticipantVideo, PlayAudioPrompt } from "./participant-media";
+import { PreJoinDeviceCheck } from "./prejoin-device-check";
 import { leaveFullscreen, useFullscreen } from "./use-fullscreen";
 
 export function joinAvailabilityMessage(readiness: ProviderReadiness): string | null {
@@ -32,6 +33,10 @@ export function joinAvailabilityMessage(readiness: ProviderReadiness): string | 
 // What the screen reader hears when the call changes, once per change.
 function callAnnouncement(call: CallControls, participantName: string): string {
   switch (call.phase) {
+    case "starting-preview":
+      return "Starting local device check.";
+    case "preview":
+      return "Checking devices. Local preview only; no one else can see or hear you.";
     case "requesting":
     case "joining":
       return "Connecting to the session.";
@@ -44,7 +49,7 @@ function callAnnouncement(call: CallControls, participantName: string): string {
     case "failed":
       return call.failure?.message ?? "The video session isn't connected.";
     default:
-      return "";
+      return call.deviceCheckCompleted ? "Device check complete. Ready to join." : "";
   }
 }
 
@@ -102,10 +107,13 @@ function SelfView({ local, cameraOn, microphoneOn }: { local: ParticipantView | 
   );
 }
 
-function StageMessage({ children, action, alert = false }: { children: ReactNode; action?: ReactNode; alert?: boolean }) {
+function StageMessage({ children, detail, action, alert = false }: { children: ReactNode; detail?: ReactNode; action?: ReactNode; alert?: boolean }) {
   return (
     <div className="flex size-full flex-col items-center justify-center gap-3 px-6 py-6 text-center sm:gap-4">
-      <p role={alert ? "alert" : undefined} className="max-w-md text-sm leading-6 text-on-brand/90 sm:text-base">{children}</p>
+      <div className="space-y-1">
+        <p role={alert ? "alert" : undefined} className="max-w-md text-sm leading-6 text-on-brand/90 sm:text-base">{children}</p>
+        {detail ? <p className="text-xs text-on-brand/75">{detail}</p> : null}
+      </div>
       {action}
     </div>
   );
@@ -155,13 +163,65 @@ export function CallStage({
   className?: string;
 }) {
   const stageRef = useRef<HTMLElement>(null);
+  const checkDevicesButtonRef = useRef<HTMLButtonElement>(null);
+  const returnFocusToCheckDevicesRef = useRef(false);
   const fullscreen = useFullscreen(stageRef);
   const [devicesOpen, setDevicesOpen] = useState(false);
   const inCall = activeCallPhases.has(call.phase);
+  const inPreview = previewCallPhases.has(call.phase);
   const connected = call.phase === "joined" || call.phase === "reconnecting";
   const open = readiness.join_state === ECounselingJoinState.OPEN;
   const availability = joinAvailabilityMessage(readiness);
-  const joinAction = (label: string) => joinBlocked ?? (open && canJoin ? <Button className="ring-1 ring-on-brand/40" onClick={onJoin}>{label}</Button> : null);
+  const canCheckDevices =
+    canJoin &&
+    !joinBlocked &&
+    readiness.join_state !== ECounselingJoinState.CLOSED &&
+    readiness.join_state !== ECounselingJoinState.PROVIDER_DISABLED;
+
+  useEffect(() => {
+    if (inPreview && !canCheckDevices) {
+      void call.closePreview();
+    }
+  }, [call, canCheckDevices, inPreview]);
+
+  useEffect(() => {
+    if (!inPreview && returnFocusToCheckDevicesRef.current) {
+      returnFocusToCheckDevicesRef.current = false;
+      checkDevicesButtonRef.current?.focus();
+    }
+  }, [inPreview]);
+
+  const joinOnlyAction = (label: string) =>
+    joinBlocked ?? (open && canJoin ? <Button className="ring-1 ring-on-brand/40" onClick={onJoin}>{label}</Button> : null);
+
+  const checkDevicesButton = canCheckDevices ? (
+    <Button
+      ref={checkDevicesButtonRef}
+      type="button"
+      variant="secondary"
+      className="border-on-brand/40 bg-transparent text-on-brand hover:bg-on-brand/10"
+      onClick={() => void call.startPreview()}
+    >
+      Check devices
+    </Button>
+  ) : null;
+
+  const stageActions = (label: string) => {
+    if (joinBlocked) return joinBlocked;
+    const primaryJoin = open && canJoin ? <Button className="ring-1 ring-on-brand/40" onClick={onJoin}>{label}</Button> : null;
+    if (!primaryJoin && !checkDevicesButton) return null;
+    return (
+      <div className="flex flex-wrap items-center justify-center gap-2">
+        {primaryJoin}
+        {checkDevicesButton}
+      </div>
+    );
+  };
+
+  const deviceCheckSummary = call.deviceCheckCompleted
+    ? `Device check complete · ${call.cameraOn ? "Camera on" : "Camera off"}, ${call.microphoneOn ? "Mic on" : "Mic off"}`
+    : undefined;
+
   const networkNotice = connected
     ? call.network === "warning" || call.network === "bad"
       ? "Your connection is unstable"
@@ -182,6 +242,11 @@ export function CallStage({
     onLeave();
   }
 
+  function closePreviewAndRestoreFocus() {
+    returnFocusToCheckDevicesRef.current = true;
+    void call.closePreview();
+  }
+
   let main: ReactNode;
   if (connected) {
     main = <RemoteParticipantStage remote={call.remote} name={participantName} />;
@@ -192,16 +257,32 @@ export function CallStage({
         <p className="text-sm font-semibold">{call.phase === "leaving" ? "Leaving…" : "Connecting…"}</p>
       </div>
     );
+  } else if (inPreview) {
+    if (call.phase === "starting-preview") {
+      main = (
+        <div className="flex size-full flex-col items-center justify-center gap-3">
+          <LoaderCircle aria-hidden="true" size={28} className="animate-spin text-on-brand/80 motion-reduce:animate-none" />
+          <p className="text-sm font-semibold">Checking devices…</p>
+        </div>
+      );
+    } else {
+      const previewVideoTrack = call.cameraOn && call.local?.video.playable ? call.local.video.track : null;
+      main = previewVideoTrack ? (
+        <ParticipantVideo track={previewVideoTrack} mirrored className="object-cover" />
+      ) : (
+        <CameraOff name="You" />
+      );
+    }
   } else if (call.phase === "failed") {
-    main = <StageMessage alert action={joinAction("Try again")}>{call.failure?.message ?? "The video session isn’t connected."}{!open && availability ? ` ${availability}` : ""}</StageMessage>;
+    main = <StageMessage alert action={stageActions("Try again")}>{call.failure?.message ?? "The video session isn’t connected."}{!open && availability ? ` ${availability}` : ""}</StageMessage>;
   } else if (call.phase === "left") {
-    main = <StageMessage action={joinAction("Rejoin")}>{open ? "You left the call. Leaving doesn’t end the Appointment." : availability}</StageMessage>;
+    main = <StageMessage detail={deviceCheckSummary} action={stageActions("Rejoin")}>{open ? "You left the call. Leaving doesn’t end the Appointment." : availability}</StageMessage>;
   } else if (open) {
     main = canJoin
-      ? <StageMessage action={joinAction("Join session")}>Ready to join</StageMessage>
+      ? <StageMessage detail={deviceCheckSummary} action={stageActions("Join session")}>Ready to join</StageMessage>
       : <StageMessage>Joining this session is unavailable to this account.</StageMessage>;
   } else {
-    main = <StageMessage>{availability}</StageMessage>;
+    main = <StageMessage detail={deviceCheckSummary} action={checkDevicesButton}>{availability}</StageMessage>;
   }
 
   const devicesControl = (
@@ -228,9 +309,15 @@ export function CallStage({
         {main}
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2 sm:p-3">
-          {/* Names the other person once they are in the call; before that the stage says what is
-              happening in its centre. */}
+          {/* Names the other person once they are in the call; during local preview it states that
+              the check is strictly local. */}
           <div className="flex min-w-0 flex-col items-start gap-1">
+            {inPreview ? (
+              <div className="min-w-0 rounded-sm bg-ink/85 px-2.5 py-1">
+                <p className="text-sm font-semibold">Checking devices</p>
+                <p className="text-xs text-on-brand/80">Local preview only · {participantName} cannot see or hear you</p>
+              </div>
+            ) : null}
             {connected && call.remote ? (
               <div className="min-w-0 rounded-sm bg-ink/85 px-2.5 py-1">
                 <p className="truncate text-sm font-semibold">{participantName}</p>
@@ -299,6 +386,15 @@ export function CallStage({
       </div>
 
       <p aria-live="polite" className="sr-only">{callAnnouncement(call, participantName)}</p>
+
+      {inPreview ? (
+        <PreJoinDeviceCheck
+          call={call}
+          availability={!open ? availability : null}
+          joinAction={joinOnlyAction("Join session")}
+          onClose={closePreviewAndRestoreFocus}
+        />
+      ) : null}
 
       {inCall ? (
         <CallTray>

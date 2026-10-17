@@ -11,6 +11,8 @@ import { joinBlockedCopy, sessionPath } from "./runtime-model";
 
 const idleCall: CallControls = {
   ...initialCallSnapshot,
+  startPreview: async () => {},
+  closePreview: async () => {},
   setMicrophone: () => {},
   setCamera: () => {},
   refreshDevices: async () => {},
@@ -22,7 +24,8 @@ const idleCall: CallControls = {
 // The session page's view of the portal's one call (ADR-094). For the Appointment whose call is
 // live (or just ended) it is that call; for any other Appointment it is an idle call whose Join
 // starts one, unless this tab or another already has a call. While this page shows the full stage
-// for the live call, the call dock steps aside. Opening the page never starts a call by itself.
+// for the live call, the call dock steps aside. Opening the page never starts a call or device
+// preview by itself.
 export function useSessionCallView({
   appointmentId,
   participantName,
@@ -34,24 +37,31 @@ export function useSessionCallView({
 }) {
   const runtime = useActiveECounselingCall();
   const { presentStage } = runtime;
-  const owns = runtime.appointmentId === appointmentId && runtime.state !== "inactive";
+  const ownsCall = runtime.appointmentId === appointmentId && runtime.state !== "inactive";
+  const ownsPreview = runtime.state === "inactive" && runtime.previewAppointmentId === appointmentId;
+  const owns = ownsCall || ownsPreview;
   const availability = runtime.availabilityFor(appointmentId);
 
-  useEffect(() => (owns ? presentStage(appointmentId) : undefined), [appointmentId, owns, presentStage]);
+  useEffect(() => presentStage(appointmentId), [appointmentId, presentStage]);
 
-  const call: CallControls = owns
+  const baseCall: CallControls = owns
     ? runtime.state === "activating" ? { ...runtime.call, phase: "requesting" } : runtime.call
     : idleCall;
+  const call: CallControls = {
+    ...baseCall,
+    startPreview: () => runtime.startPreview(appointmentId),
+    closePreview: () => runtime.closePreview(appointmentId),
+  };
   const blocked = availability === "other-session" || availability === "other-tab" ? availability : null;
 
   return {
     call,
     // This page's Appointment has the live call: the portal runtime keeps its session state fresh.
-    inCall: owns && runtime.live,
+    inCall: ownsCall && runtime.live,
     join: () => void runtime.join({ appointmentId, participantName, endsAt }),
     leave: runtime.requestLeave,
-    timing: owns ? runtime.timing : { phase: "NORMAL" as const, notice: null, endsAt: endsAt ?? null },
-    audio: owns ? runtime.audio : undefined,
+    timing: ownsCall ? runtime.timing : { phase: "NORMAL" as const, notice: null, endsAt: endsAt ?? null },
+    audio: ownsCall ? runtime.audio : undefined,
     joinBlocked: blocked ? (
       <div className="flex flex-col items-center gap-3">
         <p role="status" className="text-sm font-semibold">{joinBlockedCopy[blocked]}</p>
