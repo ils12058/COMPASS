@@ -5,6 +5,15 @@
 **Integration Branch:** `integration/compass-int-final-argon`  
 **Date:** October 17, 2026
 
+> **CORR-5 clarification (October 17, 2026):** This runbook's environment examples are not evidence
+> of effective live staging configuration. Follow-Up rollout remains institutionally unapproved per
+> ADR-FUP-1A; do not activate it until the approvals, web-only keyring, and identity-policy sync are
+> verified. `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED` controls external email/Web Push dispatch only;
+> it does not hide authorized in-app Follow-Up notices. Automatic reminders are scheduled every
+> 60 seconds, not every five minutes. The dedicated
+> [CORR-5 readiness handoff](COMPASS-CORR-5-ACTIVATION-READINESS.md) records current blockers and
+> the operational checks required before activation.
+
 ---
 
 ## 1. Safe-by-Default Feature Flag Posture
@@ -13,9 +22,9 @@ All new background-dispatch and rollout-gated capabilities ship **disabled by de
 
 | Setting / Environment Variable | Code Default | Purpose |
 |---|---|---|
-| `GUIDANCE_FOLLOWUPS_ENABLED` | `False` | Gates the Shared Guidance Follow-Up Management API, My Work integration, and reporting endpoints. |
-| `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED` | `False` | Gates staff in-app/email/push notifications for Follow-Up assignment, updates, and overdue transitions. |
-| `APPOINTMENT_AUTO_REMINDERS_ENABLED` | `False` | Gates the periodic Celery Beat task (`send_automatic_appointment_reminders`) for 24-hour and 3-hour automatic student reminders. |
+| `GUIDANCE_FOLLOWUPS_ENABLED` | `False` | Gates Follow-Up HTTP APIs, My Work projections, and related current-event integrations. Retain until institutional approval, key provisioning, and identity-policy synchronization are verified. |
+| `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED` | `False` | Pauses Follow-Up external email/Web Push delivery. In-app Notification intents, center visibility, and unread counts remain independent. |
+| `APPOINTMENT_AUTO_REMINDERS_ENABLED` | `False` | Pauses creation of new automatic Student reminder occurrences in the 24-hour and 3-hour windows. Manual issuance is independent. |
 
 > **Note:** Service Catalog Booking Pathways (`SVC-1`), Fixed-Date Appointment Slots (`SVC-2`), and Group Sessions (`SVC-3/4/5`) are per-service opt-in via `ServiceBookingPathway` configuration (`FIXED_DATE_SLOT`, `GROUP_SESSION`). Existing services retain `FLEXIBLE_APPOINTMENT` (or non-booking) behavior unchanged until an authorized administrator enables additional pathways on a specific Service.
 
@@ -28,7 +37,7 @@ All new background-dispatch and rollout-gated capabilities ship **disabled by de
    - Confirm the independent `GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS_FILE` points to
      `/run/secrets/guidance_followup_encryption_keys`. The Follow-Up keyring must be distinct from
      existing encryption domains and mounted only in the web/operator context.
-   - Confirm `GUIDANCE_FOLLOWUPS_ENABLED=False`, `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED=False`, and `APPOINTMENT_AUTO_REMINDERS_ENABLED=False` for initial dark-deploy rollout.
+   - Treat these as example values, not live state. Verify approved target values without printing a full environment dump. Keep each switch false until its separate approval and readiness checks are complete.
    - Confirm Redis broker connectivity (`CELERY_BROKER_URL`) and worker/Beat process health.
 
 ---
@@ -63,12 +72,13 @@ python manage.py check
 ## 4. Worker, Beat & Encryption Operational Requirements
 
 ### Celery Worker & Beat Schedule
-- **`compass.appointments.tasks.send_automatic_appointment_reminders`**:
-  - Registered in `CELERY_BEAT_SCHEDULE` to run every `300.0` seconds (5 minutes).
-  - Safe when `APPOINTMENT_AUTO_REMINDERS_ENABLED=False` (exits immediately as a no-op).
-  - When enabled, claims due 24h and 3h reminder occurrences transactionally using `select_for_update` and dispatches notifications only if `appointment_notification_is_current` passes.
+- **`compass.appointments.reminders.dispatch_due`**:
+  - Registered in `CELERY_BEAT_SCHEDULE` every 60 seconds and imported by `compass.appointments.reminder_tasks`.
+  - Safe when `APPOINTMENT_AUTO_REMINDERS_ENABLED=False`; it returns before candidate discovery.
+  - When enabled, issues due 24-hour and 3-hour occurrences in bounded 15-minute windows. Each Appointment revision/window is idempotent; expired windows are not backfilled. This setting does not govern manual reminder issuance.
 - **Notification Delivery Tasks**:
-  - `compass.notifications.tasks` dispatches email and web push notifications for `appointment.reminder_*`, `guidance_follow_up.*`, and `group_session.*` events, verifying `notification_is_current(notification)` before external provider handoff.
+  - `compass.notifications.tasks` processes email and web push deliveries for supported `appointment.reminder_*`, `guidance_follow_up.*`, and `group_session.*` events, rechecking recipient/source eligibility before provider handoff.
+  - Follow-Up in-app intents are created independently of `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED`; that switch gates external delivery only. Check pending deliveries before re-enabling it because previously queued pending items can resume.
 
 ### Follow-Up Encryption Verification & Key Rotation
 - The merged application provides `rotate_guidance_followup_encryption`. Its dry run verifies
@@ -89,18 +99,26 @@ python manage.py check
 
 ## 5. Staged Feature Activation Sequence
 
-After deploying with flags disabled and completing baseline smoke checks:
+Only after the applicable institutional approvals, secret provisioning, identity-policy sync, and
+delivery checks are complete, use a reviewed configuration release. Current Follow-Up approval and
+live-runtime readiness are not established by this static runbook.
 
 1. **Stage 1 — Enable Shared Guidance Follow-Up Workspace (`GUIDANCE_FOLLOWUPS_ENABLED=True`)**:
    - Update environment variable `GUIDANCE_FOLLOWUPS_ENABLED=True` on web and worker processes and restart gracefully.
    - Verify `/portal/follow-ups`, contextual creation from Counseling/Referrals/Routine Interviews, and `/portal/work` Follow-Up items.
 2. **Stage 2 — Enable Follow-Up Staff Notifications (`GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED=True`)**:
-   - Update `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED=True` on web and worker processes.
-   - Verify staff notification preferences (`/api/v1/notifications/guidance-preferences`) and assignment/overdue notification delivery.
+   - Review pending email/push deliveries and approved destinations before updating
+     `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED=True` on web and delivery workers.
+   - Verify the authorized in-app notification independently from the synthetic email or opted-in
+     push delivery. This setting does not control in-app visibility and no overdue reminder cadence
+     is created by the Follow-Up notification integration.
 3. **Stage 3 — Enable Automatic Appointment Reminders (`APPOINTMENT_AUTO_REMINDERS_ENABLED=True`)**:
    - Confirm manual/bulk reminder preview and issuance on `/portal/appointments/manage`.
-   - Update `APPOINTMENT_AUTO_REMINDERS_ENABLED=True` on web, worker, and Beat processes.
-   - Monitor worker logs for `send_automatic_appointment_reminders` execution.
+   - Update the worker's `APPOINTMENT_AUTO_REMINDERS_ENABLED` value and reload/restart workers that
+     execute the reminder task. Web/manual issuance does not use this flag; Beat continues to
+     enqueue the registered 60-second task and does not need the flag or a restart solely for this
+     change.
+   - Monitor worker logs for `compass.appointments.reminders.dispatch_due` execution.
 4. **Stage 4 — Configure Fixed-Date Slots & Group Sessions per Service**:
    - Head Guidance or IT Admin enables `FIXED_DATE_SLOT` and/or `GROUP_SESSION` pathways on target Services via `/portal/services/{id}/edit`.
    - Counselors/GSS publish Fixed-Date Slots or Group Sessions via `/portal/services/{id}`.
@@ -117,7 +135,7 @@ After deploying with flags disabled and completing baseline smoke checks:
 
 ### Rollback Considerations
 - **Feature-Level Instant Rollback (Zero Downtime)**:
-  - Set `APPOINTMENT_AUTO_REMINDERS_ENABLED=False`, `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED=False`, or `GUIDANCE_FOLLOWUPS_ENABLED=False` and restart web/worker processes to immediately disable automatic reminders or follow-up workflows without database rollback.
+  - For automatic Reminders, set the value false in the task-executing worker and reload/restart it; Beat continues enqueueing the task, which then returns zero. This stops new automatic occurrences but does not retract already-created reminder transports. For Follow-Up external dispatch, set the value false on web and delivery workers and reload/restart them; this pauses external email/push but leaves in-app notices available. The core Follow-Up switch disables its APIs and work/event integrations and must remain false until its institutional/security gates are met. Inspect queued deliveries separately. Database rollback is not required for an operational pause.
   - Disable `FIXED_DATE_SLOT` or `GROUP_SESSION` pathways on individual Services via the Service editor if a pathway needs to be withdrawn for new bookings.
 - **Database Migration Rollback**:
   - The six staged migrations are `appointments.0002`, `guidance_followups.0001`,

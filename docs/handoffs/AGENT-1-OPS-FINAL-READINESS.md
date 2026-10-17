@@ -106,7 +106,7 @@ The complete Service Catalog cross-feature gate cannot pass before its owner sup
 
 | Setting/secret | Consumers | Default/readiness |
 |---|---|---|
-| GUIDANCE_FOLLOWUPS_ENABLED | Web plus shared worker settings | false; approved workspace rollout |
+| GUIDANCE_FOLLOWUPS_ENABLED | Web plus shared worker settings | false in examples; institutional rollout is not approved; see ADR-FUP-1A and CORR-5 readiness handoff |
 | GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS / _FILE | Web/operator only | Independent ordered keyring, new primary first; provision by owner |
 | GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED | Web and email/push delivery workers | false; approved destinations and integrations |
 | APPOINTMENT_AUTO_REMINDERS_ENABLED | Web/worker/one Beat | false; separately approved Student Reminder rollout |

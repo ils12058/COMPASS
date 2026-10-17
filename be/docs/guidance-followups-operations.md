@@ -1,5 +1,26 @@
 # Follow-Up work, delivery, recovery and rollout contract
 
+## CORR-5 activation and dispatch decision
+
+ADR-FUP-1A remains an implementation proposal and explicitly says the rollout is **not approved**.
+Keep `GUIDANCE_FOLLOWUPS_ENABLED=false` until GCO, DPO and Records decisions cover the Follow-Up
+categories, GSS coordination and confidentiality boundaries, retention/hold/disposition, recovery,
+and staging activation; provision and validate the independent web-only keyring; and explicitly
+synchronize the approved identity policy. The checked-in environment examples are templates, not
+evidence of the live staging values. See
+[`COMPASS-CORR-5-ACTIVATION-READINESS.md`](../../docs/handoffs/COMPASS-CORR-5-ACTIVATION-READINESS.md)
+for the audited blockers and deployment handoff.
+
+`GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED` is an external email/Web Push dispatch control. With the
+core Follow-Up feature available, disabling external dispatch does not remove authorized in-app
+Notification intents, Notification Center entries, unread counts, or realtime freshness. It prevents
+new external delivery records from being created and makes pending delivery attempts ineligible;
+processing an existing pending attempt while disabled cancels it. Inspect pending records before
+re-enabling because any still-pending delivery can become eligible again. Provider-accepted mail or
+push cannot be recalled. Follow-Up email events use the existing `MANDATORY_OPERATIONAL` policy, so
+the optional-email preference does not suppress them. Browser push still requires enabled Web Push,
+an active opted-in subscription/session, current recipient eligibility and current source state.
+
 ## Scope and authority
 
 FUP-1D1/FUP-1D2/FUP-1E depend on workspace PR #260 and foundation #259. This slice adds a read-only
@@ -73,10 +94,10 @@ reminder schedule or retention duration is invented.
 
 | Setting | Default / consumer | Prerequisite |
 |---|---|---|
-| `GUIDANCE_FOLLOWUPS_ENABLED` | false; web, worker/Beat where shared settings load | Approved workspace rollout and provisioned web content keyring |
+| `GUIDANCE_FOLLOWUPS_ENABLED` | false in examples; web and shared settings consumers | Pending institutional approval, web-only keyring provisioning, and explicit identity-policy sync; do not infer the live value |
 | `GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS` or `_FILE` | empty; web/operator rotation only | Independent ordered Fernet keyring; primary first; no reuse of another domain or Django/TOTP secrets |
-| `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED` | false; web and delivery workers | Approved destinations, SMTP and browser-push validation |
-| `APPOINTMENT_AUTO_REMINDERS_ENABLED` | false; REM web/worker/Beat | Separate approved Student Reminder rollout |
+| `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED` | false in examples; web and email/push delivery workers | External dispatch pause; approved destinations, pending-delivery review, SMTP and browser-push validation |
+| `APPOINTMENT_AUTO_REMINDERS_ENABLED` | false in examples; checked by the reminder task's worker | Separate approved Student Reminder rollout; the worker must load the value, while one healthy Beat keeps the 60-second task registered/enqueued |
 | Existing `WEB_PUSH_*`, SMTP, Redis/Celery settings | Existing delivery policy | Approved external integration, active device/session and opt-in subscription |
 
 Compose grants `guidance_followup_encryption_keys` only to web. Worker/Beat explicitly clear both

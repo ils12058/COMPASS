@@ -1,5 +1,12 @@
 # Routine canonical staging deployment (COMPASS-DEPLOY-1)
 
+The current Compose/runtime-secret source contract is **25 files**, including the dedicated
+non-empty `guidance_followup_encryption_keys` key granted to web only. See
+[`runtime-secrets.md`](runtime-secrets.md) for the authoritative list and service grants. Presence
+of this required source is distinct from approval to enable Follow-Ups; keep
+`GUIDANCE_FOLLOWUPS_ENABLED=false` until ADR-FUP-1A governance, key and identity prerequisites are
+met. The repository contract does not prove that the host file is present.
+
 COMPASS-LIVE-RESET-1 completed on **2026-10-17**. Initial baseline installation required that
 separate reset; subsequent deployments **reuse its initialized storage**. No reset, import, seed,
 credential issuance, authentication reset, task purge or data-volume deletion belongs in this flow.
@@ -175,8 +182,12 @@ owner decisions under [the dataset runbook](staging-dataset-v1.md).
 
 ## First post-reset prerequisites
 
-Merge DEPLOY-1, let exact merged-SHA full regression pass, and dispatch that SHA **using `--ref staging`**. Existing GitHub
-staging variables/secrets and host external resources already matched inspection; no new variable,
-volume, network, secret provisioning or seeding is required. Ensure no competing deploy/freeze or
-active work, and retain the normal independent backup policy. This implementation was validated
-read-only against live staging; it did **not** execute a deployment, migration, seed or live restart.
+Merge DEPLOY-1, let exact merged-SHA full regression pass, and dispatch that SHA **using `--ref staging`**.
+The earlier DEPLOY-1 inspection and its no-new-secret conclusion predate the Follow-Up source added
+to the current manifest. Current deployment preflight requires the 25-source inventory, including
+the dedicated Follow-Up key; do not infer host-file presence from that source contract. The CORR-5
+read-only attempt could not establish the host file or effective application configuration because
+SSH timed out. Provisioning remains a separate authorized operator action. Even after provision, the
+secret does not constitute the institutional approval required to enable Follow-Ups. Ensure no
+competing deploy/freeze or active work, and retain the normal independent backup policy. CORR-5 made
+no deployment, migration, seeding, secret operation, restart or live configuration change.

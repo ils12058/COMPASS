@@ -588,12 +588,39 @@ def test_work_and_notifications_are_current_and_content_minimized(world, setting
 
 
 def test_followup_external_delivery_is_off_by_default(world, settings):
-    from compass.notifications.models import EmailDelivery, Notification
+    from compass.notifications.models import EmailDelivery, Notification, PushDelivery
+    from compass.notifications.services import list_my_notifications, unread_count_for
 
     settings.GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = False
     item = create(world)
-    assert Notification.objects.filter(target_id=item.pk).count() == 1
+    notice = Notification.objects.get(target_id=item.pk)
+    assert notice in list_my_notifications(actor=world[0]).items
+    assert unread_count_for(actor=world[0]) == 1
     assert not EmailDelivery.objects.filter(notification__target_id=item.pk).exists()
+    assert not PushDelivery.objects.filter(notification__target_id=item.pk).exists()
+
+
+def test_pending_followup_email_is_suppressed_after_external_pause(world, settings):
+    from unittest.mock import patch
+
+    from compass.notifications.delivery import deliver_email_delivery
+    from compass.notifications.models import EmailDelivery, EmailDeliveryStatus, Notification
+    from compass.notifications.services import list_my_notifications, unread_count_for
+
+    settings.GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = True
+    item = create(world)
+    notice = Notification.objects.get(target_id=item.pk)
+    delivery = EmailDelivery.objects.get(notification=notice)
+
+    settings.GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = False
+    with patch("compass.notifications.delivery.Mailer") as mailer:
+        assert deliver_email_delivery(delivery.pk) == "skipped"
+        mailer.assert_not_called()
+
+    delivery.refresh_from_db()
+    assert delivery.status == EmailDeliveryStatus.CANCELLED
+    assert notice in list_my_notifications(actor=world[0]).items
+    assert unread_count_for(actor=world[0]) == 1
 
 
 def test_material_due_change_has_new_occurrence_and_activity_does_not_notify(world, settings):
