@@ -6,7 +6,8 @@ Three groups, all source-controlled and deterministic (no RNG):
 * ACTION_READY (26): one clear, evaluator-owned pending action each, so two evaluators never
   need the same Student.
 * BACKGROUND (65): a mostly quiet population that gives reports, rosters and filters realistic
-  variety across every campus. One background account is disabled for negative tests.
+  variety across every campus. One background account is disabled for negative tests, and seven
+  (``PROMOTED_BACKGROUND``) are UAT-ready so every College is represented in the 40-person UAT.
 
 Every name, ``STG-S-…`` identifier and address is fictional. Programs come from the canonical
 Organization catalog; nothing here invents an academic option.
@@ -14,6 +15,7 @@ Organization catalog; nothing here invents an academic option.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 from .identities import AuthPlan, Lifecycle, StudentGroup, StudentSpec, Suitability
@@ -706,6 +708,43 @@ BACKGROUND_ROWS = (
 DISABLED_STUDENT_KEY = "bg_65"
 # Current Students who also completed last year's Inventory (one annual record per year).
 PREVIOUS_YEAR_ORDINALS = frozenset({6, 11, 16, 48, 51})
+# Background Students promoted to UAT-ready so the 40-person allocation reaches the finalized
+# per-College Student distribution. Only suitability and catalog text change: each keeps its seeded
+# identity, College affiliation, enrollment, Inventory and existing records. (label, summary)
+PROMOTED_BACKGROUND = {
+    "bg_47": (
+        "COENG Student ready to book a first Counseling session",
+        "Submitted Inventory and no Appointment: books Counseling with counselor_a.",
+    ),
+    "bg_54": (
+        "CFAST Student receiving a GCO-assisted Good Moral request",
+        "Submitted Inventory and no request: follows the request counselor_c starts (CNS-GM-04) "
+        "and opens an Office conversation.",
+    ),
+    "bg_55": (
+        "CFAST Student with a completed session awaiting feedback",
+        "Completed in-person session with counselor_c and an open feedback invitation.",
+    ),
+    "bg_56": (
+        "CANR Student ready to book a first Counseling session",
+        "Submitted Inventory and no Appointment: books Counseling with counselor_c.",
+    ),
+    "bg_58": (
+        "COTT Student eligible to request a Good Moral certificate",
+        "Submitted Inventory and no Good Moral request: requests a current-Student certificate.",
+    ),
+    "bg_59": (
+        "COTT Student with an upcoming session to reschedule",
+        "Upcoming in-person Appointment with counselor_c that can be rescheduled.",
+    ),
+    "bg_60": (
+        "Entienza Student ready to book a first Counseling session",
+        "Submitted Inventory and no Appointment: books Counseling with counselor_c.",
+    ),
+}
+PROMOTED_LIMITATIONS = {
+    "bg_54": "Run CNS-GM-04 before STU-GM-08: a self-service request blocks the assisted one.",
+}
 
 
 def _year_levels(year: int, state: str, lifecycle: Lifecycle, ordinal: int):
@@ -808,7 +847,23 @@ def _background() -> tuple[StudentSpec, ...]:
                 ),
             )
         )
-    return tuple(specs)
+    return tuple(_promoted(spec) for spec in specs)
+
+
+def _promoted(spec: StudentSpec) -> StudentSpec:
+    if spec.key not in PROMOTED_BACKGROUND:
+        return spec
+    label, summary = PROMOTED_BACKGROUND[spec.key]
+    return replace(
+        spec,
+        label=label,
+        suitability=Suitability.PARTICIPANT,
+        summary=summary,
+        limitations=PROMOTED_LIMITATIONS.get(
+            spec.key,
+            "Single-use action: once performed, a rerun does not restore the initial state.",
+        ),
+    )
 
 
 ACTION_READY_STUDENTS = _action_ready()
@@ -832,6 +887,7 @@ __all__ = [
     "ONBOARDING",
     "POPULATION_STUDENTS",
     "PREVIOUS_YEAR",
+    "PROMOTED_BACKGROUND",
     "RECENT_GRADUATE",
     "REFERRED",
     "RICH_STUDENTS",
