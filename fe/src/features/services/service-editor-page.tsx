@@ -538,6 +538,10 @@ function ServiceForm({
       </PanelSection>
 
       <PanelSection title="Provider coverage" titleId="service-provider-heading">
+        <p className="mt-3 max-w-3xl text-xs leading-5 text-muted">
+          Counselor coverage applies to individual appointments and future fixed-date
+          appointments. Group-session organizers and facilitators will be managed separately.
+        </p>
         <dl className="mt-4">
           <dt className="text-xs font-semibold uppercase tracking-wide text-muted">Provider type</dt>
           <dd className="mt-1 text-sm text-ink">Counselor</dd>

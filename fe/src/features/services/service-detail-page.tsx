@@ -327,6 +327,10 @@ export function ServiceDetailPage() {
         </PanelSection>
 
         <PanelSection title="Provider coverage" titleId="service-provider-heading">
+          <p className="mt-3 text-xs leading-5 text-muted">
+            These are individual appointment providers. Group-session organizers and
+            facilitators are configured separately when event scheduling is available.
+          </p>
           <dl className="mt-4 grid gap-5 sm:grid-cols-2">
             <Fact label="Provider type">Counselor</Fact>
             <Fact label="Coverage">{serviceCoverageLabels[service.provider_coverage]}</Fact>
