@@ -8,15 +8,14 @@ from uuid import uuid4
 
 import pytest
 from cryptography.fernet import Fernet
-from django.db import IntegrityError, close_old_connections, transaction
-from django.test import override_settings
+from django.db import close_old_connections
 from django.utils import timezone
 
 from compass.accounts.models import Capability, UserCapabilityOverride
 from compass.audit.models import AuditEvent
 from compass.counseling.models import CounselingEncounter
-from compass.guidance_followups import policy, services
-from compass.guidance_followups.content import decrypt_text, encrypt_text
+from compass.guidance_followups import services
+from compass.guidance_followups.content import decrypt_text
 from compass.guidance_followups.errors import (
     FollowUpConflict,
     FollowUpContentUnavailable,
@@ -30,15 +29,11 @@ from compass.guidance_followups.models import (
     GuidanceFollowUp,
     GuidanceFollowUpEvent,
 )
-from compass.organization.models import (
-    StaffSupervision,
-    StudentAffiliation,
-)
+from compass.organization.models import StaffSupervision
 from compass.referrals.models import Referral
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.models import Service
-
-from tests.test_referrals import context, create_for, make_head, setup_scope, sync_policy
+from tests.test_referrals import context, create_for, setup_scope, sync_policy
 
 
 @pytest.fixture

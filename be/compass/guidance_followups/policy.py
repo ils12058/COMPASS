@@ -60,8 +60,8 @@ def require_source(actor, *, kind, source_id, student_id, manage=False):
             "counseling.manage_assigned" if manage else "counseling.view_assigned"
         ):
             raise FollowUpNotFound("The related record is not available.")
-        from compass.counseling.services import get_encounter_for_actor
         from compass.counseling.models import CounselingEncounter
+        from compass.counseling.services import get_encounter_for_actor
 
         item = CounselingEncounter.objects.filter(
             pk=source_id,
