@@ -29,6 +29,16 @@ REVIEWED_MIGRATIONS = {
     "service_catalog/0003_fixed_date_slots": (
         "ff54707a1d30f4f424e982f8913c6f896f7f021fe575154ce96075677a587381"
     ),
+    # CORR-1A/1B lifecycle protection, reviewed against live UAT data on 2026-10-18.
+    "group_sessions/0002_alter_groupsessionfacilitator_group_session": (
+        "185beaefa5296d82abd1c717c29c5d4662273bd7becbab01651d845133d3a9d3"
+    ),
+    "group_sessions/0003_group_session_scheduling_and_external_facilitators": (
+        "ebef7a189f9716dbe949b2591698bd99df295583b54ad26ab412958c6bae5d36"
+    ),
+    "service_catalog/0004_serviceappointmentslot_withdrawn_at_and_more": (
+        "7f1c9254ffe7b1249356c1628d2771f40753015b894e2f50e73e47766bb6f76e"
+    ),
 }
 
 

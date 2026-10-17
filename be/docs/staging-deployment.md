@@ -116,15 +116,56 @@ It does not permit arbitrary constraints, defaults, `RunPython`, or `RunSQL`:
 - `service_catalog.0003_fixed_date_slots` creates the new fixed-date slot table, indexes, and
   time-order constraint.
 
-All six migrations use Django's atomic migration behavior on PostgreSQL. The deployment stops
+### Reviewed CORR-1A/1B lifecycle exceptions (2026-10-18)
+
+Three further migrations from the CORR-1A/1B service-catalog work are source-digest pinned the same
+way. They are not additive: each changes Django-level delete behavior and installs PostgreSQL
+lifecycle triggers, and `group_sessions.0003` adds constraints that existing rows must satisfy.
+
+- `group_sessions.0002_alter_groupsessionfacilitator_group_session` changes the facilitator's
+  Group Session foreign key from `CASCADE` to `PROTECT` (Django-level only; the database constraint
+  stays `NO ACTION`) and installs a `BEFORE DELETE` trigger that refuses to delete Group Sessions.
+- `group_sessions.0003_group_session_scheduling_and_external_facilitators` keeps the facilitator
+  user column (`counselor_id`, renamed in Django only to `internal_user`) and makes it nullable for
+  external guests. It adds `schedule_revision` (existing rows `1`), `kind` (`INTERNAL`),
+  `external_display_name`, `display_name_snapshot` (backfilled from the user's name), and
+  `removed_at`. It replaces the old session/counselor uniqueness with an identity check, an
+  active-internal uniqueness rule and **at most one active lead per session**, and installs a
+  `BEFORE DELETE` trigger that turns facilitator deletion into `removed_at`.
+- `service_catalog.0004_serviceappointmentslot_withdrawn_at_and_more` adds nullable `withdrawn_at`,
+  changes the slot's appointment and Service foreign keys to Django `PROTECT`, creates the
+  append-only `ServiceAppointmentSlotBooking` history (unique slot/appointment), backfills one
+  history row per currently booked slot in batches of 500, and installs triggers that record
+  future bookings and refuse slot/history deletion.
+
+Live UAT evidence (read-only, 2026-10-18 UTC 21:19, before any of the three ran): `group_sessions`
+was at 0001 and `service_catalog` at 0003; there were 0 Group Sessions, facilitators, registrations
+and Fixed Slots; none of the five trigger function names existed; and the booking history table did
+not exist. The only data-dependent failure is the active-lead uniqueness in 0003. The deployed code
+assigns at most one lead per session (a single lead ID over deduplicated facilitators), so it cannot
+arise through the application, only through a manual database edit.
+
+`tests/test_corr_migration_rehearsal.py` rehearses the exact plan on PostgreSQL from the live state
+with representative rows (two Group Sessions with one and two facilitators, a registration, a booked
+and an open Fixed Slot). It verifies row preservation, the backfilled facilitator and booking history,
+each trigger, and the new constraints. It also proves the failure mode: if a session had two leads,
+0002 commits, 0003 rolls back completely (no new columns), and the plan continues forward once the
+data is reviewed. Because a failed `migrate` stops the deployment after the migration boundary with
+application services left stopped, check `SELECT group_session_id FROM
+group_sessions_groupsessionfacilitator WHERE is_lead GROUP BY 1 HAVING count(*) > 1` returns no rows
+immediately before dispatching a release that contains 0003.
+
+All nine migrations use Django's atomic migration behavior on PostgreSQL. The deployment stops
 application producers before applying them and never starts or recreates PostgreSQL or Redis.
 Each migration and its migration-history row commit together; an interrupted atomic migration is
 rolled back by PostgreSQL, while previously committed migrations remain recorded for forward
 recovery. The deployment does not roll back schema or restart an old application image after the
-migration boundary. Before the first live rollout, rehearse this exact six-migration plan on a
-disposable database with the canonical baseline and representative pre-existing appointments and
-bookable Services; record row-preservation, resulting pathway rows, transaction recovery, and
-observed migration duration in the execution report.
+migration boundary. Before the first live rollout of each reviewed plan, rehearse it on a
+disposable database with the canonical baseline and representative pre-existing rows; record
+row-preservation, resulting backfilled rows, transaction recovery, and observed migration duration
+in the execution report. The COMPASS-INT-FINAL six-migration plan was the first such rollout; the
+CORR-1A/1B plan's rehearsal is `tests/test_corr_migration_rehearsal.py` (about 7 seconds per full
+back-and-forward cycle with its representative rows on a local disposable PostgreSQL 17.11).
 
 Order for an accepted routine release:
 
