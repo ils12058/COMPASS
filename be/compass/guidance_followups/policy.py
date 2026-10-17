@@ -3,6 +3,7 @@ ndependent Follow-Up ACL, with type-specific source authorization.
 
 Follow-Up responsibility does not confer access to a source record.
 """
+
 from __future__ import annotations
 
 from compass.accounts.models import User
