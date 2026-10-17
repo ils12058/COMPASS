@@ -38,5 +38,5 @@ rotation; use record-bound codecs and tested backups. Existing canonical baselin
 and the new domain migration is explicitly registered. No baseline reset or data reseeding is needed.
 
 Validation evidence must identify exact commits. Source/UI integration does not imply Agent 2's
-Service Catalog has been reconciled: that work has not yet started. Final readiness requires the
+Service Catalog has been reconciled: Agent 2 is implementing those slices separately in Antigravity. Final readiness requires the
 separate My Work/notification slice, security/browser regression and combined exact-candidate tests.
