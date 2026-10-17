@@ -27,10 +27,26 @@ their scenarios cover Tracer completion and a new graduate Good Moral request. E
 identities, 91 scenario definitions and all 65 background Students are retained. There are now
 116 accounts and 94 scenarios (91 executable, three pending); no migration is needed.
 
-The generated Selection Guide proposes distinct keys for 1 Head, 3 Counselors, 2 GSS, 25 current
-Students, five graduated Alumni, 3 ITSO personnel and 1 DPO. Its 40 accounts exclude background,
-restricted and onboarding identities. Shared catalog and staff/Student scenario dependencies still
-need scheduling. Reserve participant accounts remain listed in the full Assignment Template.
+The allocation (`UAT_40_ALLOCATION` in `compass/staging_seed/manifest.py`) assigns distinct keys
+to 1 Head, 3 Counselors, 2 GSS, 25 current Students, five graduated Alumni, 3 ITSO personnel and
+1 DPO. The 25 current Students follow the finalized College distribution
+(`UAT_40_STUDENT_QUOTA`): 3 each from CCMS, CAS, CBPA, COENG, COED, CFAST and CANR, and 2 each
+from COTT and Entienza. The manifest refuses an allocation whose counts, College affiliations,
+lifecycles or credential plans disagree with it.
+
+To reach that distribution, seven background Students are promoted to UAT-ready
+(`PROMOTED_BACKGROUND` in `students.py`): `bg_47` (COENG), `bg_54` and `bg_55` (CFAST), `bg_56`
+(CANR), `bg_58` and `bg_59` (COTT) and `bg_60` (Entienza). Promotion changes only catalog text and
+assignment suitability, which seeding never reads; each account keeps its identity, College
+affiliation, enrollment, Inventory and existing records. Their eight scenarios (STU-APT-07..10,
+STU-GM-08/09, STU-MSG-03, STU-FB-02) start from those existing records, so an already-seeded
+database needs no write. Seven over-represented Main Campus Students (`first_year`, `second_year`,
+`ar_06`, `ar_11`, `ar_17`, `ar_18`, `ar_21`) stay UAT-ready reserves outside the 40. There are 116
+accounts and 102 scenarios (99 executable, three pending).
+
+Shared catalog and staff/Student scenario dependencies still need scheduling. Reserve participant
+accounts remain listed in the full Assignment Template; `COMPASS-UAT-40-ASSIGNMENTS.csv` lists
+exactly the 40 allocated accounts.
 
 This repository expansion does **not** apply itself to live staging. After a separate owner
 authorization, an incremental seed on the deployed canonical revision creates only missing
@@ -38,6 +54,7 @@ accounts and fixtures; it preserves completed UAT work and existing credentials.
 email domain/onboarding settings. Use `verify --allow-uat-changes` and `report --allow-uat-changes`
 for an active dataset. Obtain approval for exact participant keys before the separate
 `issue-credentials --account KEY` step; never use an unrestricted issuance command for this cohort.
+The Selection Guide prints the exact 40 `--account` arguments.
 
 ## Modes
 
@@ -45,7 +62,7 @@ for an active dataset. Obtain approval for exact participant keys before the sep
 | --- | --- | --- |
 | `seed` (default) | Yes | Create what is missing, reuse what exists, refuse conflicts. Never sets a password. |
 | `verify [--allow-uat-changes]` | No (read-only transaction) | Verify schema, configuration, accounts, routing, scenario initial states, workflow integrity, privacy and side effects. |
-| `report --output-dir DIR [--allow-uat-changes]` | No (database) | Verify, then generate the six UAT documents into `DIR`. Refuses to write if verification fails. |
+| `report --output-dir DIR [--allow-uat-changes]` | No (database) | Verify, then generate the seven UAT documents into `DIR`. Refuses to write if verification fails. |
 | `issue-credentials --output FILE [--account KEY …] [--reissue --confirm-reissue]` | Yes | Give participant accounts distinct credentials and write one protected handoff file. |
 
 ## Safety gates
@@ -201,7 +218,8 @@ their actions legitimately send) as warnings; structural failures still fail.
 | `staging-accounts.csv` | The same, one row per account, for spreadsheet filtering |
 | `UAT-ACCOUNT-SELECTION-GUIDE.md` | Recommended accounts per stakeholder role, conflicts and rules |
 | `UAT-SCENARIO-MATRIX.md` | Every scenario with route, initial state, action, expected result and readiness |
-| `UAT-ACCOUNT-ASSIGNMENT-TEMPLATE.csv` | Blank assignment worksheet (no evaluator identities) |
+| `UAT-ACCOUNT-ASSIGNMENT-TEMPLATE.csv` | Blank assignment worksheet for every UAT-ready account, reserves included (no evaluator identities) |
+| `COMPASS-UAT-40-ASSIGNMENTS.csv` | The exact 40-person allocation: reference, stakeholder, College / unit, key, ID, login email, role and scenarios; evaluator columns blank |
 | `STAGING-DATASET-v1-SUMMARY.md` | Counts and distributions read from the database |
 
 Documents never contain passwords, MFA secrets, tokens, confidential answers or counseling
@@ -241,9 +259,9 @@ before commit, so no other session observes a historical year as current.
 | Group | Count | Purpose |
 | --- | ---: | --- |
 | Rich scenario Students | 11 | Multi-domain stories (counseling, referrals, Call Slips, certificates, Exit Interviews, Graduate Tracer, onboarding, a former Student) |
-| Action-ready Students (`ar_01`…`ar_24`) | 24 | One evaluator-owned pending action each |
-| Background Students (`bg_01`…`bg_65`) | 65 | Quiet population across all six campuses for rosters, filters and reports; `bg_65` is disabled |
-| Staff (participants) | 10 | IT Administrator ×2, Head Guidance Counselor, Counselors ×3 (separate caseloads), Guidance Services Staff ×2, DPO ×2 |
+| Action-ready Students (`ar_01`…`ar_26`) | 26 | One evaluator-owned pending action each |
+| Background Students (`bg_01`…`bg_65`) | 65 | Quiet population across all six campuses for rosters, filters and reports; `bg_65` is disabled; seven are promoted to UAT-ready for the College distribution |
+| Staff (participants) | 11 | IT Administrator ×3, Head Guidance Counselor, Counselors ×3 (separate caseloads), Guidance Services Staff ×2, DPO ×2 |
 | Staff (restricted) | 3 | Disabled former staff, a Counselor without responsibility, an undesignated Institutional Officer |
 
 Counselor routing: `counselor_a` — Main CCMS, CAS, COENG; `counselor_b` — Main CBPA, Abaño COED;
