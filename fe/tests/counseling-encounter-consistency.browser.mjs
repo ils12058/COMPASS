@@ -192,8 +192,10 @@ await check("ecounseling-save-success-other-browser-zone", ePath, {
 });
 
 let releasePending;
+let pendingReceived;
+const pendingRequestReceived = new Promise((resolve) => { pendingReceived = resolve; });
 await check("ecounseling-pending-then-unconfirmed", ePath, session({ post: async ({ reply }, state) => {
-  await new Promise((resolve) => { releasePending = resolve; });
+  await new Promise((resolve) => { releasePending = resolve; pendingReceived(); });
   state.released = true;
   return reply({ error: { code: "synthetic_uncertain", message: "Synthetic uncertain result" } }, 503);
 } }), async (page, { requests }) => {
@@ -205,6 +207,16 @@ await check("ecounseling-pending-then-unconfirmed", ePath, session({ post: async
   assert.equal(await record.getByRole("button", { name: "Close dialog", exact: true }).count(), 0);
   await page.keyboard.press("Escape");
   await shown(record);
+  // Pending controls can render before the mocked HTTP handler starts.
+  let timeout;
+  try {
+    await Promise.race([
+      pendingRequestReceived,
+      new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error("Encounter request was not received")), 10000); }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
+  }
   releasePending();
   await shown(record.getByText(/We couldn’t confirm whether the encounter was recorded\. Check your encounters before trying again/));
   await page.keyboard.press("Escape");
