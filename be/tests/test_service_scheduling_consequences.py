@@ -402,6 +402,8 @@ def test_service_update_api_exposes_stable_review_required_code_and_acknowledgem
     assert blocked.json()["error"]["code"] == "service_scheduling_consequence_review_required"
     assert blocked.json()["error"]["details"] == {
         "existing_appointment_dependency_detected": True,
+        "existing_fixed_slot_dependency_detected": False,
+        "existing_group_session_dependency_detected": False,
         "provider_dependency_detected": False,
         "counseling_online_enabled": False,
     }

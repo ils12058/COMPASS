@@ -15042,6 +15042,20 @@
             "title": "Facilitator Ids",
             "type": "array"
           },
+          "facilitators": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/GroupSessionFacilitatorRequest"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facilitators"
+          },
           "lead_facilitator_id": {
             "anyOf": [
               {
@@ -15102,15 +15116,10 @@
         "title": "GroupSessionCreateRequest",
         "type": "object"
       },
-      "GroupSessionFacilitatorResponse": {
+      "GroupSessionFacilitatorCandidate": {
         "properties": {
-          "counselor_id": {
-            "format": "uuid",
-            "title": "Counselor Id",
-            "type": "string"
-          },
-          "counselor_name": {
-            "title": "Counselor Name",
+          "display_name": {
+            "title": "Display Name",
             "type": "string"
           },
           "id": {
@@ -15118,16 +15127,133 @@
             "title": "Id",
             "type": "string"
           },
-          "is_lead": {
-            "title": "Is Lead",
-            "type": "boolean"
+          "role": {
+            "title": "Role",
+            "type": "string"
           }
         },
         "required": [
           "id",
+          "display_name",
+          "role"
+        ],
+        "title": "GroupSessionFacilitatorCandidate",
+        "type": "object"
+      },
+      "GroupSessionFacilitatorKind": {
+        "enum": [
+          "INTERNAL",
+          "EXTERNAL"
+        ],
+        "title": "GroupSessionFacilitatorKind",
+        "type": "string"
+      },
+      "GroupSessionFacilitatorRequest": {
+        "properties": {
+          "external_display_name": {
+            "default": "",
+            "title": "External Display Name",
+            "type": "string"
+          },
+          "internal_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal User Id"
+          },
+          "is_lead": {
+            "default": false,
+            "title": "Is Lead",
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/GroupSessionFacilitatorKind"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "GroupSessionFacilitatorRequest",
+        "type": "object"
+      },
+      "GroupSessionFacilitatorResponse": {
+        "properties": {
+          "counselor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counselor Id"
+          },
+          "counselor_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counselor Name"
+          },
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "external_display_name": {
+            "title": "External Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "internal_user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Internal User Id"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "is_lead": {
+            "title": "Is Lead",
+            "type": "boolean"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/GroupSessionFacilitatorKind"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "internal_user_id",
+          "external_display_name",
+          "display_name",
+          "is_current",
+          "is_lead",
           "counselor_id",
-          "counselor_name",
-          "is_lead"
+          "counselor_name"
         ],
         "title": "GroupSessionFacilitatorResponse",
         "type": "object"
@@ -15187,9 +15313,9 @@
           "total_capacity",
           "total_registrations",
           "cancelled_registrations",
-          "capacity_utilization_percent",
           "attended_count",
           "absent_count",
+          "capacity_utilization_percent",
           "attendance_rate_percent"
         ],
         "title": "GroupSessionMetricsResponse",
@@ -15235,14 +15361,31 @@
             ],
             "title": "Cancelled At"
           },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
           },
           "registered_at": {
-            "format": "date-time",
-            "title": "Registered At",
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registered At"
+          },
+          "service_id": {
+            "format": "uuid",
+            "title": "Service Id",
             "type": "string"
           },
           "session_id": {
@@ -15254,18 +15397,37 @@
             "title": "Session Title",
             "type": "string"
           },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
           "status": {
             "title": "Status",
             "type": "string"
           },
           "student_email": {
-            "title": "Student Email",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Email"
           },
           "student_id": {
-            "format": "uuid",
-            "title": "Student Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Id"
           },
           "student_name": {
             "title": "Student Name",
@@ -15276,6 +15438,9 @@
           "id",
           "session_id",
           "session_title",
+          "service_id",
+          "starts_at",
+          "ends_at",
           "student_id",
           "student_name",
           "student_email",
@@ -15294,6 +15459,30 @@
           "active_registrations_count": {
             "title": "Active Registrations Count",
             "type": "integer"
+          },
+          "can_access_participants": {
+            "title": "Can Access Participants",
+            "type": "boolean"
+          },
+          "can_complete": {
+            "title": "Can Complete",
+            "type": "boolean"
+          },
+          "can_export_roster": {
+            "title": "Can Export Roster",
+            "type": "boolean"
+          },
+          "can_manage": {
+            "title": "Can Manage",
+            "type": "boolean"
+          },
+          "can_record_attendance": {
+            "title": "Can Record Attendance",
+            "type": "boolean"
+          },
+          "can_view": {
+            "title": "Can View",
+            "type": "boolean"
           },
           "cancellation_reason": {
             "title": "Cancellation Reason",
@@ -15378,6 +15567,10 @@
             ],
             "title": "Reg Opens At"
           },
+          "schedule_revision": {
+            "title": "Schedule Revision",
+            "type": "integer"
+          },
           "service_id": {
             "format": "uuid",
             "title": "Service Id",
@@ -15434,7 +15627,14 @@
           "cancellation_reason",
           "cancelled_at",
           "version",
+          "schedule_revision",
           "facilitators",
+          "can_view",
+          "can_manage",
+          "can_complete",
+          "can_access_participants",
+          "can_record_attendance",
+          "can_export_roster",
           "created_at",
           "updated_at"
         ],
@@ -15501,6 +15701,20 @@
               }
             ],
             "title": "Facilitator Ids"
+          },
+          "facilitators": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/GroupSessionFacilitatorRequest"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Facilitators"
           },
           "lead_facilitator_id": {
             "anyOf": [
@@ -15574,6 +15788,17 @@
           }
         },
         "title": "GroupSessionUpdateRequest",
+        "type": "object"
+      },
+      "GroupSessionWithdrawRequest": {
+        "properties": {
+          "reason": {
+            "default": "",
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "title": "GroupSessionWithdrawRequest",
         "type": "object"
       },
       "GuidanceAppointmentContext": {
@@ -19755,6 +19980,10 @@
             "title": "Id",
             "type": "string"
           },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
           "is_read": {
             "title": "Is Read",
             "type": "boolean"
@@ -19815,7 +20044,8 @@
           "target_id",
           "created_at",
           "read_at",
-          "is_read"
+          "is_read",
+          "is_current"
         ],
         "title": "NotificationResponse",
         "type": "object"
@@ -24445,6 +24675,10 @@
             "title": "Ends At",
             "type": "string"
           },
+          "has_booking_history": {
+            "title": "Has Booking History",
+            "type": "boolean"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -24487,6 +24721,18 @@
               }
             ],
             "title": "Student Name"
+          },
+          "withdrawn_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Withdrawn At"
           }
         },
         "required": [
@@ -24498,6 +24744,7 @@
           "starts_at",
           "ends_at",
           "is_published",
+          "has_booking_history",
           "is_booked"
         ],
         "title": "ServiceSlotResponse",
@@ -25341,6 +25588,10 @@
       },
       "StudentGroupSessionResponse": {
         "properties": {
+          "can_register": {
+            "title": "Can Register",
+            "type": "boolean"
+          },
           "capacity": {
             "title": "Capacity",
             "type": "integer"
@@ -25402,6 +25653,17 @@
             ],
             "title": "Reg Opens At"
           },
+          "registration_block_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Registration Block Reason"
+          },
           "seats_remaining": {
             "title": "Seats Remaining",
             "type": "integer"
@@ -25445,6 +25707,8 @@
           "seats_remaining",
           "is_full",
           "is_registered_by_me",
+          "can_register",
+          "registration_block_reason",
           "facilitators"
         ],
         "title": "StudentGroupSessionResponse",
@@ -45018,6 +45282,84 @@
         ]
       }
     },
+    "/api/v1/group-sessions/facilitator-candidates": {
+      "get": {
+        "operationId": "groupSessionsListFacilitatorCandidates",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/GroupSessionFacilitatorCandidate"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "List facilitator candidates within the actor's direct scope",
+        "tags": [
+          "group-sessions"
+        ]
+      }
+    },
     "/api/v1/group-sessions/me/registrations": {
       "get": {
         "operationId": "groupSessionsGetMyRegistrations",
@@ -45179,85 +45521,6 @@
       }
     },
     "/api/v1/group-sessions/{session_id}": {
-      "delete": {
-        "operationId": "groupSessionsDelete",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "session_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Session Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Delete a draft group session",
-        "tags": [
-          "group-sessions"
-        ]
-      },
       "get": {
         "operationId": "groupSessionsGetDetail",
         "parameters": [
@@ -46135,6 +46398,104 @@
           }
         ],
         "summary": "Export participant roster CSV",
+        "tags": [
+          "group-sessions"
+        ]
+      }
+    },
+    "/api/v1/group-sessions/{session_id}/withdraw": {
+      "post": {
+        "operationId": "groupSessionsWithdraw",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "session_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Session Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GroupSessionWithdrawRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GroupSessionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Withdraw a draft group session",
         "tags": [
           "group-sessions"
         ]
@@ -61684,6 +62045,121 @@
         ]
       }
     },
+    "/api/v1/services/{service_id}/operational-provider-candidates": {
+      "get": {
+        "description": "Read only qualified providers within the caller's Appointment responsibility scope.",
+        "operationId": "servicesListOperationalProviderCandidates",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Service Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceProviderCandidatePage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Services List Operational Provider Candidates",
+        "tags": [
+          "services"
+        ]
+      }
+    },
     "/api/v1/services/{service_id}/providers": {
       "get": {
         "operationId": "servicesGetProviders",
@@ -62140,95 +62616,6 @@
       }
     },
     "/api/v1/services/{service_id}/slots/{slot_id}": {
-      "delete": {
-        "operationId": "servicesDeleteSlot",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "service_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Service Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "slot_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Slot Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": "No Content"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Services Delete Slot",
-        "tags": [
-          "services"
-        ]
-      },
       "patch": {
         "operationId": "servicesUpdateSlot",
         "parameters": [
@@ -62429,6 +62816,104 @@
           }
         ],
         "summary": "Services Book Slot",
+        "tags": [
+          "services"
+        ]
+      }
+    },
+    "/api/v1/services/{service_id}/slots/{slot_id}/withdraw": {
+      "post": {
+        "operationId": "servicesWithdrawSlot",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "service_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Service Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "slot_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Slot Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceSlotResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Withdraw a fixed-date appointment slot",
         "tags": [
           "services"
         ]

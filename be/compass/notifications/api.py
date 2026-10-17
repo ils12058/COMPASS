@@ -15,7 +15,7 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
 from .models import Notification
-from .policy import NotificationPolicy, NotificationTargetType
+from .policy import NotificationEvent, NotificationPolicy, NotificationTargetType
 from .push import (
     InvalidPushSubscription,
     register_subscription,
@@ -53,6 +53,7 @@ class NotificationResponse(StrictSchema):
     created_at: datetime
     read_at: datetime | None
     is_read: bool
+    is_current: bool
 
 
 class NotificationPageResponse(StrictSchema):
@@ -125,17 +126,31 @@ def _raise(exc: NotificationError) -> NoReturn:
 
 
 def _view(item: Notification) -> NotificationResponse:
+    is_current = True
+    title = item.title
+    message = item.message
+    if item.event_code == NotificationEvent.GROUP_SESSION_RESCHEDULED:
+        from compass.notifications.current import notification_is_current
+
+        is_current = notification_is_current(item)
+        if not is_current:
+            title = "Group Session schedule updated again"
+            message = (
+                "The schedule has changed since this notice was sent. "
+                "Open the event to review its current details."
+            )
     return NotificationResponse(
         id=item.pk,
         event_code=item.event_code,
         policy=item.policy,
-        title=item.title,
-        message=item.message,
+        title=title,
+        message=message,
         target_type=item.target_type or None,
         target_id=item.target_id,
         created_at=item.created_at,
         read_at=item.read_at,
         is_read=item.is_read,
+        is_current=is_current,
     )
 
 

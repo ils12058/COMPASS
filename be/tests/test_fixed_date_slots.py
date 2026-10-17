@@ -7,15 +7,23 @@ from datetime import datetime, time, timedelta
 
 import pytest
 from django.core.management import call_command
+from django.db.models.deletion import ProtectedError
 from django.test import Client
 from django.utils import timezone
 
 from compass.accounts.models import Role, User
 from compass.appointments.models import AppointmentStatus
+from compass.appointments.services import (
+    AppointmentTimeConflict,
+    cancel_appointment,
+    complete_appointment,
+    create_student_appointment,
+    mark_appointment_no_show,
+)
 from compass.audit.actions import (
     SERVICE_SLOT_CREATED,
-    SERVICE_SLOT_DELETED,
     SERVICE_SLOT_UPDATED,
+    SERVICE_SLOT_WITHDRAWN,
 )
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
@@ -23,25 +31,27 @@ from compass.authentication.sessions import create_auth_session
 from compass.availability.services import replace_office_weekly, replace_provider_weekly
 from compass.common.institutional_time import institution_zone
 from compass.notifications.models import Notification
+from compass.organization.models import StaffSupervision
 from compass.service_catalog.fixed_slots_services import (
     CounselorNotQualifiedForService,
     DeliveryModeNotSupported,
     SlotAlreadyBookedError,
-    SlotCannotBeDeletedError,
     SlotCannotBeModifiedError,
     SlotConflictError,
     SlotTimeInvalid,
     book_fixed_slot,
     create_fixed_slot,
-    delete_fixed_slot,
     is_slot_booked,
     list_student_bookable_slots,
     update_fixed_slot,
+    withdraw_fixed_slot,
 )
 from compass.service_catalog.models import (
     BookingPathwayCode,
     ServiceAppointmentSlot,
+    ServiceAppointmentSlotBooking,
 )
+from compass.service_catalog.scheduling import provider_schedule_conflict
 from compass.service_catalog.services import (
     create_service,
     set_service_active,
@@ -207,7 +217,7 @@ def test_create_fixed_slot_validation_and_audit(env):
         )
 
     # Overlapping slot for same counselor
-    with pytest.raises(SlotConflictError, match="another fixed slot scheduled"):
+    with pytest.raises(SlotConflictError, match="overlapping published Fixed Slot"):
         create_fixed_slot(
             service_id=service.pk,
             provider_id=counselor.pk,
@@ -217,6 +227,122 @@ def test_create_fixed_slot_validation_and_audit(env):
             actor=counselor,
             context=ctx,
         )
+
+
+@pytest.mark.django_db
+def test_gss_operational_provider_picker_uses_appointment_scope_not_services_manage(env):
+    gss = env["gss"]
+    counselor = env["counselor"]
+    service = env["service"]
+    outsider = make_user("unscoped-gss-provider-picker@example.edu", "GUIDANCE_SERVICES_STAFF")
+    StaffSupervision.objects.create(staff=gss, supervisor=counselor)
+    assert gss.has_capability("appointments.manage")
+    assert not gss.has_capability("services.manage")
+
+    client = auth_client(gss)
+    candidates = client.get(f"/api/v1/services/{service.pk}/operational-provider-candidates")
+    assert candidates.status_code == 200, candidates.content
+    assert {row["id"] for row in candidates.json()["items"]} == {str(counselor.pk)}
+
+    legacy = client.get(f"/api/v1/services/{service.pk}/providers")
+    assert legacy.status_code == 403
+
+    outside_client = auth_client(outsider)
+    out_of_scope = outside_client.get(
+        f"/api/v1/services/{service.pk}/operational-provider-candidates"
+    )
+    assert out_of_scope.status_code == 403
+
+
+@pytest.mark.django_db
+def test_flexible_appointments_respect_only_open_published_fixed_slot_commitments(env):
+    counselor = env["counselor"]
+    student = env["student_1"]
+    service = env["service"]
+    context = AuditContext.user(student)
+    start = future_local_start(hour=10)
+
+    published = create_fixed_slot(
+        service_id=service.pk,
+        provider_id=counselor.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=start,
+        actor=counselor,
+        context=AuditContext.user(counselor),
+    )
+    with pytest.raises(AppointmentTimeConflict, match="Fixed Slot"):
+        create_student_appointment(
+            student=student,
+            service_id=service.pk,
+            provider_id=counselor.pk,
+            delivery_mode="IN_PERSON",
+            starts_at=start,
+            context=context,
+            now=start - timedelta(days=1),
+        )
+
+    # Half-open boundaries allow a flexible Appointment to start exactly when the slot ends.
+    create_student_appointment(
+        student=student,
+        service_id=service.pk,
+        provider_id=counselor.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=start + timedelta(hours=1),
+        context=context,
+        now=start - timedelta(days=1),
+    )
+
+    withdraw_fixed_slot(
+        slot_id=published.pk,
+        actor=counselor,
+        context=AuditContext.user(counselor),
+    )
+    create_student_appointment(
+        student=student,
+        service_id=service.pk,
+        provider_id=counselor.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=start,
+        context=context,
+        now=start - timedelta(days=1),
+    )
+
+
+@pytest.mark.django_db
+def test_booked_fixed_slot_is_counted_as_its_canonical_appointment_only(env):
+    counselor = env["counselor"]
+    student = env["student_1"]
+    slot = create_fixed_slot(
+        service_id=env["service"].pk,
+        provider_id=counselor.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=future_local_start(hour=10),
+        actor=counselor,
+        context=AuditContext.user(counselor),
+    )
+    appointment = book_fixed_slot(
+        slot_id=slot.pk,
+        student=student,
+        context=AuditContext.user(student),
+    )
+
+    assert (
+        provider_schedule_conflict(
+            provider_id=counselor.pk,
+            starts_at=appointment.starts_at,
+            ends_at=appointment.ends_at,
+        )
+        == "appointment"
+    )
+    assert (
+        provider_schedule_conflict(
+            provider_id=counselor.pk,
+            starts_at=appointment.starts_at,
+            ends_at=appointment.ends_at,
+            exclude_appointment_id=appointment.pk,
+        )
+        is None
+    )
 
 
 @pytest.mark.django_db
@@ -253,8 +379,8 @@ def test_create_fixed_slot_unqualified_counselor_and_unsupported_mode(env):
             delivery_mode="IN_PERSON",
             starts_at=start,
             ends_at=start + timedelta(minutes=60),
-            actor=admin,
-            context=ctx,
+            actor=counselor_b,
+            context=AuditContext.user(counselor_b),
         )
 
     # Delivery mode ONLINE is not supported by service_sel
@@ -265,13 +391,13 @@ def test_create_fixed_slot_unqualified_counselor_and_unsupported_mode(env):
             delivery_mode="ONLINE",
             starts_at=start,
             ends_at=start + timedelta(minutes=60),
-            actor=admin,
-            context=ctx,
+            actor=counselor,
+            context=AuditContext.user(counselor),
         )
 
 
 @pytest.mark.django_db
-def test_update_and_delete_slot_protection(env):
+def test_update_and_withdraw_slot_protection(env):
     counselor = env["counselor"]
     service = env["service"]
     student = env["student_1"]
@@ -321,11 +447,14 @@ def test_update_and_delete_slot_protection(env):
             starts_at=future_local_start(hour=13),
         )
 
-    # Attempt to delete booked slot must fail
-    with pytest.raises(SlotCannotBeDeletedError):
-        delete_fixed_slot(slot_id=slot.pk, actor=counselor, context=ctx)
+    # Withdrawal removes the slot from booking while retaining its Appointment link.
+    withdrawn = withdraw_fixed_slot(slot_id=slot.pk, actor=counselor, context=ctx)
+    assert withdrawn.pk == slot.pk
+    assert withdrawn.withdrawn_at is not None
+    assert withdrawn.current_appointment_id == appt.pk
+    assert ServiceAppointmentSlotBooking.objects.filter(slot=slot, appointment=appt).exists()
 
-    # Deleting unbooked slot succeeds
+    # Unbooked slots are withdrawn in place and repeated requests do not duplicate audits.
     other_start = future_local_start(hour=15)
     unbooked_slot = create_fixed_slot(
         service_id=service.pk,
@@ -336,11 +465,214 @@ def test_update_and_delete_slot_protection(env):
         actor=counselor,
         context=ctx,
     )
-    delete_fixed_slot(slot_id=unbooked_slot.pk, actor=counselor, context=ctx)
-    assert not ServiceAppointmentSlot.objects.filter(pk=unbooked_slot.pk).exists()
-    assert AuditEvent.objects.filter(
-        action=SERVICE_SLOT_DELETED, target_id=unbooked_slot.pk
+    withdraw_fixed_slot(slot_id=unbooked_slot.pk, actor=counselor, context=ctx)
+    withdraw_fixed_slot(slot_id=unbooked_slot.pk, actor=counselor, context=ctx)
+    assert ServiceAppointmentSlot.objects.filter(pk=unbooked_slot.pk).exists()
+    assert ServiceAppointmentSlot.objects.get(pk=unbooked_slot.pk).withdrawn_at is not None
+    assert (
+        AuditEvent.objects.filter(action=SERVICE_SLOT_WITHDRAWN, target_id=unbooked_slot.pk).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_fixed_slot_concurrent_withdrawal_records_one_transition(env):
+    from concurrent.futures import ThreadPoolExecutor
+
+    from django.db import connections
+
+    counselor = env["counselor"]
+    service = env["service"]
+    slot = create_fixed_slot(
+        service_id=service.pk,
+        provider_id=counselor.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=future_local_start(hour=16),
+        actor=counselor,
+        context=AuditContext.user(counselor),
+    )
+
+    def withdraw() -> datetime:
+        try:
+            result = withdraw_fixed_slot(
+                slot_id=slot.pk,
+                actor=counselor,
+                context=AuditContext.user(counselor),
+            )
+            return result.withdrawn_at
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        transition_times = list(pool.map(lambda _: withdraw(), range(2)))
+
+    assert transition_times[0] == transition_times[1]
+    assert (
+        AuditEvent.objects.filter(
+            action=SERVICE_SLOT_WITHDRAWN,
+            target_id=slot.pk,
+        ).count()
+        == 1
+    )
+
+
+@pytest.mark.django_db(transaction=True)
+def test_postgresql_prevents_physical_deletion_of_unbooked_fixed_slot(env):
+    from django.db import DatabaseError, connection, transaction
+
+    if connection.vendor != "postgresql":
+        pytest.skip("The direct-delete guard is PostgreSQL-specific.")
+
+    counselor = env["counselor"]
+    service = env["service"]
+    slot = create_fixed_slot(
+        service_id=service.pk,
+        provider_id=counselor.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=future_local_start(hour=15),
+        actor=counselor,
+        context=AuditContext.user(counselor),
+    )
+    table = connection.ops.quote_name(ServiceAppointmentSlot._meta.db_table)
+    primary_key = connection.ops.quote_name(ServiceAppointmentSlot._meta.pk.column)
+
+    with pytest.raises(DatabaseError, match="operational records and cannot be deleted"):
+        with transaction.atomic():
+            with connection.cursor() as cursor:
+                cursor.execute(f"DELETE FROM {table} WHERE {primary_key} = %s", [slot.pk])
+
+    assert ServiceAppointmentSlot.objects.filter(pk=slot.pk).exists()
+
+
+@pytest.mark.django_db(transaction=True)
+def test_postgresql_records_legacy_slot_pointer_changes_in_booking_history(env):
+    from django.db import connection
+
+    if connection.vendor != "postgresql":
+        pytest.skip("The rolling-deployment compatibility trigger is PostgreSQL-specific.")
+
+    counselor = env["counselor"]
+    service = env["service"]
+    target_slot = create_fixed_slot(
+        service_id=service.pk,
+        provider_id=counselor.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=future_local_start(hour=9),
+        actor=counselor,
+        context=AuditContext.user(counselor),
+    )
+    source_slot = create_fixed_slot(
+        service_id=service.pk,
+        provider_id=counselor.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=future_local_start(hour=11),
+        actor=counselor,
+        context=AuditContext.user(counselor),
+    )
+    appointment = book_fixed_slot(
+        slot_id=source_slot.pk,
+        student=env["student_1"],
+        context=AuditContext.user(env["student_1"]),
+    )
+
+    # Simulate a still-running prior application writing only current_appointment.
+    ServiceAppointmentSlot.objects.filter(pk=target_slot.pk).update(
+        current_appointment_id=appointment.pk
+    )
+
+    assert ServiceAppointmentSlotBooking.objects.filter(
+        slot=target_slot,
+        appointment=appointment,
     ).exists()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "status",
+    [AppointmentStatus.CANCELLED, AppointmentStatus.COMPLETED, AppointmentStatus.NO_SHOW],
+)
+def test_fixed_slot_preserves_booking_provenance_after_appointment_lifecycle(env, status):
+    counselor = env["counselor"]
+    student = env["student_1"]
+    service = env["service"]
+    ctx = AuditContext.user(counselor)
+    starts_at = future_local_start(hour=12)
+    slot = create_fixed_slot(
+        service_id=service.pk,
+        provider_id=counselor.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=starts_at,
+        actor=counselor,
+        context=ctx,
+    )
+    appointment = book_fixed_slot(
+        slot_id=slot.pk,
+        student=student,
+        context=AuditContext.user(student),
+    )
+    if status == AppointmentStatus.CANCELLED:
+        cancel_appointment(
+            appointment_id=appointment.pk,
+            actor=counselor,
+            administrative=True,
+            context=ctx,
+            now=starts_at - timedelta(hours=1),
+        )
+    elif status == AppointmentStatus.COMPLETED:
+        complete_appointment(
+            appointment_id=appointment.pk,
+            actor=counselor,
+            context=ctx,
+            now=starts_at,
+        )
+    else:
+        mark_appointment_no_show(
+            appointment_id=appointment.pk,
+            actor=counselor,
+            context=ctx,
+            now=starts_at + timedelta(hours=1),
+        )
+
+    slot.refresh_from_db()
+    assert slot.current_appointment_id == appointment.pk
+    assert ServiceAppointmentSlotBooking.objects.filter(slot=slot, appointment=appointment).exists()
+    with pytest.raises(SlotCannotBeModifiedError):
+        update_fixed_slot(
+            slot_id=slot.pk,
+            actor=counselor,
+            context=ctx,
+            starts_at=starts_at + timedelta(hours=2),
+        )
+    with pytest.raises(ProtectedError):
+        slot.delete()
+    with pytest.raises(ProtectedError):
+        appointment.delete()
+
+
+@pytest.mark.django_db
+def test_fixed_slot_lifecycle_migration_refuses_rollback_while_slot_history_exists(env):
+    from importlib import import_module
+
+    from django.apps import apps
+    from django.db import connection
+
+    counselor = env["counselor"]
+    service = env["service"]
+    create_fixed_slot(
+        service_id=service.pk,
+        provider_id=counselor.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=future_local_start(hour=13),
+        actor=counselor,
+        context=AuditContext.user(counselor),
+    )
+    migration = import_module(
+        "compass.service_catalog.migrations.0004_serviceappointmentslot_withdrawn_at_and_more"
+    )
+
+    with connection.schema_editor() as schema_editor:
+        with pytest.raises(RuntimeError, match="slot or booking history exists"):
+            migration.prevent_slot_history_rollback(apps, schema_editor)
 
 
 @pytest.mark.django_db
@@ -511,20 +843,24 @@ def test_api_staff_fixed_slot_crud_and_student_booking(env):
     assert booked_slot["is_booked"] is True
     assert booked_slot["appointment_reference_code"] == booking_data["reference_code"]
 
-    # 6. Staff cannot delete booked slot
+    # 6. The former destructive DELETE route no longer exists.
     del_res = staff_client.delete(
         f"/api/v1/services/{service.pk}/slots/{slot_id}",
         **csrf(staff_client),
     )
-    assert del_res.status_code == 409
-    assert del_res.json()["error"]["code"] == "slot_cannot_be_deleted"
+    assert del_res.status_code in (404, 405)
+    assert ServiceAppointmentSlot.objects.filter(pk=slot_id).exists()
 
 
 @pytest.mark.django_db
 def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolation(env):
+    from compass.accounts.models import Designation
+    from compass.organization.models import StaffSupervision
+
     admin = env["admin"]
     counselor = env["counselor"]
     counselor_b = env["counselor_b"]
+    gss = env["gss"]
     service = env["service"]
     student = env["student_1"]
 
@@ -532,6 +868,7 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
     no_mfa_counselor = auth_client(counselor, recent_mfa=False)
     counselor_client = auth_client(counselor, recent_mfa=True)
     counselor_b_client = auth_client(counselor_b, recent_mfa=True)
+    gss_client = auth_client(gss, recent_mfa=True)
     student_client = auth_client(student, recent_mfa=False)
 
     start = future_local_start(hour=15)
@@ -582,7 +919,7 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
     )
     assert book_res.status_code == 200
 
-    # 4. Owning counselor sees student details; out-of-scope counselor_b sees redacted details
+    # 4. The owning Counselor sees booking details; an out-of-scope Counselor cannot list the slot.
     owner_slots = counselor_client.get(f"/api/v1/services/{service.pk}/slots").json()
     owner_slot = next(s for s in owner_slots if s["id"] == slot_id)
     assert owner_slot["is_booked"] is True
@@ -591,11 +928,51 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
     assert owner_slot["appointment_reference_code"] is not None
 
     other_slots = counselor_b_client.get(f"/api/v1/services/{service.pk}/slots").json()
-    other_slot = next(s for s in other_slots if s["id"] == slot_id)
-    assert other_slot["is_booked"] is True
-    assert other_slot["student_name"] is None
-    assert other_slot["appointment_id"] is None
-    assert other_slot["appointment_reference_code"] is None
+    assert all(slot["id"] != slot_id for slot in other_slots)
+
+    # A GSS may manage only the directly supervised Counselor's slots, and does not
+    # inherit that Counselor's Appointment participant-data access.
+    StaffSupervision.objects.create(staff=gss, supervisor=counselor)
+    gss_slots = gss_client.get(f"/api/v1/services/{service.pk}/slots")
+    assert gss_slots.status_code == 200
+    gss_slot = next(s for s in gss_slots.json() if s["id"] == slot_id)
+    assert gss_slot["has_booking_history"] is True
+    assert gss_slot["student_name"] is None
+    assert gss_slot["appointment_id"] is None
+
+    unrelated_mutation = counselor_b_client.patch(
+        f"/api/v1/services/{service.pk}/slots/{slot_id}",
+        data=json.dumps({"is_published": False}),
+        content_type="application/json",
+        **csrf(counselor_b_client),
+    )
+    assert unrelated_mutation.status_code == 404
+    counselor_b.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
+    head_mutation = counselor_b_client.patch(
+        f"/api/v1/services/{service.pk}/slots/{slot_id}",
+        data=json.dumps({"is_published": False}),
+        content_type="application/json",
+        **csrf(counselor_b_client),
+    )
+    assert head_mutation.status_code == 404
+
+    gss_mutation = gss_client.patch(
+        f"/api/v1/services/{service.pk}/slots/{slot_id}",
+        data=json.dumps({"is_published": False}),
+        content_type="application/json",
+        **csrf(gss_client),
+    )
+    assert gss_mutation.status_code == 200
+
+    withdraw_res = counselor_client.post(
+        f"/api/v1/services/{service.pk}/slots/{slot_id}/withdraw",
+        **csrf(counselor_client),
+    )
+    assert withdraw_res.status_code == 200, withdraw_res.content
+    assert withdraw_res.json()["withdrawn_at"] is not None
+    slot = ServiceAppointmentSlot.objects.get(pk=slot_id)
+    assert str(slot.current_appointment_id) == book_res.json()["appointment_id"]
+    assert slot.current_appointment.status == AppointmentStatus.SCHEDULED
 
     # 5. Cross-service slot_id isolation returns 404 slot_not_found
     other_service = create_service(
@@ -627,8 +1004,8 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
         f"/api/v1/services/{other_service.pk}/slots/{slot_id}",
         **csrf(counselor_client),
     )
-    assert del_wrong_svc.status_code == 404
-    assert del_wrong_svc.json()["error"]["code"] == "slot_not_found"
+    assert del_wrong_svc.status_code in (404, 405)
+    assert ServiceAppointmentSlot.objects.filter(pk=slot_id).exists()
 
     book_wrong_svc = student_client.post(
         f"/api/v1/services/{other_service.pk}/slots/{slot_id}/book",
@@ -636,3 +1013,51 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
     )
     assert book_wrong_svc.status_code == 404
     assert book_wrong_svc.json()["error"]["code"] == "slot_not_found"
+
+
+@pytest.mark.django_db
+def test_fixed_slot_management_rechecks_capability_and_active_identity(env):
+    from compass.accounts.models import UserCapabilityOverride
+    from compass.accounts.services import set_user_capability_override
+    from compass.organization.models import StaffSupervision
+
+    counselor = env["counselor"]
+    counselor_b = env["counselor_b"]
+    service = env["service"]
+    start = future_local_start(hour=16)
+    slot = create_fixed_slot(
+        service_id=service.pk,
+        provider_id=counselor.pk,
+        delivery_mode="IN_PERSON",
+        starts_at=start,
+        actor=counselor,
+        context=AuditContext.user(counselor),
+    )
+    gss = make_user("supervised-gss-slots@example.edu", "GUIDANCE_SERVICES_STAFF")
+    StaffSupervision.objects.create(staff=gss, supervisor=counselor)
+    gss_client = auth_client(gss, recent_mfa=True)
+    assert gss_client.get(f"/api/v1/services/{service.pk}/slots").status_code == 200
+
+    set_user_capability_override(
+        user=counselor,
+        capability="appointments.manage",
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Regression test capability revocation",
+    )
+    revoked_client = auth_client(counselor, recent_mfa=True)
+    assert revoked_client.get(f"/api/v1/services/{service.pk}/slots").status_code == 403
+    assert (
+        revoked_client.patch(
+            f"/api/v1/services/{service.pk}/slots/{slot.pk}",
+            data=json.dumps({"is_published": False}),
+            content_type="application/json",
+            **csrf(revoked_client),
+        ).status_code
+        == 403
+    )
+    assert gss_client.get(f"/api/v1/services/{service.pk}/slots").status_code == 403
+
+    inactive_client = auth_client(counselor_b, recent_mfa=True)
+    counselor_b.is_active = False
+    counselor_b.save(update_fields=["is_active", "updated_at"])
+    assert inactive_client.get(f"/api/v1/services/{service.pk}/slots").status_code == 401

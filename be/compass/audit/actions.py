@@ -52,12 +52,14 @@ SERVICE_DISABLED = "service.disabled"
 SERVICE_SLOT_CREATED = "service_slot.created"
 SERVICE_SLOT_UPDATED = "service_slot.updated"
 SERVICE_SLOT_DELETED = "service_slot.deleted"
+SERVICE_SLOT_WITHDRAWN = "service_slot.withdrawn"
 GROUP_SESSION_CREATED = "group_session.created"
 GROUP_SESSION_UPDATED = "group_session.updated"
 GROUP_SESSION_PUBLISHED = "group_session.published"
 GROUP_SESSION_CANCELLED = "group_session.cancelled"
 GROUP_SESSION_COMPLETED = "group_session.completed"
 GROUP_SESSION_DELETED = "group_session.deleted"
+GROUP_SESSION_WITHDRAWN = "group_session.withdrawn"
 GROUP_SESSION_REGISTERED = "group_session.registered"
 GROUP_SESSION_REGISTRATION_CANCELLED = "group_session.registration_cancelled"
 GROUP_SESSION_ATTENDANCE_RECORDED = "group_session.attendance_recorded"
@@ -318,12 +320,14 @@ __all__ = [
     "SERVICE_SLOT_CREATED",
     "SERVICE_SLOT_UPDATED",
     "SERVICE_SLOT_DELETED",
+    "SERVICE_SLOT_WITHDRAWN",
     "GROUP_SESSION_CREATED",
     "GROUP_SESSION_UPDATED",
     "GROUP_SESSION_PUBLISHED",
     "GROUP_SESSION_CANCELLED",
     "GROUP_SESSION_COMPLETED",
     "GROUP_SESSION_DELETED",
+    "GROUP_SESSION_WITHDRAWN",
     "GROUP_SESSION_REGISTERED",
     "GROUP_SESSION_REGISTRATION_CANCELLED",
     "GROUP_SESSION_ATTENDANCE_RECORDED",

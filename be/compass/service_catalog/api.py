@@ -21,6 +21,7 @@ from compass.authentication.api import session_auth
 from compass.authentication.step_up import require_recent_mfa_for_request
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.service_catalog.access import current_slot_staff
 from compass.service_catalog.canonical import is_system_required_service_code
 from compass.service_catalog.fixed_slots_services import (
     CounselorNotQualifiedForService,
@@ -28,7 +29,6 @@ from compass.service_catalog.fixed_slots_services import (
     FixedSlotError,
     ServiceNotEligibleForFixedSlots,
     SlotAlreadyBookedError,
-    SlotCannotBeDeletedError,
     SlotCannotBeModifiedError,
     SlotConflictError,
     SlotNotFoundError,
@@ -36,11 +36,12 @@ from compass.service_catalog.fixed_slots_services import (
     SlotUnavailableError,
     book_fixed_slot,
     create_fixed_slot,
-    delete_fixed_slot,
+    has_slot_booking_history,
     is_slot_booked,
     list_staff_fixed_slots,
     list_student_bookable_slots,
     update_fixed_slot,
+    withdraw_fixed_slot,
 )
 from compass.service_catalog.services import (
     DEFAULT_PAGE_SIZE,
@@ -56,6 +57,7 @@ from compass.service_catalog.services import (
     create_service,
     get_service,
     get_service_providers,
+    list_operational_provider_candidates,
     list_provider_candidates,
     list_services,
     service_booking_pathways,
@@ -209,6 +211,8 @@ class ServiceSlotResponse(StrictSchema):
     starts_at: datetime
     ends_at: datetime
     is_published: bool
+    withdrawn_at: datetime | None = None
+    has_booking_history: bool
     is_booked: bool
     appointment_id: UUID | None = None
     appointment_reference_code: str | None = None
@@ -244,8 +248,6 @@ def _raise_slot_error(exc: Exception) -> NoReturn:
         raise APIError(409, "slot_already_booked", str(exc)) from exc
     if isinstance(exc, SlotCannotBeModifiedError):
         raise APIError(409, "slot_cannot_be_modified", str(exc)) from exc
-    if isinstance(exc, SlotCannotBeDeletedError):
-        raise APIError(409, "slot_cannot_be_deleted", str(exc)) from exc
     if isinstance(exc, (SlotUnavailableError, ServiceNotEligibleForFixedSlots)):
         raise APIError(409, "slot_unavailable", str(exc)) from exc
     if isinstance(exc, CounselorNotQualifiedForService):
@@ -265,9 +267,9 @@ def _raise_slot_error(exc: Exception) -> NoReturn:
 
 def _slot_response(slot, *, actor=None) -> dict[str, object]:
     booked = is_slot_booked(slot)
-    appt = slot.current_appointment if booked else None
+    appt = slot.current_appointment if slot.current_appointment_id else None
     can_view_booking = bool(
-        appt and (actor is None or appointment_management_access_allowed(actor, appt))
+        appt and actor is not None and appointment_management_access_allowed(actor, appt)
     )
     return {
         "id": slot.pk,
@@ -278,6 +280,8 @@ def _slot_response(slot, *, actor=None) -> dict[str, object]:
         "starts_at": slot.starts_at,
         "ends_at": slot.ends_at,
         "is_published": slot.is_published,
+        "withdrawn_at": slot.withdrawn_at,
+        "has_booking_history": has_slot_booking_history(slot),
         "is_booked": booked,
         "appointment_id": appt.pk if can_view_booking else None,
         "appointment_reference_code": appt.reference_code if can_view_booking else None,
@@ -325,6 +329,12 @@ def _raise(exc: ServiceCatalogError) -> NoReturn:
             details={
                 "existing_appointment_dependency_detected": (
                     exc.existing_appointment_dependency_detected
+                ),
+                "existing_fixed_slot_dependency_detected": (
+                    exc.existing_fixed_slot_dependency_detected
+                ),
+                "existing_group_session_dependency_detected": (
+                    exc.existing_group_session_dependency_detected
                 ),
                 "provider_dependency_detected": exc.provider_dependency_detected,
                 "counseling_online_enabled": exc.counseling_online_enabled,
@@ -499,6 +509,42 @@ def services_get_providers(request, service_id: UUID):
     }
 
 
+@router.get(
+    "/{service_id}/operational-provider-candidates",
+    response=response_with_errors(ServiceProviderCandidatePage, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="servicesListOperationalProviderCandidates",
+)
+def services_list_operational_provider_candidates(
+    request,
+    service_id: UUID,
+    search: str | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    """Read only qualified providers within the caller's Appointment responsibility scope."""
+
+    _require(request, "appointments.manage")
+    try:
+        result = list_operational_provider_candidates(
+            actor=request.auth_user,
+            service_id=service_id,
+            search=search,
+            page=page,
+            page_size=page_size,
+        )
+    except PermissionError as exc:
+        raise APIError(403, "permission_denied", str(exc)) from exc
+    except ServiceCatalogError as exc:
+        _raise(exc)
+    return {
+        "items": [{"id": user.pk, "display_name": user.get_full_name()} for user in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
 @router.patch(
     "/{service_id}",
     response=response_with_errors(ServiceResponse, 401, 403, 404, 409, 422),
@@ -563,12 +609,7 @@ def services_disable(request, service_id: UUID, payload: ServiceDisableRequest):
 
 def _require_slot_management(request, *, recent_mfa: bool = False) -> None:
     user = request.auth_user
-    role_code = getattr(getattr(user, "role", None), "code", None)
-    if not (
-        user.is_active
-        and role_code in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
-        and user.has_capability("appointments.manage")
-    ):
+    if current_slot_staff(user) is None:
         raise APIError(
             403,
             "permission_denied",
@@ -604,6 +645,7 @@ def services_list_slots(
 ):
     _require_slot_management(request)
     slots = list_staff_fixed_slots(
+        actor=request.auth_user,
         service_id=service_id,
         from_date=from_date,
         to_date=to_date,
@@ -693,22 +735,23 @@ def services_update_slot(
         _raise_slot_error(exc)
 
 
-@router.delete(
-    "/{service_id}/slots/{slot_id}",
-    response=response_with_errors(None, 401, 403, 404, 409, 422, success_status=204),
+@router.post(
+    "/{service_id}/slots/{slot_id}/withdraw",
+    response=response_with_errors(ServiceSlotResponse, 401, 403, 404, 409, 422),
     auth=session_auth,
-    operation_id="servicesDeleteSlot",
+    operation_id="servicesWithdrawSlot",
+    summary="Withdraw a fixed-date appointment slot",
 )
-def services_delete_slot(request, service_id: UUID, slot_id: UUID):
+def services_withdraw_slot(request, service_id: UUID, slot_id: UUID):
     _require_slot_management(request, recent_mfa=True)
     try:
-        delete_fixed_slot(
+        slot = withdraw_fixed_slot(
             slot_id=slot_id,
             service_id=service_id,
             actor=request.auth_user,
             context=_context(request),
         )
-        return Status(204, None)
+        return _slot_response(slot, actor=request.auth_user)
     except Exception as exc:
         _raise_slot_error(exc)
 

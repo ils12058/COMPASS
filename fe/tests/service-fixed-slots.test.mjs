@@ -71,6 +71,8 @@ const sampleSlots = [
     starts_at: "2026-11-01T09:00:00Z",
     ends_at: "2026-11-01T09:30:00Z",
     is_published: true,
+    withdrawn_at: null,
+    has_booking_history: false,
     is_booked: false,
     appointment_id: null,
     appointment_reference_code: null,
@@ -86,6 +88,8 @@ const sampleSlots = [
     starts_at: "2026-11-01T10:00:00Z",
     ends_at: "2026-11-01T10:30:00Z",
     is_published: false,
+    withdrawn_at: null,
+    has_booking_history: false,
     is_booked: false,
     appointment_id: null,
     appointment_reference_code: null,
@@ -137,6 +141,8 @@ test("Staff panel renders published and unpublished fixed slots with controls", 
   assert.match(html, /Dr\. Santos/);
   assert.match(html, /Available/);
   assert.match(html, /Unpublished/);
+  assert.match(html, /Withdraw/);
+  assert.doesNotMatch(html, /Delete slot/);
 });
 
 test("Student panel renders available bookable slots with Book action", () => {

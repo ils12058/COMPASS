@@ -101,6 +101,7 @@ test("an inactive Service explains exactly what blocks enabling it", () => {
   assert.match(html, /Provider type/);
   assert.match(html, /Coverage/);
   assert.match(html, /No Counselors are selected\./);
+  assert.match(html, /Configured · unavailable while the Service is inactive/);
   assert.doesNotMatch(html, /Appointment optional|Appointment required/);
 });
 
@@ -146,7 +147,7 @@ test("consequence review explains that existing Appointments stay as booked", ()
     }),
   );
   assert.match(html, /stay scheduled and can still take place as booked/);
-  assert.match(html, /will not receive new Appointments for this Service/);
+  assert.match(html, /affected open slots stop accepting bookings/);
   assert.doesNotMatch(html, /Online Counseling/);
 });
 
@@ -155,8 +156,9 @@ test("Service editor displays independently configurable future pathways with cl
   const html = render(h(CreateServicePage));
   assert.match(html, /Fixed-date appointment slots/);
   assert.match(html, /Group sessions and events/);
-  assert.match(html, /Student booking is not available yet/);
-  assert.match(html, /Registration is not available yet/);
+  assert.match(html, /Students can book once an eligible Counselor publishes a slot and the Service is active/);
+  assert.match(html, /Students can register once an event is published, registration is open, and the Service is active/);
+  assert.doesNotMatch(html, /coming later|not available yet/i);
   assert.match(html, /Flexible individual booking is controlled above/);
 });
 
@@ -168,11 +170,13 @@ test("Service details distinguish saved pathway configuration from a working boo
         ...service,
         booking_pathways: ["FLEXIBLE_APPOINTMENT", "FIXED_DATE_SLOT", "GROUP_SESSION"],
         provider_coverage: "ALL_COUNSELORS",
+        is_active: true,
+        activation_blockers: [],
       }));
     },
   });
-  assert.match(html, /Available now/);
-  assert.match(html, /Configured · Booking coming later/);
-  assert.match(html, /Configured · Registration coming later/);
-  assert.match(html, /not yet available to Students/);
+  assert.match(html, /Available for new bookings/);
+  assert.match(html, /Available when a slot is published/);
+  assert.match(html, /Available when an event is published/);
+  assert.doesNotMatch(html, /coming later|not yet available to Students/i);
 });

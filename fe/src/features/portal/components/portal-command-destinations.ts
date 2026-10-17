@@ -30,6 +30,8 @@ const workspaceKeywords: Readonly<Record<string, readonly string[]>> = {
   "Individual Inventory": ["student information", "inventory"],
   "Institutional Forms": ["form", "forms", "form revision", "controlled form"],
   Messages: ["chat", "conversation", "guidance office", "inbox"],
+  "Browse Group Sessions": ["workshop", "registration", "event"],
+  "My group sessions": ["workshop", "registration", "event"],
 };
 
 // Code-owned destinations only. Root visibility comes directly from the dock's registry. Deep

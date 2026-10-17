@@ -59,6 +59,8 @@ const knownErrors: Record<string, string> = {
 
 export type ServiceSchedulingConsequenceDetails = {
   existingAppointmentDependencyDetected: boolean;
+  existingFixedSlotDependencyDetected: boolean;
+  existingGroupSessionDependencyDetected: boolean;
   providerDependencyDetected: boolean;
   counselingOnlineEnabled: boolean;
 };
@@ -93,9 +95,12 @@ export const activationBlockerLabels: Record<ServiceActivationBlocker, string> =
 export type ServiceConsequenceChange = {
   counselingOnlineRemoved: boolean;
   bookingTurnedOff: boolean;
+  fixedSlotPathwayRemoved: boolean;
+  groupSessionPathwayRemoved: boolean;
+  deliveryModeRemoved: boolean;
 };
 
-// What a reviewed Service change means for Appointments that are already scheduled.
+// What a reviewed Service change means for work already accepted or published.
 export function ServiceConsequenceSummary({
   details,
   change,
@@ -106,8 +111,9 @@ export function ServiceConsequenceSummary({
   if (!details) {
     return (
       <p>
-        One or more scheduling consequences require review. Existing Appointments are not
-        changed by this Service update.
+        One or more scheduling consequences require review. Existing Appointments, open published
+        slots, Group Sessions, and registrations remain on record and are not automatically
+        changed.
       </p>
     );
   }
@@ -131,15 +137,29 @@ export function ServiceConsequenceSummary({
       (!onlineRemoved || change?.bookingTurnedOff) ? (
         <p>
           Some upcoming Appointments use a setting this change removes. They stay scheduled and
-          can still take place as booked, but rescheduling or reassigning them follows the new
-          settings.
+          can still take place as booked. Any later reschedule or reassignment follows the current
+          Service settings.
+        </p>
+      ) : null}
+      {details.existingFixedSlotDependencyDetected ? (
+        <p>
+          Upcoming published Fixed Slots remain on record. Slots that have not been booked will
+          stop accepting new bookings when this pathway, delivery mode, or Service is unavailable.
+          A slot already booked remains its canonical Appointment.
+        </p>
+      ) : null}
+      {details.existingGroupSessionDependencyDetected ? (
+        <p>
+          Upcoming published Group Sessions and their registrations remain unchanged. New
+          registrations stop when this pathway, delivery mode, or Service is unavailable. Use the
+          Group Session actions to reschedule or cancel existing events.
         </p>
       ) : null}
       {details.providerDependencyDetected ? (
         <p>
-          Some upcoming Appointments are with a Counselor who would no longer provide this
-          Service. Those Appointments stay with that Counselor and can still take place; the
-          Counselor will not receive new Appointments for this Service.
+          Some upcoming Appointments or open Fixed Slots use a Counselor who will no longer be
+          eligible for new work under this Service. Existing Appointments stay with their assigned
+          Counselor; affected open slots stop accepting bookings.
         </p>
       ) : null}
       {details.counselingOnlineEnabled ? (
@@ -175,6 +195,14 @@ export function serviceSchedulingConsequenceDetails(
     "existing_appointment_dependency_detected" in details
       ? details.existing_appointment_dependency_detected
       : undefined;
+  const fixedSlots =
+    "existing_fixed_slot_dependency_detected" in details
+      ? details.existing_fixed_slot_dependency_detected
+      : undefined;
+  const groupSessions =
+    "existing_group_session_dependency_detected" in details
+      ? details.existing_group_session_dependency_detected
+      : undefined;
   const provider =
     "provider_dependency_detected" in details
       ? details.provider_dependency_detected
@@ -185,6 +213,8 @@ export function serviceSchedulingConsequenceDetails(
       : undefined;
   if (
     typeof existing !== "boolean" ||
+    typeof fixedSlots !== "boolean" ||
+    typeof groupSessions !== "boolean" ||
     typeof provider !== "boolean" ||
     typeof counselingOnline !== "boolean"
   ) {
@@ -192,6 +222,8 @@ export function serviceSchedulingConsequenceDetails(
   }
   return {
     existingAppointmentDependencyDetected: existing,
+    existingFixedSlotDependencyDetected: fixedSlots,
+    existingGroupSessionDependencyDetected: groupSessions,
     providerDependencyDetected: provider,
     counselingOnlineEnabled: counselingOnline,
   };

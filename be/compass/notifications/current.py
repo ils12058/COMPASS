@@ -23,7 +23,7 @@ def notification_is_current(notification, *, now=None):
     if notification.source_type in {
         "group_session",
         "group_session_registration",
-    } or notification.source_type.startswith("group_session_v"):
+    } or notification.source_type.startswith(("group_session_v", "group_session_schedule_v")):
         from compass.group_sessions.services import group_session_notification_is_current
 
         return group_session_notification_is_current(notification)

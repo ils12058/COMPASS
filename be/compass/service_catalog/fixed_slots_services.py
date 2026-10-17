@@ -18,7 +18,6 @@ from compass.appointments.services import (
     AppointmentTimeUnavailable,
     _allocate_reference,
     _aware_start,
-    _has_overlap,
     _interval_is_available,
     _lock_users,
     _normalized_delivery_mode,
@@ -28,8 +27,8 @@ from compass.appointments.services import (
 from compass.audit.actions import (
     APPOINTMENT_CREATED,
     SERVICE_SLOT_CREATED,
-    SERVICE_SLOT_DELETED,
     SERVICE_SLOT_UPDATED,
+    SERVICE_SLOT_WITHDRAWN,
 )
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
@@ -37,10 +36,22 @@ from compass.audit.services import record_event
 from compass.common.institutional_time import institution_zone
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
+from compass.service_catalog.access import (
+    can_manage_slot_provider,
+    current_slot_staff,
+    scope_fixed_slots,
+    slot_provider_scope,
+)
 from compass.service_catalog.models import (
     BookingPathwayCode,
     Service,
     ServiceAppointmentSlot,
+    ServiceAppointmentSlotBooking,
+)
+from compass.service_catalog.scheduling import (
+    lock_schedule_users,
+    provider_schedule_conflict,
+    student_schedule_conflict,
 )
 from compass.service_catalog.services import (
     service_counselor_eligible,
@@ -80,10 +91,6 @@ class SlotCannotBeModifiedError(FixedSlotError):
     """An already booked slot cannot have its schedule, provider, or delivery mode changed."""
 
 
-class SlotCannotBeDeletedError(FixedSlotError):
-    """An already booked slot cannot be deleted while an active Appointment is linked."""
-
-
 class SlotUnavailableError(FixedSlotError):
     """The slot is not published, has expired, or is currently unavailable."""
 
@@ -93,11 +100,18 @@ class SlotNotFoundError(FixedSlotError):
 
 
 def is_slot_booked(slot: ServiceAppointmentSlot) -> bool:
-    """Return True if the slot has an active, scheduled canonical Appointment."""
+    """Return whether the current linked Appointment prevents booking this slot again."""
     if not slot.current_appointment_id:
         return False
     appt = slot.current_appointment
-    return appt.status == AppointmentStatus.SCHEDULED and appt.starts_at == slot.starts_at
+    return appt.status != AppointmentStatus.CANCELLED
+
+
+def has_slot_booking_history(slot: ServiceAppointmentSlot) -> bool:
+    """Return whether any canonical Appointment has ever been booked from this slot."""
+    if slot.current_appointment_id:
+        return True
+    return slot.booking_history.exists()
 
 
 def _validate_service_and_counselor(
@@ -108,6 +122,7 @@ def _validate_service_and_counselor(
     starts_at: datetime,
     ends_at: datetime,
     exclude_slot_id: UUID | None = None,
+    will_commit: bool = True,
 ) -> None:
     """Validate that the service, provider, delivery mode, and time window are eligible."""
     if not service.is_active:
@@ -153,29 +168,20 @@ def _validate_service_and_counselor(
             "The Counselor's availability schedule does not cover this slot time window."
         )
 
-    # Check for overlapping scheduled Appointments for this provider
-    has_appt_overlap = Appointment.objects.filter(
-        provider=provider,
-        status=AppointmentStatus.SCHEDULED,
-        starts_at__lt=ends_at,
-        ends_at__gt=starts_at,
-    ).exists()
-    if has_appt_overlap:
-        raise SlotConflictError("The Counselor already has an overlapping scheduled Appointment.")
-
-    # Check for overlapping fixed slots for this provider
-    existing_slots = ServiceAppointmentSlot.objects.filter(
-        provider=provider,
-        starts_at__lt=ends_at,
-        ends_at__gt=starts_at,
-    )
-    if exclude_slot_id:
-        existing_slots = existing_slots.exclude(pk=exclude_slot_id)
-
-    if existing_slots.exists():
-        raise SlotConflictError(
-            "The Counselor already has another fixed slot scheduled at this time."
+    if will_commit:
+        conflict = provider_schedule_conflict(
+            provider_id=provider.pk,
+            starts_at=starts_at,
+            ends_at=ends_at,
+            exclude_slot_id=exclude_slot_id,
         )
+        if conflict:
+            label = {
+                "appointment": "scheduled Appointment",
+                "fixed_slot": "published Fixed Slot",
+                "group_session": "published Group Session",
+            }.get(conflict, "schedule commitment")
+            raise SlotConflictError(f"The Counselor has an overlapping {label}.")
 
 
 def create_fixed_slot(
@@ -194,13 +200,30 @@ def create_fixed_slot(
     aware_starts_at = _aware_start(starts_at)
 
     with transaction.atomic():
+        initial_staff = current_slot_staff(actor)
+        if initial_staff is None:
+            raise SlotNotFoundError("The requested slot was not found.")
+        initial_scope = slot_provider_scope(actor)
+        try:
+            locked_users = lock_schedule_users(
+                initial_staff.pk,
+                provider_id,
+                *initial_scope,
+            )
+        except ValueError as exc:
+            raise CounselorNotQualifiedForService("Provider not found.") from exc
+        staff_actor = current_slot_staff(actor, lock_supervision=True)
+        if staff_actor is None:
+            raise SlotNotFoundError("The requested slot was not found.")
         service = Service.objects.select_for_update().filter(pk=service_id).first()
         if service is None:
             raise ServiceNotEligibleForFixedSlots("Service not found.")
 
-        provider = User.objects.filter(pk=provider_id).first()
+        provider = locked_users.get(provider_id)
         if provider is None:
             raise CounselorNotQualifiedForService("Provider not found.")
+        if not can_manage_slot_provider(staff_actor, provider.pk, lock_supervision=True):
+            raise SlotNotFoundError("The requested slot was not found.")
 
         if ends_at is None:
             duration = service.default_appointment_duration_minutes or 60
@@ -214,6 +237,7 @@ def create_fixed_slot(
             delivery_mode=normalized_mode,
             starts_at=aware_starts_at,
             ends_at=calculated_ends_at,
+            will_commit=is_published,
         )
 
         slot = ServiceAppointmentSlot.objects.create(
@@ -223,7 +247,7 @@ def create_fixed_slot(
             starts_at=aware_starts_at,
             ends_at=calculated_ends_at,
             is_published=is_published,
-            created_by=actor,
+            created_by=staff_actor,
         )
 
         record_event(
@@ -258,18 +282,44 @@ def update_fixed_slot(
 ) -> ServiceAppointmentSlot:
     """Update a future fixed-date slot. Booked slots cannot have time or provider changed."""
     with transaction.atomic():
-        qs = (
-            ServiceAppointmentSlot.objects.select_for_update(of=("self",))
-            .select_related("service", "provider")
-            .filter(pk=slot_id)
-        )
-        if service_id is not None:
-            qs = qs.filter(service_id=service_id)
-        slot = qs.first()
-        if slot is None:
+        snapshot = ServiceAppointmentSlot.objects.filter(pk=slot_id).first()
+        if snapshot is None or (service_id is not None and snapshot.service_id != service_id):
             raise SlotNotFoundError("Slot not found.")
+        initial_staff = current_slot_staff(actor)
+        if initial_staff is None:
+            raise SlotNotFoundError("Slot not found.")
+        initial_scope = slot_provider_scope(actor)
+        new_provider_id = provider_id or snapshot.provider_id
+        try:
+            locked_users = lock_schedule_users(
+                initial_staff.pk,
+                snapshot.provider_id,
+                new_provider_id,
+                *initial_scope,
+            )
+        except ValueError as exc:
+            raise CounselorNotQualifiedForService("Provider not found.") from exc
+        if current_slot_staff(actor, lock_supervision=True) is None:
+            raise SlotNotFoundError("Slot not found.")
+        Service.objects.select_for_update().filter(pk=snapshot.service_id).first()
+        slot = (
+            ServiceAppointmentSlot.objects.select_for_update(of=("self",))
+            .select_related("service", "provider", "current_appointment")
+            .filter(
+                pk=slot_id,
+                service_id=snapshot.service_id,
+                provider_id=snapshot.provider_id,
+            )
+            .first()
+        )
+        if slot is None or not can_manage_slot_provider(
+            actor, slot.provider_id, lock_supervision=True
+        ):
+            raise SlotNotFoundError("Slot not found.")
+        if slot.withdrawn_at is not None:
+            raise SlotCannotBeModifiedError("A withdrawn slot cannot be modified.")
 
-        booked = is_slot_booked(slot)
+        has_history = has_slot_booking_history(slot)
         time_or_provider_changed = (
             starts_at is not None
             or ends_at is not None
@@ -277,22 +327,26 @@ def update_fixed_slot(
             or delivery_mode is not None
         )
 
-        if booked and time_or_provider_changed:
+        if has_history and time_or_provider_changed:
             raise SlotCannotBeModifiedError(
-                "Cannot modify the schedule, provider, or delivery mode of an already booked slot."
+                "Cannot modify the schedule, provider, or delivery mode after a slot "
+                "has booking history."
             )
 
         new_provider = slot.provider
         if provider_id is not None:
-            new_provider = User.objects.filter(pk=provider_id).first()
+            new_provider = locked_users.get(provider_id)
             if new_provider is None:
                 raise CounselorNotQualifiedForService("Provider not found.")
+            if not can_manage_slot_provider(actor, new_provider.pk, lock_supervision=True):
+                raise SlotNotFoundError("Slot not found.")
 
         new_mode = _normalized_delivery_mode(delivery_mode) if delivery_mode else slot.delivery_mode
         new_starts = _aware_start(starts_at) if starts_at else slot.starts_at
         new_ends = _aware_start(ends_at) if ends_at else slot.ends_at
+        next_is_published = slot.is_published if is_published is None else is_published
 
-        if time_or_provider_changed:
+        if time_or_provider_changed or (next_is_published and not slot.is_published):
             _validate_service_and_counselor(
                 service=slot.service,
                 provider=new_provider,
@@ -300,6 +354,7 @@ def update_fixed_slot(
                 starts_at=new_starts,
                 ends_at=new_ends,
                 exclude_slot_id=slot.pk,
+                will_commit=next_is_published,
             )
             slot.provider = new_provider
             slot.delivery_mode = new_mode
@@ -328,44 +383,68 @@ def update_fixed_slot(
         return slot
 
 
-def delete_fixed_slot(
+def withdraw_fixed_slot(
     *,
     slot_id: UUID,
     actor: User,
     context: AuditContext,
     service_id: UUID | None = None,
-) -> None:
-    """Delete an unbooked fixed-date slot."""
+) -> ServiceAppointmentSlot:
+    """Withdraw a slot from new booking while preserving its operational and booking history."""
     with transaction.atomic():
-        qs = ServiceAppointmentSlot.objects.select_for_update().filter(pk=slot_id)
-        if service_id is not None:
-            qs = qs.filter(service_id=service_id)
-        slot = qs.first()
-        if slot is None:
+        snapshot = ServiceAppointmentSlot.objects.filter(pk=slot_id).first()
+        if snapshot is None or (service_id is not None and snapshot.service_id != service_id):
             raise SlotNotFoundError("Slot not found.")
-
-        if is_slot_booked(slot):
-            raise SlotCannotBeDeletedError(
-                "Cannot delete an already booked slot. The student appointment must be cancelled"
-                " first."
+        initial_staff = current_slot_staff(actor)
+        if initial_staff is None:
+            raise SlotNotFoundError("Slot not found.")
+        initial_scope = slot_provider_scope(actor)
+        try:
+            lock_schedule_users(initial_staff.pk, snapshot.provider_id, *initial_scope)
+        except ValueError as exc:
+            raise SlotNotFoundError("Slot not found.") from exc
+        if current_slot_staff(actor, lock_supervision=True) is None:
+            raise SlotNotFoundError("Slot not found.")
+        Service.objects.select_for_update().filter(pk=snapshot.service_id).first()
+        slot = (
+            ServiceAppointmentSlot.objects.select_for_update(of=("self",))
+            .select_related("service", "provider", "current_appointment")
+            .filter(
+                pk=slot_id,
+                service_id=snapshot.service_id,
+                provider_id=snapshot.provider_id,
             )
+            .first()
+        )
+        if slot is None or not can_manage_slot_provider(
+            actor, slot.provider_id, lock_supervision=True
+        ):
+            raise SlotNotFoundError("Slot not found.")
+        if slot.withdrawn_at is not None:
+            return slot
 
-        target_id = slot.pk
-        slot_service_id = slot.service_id
-        slot.delete()
+        slot.withdrawn_at = timezone.now()
+        slot.is_published = False
+        slot.save(update_fields=["withdrawn_at", "is_published", "updated_at"])
 
         record_event(
             context=context,
-            action=SERVICE_SLOT_DELETED,
+            action=SERVICE_SLOT_WITHDRAWN,
             outcome=AuditOutcome.SUCCESS,
             target_type="service.catalog.slot",
-            target_id=target_id,
-            metadata={"service_id": str(slot_service_id)},
+            target_id=slot.pk,
+            metadata={
+                "service_id": str(slot.service_id),
+                "provider_id": str(slot.provider_id),
+                "had_appointment_history": has_slot_booking_history(slot),
+            },
         )
+        return slot
 
 
 def list_staff_fixed_slots(
     *,
+    actor: User,
     service_id: UUID,
     from_date: date | None = None,
     to_date: date | None = None,
@@ -373,7 +452,7 @@ def list_staff_fixed_slots(
 ) -> list[ServiceAppointmentSlot]:
     """List fixed-date slots for staff management."""
     qs = (
-        ServiceAppointmentSlot.objects.filter(service_id=service_id)
+        scope_fixed_slots(ServiceAppointmentSlot.objects.filter(service_id=service_id), actor)
         .select_related(
             "service", "provider", "current_appointment", "current_appointment__student"
         )
@@ -416,6 +495,7 @@ def list_student_bookable_slots(
         ServiceAppointmentSlot.objects.filter(
             service=service,
             is_published=True,
+            withdrawn_at__isnull=True,
             starts_at__gt=now,
         )
         .filter(
@@ -443,14 +523,18 @@ def list_student_bookable_slots(
             continue
         if not service_counselor_eligible(service, slot.provider):
             continue
-        # Verify counselor has no conflicting scheduled appointment
-        has_conflict = Appointment.objects.filter(
-            provider=slot.provider,
-            status=AppointmentStatus.SCHEDULED,
-            starts_at__lt=slot.ends_at,
-            ends_at__gt=slot.starts_at,
-        ).exists()
-        if has_conflict:
+        if provider_schedule_conflict(
+            provider_id=slot.provider_id,
+            starts_at=slot.starts_at,
+            ends_at=slot.ends_at,
+            exclude_slot_id=slot.pk,
+        ):
+            continue
+        if student_schedule_conflict(
+            student_id=student.pk,
+            starts_at=slot.starts_at,
+            ends_at=slot.ends_at,
+        ):
             continue
         # Verify counselor availability window still covers the slot
         if not _interval_is_available(
@@ -483,10 +567,20 @@ def book_fixed_slot(
     current_time = now or timezone.now()
 
     with transaction.atomic():
+        snapshot = ServiceAppointmentSlot.objects.filter(pk=slot_id).first()
+        if snapshot is None or (service_id is not None and snapshot.service_id != service_id):
+            raise SlotNotFoundError("The selected slot was not found.")
+        locked = _lock_users(student.pk, snapshot.provider_id)
+        locked_student = locked[student.pk]
+        locked_provider = locked[snapshot.provider_id]
+        _validate_booking_users(locked_student, locked_provider)
+        service = Service.objects.select_for_update().filter(pk=snapshot.service_id).first()
+        if service is None:
+            raise SlotNotFoundError("The selected slot was not found.")
         qs = (
             ServiceAppointmentSlot.objects.select_for_update(of=("self",))
-            .select_related("service", "provider")
-            .filter(pk=slot_id)
+            .select_related("service", "provider", "current_appointment")
+            .filter(pk=slot_id, service_id=snapshot.service_id, provider_id=snapshot.provider_id)
         )
         if service_id is not None:
             qs = qs.filter(service_id=service_id)
@@ -496,6 +590,8 @@ def book_fixed_slot(
 
         if not slot.is_published:
             raise SlotUnavailableError("This slot is not currently published for booking.")
+        if slot.withdrawn_at is not None:
+            raise SlotUnavailableError("This slot has been withdrawn from booking.")
 
         if is_slot_booked(slot):
             raise SlotAlreadyBookedError("This slot has already been booked by another student.")
@@ -514,11 +610,6 @@ def book_fixed_slot(
             raise ServiceNotEligibleForFixedSlots(
                 "Fixed-date slot booking is not enabled for this Service."
             )
-
-        locked = _lock_users(student.pk, slot.provider.pk)
-        locked_student = locked[student.pk]
-        locked_provider = locked[slot.provider.pk]
-        _validate_booking_users(locked_student, locked_provider)
 
         if not service_counselor_eligible(service, locked_provider):
             raise CounselorNotQualifiedForService(
@@ -539,23 +630,24 @@ def book_fixed_slot(
                 "The Counselor's availability does not cover this slot time window."
             )
 
-        # Check for provider appointment collision
-        if _has_overlap(
-            field="provider_id",
-            user_id=locked_provider.pk,
+        provider_conflict = provider_schedule_conflict(
+            provider_id=locked_provider.pk,
+            starts_at=slot.starts_at,
+            ends_at=slot.ends_at,
+            exclude_slot_id=slot.pk,
+        )
+        if provider_conflict:
+            raise AppointmentTimeConflict(
+                "The Counselor already has an overlapping schedule commitment."
+            )
+        if student_schedule_conflict(
+            student_id=locked_student.pk,
             starts_at=slot.starts_at,
             ends_at=slot.ends_at,
         ):
-            raise AppointmentTimeConflict("The Counselor already has an overlapping Appointment.")
-
-        # Check for student appointment collision
-        if _has_overlap(
-            field="student_id",
-            user_id=locked_student.pk,
-            starts_at=slot.starts_at,
-            ends_at=slot.ends_at,
-        ):
-            raise AppointmentTimeConflict("You already have an overlapping scheduled Appointment.")
+            raise AppointmentTimeConflict(
+                "You already have an overlapping Appointment or registered Group Session."
+            )
 
         # Allocate canonical reference code
         reference_code = _allocate_reference(at=current_time)
@@ -573,6 +665,8 @@ def book_fixed_slot(
             cancellation_cutoff_minutes=service.cancellation_cutoff_minutes,
             created_by=locked_student,
         )
+
+        ServiceAppointmentSlotBooking.objects.create(slot=slot, appointment=appointment)
 
         # Link slot to canonical appointment
         slot.current_appointment = appointment

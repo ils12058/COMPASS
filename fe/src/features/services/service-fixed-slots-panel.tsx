@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Calendar, Clock, User as UserIcon } from "lucide-react";
+import { Plus, Ban, Calendar, Clock, User as UserIcon } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -19,8 +19,8 @@ import {
   useServicesListSlots,
   useServicesCreateSlot,
   useServicesUpdateSlot,
-  useServicesDeleteSlot,
-  useServicesGetProviders,
+  useServicesWithdrawSlot,
+  useServicesListOperationalProviderCandidates,
   useServicesListBookableSlots,
   useServicesBookSlot,
   getServicesListSlotsQueryKey,
@@ -35,10 +35,9 @@ import {
 
 export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceResponse }) {
   const { user } = usePortalSession();
-  const canManageServices = user.capabilities.includes("services.manage");
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
-  const [deleteSlot, setDeleteSlot] = useState<ServiceSlotResponse | null>(null);
+  const [withdrawSlot, setWithdrawSlot] = useState<ServiceSlotResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
@@ -53,32 +52,28 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
   const [durationMinutes, setDurationMinutes] = useState(
     service.default_appointment_duration_minutes ?? 60
   );
+  const [providerSearch, setProviderSearch] = useState("");
+  const [providerPage, setProviderPage] = useState(1);
 
   const slotsQuery = useServicesListSlots(service.id, undefined, {
     query: { retry: false },
   });
-  const providersQuery = useServicesGetProviders(service.id, {
-    query: { retry: false, enabled: canManageServices },
-  });
+  const providersQuery = useServicesListOperationalProviderCandidates(
+    service.id,
+    {
+      ...(providerSearch.trim() ? { search: providerSearch.trim() } : {}),
+      page: providerPage,
+      page_size: 50,
+    },
+    { query: { retry: false } },
+  );
 
   const createMutation = useServicesCreateSlot();
   const updateMutation = useServicesUpdateSlot();
-  const deleteMutation = useServicesDeleteSlot();
+  const withdrawMutation = useServicesWithdrawSlot();
 
   const slots = slotsQuery.data?.data ?? [];
-  const fetchedProviders = providersQuery.data?.data.counselors ?? [];
-  const providers =
-    fetchedProviders.length > 0
-      ? fetchedProviders
-      : user.role === "COUNSELOR"
-        ? [
-            {
-              id: user.id,
-              display_name: `${user.first_name} ${user.last_name}`.trim() || user.email,
-              is_active: true,
-            },
-          ]
-        : [];
+  const providers = providersQuery.data?.data.items ?? [];
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -145,23 +140,23 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
     }
   };
 
-  const handleDeleteConfirm = async () => {
-    if (!deleteSlot) return;
+  const handleWithdrawConfirm = async () => {
+    if (!withdrawSlot) return;
     setErrorMessage(null);
     try {
-      await deleteMutation.mutateAsync({
+      await withdrawMutation.mutateAsync({
         serviceId: service.id,
-        slotId: deleteSlot.id,
+        slotId: withdrawSlot.id,
       });
       await queryClient.invalidateQueries({
         queryKey: getServicesListSlotsQueryKey(service.id),
       });
-      setDeleteSlot(null);
-      setSuccessMessage("Slot deleted successfully.");
+      setWithdrawSlot(null);
+      setSuccessMessage("Slot withdrawn from future booking. Its record and appointment history are preserved.");
     } catch (err: unknown) {
       const apiErr = err as { data?: { error?: { message?: string } }; message?: string };
       setErrorMessage(
-        apiErr.data?.error?.message ?? apiErr.message ?? "Failed to delete slot."
+        apiErr.data?.error?.message ?? apiErr.message ?? "Failed to withdraw slot."
       );
     }
   };
@@ -178,6 +173,7 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
             setErrorMessage(null);
             setCreateOpen(true);
           }}
+          disabled={!service.is_active || providers.length === 0}
         >
           <Plus className="mr-1.5 h-4 w-4" />
           Publish slot
@@ -192,6 +188,19 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
       {errorMessage ? (
         <Notice role="alert" tone="danger" className="mt-4">
           {errorMessage}
+        </Notice>
+      ) : null}
+      {!service.is_active ? (
+        <p className="mt-3 text-xs text-muted">
+          Existing appointments remain on record. Enable this Service before publishing new slots.
+        </p>
+      ) : null}
+      {providersQuery.isError ? (
+        <Notice role="alert" tone="danger" className="mt-4">
+          Eligible Counselors could not be loaded. Retry before publishing a slot. {" "}
+          <Button variant="quiet" onClick={() => void providersQuery.refetch()}>
+            Retry
+          </Button>
         </Notice>
       ) : null}
 
@@ -222,9 +231,13 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
                     {slot.delivery_mode === DeliveryMode.IN_PERSON ? "In person" : "Online"}
                   </td>
                   <td className="px-4 py-3">
-                    {slot.is_booked ? (
+                    {slot.withdrawn_at ? (
+                      <span className="inline-flex items-center rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">
+                        Withdrawn
+                      </span>
+                    ) : slot.is_booked ? (
                       <span className="inline-flex items-center rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700">
-                        Booked {slot.appointment_reference_code ? `(${slot.appointment_reference_code})` : ""}
+                        Booked or used {slot.appointment_reference_code ? `(${slot.appointment_reference_code})` : ""}
                       </span>
                     ) : slot.is_published ? (
                       <span className="inline-flex items-center rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700">
@@ -237,31 +250,35 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
                     )}
                   </td>
                   <td className="px-4 py-3 text-right">
-                    {slot.is_booked && slot.appointment_id ? (
-                      <Link
-                        href={`/portal/appointments/${slot.appointment_id}`}
-                        className="mr-2 text-xs font-medium text-primary hover:underline"
-                      >
-                        View Appointment
-                      </Link>
-                    ) : (
+                    {!slot.withdrawn_at ? (
                       <>
+                        {slot.is_booked && slot.appointment_id ? (
+                          <Link
+                            href={`/portal/appointments/${slot.appointment_id}`}
+                            className="mr-2 text-xs font-medium text-primary hover:underline"
+                          >
+                            View Appointment
+                          </Link>
+                        ) : null}
+                        {!slot.is_booked ? (
+                          <Button
+                            variant="quiet"
+                            onClick={() => void handleTogglePublish(slot)}
+                            className="mr-2 px-2.5 py-1 text-xs"
+                          >
+                            {slot.is_published ? "Unpublish" : "Publish"}
+                          </Button>
+                        ) : null}
                         <Button
                           variant="quiet"
-                          onClick={() => void handleTogglePublish(slot)}
-                          className="mr-2 px-2.5 py-1 text-xs"
-                        >
-                          {slot.is_published ? "Unpublish" : "Publish"}
-                        </Button>
-                        <Button
-                          variant="quiet"
-                          onClick={() => setDeleteSlot(slot)}
+                          onClick={() => setWithdrawSlot(slot)}
                           className="px-2.5 py-1 text-xs text-danger hover:bg-danger/10"
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Ban className="mr-1 h-3.5 w-3.5" />
+                          Withdraw
                         </Button>
                       </>
-                    )}
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -278,6 +295,18 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
             <div className="grid gap-4 py-4">
               <div>
                 <Label htmlFor="slot-provider">Counselor Provider</Label>
+                <Input
+                  id="slot-provider-search"
+                  aria-label="Search eligible Counselors"
+                  value={providerSearch}
+                  onChange={(event) => {
+                    setProviderSearch(event.target.value);
+                    setProviderId("");
+                    setProviderPage(1);
+                  }}
+                  placeholder="Search eligible Counselors"
+                  className="mt-1 w-full"
+                />
                 <Select
                   id="slot-provider"
                   value={providerId}
@@ -285,13 +314,41 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
                   className="mt-1 w-full"
                   required
                 >
-                  <option value="">Select a qualified Counselor…</option>
+                  <option value="">
+                    {providersQuery.isPending
+                      ? "Loading Counselors…"
+                      : "Select a qualified Counselor…"}
+                  </option>
                   {providers.map((p) => (
                     <option key={p.id} value={p.id}>
                       {p.display_name}
                     </option>
                   ))}
                 </Select>
+                {providerPage > 1 || providersQuery.data?.data.has_next ? (
+                  <div className="mt-2 flex items-center gap-2 text-xs text-muted">
+                    <Button
+                      type="button"
+                      variant="quiet"
+                      disabled={providerPage <= 1}
+                      onClick={() => setProviderPage((page) => Math.max(1, page - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <span>Page {providerPage}</span>
+                    <Button
+                      type="button"
+                      variant="quiet"
+                      disabled={!providersQuery.data?.data.has_next}
+                      onClick={() => setProviderPage((page) => page + 1)}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                ) : null}
+                <p className="mt-1 text-xs text-muted">
+                  The list follows your Appointment responsibility scope and this Service’s current provider eligibility.
+                </p>
               </div>
 
               <div>
@@ -348,24 +405,24 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirmation dialog */}
+      {/* Withdraw confirmation dialog */}
       <ConsequentialActionDialog
-        open={Boolean(deleteSlot)}
-        title="Delete appointment slot?"
-        confirmLabel="Delete slot"
-        pendingLabel="Deleting…"
+        open={Boolean(withdrawSlot)}
+        title="Withdraw appointment slot?"
+        confirmLabel="Withdraw slot"
+        pendingLabel="Withdrawing…"
         error={errorMessage}
         variant="danger"
-        pending={deleteMutation.isPending}
+        pending={withdrawMutation.isPending}
         onOpenChange={(open) => {
-          if (!open) setDeleteSlot(null);
+          if (!open) setWithdrawSlot(null);
         }}
-        onConfirm={handleDeleteConfirm}
+        onConfirm={handleWithdrawConfirm}
       >
         <p>
-          Are you sure you want to delete this appointment slot scheduled for{" "}
-          <strong>{deleteSlot ? formatInstitutionalDateTime(deleteSlot.starts_at) : ""}</strong>?
-          This action cannot be undone.
+          Withdraw the slot scheduled for{" "}
+          <strong>{withdrawSlot ? formatInstitutionalDateTime(withdrawSlot.starts_at) : ""}</strong>{" "}
+          from future booking? The slot and any Appointment history will remain on record.
         </p>
       </ConsequentialActionDialog>
     </PanelSection>
