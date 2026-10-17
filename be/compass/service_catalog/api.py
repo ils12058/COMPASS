@@ -267,11 +267,7 @@ def _slot_response(slot, *, actor=None) -> dict[str, object]:
     booked = is_slot_booked(slot)
     appt = slot.current_appointment if booked else None
     can_view_booking = bool(
-        appt
-        and (
-            actor is None
-            or appointment_management_access_allowed(actor, appt)
-        )
+        appt and (actor is None or appointment_management_access_allowed(actor, appt))
     )
     return {
         "id": slot.pk,
@@ -286,9 +282,7 @@ def _slot_response(slot, *, actor=None) -> dict[str, object]:
         "appointment_id": appt.pk if can_view_booking else None,
         "appointment_reference_code": appt.reference_code if can_view_booking else None,
         "student_name": (
-            appt.student.get_full_name()
-            if can_view_booking and appt and appt.student
-            else None
+            appt.student.get_full_name() if can_view_booking and appt and appt.student else None
         ),
     }
 

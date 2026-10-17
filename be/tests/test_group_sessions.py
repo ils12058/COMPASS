@@ -258,9 +258,7 @@ def test_student_registration_and_capacity_enforcement(group_service, counselor,
         register_student(session_id=session.id, student=student2)
 
     # Student 1 cancels
-    cancel_student_registration(
-        session_id=session.id, student=student, reason="Schedule conflict"
-    )
+    cancel_student_registration(session_id=session.id, student=student, reason="Schedule conflict")
     reg1.refresh_from_db()
     assert reg1.status == RegistrationStatus.CANCELLED
 
@@ -311,9 +309,7 @@ def test_session_cancellation_cascades_to_registrations(
     assert reg2.status == RegistrationStatus.CANCELLED
 
     # Notifications delivered to both students
-    notifs = Notification.objects.filter(
-        event_code="group_session.cancelled", target_id=session.id
-    )
+    notifs = Notification.objects.filter(event_code="group_session.cancelled", target_id=session.id)
     assert notifs.count() == 2
 
 
@@ -339,9 +335,7 @@ def test_record_attendance_and_roster_csv(group_service, counselor, student, stu
         {"registration_id": reg1.id, "attended": True, "notes": "Active participant"},
         {"registration_id": reg2.id, "attended": False, "notes": "Unexcused absence"},
     ]
-    attendances = record_attendance(
-        session_id=session.id, actor=counselor, records=records
-    )
+    attendances = record_attendance(session_id=session.id, actor=counselor, records=records)
     assert len(attendances) == 2
 
     att1 = GroupSessionAttendance.objects.get(registration=reg1)
@@ -353,9 +347,7 @@ def test_record_attendance_and_roster_csv(group_service, counselor, student, stu
     corrected_records = [
         {"registration_id": reg2.id, "attended": True, "notes": "Arrived late with excuse"},
     ]
-    record_attendance(
-        session_id=session.id, actor=counselor, records=corrected_records
-    )
+    record_attendance(session_id=session.id, actor=counselor, records=corrected_records)
     att2.refresh_from_db()
     assert att2.attended is True
 
@@ -719,4 +711,3 @@ def test_group_session_concurrent_registration_capacity_enforcement():
         ).count()
         == 1
     )
-

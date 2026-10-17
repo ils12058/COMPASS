@@ -636,4 +636,3 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
     )
     assert book_wrong_svc.status_code == 404
     assert book_wrong_svc.json()["error"]["code"] == "slot_not_found"
-

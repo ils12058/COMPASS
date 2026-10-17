@@ -131,9 +131,7 @@ def create_group_session(
     if not service.booking_pathways.filter(code=BookingPathwayCode.GROUP_SESSION).exists():
         raise ValidationError("This Service does not have the Group Sessions pathway enabled.")
     if not service_supports_delivery_mode(service, delivery_mode):
-        raise ValidationError(
-            f"Delivery mode '{delivery_mode}' is not supported by this Service."
-        )
+        raise ValidationError(f"Delivery mode '{delivery_mode}' is not supported by this Service.")
 
     cleaned_title = title.strip()
     if not cleaned_title:
@@ -274,9 +272,7 @@ def update_group_session(
         if capacity is not None:
             if capacity < 1:
                 raise ValidationError("Capacity must be at least 1.")
-            active_regs = session.registrations.filter(
-                status=RegistrationStatus.REGISTERED
-            ).count()
+            active_regs = session.registrations.filter(status=RegistrationStatus.REGISTERED).count()
             if capacity < active_regs:
                 raise ValidationError(
                     f"Capacity cannot be reduced below current registrations ({active_regs})."
@@ -290,9 +286,7 @@ def update_group_session(
                 fac_ids.append(lead_facilitator_id)
             fac_ids = list(dict.fromkeys(fac_ids))
             if session.status == GroupSessionStatus.PUBLISHED and not fac_ids:
-                raise ValidationError(
-                    "Published session must have at least one facilitator."
-                )
+                raise ValidationError("Published session must have at least one facilitator.")
             for fac_id in fac_ids:
                 if not is_counselor_qualified(session.service, fac_id):
                     raise ValidationError(f"Counselor {fac_id} is not qualified for this Service.")
@@ -319,9 +313,9 @@ def update_group_session(
         )
         if session.status == GroupSessionStatus.PUBLISHED and schedule_or_delivery_changed:
             active_regs_list = list(
-                session.registrations.filter(
-                    status=RegistrationStatus.REGISTERED
-                ).select_related("student")
+                session.registrations.filter(status=RegistrationStatus.REGISTERED).select_related(
+                    "student"
+                )
             )
             for reg in active_regs_list:
                 create_notification_for_event(
@@ -397,9 +391,7 @@ def publish_group_session(*, session_id: uuid.UUID, actor: User) -> GroupSession
     return session
 
 
-def cancel_group_session(
-    *, session_id: uuid.UUID, actor: User, reason: str
-) -> GroupSession:
+def cancel_group_session(*, session_id: uuid.UUID, actor: User, reason: str) -> GroupSession:
     """Cancel an active or draft group session and notify registered students."""
     if not reason.strip():
         raise ValidationError("Cancellation reason is required.")
@@ -527,9 +519,12 @@ def register_student(*, session_id: uuid.UUID, student: User) -> GroupSessionReg
             raise ValidationError("Group session not found.")
         if session.status != GroupSessionStatus.PUBLISHED:
             raise ValidationError("Session is not open for registration.")
-        if not session.service.is_active or not session.service.booking_pathways.filter(
-            code=BookingPathwayCode.GROUP_SESSION
-        ).exists():
+        if (
+            not session.service.is_active
+            or not session.service.booking_pathways.filter(
+                code=BookingPathwayCode.GROUP_SESSION
+            ).exists()
+        ):
             raise ValidationError(
                 "This Service is not currently accepting group session registrations."
             )
@@ -549,9 +544,7 @@ def register_student(*, session_id: uuid.UUID, student: User) -> GroupSessionReg
         if existing:
             raise ValidationError("You are already registered for this session.")
 
-        active_count = session.registrations.filter(
-            status=RegistrationStatus.REGISTERED
-        ).count()
+        active_count = session.registrations.filter(status=RegistrationStatus.REGISTERED).count()
         if active_count >= session.capacity:
             raise ValidationError("This session is full. Maximum participant capacity reached.")
 
@@ -668,9 +661,7 @@ def record_attendance(
                 status=RegistrationStatus.REGISTERED,
             ).first()
             if not registration:
-                raise ValidationError(
-                    f"Active registration {reg_id} not found in this session."
-                )
+                raise ValidationError(f"Active registration {reg_id} not found in this session.")
 
             attendance, created = GroupSessionAttendance.objects.get_or_create(
                 registration=registration,
@@ -807,9 +798,7 @@ def get_group_session_metrics(
     )
     total_capacity = sum(active_capacity_qs.values_list("capacity", flat=True)) or 0
     utilization_rate = (
-        round((total_registrations / total_capacity) * 100, 1)
-        if total_capacity > 0
-        else 0.0
+        round((total_registrations / total_capacity) * 100, 1) if total_capacity > 0 else 0.0
     )
 
     # Attendance for active registrations

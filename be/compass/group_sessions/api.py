@@ -197,9 +197,7 @@ def _require_student_view(request: HttpRequest) -> User:
     user = request.auth_user
     role_code = getattr(getattr(user, "role", None), "code", None)
     if not (
-        user.is_active
-        and role_code == "STUDENT"
-        and user.has_capability("appointments.view_self")
+        user.is_active and role_code == "STUDENT" and user.has_capability("appointments.view_self")
     ):
         raise APIError(
             403,
@@ -386,9 +384,7 @@ def get_metrics(
     to_date: datetime | None = None,
 ):
     _require_staff(request)
-    return get_group_session_metrics(
-        service_id=service_id, from_date=from_date, to_date=to_date
-    )
+    return get_group_session_metrics(service_id=service_id, from_date=from_date, to_date=to_date)
 
 
 @router.get(
@@ -595,14 +591,10 @@ def publish_session(request: HttpRequest, session_id: uuid.UUID):
     operation_id="groupSessionsCancel",
     summary="Cancel a group session",
 )
-def cancel_session(
-    request: HttpRequest, session_id: uuid.UUID, data: GroupSessionCancelRequest
-):
+def cancel_session(request: HttpRequest, session_id: uuid.UUID, data: GroupSessionCancelRequest):
     actor = _require_staff(request, recent_mfa=True)
     try:
-        session = cancel_group_session(
-            session_id=session_id, actor=actor, reason=data.reason
-        )
+        session = cancel_group_session(session_id=session_id, actor=actor, reason=data.reason)
         return _serialize_session(session)
     except ValidationError as exc:
         _raise_group_session_error(exc)
