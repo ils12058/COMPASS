@@ -33,6 +33,7 @@ import {
 } from "@/features/services/services-shared";
 import {
   DeliveryMode,
+  BookingPathway,
   ServiceProviderCoverage,
   type ServiceResponse,
 } from "@/lib/api/generated/model";
@@ -307,7 +308,29 @@ export function ServiceDetailPage() {
           <BookingFacts service={service} />
         </PanelSection>
 
+        <PanelSection title="Booking pathways" titleId="service-booking-pathways-heading">
+          <dl className="mt-4 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <Fact label="Flexible individual appointments">
+              {(service.booking_pathways?.includes(BookingPathway.FLEXIBLE_APPOINTMENT) ?? service.appointment_booking_enabled) ? "Available now" : "Not available"}
+            </Fact>
+            <Fact label="Fixed-date appointment slots">
+              {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) ? "Configured · Booking coming later" : "Not configured"}
+            </Fact>
+            <Fact label="Group sessions and events">
+              {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) ? "Configured · Registration coming later" : "Not configured"}
+            </Fact>
+          </dl>
+          <p className="mt-4 text-xs leading-5 text-muted">
+            Booking pathways can be enabled together. Fixed-date slots and group registration
+            are not yet available to Students.
+          </p>
+        </PanelSection>
+
         <PanelSection title="Provider coverage" titleId="service-provider-heading">
+          <p className="mt-3 text-xs leading-5 text-muted">
+            These are individual appointment providers. Group-session organizers and
+            facilitators are configured separately when event scheduling is available.
+          </p>
           <dl className="mt-4 grid gap-5 sm:grid-cols-2">
             <Fact label="Provider type">Counselor</Fact>
             <Fact label="Coverage">{serviceCoverageLabels[service.provider_coverage]}</Fact>

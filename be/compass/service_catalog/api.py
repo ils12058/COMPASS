@@ -32,6 +32,7 @@ from compass.service_catalog.services import (
     get_service_providers,
     list_provider_candidates,
     list_services,
+    service_booking_pathways,
     set_service_active,
     update_service,
 )
@@ -46,6 +47,12 @@ class StrictSchema(Schema):
 class DeliveryMode(StrEnum):
     IN_PERSON = "IN_PERSON"
     ONLINE = "ONLINE"
+
+
+class BookingPathway(StrEnum):
+    FLEXIBLE_APPOINTMENT = "FLEXIBLE_APPOINTMENT"
+    FIXED_DATE_SLOT = "FIXED_DATE_SLOT"
+    GROUP_SESSION = "GROUP_SESSION"
 
 
 class ServiceProviderCoverage(StrEnum):
@@ -68,6 +75,8 @@ class ServiceCreateRequest(StrictSchema):
     # Whether Students may create new Appointments for this Service. It does not make an
     # Appointment mandatory for workflows with their own direct initiation.
     appointment_booking_enabled: bool = False
+    # Optional for legacy API callers; independent pathways can coexist.
+    booking_pathways: list[BookingPathway] | None = None
     # Appointment-only settings; they must stay empty while booking is unavailable.
     default_appointment_duration_minutes: int | None = None
     cancellation_cutoff_minutes: int | None = None
@@ -81,6 +90,7 @@ class ServiceUpdateRequest(StrictSchema):
     name: str = ""
     description: str = ""
     appointment_booking_enabled: bool = False
+    booking_pathways: list[BookingPathway] | None = None
     default_appointment_duration_minutes: int | None = None
     cancellation_cutoff_minutes: int | None = None
     requires_current_inventory: bool = False
@@ -101,6 +111,7 @@ class ServiceResponse(StrictSchema):
     name: str
     description: str
     appointment_booking_enabled: bool
+    booking_pathways: list[BookingPathway]
     default_appointment_duration_minutes: int | None
     cancellation_cutoff_minutes: int | None
     requires_current_inventory: bool
@@ -194,6 +205,7 @@ def _service(item) -> dict[str, object]:
         "name": item.name,
         "description": item.description,
         "appointment_booking_enabled": item.appointment_booking_enabled,
+        "booking_pathways": service_booking_pathways(item),
         "default_appointment_duration_minutes": item.default_appointment_duration_minutes,
         "cancellation_cutoff_minutes": item.cancellation_cutoff_minutes,
         "requires_current_inventory": item.requires_current_inventory,
@@ -211,6 +223,12 @@ def _service(item) -> dict[str, object]:
 
 def _request_values(payload, fields: dict[str, object]) -> dict[str, object]:
     values = dict(fields)
+    if "booking_pathways" in values and values["booking_pathways"] is not None:
+        values["booking_pathways"] = [value.value for value in payload.booking_pathways]
+        if "appointment_booking_enabled" not in payload.model_fields_set:
+            values["appointment_booking_enabled"] = (
+                BookingPathway.FLEXIBLE_APPOINTMENT.value in values["booking_pathways"]
+            )
     if "delivery_modes" in values:
         values["delivery_modes"] = [value.value for value in payload.delivery_modes]
     if "provider_coverage" in values:

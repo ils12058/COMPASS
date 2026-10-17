@@ -3016,6 +3016,15 @@
         "title": "BookableSlotResponse",
         "type": "object"
       },
+      "BookingPathway": {
+        "enum": [
+          "FLEXIBLE_APPOINTMENT",
+          "FIXED_DATE_SLOT",
+          "GROUP_SESSION"
+        ],
+        "title": "BookingPathway",
+        "type": "string"
+      },
       "CSMCC1Value": {
         "enum": [
           1,
@@ -23182,6 +23191,20 @@
             "title": "Appointment Booking Enabled",
             "type": "boolean"
           },
+          "booking_pathways": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/BookingPathway"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Booking Pathways"
+          },
           "cancellation_cutoff_minutes": {
             "anyOf": [
               {
@@ -23433,6 +23456,13 @@
             "title": "Appointment Booking Enabled",
             "type": "boolean"
           },
+          "booking_pathways": {
+            "items": {
+              "$ref": "#/components/schemas/BookingPathway"
+            },
+            "title": "Booking Pathways",
+            "type": "array"
+          },
           "cancellation_cutoff_minutes": {
             "anyOf": [
               {
@@ -23511,6 +23541,7 @@
           "name",
           "description",
           "appointment_booking_enabled",
+          "booking_pathways",
           "default_appointment_duration_minutes",
           "cancellation_cutoff_minutes",
           "requires_current_inventory",
@@ -23562,6 +23593,20 @@
             "default": false,
             "title": "Appointment Booking Enabled",
             "type": "boolean"
+          },
+          "booking_pathways": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/BookingPathway"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Booking Pathways"
           },
           "cancellation_cutoff_minutes": {
             "anyOf": [

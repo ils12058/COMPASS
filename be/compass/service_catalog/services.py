@@ -28,8 +28,10 @@ from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import (
     MAX_SERVICE_DURATION_MINUTES,
     MIN_SERVICE_DURATION_MINUTES,
+    BookingPathwayCode,
     DeliveryMode,
     Service,
+    ServiceBookingPathway,
     ServiceCounselorProvider,
     ServiceDeliveryMode,
     ServiceProviderCoverage,
@@ -299,6 +301,51 @@ def _normalize_booking_settings(
     return None, None, False
 
 
+# Independent booking pathway configuration ------------------------------------------------------
+
+
+def _normalize_pathways(values: list[str] | tuple[str, ...]) -> frozenset[str]:
+    if not isinstance(values, (list, tuple)):
+        raise InvalidServiceCatalogInput("booking_pathways must be a list.")
+    normalized = [
+        value.value if isinstance(value, BookingPathwayCode) else value for value in values
+    ]
+    if not all(isinstance(value, str) for value in normalized):
+        raise InvalidServiceCatalogInput("booking_pathways must contain supported pathway codes.")
+    if len(set(normalized)) != len(normalized):
+        raise InvalidServiceCatalogInput("booking_pathways must not contain duplicates.")
+    if not set(normalized) <= set(BookingPathwayCode.values):
+        raise InvalidServiceCatalogInput("booking_pathways contains an unsupported pathway.")
+    return frozenset(normalized)
+
+
+def _configured_pathways(service_id: UUID) -> frozenset[str]:
+    return frozenset(
+        ServiceBookingPathway.objects.filter(service_id=service_id).values_list("code", flat=True)
+    )
+
+
+def service_booking_pathways(service: Service) -> tuple[str, ...]:
+    """Public catalog representation; the legacy flag remains canonical for flexible booking.
+
+    This fallback also protects older integrations that write Service rows directly before
+    they are migrated. Only the Catalog mutation services write pathway relationships.
+    """
+    paths = {path.code for path in service.booking_pathways.all()}
+    paths.discard(BookingPathwayCode.FLEXIBLE_APPOINTMENT)
+    if service.appointment_booking_enabled:
+        paths.add(BookingPathwayCode.FLEXIBLE_APPOINTMENT)
+    return tuple(code for code in BookingPathwayCode.values if code in paths)
+
+
+def _replace_pathways(service: Service, codes: frozenset[str]) -> None:
+    current = _configured_pathways(service.pk)
+    ServiceBookingPathway.objects.filter(service=service, code__in=current - codes).delete()
+    ServiceBookingPathway.objects.bulk_create(
+        [ServiceBookingPathway(service=service, code=code) for code in sorted(codes - current)]
+    )
+
+
 # Configuration reads ---------------------------------------------------------------------------
 
 
@@ -557,7 +604,7 @@ def _consequence_metadata(consequences: _ServiceSchedulingConsequences) -> dict[
 
 
 def _service_queryset():
-    return Service.objects.prefetch_related("delivery_mode_assignments")
+    return Service.objects.prefetch_related("delivery_mode_assignments", "booking_pathways")
 
 
 def list_services(
@@ -666,6 +713,7 @@ def create_service(
     delivery_modes: list[str] | tuple[str, ...] | None = None,
     provider_coverage: str = ServiceProviderCoverage.ALL_COUNSELORS,
     selected_counselor_ids: list[UUID] | tuple[UUID, ...] | None = None,
+    booking_pathways: list[str] | tuple[str, ...] | None = None,
     context: AuditContext,
 ) -> Service:
     """Create an inactive Service; it may be incomplete until it is enabled separately."""
@@ -676,6 +724,15 @@ def create_service(
             "COUNSELING is system-managed. Run sync_canonical_services to provision it."
         )
     booking = _normalize_bool(appointment_booking_enabled, "appointment_booking_enabled")
+    pathways = (
+        _normalize_pathways(booking_pathways)
+        if booking_pathways is not None
+        else frozenset({BookingPathwayCode.FLEXIBLE_APPOINTMENT} if booking else ())
+    )
+    if (BookingPathwayCode.FLEXIBLE_APPOINTMENT in pathways) != booking:
+        raise InvalidServiceCatalogInput(
+            "Flexible individual appointment settings must agree with the selected pathways."
+        )
     duration, cutoff, requires_inventory = _normalize_booking_settings(
         booking_enabled=booking,
         duration=_normalize_duration(default_appointment_duration_minutes),
@@ -715,6 +772,7 @@ def create_service(
             [ServiceDeliveryMode(service=service, mode=mode) for mode in sorted(modes)]
         )
         _replace_selection(service, selected)
+        _replace_pathways(service, pathways)
         record_event(
             context=context,
             action=SERVICE_CREATED,
@@ -735,6 +793,7 @@ _UPDATABLE_FIELDS = frozenset(
         "delivery_modes",
         "provider_coverage",
         "selected_counselor_ids",
+        "booking_pathways",
     }
 )
 
@@ -760,6 +819,12 @@ def update_service(
         if service is None:
             raise ServiceCatalogNotFound("The requested Service was not found.")
         current = _current_configuration(service)
+        current_pathways = _configured_pathways(service.pk)
+        # The old flag controls existing individual Appointment endpoints. A catalog
+        # write repairs any pre-migration relationship drift while preserving new paths.
+        effective_current_pathways = current_pathways - {BookingPathwayCode.FLEXIBLE_APPOINTMENT}
+        if service.appointment_booking_enabled:
+            effective_current_pathways |= {BookingPathwayCode.FLEXIBLE_APPOINTMENT}
 
         next_name = _normalize_name(changes["name"]) if "name" in changes else service.name
         next_description = (
@@ -772,6 +837,20 @@ def update_service(
             if "appointment_booking_enabled" in changes
             else service.appointment_booking_enabled
         )
+        if "booking_pathways" in changes:
+            next_pathways = _normalize_pathways(changes["booking_pathways"])
+            pathway_booking = BookingPathwayCode.FLEXIBLE_APPOINTMENT in next_pathways
+            if "appointment_booking_enabled" in changes and next_booking != pathway_booking:
+                raise InvalidServiceCatalogInput(
+                    "Flexible individual appointment settings must agree with "
+                    "the selected pathways."
+                )
+            next_booking = pathway_booking
+        else:
+            next_pathways = effective_current_pathways - {BookingPathwayCode.FLEXIBLE_APPOINTMENT}
+            if next_booking:
+                next_pathways |= {BookingPathwayCode.FLEXIBLE_APPOINTMENT}
+
         next_duration, next_cutoff, next_requirement = _normalize_booking_settings(
             booking_enabled=next_booking,
             duration=(
@@ -841,6 +920,8 @@ def update_service(
             changed_fields.append("delivery_modes")
         if current.selected_counselor_ids != next_selected:
             changed_fields.append("selected_counselor_ids")
+        if current_pathways != next_pathways:
+            changed_fields.append("booking_pathways")
         if not changed_fields:
             return get_service(service.pk)
 
@@ -861,6 +942,8 @@ def update_service(
             )
         if current.selected_counselor_ids != next_selected:
             _replace_selection(service, next_selected)
+        if current_pathways != next_pathways:
+            _replace_pathways(service, next_pathways)
         record_event(
             context=context,
             action=SERVICE_UPDATED,
