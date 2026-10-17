@@ -51,6 +51,9 @@ export function notificationDestination(
   if (notification.target_type === NotificationTargetType.GOOD_MORAL && notification.target_id) {
     return { href: "/portal/good-moral/" + notification.target_id, label: "Open Good Moral request" };
   }
+  if (notification.target_type === NotificationTargetType.GROUP_SESSION) {
+    return { href: "/portal/services", label: "Open Services" };
+  }
   if (notification.target_type === NotificationTargetType.FEEDBACK) {
     return {
       href: notification.target_id

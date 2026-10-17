@@ -24,6 +24,7 @@ import { Notice } from "@/components/ui/notice";
 import { Select } from "@/components/ui/select";
 import { PanelSection } from "@/components/ui/panel";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { usePortalSession } from "@/features/portal/components/portal-session";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import {
   useGroupSessionsListStaff,
@@ -54,6 +55,8 @@ import {
 // --- STAFF PANEL ---
 
 export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceResponse }) {
+  const { user } = usePortalSession();
+  const canManageServices = user.capabilities.includes("services.manage");
   const queryClient = useQueryClient();
   const [createOpen, setCreateOpen] = useState(false);
   const [cancelModalSession, setCancelModalSession] = useState<GroupSessionResponse | null>(null);
@@ -76,7 +79,9 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
   const [capacity, setCapacity] = useState(20);
   const [regOpensAt, setRegOpensAt] = useState("");
   const [regClosesAt, setRegClosesAt] = useState("");
-  const [leadCounselorId, setLeadCounselorId] = useState("");
+  const [leadCounselorId, setLeadCounselorId] = useState(
+    user.role === "COUNSELOR" ? user.id : ""
+  );
 
   const sessionsQuery = useGroupSessionsListStaff(
     { service_id: service.id },
@@ -87,7 +92,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
     { query: { retry: false } }
   );
   const providersQuery = useServicesGetProviders(service.id, {
-    query: { retry: false },
+    query: { retry: false, enabled: canManageServices },
   });
 
   const createMutation = useGroupSessionsCreate();
@@ -98,7 +103,19 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
 
   const sessions = sessionsQuery.data?.data ?? [];
   const metrics = metricsQuery.data?.data;
-  const providers = providersQuery.data?.data.counselors ?? [];
+  const fetchedProviders = providersQuery.data?.data.counselors ?? [];
+  const providers =
+    fetchedProviders.length > 0
+      ? fetchedProviders
+      : user.role === "COUNSELOR"
+        ? [
+            {
+              id: user.id,
+              display_name: `${user.first_name} ${user.last_name}`.trim() || user.email,
+              is_active: true,
+            },
+          ]
+        : [];
 
   const invalidateAll = async () => {
     await Promise.all([

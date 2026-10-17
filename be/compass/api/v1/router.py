@@ -25,6 +25,7 @@ from compass.exit_interviews.api import router as exit_interviews_router
 from compass.feedback.api import router as feedback_router
 from compass.good_moral.api import router as good_moral_router
 from compass.graduate_tracer.api import router as graduate_tracer_router
+from compass.group_sessions.api import router as group_sessions_router
 from compass.guidance_followups.api import router as guidance_followups_router
 from compass.guidance_messages.api import router as guidance_messages_router
 from compass.guidance_operations.api import router as guidance_operations_router
@@ -45,7 +46,6 @@ from compass.referrals.api import router as referrals_router
 from compass.reports.api import router as reports_router
 from compass.resources.api import public_router as public_resources_router
 from compass.resources.api import router as resources_router
-from compass.group_sessions.api import router as group_sessions_router
 from compass.routine_interviews.api import router as routine_interviews_router
 from compass.service_catalog.api import router as service_catalog_router
 from compass.student_actions.api import router as student_actions_router
@@ -223,6 +223,12 @@ api = NinjaAPI(
             {
                 "name": "guidance-operations",
                 "description": "Current authorized Guidance workload and schedule aggregates.",
+            },
+            {
+                "name": "group-sessions",
+                "description": (
+                    "Scheduled group guidance sessions, student registration, and attendance."
+                ),
             },
         ]
     },

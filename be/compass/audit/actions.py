@@ -57,6 +57,7 @@ GROUP_SESSION_UPDATED = "group_session.updated"
 GROUP_SESSION_PUBLISHED = "group_session.published"
 GROUP_SESSION_CANCELLED = "group_session.cancelled"
 GROUP_SESSION_COMPLETED = "group_session.completed"
+GROUP_SESSION_DELETED = "group_session.deleted"
 GROUP_SESSION_REGISTERED = "group_session.registered"
 GROUP_SESSION_REGISTRATION_CANCELLED = "group_session.registration_cancelled"
 GROUP_SESSION_ATTENDANCE_RECORDED = "group_session.attendance_recorded"
@@ -322,6 +323,7 @@ __all__ = [
     "GROUP_SESSION_PUBLISHED",
     "GROUP_SESSION_CANCELLED",
     "GROUP_SESSION_COMPLETED",
+    "GROUP_SESSION_DELETED",
     "GROUP_SESSION_REGISTERED",
     "GROUP_SESSION_REGISTRATION_CANCELLED",
     "GROUP_SESSION_ATTENDANCE_RECORDED",

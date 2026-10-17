@@ -182,3 +182,40 @@ test("ServiceDetailPage integrates fixed slots staff panel when pathway is confi
   assert.match(html, /Fixed-date appointment slots/);
   assert.match(html, /Dr\. Santos/);
 });
+
+test("ServiceDetailPage hides fixed slots panels for IT_ADMIN and INSTITUTIONAL_OFFICER and supports non-Head Counselor without services.manage", () => {
+  const itAdmin = {
+    ...manager,
+    id: "admin-1",
+    role: "IT_ADMIN",
+    capabilities: ["services.catalog.view", "services.manage"],
+  };
+  const officer = {
+    ...manager,
+    id: "officer-1",
+    role: "INSTITUTIONAL_OFFICER",
+    capabilities: ["services.catalog.view"],
+  };
+  const regularCounselor = {
+    ...manager,
+    id: "counselor-regular",
+    role: "COUNSELOR",
+    capabilities: ["services.catalog.view", "appointments.manage"],
+  };
+
+  for (const nonSchedulingUser of [itAdmin, officer]) {
+    const html = renderWithUser(h(ServiceDetailPage), nonSchedulingUser, (client) => {
+      client.setQueryData(getServicesGetQueryKey(SERVICE_ID), ok(service));
+    });
+    assert.doesNotMatch(html, /Publish slot/);
+    assert.doesNotMatch(html, /Available appointment slots/);
+  }
+
+  const counselorHtml = renderWithUser(h(ServiceDetailPage), regularCounselor, (client) => {
+    client.setQueryData(getServicesGetQueryKey(SERVICE_ID), ok(service));
+    client.setQueryData(getServicesListSlotsQueryKey(SERVICE_ID), ok(sampleSlots));
+  });
+  assert.match(counselorHtml, /Publish slot/);
+  assert.match(counselorHtml, /Dr\. Santos/);
+});
+

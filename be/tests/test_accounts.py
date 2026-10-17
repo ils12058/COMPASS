@@ -149,7 +149,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
     assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
     assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 95
+    assert RoleCapability.objects.count() == 99
     assert DesignationCapability.objects.count() == 20
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
@@ -161,8 +161,8 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 78
-    assert RoleCapability.objects.count() == 95
+    assert Capability.objects.count() == 80
+    assert RoleCapability.objects.count() == 99
     assert DesignationCapability.objects.count() == 20
 
 
@@ -328,6 +328,8 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "inventory.reopen",
         "counseling.view_assigned",
         "counseling.manage_assigned",
+        "guidance_followups.view",
+        "guidance_followups.manage",
         "guidance_messages.view",
         "guidance_messages.manage",
         "guidance_messages.templates.manage",

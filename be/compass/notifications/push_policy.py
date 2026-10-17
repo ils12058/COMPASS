@@ -44,6 +44,22 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
         PushDecision.PUSH,
         "You have an appointment update.",
     ),
+    NotificationEvent.GROUP_SESSION_REGISTERED: (
+        PushDecision.PUSH,
+        "You have a group session update.",
+    ),
+    NotificationEvent.GROUP_SESSION_REGISTRATION_CANCELLED: (
+        PushDecision.PUSH,
+        "You have a group session update.",
+    ),
+    NotificationEvent.GROUP_SESSION_CANCELLED: (
+        PushDecision.PUSH,
+        "You have a group session update.",
+    ),
+    NotificationEvent.GROUP_SESSION_RESCHEDULED: (
+        PushDecision.PUSH,
+        "You have a group session update.",
+    ),
     NotificationEvent.GOOD_MORAL_REQUEST_INITIATED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.GOOD_MORAL_ISSUED: (
         PushDecision.PUSH,

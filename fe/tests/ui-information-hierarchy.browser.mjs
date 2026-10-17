@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { appointmentId, serviceId, appointment, user, slip } from "./support/ui-hierarchy-fixtures.mjs";
 
-const { baseURL, check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("ui-information-hierarchy");
+const { check, navigate, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness("ui-information-hierarchy");
 
 const appointmentPath = `/portal/appointments/${appointmentId}`;
 await check("appointment-dialogs", appointmentPath, {}, async (page) => {
@@ -162,7 +162,7 @@ await check("mobile-sort-and-dialog", "/portal/appointments/manage", { mobile: t
   await page.getByLabel("Sort", { exact: true }).selectOption("LATEST_START");
   await page.waitForURL(/ordering=LATEST_START/);
   await noHorizontalOverflow(page);
-  await page.goto(`${baseURL}${appointmentPath}`);
+  await navigate(page, appointmentPath);
   await page.getByRole("button", { name: "Reschedule", exact: true }).tap();
   const dialog = page.getByRole("dialog", { name: "Reschedule appointment", exact: true });
   await dialog.getByLabel("New date", { exact: true }).fill("2026-10-09");

@@ -122,6 +122,8 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_canonical_services.py",
             "test_service_provider_qualification.py",
             "test_service_scheduling_consequences.py",
+            "test_fixed_date_slots.py",
+            "test_group_sessions.py",
         ),
     ),
     "scheduling": (
@@ -135,6 +137,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_availability.py",
             "test_availability_reservation_neutrality.py",
             "test_cross_domain_lifecycle_reconciliation.py",
+            "test_fixed_date_slots.py",
         ),
     ),
     "student-actions": (
@@ -558,6 +561,11 @@ DOMAINS: dict[str, Area] = {
         "graduate_tracer",
         "Tracer responses feed reports, exports, and retention disposition.",
         ("graduate-tracer", "reports", "privacy-governance"),
+    ),
+    "group_sessions": domain(
+        "group_sessions",
+        "Group Sessions depend on Services, counselor qualification, registrations, notifications, and audit.",
+        ("service-catalog", "scheduling", "notifications", "identity-access"),
     ),
     "institutional_forms": domain(
         "institutional_forms",

@@ -33,6 +33,7 @@ class NotificationTargetType(StrEnum):
     EXIT_INTERVIEW = "EXIT_INTERVIEW"
     FEEDBACK = "FEEDBACK"
     GOOD_MORAL = "GOOD_MORAL"
+    GROUP_SESSION = "GROUP_SESSION"
     INVENTORY = "INVENTORY"
     ROUTINE_INTERVIEW = "ROUTINE_INTERVIEW"
 
@@ -49,6 +50,10 @@ class NotificationEvent(StrEnum):
     APPOINTMENT_REMINDER_24H = "appointment.reminder_24h"
     APPOINTMENT_REMINDER_3H = "appointment.reminder_3h"
     APPOINTMENT_REMINDER_MANUAL = "appointment.reminder_manual"
+    GROUP_SESSION_REGISTERED = "group_session.registered"
+    GROUP_SESSION_REGISTRATION_CANCELLED = "group_session.registration_cancelled"
+    GROUP_SESSION_CANCELLED = "group_session.cancelled"
+    GROUP_SESSION_RESCHEDULED = "group_session.rescheduled"
     CALL_SLIP_VOIDED = "call_slip.voided"
     GOOD_MORAL_REQUEST_INITIATED = "good_moral.request_initiated"
     GOOD_MORAL_ISSUED = "good_moral.issued"
@@ -182,6 +187,54 @@ _EVENT_CATALOG = {
         message="You have an upcoming COMPASS appointment. Sign in to review the details.",
         email_subject="COMPASS Appointment Reminder",
         email_template="appointment_reminder",
+    ),
+    NotificationEvent.GROUP_SESSION_REGISTERED: NotificationEventDefinition(
+        event=NotificationEvent.GROUP_SESSION_REGISTERED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Registration Confirmed",
+        message=(
+            "You are registered for a COMPASS Group Session. "
+            "Sign in to COMPASS to review the details."
+        ),
+        email_subject="COMPASS Group Session Registration Confirmed",
+        email_template="group_session_update",
+    ),
+    NotificationEvent.GROUP_SESSION_REGISTRATION_CANCELLED: NotificationEventDefinition(
+        event=NotificationEvent.GROUP_SESSION_REGISTRATION_CANCELLED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Group Session Registration Cancelled",
+        message=(
+            "Your registration for a COMPASS Group Session has been cancelled. "
+            "Sign in to COMPASS to review the details."
+        ),
+        email_subject="COMPASS Group Session Registration Cancelled",
+        email_template="group_session_update",
+    ),
+    NotificationEvent.GROUP_SESSION_CANCELLED: NotificationEventDefinition(
+        event=NotificationEvent.GROUP_SESSION_CANCELLED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Group Session Cancelled",
+        message=(
+            "A COMPASS Group Session you registered for has been cancelled. "
+            "Sign in to COMPASS to review the details."
+        ),
+        email_subject="COMPASS Group Session Cancelled",
+        email_template="group_session_update",
+    ),
+    NotificationEvent.GROUP_SESSION_RESCHEDULED: NotificationEventDefinition(
+        event=NotificationEvent.GROUP_SESSION_RESCHEDULED,
+        policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Group Session Updated",
+        message=(
+            "A COMPASS Group Session you registered for has been rescheduled or updated. "
+            "Sign in to COMPASS to review the updated schedule."
+        ),
+        email_subject="COMPASS Group Session Updated",
+        email_template="group_session_update",
     ),
     NotificationEvent.CALL_SLIP_VOIDED: NotificationEventDefinition(
         event=NotificationEvent.CALL_SLIP_VOIDED,

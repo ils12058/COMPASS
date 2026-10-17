@@ -88,6 +88,10 @@ class SlotUnavailableError(FixedSlotError):
     """The slot is not published, has expired, or is currently unavailable."""
 
 
+class SlotNotFoundError(FixedSlotError):
+    """The requested fixed-date slot was not found."""
+
+
 def is_slot_booked(slot: ServiceAppointmentSlot) -> bool:
     """Return True if the slot has an active, scheduled canonical Appointment."""
     if not slot.current_appointment_id:
@@ -245,6 +249,7 @@ def update_fixed_slot(
     slot_id: UUID,
     actor: User,
     context: AuditContext,
+    service_id: UUID | None = None,
     delivery_mode: str | None = None,
     starts_at: datetime | None = None,
     ends_at: datetime | None = None,
@@ -253,14 +258,16 @@ def update_fixed_slot(
 ) -> ServiceAppointmentSlot:
     """Update a future fixed-date slot. Booked slots cannot have time or provider changed."""
     with transaction.atomic():
-        slot = (
-            ServiceAppointmentSlot.objects.select_for_update()
+        qs = (
+            ServiceAppointmentSlot.objects.select_for_update(of=("self",))
             .select_related("service", "provider")
             .filter(pk=slot_id)
-            .first()
         )
+        if service_id is not None:
+            qs = qs.filter(service_id=service_id)
+        slot = qs.first()
         if slot is None:
-            raise FixedSlotError("Slot not found.")
+            raise SlotNotFoundError("Slot not found.")
 
         booked = is_slot_booked(slot)
         time_or_provider_changed = (
@@ -326,12 +333,16 @@ def delete_fixed_slot(
     slot_id: UUID,
     actor: User,
     context: AuditContext,
+    service_id: UUID | None = None,
 ) -> None:
     """Delete an unbooked fixed-date slot."""
     with transaction.atomic():
-        slot = ServiceAppointmentSlot.objects.select_for_update().filter(pk=slot_id).first()
+        qs = ServiceAppointmentSlot.objects.select_for_update().filter(pk=slot_id)
+        if service_id is not None:
+            qs = qs.filter(service_id=service_id)
+        slot = qs.first()
         if slot is None:
-            raise FixedSlotError("Slot not found.")
+            raise SlotNotFoundError("Slot not found.")
 
         if is_slot_booked(slot):
             raise SlotCannotBeDeletedError(
@@ -340,7 +351,7 @@ def delete_fixed_slot(
             )
 
         target_id = slot.pk
-        service_id = slot.service_id
+        slot_service_id = slot.service_id
         slot.delete()
 
         record_event(
@@ -349,7 +360,7 @@ def delete_fixed_slot(
             outcome=AuditOutcome.SUCCESS,
             target_type="service.catalog.slot",
             target_id=target_id,
-            metadata={"service_id": str(service_id)},
+            metadata={"service_id": str(slot_service_id)},
         )
 
 
@@ -460,6 +471,7 @@ def book_fixed_slot(
     slot_id: UUID,
     student: User,
     context: AuditContext,
+    service_id: UUID | None = None,
     now: datetime | None = None,
 ) -> Appointment:
     """Book a published fixed-date appointment slot, creating a canonical COMPASS Appointment."""
@@ -471,14 +483,16 @@ def book_fixed_slot(
     current_time = now or timezone.now()
 
     with transaction.atomic():
-        slot = (
-            ServiceAppointmentSlot.objects.select_for_update()
+        qs = (
+            ServiceAppointmentSlot.objects.select_for_update(of=("self",))
             .select_related("service", "provider")
             .filter(pk=slot_id)
-            .first()
         )
+        if service_id is not None:
+            qs = qs.filter(service_id=service_id)
+        slot = qs.first()
         if slot is None:
-            raise SlotUnavailableError("The selected slot was not found.")
+            raise SlotNotFoundError("The selected slot was not found.")
 
         if not slot.is_published:
             raise SlotUnavailableError("This slot is not currently published for booking.")

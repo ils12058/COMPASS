@@ -20,4 +20,11 @@ def notification_is_current(notification, *, now=None):
         from compass.guidance_followups.integration import followup_notification_is_current
 
         return followup_notification_is_current(notification)
+    if notification.source_type in {
+        "group_session",
+        "group_session_registration",
+    } or notification.source_type.startswith("group_session_v"):
+        from compass.group_sessions.services import group_session_notification_is_current
+
+        return group_session_notification_is_current(notification)
     return notification.recipient.is_active

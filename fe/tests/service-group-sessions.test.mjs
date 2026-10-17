@@ -231,3 +231,46 @@ test("ServiceDetailPage integrates group sessions staff panel when pathway is co
   assert.match(html, /Group Sessions &amp; Events/);
   assert.match(html, /Resume &amp; Interview Masterclass/);
 });
+
+import { notificationDestination } from "../src/features/notifications/notification-targets.ts";
+import { NotificationTargetType } from "../src/lib/api/generated/model/index.ts";
+
+test("ServiceDetailPage hides group session panels for IT_ADMIN and INSTITUTIONAL_OFFICER and maps GROUP_SESSION notifications", () => {
+  const itAdmin = {
+    ...manager,
+    id: "admin-1",
+    role: "IT_ADMIN",
+    capabilities: ["services.catalog.view", "services.manage"],
+  };
+  const officer = {
+    ...manager,
+    id: "officer-1",
+    role: "INSTITUTIONAL_OFFICER",
+    capabilities: ["services.catalog.view"],
+  };
+
+  for (const nonSchedulingUser of [itAdmin, officer]) {
+    const html = renderWithUser(h(ServiceDetailPage), nonSchedulingUser, (client) => {
+      client.setQueryData(getServicesGetQueryKey(SERVICE_ID), ok(service));
+    });
+    assert.doesNotMatch(html, /Schedule Group Session/);
+    assert.doesNotMatch(html, /Upcoming Group Sessions &amp; Workshops/);
+  }
+
+  const dest = notificationDestination(
+    {
+      id: "notif-gs-1",
+      event_code: "group_session.registered",
+      title: "Group Session Registration Confirmed",
+      body: "Confirmed",
+      target_type: NotificationTargetType.GROUP_SESSION,
+      target_id: "gs-1",
+      is_read: false,
+      read_at: null,
+      created_at: "2026-10-17T00:00:00Z",
+    },
+    "student-1"
+  );
+  assert.deepEqual(dest, { href: "/portal/services", label: "Open Services" });
+});
+

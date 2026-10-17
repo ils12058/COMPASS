@@ -10,6 +10,7 @@ from uuid import UUID
 from ninja import Router, Schema, Status
 from pydantic import ConfigDict, Field
 
+from compass.appointments.access import appointment_management_access_allowed
 from compass.appointments.services import (
     AppointmentCurrentStudentRequired,
     AppointmentTimeConflict,
@@ -30,6 +31,7 @@ from compass.service_catalog.fixed_slots_services import (
     SlotCannotBeDeletedError,
     SlotCannotBeModifiedError,
     SlotConflictError,
+    SlotNotFoundError,
     SlotTimeInvalid,
     SlotUnavailableError,
     book_fixed_slot,
@@ -234,6 +236,8 @@ class BookSlotResponse(StrictSchema):
 
 
 def _raise_slot_error(exc: Exception) -> NoReturn:
+    if isinstance(exc, SlotNotFoundError):
+        raise APIError(404, "slot_not_found", str(exc)) from exc
     if isinstance(exc, SlotConflictError):
         raise APIError(409, "slot_conflict", str(exc)) from exc
     if isinstance(exc, SlotAlreadyBookedError):
@@ -259,9 +263,16 @@ def _raise_slot_error(exc: Exception) -> NoReturn:
     raise APIError(500, "internal_error", "The fixed slot operation failed.") from exc
 
 
-def _slot_response(slot) -> dict[str, object]:
+def _slot_response(slot, *, actor=None) -> dict[str, object]:
     booked = is_slot_booked(slot)
     appt = slot.current_appointment if booked else None
+    can_view_booking = bool(
+        appt
+        and (
+            actor is None
+            or appointment_management_access_allowed(actor, appt)
+        )
+    )
     return {
         "id": slot.pk,
         "service_id": slot.service_id,
@@ -272,9 +283,13 @@ def _slot_response(slot) -> dict[str, object]:
         "ends_at": slot.ends_at,
         "is_published": slot.is_published,
         "is_booked": booked,
-        "appointment_id": appt.pk if appt else None,
-        "appointment_reference_code": appt.reference_code if appt else None,
-        "student_name": appt.student.get_full_name() if appt and appt.student else None,
+        "appointment_id": appt.pk if can_view_booking else None,
+        "appointment_reference_code": appt.reference_code if can_view_booking else None,
+        "student_name": (
+            appt.student.get_full_name()
+            if can_view_booking and appt and appt.student
+            else None
+        ),
     }
 
 
@@ -554,14 +569,30 @@ def services_disable(request, service_id: UUID, payload: ServiceDisableRequest):
 
 def _require_slot_management(request, *, recent_mfa: bool = False) -> None:
     user = request.auth_user
-    if not (user.has_capability("services.manage") or user.has_capability("appointments.manage")):
+    role_code = getattr(getattr(user, "role", None), "code", None)
+    if not (
+        user.is_active
+        and role_code in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        and user.has_capability("appointments.manage")
+    ):
         raise APIError(
             403,
             "permission_denied",
-            "Either services.manage or appointments.manage capability is required.",
+            "Guidance staff authority with appointments.manage capability is required.",
         )
     if recent_mfa:
         require_recent_mfa_for_request(request)
+
+
+def _require_student_slot_access(request, capability: str) -> None:
+    user = request.auth_user
+    role_code = getattr(getattr(user, "role", None), "code", None)
+    if not (user.is_active and role_code == "STUDENT" and user.has_capability(capability)):
+        raise APIError(
+            403,
+            "permission_denied",
+            f"Student authority with {capability} capability is required.",
+        )
 
 
 @router.get(
@@ -584,7 +615,7 @@ def services_list_slots(
         to_date=to_date,
         provider_id=provider_id,
     )
-    return [_slot_response(slot) for slot in slots]
+    return [_slot_response(slot, actor=request.auth_user) for slot in slots]
 
 
 @router.post(
@@ -606,7 +637,7 @@ def services_create_slot(request, service_id: UUID, payload: ServiceSlotCreateRe
             actor=request.auth_user,
             context=_context(request),
         )
-        return _slot_response(slot)
+        return _slot_response(slot, actor=request.auth_user)
     except Exception as exc:
         _raise_slot_error(exc)
 
@@ -625,6 +656,7 @@ def services_list_bookable_slots(
     delivery_mode: DeliveryMode | None = None,
     provider_id: UUID | None = None,
 ):
+    _require_student_slot_access(request, "appointments.view_self")
     slots = list_student_bookable_slots(
         service_id=service_id,
         student=request.auth_user,
@@ -653,6 +685,7 @@ def services_update_slot(
     try:
         slot = update_fixed_slot(
             slot_id=slot_id,
+            service_id=service_id,
             actor=request.auth_user,
             context=_context(request),
             delivery_mode=changes.get("delivery_mode"),
@@ -661,14 +694,14 @@ def services_update_slot(
             is_published=changes.get("is_published"),
             provider_id=changes.get("provider_id"),
         )
-        return _slot_response(slot)
+        return _slot_response(slot, actor=request.auth_user)
     except Exception as exc:
         _raise_slot_error(exc)
 
 
 @router.delete(
     "/{service_id}/slots/{slot_id}",
-    response=response_with_errors(None, 401, 403, 404, 409, 422),
+    response=response_with_errors(None, 401, 403, 404, 409, 422, success_status=204),
     auth=session_auth,
     operation_id="servicesDeleteSlot",
 )
@@ -677,10 +710,11 @@ def services_delete_slot(request, service_id: UUID, slot_id: UUID):
     try:
         delete_fixed_slot(
             slot_id=slot_id,
+            service_id=service_id,
             actor=request.auth_user,
             context=_context(request),
         )
-        return 204, None
+        return Status(204, None)
     except Exception as exc:
         _raise_slot_error(exc)
 
@@ -692,9 +726,11 @@ def services_delete_slot(request, service_id: UUID, slot_id: UUID):
     operation_id="servicesBookSlot",
 )
 def services_book_slot(request, service_id: UUID, slot_id: UUID):
+    _require_student_slot_access(request, "appointments.manage_self")
     try:
         appointment = book_fixed_slot(
             slot_id=slot_id,
+            service_id=service_id,
             student=request.auth_user,
             context=_context(request),
         )

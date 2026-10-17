@@ -518,3 +518,122 @@ def test_api_staff_fixed_slot_crud_and_student_booking(env):
     )
     assert del_res.status_code == 409
     assert del_res.json()["error"]["code"] == "slot_cannot_be_deleted"
+
+
+@pytest.mark.django_db
+def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolation(env):
+    admin = env["admin"]
+    counselor = env["counselor"]
+    counselor_b = env["counselor_b"]
+    service = env["service"]
+    student = env["student_1"]
+
+    admin_client = auth_client(admin, recent_mfa=True)
+    no_mfa_counselor = auth_client(counselor, recent_mfa=False)
+    counselor_client = auth_client(counselor, recent_mfa=True)
+    counselor_b_client = auth_client(counselor_b, recent_mfa=True)
+    student_client = auth_client(student, recent_mfa=False)
+
+    start = future_local_start(hour=15)
+    end = start + timedelta(minutes=60)
+    create_payload = {
+        "provider_id": str(counselor.pk),
+        "delivery_mode": "IN_PERSON",
+        "starts_at": start.isoformat(),
+        "ends_at": end.isoformat(),
+        "is_published": True,
+    }
+
+    # 1. IT_ADMIN (services.manage without COUNSELOR/GSS + appointments.manage) rejected with 403
+    assert admin_client.get(f"/api/v1/services/{service.pk}/slots").status_code == 403
+    assert (
+        admin_client.post(
+            f"/api/v1/services/{service.pk}/slots",
+            data=json.dumps(create_payload),
+            content_type="application/json",
+            **csrf(admin_client),
+        ).status_code
+        == 403
+    )
+
+    # 2. Counselor without recent MFA rejected with 403 on mutation
+    no_mfa_res = no_mfa_counselor.post(
+        f"/api/v1/services/{service.pk}/slots",
+        data=json.dumps(create_payload),
+        content_type="application/json",
+        **csrf(no_mfa_counselor),
+    )
+    assert no_mfa_res.status_code == 403
+    assert no_mfa_res.json()["error"]["code"] in ("mfa_setup_required", "mfa_step_up_required")
+
+    # 3. Counselor creates slot and student books it
+    create_res = counselor_client.post(
+        f"/api/v1/services/{service.pk}/slots",
+        data=json.dumps(create_payload),
+        content_type="application/json",
+        **csrf(counselor_client),
+    )
+    assert create_res.status_code == 200
+    slot_id = create_res.json()["id"]
+
+    book_res = student_client.post(
+        f"/api/v1/services/{service.pk}/slots/{slot_id}/book",
+        **csrf(student_client),
+    )
+    assert book_res.status_code == 200
+
+    # 4. Owning counselor sees student details; out-of-scope counselor_b sees redacted details
+    owner_slots = counselor_client.get(f"/api/v1/services/{service.pk}/slots").json()
+    owner_slot = next(s for s in owner_slots if s["id"] == slot_id)
+    assert owner_slot["is_booked"] is True
+    assert owner_slot["student_name"] is not None
+    assert owner_slot["appointment_id"] is not None
+    assert owner_slot["appointment_reference_code"] is not None
+
+    other_slots = counselor_b_client.get(f"/api/v1/services/{service.pk}/slots").json()
+    other_slot = next(s for s in other_slots if s["id"] == slot_id)
+    assert other_slot["is_booked"] is True
+    assert other_slot["student_name"] is None
+    assert other_slot["appointment_id"] is None
+    assert other_slot["appointment_reference_code"] is None
+
+    # 5. Cross-service slot_id isolation returns 404 slot_not_found
+    other_service = create_service(
+        code="OTHER_FIXED_SVC",
+        name="Other Fixed Slot Service",
+        appointment_booking_enabled=True,
+        booking_pathways=[
+            BookingPathwayCode.FLEXIBLE_APPOINTMENT,
+            BookingPathwayCode.FIXED_DATE_SLOT,
+        ],
+        default_appointment_duration_minutes=60,
+        delivery_modes=["IN_PERSON"],
+        context=AuditContext.user(admin),
+    )
+    other_service = set_service_active(
+        service_id=other_service.pk, is_active=True, context=AuditContext.user(admin)
+    )
+
+    patch_wrong_svc = counselor_client.patch(
+        f"/api/v1/services/{other_service.pk}/slots/{slot_id}",
+        data=json.dumps({"is_published": False}),
+        content_type="application/json",
+        **csrf(counselor_client),
+    )
+    assert patch_wrong_svc.status_code == 404
+    assert patch_wrong_svc.json()["error"]["code"] == "slot_not_found"
+
+    del_wrong_svc = counselor_client.delete(
+        f"/api/v1/services/{other_service.pk}/slots/{slot_id}",
+        **csrf(counselor_client),
+    )
+    assert del_wrong_svc.status_code == 404
+    assert del_wrong_svc.json()["error"]["code"] == "slot_not_found"
+
+    book_wrong_svc = student_client.post(
+        f"/api/v1/services/{other_service.pk}/slots/{slot_id}/book",
+        **csrf(student_client),
+    )
+    assert book_wrong_svc.status_code == 404
+    assert book_wrong_svc.json()["error"]["code"] == "slot_not_found"
+

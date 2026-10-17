@@ -335,25 +335,25 @@ export function ServiceDetailPage() {
         </PanelSection>
 
         {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) &&
-        (canManage || user.capabilities.includes("appointments.manage")) ? (
+        user.capabilities.includes("appointments.manage") &&
+        (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF") ? (
           <ServiceFixedSlotsStaffPanel service={service} />
         ) : null}
 
         {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) &&
-        !canManage &&
-        !user.capabilities.includes("appointments.manage") &&
+        user.role === "STUDENT" &&
         service.is_active ? (
           <ServiceFixedSlotsStudentPanel service={service} />
         ) : null}
 
         {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) &&
-        (canManage || user.capabilities.includes("appointments.manage")) ? (
+        user.capabilities.includes("appointments.manage") &&
+        (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF") ? (
           <ServiceGroupSessionsStaffPanel service={service} />
         ) : null}
 
         {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) &&
-        !canManage &&
-        !user.capabilities.includes("appointments.manage") &&
+        user.role === "STUDENT" &&
         service.is_active ? (
           <ServiceGroupSessionsStudentPanel service={service} />
         ) : null}
