@@ -700,9 +700,7 @@ if keyring_reuses_secret(
 GUIDANCE_FOLLOWUPS_ENABLED = env_bool("GUIDANCE_FOLLOWUPS_ENABLED", False)
 _followup_keys = env("GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS", "")
 GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS = (
-    parse_fernet_keyring(
-        _followup_keys, setting="GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS"
-    )
+    parse_fernet_keyring(_followup_keys, setting="GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS")
     if _followup_keys
     else ()
 )
@@ -722,9 +720,7 @@ if keyring_reuses_secret(
     *GUIDANCE_MESSAGE_ENCRYPTION_KEYS,
     *ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS,
 ):
-    raise ValueError(
-        "GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS must not reuse existing keys or SECRET_KEY"
-    )
+    raise ValueError("GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS must not reuse existing keys or SECRET_KEY")
 
 if not 1 <= NOTIFICATION_EMAIL_MAX_ATTEMPTS <= 20:
     raise ValueError("NOTIFICATION_EMAIL_MAX_ATTEMPTS must be between 1 and 20")

@@ -1,4 +1,5 @@
 """FUP-1A privacy, lifecycle, persistence, and concurrency regression proofs."""
+
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
@@ -30,7 +31,8 @@ from compass.guidance_followups.models import (
     GuidanceFollowUpEvent,
 )
 from compass.organization.models import (
-    StaffSupervision, StudentAffiliation,
+    StaffSupervision,
+    StudentAffiliation,
 )
 from compass.referrals.models import Referral
 from compass.routine_interviews.models import RoutineInterview
@@ -48,19 +50,37 @@ def world(settings):
     return counselor_a, counselor_b, gss, student_a, student_b, student_none
 
 
-def create(world, actor=None, student=None, assignee=None, *, key=None, description="Private notes",
-           source_kind=None, source_id=None, category="ADMINISTRATIVE", now=None, visibility=None):
+def create(
+    world,
+    actor=None,
+    student=None,
+    assignee=None,
+    *,
+    key=None,
+    description="Private notes",
+    source_kind=None,
+    source_id=None,
+    category="ADMINISTRATIVE",
+    now=None,
+    visibility=None,
+):
     a, _, _, s, _, _ = world
     actor = actor or a
     now = now or timezone.now()
     return services.create_followup(
-        actor=actor, student_id=(student or s).pk,
+        actor=actor,
+        student_id=(student or s).pk,
         assigned_to_id=(assignee or actor).pk,
-        category=category, due_at=now + timedelta(days=3),
-        source_kind=source_kind, source_id=source_id,
-        description=description, visibility=visibility,
-        idempotency_key=key or str(uuid4()), request_fingerprint="a" * 64,
-        context=context(actor), now=now,
+        category=category,
+        due_at=now + timedelta(days=3),
+        source_kind=source_kind,
+        source_id=source_id,
+        description=description,
+        visibility=visibility,
+        idempotency_key=key or str(uuid4()),
+        request_fingerprint="a" * 64,
+        context=context(actor),
+        now=now,
     )
 
 
@@ -87,7 +107,9 @@ def test_operational_create_read_complete_and_immutable_history(world):
 
     before = AuditEvent.objects.filter(action="guidance_followup.completed").count()
     result = services.complete_followup(
-        actor=gss, followup_id=item.pk, expected_version=1,
+        actor=gss,
+        followup_id=item.pk,
+        expected_version=1,
         outcome="Contact completed and acknowledged",
         context=context(gss),
     )
@@ -100,8 +122,11 @@ def test_operational_create_read_complete_and_immutable_history(world):
     assert AuditEvent.objects.filter(action="guidance_followup.completed").count() == before + 1
     with pytest.raises(FollowUpConflict):
         services.complete_followup(
-            actor=gss, followup_id=item.pk, expected_version=2,
-            outcome="Repeat", context=context(gss),
+            actor=gss,
+            followup_id=item.pk,
+            expected_version=2,
+            outcome="Repeat",
+            context=context(gss),
         )
     assert item.events.count() == 2
     assert services.list_followups(actor=gss, status="PENDING").items == ()
@@ -112,8 +137,11 @@ def test_gss_assignment_reassignment_and_supervision_loss(world):
     counselor, counselor_b, gss, student, *_ = world
     item = create(world, actor=counselor)
     changed = services.reassign_followup(
-        actor=counselor, followup_id=item.pk, expected_version=1,
-        assigned_to_id=gss.pk, context=context(counselor),
+        actor=counselor,
+        followup_id=item.pk,
+        expected_version=1,
+        assigned_to_id=gss.pk,
+        context=context(counselor),
     )
     assert changed.assigned_to_id == gss.pk
     assert changed.events.count() == 2
@@ -123,8 +151,11 @@ def test_gss_assignment_reassignment_and_supervision_loss(world):
         services.get_followup(actor=counselor, followup_id=item.pk)
     with pytest.raises(FollowUpInvalid):
         services.reassign_followup(
-            actor=gss, followup_id=item.pk, expected_version=2,
-            assigned_to_id=counselor_b.pk, context=context(gss),
+            actor=gss,
+            followup_id=item.pk,
+            expected_version=2,
+            assigned_to_id=counselor_b.pk,
+            context=context(gss),
         )
     StaffSupervision.objects.filter(staff=gss).delete()
     assert services.list_followups(actor=gss).items == ()
@@ -137,16 +168,28 @@ def test_source_classification_cannot_be_downgraded(world):
     service = Service.objects.create(code="FUP_TEST", name="Counseling for test")
     now = timezone.now()
     encounter = CounselingEncounter.objects.create(
-        student=student, counselor=counselor, service=service,
-        service_name_snapshot=service.name, entry_mode="WALK_IN",
-        delivery_mode="IN_PERSON", started_at=now-timedelta(hours=2),
-        ended_at=now-timedelta(hours=1), created_by=counselor,
+        student=student,
+        counselor=counselor,
+        service=service,
+        service_name_snapshot=service.name,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=now - timedelta(hours=2),
+        ended_at=now - timedelta(hours=1),
+        created_by=counselor,
     )
     with pytest.raises(FollowUpInvalid):
-        create(world, source_kind="COUNSELING_ENCOUNTER", source_id=encounter.pk,
-               category="COUNSELING", visibility="OPERATIONAL")
+        create(
+            world,
+            source_kind="COUNSELING_ENCOUNTER",
+            source_id=encounter.pk,
+            category="COUNSELING",
+            visibility="OPERATIONAL",
+        )
     confidential = create(
-        world, source_kind="COUNSELING_ENCOUNTER", source_id=encounter.pk,
+        world,
+        source_kind="COUNSELING_ENCOUNTER",
+        source_id=encounter.pk,
         category="COUNSELING",
     )
     assert confidential.visibility == "COUNSELOR_CONFIDENTIAL"
@@ -155,8 +198,11 @@ def test_source_classification_cannot_be_downgraded(world):
         services.get_followup(actor=gss, followup_id=confidential.pk)
     with pytest.raises(FollowUpInvalid):
         services.reassign_followup(
-            actor=counselor, followup_id=confidential.pk, expected_version=1,
-            assigned_to_id=gss.pk, context=context(counselor),
+            actor=counselor,
+            followup_id=confidential.pk,
+            expected_version=1,
+            assigned_to_id=gss.pk,
+            context=context(counselor),
         )
 
 
@@ -165,42 +211,64 @@ def test_source_matches_student_and_current_actor(world):
     service = Service.objects.create(code="FUP_SOURCE", name="Source service")
     now = timezone.now()
     encounter = CounselingEncounter.objects.create(
-        student=student_a, counselor=counselor, service=service,
-        service_name_snapshot=service.name, entry_mode="WALK_IN",
-        delivery_mode="IN_PERSON", started_at=now-timedelta(hours=2),
-        ended_at=now-timedelta(hours=1), created_by=counselor,
+        student=student_a,
+        counselor=counselor,
+        service=service,
+        service_name_snapshot=service.name,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=now - timedelta(hours=2),
+        ended_at=now - timedelta(hours=1),
+        created_by=counselor,
     )
     for student, actor in ((student_b, counselor), (student_a, counselor_b), (student_a, gss)):
         with pytest.raises(FollowUpNotFound):
-            create(world, actor=actor, student=student,
-                   source_kind="COUNSELING_ENCOUNTER", source_id=encounter.pk,
-                   category="COUNSELING")
+            create(
+                world,
+                actor=actor,
+                student=student,
+                source_kind="COUNSELING_ENCOUNTER",
+                source_id=encounter.pk,
+                category="COUNSELING",
+            )
     routine = RoutineInterview.objects.create(
-        student=student_a, counselor=counselor, entry_mode="WALK_IN",
-        delivery_mode="IN_PERSON", student_intake_ciphertext="not read",
+        student=student_a,
+        counselor=counselor,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        student_intake_ciphertext="not read",
         counselor_evaluation_ciphertext="not read",
     )
-    linked = create(world, source_kind="ROUTINE_INTERVIEW", source_id=routine.pk,
-                    category="COUNSELING")
+    linked = create(
+        world, source_kind="ROUTINE_INTERVIEW", source_id=routine.pk, category="COUNSELING"
+    )
     assert linked.visibility == "COUNSELOR_CONFIDENTIAL"
     with pytest.raises(FollowUpNotFound):
-        create(world, source_kind="ROUTINE_INTERVIEW", source_id=uuid4(),
-               category="COUNSELING")
+        create(world, source_kind="ROUTINE_INTERVIEW", source_id=uuid4(), category="COUNSELING")
 
 
 def test_referral_source_keeps_operational_scope(world):
     counselor, counselor_b, gss, student, student_b, _ = world
     source = create_for(
-        counselor, student, key="fup-referral-parent",
-        fingerprint="b"*64,
+        counselor,
+        student,
+        key="fup-referral-parent",
+        fingerprint="b" * 64,
     )
-    item = create(world, actor=gss, source_kind="REFERRAL", source_id=source.pk,
-                  category="REFERRAL_ACTION")
+    item = create(
+        world, actor=gss, source_kind="REFERRAL", source_id=source.pk, category="REFERRAL_ACTION"
+    )
     assert item.visibility == "OPERATIONAL"
     assert services.followup_detail(actor=gss, item=item)["source"]["id"] == source.pk
     with pytest.raises(FollowUpNotFound):
-        create(world, actor=counselor_b, student=student,
-               source_kind="REFERRAL", source_id=source.pk, category="REFERRAL_ACTION")
+        create(
+            world,
+            actor=counselor_b,
+            student=student,
+            source_kind="REFERRAL",
+            source_id=source.pk,
+            category="REFERRAL_ACTION",
+        )
     Referral.objects.filter(pk=source.pk).update(voided_at=timezone.now(), voided_by=counselor)
     assert services.followup_detail(actor=gss, item=item)["source"] is None
 
@@ -216,8 +284,11 @@ def test_missing_key_tamper_and_cross_record_ciphertext(world, settings):
         services.followup_detail(actor=counselor, item=one)
     with pytest.raises(FollowUpContentUnavailable):
         services.complete_followup(
-            actor=counselor, followup_id=one.pk, expected_version=1,
-            outcome="Confidential result", context=context(counselor),
+            actor=counselor,
+            followup_id=one.pk,
+            expected_version=1,
+            outcome="Confidential result",
+            context=context(counselor),
         )
     one.refresh_from_db()
     assert one.status == "PENDING"
@@ -234,19 +305,33 @@ def test_idempotency_conflicting_replay_and_version_guard(world):
     assert one.events.count() == 1
     with pytest.raises(FollowUpConflict):
         services.create_followup(
-            actor=counselor, student_id=student.pk, assigned_to_id=counselor.pk,
-            category="ADMINISTRATIVE", due_at=timezone.now()+timedelta(days=1),
-            source_kind=None, source_id=None, description=None, visibility=None,
-            idempotency_key=key, request_fingerprint="b"*64, context=context(counselor),
+            actor=counselor,
+            student_id=student.pk,
+            assigned_to_id=counselor.pk,
+            category="ADMINISTRATIVE",
+            due_at=timezone.now() + timedelta(days=1),
+            source_kind=None,
+            source_id=None,
+            description=None,
+            visibility=None,
+            idempotency_key=key,
+            request_fingerprint="b" * 64,
+            context=context(counselor),
         )
     services.record_activity(
-        actor=counselor, followup_id=one.pk, expected_version=1,
-        remarks="Contacted the Student", context=context(counselor),
+        actor=counselor,
+        followup_id=one.pk,
+        expected_version=1,
+        remarks="Contacted the Student",
+        context=context(counselor),
     )
     with pytest.raises(FollowUpConflict):
         services.update_followup(
-            actor=counselor, followup_id=one.pk, expected_version=1,
-            category="STUDENT_CONTACT", context=context(counselor),
+            actor=counselor,
+            followup_id=one.pk,
+            expected_version=1,
+            category="STUDENT_CONTACT",
+            context=context(counselor),
         )
     one.refresh_from_db()
     assert one.version == 2
@@ -257,8 +342,11 @@ def test_cancel_is_terminal_with_encrypted_reason(world):
     counselor, *_ = world
     item = create(world)
     cancelled = services.cancel_followup(
-        actor=counselor, followup_id=item.pk, expected_version=1,
-        reason="No longer needed", context=context(counselor),
+        actor=counselor,
+        followup_id=item.pk,
+        expected_version=1,
+        reason="No longer needed",
+        context=context(counselor),
     )
     assert cancelled.status == FollowUpStatus.CANCELLED
     assert cancelled.events.count() == 2
@@ -267,8 +355,11 @@ def test_cancel_is_terminal_with_encrypted_reason(world):
     )
     with pytest.raises(FollowUpConflict):
         services.record_activity(
-            actor=counselor, followup_id=item.pk, expected_version=2,
-            remarks="Later", context=context(counselor),
+            actor=counselor,
+            followup_id=item.pk,
+            expected_version=2,
+            remarks="Later",
+            context=context(counselor),
         )
 
 
@@ -279,13 +370,18 @@ def test_capability_deactivation_and_direct_object_scope(world):
         services.get_followup(actor=gss, followup_id=item.pk)
     capability = Capability.objects.get(code="guidance_followups.manage")
     UserCapabilityOverride.objects.create(
-        user=counselor, capability=capability, effect="REVOKE",
+        user=counselor,
+        capability=capability,
+        effect="REVOKE",
         reason="Regression test capability revoke",
     )
     with pytest.raises(FollowUpPermissionDenied):
         services.complete_followup(
-            actor=counselor, followup_id=item.pk, expected_version=1,
-            outcome="Denied", context=context(counselor),
+            actor=counselor,
+            followup_id=item.pk,
+            expected_version=1,
+            outcome="Denied",
+            context=context(counselor),
         )
     other = create(world, actor=gss, student=student_a, assignee=gss)
     StaffSupervision.objects.filter(staff=gss).update(supervisor=counselor)
@@ -301,20 +397,29 @@ def test_capability_deactivation_and_direct_object_scope(world):
 def test_postgres_concurrent_completions_commit_once(world):
     counselor, *_ = world
     item = create(world)
+
     def run():
         close_old_connections()
         try:
             return services.complete_followup(
-                actor=counselor, followup_id=item.pk, expected_version=1,
-                outcome="Completed", context=context(counselor),
+                actor=counselor,
+                followup_id=item.pk,
+                expected_version=1,
+                outcome="Completed",
+                context=context(counselor),
             ).status
         except FollowUpConflict:
             return "CONFLICT"
         finally:
             close_old_connections()
+
     with ThreadPoolExecutor(max_workers=2) as pool:
         values = list(pool.map(lambda _idx: run(), range(2)))
     assert sorted(values) == ["COMPLETED", "CONFLICT"]
-    assert GuidanceFollowUpEvent.objects.filter(
-        followup=item, kind=FollowUpEventType.COMPLETED,
-    ).count() == 1
+    assert (
+        GuidanceFollowUpEvent.objects.filter(
+            followup=item,
+            kind=FollowUpEventType.COMPLETED,
+        ).count()
+        == 1
+    )

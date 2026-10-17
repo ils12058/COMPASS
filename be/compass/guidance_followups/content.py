@@ -1,4 +1,5 @@
 """Explicit, authenticated Follow-Up content; decryption never happens in ORM access."""
+
 from __future__ import annotations
 
 from django.conf import settings
@@ -44,12 +45,20 @@ def _binding(followup_id, section, event_id=None):
 
 
 def encrypt_text(followup_id, section, text, *, event_id=None, required=False):
-    limit = MAX_DESCRIPTION if section == "description" else MAX_OUTCOME if section == "outcome" else MAX_REMARKS
+    limit = (
+        MAX_DESCRIPTION
+        if section == "description"
+        else MAX_OUTCOME
+        if section == "outcome"
+        else MAX_REMARKS
+    )
     validated = _text(text, section, limit, required=required)
     try:
         return crypto.encrypt_bound_json(
-            keyring=_keyring(), schema_version=SCHEMA_VERSION,
-            binding=_binding(followup_id, section, event_id), payload={"text": validated},
+            keyring=_keyring(),
+            schema_version=SCHEMA_VERSION,
+            binding=_binding(followup_id, section, event_id),
+            payload={"text": validated},
         )
     except ConfidentialDataUnavailable:
         raise FollowUpContentUnavailable("Protected Follow-Up content is unavailable.") from None
@@ -58,12 +67,20 @@ def encrypt_text(followup_id, section, text, *, event_id=None, required=False):
 def decrypt_text(followup_id, section, token, *, event_id=None):
     try:
         payload = crypto.decrypt_bound_json(
-            token, keyring=_keyring(), schema_version=SCHEMA_VERSION,
+            token,
+            keyring=_keyring(),
+            schema_version=SCHEMA_VERSION,
             binding=_binding(followup_id, section, event_id),
         )
         if set(payload) != {"text"}:
             raise FollowUpContentUnavailable("Protected Follow-Up content is unavailable.")
-        limit = MAX_DESCRIPTION if section == "description" else MAX_OUTCOME if section == "outcome" else MAX_REMARKS
+        limit = (
+            MAX_DESCRIPTION
+            if section == "description"
+            else MAX_OUTCOME
+            if section == "outcome"
+            else MAX_REMARKS
+        )
         return _text(payload["text"], section, limit)
     except (ConfidentialDataUnavailable, FollowUpInvalid, UnicodeError):
         raise FollowUpContentUnavailable("Protected Follow-Up content is unavailable.") from None

@@ -1,4 +1,5 @@
 """Domain-owned transactional Follow-Up lifecycle. Never mutates source-domain rows."""
+
 from __future__ import annotations
 
 import hashlib
@@ -61,7 +62,9 @@ def _creation_key(actor, key):
 
 def _load(followup_id, *, lock=False):
     qs = GuidanceFollowUp.objects.select_related(
-        "student", "assigned_to", "created_by",
+        "student",
+        "assigned_to",
+        "created_by",
     )
     if lock:
         qs = qs.select_for_update(of=("self",))
@@ -71,16 +74,34 @@ def _load(followup_id, *, lock=False):
     return row
 
 
-def _event(item, *, actor, kind, remarks=None, old_assignee=None, new_assignee=None,
-           old_due=None, new_due=None):
+def _event(
+    item,
+    *,
+    actor,
+    kind,
+    remarks=None,
+    old_assignee=None,
+    new_assignee=None,
+    old_due=None,
+    new_due=None,
+):
     event = GuidanceFollowUpEvent(
-        followup=item, actor=actor, kind=kind, revision=item.version,
-        old_assignee=old_assignee, new_assignee=new_assignee,
-        old_due_at=old_due, new_due_at=new_due,
+        followup=item,
+        actor=actor,
+        kind=kind,
+        revision=item.version,
+        old_assignee=old_assignee,
+        new_assignee=new_assignee,
+        old_due_at=old_due,
+        new_due_at=new_due,
     )
     if remarks is not None:
         event.remarks_ciphertext = encrypt_text(
-            item.pk, "remarks", remarks, event_id=event.pk, required=True,
+            item.pk,
+            "remarks",
+            remarks,
+            event_id=event.pk,
+            required=True,
         )
     event.save(force_insert=True)
     return event
@@ -88,18 +109,30 @@ def _event(item, *, actor, kind, remarks=None, old_assignee=None, new_assignee=N
 
 def _audit(context, action, item, *, metadata=None):
     record_event(
-        context=context, action=f"guidance_followup.{action}",
-        outcome=AuditOutcome.SUCCESS, target_type="guidance_followups.guidancefollowup",
-        target_id=item.pk, metadata={"version": item.version, **(metadata or {})},
+        context=context,
+        action=f"guidance_followup.{action}",
+        outcome=AuditOutcome.SUCCESS,
+        target_type="guidance_followups.guidancefollowup",
+        target_id=item.pk,
+        metadata={"version": item.version, **(metadata or {})},
     )
 
 
 def create_followup(
-    *, actor: User, student_id: UUID, assigned_to_id: UUID,
-    category: str, due_at: datetime, source_kind: str | None,
-    source_id: UUID | None, description: str | None, visibility: str | None,
-    idempotency_key: str, request_fingerprint: str,
-    context: AuditContext, now=None,
+    *,
+    actor: User,
+    student_id: UUID,
+    assigned_to_id: UUID,
+    category: str,
+    due_at: datetime,
+    source_kind: str | None,
+    source_id: UUID | None,
+    description: str | None,
+    visibility: str | None,
+    idempotency_key: str,
+    request_fingerprint: str,
+    context: AuditContext,
+    now=None,
 ) -> GuidanceFollowUp:
     at = now or timezone.now()
     actor = policy.current_actor(actor, manage=True)
@@ -123,28 +156,41 @@ def create_followup(
         student = policy.valid_student(student_id, lock=True)
         if source_kind:
             policy.require_source(
-                actor, kind=source_kind, source_id=source_id,
-                student_id=student.pk, manage=True,
+                actor,
+                kind=source_kind,
+                source_id=source_id,
+                student_id=student.pk,
+                manage=True,
             )
         elif not policy.in_operational_scope(actor, student.pk):
             raise FollowUpNotFound("The Student is not available for Follow-Ups.")
         assignee = policy.require_assignee(
-            assigned_to_id, student_id=student.pk, visibility=classification,
-            source_kind=source_kind, source_id=source_id,
+            assigned_to_id,
+            student_id=student.pk,
+            visibility=classification,
+            source_kind=source_kind,
+            source_id=source_id,
         )
         if classification == FollowUpVisibility.COUNSELOR_CONFIDENTIAL and assignee.pk != actor.pk:
             raise FollowUpInvalid("Only the linked Counselor may own this follow-up.")
         item = GuidanceFollowUp(
-            student=student, assigned_to=assignee, category=category,
-            visibility=classification, due_at=due_at,
-            source_kind=source_kind, source_id=source_id,
-            created_by=actor, creation_key_digest=key, creation_request_fingerprint=fingerprint,
+            student=student,
+            assigned_to=assignee,
+            category=category,
+            visibility=classification,
+            due_at=due_at,
+            source_kind=source_kind,
+            source_id=source_id,
+            created_by=actor,
+            creation_key_digest=key,
+            creation_request_fingerprint=fingerprint,
         )
         if description is not None:
             item.description_ciphertext = encrypt_text(item.pk, "description", description)
         item.save(force_insert=True)
-        _event(item, actor=actor, kind=FollowUpEventType.CREATED, new_assignee=assignee,
-               new_due=due_at)
+        _event(
+            item, actor=actor, kind=FollowUpEventType.CREATED, new_assignee=assignee, new_due=due_at
+        )
         _audit(context, "created", item, metadata={"category": category})
         return item
 
@@ -155,7 +201,13 @@ def get_followup(*, actor, followup_id):
 
 
 def list_followups(
-    *, actor, status=None, student_id=None, page=1, page_size=20, now=None,
+    *,
+    actor,
+    status=None,
+    student_id=None,
+    page=1,
+    page_size=20,
+    now=None,
 ) -> FollowUpPage:
     actor = policy.current_actor(actor)
     if type(page) is not int or not 1 <= page <= MAX_PAGE:
@@ -190,13 +242,24 @@ def _lock_for_mutation(*, actor, followup_id, expected_version):
     return item
 
 
-def update_followup(*, actor, followup_id, expected_version, context,
-                    due_at=None, category=None, description=None, now=None):
+def update_followup(
+    *,
+    actor,
+    followup_id,
+    expected_version,
+    context,
+    due_at=None,
+    category=None,
+    description=None,
+    now=None,
+):
     at = now or timezone.now()
     with transaction.atomic():
         actor = policy.current_actor(actor, manage=True, lock=True)
         item = _lock_for_mutation(
-            actor=actor, followup_id=followup_id, expected_version=expected_version,
+            actor=actor,
+            followup_id=followup_id,
+            expected_version=expected_version,
         )
         changed = []
         old_due = item.due_at
@@ -221,8 +284,9 @@ def update_followup(*, actor, followup_id, expected_version, context,
         item.save(
             update_fields=["due_at", "category", "description_ciphertext", "version", "updated_at"]
         )
-        _event(item, actor=actor, kind=FollowUpEventType.UPDATED, old_due=old_due,
-               new_due=item.due_at)
+        _event(
+            item, actor=actor, kind=FollowUpEventType.UPDATED, old_due=old_due, new_due=item.due_at
+        )
         _audit(context, "updated", item, metadata={"fields": changed})
         return item
 
@@ -231,11 +295,16 @@ def reassign_followup(*, actor, followup_id, expected_version, assigned_to_id, c
     with transaction.atomic():
         actor = policy.current_actor(actor, manage=True, lock=True)
         item = _lock_for_mutation(
-            actor=actor, followup_id=followup_id, expected_version=expected_version,
+            actor=actor,
+            followup_id=followup_id,
+            expected_version=expected_version,
         )
         new = policy.require_assignee(
-            assigned_to_id, student_id=item.student_id, visibility=item.visibility,
-            source_kind=item.source_kind, source_id=item.source_id,
+            assigned_to_id,
+            student_id=item.student_id,
+            visibility=item.visibility,
+            source_kind=item.source_kind,
+            source_id=item.source_id,
         )
         if new.pk == item.assigned_to_id:
             return item
@@ -243,8 +312,13 @@ def reassign_followup(*, actor, followup_id, expected_version, assigned_to_id, c
         item.assigned_to = new
         item.version += 1
         item.save(update_fields=["assigned_to", "version", "updated_at"])
-        _event(item, actor=actor, kind=FollowUpEventType.REASSIGNED,
-               old_assignee=previous, new_assignee=new)
+        _event(
+            item,
+            actor=actor,
+            kind=FollowUpEventType.REASSIGNED,
+            old_assignee=previous,
+            new_assignee=new,
+        )
         _audit(context, "reassigned", item, metadata={"assigned_to_id": str(new.pk)})
         return item
 
@@ -253,11 +327,12 @@ def record_activity(*, actor, followup_id, expected_version, remarks, context):
     with transaction.atomic():
         actor = policy.current_actor(actor, manage=True, lock=True)
         item = _lock_for_mutation(
-            actor=actor, followup_id=followup_id, expected_version=expected_version,
+            actor=actor,
+            followup_id=followup_id,
+            expected_version=expected_version,
         )
         item.version += 1
-        event = _event(item, actor=actor, kind=FollowUpEventType.ACTIVITY_RECORDED,
-                       remarks=remarks)
+        event = _event(item, actor=actor, kind=FollowUpEventType.ACTIVITY_RECORDED, remarks=remarks)
         item.save(update_fields=["version", "updated_at"])
         _audit(context, "activity_recorded", item)
         return item, event
@@ -268,17 +343,25 @@ def complete_followup(*, actor, followup_id, expected_version, outcome, context,
     with transaction.atomic():
         actor = policy.current_actor(actor, manage=True, lock=True)
         item = _lock_for_mutation(
-            actor=actor, followup_id=followup_id, expected_version=expected_version,
+            actor=actor,
+            followup_id=followup_id,
+            expected_version=expected_version,
         )
         item.outcome_ciphertext = encrypt_text(item.pk, "outcome", outcome, required=True)
         item.status = FollowUpStatus.COMPLETED
         item.completed_at = at
         item.completed_by = actor
         item.version += 1
-        item.save(update_fields=[
-            "outcome_ciphertext", "status", "completed_at", "completed_by",
-            "version", "updated_at",
-        ])
+        item.save(
+            update_fields=[
+                "outcome_ciphertext",
+                "status",
+                "completed_at",
+                "completed_by",
+                "version",
+                "updated_at",
+            ]
+        )
         _event(item, actor=actor, kind=FollowUpEventType.COMPLETED)
         _audit(context, "completed", item)
         return item
@@ -289,7 +372,9 @@ def cancel_followup(*, actor, followup_id, expected_version, reason, context, no
     with transaction.atomic():
         actor = policy.current_actor(actor, manage=True, lock=True)
         item = _lock_for_mutation(
-            actor=actor, followup_id=followup_id, expected_version=expected_version,
+            actor=actor,
+            followup_id=followup_id,
+            expected_version=expected_version,
         )
         item.status = FollowUpStatus.CANCELLED
         item.cancelled_at = at
@@ -297,14 +382,27 @@ def cancel_followup(*, actor, followup_id, expected_version, reason, context, no
         item.version += 1
         # Encrypt reason before changing the row, so missing key fails closed.
         event = GuidanceFollowUpEvent(
-            followup=item, actor=actor, kind=FollowUpEventType.CANCELLED, revision=item.version,
+            followup=item,
+            actor=actor,
+            kind=FollowUpEventType.CANCELLED,
+            revision=item.version,
         )
         event.remarks_ciphertext = encrypt_text(
-            item.pk, "remarks", reason, event_id=event.pk, required=True,
+            item.pk,
+            "remarks",
+            reason,
+            event_id=event.pk,
+            required=True,
         )
-        item.save(update_fields=[
-            "status", "cancelled_at", "cancelled_by", "version", "updated_at",
-        ])
+        item.save(
+            update_fields=[
+                "status",
+                "cancelled_at",
+                "cancelled_by",
+                "version",
+                "updated_at",
+            ]
+        )
         event.save(force_insert=True)
         _audit(context, "cancelled", item)
         return item
@@ -315,25 +413,34 @@ def followup_detail(*, actor, item):
     policy.require_followup(actor, item)
     events = []
     for event in item.events.select_related("actor").order_by("revision"):
-        events.append({
-            "id": event.pk, "kind": event.kind, "revision": event.revision,
-            "actor_id": event.actor_id, "created_at": event.created_at,
-            "old_assignee_id": event.old_assignee_id,
-            "new_assignee_id": event.new_assignee_id,
-            "old_due_at": event.old_due_at, "new_due_at": event.new_due_at,
-            "remarks": (
-                decrypt_text(item.pk, "remarks", event.remarks_ciphertext, event_id=event.pk)
-                if event.remarks_ciphertext else None
-            ),
-        })
+        events.append(
+            {
+                "id": event.pk,
+                "kind": event.kind,
+                "revision": event.revision,
+                "actor_id": event.actor_id,
+                "created_at": event.created_at,
+                "old_assignee_id": event.old_assignee_id,
+                "new_assignee_id": event.new_assignee_id,
+                "old_due_at": event.old_due_at,
+                "new_due_at": event.new_due_at,
+                "remarks": (
+                    decrypt_text(item.pk, "remarks", event.remarks_ciphertext, event_id=event.pk)
+                    if event.remarks_ciphertext
+                    else None
+                ),
+            }
+        )
     return {
         "description": (
             decrypt_text(item.pk, "description", item.description_ciphertext)
-            if item.description_ciphertext else None
+            if item.description_ciphertext
+            else None
         ),
         "outcome": (
             decrypt_text(item.pk, "outcome", item.outcome_ciphertext)
-            if item.outcome_ciphertext else None
+            if item.outcome_ciphertext
+            else None
         ),
         "source": policy.visible_source(actor, item),
         "events": events,

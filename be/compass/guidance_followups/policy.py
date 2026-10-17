@@ -1,4 +1,5 @@
-"""Independent Follow-Up ACL, with type-specific source authorization.
+"""I
+ndependent Follow-Up ACL, with type-specific source authorization.
 
 Follow-Up responsibility does not confer access to a source record.
 """
@@ -45,8 +46,10 @@ def in_operational_scope(actor, student_id):
     if not scope.college_ids:
         return False
     return StudentAffiliation.objects.filter(
-        student_id=student_id, college_id__in=scope.college_ids,
-        college__is_active=True, college__campus__is_active=True,
+        student_id=student_id,
+        college_id__in=scope.college_ids,
+        college__is_active=True,
+        college__campus__is_active=True,
     ).exists()
 
 
@@ -58,8 +61,11 @@ def require_source(actor, *, kind, source_id, student_id, manage=False):
             raise FollowUpNotFound("The related record is not available.")
         from compass.counseling.services import get_encounter_for_actor
         from compass.counseling.models import CounselingEncounter
+
         item = CounselingEncounter.objects.filter(
-            pk=source_id, student_id=student_id, counselor_id=actor.pk,
+            pk=source_id,
+            student_id=student_id,
+            counselor_id=actor.pk,
         ).first()
         if item is None:
             raise FollowUpNotFound("The related record is not available.")
@@ -74,13 +80,21 @@ def require_source(actor, *, kind, source_id, student_id, manage=False):
             raise FollowUpNotFound("The related record is not available.")
         from compass.routine_interviews.models import RoutineInterview
         from compass.routine_interviews.services import get_assigned
-        if not RoutineInterview.objects.filter(
-            pk=source_id, student_id=student_id, counselor_id=actor.pk,
-            appointment__status__in=["SCHEDULED", "COMPLETED"],
-        ).exists() and not RoutineInterview.objects.filter(
-            pk=source_id, student_id=student_id, counselor_id=actor.pk,
-            appointment__isnull=True,
-        ).exists():
+
+        if (
+            not RoutineInterview.objects.filter(
+                pk=source_id,
+                student_id=student_id,
+                counselor_id=actor.pk,
+                appointment__status__in=["SCHEDULED", "COMPLETED"],
+            ).exists()
+            and not RoutineInterview.objects.filter(
+                pk=source_id,
+                student_id=student_id,
+                counselor_id=actor.pk,
+                appointment__isnull=True,
+            ).exists()
+        ):
             raise FollowUpNotFound("The related record is not available.")
         try:
             get_assigned(counselor=actor, routine_interview_id=source_id)
@@ -91,7 +105,10 @@ def require_source(actor, *, kind, source_id, student_id, manage=False):
             raise FollowUpNotFound("The related record is not available.")
         from compass.referrals.models import Referral
         from compass.referrals.services import get_referral
-        if not Referral.objects.filter(pk=source_id, student_id=student_id, voided_at__isnull=True).exists():
+
+        if not Referral.objects.filter(
+            pk=source_id, student_id=student_id, voided_at__isnull=True
+        ).exists():
             raise FollowUpNotFound("The related record is not available.")
         try:
             get_referral(actor=actor, referral_id=source_id)
@@ -106,7 +123,8 @@ def classify(*, source_kind, category):
     if category not in FollowUpCategory.values:
         raise FollowUpInvalid("The follow-up category is unsupported.")
     if source_kind in {
-        FollowUpSource.COUNSELING_ENCOUNTER, FollowUpSource.ROUTINE_INTERVIEW,
+        FollowUpSource.COUNSELING_ENCOUNTER,
+        FollowUpSource.ROUTINE_INTERVIEW,
     }:
         if category != FollowUpCategory.COUNSELING:
             raise FollowUpInvalid("A professional follow-up requires the counseling category.")
@@ -133,8 +151,11 @@ def require_assignee(candidate_id, *, student_id, visibility, source_kind=None, 
             raise FollowUpInvalid("Confidential follow-ups require an authorized Counselor.")
         try:
             require_source(
-                candidate, kind=source_kind, source_id=source_id,
-                student_id=student_id, manage=True,
+                candidate,
+                kind=source_kind,
+                source_id=source_id,
+                student_id=student_id,
+                manage=True,
             )
         except FollowUpNotFound:
             raise FollowUpInvalid("The selected Counselor cannot manage this follow-up.") from None
@@ -153,8 +174,11 @@ def authorized(actor, followup, *, manage=False):
             return False
         try:
             require_source(
-                actor, kind=followup.source_kind, source_id=followup.source_id,
-                student_id=followup.student_id, manage=manage,
+                actor,
+                kind=followup.source_kind,
+                source_id=followup.source_id,
+                student_id=followup.student_id,
+                manage=manage,
             )
         except FollowUpNotFound:
             return False
@@ -178,7 +202,9 @@ def visible_source(actor, followup):
         return None
     try:
         require_source(
-            actor, kind=followup.source_kind, source_id=followup.source_id,
+            actor,
+            kind=followup.source_kind,
+            source_id=followup.source_id,
             student_id=followup.student_id,
         )
     except FollowUpNotFound:

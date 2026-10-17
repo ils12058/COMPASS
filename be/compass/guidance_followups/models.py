@@ -1,4 +1,5 @@
 """Follow-Up is independently owned; source-domain rows are never mutated."""
+
 from __future__ import annotations
 
 import uuid
@@ -44,7 +45,9 @@ class FollowUpEventType(models.TextChoices):
 class GuidanceFollowUp(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     student = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="student_guidance_followups"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="student_guidance_followups",
     )
     source_kind = models.CharField(
         max_length=32, choices=FollowUpSource.choices, null=True, blank=True
@@ -53,7 +56,9 @@ class GuidanceFollowUp(models.Model):
     visibility = models.CharField(max_length=32, choices=FollowUpVisibility.choices)
     category = models.CharField(max_length=32, choices=FollowUpCategory.choices)
     assigned_to = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="assigned_guidance_followups"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="assigned_guidance_followups",
     )
     due_at = models.DateTimeField()
     status = models.CharField(
@@ -62,16 +67,24 @@ class GuidanceFollowUp(models.Model):
     description_ciphertext = models.TextField(null=True, blank=True, editable=False)
     outcome_ciphertext = models.TextField(null=True, blank=True, editable=False)
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="created_guidance_followups"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="created_guidance_followups",
     )
     completed_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
-        related_name="completed_guidance_followups"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="completed_guidance_followups",
     )
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
-        related_name="cancelled_guidance_followups"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cancelled_guidance_followups",
     )
     cancelled_at = models.DateTimeField(null=True, blank=True)
     version = models.PositiveIntegerField(default=1)
@@ -88,25 +101,44 @@ class GuidanceFollowUp(models.Model):
                 condition=(
                     Q(source_kind__isnull=True, source_id__isnull=True)
                     | Q(source_kind__isnull=False, source_id__isnull=False)
-                ), name="fup_source_pair_consistent",
+                ),
+                name="fup_source_pair_consistent",
             ),
             models.CheckConstraint(condition=Q(version__gte=1), name="fup_version_positive"),
             models.CheckConstraint(
                 condition=(
-                    Q(status="PENDING", completed_at__isnull=True, completed_by__isnull=True,
-                      cancelled_at__isnull=True, cancelled_by__isnull=True,
-                      outcome_ciphertext__isnull=True)
-                    | Q(status="COMPLETED", completed_at__isnull=False,
-                        completed_by__isnull=False, cancelled_at__isnull=True,
-                        cancelled_by__isnull=True, outcome_ciphertext__isnull=False)
-                    | Q(status="CANCELLED", cancelled_at__isnull=False,
-                        cancelled_by__isnull=False, completed_at__isnull=True,
-                        completed_by__isnull=True, outcome_ciphertext__isnull=True)
-                ), name="fup_terminal_state_consistent",
+                    Q(
+                        status="PENDING",
+                        completed_at__isnull=True,
+                        completed_by__isnull=True,
+                        cancelled_at__isnull=True,
+                        cancelled_by__isnull=True,
+                        outcome_ciphertext__isnull=True,
+                    )
+                    | Q(
+                        status="COMPLETED",
+                        completed_at__isnull=False,
+                        completed_by__isnull=False,
+                        cancelled_at__isnull=True,
+                        cancelled_by__isnull=True,
+                        outcome_ciphertext__isnull=False,
+                    )
+                    | Q(
+                        status="CANCELLED",
+                        cancelled_at__isnull=False,
+                        cancelled_by__isnull=False,
+                        completed_at__isnull=True,
+                        completed_by__isnull=True,
+                        outcome_ciphertext__isnull=True,
+                    )
+                ),
+                name="fup_terminal_state_consistent",
             ),
         ]
         indexes = [
-            models.Index(fields=("assigned_to", "status", "due_at", "id"), name="fup_assignment_idx"),
+            models.Index(
+                fields=("assigned_to", "status", "due_at", "id"), name="fup_assignment_idx"
+            ),
             models.Index(fields=("student", "created_at", "id"), name="fup_student_created_idx"),
             models.Index(fields=("source_kind", "source_id"), name="fup_source_ref_idx"),
         ]
@@ -114,23 +146,19 @@ class GuidanceFollowUp(models.Model):
 
 class GuidanceFollowUpEvent(models.Model):
     """Immutable structural/provenance history; no free-form metadata or plaintext."""
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    followup = models.ForeignKey(
-        GuidanceFollowUp, on_delete=models.PROTECT, related_name="events"
-    )
+    followup = models.ForeignKey(GuidanceFollowUp, on_delete=models.PROTECT, related_name="events")
     kind = models.CharField(max_length=24, choices=FollowUpEventType.choices)
     actor = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT,
-        related_name="guidance_followup_events"
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="guidance_followup_events"
     )
     revision = models.PositiveIntegerField()
     old_assignee = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
-        related_name="+"
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
     )
     new_assignee = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True,
-        related_name="+"
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name="+"
     )
     old_due_at = models.DateTimeField(null=True, blank=True)
     new_due_at = models.DateTimeField(null=True, blank=True)
