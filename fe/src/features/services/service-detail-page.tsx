@@ -17,6 +17,10 @@ import {
   ServiceFixedSlotsStudentPanel,
 } from "@/features/services/service-fixed-slots-panel";
 import {
+  ServiceGroupSessionsStaffPanel,
+  ServiceGroupSessionsStudentPanel,
+} from "@/features/services/service-group-sessions-panel";
+import {
   newECounselingAppointmentsLabel,
   PlatformHealthLink,
 } from "@/features/services/counseling-delivery";
@@ -340,6 +344,18 @@ export function ServiceDetailPage() {
         !user.capabilities.includes("appointments.manage") &&
         service.is_active ? (
           <ServiceFixedSlotsStudentPanel service={service} />
+        ) : null}
+
+        {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) &&
+        (canManage || user.capabilities.includes("appointments.manage")) ? (
+          <ServiceGroupSessionsStaffPanel service={service} />
+        ) : null}
+
+        {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) &&
+        !canManage &&
+        !user.capabilities.includes("appointments.manage") &&
+        service.is_active ? (
+          <ServiceGroupSessionsStudentPanel service={service} />
         ) : null}
 
         <PanelSection title="Provider coverage" titleId="service-provider-heading">

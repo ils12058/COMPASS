@@ -52,6 +52,15 @@ SERVICE_DISABLED = "service.disabled"
 SERVICE_SLOT_CREATED = "service_slot.created"
 SERVICE_SLOT_UPDATED = "service_slot.updated"
 SERVICE_SLOT_DELETED = "service_slot.deleted"
+GROUP_SESSION_CREATED = "group_session.created"
+GROUP_SESSION_UPDATED = "group_session.updated"
+GROUP_SESSION_PUBLISHED = "group_session.published"
+GROUP_SESSION_CANCELLED = "group_session.cancelled"
+GROUP_SESSION_COMPLETED = "group_session.completed"
+GROUP_SESSION_REGISTERED = "group_session.registered"
+GROUP_SESSION_REGISTRATION_CANCELLED = "group_session.registration_cancelled"
+GROUP_SESSION_ATTENDANCE_RECORDED = "group_session.attendance_recorded"
+GROUP_SESSION_ATTENDANCE_CORRECTED = "group_session.attendance_corrected"
 AVAILABILITY_OFFICE_SCHEDULE_UPDATED = "availability.office_schedule.updated"
 AVAILABILITY_OFFICE_EXCEPTION_CREATED = "availability.office_exception.created"
 AVAILABILITY_OFFICE_EXCEPTION_REMOVED = "availability.office_exception.removed"
@@ -293,6 +302,15 @@ __all__ = [
     "SERVICE_SLOT_CREATED",
     "SERVICE_SLOT_UPDATED",
     "SERVICE_SLOT_DELETED",
+    "GROUP_SESSION_CREATED",
+    "GROUP_SESSION_UPDATED",
+    "GROUP_SESSION_PUBLISHED",
+    "GROUP_SESSION_CANCELLED",
+    "GROUP_SESSION_COMPLETED",
+    "GROUP_SESSION_REGISTERED",
+    "GROUP_SESSION_REGISTRATION_CANCELLED",
+    "GROUP_SESSION_ATTENDANCE_RECORDED",
+    "GROUP_SESSION_ATTENDANCE_CORRECTED",
     "AVAILABILITY_OFFICE_SCHEDULE_UPDATED",
     "AVAILABILITY_OFFICE_EXCEPTION_CREATED",
     "AVAILABILITY_OFFICE_EXCEPTION_REMOVED",
