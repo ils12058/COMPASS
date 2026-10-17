@@ -150,8 +150,13 @@ async function expandSection(dialog, label) {
 
 {
   let release;
+  let received;
+  const requestReceived = new Promise((resolve) => { received = resolve; });
   const fixture = reviewerFixture({
-    reopen: ({ reply }) => new Promise((resolve) => { release = () => resolve(reply({ error: { code: "synthetic_failure", message: "Synthetic" } }, 500)); }),
+    reopen: ({ reply }) => new Promise((resolve) => {
+      release = () => resolve(reply({ error: { code: "synthetic_failure", message: "Synthetic" } }, 500));
+      received();
+    }),
   });
   await check("reviewer-pending-and-failure-keep-the-selection", `/portal/inventory/records/${recordId}`, { overrides: fixture.overrides }, async (page) => {
     const dialog = await openReopenDialog(page);
@@ -161,6 +166,17 @@ async function expandSection(dialog, label) {
     await dialog.getByRole("button", { name: "Reopen for correction", exact: true }).click();
     await shown(dialog.getByRole("button", { name: "Reopening…" }));
     assert.equal(await dialog.getByRole("checkbox", { name: "Height" }).isDisabled(), true, "The selection is locked while the request runs");
+    // The pending UI can render before the route handler has received the request.
+    // Synchronize on that handler rather than relying on scheduler timing.
+    let timeout;
+    try {
+      await Promise.race([
+        requestReceived,
+        new Promise((_, reject) => { timeout = setTimeout(() => reject(new Error("Reopen request was not received")), 10000); }),
+      ]);
+    } finally {
+      clearTimeout(timeout);
+    }
     release();
     await shown(dialog.getByText("This Individual Inventory could not be reopened.", { exact: true }));
     assert.equal(await dialog.getByRole("checkbox", { name: "Height" }).isChecked(), true, "The selection survives a failed request");
