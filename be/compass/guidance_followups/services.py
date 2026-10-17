@@ -150,7 +150,14 @@ def create_followup(
         if existing is not None:
             if existing.creation_request_fingerprint != fingerprint:
                 raise FollowUpConflict("This confirmation was already used for another request.")
-            policy.require_followup(actor, existing, manage=True)
+            if existing.assigned_to_id == actor.pk:
+                policy.require_followup(actor, existing, manage=True)
+            elif (
+                existing.visibility != FollowUpVisibility.OPERATIONAL
+                or not policy.in_operational_scope(actor, existing.student_id)
+            ):
+                raise FollowUpNotFound("The Follow-Up is unavailable.")
+            policy.valid_student(existing.student_id)
             return existing
         _due(due_at, now=at)
         student = policy.valid_student(student_id, lock=True)
@@ -205,6 +212,11 @@ def list_followups(
     actor,
     status=None,
     student_id=None,
+    assigned_to_id=None,
+    source_kind=None,
+    source_id=None,
+    due_window=None,
+    ordering="EARLIEST_DUE",
     page=1,
     page_size=20,
     now=None,
@@ -221,9 +233,29 @@ def list_followups(
         qs = qs.filter(status=status)
     if student_id is not None:
         qs = qs.filter(student_id=student_id)
+    if assigned_to_id is not None:
+        qs = qs.filter(assigned_to_id=assigned_to_id)
+    if source_kind is not None or source_id is not None:
+        from .workspace import source_context
+
+        source_context(actor=actor, source_kind=source_kind, source_id=source_id)
+        qs = qs.filter(source_kind=source_kind, source_id=source_id)
+    if due_window == "OVERDUE":
+        qs = qs.filter(status="PENDING", due_at__lt=now or timezone.now())
+    elif due_window == "UPCOMING":
+        qs = qs.filter(status="PENDING", due_at__gte=now or timezone.now())
+    elif due_window is not None:
+        raise FollowUpInvalid("The due-date filter is unsupported.")
+    ordering = ordering or "EARLIEST_DUE"
+    if ordering not in {"EARLIEST_DUE", "LATEST_DUE"}:
+        raise FollowUpInvalid("The requested order is unsupported.")
     # SQL scope precedes pagination; one fixed-size page plus its has_next proof.
     offset = (page - 1) * page_size
-    rows = list(qs.order_by("due_at", "id")[offset : offset + page_size + 1])
+    rows = list(
+        qs.order_by("-due_at" if ordering == "LATEST_DUE" else "due_at", "id")[
+            offset : offset + page_size + 1
+        ]
+    )
     return FollowUpPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
 
 
@@ -405,17 +437,22 @@ def cancel_followup(*, actor, followup_id, expected_version, reason, context, no
         return item
 
 
-def followup_detail(*, actor, item):
+def followup_detail(*, actor, item, history_page=1):
     actor = policy.current_actor(actor)
     policy.require_followup(actor, item)
+    if type(history_page) is not int or not 1 <= history_page <= MAX_PAGE:
+        raise FollowUpInvalid("The history page is unavailable.")
+    offset = (history_page - 1) * 20
+    rows = list(item.events.select_related("actor").order_by("revision")[offset : offset + 21])
     events = []
-    for event in item.events.select_related("actor").order_by("revision"):
+    for event in rows[:20]:
         events.append(
             {
                 "id": event.pk,
                 "kind": event.kind,
                 "revision": event.revision,
                 "actor_id": event.actor_id,
+                "actor_name": event.actor.get_full_name(),
                 "created_at": event.created_at,
                 "old_assignee_id": event.old_assignee_id,
                 "new_assignee_id": event.new_assignee_id,
@@ -441,4 +478,5 @@ def followup_detail(*, actor, item):
         ),
         "source": policy.visible_source(actor, item),
         "events": events,
+        "events_has_next": len(rows) > 20,
     }

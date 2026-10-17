@@ -4158,6 +4158,24 @@
         "title": "Category",
         "type": "string"
       },
+      "CategoryCount": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "category",
+          "count"
+        ],
+        "title": "CategoryCount",
+        "type": "object"
+      },
       "CivilStatusCategoryValue": {
         "enum": [
           "SINGLE",
@@ -8018,6 +8036,14 @@
         "title": "DueMetric",
         "type": "object"
       },
+      "DueWindow": {
+        "enum": [
+          "OVERDUE",
+          "UPCOMING"
+        ],
+        "title": "DueWindow",
+        "type": "string"
+      },
       "ECounselingCaptureStatus": {
         "enum": [
           "NOT_STARTED",
@@ -10360,8 +10386,58 @@
             "title": "Assigned To Id",
             "type": "string"
           },
+          "assigned_to_name": {
+            "title": "Assigned To Name",
+            "type": "string"
+          },
+          "cancelled_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled At"
+          },
+          "cancelled_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelled By Name"
+          },
           "category": {
             "$ref": "#/components/schemas/Category"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "completed_by_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed By Name"
           },
           "created_at": {
             "format": "date-time",
@@ -10390,6 +10466,10 @@
             },
             "title": "Events",
             "type": "array"
+          },
+          "events_has_next": {
+            "title": "Events Has Next",
+            "type": "boolean"
           },
           "id": {
             "format": "uuid",
@@ -10455,6 +10535,7 @@
           "student_id",
           "student_name",
           "assigned_to_id",
+          "assigned_to_name",
           "category",
           "visibility",
           "due_at",
@@ -10463,11 +10544,16 @@
           "version",
           "created_at",
           "updated_at",
+          "completed_at",
+          "completed_by_name",
+          "cancelled_at",
+          "cancelled_by_name",
           "description",
           "outcome",
           "source",
           "source_unavailable",
-          "events"
+          "events",
+          "events_has_next"
         ],
         "title": "FollowUpDetail",
         "type": "object"
@@ -10478,6 +10564,10 @@
           "actor_id": {
             "format": "uuid",
             "title": "Actor Id",
+            "type": "string"
+          },
+          "actor_name": {
+            "title": "Actor Name",
             "type": "string"
           },
           "created_at": {
@@ -10563,6 +10653,7 @@
           "kind",
           "revision",
           "actor_id",
+          "actor_name",
           "created_at",
           "old_assignee_id",
           "new_assignee_id",
@@ -10573,7 +10664,7 @@
         "title": "FollowUpHistoryEvent",
         "type": "object"
       },
-      "FollowUpPage": {
+      "FollowUpHistoryPage": {
         "additionalProperties": false,
         "properties": {
           "has_next": {
@@ -10582,7 +10673,7 @@
           },
           "items": {
             "items": {
-              "$ref": "#/components/schemas/FollowUpSummary"
+              "$ref": "#/components/schemas/FollowUpHistoryEvent"
             },
             "title": "Items",
             "type": "array"
@@ -10602,12 +10693,88 @@
           "page_size",
           "has_next"
         ],
+        "title": "FollowUpHistoryPage",
+        "type": "object"
+      },
+      "FollowUpOrdering": {
+        "enum": [
+          "EARLIEST_DUE",
+          "LATEST_DUE"
+        ],
+        "title": "FollowUpOrdering",
+        "type": "string"
+      },
+      "FollowUpPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FollowUpSummary"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "ordering": {
+            "$ref": "#/components/schemas/FollowUpOrdering"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "ordering",
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
         "title": "FollowUpPage",
         "type": "object"
       },
       "FollowUpQuery": {
         "additionalProperties": false,
         "properties": {
+          "assigned_to_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To Id"
+          },
+          "due_window": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DueWindow"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ordering": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FollowUpOrdering"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "page": {
             "default": 1,
             "maximum": 100,
@@ -10621,6 +10788,28 @@
             "minimum": 1,
             "title": "Page Size",
             "type": "integer"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
+          },
+          "source_kind": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SourceKind"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "status": {
             "anyOf": [
@@ -10669,12 +10858,86 @@
         "title": "FollowUpReassign",
         "type": "object"
       },
+      "FollowUpReport": {
+        "additionalProperties": false,
+        "properties": {
+          "cancelled": {
+            "title": "Cancelled",
+            "type": "integer"
+          },
+          "categories": {
+            "items": {
+              "$ref": "#/components/schemas/CategoryCount"
+            },
+            "title": "Categories",
+            "type": "array"
+          },
+          "completed": {
+            "title": "Completed",
+            "type": "integer"
+          },
+          "completed_in_period": {
+            "title": "Completed In Period",
+            "type": "integer"
+          },
+          "due_soon": {
+            "title": "Due Soon",
+            "type": "integer"
+          },
+          "generated_at": {
+            "format": "date-time",
+            "title": "Generated At",
+            "type": "string"
+          },
+          "horizon_days": {
+            "title": "Horizon Days",
+            "type": "integer"
+          },
+          "overdue": {
+            "title": "Overdue",
+            "type": "integer"
+          },
+          "pending": {
+            "title": "Pending",
+            "type": "integer"
+          },
+          "period_end": {
+            "format": "date-time",
+            "title": "Period End",
+            "type": "string"
+          },
+          "period_start": {
+            "format": "date-time",
+            "title": "Period Start",
+            "type": "string"
+          }
+        },
+        "required": [
+          "pending",
+          "completed",
+          "cancelled",
+          "overdue",
+          "due_soon",
+          "completed_in_period",
+          "period_start",
+          "period_end",
+          "generated_at",
+          "horizon_days",
+          "categories"
+        ],
+        "title": "FollowUpReport",
+        "type": "object"
+      },
       "FollowUpSummary": {
         "additionalProperties": false,
         "properties": {
           "assigned_to_id": {
             "format": "uuid",
             "title": "Assigned To Id",
+            "type": "string"
+          },
+          "assigned_to_name": {
+            "title": "Assigned To Name",
             "type": "string"
           },
           "category": {
@@ -10729,6 +10992,7 @@
           "student_id",
           "student_name",
           "assigned_to_id",
+          "assigned_to_name",
           "category",
           "visibility",
           "due_at",
@@ -23391,6 +23655,49 @@
         "title": "SignificantLearningValue",
         "type": "string"
       },
+      "SourceContext": {
+        "additionalProperties": false,
+        "properties": {
+          "can_create": {
+            "title": "Can Create",
+            "type": "boolean"
+          },
+          "category": {
+            "$ref": "#/components/schemas/Category"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "source_kind": {
+            "$ref": "#/components/schemas/SourceKind"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "student_name": {
+            "title": "Student Name",
+            "type": "string"
+          },
+          "visibility": {
+            "$ref": "#/components/schemas/Visibility"
+          }
+        },
+        "required": [
+          "source_kind",
+          "source_id",
+          "student_id",
+          "student_name",
+          "category",
+          "visibility",
+          "can_create"
+        ],
+        "title": "SourceContext",
+        "type": "object"
+      },
       "SourceKind": {
         "enum": [
           "COUNSELING_ENCOUNTER",
@@ -23417,6 +23724,58 @@
           "id"
         ],
         "title": "SourceReference",
+        "type": "object"
+      },
+      "StaffOption": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "StaffOption",
+        "type": "object"
+      },
+      "StaffOptionPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StaffOption"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "StaffOptionPage",
         "type": "object"
       },
       "StaffSupervisionListResponse": {
@@ -23724,6 +24083,70 @@
           "status"
         ],
         "title": "StudentLifecycleUpdateRequest",
+        "type": "object"
+      },
+      "StudentOption": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "institutional_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Institutional Id"
+          }
+        },
+        "required": [
+          "id",
+          "display_name",
+          "institutional_id"
+        ],
+        "title": "StudentOption",
+        "type": "object"
+      },
+      "StudentOptionPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/StudentOption"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "StudentOptionPage",
         "type": "object"
       },
       "StudentProfilingReportResponse": {
@@ -42683,6 +43106,85 @@
           },
           {
             "in": "query",
+            "name": "assigned_to_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Assigned To Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SourceKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "due_window",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/DueWindow"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "ordering",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/FollowUpOrdering"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
             "name": "page",
             "required": false,
             "schema": {
@@ -42869,6 +43371,479 @@
           }
         ],
         "summary": "Guidance Followups Create",
+        "tags": [
+          "guidance-followups"
+        ]
+      }
+    },
+    "/api/v1/guidance-followups/context": {
+      "get": {
+        "operationId": "guidanceFollowupsGetContext",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "source_kind",
+            "required": true,
+            "schema": {
+              "enum": [
+                "COUNSELING_ENCOUNTER",
+                "REFERRAL",
+                "ROUTINE_INTERVIEW"
+              ],
+              "title": "SourceKind",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Source Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceContext"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Context",
+        "tags": [
+          "guidance-followups"
+        ]
+      }
+    },
+    "/api/v1/guidance-followups/eligible-assignees": {
+      "get": {
+        "operationId": "guidanceFollowupsEligibleAssignees",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "category",
+            "required": true,
+            "schema": {
+              "enum": [
+                "ADMINISTRATIVE",
+                "STUDENT_CONTACT",
+                "COUNSELING",
+                "REFERRAL_ACTION"
+              ],
+              "title": "Category",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SourceKind"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
+            "name": "source_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Source Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffOptionPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Eligible Assignees",
+        "tags": [
+          "guidance-followups"
+        ]
+      }
+    },
+    "/api/v1/guidance-followups/eligible-students": {
+      "get": {
+        "operationId": "guidanceFollowupsEligibleStudents",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentOptionPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Eligible Students",
+        "tags": [
+          "guidance-followups"
+        ]
+      }
+    },
+    "/api/v1/guidance-followups/report": {
+      "get": {
+        "operationId": "guidanceFollowupsReport",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "period_start",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period Start"
+            }
+          },
+          {
+            "in": "query",
+            "name": "period_end",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Period End"
+            }
+          },
+          {
+            "in": "query",
+            "name": "horizon_days",
+            "required": false,
+            "schema": {
+              "default": 7,
+              "title": "Horizon Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowUpReport"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Report",
         "tags": [
           "guidance-followups"
         ]
@@ -43377,6 +44352,104 @@
           }
         ],
         "summary": "Guidance Followups Complete",
+        "tags": [
+          "guidance-followups"
+        ]
+      }
+    },
+    "/api/v1/guidance-followups/{followup_id}/history": {
+      "get": {
+        "operationId": "guidanceFollowupsHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "followup_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Followup Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowUpHistoryPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "History",
         "tags": [
           "guidance-followups"
         ]

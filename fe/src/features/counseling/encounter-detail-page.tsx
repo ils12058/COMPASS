@@ -1,5 +1,6 @@
 "use client";
 
+import { FollowupsContext } from "@/features/guidance-followups/followups-context";
 import Link from "next/link";
 import { useState } from "react";
 import type { ReactNode } from "react";
@@ -68,6 +69,7 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
         {correctionOpen && access.canManageAssigned ? <EncounterCorrectionForm encounter={encounter} onClose={() => setCorrectionOpen(false)} /> : null}
       </Panel>
 
+      <FollowupsContext kind="COUNSELING_ENCOUNTER" id={encounter.id} />
       {access.canViewAssignedSummaries ? <div className="mt-5"><SharedSummarySection encounterId={encounter.id} access={access} /></div> : null}
     </article>
   );
