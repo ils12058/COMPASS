@@ -29,6 +29,11 @@ EXPECTED_OPERATION_IDS = {
     "guidanceFollowupsRecordActivity",
     "guidanceFollowupsComplete",
     "guidanceFollowupsCancel",
+    "guidanceFollowupsEligibleStudents",
+    "guidanceFollowupsEligibleAssignees",
+    "guidanceFollowupsGetContext",
+    "guidanceFollowupsReport",
+    "guidanceFollowupsHistory",
     "assessmentRecordsList",
     "assessmentRecordsCreate",
     "assessmentRecordsGet",
@@ -430,6 +435,7 @@ SORTABLE_COLLECTIONS = {
     "resourcesListVisible": "ResourceOrdering",
     "routineInterviewsListAssigned": "RoutineInterviewOrdering",
     "servicesList": "ServiceOrdering",
+    "guidanceFollowupsList": "FollowUpOrdering",
 }
 
 

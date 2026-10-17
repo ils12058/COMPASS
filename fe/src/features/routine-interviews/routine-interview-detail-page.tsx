@@ -1,5 +1,6 @@
 "use client";
 
+import { FollowupsContext } from "@/features/guidance-followups/followups-context";
 import { NotebookPen } from "lucide-react";
 import { PageActionLink } from "@/components/ui/page-action";
 import { pageBackLinkClass } from "@/components/ui/page-header";
@@ -272,6 +273,7 @@ function CounselorRoutineDetail({
         </Panel>
       )}
       </div>
+      <FollowupsContext kind="ROUTINE_INTERVIEW" id={routineInterviewId} />
     </div>
   );
 }

@@ -18,6 +18,7 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
 
+from . import workspace
 from .errors import (
     FollowUpConflict,
     FollowUpContentUnavailable,
@@ -108,9 +109,24 @@ class FollowUpCancel(StrictSchema):
     reason: str = Field(min_length=1, max_length=4000)
 
 
+class DueWindow(StrEnum):
+    OVERDUE = "OVERDUE"
+    UPCOMING = "UPCOMING"
+
+
+class FollowUpOrdering(StrEnum):
+    EARLIEST_DUE = "EARLIEST_DUE"
+    LATEST_DUE = "LATEST_DUE"
+
+
 class FollowUpQuery(StrictSchema):
     status: StatusValue | None = None
     student_id: UUID | None = None
+    assigned_to_id: UUID | None = None
+    source_kind: SourceKind | None = None
+    source_id: UUID | None = None
+    due_window: DueWindow | None = None
+    ordering: FollowUpOrdering | None = None
     page: int = Field(default=1, ge=1, le=100)
     page_size: int = Field(default=20, ge=1, le=50)
 
@@ -120,6 +136,7 @@ class FollowUpSummary(StrictSchema):
     student_id: UUID
     student_name: str
     assigned_to_id: UUID
+    assigned_to_name: str
     category: Category
     visibility: Visibility
     due_at: datetime
@@ -140,6 +157,7 @@ class FollowUpHistoryEvent(StrictSchema):
     kind: str
     revision: int
     actor_id: UUID
+    actor_name: str
     created_at: datetime
     old_assignee_id: UUID | None
     new_assignee_id: UUID | None
@@ -149,14 +167,20 @@ class FollowUpHistoryEvent(StrictSchema):
 
 
 class FollowUpDetail(FollowUpSummary):
+    completed_at: datetime | None
+    completed_by_name: str | None
+    cancelled_at: datetime | None
+    cancelled_by_name: str | None
     description: str | None
     outcome: str | None
     source: SourceReference | None
     source_unavailable: bool
     events: list[FollowUpHistoryEvent]
+    events_has_next: bool
 
 
 class FollowUpPage(StrictSchema):
+    ordering: FollowUpOrdering
     items: list[FollowUpSummary]
     page: int
     page_size: int
@@ -205,6 +229,7 @@ def _summary(item):
         "student_id": item.student_id,
         "student_name": item.student.get_full_name(),
         "assigned_to_id": item.assigned_to_id,
+        "assigned_to_name": item.assigned_to.get_full_name(),
         "category": item.category,
         "visibility": item.visibility,
         "due_at": item.due_at,
@@ -221,8 +246,187 @@ def _detail(actor, item):
     return {
         **_summary(item),
         **extra,
+        "completed_at": item.completed_at,
+        "completed_by_name": item.completed_by.get_full_name() if item.completed_by else None,
+        "cancelled_at": item.cancelled_at,
+        "cancelled_by_name": item.cancelled_by.get_full_name() if item.cancelled_by else None,
         "source_unavailable": bool(item.source_id is not None and extra["source"] is None),
     }
+
+
+def _detail_or_receipt(actor, item):
+    if item.assigned_to_id == actor.pk:
+        return _detail(actor, item)
+    return {
+        **_summary(item),
+        "description": None,
+        "outcome": None,
+        "source": None,
+        "source_unavailable": bool(item.source_id),
+        "events": [],
+        "events_has_next": False,
+        "completed_at": None,
+        "completed_by_name": None,
+        "cancelled_at": None,
+        "cancelled_by_name": None,
+    }
+
+
+class StaffOption(StrictSchema):
+    id: UUID
+    display_name: str
+
+
+class StaffOptionPage(StrictSchema):
+    items: list[StaffOption]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class StudentOption(StaffOption):
+    institutional_id: str | None
+
+
+class StudentOptionPage(StrictSchema):
+    items: list[StudentOption]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class SourceContext(StrictSchema):
+    source_kind: SourceKind
+    source_id: UUID
+    student_id: UUID
+    student_name: str
+    category: Category
+    visibility: Visibility
+    can_create: bool
+
+
+class CategoryCount(StrictSchema):
+    category: Category
+    count: int
+
+
+class FollowUpReport(StrictSchema):
+    pending: int
+    completed: int
+    cancelled: int
+    overdue: int
+    due_soon: int
+    completed_in_period: int
+    period_start: datetime
+    period_end: datetime
+    generated_at: datetime
+    horizon_days: int
+    categories: list[CategoryCount]
+
+
+@router.get(
+    "/eligible-students",
+    response=response_with_errors(StudentOptionPage, 401, 403, 422, 503),
+    operation_id="guidanceFollowupsEligibleStudents",
+)
+def eligible_students(request, search: str | None = None, page: int = 1, page_size: int = 20):
+    from compass.operational_students import InvalidOperationalStudentQuery
+
+    _enabled()
+    try:
+        result = workspace.eligible_students(
+            actor=request.auth_user, search=search, page=page, page_size=page_size
+        )
+        return {
+            "items": [
+                {
+                    "id": row.id,
+                    "display_name": row.display_name,
+                    "institutional_id": row.institutional_id,
+                }
+                for row in result.items
+            ],
+            "page": result.page,
+            "page_size": result.page_size,
+            "has_next": result.has_next,
+        }
+    except InvalidOperationalStudentQuery as exc:
+        raise APIError(422, "invalid_followup", str(exc)) from exc
+    except FollowUpError as exc:
+        _raise(exc)
+
+
+@router.get(
+    "/eligible-assignees",
+    response=response_with_errors(StaffOptionPage, 401, 403, 404, 422, 503),
+    operation_id="guidanceFollowupsEligibleAssignees",
+)
+def eligible_assignees(
+    request,
+    student_id: UUID,
+    category: Category,
+    source_kind: SourceKind | None = None,
+    source_id: UUID | None = None,
+    page: int = 1,
+    page_size: int = 20,
+):
+    _enabled()
+    try:
+        result = workspace.eligible_assignees(
+            actor=request.auth_user,
+            student_id=student_id,
+            category=category,
+            source_kind=source_kind,
+            source_id=source_id,
+            page=page,
+            page_size=page_size,
+        )
+        return {
+            "items": [{"id": row.pk, "display_name": row.get_full_name()} for row in result.items],
+            "page": result.page,
+            "page_size": result.page_size,
+            "has_next": result.has_next,
+        }
+    except FollowUpError as exc:
+        _raise(exc)
+
+
+@router.get(
+    "/context",
+    response=response_with_errors(SourceContext, 401, 403, 404, 422, 503),
+    operation_id="guidanceFollowupsGetContext",
+)
+def context(request, source_kind: SourceKind, source_id: UUID):
+    _enabled()
+    try:
+        return workspace.source_context(
+            actor=request.auth_user, source_kind=source_kind, source_id=source_id
+        )
+    except FollowUpError as exc:
+        _raise(exc)
+
+
+@router.get(
+    "/report",
+    response=response_with_errors(FollowUpReport, 401, 403, 422, 503),
+    operation_id="guidanceFollowupsReport",
+)
+def report(
+    request,
+    period_start: datetime | None = None,
+    period_end: datetime | None = None,
+    horizon_days: int = 7,
+):
+    _enabled()
+    try:
+        return workspace.reporting(
+            actor=request.auth_user,
+            period_start=period_start,
+            period_end=period_end,
+            horizon_days=horizon_days,
+        )
+    except FollowUpError as exc:
+        _raise(exc)
 
 
 @router.get(
@@ -232,9 +436,12 @@ def _detail(actor, item):
 )
 def guidance_followups_list(request, query: Query[FollowUpQuery]):
     _enabled()
+    if set(request.GET) - set(FollowUpQuery.model_fields):
+        raise APIError(422, "invalid_followup", "The requested filter is unsupported.")
     try:
         result = list_followups(actor=request.auth_user, **query.model_dump())
         return {
+            "ordering": query.ordering or FollowUpOrdering.EARLIEST_DUE,
             "items": [_summary(item) for item in result.items],
             "page": result.page,
             "page_size": result.page_size,
@@ -276,7 +483,7 @@ def guidance_followups_create(
             request_fingerprint=fingerprint,
             context=_context(request),
         )
-        return Status(201, _detail(request.auth_user, item))
+        return Status(201, _detail_or_receipt(request.auth_user, item))
     except FollowUpError as exc:
         _raise(exc)
 
@@ -335,17 +542,7 @@ def guidance_followups_reassign(request, followup_id: UUID, payload: FollowUpRea
             assigned_to_id=payload.assigned_to_id,
             context=_context(request),
         )
-        # Transfer of ownership means the old owner no longer has detail access.
-        if item.assigned_to_id != request.auth_user.pk:
-            return {
-                **_summary(item),
-                "description": None,
-                "outcome": None,
-                "source": None,
-                "source_unavailable": bool(item.source_id),
-                "events": [],
-            }
-        return _detail(request.auth_user, item)
+        return _detail_or_receipt(request.auth_user, item)
     except FollowUpError as exc:
         _raise(exc)
 
@@ -406,5 +603,32 @@ def guidance_followups_cancel(request, followup_id: UUID, payload: FollowUpCance
             context=_context(request),
         )
         return _detail(request.auth_user, item)
+    except FollowUpError as exc:
+        _raise(exc)
+
+
+class FollowUpHistoryPage(StrictSchema):
+    items: list[FollowUpHistoryEvent]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+@router.get(
+    "/{followup_id}/history",
+    response=response_with_errors(FollowUpHistoryPage, 401, 403, 404, 422, 503),
+    operation_id="guidanceFollowupsHistory",
+)
+def history(request, followup_id: UUID, page: int = 1):
+    _enabled()
+    try:
+        item = get_followup(actor=request.auth_user, followup_id=followup_id)
+        result = followup_detail(actor=request.auth_user, item=item, history_page=page)
+        return {
+            "items": result["events"],
+            "page": page,
+            "page_size": 20,
+            "has_next": result["events_has_next"],
+        }
     except FollowUpError as exc:
         _raise(exc)

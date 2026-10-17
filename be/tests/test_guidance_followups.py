@@ -427,3 +427,90 @@ def test_deactivated_student_removes_followup_access(world):
     assert services.list_followups(actor=world[0]).items == ()
     with pytest.raises(FollowUpNotFound):
         services.get_followup(actor=world[0], followup_id=item.pk)
+
+
+def test_workspace_options_filters_and_reporting_are_scoped(world):
+    from django.db.models import F
+
+    from compass.guidance_followups import workspace
+
+    counselor, _, gss, student, *_ = world
+    mine = create(world)
+    create(world, actor=gss)
+    students = workspace.eligible_students(actor=counselor)
+    assert student.pk in {row.id for row in students.items}
+    staff = workspace.eligible_assignees(
+        actor=counselor, student_id=student.pk, category="ADMINISTRATIVE"
+    )
+    assert {counselor.pk, gss.pk} <= {row.pk for row in staff.items}
+    GuidanceFollowUp.objects.filter(pk=mine.pk).update(due_at=F("due_at") - timedelta(days=5))
+    assert [
+        row.pk for row in services.list_followups(actor=counselor, due_window="OVERDUE").items
+    ] == [mine.pk]
+    assert not services.list_followups(actor=counselor, due_window="UPCOMING").items
+    report = workspace.reporting(actor=counselor)
+    assert report["pending"] == report["overdue"] == 1
+    assert "Private notes" not in str(report)
+
+
+def test_confidential_source_options_do_not_offer_gss(world):
+    from compass.guidance_followups import workspace
+
+    counselor, _, gss, student, *_ = world
+    service = Service.objects.create(code="FUP_SOURCE_OPTIONS", name="Counseling", is_active=True)
+    source = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=timezone.now() - timedelta(hours=1),
+        ended_at=timezone.now(),
+    )
+    result = workspace.source_context(
+        actor=counselor, source_kind="COUNSELING_ENCOUNTER", source_id=source.pk
+    )
+    assert result["visibility"] == "COUNSELOR_CONFIDENTIAL"
+    options = workspace.eligible_assignees(
+        actor=counselor,
+        student_id=student.pk,
+        category="COUNSELING",
+        source_kind="COUNSELING_ENCOUNTER",
+        source_id=source.pk,
+    )
+    assert [row.pk for row in options.items] == [counselor.pk]
+    with pytest.raises(FollowUpNotFound):
+        workspace.source_context(actor=gss, source_kind="COUNSELING_ENCOUNTER", source_id=source.pk)
+
+
+def test_delegated_create_has_safe_receipt_and_durable_replay(world):
+    from compass.guidance_followups.api import _detail_or_receipt
+
+    counselor, _, gss, *_ = world
+    key = str(uuid4())
+    first = create(world, assignee=gss, key=key)
+    receipt = _detail_or_receipt(counselor, first)
+    assert receipt["description"] is None
+    assert receipt["events"] == []
+    assert create(world, assignee=gss, key=key).pk == first.pk
+    with pytest.raises(FollowUpNotFound):
+        services.get_followup(actor=counselor, followup_id=first.pk)
+
+
+def test_http_workspace_contracts_reject_nonstaff_and_unknown_parameters(world):
+    from tests.test_appointment_management_scope import auth_client
+
+    counselor, _, _, student, *_ = world
+    item = create(world)
+    client = auth_client(counselor)
+    for path in [
+        "/api/v1/guidance-followups",
+        "/api/v1/guidance-followups/eligible-students",
+        "/api/v1/guidance-followups/report",
+        f"/api/v1/guidance-followups/{item.pk}",
+    ]:
+        result = client.get(path)
+        assert result.status_code == 200, result.content
+        assert auth_client(student).get(path).status_code == 403
+    result = client.get("/api/v1/guidance-followups?not_a_filter=true")
+    assert result.status_code == 422
