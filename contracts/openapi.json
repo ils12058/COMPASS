@@ -2845,6 +2845,15 @@
         "title": "BookableSlotResponse",
         "type": "object"
       },
+      "BookingPathway": {
+        "enum": [
+          "FLEXIBLE_APPOINTMENT",
+          "FIXED_DATE_SLOT",
+          "GROUP_SESSION"
+        ],
+        "title": "BookingPathway",
+        "type": "string"
+      },
       "CSMCC1Value": {
         "enum": [
           1,
@@ -15172,8 +15181,8 @@
           "daily_hours_class": {
             "anyOf": [
               {
-                "maximum": 24.0,
-                "minimum": 0.0,
+                "maximum": 24,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -15189,8 +15198,8 @@
           "daily_hours_library": {
             "anyOf": [
               {
-                "maximum": 24.0,
-                "minimum": 0.0,
+                "maximum": 24,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -15206,8 +15215,8 @@
           "daily_hours_other": {
             "anyOf": [
               {
-                "maximum": 24.0,
-                "minimum": 0.0,
+                "maximum": 24,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -15223,8 +15232,8 @@
           "daily_hours_recreation": {
             "anyOf": [
               {
-                "maximum": 24.0,
-                "minimum": 0.0,
+                "maximum": 24,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -15240,8 +15249,8 @@
           "daily_hours_rest": {
             "anyOf": [
               {
-                "maximum": 24.0,
-                "minimum": 0.0,
+                "maximum": 24,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -15257,8 +15266,8 @@
           "daily_hours_studying": {
             "anyOf": [
               {
-                "maximum": 24.0,
-                "minimum": 0.0,
+                "maximum": 24,
+                "minimum": 0,
                 "type": "number"
               },
               {
@@ -22155,6 +22164,20 @@
             "title": "Appointment Booking Enabled",
             "type": "boolean"
           },
+          "booking_pathways": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/BookingPathway"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Booking Pathways"
+          },
           "cancellation_cutoff_minutes": {
             "anyOf": [
               {
@@ -22406,6 +22429,13 @@
             "title": "Appointment Booking Enabled",
             "type": "boolean"
           },
+          "booking_pathways": {
+            "items": {
+              "$ref": "#/components/schemas/BookingPathway"
+            },
+            "title": "Booking Pathways",
+            "type": "array"
+          },
           "cancellation_cutoff_minutes": {
             "anyOf": [
               {
@@ -22484,6 +22514,7 @@
           "name",
           "description",
           "appointment_booking_enabled",
+          "booking_pathways",
           "default_appointment_duration_minutes",
           "cancellation_cutoff_minutes",
           "requires_current_inventory",
@@ -22535,6 +22566,20 @@
             "default": false,
             "title": "Appointment Booking Enabled",
             "type": "boolean"
+          },
+          "booking_pathways": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/BookingPathway"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Booking Pathways"
           },
           "cancellation_cutoff_minutes": {
             "anyOf": [

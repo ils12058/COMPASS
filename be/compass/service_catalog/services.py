@@ -307,7 +307,9 @@ def _normalize_booking_settings(
 def _normalize_pathways(values: list[str] | tuple[str, ...]) -> frozenset[str]:
     if not isinstance(values, (list, tuple)):
         raise InvalidServiceCatalogInput("booking_pathways must be a list.")
-    normalized = [value.value if isinstance(value, BookingPathwayCode) else value for value in values]
+    normalized = [
+        value.value if isinstance(value, BookingPathwayCode) else value for value in values
+    ]
     if not all(isinstance(value, str) for value in normalized):
         raise InvalidServiceCatalogInput("booking_pathways must contain supported pathway codes.")
     if len(set(normalized)) != len(normalized):
