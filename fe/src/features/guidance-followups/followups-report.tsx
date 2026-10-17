@@ -1,4 +1,5 @@
 "use client";
+import { useFollowupsFreshness, followupQueryFreshness } from "./followups-data";
 import Link from "next/link";
 import { useState } from "react";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
@@ -11,10 +12,11 @@ import { formatInstitutionalDateTime, institutionalDateTimeInputToISO } from "@/
 import { categoryLabel, followupAccess, FollowupRestricted, FollowupFailure } from "./followups-shared";
 export function FollowupsReport() {
   const { user } = usePortalSession();
+  useFollowupsFreshness(followupAccess(user).view);
   const [start, setStart] = useState(""); const [end, setEnd] = useState("");
   const [horizon, setHorizon] = useState(7);
   const invalid = Boolean(start && end && start >= end);
-  const query = useGuidanceFollowupsReport({ period_start: institutionalDateTimeInputToISO(start) || undefined, period_end: institutionalDateTimeInputToISO(end) || undefined, horizon_days: horizon }, { query: { enabled: followupAccess(user).view && !invalid, retry: false } });
+  const query = useGuidanceFollowupsReport({ period_start: institutionalDateTimeInputToISO(start) || undefined, period_end: institutionalDateTimeInputToISO(end) || undefined, horizon_days: horizon }, { query: { ...followupQueryFreshness, enabled: followupAccess(user).view && !invalid, retry: false } });
   if (!followupAccess(user).view) return <FollowupRestricted />;
   const report = query.data?.data;
   return <><PageHeader title="Follow-Up report" description="Counts cover only follow-ups you can currently access. Descriptions and outcomes are excluded." back={<Link className={pageBackLinkClass} href="/portal/follow-ups">Back to Follow-Ups</Link>} /><Panel>

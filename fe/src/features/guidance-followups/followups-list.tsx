@@ -1,8 +1,9 @@
 "use client";
 
+import { useFollowupsFreshness, followupQueryFreshness } from "./followups-data";
 import Link from "next/link";
 import { useState } from "react";
-import { Plus, ChartColumn } from "lucide-react";
+import { Plus, ChartColumn, UsersRound } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageActionLink } from "@/components/ui/page-action";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -20,14 +21,16 @@ import { categoryLabel, statusLabel, followupAccess, FollowupRestricted, Followu
 export function FollowupsList() {
   const { user } = usePortalSession();
   const access = followupAccess(user);
+  useFollowupsFreshness(access.view);
   const [filters, setFilters] = useState<FollowUpQuery>({ status: StatusValue.PENDING, page: 1 });
-  const query = useGuidanceFollowupsList(filters, { query: { enabled: access.view, refetchOnWindowFocus: true } });
+  const query = useGuidanceFollowupsList(filters, { query: { ...followupQueryFreshness, enabled: access.view, refetchOnWindowFocus: "always" } });
   const data = query.data?.data;
   function change(next: Partial<FollowUpQuery>) { setFilters(previous => ({ ...previous, ...next, page: 1 })); }
   if (!access.view) return <FollowupRestricted />;
   return <>
     <PageHeader title="Follow-Ups" description="Your assigned Guidance follow-ups. Due dates use Philippine Time." actions={<>
       {access.manage ? <PageActionLink href="/portal/follow-ups/new" icon={Plus} label="Create" labelDetail="follow-up" /> : null}
+      {access.manage ? <PageActionLink href="/portal/follow-ups/reassignment" icon={UsersRound} label="Reassign" labelDetail="follow-ups needing responsibility" variant="secondary" /> : null}
       <PageActionLink href="/portal/follow-ups/report" icon={ChartColumn} label="Report" variant="secondary" />
     </>} />
     <FloatingListTools compact label="Follow-up filters" filters={<>

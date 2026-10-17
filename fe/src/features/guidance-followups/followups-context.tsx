@@ -1,4 +1,5 @@
 "use client";
+import { useFollowupsFreshness, followupQueryFreshness } from "./followups-data";
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -13,8 +14,9 @@ export function FollowupsContext({ kind, id }: { kind: SourceKind; id: string })
   const { user } = usePortalSession();
   const [page, setPage] = useState(1);
   const access = followupAccess(user);
-  const context = useGuidanceFollowupsGetContext({ source_kind: kind, source_id: id }, { query: { enabled: access.view, retry: false } });
-  const query = useGuidanceFollowupsList({ source_kind: kind, source_id: id, page, page_size: 10 }, { query: { enabled: access.view && context.isSuccess, retry: false } });
+  useFollowupsFreshness(access.view);
+  const context = useGuidanceFollowupsGetContext({ source_kind: kind, source_id: id }, { query: { ...followupQueryFreshness, enabled: access.view, retry: false } });
+  const query = useGuidanceFollowupsList({ source_kind: kind, source_id: id, page, page_size: 10 }, { query: { ...followupQueryFreshness, enabled: access.view && context.isSuccess, retry: false } });
   if (!access.view) return null;
   if (context.isError || context.isPending) return null;
   return <Panel className="mt-5"><PanelHeader title="Linked follow-ups" /><div className="space-y-3 p-5">

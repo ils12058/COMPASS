@@ -514,3 +514,258 @@ def test_http_workspace_contracts_reject_nonstaff_and_unknown_parameters(world):
         assert auth_client(student).get(path).status_code == 403
     result = client.get("/api/v1/guidance-followups?not_a_filter=true")
     assert result.status_code == 422
+
+
+def test_durable_lifecycle_retry_does_not_duplicate_activity(world):
+    counselor, *_ = world
+    item = create(world)
+    key = str(uuid4())
+    args = dict(
+        actor=counselor,
+        followup_id=item.pk,
+        expected_version=1,
+        remarks="Contacted safely",
+        context=context(counselor),
+        mutation_key=key,
+        mutation_fingerprint="c" * 64,
+    )
+    first, event = services.record_activity(**args)
+    replay, repeated = services.record_activity(**args)
+    assert first.pk == replay.pk and event.pk == repeated.pk
+    assert replay.version == 2
+    assert replay.events.count() == 2
+    with pytest.raises(FollowUpConflict):
+        services.record_activity(**{**args, "mutation_fingerprint": "d" * 64})
+
+
+def test_work_and_notifications_are_current_and_content_minimized(world, settings):
+    from unittest.mock import patch
+
+    from compass.guidance_followups.integration import pending_followups
+    from compass.notifications.delivery import deliver_email_delivery
+    from compass.notifications.models import EmailDelivery, Notification
+    from compass.notifications.services import list_my_notifications, unread_count_for
+    from compass.work_queue.services import list_work
+
+    counselor, _, gss, *_ = world
+    settings.GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = True
+    item = create(world)
+    notice = Notification.objects.get(source_type="guidance_followup_event")
+    assert notice.recipient_id == counselor.pk
+    assert item.student.get_full_name() not in notice.message
+    work = [row for row in list_work(actor=counselor).items if row.kind == "GUIDANCE_FOLLOW_UP"]
+    assert [row.source_id for row in work] == [item.pk]
+    assert "Private notes" not in str(work)
+    changed = services.reassign_followup(
+        actor=counselor,
+        followup_id=item.pk,
+        expected_version=1,
+        assigned_to_id=gss.pk,
+        context=context(counselor),
+    )
+    assert not pending_followups(actor=counselor, limit=20)
+    assert [row.pk for row in pending_followups(actor=gss, limit=20)] == [item.pk]
+    assert not list_my_notifications(actor=counselor).items
+    assert unread_count_for(actor=counselor) == 0
+    delivery = EmailDelivery.objects.get(notification=notice)
+    with patch("compass.notifications.delivery.Mailer") as mailer:
+        assert deliver_email_delivery(delivery.pk) == "skipped"
+        mailer.assert_not_called()
+    # Returning to the earlier owner never revives an older occurrence.
+    services.reassign_followup(
+        actor=gss,
+        followup_id=item.pk,
+        expected_version=changed.version,
+        assigned_to_id=counselor.pk,
+        context=context(gss),
+    )
+    notices = list_my_notifications(actor=counselor).items
+    assert len(notices) == 1 and notices[0].pk != notice.pk
+    settings.GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS = ()
+    assert pending_followups(actor=counselor, limit=20)
+    assert list_my_notifications(actor=counselor).items
+
+
+def test_followup_external_delivery_is_off_by_default(world, settings):
+    from compass.notifications.models import EmailDelivery, Notification
+
+    settings.GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = False
+    item = create(world)
+    assert Notification.objects.filter(target_id=item.pk).count() == 1
+    assert not EmailDelivery.objects.filter(notification__target_id=item.pk).exists()
+
+
+def test_material_due_change_has_new_occurrence_and_activity_does_not_notify(world, settings):
+    from compass.notifications.models import Notification
+    from compass.notifications.services import list_my_notifications
+
+    counselor, *_ = world
+    item = create(world)
+    first = Notification.objects.get(target_id=item.pk)
+    services.record_activity(
+        actor=counselor,
+        followup_id=item.pk,
+        expected_version=1,
+        remarks="Progress",
+        context=context(counselor),
+    )
+    assert Notification.objects.filter(target_id=item.pk).count() == 1
+    services.update_followup(
+        actor=counselor,
+        followup_id=item.pk,
+        expected_version=2,
+        due_at=item.due_at + timedelta(days=1),
+        context=context(counselor),
+    )
+    assert Notification.objects.filter(target_id=item.pk).count() == 2
+    current = list_my_notifications(actor=counselor).items
+    assert len(current) == 1 and current[0].source_id != first.source_id
+
+
+def test_reassignment_recovery_is_operational_and_resource_scoped(world):
+    from compass.accounts.models import User
+    from compass.guidance_followups.recovery import list_recoverable
+
+    counselor, counselor_b, gss, student, *_ = world
+    item = create(world, assignee=gss)
+    assert not list_recoverable(actor=counselor)["items"]
+    User.objects.filter(pk=gss.pk).update(is_active=False)
+    assert [row.pk for row in list_recoverable(actor=counselor)["items"]] == [item.pk]
+    assert not list_recoverable(actor=counselor_b)["items"]
+    # Recovery grants only reassignment, never prior protected detail or editing.
+    with pytest.raises(FollowUpNotFound):
+        services.get_followup(actor=counselor, followup_id=item.pk)
+    with pytest.raises(FollowUpNotFound):
+        services.update_followup(
+            actor=counselor,
+            followup_id=item.pk,
+            expected_version=1,
+            description="Not an authorized read",
+            context=context(counselor),
+        )
+    result = services.reassign_followup(
+        actor=counselor,
+        followup_id=item.pk,
+        expected_version=1,
+        assigned_to_id=counselor.pk,
+        context=context(counselor),
+    )
+    assert result.assigned_to_id == counselor.pk
+    assert not list_recoverable(actor=counselor)["items"]
+
+
+def test_recovery_detects_capability_revocation_without_loading_descriptions(world):
+    from compass.guidance_followups.recovery import list_recoverable
+
+    counselor, _, gss, *_ = world
+    item = create(world, assignee=gss)
+    UserCapabilityOverride.objects.create(
+        user=gss,
+        capability=Capability.objects.get(code="guidance_followups.view"),
+        effect="REVOKE",
+        reason="Recovery fixture",
+    )
+    assert [row.pk for row in list_recoverable(actor=counselor)["items"]] == [item.pk]
+
+
+def test_head_recovery_never_includes_confidential_followups(world):
+    from compass.accounts.models import Designation, User, UserDesignation
+    from compass.guidance_followups.recovery import list_recoverable
+
+    counselor, head, gss, student, *_ = world
+    UserDesignation.objects.create(
+        user=head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    )
+    operational = create(world, assignee=gss)
+    service = Service.objects.create(code="FUP_HEAD_RECOVERY", name="Counseling", is_active=True)
+    encounter = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=timezone.now() - timedelta(hours=1),
+        ended_at=timezone.now(),
+    )
+    confidential = create(
+        world, source_kind="COUNSELING_ENCOUNTER", source_id=encounter.pk, category="COUNSELING"
+    )
+    User.objects.filter(pk=counselor.pk).update(is_active=False)
+    rows = list_recoverable(actor=head)["items"]
+    assert [row.pk for row in rows] == [operational.pk]
+    assert confidential.pk not in {row.pk for row in rows}
+
+
+def test_followup_key_rotation_preserves_bound_content_and_business_state(world, settings):
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    counselor, *_ = world
+    item = create(world)
+    services.record_activity(
+        actor=counselor,
+        followup_id=item.pk,
+        expected_version=1,
+        remarks="Protected activity",
+        context=context(counselor),
+    )
+    old = item.description_ciphertext
+    settings.GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS = (
+        Fernet.generate_key().decode(),
+        *settings.GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS,
+    )
+    call_command("rotate_guidance_followup_encryption", dry_run=True, stdout=StringIO())
+    item.refresh_from_db()
+    assert item.description_ciphertext == old
+    version, updated = item.version, item.updated_at
+    call_command("rotate_guidance_followup_encryption", stdout=StringIO())
+    item.refresh_from_db()
+    assert item.description_ciphertext != old
+    assert (item.version, item.updated_at) == (version, updated)
+    assert services.followup_detail(actor=counselor, item=item)["description"] == "Private notes"
+    assert (
+        services.followup_detail(actor=counselor, item=item)["events"][-1]["remarks"]
+        == "Protected activity"
+    )
+
+
+@pytest.mark.parametrize(
+    "action,field,value",
+    [
+        ("activities", "remarks", "Synthetic activity"),
+        ("complete", "outcome", "Synthetic outcome"),
+        ("cancel", "reason", "Synthetic cancellation"),
+        ("reassign", "assigned_to_id", None),
+    ],
+)
+def test_http_lifecycle_requires_recent_mfa_and_replays_durably(world, action, field, value):
+    import json
+
+    from tests.test_appointment_management_scope import auth_client, csrf
+
+    counselor, _, gss, *_ = world
+    item = create(world)
+    payload = {"expected_version": 1, field: value if value is not None else str(gss.pk)}
+    path = f"/api/v1/guidance-followups/{item.pk}/{action}"
+    headers = {"HTTP_IDEMPOTENCY_KEY": str(uuid4())}
+    denied = auth_client(counselor)
+    result = denied.post(
+        path, data=json.dumps(payload), content_type="application/json", **csrf(denied), **headers
+    )
+    assert result.status_code == 403
+    assert item.events.count() == 1
+    client = auth_client(counselor, recent_mfa=True)
+    for _ in range(2):
+        result = client.post(
+            path,
+            data=json.dumps(payload),
+            content_type="application/json",
+            **csrf(client),
+            **headers,
+        )
+        assert result.status_code == 200, result.content
+        if action == "reassign":
+            assert result.json()["description"] is None
+            assert result.json()["events"] == []
+    assert item.events.count() == 2

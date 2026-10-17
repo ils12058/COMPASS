@@ -191,6 +191,11 @@ def _context(request):
     return AuditContext.from_request(request, actor=request.auth_user)
 
 
+def _strict_query(request, allowed):
+    if set(request.GET) - set(allowed):
+        raise APIError(422, "invalid_followup", "The requested filter is unsupported.")
+
+
 def _enabled():
     if not settings.GUIDANCE_FOLLOWUPS_ENABLED:
         raise APIError(503, "followups_not_enabled", "Guidance Follow-Ups are not enabled.")
@@ -325,6 +330,27 @@ class FollowUpReport(StrictSchema):
 
 
 @router.get(
+    "/recoverable",
+    response=response_with_errors(FollowUpPage, 401, 403, 422, 503),
+    operation_id="guidanceFollowupsRecoverable",
+)
+def recoverable(request, page: int = 1, page_size: int = 20):
+    from .recovery import list_recoverable
+
+    _enabled()
+    _strict_query(request, ["page", "page_size"])
+    try:
+        result = list_recoverable(actor=request.auth_user, page=page, page_size=page_size)
+        return {
+            **result,
+            "items": [_summary(row) for row in result["items"]],
+            "ordering": "EARLIEST_DUE",
+        }
+    except FollowUpError as exc:
+        _raise(exc)
+
+
+@router.get(
     "/eligible-students",
     response=response_with_errors(StudentOptionPage, 401, 403, 422, 503),
     operation_id="guidanceFollowupsEligibleStudents",
@@ -333,6 +359,7 @@ def eligible_students(request, search: str | None = None, page: int = 1, page_si
     from compass.operational_students import InvalidOperationalStudentQuery
 
     _enabled()
+    _strict_query(request, ["search", "page", "page_size"])
     try:
         result = workspace.eligible_students(
             actor=request.auth_user, search=search, page=page, page_size=page_size
@@ -371,6 +398,9 @@ def eligible_assignees(
     page_size: int = 20,
 ):
     _enabled()
+    _strict_query(
+        request, ["student_id", "category", "source_kind", "source_id", "page", "page_size"]
+    )
     try:
         result = workspace.eligible_assignees(
             actor=request.auth_user,
@@ -398,6 +428,7 @@ def eligible_assignees(
 )
 def context(request, source_kind: SourceKind, source_id: UUID):
     _enabled()
+    _strict_query(request, ["source_kind", "source_id"])
     try:
         return workspace.source_context(
             actor=request.auth_user, source_kind=source_kind, source_id=source_id
@@ -418,6 +449,7 @@ def report(
     horizon_days: int = 7,
 ):
     _enabled()
+    _strict_query(request, ["period_start", "period_end", "horizon_days"])
     try:
         return workspace.reporting(
             actor=request.auth_user,
@@ -508,7 +540,12 @@ def guidance_followups_get(request, followup_id: UUID):
     response=response_with_errors(FollowUpDetail, 401, 403, 404, 409, 422, 503),
     operation_id="guidanceFollowupsUpdate",
 )
-def guidance_followups_update(request, followup_id: UUID, payload: FollowUpUpdate):
+def guidance_followups_update(
+    request,
+    followup_id: UUID,
+    payload: FollowUpUpdate,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
     _write(request)
     try:
         if not (payload.model_fields_set - {"expected_version"}):
@@ -521,6 +558,13 @@ def guidance_followups_update(request, followup_id: UUID, payload: FollowUpUpdat
             category=payload.category.value if payload.category else None,
             description=payload.description,
             context=_context(request),
+            mutation_key=idempotency_key,
+            mutation_fingerprint=request_fingerprint(
+                method=request.method,
+                route=request.path,
+                query_string=request.META.get("QUERY_STRING", ""),
+                body=request.body,
+            ),
         )
         return _detail(request.auth_user, item)
     except FollowUpError as exc:
@@ -532,7 +576,12 @@ def guidance_followups_update(request, followup_id: UUID, payload: FollowUpUpdat
     response=response_with_errors(FollowUpDetail, 401, 403, 404, 409, 422, 503),
     operation_id="guidanceFollowupsReassign",
 )
-def guidance_followups_reassign(request, followup_id: UUID, payload: FollowUpReassign):
+def guidance_followups_reassign(
+    request,
+    followup_id: UUID,
+    payload: FollowUpReassign,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
     _write(request)
     try:
         item = reassign_followup(
@@ -541,6 +590,13 @@ def guidance_followups_reassign(request, followup_id: UUID, payload: FollowUpRea
             expected_version=payload.expected_version,
             assigned_to_id=payload.assigned_to_id,
             context=_context(request),
+            mutation_key=idempotency_key,
+            mutation_fingerprint=request_fingerprint(
+                method=request.method,
+                route=request.path,
+                query_string=request.META.get("QUERY_STRING", ""),
+                body=request.body,
+            ),
         )
         return _detail_or_receipt(request.auth_user, item)
     except FollowUpError as exc:
@@ -552,7 +608,12 @@ def guidance_followups_reassign(request, followup_id: UUID, payload: FollowUpRea
     response=response_with_errors(FollowUpDetail, 401, 403, 404, 409, 422, 503),
     operation_id="guidanceFollowupsRecordActivity",
 )
-def guidance_followups_activity(request, followup_id: UUID, payload: FollowUpActivity):
+def guidance_followups_activity(
+    request,
+    followup_id: UUID,
+    payload: FollowUpActivity,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
     _write(request)
     try:
         item, _event = record_activity(
@@ -561,6 +622,13 @@ def guidance_followups_activity(request, followup_id: UUID, payload: FollowUpAct
             expected_version=payload.expected_version,
             remarks=payload.remarks,
             context=_context(request),
+            mutation_key=idempotency_key,
+            mutation_fingerprint=request_fingerprint(
+                method=request.method,
+                route=request.path,
+                query_string=request.META.get("QUERY_STRING", ""),
+                body=request.body,
+            ),
         )
         return _detail(request.auth_user, item)
     except FollowUpError as exc:
@@ -572,7 +640,12 @@ def guidance_followups_activity(request, followup_id: UUID, payload: FollowUpAct
     response=response_with_errors(FollowUpDetail, 401, 403, 404, 409, 422, 503),
     operation_id="guidanceFollowupsComplete",
 )
-def guidance_followups_complete(request, followup_id: UUID, payload: FollowUpComplete):
+def guidance_followups_complete(
+    request,
+    followup_id: UUID,
+    payload: FollowUpComplete,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
     _write(request)
     try:
         item = complete_followup(
@@ -581,6 +654,13 @@ def guidance_followups_complete(request, followup_id: UUID, payload: FollowUpCom
             expected_version=payload.expected_version,
             outcome=payload.outcome,
             context=_context(request),
+            mutation_key=idempotency_key,
+            mutation_fingerprint=request_fingerprint(
+                method=request.method,
+                route=request.path,
+                query_string=request.META.get("QUERY_STRING", ""),
+                body=request.body,
+            ),
         )
         return _detail(request.auth_user, item)
     except FollowUpError as exc:
@@ -592,7 +672,12 @@ def guidance_followups_complete(request, followup_id: UUID, payload: FollowUpCom
     response=response_with_errors(FollowUpDetail, 401, 403, 404, 409, 422, 503),
     operation_id="guidanceFollowupsCancel",
 )
-def guidance_followups_cancel(request, followup_id: UUID, payload: FollowUpCancel):
+def guidance_followups_cancel(
+    request,
+    followup_id: UUID,
+    payload: FollowUpCancel,
+    idempotency_key: str = Header(..., alias="Idempotency-Key"),
+):
     _write(request)
     try:
         item = cancel_followup(
@@ -601,6 +686,13 @@ def guidance_followups_cancel(request, followup_id: UUID, payload: FollowUpCance
             expected_version=payload.expected_version,
             reason=payload.reason,
             context=_context(request),
+            mutation_key=idempotency_key,
+            mutation_fingerprint=request_fingerprint(
+                method=request.method,
+                route=request.path,
+                query_string=request.META.get("QUERY_STRING", ""),
+                body=request.body,
+            ),
         )
         return _detail(request.auth_user, item)
     except FollowUpError as exc:
@@ -621,6 +713,7 @@ class FollowUpHistoryPage(StrictSchema):
 )
 def history(request, followup_id: UUID, page: int = 1):
     _enabled()
+    _strict_query(request, ["page"])
     try:
         item = get_followup(actor=request.auth_user, followup_id=followup_id)
         result = followup_detail(actor=request.auth_user, item=item, history_page=page)

@@ -18,6 +18,7 @@ from django.db.models import Q
 from django.utils import timezone
 from pywebpush import WebPushException, webpush
 
+from .current import notification_is_current
 from .models import PushDelivery, PushDeliveryStatus, PushSubscription
 from .push_policy import push_body_for
 
@@ -233,6 +234,7 @@ def deliver_push_delivery(delivery_id: uuid.UUID) -> str:
             not settings.WEB_PUSH_ENABLED
             or not sub.active
             or not delivery.notification.recipient.is_active
+            or not notification_is_current(delivery.notification)
             or sub.user_id != delivery.notification.recipient_id
             or session.user_id != sub.user_id
             or session.revoked_at is not None
@@ -261,7 +263,10 @@ def deliver_push_delivery(delivery_id: uuid.UUID) -> str:
     status = PushDeliveryStatus.SENT
     failure_code = ""
     try:
-        _send(sub, body)
+        if notification_is_current(delivery.notification):
+            _send(sub, body)
+        else:
+            status, failure_code = PushDeliveryStatus.CANCELLED, "source_changed"
     except WebPushException as exc:
         code = exc.status_code
         if code in (404, 410):

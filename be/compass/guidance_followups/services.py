@@ -25,6 +25,7 @@ from .models import (
     GuidanceFollowUp,
     GuidanceFollowUpEvent,
 )
+from .replay import durable_mutation
 
 MAX_PAGE = 100
 MAX_PAGE_SIZE = 50
@@ -104,6 +105,9 @@ def _event(
             required=True,
         )
     event.save(force_insert=True)
+    from .integration import event_committed_intent
+
+    event_committed_intent(item, event)
     return event
 
 
@@ -259,11 +263,17 @@ def list_followups(
     return FollowUpPage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
 
 
-def _lock_for_mutation(*, actor, followup_id, expected_version):
+def _lock_for_mutation(*, actor, followup_id, expected_version, allow_recovery=False):
     if type(expected_version) is not int or expected_version < 1:
         raise FollowUpInvalid("An expected version is required.")
     item = _load(followup_id, lock=True)
-    policy.require_followup(actor, item, manage=True)
+    if allow_recovery and not policy.authorized(actor, item, manage=True):
+        from .recovery import recoverable_queryset
+
+        if not recoverable_queryset(actor=actor).filter(pk=item.pk).exists():
+            raise FollowUpNotFound("The follow-up is unavailable for reassignment.")
+    else:
+        policy.require_followup(actor, item, manage=True)
     if item.version != expected_version:
         raise FollowUpConflict("This follow-up changed. Review the latest details.")
     if item.status != FollowUpStatus.PENDING:
@@ -271,6 +281,7 @@ def _lock_for_mutation(*, actor, followup_id, expected_version):
     return item
 
 
+@durable_mutation
 def update_followup(
     *,
     actor,
@@ -320,6 +331,7 @@ def update_followup(
         return item
 
 
+@durable_mutation
 def reassign_followup(*, actor, followup_id, expected_version, assigned_to_id, context):
     with transaction.atomic():
         actor = policy.current_actor(actor, manage=True, lock=True)
@@ -327,6 +339,7 @@ def reassign_followup(*, actor, followup_id, expected_version, assigned_to_id, c
             actor=actor,
             followup_id=followup_id,
             expected_version=expected_version,
+            allow_recovery=True,
         )
         new = policy.require_assignee(
             assigned_to_id,
@@ -352,6 +365,7 @@ def reassign_followup(*, actor, followup_id, expected_version, assigned_to_id, c
         return item
 
 
+@durable_mutation
 def record_activity(*, actor, followup_id, expected_version, remarks, context):
     with transaction.atomic():
         actor = policy.current_actor(actor, manage=True, lock=True)
@@ -367,6 +381,7 @@ def record_activity(*, actor, followup_id, expected_version, remarks, context):
         return item, event
 
 
+@durable_mutation
 def complete_followup(*, actor, followup_id, expected_version, outcome, context, now=None):
     at = now or timezone.now()
     with transaction.atomic():
@@ -396,6 +411,7 @@ def complete_followup(*, actor, followup_id, expected_version, outcome, context,
         return item
 
 
+@durable_mutation
 def cancel_followup(*, actor, followup_id, expected_version, reason, context, now=None):
     at = now or timezone.now()
     with transaction.atomic():
@@ -433,6 +449,9 @@ def cancel_followup(*, actor, followup_id, expected_version, reason, context, no
             ]
         )
         event.save(force_insert=True)
+        from .integration import event_committed_intent
+
+        event_committed_intent(item, event)
         _audit(context, "cancelled", item)
         return item
 

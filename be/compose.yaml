@@ -50,6 +50,8 @@ services:
   worker:
     <<: *app
     environment:
+      GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS_FILE: ""
+      GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS: ""
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE: ""
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS: ""
     pull_policy: never
@@ -71,6 +73,8 @@ services:
   beat:
     <<: *app
     environment:
+      GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS_FILE: ""
+      GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS: ""
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE: ""
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS: ""
     pull_policy: never

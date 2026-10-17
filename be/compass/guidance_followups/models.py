@@ -174,3 +174,25 @@ class GuidanceFollowUpEvent(models.Model):
             ),
             models.CheckConstraint(condition=Q(revision__gte=1), name="fup_event_version_positive"),
         ]
+
+
+class GuidanceFollowUpMutation(models.Model):
+    """Durable request identity only; no second business lifecycle or free-text payload."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    followup = models.ForeignKey(
+        GuidanceFollowUp, on_delete=models.PROTECT, related_name="mutation_receipts"
+    )
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="followup_mutation_receipts",
+    )
+    key_digest = models.CharField(max_length=64, unique=True)
+    request_fingerprint = models.CharField(max_length=64)
+    action = models.CharField(max_length=32)
+    revision = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        default_permissions = ()

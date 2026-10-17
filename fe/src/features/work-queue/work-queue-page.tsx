@@ -41,7 +41,7 @@ function WorkList({ user }: { user: UserSummary }) {
         {data?.items.length === 0 ? <PanelMessage>{query.isError ? "Your last confirmed result had no work items." : data.page === 1 ? "You’re caught up." : "No items on this page. Return to the previous page to check your work."}</PanelMessage> : null}
         {data && data.items.length > 0 ? <ul className="divide-y divide-border">
           {data.items.map((item) => {
-            const row = presentWork(item);
+            const row = presentWork(item, data.generated_at);
             return <li key={item.id} className="grid min-w-0 gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-5">
               <div className="min-w-0 [overflow-wrap:anywhere]">
                 <p className="font-semibold text-ink">{row.title}</p>

@@ -12,6 +12,14 @@ class PushDecision(StrEnum):
 
 
 PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
+    **{
+        event: (PushDecision.PUSH, "You have a Guidance follow-up update.")
+        for event in (
+            NotificationEvent.FOLLOWUP_ASSIGNED,
+            NotificationEvent.FOLLOWUP_REASSIGNED,
+            NotificationEvent.FOLLOWUP_DUE_CHANGED,
+        )
+    },
     NotificationEvent.CALL_SLIP_ISSUED: (PushDecision.PUSH, "You have a new Call Slip."),
     NotificationEvent.CALL_SLIP_VOIDED: (PushDecision.PUSH, "You have a Call Slip update."),
     NotificationEvent.APPOINTMENT_SCHEDULED: (PushDecision.PUSH, "You have an appointment update."),

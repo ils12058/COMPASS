@@ -24,6 +24,7 @@ class NotificationChannel(StrEnum):
 class NotificationTargetType(StrEnum):
     """Closed set of in-app destinations a Notification may point at."""
 
+    GUIDANCE_FOLLOW_UP = "GUIDANCE_FOLLOW_UP"
     ACCOUNT_SECURITY = "ACCOUNT_SECURITY"
     APPOINTMENT = "APPOINTMENT"
     CALL_SLIP = "CALL_SLIP"
@@ -37,6 +38,9 @@ class NotificationTargetType(StrEnum):
 
 
 class NotificationEvent(StrEnum):
+    FOLLOWUP_ASSIGNED = "guidance_followup.assigned"
+    FOLLOWUP_REASSIGNED = "guidance_followup.reassigned"
+    FOLLOWUP_DUE_CHANGED = "guidance_followup.due_changed"
     CALL_SLIP_ISSUED = "call_slip.issued"
     APPOINTMENT_SCHEDULED = "appointment.scheduled"
     APPOINTMENT_CANCELLED = "appointment.cancelled"
@@ -75,6 +79,25 @@ _EMAIL_CHANNELS = frozenset({NotificationChannel.IN_APP, NotificationChannel.EMA
 
 
 _EVENT_CATALOG = {
+    **{
+        event: NotificationEventDefinition(
+            event=event,
+            policy=NotificationPolicy.MANDATORY_OPERATIONAL,
+            channels=_EMAIL_CHANNELS,
+            title="Guidance Follow-Up update",
+            message=(
+                "A Guidance follow-up assigned to you has an update. "
+                "Sign in to COMPASS to review it."
+            ),
+            email_subject="COMPASS Guidance Follow-Up update",
+            email_template="guidance_followup",
+        )
+        for event in (
+            NotificationEvent.FOLLOWUP_ASSIGNED,
+            NotificationEvent.FOLLOWUP_REASSIGNED,
+            NotificationEvent.FOLLOWUP_DUE_CHANGED,
+        )
+    },
     NotificationEvent.CALL_SLIP_ISSUED: NotificationEventDefinition(
         event=NotificationEvent.CALL_SLIP_ISSUED,
         policy=NotificationPolicy.MANDATORY_OPERATIONAL,
