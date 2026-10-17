@@ -2,6 +2,7 @@
 
 import { NotebookPen, Video } from "lucide-react";
 import { PageActionLink } from "@/components/ui/page-action";
+import { ReminderSender } from "@/features/appointments/appointment-reminders";
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 
 import { useQueryClient } from "@tanstack/react-query";
@@ -265,6 +266,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const [reassigning, setReassigning] = useState(false);
   const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const [reassignmentOpen, setReassignmentOpen] = useState(false);
+  const [reminderOpen, setReminderOpen] = useState(false);
   const [error, setError] = useState<ActionError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   // Set when an action found the Appointment changed and the page reloaded it.
@@ -592,6 +594,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         }
       />
 
+      {reminderOpen ? <ReminderSender selected={[appointment.id]} open={reminderOpen} onClose={() => setReminderOpen(false)} /> : null}
       {notice ? <Notice role="status" tone="success" className="mb-4">{notice}</Notice> : null}
       {updatedNotice ? <Notice role="status" tone="info" className="mb-4">{updatedNotice}</Notice> : null}
       {detailsUnconfirmed ? (
@@ -640,13 +643,16 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         </PanelSection>
       </Panel>
 
-      {(canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || unavailable.length > 0) ? (
+      {(canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || unavailable.length > 0 || (access.canManage && user.role.code !== "STUDENT")) ? (
         <Panel aria-labelledby="appointment-actions-heading">
           <PanelHeader title="Actions" titleId="appointment-actions-heading" />
           <PanelBody className="*:first:mt-0">
           {canCancel || canReschedule || canReassign || canComplete || canMarkNoShow ? (
             // The usual outcome leads; cancelling, the destructive one, comes last.
             <div className="mt-4 flex flex-wrap gap-2">
+              {access.canManage && (user.role.code === "COUNSELOR" || user.role.code === "GSS") ? (
+                <Button variant="secondary" disabled={pending || detailsUnconfirmed} onClick={() => setReminderOpen(true)}>Send reminder</Button>
+              ) : null}
               {canComplete ? <Button disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button> : null}
               {canReschedule ? (
                 <Button
