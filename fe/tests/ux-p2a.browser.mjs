@@ -250,7 +250,7 @@ await check("P2A Service detail preserves distinct booking pathways and manageme
   await shown(page.getByRole("heading", { name: "Fixed-date appointment slots", exact: true }));
   await shown(page.getByRole("heading", { name: "Group Sessions & Events", exact: true }));
   await shown(page.getByText("No fixed-date appointment slots published yet.", { exact: true }));
-  await shown(page.getByText("No group sessions scheduled for this Service yet. Click \"Schedule Group Session\" to create one.", { exact: true }));
+  await shown(page.getByText("No group sessions match this view.", { exact: true }));
   for (const width of widths) {
     await page.setViewportSize({ width, height: width < 400 ? 820 : 900 });
     await assertActionPlacement(page, "Service page actions", [["link", "Edit Service"]], width);

@@ -166,9 +166,9 @@ const expectations = baseline
       detail: ["Maria Reyes", "Weekly schedule"],
     }
   : {
-      my: ["My availability", "Your weekly hours", "Set the days and times you can accept appointments."],
-      office: ["Office hours", "Office weekly hours", "Group Sessions use their event schedule."],
-      directory: ["Counselor schedules", "people explicitly delegated this responsibility"],
+      my: ["My availability", "Your weekly hours", "Set your weekly hours and unavailable dates."],
+      office: ["Office hours", "Office weekly hours", "Set Office hours and closure dates."],
+      directory: ["Counselor schedules", "Find a counselor to manage their availability."],
       detail: ["Counselor schedule for", "Maria Reyes", "Counselor weekly hours"],
     };
 
