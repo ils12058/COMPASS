@@ -1,4 +1,7 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}A Guidance follow-up assigned to you has an update.
-Sign in to COMPASS to review it.
+{% block content %}An update is available for a Guidance Follow-Up assigned to you.
+
+Sign in to review the update and any next steps shown there.
+
+For help, contact the Guidance and Counseling Office through an official university channel.
 {% endblock %}

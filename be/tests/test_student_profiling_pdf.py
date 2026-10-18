@@ -579,16 +579,26 @@ def test_rendered_html_is_table_first_with_branding_overview_and_numbered_tables
     assert "Individual Inventory-Based Student Profiling" in html
     for heading in (
         "1. Report Overview",
-        "2. Populations in This Report",
-        "2.1 Submitted Inventory Profile Population (n = 10)",
-        "2.2 Current Student Inventory Coverage",
-        "3. Methodology and Data Notes",
+        "2. Executive Summary",
+        "3. Populations in This Report",
+        "3.1 Submitted Inventory Profile Population (n = 10)",
+        "3.2 Current Student Inventory Coverage",
         "4. Demographics",
         "5. Family and Household",
         "6. Geographic Distribution",
+        "7. Methodology and Data Notes",
         "Appendix A. Program Breakdown",
     ):
         assert heading in html
+    assert html.index("2. Executive Summary") < html.index("3. Populations in This Report")
+    assert html.index("6. Geographic Distribution") < html.index("7. Methodology and Data Notes")
+    summary_rows = [cell_texts(row) for row in profile["summary"]["rows"]]
+    assert summary_rows[0] == [
+        "Submitted Inventory Profile Population",
+        "n = 10 submitted Individual Inventories",
+    ]
+    assert "Eligible current Students: 13" in summary_rows[1][1]
+    assert summary_rows[2] == ["Recorded classifications represented", "1 College; 2 Programs"]
     metadata = {cell_texts(row)[0]: cell_texts(row)[1] for row in profile["metadata"]["rows"]}
     assert metadata["Academic Year"] == "2026-2027 (current Academic Year)"
     assert metadata["Campus filter"] == "All Campuses"
@@ -1178,8 +1188,9 @@ def _structural_lines(context: dict[str, object]) -> set[str]:
     profile = context["student_profile"]
     lines = {
         "1. Report Overview",
-        "2. Populations in This Report",
-        "3. Methodology and Data Notes",
+        "2. Executive Summary",
+        "3. Populations in This Report",
+        "7. Methodology and Data Notes",
         "Appendix A. Program Breakdown",
     }
     for part in profile["parts"]:

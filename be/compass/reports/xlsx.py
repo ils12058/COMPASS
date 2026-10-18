@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import textwrap
 from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
@@ -127,7 +128,8 @@ def _write_table_header(worksheet: Worksheet, row: int, headers: list[str]) -> N
         cell = _write_text(worksheet, row, column, header, bold=True, wrap=True)
         cell.fill = _HEADER_FILL
         cell.border = _TABLE_BORDER
-        cell.alignment = _CENTER
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+    worksheet.row_dimensions[row].height = 30
 
 
 def _write_table_text(worksheet: Worksheet, row: int, column: int, value: object) -> Cell:
@@ -239,6 +241,7 @@ def _program_display_columns(program_columns: object) -> list[dict[str, object]]
                 "college": _organization_display(college_dict, "") if college_dict else "",
                 "campus": _organization_display(campus_dict, "") if campus_dict else "",
                 "is_legacy": is_legacy,
+                "college_id": str(college_dict["id"]) if college_dict else None,
             }
         )
     return display_columns
@@ -374,6 +377,76 @@ def _write_note(worksheet: Worksheet, row: int, text: object, *, bold: bool = Fa
         worksheet.row_dimensions[row].height = lines * _NOTE_LINE_HEIGHT
 
 
+def _summary_heading(worksheet: Worksheet, row: int, label: str) -> None:
+    _write_text(worksheet, row, 1, label, bold=True)
+    worksheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=SUMMARY_WIDTH)
+    cell = worksheet.cell(row=row, column=1)
+    cell.fill = _HEADER_FILL
+    cell.border = _TABLE_BORDER
+    cell.font = Font(bold=True, color="5B1F26")
+    worksheet.row_dimensions[row].height = 21
+
+
+def _set_summary_row_height(worksheet: Worksheet, row: int, value: object) -> None:
+    width = max(
+        1,
+        sum(
+            float(worksheet.column_dimensions[get_column_letter(column)].width or 10)
+            for column in range(2, SUMMARY_WIDTH + 1)
+        )
+        - 2,
+    )
+    lines = max(1, len(textwrap.wrap(str(value or ""), width=width, break_long_words=True)))
+    worksheet.row_dimensions[row].height = max(18, lines * _NOTE_LINE_HEIGHT)
+
+
+def _set_wrapped_row_heights(worksheet: Worksheet, *, first_row: int, last_row: int) -> None:
+    merged_ranges = list(worksheet.merged_cells.ranges)
+    for row_number in range(first_row, last_row + 1):
+        line_count = 1
+        for cell in worksheet[row_number]:
+            if not cell.alignment.wrap_text or cell.value is None:
+                continue
+            merged_range = next(
+                (
+                    area
+                    for area in merged_ranges
+                    if area.min_row == row_number
+                    and area.min_col == cell.column
+                    and area.max_col > area.min_col
+                ),
+                None,
+            )
+            if merged_range is not None:
+                width = sum(
+                    float(worksheet.column_dimensions[get_column_letter(column)].width or 10)
+                    for column in range(merged_range.min_col, merged_range.max_col + 1)
+                )
+            else:
+                dimension = worksheet.column_dimensions[get_column_letter(cell.column)]
+                width = float(dimension.width or 10)
+            width = max(1, int(width) - 2)
+            line_count = max(
+                line_count,
+                len(textwrap.wrap(str(cell.value), width=width, break_long_words=True)),
+            )
+        if line_count > 1:
+            worksheet.row_dimensions[row_number].height = max(18, line_count * 15)
+
+
+def _set_summary_print_layout(worksheet: Worksheet) -> None:
+    worksheet.page_setup.orientation = "landscape"
+    worksheet.page_setup.paperSize = worksheet.PAPERSIZE_A4
+    worksheet.page_setup.fitToWidth = 1
+    worksheet.page_setup.fitToHeight = 0
+    worksheet.sheet_properties.pageSetUpPr.fitToPage = True
+    worksheet.page_margins.left = 0.35
+    worksheet.page_margins.right = 0.35
+    worksheet.page_margins.top = 0.5
+    worksheet.page_margins.bottom = 0.5
+    worksheet.print_area = f"A1:G{worksheet.max_row}"
+
+
 def _reporting_scope_text(report_context: dict[str, object]) -> str:
     scope = _require_dict(report_context.get("reporting_scope"), "reporting scope")
     if scope.get("is_global") is True:
@@ -417,39 +490,90 @@ def _build_summary_sheet(
         ("Year Level filter", report_context.get("year_level_label") or "All Year Levels"),
         ("Reporting Scope", _reporting_scope_text(report_context)),
         ("Generated At", _generated_at_text(report_context.get("generated_at"))),
-        (
-            "Submitted Inventory Profile Population (n)",
-            int(report_context.get("submitted_inventory_count") or 0),
-        ),
     ]
 
-    _write_text(worksheet, 4, 1, "Report Context", bold=True)
+    _summary_heading(worksheet, 4, "Report Context")
     row = 5
     for label, value in context_rows:
         _write_text(worksheet, row, 1, label, bold=True, wrap=True)
-        if isinstance(value, int):
-            worksheet.cell(row=row, column=2, value=value)
-        else:
-            _write_text(worksheet, row, 2, value, wrap=True)
+        _write_text(worksheet, row, 2, value, wrap=True)
+        worksheet.merge_cells(start_row=row, start_column=2, end_row=row, end_column=SUMMARY_WIDTH)
+        _set_summary_row_height(worksheet, row, value)
         row += 1
 
     row += 1
-    _write_text(worksheet, row, 1, _coverage_heading(coverage), bold=True)
+    _summary_heading(worksheet, row, "Key Figures")
+    row += 1
+    population = int(report_context.get("submitted_inventory_count") or 0)
+    _write_text(
+        worksheet,
+        row,
+        1,
+        "Submitted Inventory Profile Population (n)",
+        bold=True,
+        wrap=True,
+    )
+    _write_table_number(worksheet, row, 2, population, number_format="#,##0")
+    worksheet.merge_cells(start_row=row, start_column=2, end_row=row, end_column=SUMMARY_WIDTH)
+    row += 1
+    _write_text(worksheet, row, 1, _coverage_heading(coverage), bold=True, wrap=True)
     row += 1
     for label, value in _coverage_rows(coverage):
         _write_text(worksheet, row, 1, label, bold=True, wrap=True)
         if isinstance(value, int):
-            worksheet.cell(row=row, column=2, value=value)
+            _write_table_number(worksheet, row, 2, value, number_format="#,##0")
         else:
             _write_text(worksheet, row, 2, value, wrap=True)
+        worksheet.merge_cells(start_row=row, start_column=2, end_row=row, end_column=SUMMARY_WIDTH)
+        if not isinstance(value, int):
+            _set_summary_row_height(worksheet, row, value)
         row += 1
 
-    row += 1
-    _write_text(worksheet, row, 1, "Reconciliation of Coverage and Profile Population", bold=True)
+    if population > 0:
+        college_ids = {
+            str(program["college_id"])
+            for program in program_columns
+            if not program["is_legacy"] and program.get("college_id")
+        }
+        represented_programs = sum(not program["is_legacy"] for program in program_columns)
+        _write_text(worksheet, row, 1, "Recorded Colleges represented", bold=True, wrap=True)
+        _write_table_number(worksheet, row, 2, len(college_ids), number_format="#,##0")
+        worksheet.merge_cells(start_row=row, start_column=2, end_row=row, end_column=SUMMARY_WIDTH)
+        row += 1
+        _write_text(worksheet, row, 1, "Recorded Programs represented", bold=True, wrap=True)
+        _write_table_number(worksheet, row, 2, represented_programs, number_format="#,##0")
+        worksheet.merge_cells(start_row=row, start_column=2, end_row=row, end_column=SUMMARY_WIDTH)
+        row += 1
+
+    warning_messages: list[str] = []
+    for warning in disclosure_warnings:
+        item = _require_dict(warning, "disclosure warning")
+        message = str(item.get("message") or "").strip()
+        if message and message not in warning_messages:
+            warning_messages.append(message)
+    if warning_messages:
+        row += 1
+        _summary_heading(worksheet, row, "Small-population privacy notice")
+        for message in warning_messages:
+            row += 1
+            _write_note(worksheet, row, message)
+            worksheet.cell(row=row, column=1).fill = PatternFill(
+                fill_type="solid", fgColor="FFF8E7"
+            )
+        row += 1
+        _write_note(worksheet, row, "Exact counts are exported; no value is suppressed.")
+
+    if population == 0:
+        row += 1
+        _write_note(worksheet, row, EMPTY_REPORT_MESSAGE, bold=True)
+
+    row += 2
+    _summary_heading(worksheet, row, "Reconciliation of Coverage and Profile Population")
     row += 1
     for label, value in _reconciliation_rows(coverage):
         _write_text(worksheet, row, 1, label, bold=True, wrap=True)
-        worksheet.cell(row=row, column=2, value=value)
+        _write_table_number(worksheet, row, 2, value, number_format="#,##0")
+        worksheet.merge_cells(start_row=row, start_column=2, end_row=row, end_column=SUMMARY_WIDTH)
         row += 1
     _write_note(
         worksheet,
@@ -461,52 +585,8 @@ def _build_summary_sheet(
         "Level outside the selected profile filters, or no Program.",
     )
 
-    warning_messages: list[str] = []
-    for warning in disclosure_warnings:
-        item = _require_dict(warning, "disclosure warning")
-        message = str(item.get("message") or "").strip()
-        if message and message not in warning_messages:
-            warning_messages.append(message)
-    if warning_messages:
-        row += 2
-        _write_note(worksheet, row, "Small-population privacy notice", bold=True)
-        for message in warning_messages:
-            row += 1
-            _write_note(worksheet, row, message)
-        row += 1
-        _write_note(worksheet, row, "Exact counts are exported; no value is suppressed.")
-
     row += 2
-    _write_note(worksheet, row, "Methodology / Coverage Scope", bold=True)
-    row += 1
-    _write_note(worksheet, row, methodology.get("profile_population_note"))
-    row += 1
-    coverage_note = (
-        methodology.get("historical_coverage_note")
-        if coverage.get("mode") == "HISTORICAL_LIMITED"
-        else methodology.get("coverage_note")
-    )
-    _write_note(worksheet, row, coverage_note or coverage.get("scope_note"))
-
-    ignored_note = _coverage_ignored_note(coverage)
-    if ignored_note:
-        row += 1
-        _write_note(worksheet, row, ignored_note)
-    row += 1
-    _write_note(
-        worksheet,
-        row,
-        "Category sheets use the profile population as the denominator. Percentages are rounded "
-        "half-up to two decimals independently, so a column may add up to 99.99 or 100.01. Each "
-        "sheet ends with a Total row giving every Program's submitted Inventories.",
-    )
-
-    if int(report_context.get("submitted_inventory_count") or 0) == 0:
-        row += 2
-        _write_note(worksheet, row, EMPTY_REPORT_MESSAGE, bold=True)
-
-    row += 2
-    _write_text(worksheet, row, 1, "Program Legend / Program Columns", bold=True)
+    _summary_heading(worksheet, row, "Program Legend / Program Columns")
     row += 1
     legend_headers = [
         "Displayed Column",
@@ -530,12 +610,43 @@ def _build_summary_sheet(
         ]
         for column, value in enumerate(values, start=1):
             _write_table_text(worksheet, row, column, value)
-        _write_table_number(worksheet, row, 7, int(program["submitted_inventory_count"]))
+        _write_table_number(
+            worksheet,
+            row,
+            7,
+            int(program["submitted_inventory_count"]),
+            number_format="#,##0",
+        )
 
-    _set_capped_width(worksheet, 1, minimum=24, maximum=38)
-    _set_capped_width(worksheet, 2, minimum=20, maximum=72)
-    for column in range(3, SUMMARY_WIDTH + 1):
-        _set_capped_width(worksheet, column, minimum=12, maximum=32)
+    row += 2
+    _summary_heading(worksheet, row, "Methodology and Coverage Notes")
+    row += 1
+    _write_note(worksheet, row, methodology.get("profile_population_note"))
+    row += 1
+    coverage_note = (
+        methodology.get("historical_coverage_note")
+        if coverage.get("mode") == "HISTORICAL_LIMITED"
+        else methodology.get("coverage_note")
+    )
+    _write_note(worksheet, row, coverage_note or coverage.get("scope_note"))
+    ignored_note = _coverage_ignored_note(coverage)
+    if ignored_note:
+        row += 1
+        _write_note(worksheet, row, ignored_note)
+    row += 1
+    _write_note(
+        worksheet,
+        row,
+        "Category sheets use the profile population as the denominator. Percentages are rounded "
+        "half-up to two decimals independently, so a column may add up to 99.99 or 100.01. Each "
+        "sheet ends with a Total row giving every Program's submitted Inventories.",
+    )
+
+    for column, width in enumerate((36, 18, 22, 22, 22, 14, 24), start=1):
+        worksheet.column_dimensions[get_column_letter(column)].width = width
+    _set_wrapped_row_heights(worksheet, first_row=3, last_row=worksheet.max_row)
+    worksheet.freeze_panes = "A4"
+    _set_summary_print_layout(worksheet)
 
 
 def _build_section_sheet(
@@ -652,6 +763,25 @@ def _build_section_sheet(
         minimum=14,
         maximum=16,
     )
+    _set_wrapped_row_heights(
+        worksheet,
+        first_row=1,
+        last_row=worksheet.max_row,
+    )
+    last_column = get_column_letter(len(headers))
+    worksheet.page_setup.orientation = "landscape"
+    worksheet.page_setup.paperSize = worksheet.PAPERSIZE_A4
+    worksheet.page_setup.scale = 100
+    worksheet.page_setup.fitToWidth = 0
+    worksheet.page_setup.fitToHeight = 0
+    worksheet.sheet_properties.pageSetUpPr.fitToPage = False
+    worksheet.page_margins.left = 0.25
+    worksheet.page_margins.right = 0.25
+    worksheet.page_margins.top = 0.5
+    worksheet.page_margins.bottom = 0.5
+    worksheet.print_title_rows = "1:1"
+    worksheet.print_title_cols = "$A:$C" if is_geography else "$A:$A"
+    worksheet.print_area = f"A1:{last_column}{worksheet.max_row}"
 
 
 def _write_section_footer(

@@ -1161,6 +1161,81 @@ def _disclosure_messages(raw_warnings: list[object]) -> list[str]:
     return messages
 
 
+def _executive_summary(
+    *,
+    population: int,
+    coverage: dict[str, object],
+    groups: list[_Group],
+    programs: list[_Program],
+) -> dict[str, object]:
+    """Present only canonical counts already available in the aggregate result."""
+
+    mode = str(coverage.get("mode") or "")
+    if mode == "CURRENT":
+        eligible = _require_count(coverage.get("eligible_student_count"), "eligible Student count")
+        submitted = _require_count(coverage.get("submitted_count"), "coverage Submitted count")
+        draft = _require_count(coverage.get("draft_count"), "coverage Draft count")
+        missing = _require_count(coverage.get("missing_count"), "coverage missing count")
+        coverage_summary = (
+            f"Eligible current Students: {_count_text(eligible)}; "
+            f"Submitted: {_count_text(submitted)}; Draft: {_count_text(draft)}; "
+            f"Without Individual Inventory: {_count_text(missing)}"
+        )
+        coverage_label = "Current Student Inventory Coverage"
+    elif mode == "HISTORICAL_LIMITED":
+        submitted = _require_count(coverage.get("submitted_count"), "coverage Submitted count")
+        draft = _require_count(coverage.get("draft_count"), "coverage Draft count")
+        coverage_summary = (
+            f"Submitted Inventories: {_count_text(submitted)}; "
+            f"Draft Inventories: {_count_text(draft)}; "
+            "eligible and missing counts are unavailable for historical years"
+        )
+        coverage_label = "Historical Inventory Coverage"
+    else:
+        raise _unavailable("coverage mode is unsupported.")
+
+    recorded_colleges = sum(not group.is_unclassified for group in groups)
+    recorded_programs = sum(not program.is_legacy for program in programs)
+    rows = [
+        _row(
+            [
+                _cell("Submitted Inventory Profile Population"),
+                _cell(
+                    f"n = {_count_text(population)} submitted Individual "
+                    + ("Inventory" if population == 1 else "Inventories")
+                ),
+            ]
+        ),
+        _row([_cell(coverage_label), _cell(coverage_summary)]),
+    ]
+    notes: list[str] = []
+    if population > 0:
+        rows.append(
+            _row(
+                [
+                    _cell("Recorded classifications represented"),
+                    _cell(
+                        f"{_count_text(recorded_colleges)} "
+                        f"{'College' if recorded_colleges == 1 else 'Colleges'}; "
+                        f"{_count_text(recorded_programs)} "
+                        f"{'Program' if recorded_programs == 1 else 'Programs'}"
+                    ),
+                ]
+            )
+        )
+        if any(group.is_unclassified for group in groups):
+            notes.append(
+                "Recorded classification totals exclude Unclassified / Legacy Inventories, "
+                "which are not assigned to a College or Program."
+            )
+    return _table(
+        title="Executive Summary",
+        columns=[_column("Indicator", "30%"), _column("Value", "70%")],
+        rows=rows,
+        notes=notes,
+    )
+
+
 def build_student_profiling_print_context(report: dict[str, object]) -> dict[str, object]:
     report_context = _require_dict(report.get("report_context"), "report context")
     methodology = _require_dict(report.get("methodology"), "methodology")
@@ -1230,6 +1305,12 @@ def build_student_profiling_print_context(report: dict[str, object]) -> dict[str
                     is_global=is_global,
                     scope_labels=scope_labels,
                 ),
+            ),
+            "summary": _executive_summary(
+                population=population,
+                coverage=coverage,
+                groups=groups,
+                programs=programs,
             ),
             "population": population,
             "population_text": _count_text(population),

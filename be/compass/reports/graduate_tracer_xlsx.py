@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import textwrap
 from dataclasses import dataclass
 from datetime import date, datetime
 from decimal import Decimal
@@ -59,6 +60,8 @@ _SHEET_SECTIONS = {
 _THIN = Side(style="thin", color="D9D9D9")
 _TABLE_BORDER = Border(left=_THIN, right=_THIN, top=_THIN, bottom=_THIN)
 _HEADER_FILL = PatternFill(fill_type="solid", fgColor="E7E6E6")
+_SECTION_FILL = PatternFill(fill_type="solid", fgColor="F2F2F2")
+_WARNING_FILL = PatternFill(fill_type="solid", fgColor="FFF8E7")
 _BOLD = Font(bold=True)
 _WRAP = Alignment(wrap_text=True, vertical="top")
 _CENTER = Alignment(horizontal="center", vertical="center")
@@ -138,6 +141,70 @@ def _generated_at_text(value: object) -> str:
     return value.isoformat(timespec="seconds")
 
 
+def _summary_heading(worksheet: Worksheet, row: int, label: str) -> None:
+    cell = _write_text(worksheet, row, 1, label, bold=True)
+    cell.fill = _SECTION_FILL
+    cell.border = _TABLE_BORDER
+    cell.font = Font(bold=True, color="5B1F26")
+    worksheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+    for column in range(1, 4):
+        worksheet.cell(row=row, column=column).fill = _SECTION_FILL
+    worksheet.row_dimensions[row].height = 21
+
+
+def _write_summary_note(
+    worksheet: Worksheet, row: int, value: object, *, warning: bool = False
+) -> None:
+    cell = _write_text(worksheet, row, 1, value, wrap=True)
+    worksheet.merge_cells(start_row=row, start_column=1, end_row=row, end_column=3)
+    if warning:
+        cell.fill = _WARNING_FILL
+        cell.border = _TABLE_BORDER
+    width = sum(
+        float(worksheet.column_dimensions[column].width or 10) for column in ("A", "B", "C")
+    )
+    line_count = max(1, len(textwrap.wrap(str(value or ""), max(1, int(width) - 3))))
+    worksheet.row_dimensions[row].height = max(18, line_count * 15)
+
+
+def _set_wrapped_row_heights(worksheet: Worksheet) -> None:
+    merged_rows = {
+        merged_range.min_row
+        for merged_range in worksheet.merged_cells.ranges
+        if merged_range.min_col == 1 and merged_range.max_col > 1
+    }
+    for row_number in range(1, worksheet.max_row + 1):
+        if row_number in merged_rows:
+            continue
+        line_count = 1
+        for cell in worksheet[row_number]:
+            if not cell.alignment.wrap_text or cell.value is None:
+                continue
+            width = max(
+                1,
+                int(worksheet.column_dimensions[cell.column_letter].width or 10) - 2,
+            )
+            line_count = max(
+                line_count,
+                len(textwrap.wrap(str(cell.value), width=width, break_long_words=True)),
+            )
+        if line_count > 1:
+            worksheet.row_dimensions[row_number].height = max(18, line_count * 15)
+
+
+def _set_print_layout(worksheet: Worksheet) -> None:
+    worksheet.page_setup.orientation = "landscape"
+    worksheet.page_setup.paperSize = worksheet.PAPERSIZE_A4
+    worksheet.page_setup.fitToWidth = 1
+    worksheet.page_setup.fitToHeight = 0
+    worksheet.sheet_properties.pageSetUpPr.fitToPage = True
+    worksheet.page_margins.left = 0.35
+    worksheet.page_margins.right = 0.35
+    worksheet.page_margins.top = 0.5
+    worksheet.page_margins.bottom = 0.5
+    worksheet.print_area = f"A1:C{worksheet.max_row}"
+
+
 def _build_summary(
     worksheet: Worksheet,
     *,
@@ -147,8 +214,19 @@ def _build_summary(
 ) -> None:
     worksheet.title = "Summary"
     worksheet.sheet_view.showGridLines = False
+    worksheet.column_dimensions["A"].width = 36
+    worksheet.column_dimensions["B"].width = 68
+    worksheet.column_dimensions["C"].width = 18
     _write_text(worksheet, 1, 1, "Graduate Tracer Aggregate Report", bold=True)
-    worksheet["A1"].font = Font(bold=True, size=14)
+    worksheet["A1"].font = Font(bold=True, size=16, color="5B1F26")
+    worksheet.row_dimensions[1].height = 26
+
+    response_count = int(report_context.get("submitted_response_count") or 0)
+    _summary_heading(worksheet, 3, "At a Glance")
+    _write_text(worksheet, 4, 1, "Submitted Response Count", bold=True, wrap=True)
+    _write_number(worksheet, 4, 2, response_count, number_format="#,##0")
+    if response_count == 0:
+        _write_summary_note(worksheet, 5, EMPTY_REPORT_MESSAGE, warning=True)
 
     college = report_context.get("college")
     program = report_context.get("program")
@@ -167,23 +245,20 @@ def _build_summary(
         [
             ("Submitted From", _date_text(report_context.get("submitted_from"))),
             ("Submitted To", _date_text(report_context.get("submitted_to"))),
-            ("Submitted Response Count", int(report_context.get("submitted_response_count") or 0)),
             ("Generated At", _generated_at_text(report_context.get("generated_at"))),
         ]
     )
-    row = 3
+    row = 7 if response_count == 0 else 6
+    _summary_heading(worksheet, row, "Report Context")
+    row += 1
     for label, value in rows:
         _write_text(worksheet, row, 1, label, bold=True, wrap=True)
-        if label == "Submitted Response Count":
-            _write_number(worksheet, row, 2, int(value))
-        else:
-            _write_text(worksheet, row, 2, value, wrap=True)
+        _write_text(worksheet, row, 2, value, wrap=True)
+        worksheet.row_dimensions[row].height = max(
+            18,
+            len(textwrap.wrap(str(value or ""), width=62, break_long_words=True)) * 15,
+        )
         row += 1
-
-    if int(report_context.get("submitted_response_count") or 0) == 0:
-        row += 1
-        _write_text(worksheet, row, 1, EMPTY_REPORT_MESSAGE, bold=True, wrap=True)
-        row += 2
 
     warning_messages: list[str] = []
     for warning in disclosure_warnings:
@@ -195,21 +270,50 @@ def _build_summary(
         if message and message not in warning_messages:
             warning_messages.append(message)
     if warning_messages:
-        _write_text(worksheet, row, 1, "Small-population privacy notice", bold=True)
+        row += 1
+        _summary_heading(worksheet, row, "Small-population privacy notice")
         row += 1
         for message in warning_messages:
-            _write_text(worksheet, row, 1, message, wrap=True)
+            _write_summary_note(worksheet, row, message, warning=True)
             row += 1
+        _write_summary_note(
+            worksheet,
+            row,
+            "Counts and percentages are exact and are not suppressed.",
+        )
         row += 1
 
-    _write_text(worksheet, row, 1, "Methodology and Limitations", bold=True)
     row += 1
-    for value in methodology.values():
-        _write_text(worksheet, row, 1, value, wrap=True)
+    _summary_heading(worksheet, row, "Methodology and Limitations")
+    row += 1
+    methodology_labels = {
+        "population": "Population",
+        "drafts": "Draft responses",
+        "submission_period": "Submission period",
+        "response_rate": "Response rate",
+        "academic_grouping": "Graduation classification",
+        "free_text": "Free-text responses",
+        "multi_select": "Multiple-selection percentages",
+    }
+    for key, value in methodology.items():
+        _write_text(
+            worksheet,
+            row,
+            1,
+            methodology_labels.get(key, key.replace("_", " ").title()),
+            bold=True,
+            wrap=True,
+        )
+        _write_text(worksheet, row, 2, value, wrap=True)
+        worksheet.row_dimensions[row].height = max(
+            18,
+            len(textwrap.wrap(str(value or ""), width=62, break_long_words=True)) * 15,
+        )
         row += 1
 
-    worksheet.column_dimensions["A"].width = 44
-    worksheet.column_dimensions["B"].width = 36
+    worksheet.freeze_panes = "A4"
+    _set_wrapped_row_heights(worksheet)
+    _set_print_layout(worksheet)
 
 
 def _write_section(
@@ -228,7 +332,11 @@ def _write_section(
             "A Graduate Tracer distribution section is invalid."
         )
 
-    _write_text(worksheet, start_row, 1, label, bold=True, wrap=True)
+    section_title = _write_text(worksheet, start_row, 1, label, bold=True, wrap=True)
+    section_title.font = Font(bold=True, size=12, color="5B1F26")
+    for column in range(1, 4):
+        worksheet.cell(row=start_row, column=column).fill = _SECTION_FILL
+    worksheet.row_dimensions[start_row].height = 22
     _write_text(worksheet, start_row + 1, 1, "Denominator", bold=True)
     _write_number(worksheet, start_row + 1, 2, denominator)
     _write_text(worksheet, start_row + 2, 1, "Applicable Population", bold=True)
@@ -247,6 +355,7 @@ def _write_section(
         cell.fill = _HEADER_FILL
         cell.border = _TABLE_BORDER
         cell.alignment = _CENTER
+    worksheet.row_dimensions[header_row].height = 25
 
     row_number = header_row + 1
     for raw in rows:
@@ -315,6 +424,8 @@ def _build_section_sheet(
     worksheet.column_dimensions["A"].width = 48
     worksheet.column_dimensions["B"].width = 28
     worksheet.column_dimensions["C"].width = 18
+    _set_wrapped_row_heights(worksheet)
+    _set_print_layout(worksheet)
 
 
 def _filename(

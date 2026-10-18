@@ -1,4 +1,6 @@
 {% extends "compass/email/base.txt" %}
 {% block content %}A COMPASS Appointment has been scheduled.
 
-Sign in to COMPASS to review the details.{% endblock %}
+Sign in to review its date, time, and any instructions before the session.
+
+For assistance, contact the Guidance and Counseling Office through an official university channel.{% endblock %}

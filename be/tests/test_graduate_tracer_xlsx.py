@@ -17,6 +17,7 @@ from compass.graduate_tracer.models import (
     GTSEmploymentState,
     GTSPresentEmploymentStatus,
 )
+from compass.reports import graduate_tracer_xlsx as report_xlsx
 from compass.reports.graduate_tracer_xlsx import (
     EMPTY_REPORT_MESSAGE,
     render_graduate_tracer_xlsx,
@@ -121,6 +122,12 @@ def test_graduate_tracer_xlsx_is_aggregate_only_safe_and_compact():
         "Reasons & Skills",
     ]
     assert all(worksheet.sheet_state == "visible" for worksheet in workbook.worksheets)
+    summary = workbook["Summary"]
+    assert summary["A3"].value == "At a Glance"
+    assert summary["A4"].value == "Submitted Response Count"
+    assert summary["B4"].value == 2
+    assert summary["B4"].data_type == "n"
+    assert summary.freeze_panes == "A4"
 
     values = workbook_values(workbook)
     serialized = "\n".join(values)
@@ -129,6 +136,10 @@ def test_graduate_tracer_xlsx_is_aggregate_only_safe_and_compact():
     assert "Raw" not in workbook.sheetnames
 
     for worksheet in workbook.worksheets:
+        assert worksheet.page_setup.orientation == "landscape"
+        assert str(worksheet.page_setup.paperSize) == str(worksheet.PAPERSIZE_A4)
+        assert worksheet.page_setup.fitToWidth == 1
+        assert worksheet.print_area
         for row in worksheet.iter_rows():
             for cell in row:
                 assert cell.data_type != "f"
@@ -144,6 +155,26 @@ def test_graduate_tracer_xlsx_is_aggregate_only_safe_and_compact():
     assert employed_row[1].value == 1
     assert float(employed_row[2].value) == 50.0
     assert employed_row[2].number_format == "0.00"
+
+
+@pytest.mark.django_db
+def test_long_aggregate_label_wraps_without_clipping(monkeypatch):
+    sync_policy()
+    original = report_xlsx.build_graduate_tracer_report
+    long_label = "Synthetic long category label " * 5
+
+    def report_with_long_label(**kwargs):
+        report = original(**kwargs)
+        report["sections"]["sex"]["rows"][0]["label"] = long_label
+        return report
+
+    monkeypatch.setattr(report_xlsx, "build_graduate_tracer_report", report_with_long_label)
+    result = report_xlsx.render_graduate_tracer_xlsx()
+    workbook = load_workbook(BytesIO(result.xlsx_bytes), data_only=False)
+    worksheet = workbook["Respondent Profile"]
+    row = next(row for row in worksheet.iter_rows() if row[0].value == long_label)
+    assert row[0].alignment.wrap_text is True
+    assert worksheet.row_dimensions[row[0].row].height > 18
 
 
 @pytest.mark.django_db

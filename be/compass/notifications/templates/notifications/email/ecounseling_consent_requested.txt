@@ -1,2 +1,6 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}One or more E-Counseling consent decisions require your review in COMPASS.{% endblock %}
+{% block content %}An E-Counseling consent request needs your review.
+
+Sign in to COMPASS to review the request and record your decision using the choices provided there.
+
+If you have questions, contact the Guidance and Counseling Office through an official university channel.{% endblock %}

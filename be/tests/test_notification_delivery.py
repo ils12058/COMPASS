@@ -92,7 +92,7 @@ def test_email_delivery_success_is_durable_and_duplicate_task_is_harmless():
     message = mail.outbox[0]
     assert message.subject == "New COMPASS Call Slip"
     assert message.to == [user.email]
-    assert "Sign in to COMPASS to review the details." in message.body
+    assert "Sign in to review the Call Slip" in message.body
     rendered = render_notification_email(NotificationEvent.CALL_SLIP_ISSUED)
     assert message.body == rendered.text_body
     assert len(message.alternatives) == 1
@@ -310,7 +310,7 @@ def test_call_slip_email_is_minimal_and_contains_no_invented_frontend_url():
     rendered = render_notification_email(NotificationEvent.CALL_SLIP_ISSUED)
     combined = f"{rendered.subject}\n{rendered.text_body}\n{rendered.html_body}"
     assert "New COMPASS Call Slip" in combined
-    assert "Sign in to COMPASS to review the details." in combined
+    assert "Sign in to review the Call Slip and any instructions" in combined
     assert "http://" not in combined
     assert "https://" not in combined
     for forbidden in (

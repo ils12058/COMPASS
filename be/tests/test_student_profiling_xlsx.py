@@ -334,6 +334,19 @@ def test_workbook_is_valid_deterministic_visible_and_formula_free(monkeypatch):
         assert worksheet.freeze_panes == "A2"
         assert worksheet.auto_filter.ref
         assert all(cell.font.bold for cell in worksheet[1])
+        assert all(cell.alignment.wrap_text for cell in worksheet[1])
+        assert worksheet.page_setup.orientation == "landscape"
+        assert str(worksheet.page_setup.paperSize) == str(worksheet.PAPERSIZE_A4)
+        assert worksheet.page_setup.scale == 100
+        assert worksheet.print_title_rows == "$1:$1"
+        assert worksheet.print_title_cols == (
+            "$A:$C" if sheet_name == "City Municipality" else "$A:$A"
+        )
+    summary = workbook["Summary"]
+    assert summary.freeze_panes == "A4"
+    assert summary.page_setup.orientation == "landscape"
+    assert str(summary.page_setup.paperSize) == str(summary.PAPERSIZE_A4)
+    assert summary.print_area
 
 
 def test_summary_preserves_timezone_context_current_coverage_and_methodology(monkeypatch):
@@ -371,6 +384,9 @@ def test_summary_preserves_timezone_context_current_coverage_and_methodology(mon
         "CANONICAL CURRENT COVERAGE NOTE.",
         "Coverage filters not applicable to missing-Inventory classification: Program, Year Level",
         "Program Legend / Program Columns",
+        "Key Figures",
+        "Recorded Colleges represented",
+        "Recorded Programs represented",
     ):
         assert expected in values
 
@@ -380,6 +396,21 @@ def test_summary_preserves_timezone_context_current_coverage_and_methodology(mon
     assert "CANONICAL CURRENT COVERAGE SCOPE NOTE." not in values
 
     summary = workbook["Summary"]
+    population_row = next(
+        row
+        for row in summary.iter_rows()
+        if row[0].value == "Submitted Inventory Profile Population (n)"
+    )
+    assert population_row[1].value == 2
+    assert population_row[1].data_type == "n"
+    colleges_row = next(
+        row for row in summary.iter_rows() if row[0].value == "Recorded Colleges represented"
+    )
+    programs_row = next(
+        row for row in summary.iter_rows() if row[0].value == "Recorded Programs represented"
+    )
+    assert colleges_row[1].value == 1
+    assert programs_row[1].value == 2
     methodology_cell = next(
         cell
         for row in summary.iter_rows()
