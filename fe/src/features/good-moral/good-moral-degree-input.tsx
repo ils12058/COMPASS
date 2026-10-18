@@ -47,12 +47,12 @@ export function GoodMoralDegreeInput({
       </datalist>
       <p id={helpId} className="mt-1 text-xs text-muted">
         {options.isPending
-          ? "Loading current UCN Bachelor's Program suggestions…"
+          ? "Loading degree suggestions…"
           : options.isError
-            ? "Suggestions are unavailable. Enter the completed UCN Bachelor's degree as recorded."
+            ? "Suggestions aren't available. Enter the degree as recorded."
             : items.length === 0
-              ? "No current suggestions are available. Enter the completed UCN Bachelor's degree as recorded."
-              : "Choose a current UCN Bachelor's Program or type a historical degree name that is no longer listed. Suggestions do not verify graduation."}
+              ? "Enter the degree as recorded."
+              : "Choose a current program or enter an older degree name."}
       </p>
     </div>
   );

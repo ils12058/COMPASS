@@ -49,7 +49,7 @@ export function isCanonicalSemester(value: string | null | undefined): boolean {
 }
 
 export function goodMoralVariantLabel(variant: GoodMoralVariantValue): string {
-  return variant === "CURRENT_STUDENT" ? "Current Student" : "Undergraduate alumnus";
+  return variant === "CURRENT_STUDENT" ? "Current Student" : "UCN Bachelor's degree";
 }
 
 export function goodMoralStatusLabel(status: GoodMoralStatusValue): string {

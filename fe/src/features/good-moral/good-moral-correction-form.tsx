@@ -251,7 +251,7 @@ export function GoodMoralCorrectionForm({
                   </>
                 ) : (
                   <>
-                    {item.actions.correction_fields.includes("degree") ? <GoodMoralDegreeInput id="good-moral-correction-degree" value={draft.degree} onChange={(value) => setField("degree", value)} required={false} label="Student-reported degree" /> : null}
+                    {item.actions.correction_fields.includes("degree") ? <GoodMoralDegreeInput id="good-moral-correction-degree" value={draft.degree} onChange={(value) => setField("degree", value)} required={false} /> : null}
                     <div>{correctionFieldLabel("major", "Major")}<Input id="good-moral-correction-major" className="mt-2" maxLength={180} value={draft.major} onChange={(event) => setField("major", event.target.value)} /></div>
                     {item.actions.correction_fields.includes("graduation_date") ? <div>{correctionFieldLabel("graduation-date", "Graduation date")}<Input id="good-moral-correction-graduation-date" className="mt-2" type="date" max={today} value={draft.graduationDate} onChange={(event) => setField("graduationDate", event.target.value)} /></div> : null}
                   </>

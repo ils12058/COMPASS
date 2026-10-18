@@ -61,8 +61,8 @@ function fixture({ lifecycle, f4Status }) {
   await check('current Student re-enrolled in local postgraduate Program retains F6 request access', requestPath, f.options, async page => {
     const f4 = page.getByRole('button', { name: 'F4 · Current Student', exact: true });
     assert.equal(await f4.isDisabled(), true);
-    await page.getByRole('button', { name: 'F6 · Undergraduate alumnus', exact: true }).click();
-    await page.getByRole('heading', { name: 'F6 · Undergraduate alumnus request', exact: true }).waitFor();
+    await page.getByRole('button', { name: "F6 · UCN Bachelor's degree", exact: true }).click();
+    await page.getByRole('heading', { name: "F6 · UCN Bachelor's degree request", exact: true }).waitFor();
     await page.getByLabel('Degree').fill('Bachelor of Science in Information Systems');
     await page.getByLabel('Graduation date').fill('2020-06-30');
     await screenshot(page, 'student-current-local-postgraduate-f6-request');
@@ -75,8 +75,8 @@ function fixture({ lifecycle, f4Status }) {
 {
   const f = fixture({ lifecycle: 'FORMER', f4Status: 'NOT_CURRENT' });
   await check('former UCN alumnus pursuing postgraduate study elsewhere retains F6 self-service', requestPath, f.options, async page => {
-    await page.getByRole('heading', { name: 'F6 · Undergraduate alumnus request', exact: true }).waitFor();
-    await page.getByText(/current or postgraduate enrollment record does not establish/i).waitFor();
+    await page.getByRole('heading', { name: "F6 · UCN Bachelor's degree request", exact: true }).waitFor();
+    await page.getByText(/COMPASS doesn't verify your degree or graduation date/i).waitFor();
     await page.getByLabel('Degree').fill('Bachelor of Science in Information Systems (UCN)');
     await page.getByLabel('Graduation date').fill('2020-06-30');
     await screenshot(page, 'student-former-external-postgraduate-f6-request');

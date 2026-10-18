@@ -74,7 +74,7 @@ for (const role of ['COUNSELOR', 'GUIDANCE_SERVICES_STAFF']) {
     await page.getByRole('button', { name: 'Search', exact: true }).click();
     await page.getByRole('radio', { name: /External Postgraduate Synthetic/ }).check();
     await hidden(page.getByLabel('Year level'));
-    await page.getByLabel('Student-reported degree').fill('Bachelor of Science');
+    await page.getByLabel('Degree').fill('Bachelor of Science');
     await page.getByLabel('Major (optional)').fill('Computing');
     await page.getByLabel('Graduation date', { exact: false }).fill('2020-06-01');
     await page.getByRole('button', { name: 'Review request', exact: true }).click();
@@ -95,10 +95,10 @@ for (const role of ['COUNSELOR', 'GUIDANCE_SERVICES_STAFF']) {
     await page.getByRole('radio', { name: /Local Postgraduate Synthetic/ }).check();
     const type = page.getByLabel('Request type');
     assert.equal(await type.locator('option[value="CURRENT_STUDENT"]').isDisabled(), true);
-    assert.match(await page.locator('main').textContent(), /postgraduate Program/);
+    assert.match(await page.locator('main').textContent(), /Current program is postgraduate/);
     await hidden(page.getByLabel('Year level'));
-    await shown(page.getByLabel('Student-reported degree'));
-    await shown(page.getByText(/current or postgraduate enrollment is not proof of a completed UCN Bachelor's degree/i));
+    await shown(page.getByLabel('Degree'));
+    await shown(page.getByText(/COMPASS hasn't verified the degree or graduation date/i));
     await screenshot(page, 'gss-local-postgraduate-f6-claim');
   });
 }
@@ -150,7 +150,7 @@ for (const errorCode of ['good_moral_inventory_required', 'good_moral_exit_inter
     await page.getByRole('button', { name: 'Search', exact: true }).click();
     await page.getByRole('radio', { name: /Current Synthetic/ }).check();
     assert.ok(f.state.searches.length > previousSearches);
-    await shown(page.getByLabel('Student-reported degree'));
+    await shown(page.getByLabel('Degree'));
     await hidden(page.getByLabel('Year level'));
   });
 }

@@ -74,7 +74,7 @@ export function GoodMoralRequestPage() {
 
   return (
     <section className="max-w-2xl space-y-5">
-      <GoodMoralHeading title="Good Moral request unavailable" description="A new request needs an active Student account with a recorded lifecycle status." />
+      <GoodMoralHeading title="Good Moral request unavailable" description="You can't start a request right now." />
       <Notice action={<Link href="/portal/good-moral" className={buttonVariants({ variant: "secondary" })}>Back to Good Moral</Link>}>
         You can still review your existing Good Moral requests.
       </Notice>
@@ -236,12 +236,12 @@ function f4YearLevelLabel(value: number | null | undefined): string | null {
 
 function f4EligibilityMessage(status: GoodMoralF4EligibilityStatus): string {
   switch (status) {
-    case "NOT_CURRENT": return "F4 is for current students. This account is not currently marked as a Current Student.";
-    case "INVENTORY_REQUIRED": return "Submit the Individual Inventory for the current Academic Year before requesting F4.";
-    case "UNCLASSIFIED_PROGRAM": return "The Program on the submitted Inventory is not classified. Contact the Guidance Office to confirm your Program before requesting F4.";
-    case "POSTGRADUATE_PROGRAM": return "F4 is for current Bachelor's students. COMPASS does not currently offer an approved postgraduate Good Moral form.";
-    case "UNSUPPORTED_YEAR_LEVEL": return "The submitted Inventory does not contain a supported 1st–4th Year Level for this Bachelor's Program. Correct the Inventory or contact the Guidance Office.";
-    case "ELIGIBLE": return "Your Program and Year Level meet the current F4 academic requirements.";
+    case "NOT_CURRENT": return "F4 is for current students.";
+    case "INVENTORY_REQUIRED": return "Submit this year's Individual Inventory to request F4.";
+    case "UNCLASSIFIED_PROGRAM": return "We can't confirm your program. Contact the Guidance Office.";
+    case "POSTGRADUATE_PROGRAM": return "F4 is for current Bachelor's students.";
+    case "UNSUPPORTED_YEAR_LEVEL": return "Update your Individual Inventory or contact the Guidance Office about your year level.";
+    case "ELIGIBLE": return "We can't confirm your year level. Contact the Guidance Office.";
   }
 }
 
@@ -255,13 +255,13 @@ function CurrentStudentRequestChoices() {
     <section className="max-w-3xl space-y-5">
       <GoodMoralHeading title="Request Good Moral Certificate" description="Choose the request that matches the certificate you need." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
       <Panel as="div">
-        <PanelSection title="Certificate type" titleId="good-moral-certificate-type" description="F4 is for current Bachelor's students. F6 is for a previously completed UCN Bachelor's degree, even if you later enrolled in postgraduate studies.">
-          {context.isPending ? <LoadingRegion label="Checking current Inventory Program and Year Level…"><Skeleton className="h-14 w-full" /></LoadingRegion> : null}
-          {context.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>F4 eligibility could not be confirmed. You can still choose F6 if you are requesting it for a previously completed UCN Bachelor&apos;s degree.</Notice> : null}
+        <PanelSection title="Certificate type" titleId="good-moral-certificate-type" description="F4 is for current bachelor's students. F6 is for a completed UCN bachelor's degree, even after postgraduate study.">
+          {context.isPending ? <LoadingRegion label="Checking F4 availability…"><Skeleton className="h-14 w-full" /></LoadingRegion> : null}
+          {context.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Couldn't check F4 availability. You can still request F6 for a completed UCN Bachelor&apos;s degree.</Notice> : null}
           {academicContext && !f4Eligible ? <Notice>{f4EligibilityMessage(academicContext.status)}</Notice> : null}
           <div className="mt-4 flex flex-wrap gap-3" role="group" aria-label="Good Moral certificate type">
             <Button type="button" variant={variant === "CURRENT_STUDENT" ? "primary" : "secondary"} aria-pressed={variant === "CURRENT_STUDENT"} disabled={!f4Eligible} onClick={() => setVariant("CURRENT_STUDENT")}>F4 · Current Student</Button>
-            <Button type="button" variant={variant === "GRADUATE" ? "primary" : "secondary"} aria-pressed={variant === "GRADUATE"} onClick={() => setVariant("GRADUATE")}>F6 · Undergraduate alumnus</Button>
+            <Button type="button" variant={variant === "GRADUATE" ? "primary" : "secondary"} aria-pressed={variant === "GRADUATE"} onClick={() => setVariant("GRADUATE")}>F6 · UCN Bachelor's degree</Button>
           </div>
         </PanelSection>
       </Panel>
@@ -289,7 +289,7 @@ function CurrentStudentRequestForm({ academicContext }: { academicContext: GoodM
   return (
     <RequestFormFrame
       title="F4 · Current Student request"
-      description="F4 is for a current Student whose submitted Inventory has a classified Bachelor's Program and supported Year Level."
+      description="For current Bachelor's students."
     >
       <CreateFeedback state={create} busy={create.isPending} />
       {canReadExitStatus && status.isPending ? <LoadingRegion label="Checking Good Moral prerequisites…"><Skeleton className="h-14 w-full" /></LoadingRegion> : canReadExitStatus && status.isError ? (
@@ -300,13 +300,13 @@ function CurrentStudentRequestForm({ academicContext }: { academicContext: GoodM
         <PanelSection
           title="Request details"
           titleId="good-moral-current-request-details"
-          description="Your applicant name, College, course, major, and Academic Year are taken from your current COMPASS records when the request is created."
+          description="We'll fill in your details from your COMPASS records."
         >
         <fieldset disabled={fieldsLocked} className="max-w-2xl space-y-5 disabled:opacity-80">
           <div>
             <Label htmlFor="good-moral-year-level">Year Level</Label>
             <Input id="good-moral-year-level" className="mt-2" value={f4YearLevelLabel(academicContext.year_level) ?? ""} readOnly aria-describedby="good-moral-year-level-help" />
-            <p id="good-moral-year-level-help" className="mt-1 text-xs text-muted">Taken from your submitted Individual Inventory. It cannot be changed on this form.</p>
+            <p id="good-moral-year-level-help" className="mt-1 text-xs text-muted">From your submitted Individual Inventory.</p>
           </div>
           <div>
             <Label htmlFor="good-moral-semester">Semester <span aria-hidden="true">*</span></Label>
@@ -351,24 +351,23 @@ function GraduateRequestForm() {
   }
 
   return (
-    <RequestFormFrame title="F6 · Undergraduate alumnus request">
+    <RequestFormFrame title="F6 · UCN Bachelor's degree request">
       <CreateFeedback state={create} busy={create.isPending} />
       <Notice>
-        F6 is for a previously completed UCN Bachelor&apos;s degree. The degree and graduation date below are self-reported; COMPASS does not verify degree completion. A current or postgraduate enrollment record does not establish that a Bachelor&apos;s degree was completed.
+        F6 is for a completed UCN Bachelor&apos;s degree. COMPASS doesn&apos;t verify your degree or graduation date.
       </Notice>
       <form onSubmit={submit} aria-busy={create.isPending}>
         <Panel as="div">
         <PanelSection
           title="Graduation details"
           titleId="good-moral-graduate-request-details"
-          description="Enter the UCN Bachelor's degree for which you are requesting F6, including a historical program that is no longer listed."
+          description="Enter the UCN Bachelor's degree you completed. You can type an older program name."
         >
         <fieldset disabled={fieldsLocked} className="max-w-2xl space-y-5 disabled:opacity-80">
           <GoodMoralDegreeInput id="good-moral-degree" value={degree} onChange={setDegree} disabled={fieldsLocked} />
           <div>
             <Label htmlFor="good-moral-major">Major <span className="font-normal text-muted">(optional)</span></Label>
-            <Input id="good-moral-major" className="mt-2" maxLength={180} value={major} onChange={(event) => setMajor(event.target.value)} aria-describedby="good-moral-major-help" />
-            <p id="good-moral-major-help" className="mt-1 text-xs text-muted">Up to 180 characters.</p>
+            <Input id="good-moral-major" className="mt-2" maxLength={180} value={major} onChange={(event) => setMajor(event.target.value)} />
           </div>
           <div>
             <Label htmlFor="good-moral-graduation-date">Graduation date <span aria-hidden="true">*</span></Label>

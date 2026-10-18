@@ -113,7 +113,7 @@ export function GoodMoralCounselorDetail({
               </>
             ) : (
               <>
-                <GoodMoralField label="Student-reported degree" value={item.degree} />
+                <GoodMoralField label="Degree" value={item.degree} />
                 <GoodMoralField label="Major" value={item.major} />
                 <GoodMoralField label="Graduation date" value={formatGoodMoralDate(item.graduation_date)} />
               </>
@@ -121,7 +121,7 @@ export function GoodMoralCounselorDetail({
             {item.status === "ISSUED" ? <GoodMoralField label="Issuer name on certificate" value={item.issued_by_name_snapshot} /> : null}
           </dl>
         </PanelSection>
-        {item.variant === "GRADUATE" ? <Notice>F6 degree and graduation date are request details only. COMPASS has no linked evidence of UCN Bachelor&apos;s completion, so these details do not establish a verified qualification.</Notice> : null}
+        {item.variant === "GRADUATE" ? <Notice>COMPASS hasn&apos;t verified this degree.</Notice> : null}
         <PanelSection
           title="Official Receipt"
           titleId="good-moral-counselor-receipt"

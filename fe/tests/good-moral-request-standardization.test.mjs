@@ -263,8 +263,8 @@ test("GM-UX-2: F6 suggestions preserve historical fallback and disclose the veri
   assert.match(html, /id="good-moral-degree"/);
   assert.match(html, /list="good-moral-degree-suggestions"/);
   assert.match(html, /Bachelor of Science in Information Systems/);
-  assert.match(html, /Suggestions do not verify graduation/);
-  assert.match(html, /F6 is for a previously completed UCN/);
+  assert.match(html, /Choose a current program or enter an older degree name/);
+  assert.match(html, /F6 is for a completed UCN/);
   assert.match(html, /id="good-moral-major"/);
   assert.match(html, /id="good-moral-graduation-date"/);
 

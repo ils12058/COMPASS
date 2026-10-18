@@ -104,7 +104,7 @@ function AssistedRequestForm() {
 
   return (
     <section className="space-y-5">
-      <GoodMoralHeading title="Start request for Student" description="F4 is available only for a current Bachelor's Student whose submitted Inventory is classified. F6 records a Student-reported UCN undergraduate degree and does not verify completion." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
+      <GoodMoralHeading title="Start request for Student" description="Choose F4 for a current Bachelor's student or F6 for a completed UCN Bachelor's degree." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
       <Panel as="div">
         <PanelSection title="Student" titleId="assisted-student-heading">
           <fieldset disabled={locked} className="min-w-0">
@@ -115,12 +115,12 @@ function AssistedRequestForm() {
               label="Student for Good Moral request"
               optionDescription={(option) => {
                 const goodMoralOption = option as GoodMoralStudentOptionResponse;
-                if (goodMoralOption.id !== student?.id || goodMoralOption.variant !== "CURRENT_STUDENT") return goodMoralOption.variant === "GRADUATE" ? "F6 · Undergraduate alumnus request" : "Select to review F4 academic eligibility or prepare an F6 alumni request.";
+                if (goodMoralOption.id !== student?.id || goodMoralOption.variant !== "CURRENT_STUDENT") return goodMoralOption.variant === "GRADUATE" ? "F6 · UCN Bachelor's degree request" : "Select to request F4 or F6.";
                 const context = goodMoralOption.f4_eligibility;
-                if (context?.status === "ELIGIBLE") return `F4 available · ${context.year_level ? `${context.year_level}${context.year_level === 1 ? "st" : context.year_level === 2 ? "nd" : context.year_level === 3 ? "rd" : "th"} Year` : "Bachelor's Program"}; F6 can also be selected as a student-reported claim.`;
-                if (context?.status === "POSTGRADUATE_PROGRAM") return "F4 unavailable · postgraduate Program. F6 can be requested for a Student-reported, previously completed UCN Bachelor's degree; COMPASS does not verify completion.";
-                if (context?.status === "UNCLASSIFIED_PROGRAM") return "F4 unavailable · Program is unclassified. Contact the Guidance Office. F6 remains a student-reported claim.";
-                return "F4 unavailable · current Inventory eligibility is not confirmed. F6 remains a student-reported claim.";
+                if (context?.status === "ELIGIBLE") return `F4 available · ${context.year_level ? `${context.year_level}${context.year_level === 1 ? "st" : context.year_level === 2 ? "nd" : context.year_level === 3 ? "rd" : "th"} Year` : "Bachelor's student"}`;
+                if (context?.status === "POSTGRADUATE_PROGRAM") return "F4 unavailable · Current program is postgraduate.";
+                if (context?.status === "UNCLASSIFIED_PROGRAM") return "F4 unavailable · Ask the Guidance Office to check this program.";
+                return "F4 availability couldn't be confirmed.";
               }}
               onSelect={(selected) => {
                 // Only the verified options from this endpoint determine the variant.
@@ -139,9 +139,9 @@ function AssistedRequestForm() {
             <Label htmlFor="assisted-good-moral-variant">Request type <span aria-hidden="true">*</span></Label>
             <Select id="assisted-good-moral-variant" className="mt-2 max-w-xl" value={variant} onChange={(event) => { setVariant(event.target.value as "CURRENT_STUDENT" | "GRADUATE"); setIntent(null); }} disabled={locked}>
               <option value="CURRENT_STUDENT" disabled={student.variant !== "CURRENT_STUDENT" || student.f4_eligibility?.status !== "ELIGIBLE"}>F4 · Current Student</option>
-              <option value="GRADUATE">F6 · Undergraduate alumnus</option>
+              <option value="GRADUATE">F6 · UCN Bachelor's degree</option>
             </Select>
-            {variant === "CURRENT_STUDENT" ? <p className="mt-2 text-sm text-muted">F4 eligibility is based on the linked submitted Inventory Program and Year Level.</p> : <p className="mt-2 text-sm text-muted">F6 degree and graduation date are Student-reported. COMPASS does not verify degree completion; current or postgraduate enrollment is not proof of a completed UCN Bachelor&apos;s degree.</p>}
+            {variant === "CURRENT_STUDENT" ? <p className="mt-2 text-sm text-muted">Based on the student's current program and year level.</p> : <p className="mt-2 text-sm text-muted">COMPASS hasn't verified the degree or graduation date.</p>}
           </PanelSection>
         ) : null}
         {student ? (
@@ -151,13 +151,13 @@ function AssistedRequestForm() {
                 {variant === "CURRENT_STUDENT" ? <>
                   <div><Label htmlFor="assisted-year">Year level</Label>
                     <Input id="assisted-year" className="mt-2" value={student.f4_eligibility?.year_level ? `${student.f4_eligibility.year_level}${student.f4_eligibility.year_level === 1 ? "st" : student.f4_eligibility.year_level === 2 ? "nd" : student.f4_eligibility.year_level === 3 ? "rd" : "th"} Year` : ""} readOnly aria-describedby="assisted-year-help" />
-                    <p id="assisted-year-help" className="mt-1 text-xs text-muted">Taken from the submitted Individual Inventory.</p></div>
+                    <p id="assisted-year-help" className="mt-1 text-xs text-muted">From the submitted Individual Inventory.</p></div>
                   <div><Label htmlFor="assisted-semester">Semester <span aria-hidden="true">*</span></Label>
                     <Select id="assisted-semester" className="mt-2" required value={semester} onChange={(event) => setSemester(event.target.value)}>
                       <option value="">Select semester</option>{GOOD_MORAL_SEMESTERS.map((value) => <option key={value}>{value}</option>)}
                     </Select></div>
                 </> : <>
-                  <GoodMoralDegreeInput id="assisted-degree" value={degree} onChange={setDegree} disabled={locked} label="Student-reported degree" />
+                  <GoodMoralDegreeInput id="assisted-degree" value={degree} onChange={setDegree} disabled={locked} />
                   <div><Label htmlFor="assisted-major">Major (optional)</Label><Input id="assisted-major" className="mt-2" maxLength={180} value={major} onChange={(event) => setMajor(event.target.value)} /></div>
                   <div><Label htmlFor="assisted-graduation">Graduation date <span aria-hidden="true">*</span></Label><Input id="assisted-graduation" className="mt-2" type="date" required max={institutionalDateInputValue()} value={graduationDate} onChange={(event) => setGraduationDate(event.target.value)} /></div>
                 </>}
