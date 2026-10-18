@@ -1,0 +1,225 @@
+{
+  "baseURL": "http://127.0.0.1:3117",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "in-flight old workspace cannot reopen Start before a trailing authoritative media read",
+      "passed": true
+    },
+    {
+      "name": "two sessions observe Start, Active, Stop, Completed and verified institutional availability",
+      "passed": true
+    },
+    {
+      "name": "committed Start failure becomes uncertain without a false Active indication",
+      "passed": true
+    },
+    {
+      "name": "provider Stop failure is shown as not confirmed, keeps Stop intent and never claims completion",
+      "passed": true
+    },
+    {
+      "name": "media hint closes stale Start confirmation and failed workspace read cannot authorize Start",
+      "passed": true
+    },
+    {
+      "name": "media hint cannot bypass a pending consent reconciliation or restore withdrawal",
+      "passed": true
+    },
+    {
+      "name": "hidden media hints wait for foreground recovery without background HTTP",
+      "passed": true
+    },
+    {
+      "name": "offline media hints wait for foreground recovery without background HTTP",
+      "passed": true
+    },
+    {
+      "name": "disabled transport heals lost media through bounded workspace polling",
+      "passed": true
+    },
+    {
+      "name": "outage transport heals lost media through bounded workspace polling",
+      "passed": true
+    },
+    {
+      "name": "initial ready and reconnect heal media missed between socket generations",
+      "passed": false,
+      "assertion": "Shared socket connected",
+      "currentURL": "http://127.0.0.1:3117/portal/e-counseling/b0000000-0000-4000-8000-000000000001",
+      "readyState": "complete",
+      "navigation": [
+        "http://127.0.0.1:3117/portal/e-counseling/b0000000-0000-4000-8000-000000000001",
+        "http://127.0.0.1:3117/portal/e-counseling/b0000000-0000-4000-8000-000000000001",
+        "http://127.0.0.1:3117/portal/e-counseling/b0000000-0000-4000-8000-000000000001",
+        "http://127.0.0.1:3117/portal/e-counseling/b0000000-0000-4000-8000-000000000001",
+        "http://127.0.0.1:3117/portal/e-counseling/b0000000-0000-4000-8000-000000000001"
+      ],
+      "errors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:3117/api/v1/auth/session",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:3117/api/v1/platform/status",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:3117/api/v1/notifications/unread-count",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:3117/api/v1/notifications",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:3117/api/v1/me/profile",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:3117/api/v1/e-counseling/me/appointments/b0000000-0000-4000-8000-000000000001",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:3117/api/v1/privacy/my-notices",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://127.0.0.1:3117/api/v1/e-counseling/me/appointments/b0000000-0000-4000-8000-000000000001/consents",
+          "failure": "net"
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/platform/status"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/csrf"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/platform/status"
+        },
+        {
+          "method": "POST",
+          "pathname": "/api/v1/realtime/tickets"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/notifications/unread-count"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/notifications"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/me/profile"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/e-counseling/me/appointments/b0000000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/privacy/my-notices"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/notifications/unread-count"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/notifications"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/me/profile"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/e-counseling/me/appointments/b0000000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/privacy/my-notices"
+        },
+        {
+          "method": "POST",
+          "pathname": "/api/v1/realtime/tickets"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/e-counseling/me/appointments/b0000000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/e-counseling/me/appointments/b0000000-0000-4000-8000-000000000001/consents"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/e-counseling/me/appointments/b0000000-0000-4000-8000-000000000001/consents"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/notifications/unread-count"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/notifications"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/e-counseling/me/appointments/b0000000-0000-4000-8000-000000000001/consents"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/e-counseling/me/appointments/b0000000-0000-4000-8000-000000000001"
+        },
+        {
+          "method": "POST",
+          "pathname": "/api/v1/e-counseling/appointments/b0000000-0000-4000-8000-000000000001/join"
+        }
+      ]
+    },
+    {
+      "name": "media burst and page plus call share one workspace read; consent and other appointments untouched",
+      "passed": true
+    },
+    {
+      "name": "healthy active capture uses slower safety rather than duplicate 7-second page/call polls",
+      "passed": true
+    },
+    {
+      "name": "artifact failure, verified Stored and approved disposal have distinct download behavior",
+      "passed": true
+    },
+    {
+      "name": "persistent off-page call receives media state without another socket or join",
+      "passed": true
+    },
+    {
+      "name": "403 canonical read conceals protected workspace and ends the existing call",
+      "passed": true
+    }
+  ]
+}

@@ -230,7 +230,12 @@ export async function createBrowserHarness(suite) {
     },
     async shown(locator) { await locator.waitFor({ state: "visible" }); },
     async hidden(locator) { await locator.waitFor({ state: "hidden" }); },
-    async screenshot(page, name) { await page.screenshot({ path: join(artifacts, `${artifactFilename(name)}.png`), fullPage: true }); },
+    async screenshot(page, name, element = null) {
+      await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+      const path = join(artifacts, `${artifactFilename(name)}.png`);
+      if (element) await element.screenshot({ path });
+      else await page.screenshot({ path, fullPage: true });
+    },
     async noHorizontalOverflow(page) {
       const { scroll, client } = await page.evaluate(() => ({
         scroll: document.documentElement.scrollWidth,

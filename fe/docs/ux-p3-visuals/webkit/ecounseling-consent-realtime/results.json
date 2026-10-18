@@ -1,0 +1,50 @@
+{
+  "baseURL": "http://127.0.0.1:3117",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "two isolated sessions request-approve-withdraw before any Daily call",
+      "passed": true
+    },
+    {
+      "name": "active-call withdrawal closes an open Start confirmation before a delayed consent response",
+      "passed": true
+    },
+    {
+      "name": "failed consent refresh blocks Start but keeps a legitimate Stop and uncertainty",
+      "passed": true
+    },
+    {
+      "name": "provider failure after withdrawal still refreshes permission without claiming recording stopped",
+      "passed": true
+    },
+    {
+      "name": "hidden tab returns to canonical consent without a manual reload",
+      "passed": true
+    },
+    {
+      "name": "offline tab returns to canonical consent without a manual reload",
+      "passed": true
+    },
+    {
+      "name": "disabled transport heals a pre-call request by bounded polling",
+      "passed": true
+    },
+    {
+      "name": "outage transport heals a pre-call request by bounded polling",
+      "passed": true
+    },
+    {
+      "name": "initial socket ready and reconnect heal a missed pre-call request",
+      "passed": true
+    },
+    {
+      "name": "unrelated appointment hint does not refetch current consent; page plus active call share refresh",
+      "passed": true
+    },
+    {
+      "name": "lost workspace access conceals protected consent state",
+      "passed": true
+    }
+  ]
+}

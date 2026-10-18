@@ -98,11 +98,24 @@ async function issue(page) {
 async function prepared(page) {
   await page.waitForFunction(() => {
     const frame = document.querySelector('iframe[title="Finalized certificate PDF"]');
-    return frame?.src.startsWith('blob:');
+    return frame?.src.startsWith('blob:') && frame.dataset.previewReady === 'true';
   });
   assert.equal(await page.getByRole('button', { name: 'Print certificate', exact: true }).isEnabled(), true);
   await shown(page.getByText('The certificate has been issued. You can print or download the finalized PDF.', { exact: true }));
   await shown(page.getByText(/physical signature and dry seal/));
+}
+async function setFramePrint(page, mode) {
+  await page.evaluate(mode => {
+    const frame = document.querySelector('iframe[title="Finalized certificate PDF"]');
+    if (!frame) throw new Error('Finalized PDF preview is missing');
+    const print = mode === 'direct'
+      ? () => window.__gmNativePrintCalls.push({ active: navigator.userActivation.isActive })
+      : mode === 'throws'
+        ? () => { throw new Error('Native PDF print is unavailable'); }
+        : undefined;
+    window.__gmNativePrintCalls ??= [];
+    Object.defineProperty(frame, 'contentWindow', { configurable: true, value: print ? { print } : {} });
+  }, mode);
 }
 async function downloaded(page) {
   // A headless PDF popup may also emit an unnamed download. Match this explicit fallback.
@@ -145,16 +158,19 @@ for (const variant of ['CURRENT_STUDENT', 'GRADUATE']) for (const width of [320,
     await hidden(page.getByRole('button', { name: 'Issue certificate', exact: true }));
     await shown(page.getByText(variant === 'CURRENT_STUDENT' ? 'UCN-OP-GCO-01F4' : 'UCN-OP-GCO-01F6', { exact: true }));
     await downloaded(page);
+    await setFramePrint(page, 'direct');
     await page.getByRole('button', { name: 'Print certificate', exact: true }).click();
-    let resources = await page.evaluate(() => ({ opened: window.pdfResources.opened, revoked: window.pdfResources.revoked, previews: window.pdfResources.previews.map(p => ({ closed: p.closed, opener: p.opener })) }));
-    assert.equal(resources.opened.length, 1);
-    assert.equal(resources.opened[0].active, true, 'Popup opens within the direct user gesture');
-    assert.equal(resources.previews[0].opener, null);
-    assert.ok(!resources.revoked.includes(resources.opened[0].url));
-    assert.equal(await page.evaluate(async url => (await (await fetch(url)).arrayBuffer()).byteLength, resources.opened[0].url), pdfBytes.length);
-    // Cancel/no-op printing leaves the issued view and all actions available.
+    let resources = await page.evaluate(() => ({ calls: window.__gmNativePrintCalls, opened: window.pdfResources.opened, revoked: window.pdfResources.revoked }));
+    assert.equal(resources.calls.length, 1);
+    assert.equal(resources.calls[0].active, true, 'Native print is requested within the direct user gesture');
+    assert.equal(resources.opened.length, 0, 'Supported direct print does not open an extra tab');
+    assert.match(await page.getByRole('status').last().innerText(), /print request was sent/i);
+    // A cancelled/no-op browser print leaves the issued view and all actions available.
     await prepared(page);
     await page.getByRole('button', { name: 'Print certificate', exact: true }).click();
+    resources = await page.evaluate(() => ({ calls: window.__gmNativePrintCalls, opened: window.pdfResources.opened }));
+    assert.equal(resources.calls.length, 2);
+    assert.equal(resources.opened.length, 0);
     assert.equal(data.state.issueBodies.length, 1);
     assert.equal(data.state.pdfReads, 1, 'Preview, reprint, and download reuse the finalized Blob');
     await safe(page, data);
@@ -164,7 +180,28 @@ for (const variant of ['CURRENT_STUDENT', 'GRADUATE']) for (const width of [320,
     await hidden(page.locator('iframe[title="Finalized certificate PDF"]'));
     await page.waitForFunction(url => window.pdfResources.revoked.includes(url), inline);
     resources = await page.evaluate(() => ({ opened: window.pdfResources.opened, revoked: window.pdfResources.revoked }));
-    assert.ok(!resources.revoked.includes(resources.opened[0].url), 'Leaving the record does not revoke the open external preview');
+    assert.equal(resources.opened.length, 0);
+    assert.ok(resources.revoked.includes(inline), 'Leaving the record revokes its inline PDF URL');
+  });
+}
+
+{
+  const data = fixture({ status: 'ISSUED' });
+  await check('native-print-unavailable-opens-authorized-pdf-preview', route, { ...data.options, initScripts: [fakePreview] }, async page => {
+    await prepared(page);
+    await setFramePrint(page, 'throws');
+    await page.getByRole('button', { name: 'Print certificate', exact: true }).click();
+    await shown(page.getByRole('status').filter({ hasText: 'The finalized PDF preview opened in a new tab.' }));
+    const resources = await page.evaluate(() => ({ opened: window.pdfResources.opened, previews: window.pdfResources.previews }));
+    assert.equal(resources.opened.length, 1);
+    assert.equal(resources.opened[0].active, true, 'Fallback preview opens within the direct user gesture');
+    assert.equal(resources.previews[0].opener, null);
+    assert.ok(resources.opened[0].url.startsWith('blob:'));
+    assert.equal(await page.evaluate(async url => (await (await fetch(url)).arrayBuffer()).byteLength, resources.opened[0].url), pdfBytes.length);
+    await downloaded(page);
+    assert.equal(data.state.issueBodies.length, 0);
+    await safe(page, data);
+    await page.getByRole('link', { name: 'Back to Good Moral queue', exact: true }).click();
     await page.evaluate(() => window.pdfResources.previews.forEach(p => { p.closed = true; }));
     await page.waitForFunction(() => window.pdfResources.opened.every(p => window.pdfResources.revoked.includes(p.url)));
   });
@@ -174,8 +211,9 @@ for (const mode of ['blocked', 'throws']) {
   const data = fixture({ status: 'ISSUED' });
   await check(`popup-${mode}-download-fallback`, route, { ...data.options, initScripts: [`${instrument} window.open = () => { ${mode === 'throws' ? 'throw new Error("blocked");' : 'return null;'} };`] }, async page => {
     await prepared(page);
+    await setFramePrint(page, 'unsupported');
     await page.getByRole('button', { name: 'Print certificate', exact: true }).click();
-    await shown(page.getByRole('alert').filter({ hasText: 'The PDF preview was blocked.' }));
+    await shown(page.getByRole('alert').filter({ hasText: 'The print request and a new PDF preview could not be opened.' }));
     assert.equal(await page.evaluate(() => window.pdfResources.revoked.includes(window.pdfResources.created.at(-1))), true);
     await downloaded(page);
     assert.equal(data.state.issueBodies.length, 0);
@@ -296,7 +334,9 @@ for (const status of ['REQUESTED', 'READY_FOR_ISSUANCE', 'CANCELLED']) {
   await check('existing-authorized-gss-can-reprint-without-issue-authority', route, { ...data.options, initScripts: [fakePreview] }, async page => {
     await prepared(page);
     await hidden(page.getByRole('button', { name: 'Issue certificate', exact: true }));
+    await setFramePrint(page, 'direct');
     await page.getByRole('button', { name: 'Print certificate', exact: true }).click();
+    assert.equal(await page.evaluate(() => window.__gmNativePrintCalls.length), 1);
     assert.equal(data.state.issueBodies.length, 0);
     await safe(page, data);
   });
@@ -314,16 +354,15 @@ for (const status of ['REQUESTED', 'READY_FOR_ISSUANCE', 'CANCELLED']) {
 }
 {
   const data = fixture({ status: 'ISSUED' });
-  await check('native-pdf-tab-opens-from-direct-print-click', route, { ...data.options, initScripts: [instrument] }, async (page, { context }) => {
+  await check('direct-print-requests-browser-print-from-finalized-pdf-click', route, { ...data.options, initScripts: [instrument] }, async (page, { context }) => {
     await prepared(page);
-    const popupEvent = page.waitForEvent('popup');
+    await setFramePrint(page, 'direct');
     await page.getByRole('button', { name: 'Print certificate', exact: true }).click();
-    const popup = await popupEvent;
-    // Headless engines differ in PDF viewer support. Assert the native browsing context and keep
-    // the explicit download fallback usable; don't infer a dialog or physical printing.
-    assert.ok(context.pages().includes(popup));
+    // The handler is stubbed so browser automation never opens a real native print dialog.
+    assert.equal(await page.evaluate(() => window.__gmNativePrintCalls.length), 1);
+    assert.equal(context.pages().length, 1);
     await downloaded(page);
-    await popup.close();
+    assert.match(await page.getByRole('status').last().innerText(), /print request was sent/i);
     assert.equal(data.state.issueBodies.length, 0);
     await safe(page, data);
   });

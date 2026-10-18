@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { user, workspace } from "./support/ui-hierarchy-fixtures.mjs";
 
-const { baseURL, check, openPage, shown, hidden, finish } = await createBrowserHarness("ecounseling-consent-realtime");
+const { baseURL, check, openPage, shown, hidden, screenshot, finish } = await createBrowserHarness("ecounseling-consent-realtime");
 const ID = "b0000000-0000-4000-8000-000000000001";
 const OTHER = "b0000000-0000-4000-8000-000000000002";
 const CONSENT = "d0000000-0000-4000-8000-000000000001";
@@ -103,16 +103,23 @@ async function withdraw(student) {
   await check("two isolated sessions request-approve-withdraw before any Daily call", PATH, w.options("COUNSELOR"), async (counselor, { requests }) => {
     const student = await openPage(PATH, w.options("STUDENT"));
     try {
-      await shown(permission(counselor, "Media permission not requested"));
+      await shown(permission(counselor, "Media permission · Not requested"));
+      await screenshot(counselor, "counselor-permission-request-available");
       await counselor.getByRole("button", { name: "Request media permission", exact: true }).click();
+      await shown(permission(counselor, "Media permission · Waiting for Student"));
+      await screenshot(counselor, "counselor-permission-pending");
       await shown(student.page.getByRole("button", { name: `Allow ${subject}`, exact: true }));
+      await screenshot(student.page, "student-consent-pending");
       await student.page.getByRole("button", { name: `Allow ${subject}`, exact: true }).click();
       await student.page.getByRole("alertdialog").getByRole("button", { name: "Allow", exact: true }).click();
-      await shown(permission(counselor, "Media permission approved"));
+      await shown(permission(counselor, "Media permission · Approved"));
       await shown(student.page.getByText("Allowed", { exact: true }));
+      await screenshot(student.page, "student-consent-approved");
+      await screenshot(counselor, "counselor-permission-approved");
       await withdraw(student.page);
-      await shown(permission(counselor, "Media permission withdrawn"));
+      await shown(permission(counselor, "Media permission · Withdrawn"));
       await shown(student.page.getByText("Withdrawn", { exact: true }).first());
+      await screenshot(student.page, "student-consent-withdrawn");
       assert.equal(w.state.commands.length, 0, "Consent never auto-starts or invents a Stop");
       assert.equal(requests.filter((request) => request.pathname.endsWith("/join")).length, 0);
       assert.deepEqual(student.errors, []);
@@ -127,14 +134,14 @@ async function withdraw(student) {
   await check("active-call withdrawal closes an open Start confirmation before a delayed consent response", PATH, w.options("COUNSELOR"), async (counselor) => {
     const student = await openPage(PATH, w.options("STUDENT"));
     try {
-      await shown(permission(counselor, "Media permission approved")); await join(counselor);
+      await shown(permission(counselor, "Media permission · Approved")); await join(counselor);
       await counselor.getByRole("button", { name: "Start recording", exact: true }).click();
       const dialog = counselor.getByRole("alertdialog", { name: "Start recording?", exact: true }); await shown(dialog);
       w.state.hold = true; await withdraw(student.page);
       await hidden(dialog);
       await eventually(() => w.state.held.length > 0, "Consent HTTP refresh starts");
       assert.equal(await counselor.getByRole("button", { name: "Start recording", exact: true }).isDisabled(), true);
-      w.release(); await shown(permission(counselor, "Media permission withdrawn"));
+      w.release(); await shown(permission(counselor, "Media permission · Withdrawn"));
       assert.equal(w.state.commands.length, 0);
       assert.deepEqual(student.errors, []);
     } finally { w.release(); await student.context.close(); }
@@ -144,7 +151,7 @@ async function withdraw(student) {
 {
   const w = world({ approved: true, transcription: "ACTIVE" });
   await check("failed consent refresh blocks Start but keeps a legitimate Stop and uncertainty", PATH, w.options("COUNSELOR"), async (page) => {
-    await shown(permission(page, "Media permission approved")); await join(page);
+    await shown(permission(page, "Media permission · Approved")); await join(page);
     w.state.failure = true; w.send();
     await shown(page.getByText("Media permission couldn’t be loaded. Recording and transcription can’t start until it loads.", { exact: true }));
     assert.equal(await page.getByRole("button", { name: "Start recording", exact: true }).isDisabled(), true);
@@ -161,9 +168,9 @@ async function withdraw(student) {
   await check("provider failure after withdrawal still refreshes permission without claiming recording stopped", PATH, w.options("COUNSELOR"), async (counselor) => {
     const student = await openPage(PATH, w.options("STUDENT"));
     try {
-      await shown(permission(counselor, "Media permission approved"));
+      await shown(permission(counselor, "Media permission · Approved"));
       await withdraw(student.page);
-      await shown(permission(counselor, "Media permission withdrawn"));
+      await shown(permission(counselor, "Media permission · Withdrawn"));
       assert.equal(await counselor.getByRole("button", { name: "Stop recording", exact: true }).isEnabled(), true);
       assert.equal(await counselor.getByText("Recording stopped", { exact: true }).count(), 0);
       assert.equal(w.state.recording, "ACTIVE", "Consent cannot invent physical provider cessation");
@@ -229,7 +236,7 @@ for (const mode of ["disabled", "outage"]) {
 {
   const w = world({ approved: true });
   await check("unrelated appointment hint does not refetch current consent; page plus active call share refresh", PATH, w.options("COUNSELOR"), async (page) => {
-    await shown(permission(page, "Media permission approved")); await join(page);
+    await shown(permission(page, "Media permission · Approved")); await join(page);
     // Wait for the join's canonical refresh; then isolate the consent-specific event counts.
     await eventually(() => w.state.reads.filter((read) => read.kind === "consents").length >= 1, "Consent read completed");
     const before = w.state.reads.filter((read) => read.kind === "consents").length;
@@ -246,7 +253,7 @@ for (const mode of ["disabled", "outage"]) {
 {
   const w = world({ approved: true });
   await check("lost workspace access conceals protected consent state", PATH, w.options("COUNSELOR"), async (page) => {
-    await shown(permission(page, "Media permission approved"));
+    await shown(permission(page, "Media permission · Approved"));
     w.state.denied = true; w.send();
     await shown(page.getByRole("heading", { name: "E-Counseling unavailable", exact: true }));
     assert.equal(await page.getByText("Consent Test Student", { exact: true }).count(), 0);

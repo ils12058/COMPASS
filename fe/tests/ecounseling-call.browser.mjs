@@ -68,6 +68,40 @@ const fakeCount = (page, method) => page.evaluate((name) => window.__COMPASS_FAK
 const stage = (page) => page.getByRole("region", { name: "Video call" });
 const tray = (page) => page.getByRole("group", { name: "Call controls" });
 const attachedTrack = (locator) => locator.evaluate((element) => element.srcObject?.getTracks().map((track) => track.id) ?? []);
+async function assertFullscreenVideoFit(page, source) {
+  const metrics = await stage(page).locator("video").first().evaluate((video) => {
+    const rect = video.getBoundingClientRect();
+    const pane = video.parentElement.parentElement.getBoundingClientRect();
+    const stageElement = video.closest("section[aria-label='Video call']");
+    const stageRect = stageElement.getBoundingClientRect();
+    const controls = stageElement.querySelector("[role='group'][aria-label='Call controls']").getBoundingClientRect();
+    const ratio = video.videoWidth / video.videoHeight;
+    const frameWidth = Math.min(rect.width, rect.height * ratio);
+    const frameHeight = Math.min(rect.height, rect.width / ratio);
+    return {
+      source: [video.videoWidth, video.videoHeight],
+      fit: getComputedStyle(video).objectFit,
+      position: getComputedStyle(video).objectPosition,
+      paneBottom: pane.bottom,
+      controlsTop: controls.top,
+      controlsBottom: controls.bottom,
+      stageBottom: stageRect.bottom,
+      frameWidth,
+      frameHeight,
+      frameCenterX: rect.left + rect.width / 2,
+      frameCenterY: rect.top + rect.height / 2,
+      boxCenterX: rect.left + rect.width / 2,
+      boxCenterY: rect.top + rect.height / 2,
+      viewport: [window.innerWidth, window.innerHeight],
+    };
+  });
+  assert.deepEqual(metrics.source, [source.width, source.height]);
+  assert.equal(metrics.fit, "contain", "The remote participant's entire frame stays visible");
+  assert.match(metrics.position, /50%/);
+  assert.ok(metrics.frameWidth > 0 && metrics.frameHeight > 0);
+  assert.ok(metrics.paneBottom <= metrics.controlsTop + 1, "The video pane ends before the call controls");
+  assert.ok(metrics.controlsBottom <= metrics.stageBottom + 1, "Call controls remain inside the fullscreen stage");
+}
 const fakeTrackIds = (page) => page.evaluate(() => {
   const call = window.__COMPASS_FAKE_DAILY__.instances.findLast((item) => !item.isDestroyed());
   return { localVideo: call.localTracks.video.id, localAudio: call.localTracks.audio.id, remoteVideo: call.remote?.videoTrack.id, remoteAudio: call.remote?.audioTrack.id };
@@ -197,7 +231,7 @@ await check("leave-and-rejoin-fresh-credential", ePath, { fakeDaily: true, overr
   await check("governed-recording-through-compass", ePath, { fakeDaily: true, overrides: session.overrides }, async (page, { requests }) => {
     await joinCall(page);
     await fake(page, "remoteJoin", { userId: "student", name: "Maria" });
-    await shown(page.getByText("Media permission approved", { exact: true }));
+    await shown(page.getByText("Media permission · Approved", { exact: true }));
     await tray(page).getByRole("button", { name: "Start recording", exact: true }).click();
     const dialog = page.getByRole("alertdialog", { name: "Start recording?", exact: true });
     await shown(dialog);
@@ -208,6 +242,7 @@ await check("leave-and-rejoin-fresh-credential", ePath, { fakeDaily: true, overr
     await dialog.getByRole("button", { name: "Start recording", exact: true }).click();
     await hidden(dialog);
     await shown(stage(page).getByText("Recording", { exact: true }));
+    await screenshot(page, "counselor-recording-active");
     assert.equal(requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/recording/start")).length, 1);
 
     await tray(page).getByRole("button", { name: "Stop recording", exact: true }).click();
@@ -375,6 +410,48 @@ await check("fullscreen-stage", ePath, { fakeDaily: true, overrides: liveSession
   await shown(page.getByRole("dialog", { name: "Devices", exact: true }));
 });
 
+await check("fullscreen-video-fits-landscape-portrait-and-classic", ePath, {
+  viewport: { width: 1280, height: 720 },
+  fakeDaily: { remoteVideoSize: { width: 540, height: 960 }, videoFrameMarkers: true },
+  overrides: liveSession().overrides,
+}, async (page) => {
+  await joinCall(page);
+  assert.equal(await fakeCount(page, "join"), 1);
+  await fake(page, "remoteJoin", { userId: "student", name: STUDENT });
+  await page.waitForFunction(() => {
+    const video = document.querySelector("section[aria-label='Video call'] video");
+    return video?.videoWidth === 540 && video.videoHeight === 960;
+  });
+
+  const toggle = stage(page).getByRole("button", { name: "Full screen", exact: true });
+  if (!(await page.evaluate(() => document.fullscreenEnabled))) return;
+  await toggle.click();
+  await page.waitForFunction(() => document.fullscreenElement?.getAttribute("aria-label") === "Video call");
+  await assertFullscreenVideoFit(page, { width: 540, height: 960 });
+  await screenshot(page, "fullscreen-video-portrait", stage(page));
+
+  for (const [name, source] of [
+    ["classic", { width: 800, height: 600 }],
+    ["landscape", { width: 1280, height: 720 }],
+  ]) {
+    const replacement = await page.evaluate((dimensions) => window.__COMPASS_FAKE_DAILY__.replaceRemoteVideo(dimensions).id, source);
+    await page.waitForFunction(({ id, width, height }) => {
+      const video = document.querySelector("section[aria-label='Video call'] video");
+      return video?.srcObject?.getTracks()[0]?.id === id && video.videoWidth === width && video.videoHeight === height;
+    }, { id: replacement, ...source });
+    await assertFullscreenVideoFit(page, source);
+    await screenshot(page, `fullscreen-video-${name}`, stage(page));
+  }
+
+  await fake(page, "remoteVideo", false);
+  await shown(stage(page).getByText("Camera off", { exact: true }).first());
+  await shown(stage(page).getByRole("button", { name: "Exit full screen", exact: true }));
+  await page.getByRole("button", { name: "Exit full screen", exact: true }).click();
+  await page.waitForFunction(() => !document.fullscreenElement);
+  assert.equal(await fakeCount(page, "createCallObject"), 1);
+  assert.equal(await fakeCount(page, "join"), 1, "Orientation and fullscreen changes do not restart the call");
+});
+
 await check("layout-presets-desktop", ePath, { fakeDaily: true, overrides: liveSession({ artifact: "STORED", recording: "READY", transcription: "STOPPED", context: true }).overrides }, async (page) => {
   const group = page.getByRole("group", { name: "Session layout" });
   await shown(group);
@@ -399,6 +476,21 @@ await check("layout-presets-desktop", ePath, { fakeDaily: true, overrides: liveS
   assert.equal(await page.getByRole("button", { name: /^Student information/ }).getAttribute("aria-expanded"), "false", "Secondary work collapses in Focus");
   await screenshot(page, "layout-focus");
   await noHorizontalOverflow(page);
+});
+
+await check("session-remains-mounted-with-collapsed-sidebar", ePath, { fakeDaily: true, overrides: liveSession().overrides }, async (page) => {
+  const collapse = page.getByRole("button", { name: "Collapse navigation", exact: true });
+  await shown(collapse);
+  await shown(page.getByRole("navigation").getByRole("link", { name: "Overview", exact: true }));
+  await joinCall(page);
+  const joins = await fakeCount(page, "join");
+  await collapse.click();
+  await shown(page.getByRole("button", { name: "Expand navigation", exact: true }));
+  await shown(stage(page).getByText(`Waiting for ${STUDENT}…`, { exact: true }).first());
+  await noHorizontalOverflow(page);
+  assert.equal(await fakeCount(page, "join"), joins, "Sidebar collapse does not rejoin the session");
+  assert.equal(await fakeCount(page, "createCallObject"), 1);
+  await screenshot(page, "counselor-call-collapsed-sidebar");
 });
 
 await check("laptop-1280-two-columns", ePath, { device: "laptop", fakeDaily: true, overrides: liveSession().overrides }, async (page) => {
@@ -636,6 +728,16 @@ let signedRequests = 0;
     await shown(stage(page).getByText(`Local preview only · ${COUNSELOR} cannot see or hear you`, { exact: true }));
     await hidden(page.getByRole("button", { name: "Join session", exact: true }));
     await hidden(tray(page));
+    const controls = stage(page).getByRole("group", { name: "Pre-join device controls" });
+    for (const name of ["Microphone", "Camera", "Devices"]) await shown(controls.getByRole("button", { name, exact: true }));
+    for (const name of ["Microphone", "Camera", "Devices"]) {
+      const box = await controls.getByRole("button", { name, exact: true }).boundingBox();
+      assert.equal(box.width, 56, `${name} uses a square 56px control`);
+      assert.equal(box.height, 56, `${name} uses a square 56px control`);
+    }
+    await shown(stage(page).getByRole("list", { name: "Device readiness", exact: true }));
+    await shown(stage(page).getByText("Microphone ready", { exact: true }));
+    await shown(stage(page).getByText("Camera ready", { exact: true }));
     assert.equal(requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/join")).length, 0, "Device check never requests a meeting credential");
     assert.equal(await fakeCount(page, "startCamera"), 1);
     assert.equal(await fakeCount(page, "join"), 0);
@@ -646,11 +748,19 @@ let signedRequests = 0;
     assert.deepEqual(await attachedTrack(previewVideo), [ids.localVideo]);
     assert.equal(await previewVideo.evaluate((element) => element.muted), true);
 
-    const meter = stage(page).getByRole("meter", { name: "Microphone level", exact: true });
+    await controls.getByRole("button", { name: "Devices", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Devices", exact: true });
+    await shown(dialog);
+    assert.match(await dialog.innerText(), /Changes apply to this local preview/);
+    await shown(dialog.getByRole("button", { name: "Refresh devices", exact: true }));
+    const meter = dialog.getByRole("meter", { name: "Microphone level", exact: true });
     await shown(meter);
     await fake(page, "localAudioLevel", 0.75);
     await page.waitForFunction(() => document.querySelector("[role='meter'][aria-label='Microphone level']")?.getAttribute("aria-valuenow") === "75");
-    await shown(stage(page).getByText("Microphone is picking up sound", { exact: true }));
+    await shown(dialog.getByText("Microphone is picking up sound", { exact: true }));
+    await screenshot(page, "student-prejoin-advanced-devices");
+    await page.keyboard.press("Escape");
+    await hidden(dialog);
 
     await stage(page).getByRole("button", { name: "Close preview", exact: true }).click();
     await shown(stage(page).getByText(/^You can join starting /));
@@ -666,7 +776,7 @@ let signedRequests = 0;
     );
     await page.waitForFunction((element) => element === document.activeElement, await trigger.elementHandle());
     await noHorizontalOverflow(page);
-    await screenshot(page, "student-too-early-device-checked");
+    await screenshot(page, "student-prejoin-desktop-device-unavailable");
   });
 }
 
@@ -677,36 +787,71 @@ await check("prejoin-device-check-and-join-transition", ePath, {
     HTMLMediaElement.prototype.setSinkId = async function (id) {
       window.__sinkIds.push(id);
     };
+    window.__testAudioContexts = [];
+    if (window.AudioContext) {
+      const AudioContextConstructor = window.AudioContext;
+      window.AudioContext = new Proxy(AudioContextConstructor, {
+        construct(target, args) {
+          const context = Reflect.construct(target, args);
+          window.__testAudioContexts.push(context);
+          return context;
+        },
+      });
+    }
   `],
   overrides: liveSession().overrides,
 }, async (page, { requests }) => {
   await stage(page).getByRole("button", { name: "Check devices", exact: true }).click();
   await shown(stage(page).getByText("Checking devices", { exact: true }));
+  const controls = stage(page).getByRole("group", { name: "Pre-join device controls" });
+  const devices = page.getByRole("button", { name: "Devices", exact: true });
+  await devices.click();
+  const dialog = page.getByRole("dialog", { name: "Devices", exact: true });
+  await shown(dialog);
+  const toneContextStartIndex = await page.evaluate(() => window.__testAudioContexts.length);
 
   await fake(page, "addDevice", { deviceId: "cam-2", kind: "videoinput", label: "USB camera" });
   await fake(page, "addDevice", { deviceId: "mic-2", kind: "audioinput", label: "USB headset mic" });
   await fake(page, "addDevice", { deviceId: "spk-2", kind: "audiooutput", label: "External speakers" });
   await page.waitForFunction(() => [...document.querySelectorAll("option")].some((option) => option.textContent === "External speakers"));
 
-  await stage(page).getByRole("combobox", { name: "Camera", exact: true }).selectOption({ label: "USB camera" });
-  await stage(page).getByRole("combobox", { name: "Microphone", exact: true }).selectOption({ label: "USB headset mic" });
-  await stage(page).getByRole("combobox", { name: "Speaker", exact: true }).selectOption({ label: "External speakers" });
-  assert.doesNotMatch(await stage(page).innerText(), /cam-2|mic-2|spk-1|spk-2/, "Raw device IDs are never displayed");
+  await dialog.getByRole("combobox", { name: "Camera", exact: true }).selectOption({ label: "USB camera" });
+  await dialog.getByRole("combobox", { name: "Microphone", exact: true }).selectOption({ label: "USB headset mic" });
+  await dialog.getByRole("combobox", { name: "Speaker", exact: true }).selectOption({ label: "External speakers" });
+  assert.doesNotMatch(await dialog.innerText(), /cam-2|mic-2|spk-1|spk-2/, "Raw device IDs are never displayed");
 
   await page.evaluate(() => { window.__sinkIds = []; });
-  const testSound = stage(page).getByRole("button", { name: "Play test sound", exact: true });
+  const testSound = dialog.getByRole("button", { name: "Play test sound", exact: true });
   await testSound.click();
-  const stopSound = stage(page).getByRole("button", { name: "Stop test sound", exact: true });
+  const stopSound = dialog.getByRole("button", { name: "Stop test sound", exact: true });
   await shown(stopSound);
   assert.deepEqual(await page.evaluate(() => window.__sinkIds), ["spk-2"]);
   await stopSound.click();
   await shown(testSound);
+  await testSound.click();
+  await shown(stopSound);
+  await screenshot(page, "counselor-prejoin-advanced-devices");
+  await dialog.getByRole("button", { name: "Done", exact: true }).click();
+  await hidden(dialog);
+  try {
+    await page.waitForFunction((startIndex) => {
+      const toneContexts = window.__testAudioContexts.slice(startIndex);
+      return toneContexts.length >= 2 && toneContexts.every((context) => context.state === "closed");
+    }, toneContextStartIndex);
+  } catch {
+    throw new Error(`Speaker test contexts did not close after dialog dismissal: ${JSON.stringify(await page.evaluate((startIndex) => window.__testAudioContexts.slice(startIndex).map((context) => context.state), toneContextStartIndex))}`);
+  }
+  try {
+    await page.waitForFunction((element) => element === document.activeElement, await devices.elementHandle());
+  } catch {
+    throw new Error("Focus did not return to the Devices button after dialog dismissal.");
+  }
+  await screenshot(page, "counselor-prejoin-simple");
 
-  const controls = stage(page).getByRole("group", { name: "Pre-join device controls" });
   await controls.getByRole("button", { name: "Microphone", exact: true }).click();
   await controls.getByRole("button", { name: "Camera", exact: true }).click();
   await shown(stage(page).getByText("Camera off", { exact: true }).first());
-  await shown(stage(page).getByText("Microphone is off", { exact: true }));
+  await shown(stage(page).getByText("Microphone off", { exact: true }));
   assert.equal(requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/join")).length, 0);
 
   await stage(page).getByRole("button", { name: "Join session", exact: true }).click();
@@ -720,6 +865,33 @@ await check("prejoin-device-check-and-join-transition", ePath, {
   await shown(stage(page).locator("figure").getByText("You, camera off", { exact: true }));
   assert.equal(await page.evaluate(() => Object.keys(sessionStorage).length + Object.keys(localStorage).filter((key) => /device|cam|mic|spk|token|daily|room/i.test(key)).length), 0);
   await screenshot(page, "counselor-prejoin-joined-preferences");
+});
+
+await check("student-prejoin-mobile", ePath, { device: "narrowPhone", role: "STUDENT", fakeDaily: true, overrides: liveSession({ student: true }).overrides }, async (page) => {
+  await stage(page).getByRole("button", { name: "Check devices", exact: true }).tap();
+  const controls = stage(page).getByRole("group", { name: "Pre-join device controls" });
+  await shown(controls);
+  for (const name of ["Microphone", "Camera", "Devices"]) {
+    const control = controls.getByRole("button", { name, exact: true });
+    const box = await control.boundingBox();
+    assert.ok(box.x >= 0 && box.x + box.width <= 320, `${name} stays within the mobile stage`);
+    assert.equal(box.width, 56);
+    assert.equal(box.height, 56);
+  }
+  await shown(stage(page).getByRole("button", { name: "Join session", exact: true }));
+  await shown(stage(page).getByRole("button", { name: "Close preview", exact: true }));
+  const preview = stage(page).locator("video").first();
+  await shown(preview);
+  const box = await preview.boundingBox();
+  assert.ok(Math.abs(box.width / box.height - 16 / 9) < 0.08, "Local preview keeps a stable video aspect ratio");
+  await noHorizontalOverflow(page);
+  await screenshot(page, "student-prejoin-mobile");
+  for (const width of [375, 768]) {
+    await page.setViewportSize({ width, height: 820 });
+    await shown(stage(page).getByRole("button", { name: "Join session", exact: true }));
+    await shown(stage(page).getByRole("button", { name: "Close preview", exact: true }));
+    await noHorizontalOverflow(page);
+  }
 });
 
 await check("prejoin-navigation-cancels-pending-permission", ePath, {

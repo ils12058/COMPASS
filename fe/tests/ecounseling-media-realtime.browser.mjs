@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { user, workspace } from "./support/ui-hierarchy-fixtures.mjs";
 
-const { baseURL, check, openPage, shown, hidden, finish } = await createBrowserHarness("ecounseling-media-realtime");
+const { baseURL, check, openPage, shown, hidden, screenshot, finish } = await createBrowserHarness("ecounseling-media-realtime");
 const ID = "b0000000-0000-4000-8000-000000000001";
 const OTHER = "b0000000-0000-4000-8000-000000000002";
 const CONSENT = "d0000000-0000-4000-8000-000000000001";
@@ -167,6 +167,7 @@ async function openSection(page, label) {
     assert.equal(await retry.isDisabled(), false);
     assert.equal(await stage(page).getByRole("button", { name: "Stopping…", exact: true }).count(), 0);
     assert.equal(w.state.commands.length, 1, "A failed Stop is never repeated automatically");
+    await screenshot(page, "counselor-recording-stop-not-confirmed");
     // The dock's own Stop has sent nothing, so it shows only COMPASS's recorded Stop intent.
     await page.getByRole("link", { name: "Services", exact: true }).first().click();
     await shown(dock(page));
@@ -196,7 +197,7 @@ async function openSection(page, label) {
     w.state.withdrawn = true; w.send();
     assert.equal(await page.getByRole("button", { name: "Start recording", exact: true }).isDisabled(), true);
     w.release(); w.send(ID, "ecounseling.consent.changed");
-    await shown(page.getByRole("list", { name: "Media permission", exact: true }).getByText("Media permission withdrawn", { exact: true }));
+    await shown(page.getByRole("list", { name: "Media permission", exact: true }).getByText("Media permission · Withdrawn", { exact: true }));
     assert.equal(await page.getByRole("button", { name: "Start recording", exact: true }).isDisabled(), true);
     assert.equal(w.state.commands.length, 0);
   });

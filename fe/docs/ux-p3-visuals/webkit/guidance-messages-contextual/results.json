@@ -1,0 +1,122 @@
+{
+  "baseURL": "http://127.0.0.1:3117",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "Appointment (student): Messages docks beside the page with the canonical thread",
+      "passed": true
+    },
+    {
+      "name": "Appointment (counselor): Messages docks beside the page with the canonical thread",
+      "passed": true
+    },
+    {
+      "name": "a non-Counseling Appointment offers no Messages and asks nothing",
+      "passed": true
+    },
+    {
+      "name": "concealed context: no Messages action and no content",
+      "passed": true
+    },
+    {
+      "name": "GSS: no Messages action and no content",
+      "passed": true
+    },
+    {
+      "name": "first Message: no thread until the first send, then the same panel shows it",
+      "passed": true
+    },
+    {
+      "name": "an unconfirmed first Message retries with the same ID after the thread appears",
+      "passed": true
+    },
+    {
+      "name": "a draft survives closing and reopening the panel, and guards navigation",
+      "passed": true
+    },
+    {
+      "name": "a resolved thread stays readable (student)",
+      "passed": true
+    },
+    {
+      "name": "a resolved thread stays readable (counselor)",
+      "passed": true
+    },
+    {
+      "name": "narrow: Messages is a full-width drawer; Escape closes it and focus returns",
+      "passed": true
+    },
+    {
+      "name": "no horizontal overflow with Messages open at 320px",
+      "passed": true
+    },
+    {
+      "name": "no horizontal overflow with Messages open at 375px",
+      "passed": true
+    },
+    {
+      "name": "no horizontal overflow with Messages open at 390px",
+      "passed": true
+    },
+    {
+      "name": "no horizontal overflow with Messages open at 430px",
+      "passed": true
+    },
+    {
+      "name": "no horizontal overflow with Messages open at 768px",
+      "passed": true
+    },
+    {
+      "name": "no horizontal overflow with Messages open at 1440px",
+      "passed": true
+    },
+    {
+      "name": "Counseling workspace (Appointment anchor) opens the same thread",
+      "passed": true
+    },
+    {
+      "name": "a Routine Interview Counseling context offers no contextual Messages",
+      "passed": true
+    },
+    {
+      "name": "Counseling context expiry keeps the Messages panel, its draft and the thread",
+      "passed": true
+    },
+    {
+      "name": "E-Counseling (student): Messages opens and closes without touching the call",
+      "passed": true
+    },
+    {
+      "name": "E-Counseling (counselor): Messages opens and closes without touching the call",
+      "passed": true
+    },
+    {
+      "name": "E-Counseling Counselor: the layout preset survives Messages",
+      "passed": true
+    },
+    {
+      "name": "E-Counseling on a phone: the drawer covers the call without ending it",
+      "passed": true
+    },
+    {
+      "name": "Appointment, Counseling, E-Counseling and the full workspace share one thread",
+      "passed": true
+    },
+    {
+      "name": "cross-tab: the panel and the full workspace reconcile each other over HTTP",
+      "passed": true
+    },
+    {
+      "name": "an open panel without a thread discovers one another tab started",
+      "passed": true
+    },
+    {
+      "name": "reads follow the open panel only; no read receipt",
+      "passed": true
+    },
+    {
+      "name": "another account never sees the previous account's panel, history or draft",
+      "passed": true
+    }
+  ]
+}

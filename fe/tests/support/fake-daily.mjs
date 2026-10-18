@@ -12,20 +12,31 @@ export function installFakeDaily(target, options = {}) {
   let joinGate = null;
   let previewGate = null;
 
-  function makeTrack(kind) {
+  function makeTrack(kind, requestedVideoSize = { width: 320, height: 180 }) {
     trackCounter += 1;
     if (realTracks && kind === "video") {
       const canvas = document.createElement("canvas");
-      canvas.width = 320;
-      canvas.height = 180;
+      canvas.width = requestedVideoSize?.width ?? 320;
+      canvas.height = requestedVideoSize?.height ?? 180;
       const context = canvas.getContext("2d");
       const hue = (trackCounter * 67) % 360;
       const paint = () => {
-        context.fillStyle = `hsl(${hue} 45% 45%)`;
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        context.fillStyle = "white";
-        context.font = "20px sans-serif";
-        context.fillText(`Synthetic video ${trackCounter}`, 20, 95);
+        const { width, height } = canvas;
+        const scale = Math.min(width / 320, height / 180);
+        context.fillStyle = `hsl(${hue} 22% 22%)`;
+        context.fillRect(0, 0, width, height);
+        context.fillStyle = `hsl(${hue} 28% 62%)`;
+        context.beginPath();
+        context.arc(width / 2, height * 0.35, 28 * scale, 0, Math.PI * 2);
+        context.fill();
+        context.beginPath();
+        context.ellipse(width / 2, height * 0.98, Math.min(width * 0.225, 72 * scale), Math.min(height * 0.43, 78 * scale), 0, Math.PI, Math.PI * 2);
+        context.fill();
+        if (options.videoFrameMarkers) {
+          context.strokeStyle = "#f5c451";
+          context.lineWidth = Math.max(2, 2 * scale);
+          context.strokeRect(context.lineWidth, context.lineWidth, width - context.lineWidth * 2, height - context.lineWidth * 2);
+        }
       };
       paint();
       const track = canvas.captureStream(5).getVideoTracks()[0];
@@ -270,15 +281,15 @@ export function installFakeDaily(target, options = {}) {
     liveListenerCount() { return live()?.listenerCount() ?? 0; },
     remoteJoin({ userId = "remote-user", name = "Remote", video = true, audio = true } = {}) {
       const call = current();
-      call.remote = { userId, name, sessionId: `remote-session-${++sessionCounter}`, videoOn: video, audioOn: audio, videoTrack: makeTrack("video"), audioTrack: makeTrack("audio"), network: "good" };
+      call.remote = { userId, name, sessionId: `remote-session-${++sessionCounter}`, videoOn: video, audioOn: audio, videoTrack: makeTrack("video", options.remoteVideoSize), audioTrack: makeTrack("audio"), network: "good" };
       call.emit("participant-joined", { participant: call.remoteParticipant() });
       call.emit("track-started", { participant: call.remoteParticipant(), track: call.remote.videoTrack, type: "video" });
       return call.remote;
     },
     remoteVideo(on) { updateRemote("participant-updated", { videoOn: on }); },
     remoteAudio(on) { updateRemote("participant-updated", { audioOn: on }); },
-    replaceRemoteVideo() {
-      const track = makeTrack("video");
+    replaceRemoteVideo(videoSize = options.remoteVideoSize) {
+      const track = makeTrack("video", videoSize);
       updateRemote("track-started", { videoTrack: track });
       return track;
     },

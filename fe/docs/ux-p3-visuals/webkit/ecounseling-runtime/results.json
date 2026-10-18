@@ -1,0 +1,74 @@
+{
+  "baseURL": "http://127.0.0.1:3117",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "counselor-call-follows-routine-interview",
+      "passed": true
+    },
+    {
+      "name": "counselor-return-to-session-no-rejoin",
+      "passed": true
+    },
+    {
+      "name": "dock-controls-capture-and-leave",
+      "passed": true
+    },
+    {
+      "name": "student-mobile-dock-collapse-and-intake",
+      "passed": true
+    },
+    {
+      "name": "student-pending-consent-cue",
+      "passed": true
+    },
+    {
+      "name": "another-appointment-keeps-active-call",
+      "passed": true
+    },
+    {
+      "name": "second-tab-blocked-and-released",
+      "passed": true
+    },
+    {
+      "name": "sign-out-ends-call-after-confirmation",
+      "passed": true
+    },
+    {
+      "name": "confirmed-signed-out-ends-call",
+      "passed": true
+    },
+    {
+      "name": "unverified-session-keeps-call",
+      "passed": true
+    },
+    {
+      "name": "maintenance-keeps-connected-call",
+      "passed": true
+    },
+    {
+      "name": "call-ended-elsewhere-notice",
+      "passed": true
+    },
+    {
+      "name": "reload-warns-while-in-call",
+      "passed": true
+    },
+    {
+      "name": "dock-layout-desktop",
+      "passed": true
+    },
+    {
+      "name": "dock-layout-laptop",
+      "passed": true
+    },
+    {
+      "name": "dock-layout-tablet",
+      "passed": true
+    },
+    {
+      "name": "dock-layout-narrowPhone",
+      "passed": true
+    }
+  ]
+}

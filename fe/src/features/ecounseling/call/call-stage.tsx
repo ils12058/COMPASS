@@ -16,7 +16,7 @@ import type { CallControls } from "@/features/ecounseling/runtime/active-call-co
 import type { ActiveECounselingTiming } from "@/features/ecounseling/runtime/session-timing";
 
 import { ParticipantVideo, PlayAudioPrompt } from "./participant-media";
-import { PreJoinDeviceCheck } from "./prejoin-device-check";
+import { PreJoinDeviceCheck, PreJoinDeviceDiagnostics } from "./prejoin-device-check";
 import { leaveFullscreen, useFullscreen } from "./use-fullscreen";
 
 export function joinAvailabilityMessage(readiness: ProviderReadiness): string | null {
@@ -53,12 +53,12 @@ function callAnnouncement(call: CallControls, participantName: string): string {
   }
 }
 
-function CameraOff({ name, compact = false }: { name: string; compact?: boolean }) {
+function CameraOff({ name, compact = false, status = "Camera off" }: { name: string; compact?: boolean; status?: string }) {
   return (
     <div className="flex size-full flex-col items-center justify-center gap-1 bg-ink px-2 text-center text-on-brand">
       <VideoOff aria-hidden="true" size={compact ? 16 : 28} className="text-on-brand/70" />
       <p className={cn("font-semibold", compact ? "text-xs" : "text-lg")}>{name}</p>
-      <p className={cn("text-on-brand/75", compact ? "text-[0.6875rem]" : "text-sm")}>Camera off</p>
+      <p className={cn("text-on-brand/75", compact ? "text-[0.6875rem]" : "text-sm")}>{status}</p>
     </div>
   );
 }
@@ -73,7 +73,7 @@ function RemoteParticipantStage({ remote, name }: { remote: ParticipantView | nu
     );
   }
   return (
-    <div className="relative size-full">
+    <div className="relative size-full min-h-0 min-w-0">
       {remote.video.track && remote.video.playable ? (
         <ParticipantVideo key={remote.key} track={remote.video.track} className="object-contain" />
       ) : (
@@ -230,9 +230,9 @@ export function CallStage({
         : null
     : null;
 
-  function openDevices(event: MouseEvent<HTMLButtonElement>) {
+  function openDevices(event?: MouseEvent<HTMLButtonElement>) {
     // Safari does not focus buttons on pointer click; remember this opener for the dialog.
-    event.currentTarget.focus();
+    event?.currentTarget.focus();
     leaveFullscreen();
     setDevicesOpen(true);
   }
@@ -270,7 +270,14 @@ export function CallStage({
       main = previewVideoTrack ? (
         <ParticipantVideo track={previewVideoTrack} mirrored className="object-cover" />
       ) : (
-        <CameraOff name="You" />
+        call.cameraOn && !call.mediaProblem?.camera ? (
+          <div role="status" className="flex size-full flex-col items-center justify-center gap-3 bg-ink text-center text-on-brand">
+            <LoaderCircle aria-hidden="true" size={28} className="animate-spin text-on-brand/80 motion-reduce:animate-none" />
+            <p className="text-sm font-semibold">Checking devices…</p>
+          </div>
+        ) : (
+          <CameraOff name="You" status={call.mediaProblem?.camera ? "Camera unavailable" : "Camera off"} />
+        )
       );
     }
   } else if (call.phase === "failed") {
@@ -305,7 +312,9 @@ export function CallStage({
         className,
       )}
     >
-      <div className="relative aspect-video max-h-(--call-stage-max-height) w-full bg-ink text-on-brand [:fullscreen>&]:aspect-auto [:fullscreen>&]:max-h-none [:fullscreen>&]:flex-1">
+      {/* In fullscreen this flex item must shrink below a tall track's intrinsic height so the
+          remote video's object-contain fit can letterbox it instead of clipping the controls. */}
+      <div className="relative aspect-video max-h-(--call-stage-max-height) w-full min-h-0 min-w-0 bg-ink text-on-brand [:fullscreen>&]:aspect-auto [:fullscreen>&]:max-h-none [:fullscreen>&]:min-h-0 [:fullscreen>&]:flex-1">
         {main}
 
         <div className="pointer-events-none absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-2 sm:p-3">
@@ -393,6 +402,7 @@ export function CallStage({
           availability={!open ? availability : null}
           joinAction={joinOnlyAction("Join session")}
           onClose={closePreviewAndRestoreFocus}
+          onOpenDevices={openDevices}
         />
       ) : null}
 
@@ -433,14 +443,17 @@ export function CallStage({
       {footer ? <div className="border-t border-brand-line">{footer}</div> : null}
 
       <DeviceDialog
-        open={devicesOpen && connected}
+        open={devicesOpen && (connected || inPreview)}
         onOpenChange={setDevicesOpen}
         devices={call.devices}
         onRefresh={call.refreshDevices}
         onSelectCamera={call.selectCamera}
         onSelectMicrophone={call.selectMicrophone}
         onSelectSpeaker={call.selectSpeaker}
-      />
+        description={inPreview ? "Changes apply to this local preview. They won’t connect you to the session." : undefined}
+      >
+        {inPreview ? <PreJoinDeviceDiagnostics call={call} /> : null}
+      </DeviceDialog>
     </section>
   );
 }

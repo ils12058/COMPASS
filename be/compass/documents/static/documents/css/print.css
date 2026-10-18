@@ -366,6 +366,10 @@ td.inventory-fit { display: table-cell; }
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.good-moral-certificate .generated-value {
+  color: #000000;
+}
+
 .good-moral-signature {
   width: 70mm;
   margin: 15mm 0 7mm auto;

@@ -1,0 +1,10 @@
+{
+  "baseURL": "http://127.0.0.1:3117",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "fullscreen-video-fits-landscape-portrait-and-classic",
+      "passed": true
+    }
+  ]
+}
