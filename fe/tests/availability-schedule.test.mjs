@@ -8,7 +8,11 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 import { withNextRouter } from "./support/next-router.mjs";
 import { UnsavedChangesProvider } from "../src/features/form-safety/unsaved-changes-provider.tsx";
-import { MyAvailabilityPage } from "../src/features/availability/availability-pages.tsx";
+import {
+  MyAvailabilityPage,
+  OfficeAvailabilityPage,
+  ProviderAvailabilityPage,
+} from "../src/features/availability/availability-pages.tsx";
 import { formatUnavailabilityRange } from "../src/features/availability/availability-shared.tsx";
 import { UnavailabilitySection } from "../src/features/availability/unavailability-section.tsx";
 import { WeeklyScheduleCleanup, WeeklyScheduleEditor } from "../src/features/availability/weekly-schedule-editor.tsx";
@@ -21,7 +25,14 @@ import {
   weekdayOrder,
 } from "../src/features/availability/weekly-schedule.ts";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
-import { getAvailabilityGetMyWeeklyQueryKey, getAvailabilityListMyExceptionsQueryKey } from "../src/lib/api/generated/availability/availability.ts";
+import {
+  getAvailabilityGetMyWeeklyQueryKey,
+  getAvailabilityGetOfficeWeeklyQueryKey,
+  getAvailabilityListMyExceptionsQueryKey,
+  getAvailabilityListOfficeExceptionsQueryKey,
+  getAvailabilityListProvidersQueryKey,
+} from "../src/lib/api/generated/availability/availability.ts";
+import { getServicesListQueryKey } from "../src/lib/api/generated/services/services.ts";
 
 const window = (weekday, start, end, mode = "ALL", id = `${weekday}-${start}`) => ({
   id, weekday, start_time: `${start}:00`, end_time: `${end}:00`, mode_scope: mode,
@@ -179,9 +190,40 @@ function myAvailability() {
   const ok = (data) => ({ data, status: 200, headers: {} });
   client.setQueryData(getAvailabilityGetMyWeeklyQueryKey(), ok({ provider_id: "p", windows: mondayTwice }));
   client.setQueryData(getAvailabilityListMyExceptionsQueryKey(), ok({ provider_id: "p", items: [] }));
+  client.setQueryData(
+    getServicesListQueryKey({ page: 1, page_size: 50 }),
+    ok({ items: [], page: 1, page_size: 50, has_next: false }),
+  );
   const user = { id: "p", role: "COUNSELOR", capabilities: ["availability.view", "availability.manage_self"] };
   return renderToStaticMarkup(withNextRouter(createElement(QueryClientProvider, { client },
     createElement(PortalSessionProvider, { value: { user } }, createElement(UnsavedChangesProvider, null, createElement(MyAvailabilityPage))))));
+}
+
+function officeAvailability() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+  const ok = (data) => ({ data, status: 200, headers: {} });
+  client.setQueryData(getAvailabilityGetOfficeWeeklyQueryKey(), ok({ windows: mondayTwice }));
+  client.setQueryData(getAvailabilityListOfficeExceptionsQueryKey(), ok({ items: [] }));
+  const user = { id: "admin", role: "IT_ADMIN", capabilities: ["availability.view", "availability.manage"] };
+  return renderToStaticMarkup(withNextRouter(createElement(QueryClientProvider, { client },
+    createElement(PortalSessionProvider, { value: { user } }, createElement(UnsavedChangesProvider, null, createElement(OfficeAvailabilityPage))))));
+}
+
+function counselorDirectory() {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
+  const ok = (data) => ({ data, status: 200, headers: {} });
+  client.setQueryData(
+    getAvailabilityListProvidersQueryKey({ page: 1, page_size: 20 }),
+    ok({
+      items: [{ id: "p", full_name: "Morgan Manager", email: "morgan@example.edu", role: "COUNSELOR", is_active: true }],
+      page: 1,
+      page_size: 20,
+      has_next: false,
+    }),
+  );
+  const user = { id: "admin", role: "IT_ADMIN", capabilities: ["availability.view", "availability.manage"] };
+  return renderToStaticMarkup(withNextRouter(createElement(QueryClientProvider, { client },
+    createElement(PortalSessionProvider, { value: { user } }, createElement(ProviderAvailabilityPage)))));
 }
 
 test("the schedule leads, its exceptions sit beside it on wide pages, and the preview spans below", () => {
@@ -192,6 +234,34 @@ test("the schedule leads, its exceptions sit beside it on wide pages, and the pr
   const exceptions = html.indexOf('id="unavailability-heading"');
   assert.ok(schedule > 0 && exceptions > schedule, "the schedule comes first, so narrow pages stack it above");
   assert.match(html, /data-action-status=""/);
+});
+
+test("availability workspaces distinguish personal, Office, and managed Counselor schedules", () => {
+  const mine = myAvailability();
+  assert.match(mine, /My availability/);
+  assert.match(mine, /Set the days and times you can accept appointments/);
+  assert.match(mine, /Your weekly hours/);
+  assert.match(mine, /All delivery modes means these hours apply to online and in-person appointments/);
+
+  const office = officeAvailability();
+  assert.match(office, /Office hours/);
+  assert.match(office, /Office hours constrain flexible Appointments and fixed-date slots/);
+  assert.match(office, /Group Sessions use their event schedule/);
+  assert.match(office, /Office weekly hours/);
+
+  const counselors = counselorDirectory();
+  assert.match(counselors, /Counselor schedules/);
+  assert.match(counselors, /Access is limited to IT Administrators, the Head Guidance Counselor, and people explicitly delegated this responsibility/);
+  assert.match(counselors, /Manage schedule for /);
+  assert.match(counselors, /Morgan Manager/);
+});
+
+test("the preview explains its limits and does not invent a cause for empty results", () => {
+  const html = myAvailability();
+  assert.match(html, /Shows hours after Office and Counselor schedules, applicable time off, and Service\/mode checks/);
+  assert.match(html, /does not subtract booked Appointments or schedule conflicts, or list bookable slots/);
+  const source = readFileSync(new URL("../src/features/availability/effective-availability-preview.tsx", import.meta.url), "utf8");
+  assert.match(source, /This preview cannot\s+identify\s+which condition is limiting the result/);
 });
 
 test("routine saves are announced only after the server confirms them; removal completes in its dialog", () => {

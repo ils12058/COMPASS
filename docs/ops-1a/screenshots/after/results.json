@@ -1,0 +1,32 @@
+{
+  "stage": "after",
+  "engine": "chromium",
+  "baseURL": "http://127.0.0.1:3119",
+  "checks": [
+    {
+      "name": "after-my-availability-desktop",
+      "width": 1440,
+      "passed": true
+    },
+    {
+      "name": "after-office-hours-desktop",
+      "width": 1440,
+      "passed": true
+    },
+    {
+      "name": "after-counselor-schedules-desktop",
+      "width": 1440,
+      "passed": true
+    },
+    {
+      "name": "after-counselor-detail-desktop",
+      "width": 1440,
+      "passed": true
+    },
+    {
+      "name": "after-my-availability-narrow-phone",
+      "width": 320,
+      "passed": true
+    }
+  ]
+}

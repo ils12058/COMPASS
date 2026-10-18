@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { CalendarDays } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { safeQueryData } from "@/features/freshness/query-freshness";
@@ -229,9 +230,14 @@ export function EffectiveAvailabilityPreview({
   return (
     <Panel aria-labelledby="effective-availability-heading">
       <PanelHeader
-        title="Schedule preview"
+        title={
+          <span className="inline-flex items-center gap-2">
+            <CalendarDays size={16} aria-hidden="true" />
+            Schedule preview
+          </span>
+        }
         titleId="effective-availability-heading"
-        description="Where office hours, counselor hours, time off, and service rules overlap. Appointments already booked are not reflected here."
+        description="Shows hours after Office and Counselor schedules, applicable time off, and Service/mode checks. It does not subtract booked Appointments or schedule conflicts, or list bookable slots."
       />
       <div className="px-4 py-4 *:first:mt-0 sm:px-5">
 
@@ -362,8 +368,9 @@ export function EffectiveAvailabilityPreview({
           </div>
         ) : effectiveData.windows.length === 0 ? (
           <p className="mt-5 text-sm text-muted">
-            No effective Availability exists for this Service, delivery mode,
-            and date range.
+            No hours are available for this selection. Check Office and Counselor hours, dated
+            unavailability, and the selected Service and delivery mode. This preview cannot
+            identify which condition is limiting the result.
           </p>
         ) : (
           <div className="mt-5">

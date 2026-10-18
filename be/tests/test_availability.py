@@ -774,7 +774,7 @@ def test_student_can_read_effective_availability_but_not_raw_configuration_or_re
 
 
 @pytest.mark.django_db
-def test_head_can_manage_office_and_other_provider_with_recent_mfa():
+def test_head_can_manage_office_and_other_provider_through_designation_without_step_up():
     sync_policy()
     head = make_user("head@example.edu", "COUNSELOR")
     provider = make_user("provider@example.edu", "COUNSELOR")
@@ -782,7 +782,7 @@ def test_head_can_manage_office_and_other_provider_with_recent_mfa():
         user=head,
         designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
     )
-    client = auth_client(head, recent_mfa=True)
+    client = auth_client(head, recent_mfa=False)
     office = client.put(
         "/api/v1/availability/office/weekly",
         data=json.dumps({"windows": []}),
@@ -808,6 +808,74 @@ def test_head_can_manage_office_and_other_provider_with_recent_mfa():
     )
     assert office.status_code == 200
     assert provider_response.status_code == 200
+    assert ProviderAvailabilityWindow.objects.filter(provider=provider).count() == 1
+
+
+@pytest.mark.django_db
+def test_explicit_manage_override_allows_cross_provider_edit_and_revoke_blocks_it():
+    sync_policy()
+    delegated = make_user("delegated@example.edu", "COUNSELOR")
+    provider = make_user("provider@example.edu", "COUNSELOR")
+    override = UserCapabilityOverride.objects.create(
+        user=delegated,
+        capability=Capability.objects.get(code="availability.manage"),
+        effect="GRANT",
+        reason="Delegated schedule administration",
+    )
+    client = auth_client(delegated, recent_mfa=False)
+    weekly_response = client.put(
+        f"/api/v1/availability/providers/{provider.pk}/weekly",
+        data=json.dumps(
+            {
+                "windows": [
+                    {
+                        "weekday": "MONDAY",
+                        "start_time": "08:00",
+                        "end_time": "12:00",
+                        "mode_scope": "ALL",
+                    }
+                ]
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert weekly_response.status_code == 200
+    assert ProviderAvailabilityWindow.objects.filter(provider=provider).count() == 1
+
+    starts_at = timezone.now() + timedelta(days=1)
+    ends_at = starts_at + timedelta(hours=1)
+    exception_response = client.post(
+        f"/api/v1/availability/providers/{provider.pk}/exceptions",
+        data=json.dumps(
+            {
+                "starts_at": starts_at.isoformat(),
+                "ends_at": ends_at.isoformat(),
+                "mode_scope": "ALL",
+                "reason": "Delegated schedule block",
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert exception_response.status_code == 201
+    exception_id = exception_response.json()["id"]
+    assert ProviderUnavailability.objects.filter(
+        pk=exception_id, provider=provider
+    ).exists()
+
+    # Capability resolution reads the current override on each request. A session created while
+    # the grant was active cannot continue to mutate after an explicit REVOKE takes effect.
+    override.effect = "REVOKE"
+    override.reason = "Delegation ended"
+    override.save(update_fields=["effect", "reason"])
+    denied = client.put(
+        f"/api/v1/availability/providers/{provider.pk}/weekly",
+        data=json.dumps({"windows": []}),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert denied.status_code == 403
     assert ProviderAvailabilityWindow.objects.filter(provider=provider).count() == 1
 
 

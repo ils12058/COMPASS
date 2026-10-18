@@ -165,12 +165,16 @@ function EditableHours({
 // saved windows. Unsaved hours, compared with the saved schedule, ask before navigation.
 export function WeeklyScheduleEditor({
   windows,
+  title = "Weekly schedule",
+  description = "All delivery modes means these hours apply to online and in-person appointments. Online and in-person hours apply only to that delivery mode.",
   canMutate,
   pending,
   error,
   onSave,
 }: {
   windows: WeeklyWindowResponse[];
+  title?: string;
+  description?: string;
   canMutate: boolean;
   pending: boolean;
   error: string | null;
@@ -212,7 +216,11 @@ export function WeeklyScheduleEditor({
 
   return (
     <Panel aria-labelledby="weekly-schedule-heading" className="@container/weekly">
-      <PanelHeader title="Weekly schedule" titleId="weekly-schedule-heading" />
+      <PanelHeader
+        title={title}
+        titleId="weekly-schedule-heading"
+        description={description}
+      />
       <ul className="divide-y divide-border">
         {weekdayOrder.map((weekday) => {
           const dayId = "weekday-" + weekday.toLowerCase();
@@ -265,7 +273,7 @@ export function WeeklyScheduleEditor({
         })}
       </ul>
       {canMutate ? (
-        <PanelFooter>
+        <PanelFooter className="flex-col items-stretch sm:flex-row sm:items-center">
           <Button disabled={pending || !dirty} aria-describedby={error ? "weekly-schedule-error" : undefined} onClick={() => void save()}>
             {pending ? "Saving…" : "Save weekly schedule"}
           </Button>

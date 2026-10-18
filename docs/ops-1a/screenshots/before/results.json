@@ -1,0 +1,27 @@
+{
+  "stage": "before",
+  "engine": "chromium",
+  "baseURL": "http://127.0.0.1:3107",
+  "checks": [
+    {
+      "name": "before-my-availability-desktop",
+      "width": 1440,
+      "passed": true
+    },
+    {
+      "name": "before-office-hours-desktop",
+      "width": 1440,
+      "passed": true
+    },
+    {
+      "name": "before-counselor-schedules-desktop",
+      "width": 1440,
+      "passed": true
+    },
+    {
+      "name": "before-counselor-detail-desktop",
+      "width": 1440,
+      "passed": true
+    }
+  ]
+}

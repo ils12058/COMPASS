@@ -154,7 +154,10 @@ export function MyAvailabilityPage() {
 
   return (
     <section>
-      <AvailabilityPageHeading title="My availability" />
+      <AvailabilityPageHeading
+        title="My availability"
+        description="Set the days and times you can accept appointments. Available booking times also depend on Office hours, the selected Service, and its delivery mode."
+      />
 
       <AvailabilityLayout
         schedule={
@@ -172,6 +175,7 @@ export function MyAvailabilityPage() {
               <WeeklyScheduleEditor
                 key={weeklyData.data.windows.map((window) => window.id).join("|")}
                 windows={weeklyData.data.windows}
+                title="Your weekly hours"
                 canMutate={canMutate}
                 pending={replaceWeekly.isPending}
                 error={weeklyAction.error}
@@ -279,8 +283,8 @@ export function OfficeAvailabilityPage() {
   return (
     <section>
       <AvailabilityPageHeading
-        title="Office availability"
-        description="New appointment times can be offered only when the office and a counselor are both available."
+        title="Office hours"
+        description="Office hours constrain flexible Appointments and fixed-date slots. Counselor hours, applicable time off, Service rules, and delivery mode also apply. Group Sessions use their event schedule."
       />
 
       <AvailabilityLayout
@@ -299,6 +303,7 @@ export function OfficeAvailabilityPage() {
               <WeeklyScheduleEditor
                 key={weeklyData.data.windows.map((window) => window.id).join("|")}
                 windows={weeklyData.data.windows}
+                title="Office weekly hours"
                 canMutate
                 pending={replaceWeekly.isPending}
                 error={weeklyAction.error}
@@ -436,6 +441,7 @@ function ProviderWorkspace({
     <section>
       <PageHeader
         title={provider.full_name || provider.email}
+        context="Counselor schedule for"
         headingId="provider-availability-heading"
         meta={<AvailabilityStatusBadge active={provider.is_active} legacy={legacy} />}
         back={
@@ -473,6 +479,7 @@ function ProviderWorkspace({
               <WeeklyScheduleEditor
                 key={weeklyData.data.windows.map((window) => window.id).join("|")}
                 windows={weeklyData.data.windows}
+                title="Counselor weekly hours"
                 canMutate
                 pending={replaceWeekly.isPending}
                 error={weeklyAction.error}
@@ -610,7 +617,10 @@ export function ProviderAvailabilityPage() {
 
   return (
     <section>
-      <AvailabilityPageHeading title="Counselor availability" />
+      <AvailabilityPageHeading
+        title="Counselor schedules"
+        description="Manage individual Counselor schedules across the office. Access is limited to IT Administrators, the Head Guidance Counselor, and people explicitly delegated this responsibility."
+      />
 
       {/* A lone directory search that applies as you type. */}
       <FloatingListTools label="Counselor search">
@@ -669,7 +679,7 @@ export function ProviderAvailabilityPage() {
                           onClick={cancelPendingSearch}
                           className="inline-flex min-h-10 items-center rounded-sm text-left font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                         >
-                          <span className="sr-only">Manage availability for </span>
+                          <span className="sr-only">Manage schedule for </span>
                           {provider.full_name || provider.email}
                         </Link>
                       </th>
@@ -714,7 +724,7 @@ export function ProviderAvailabilityDetailPage({ providerId }: { providerId: str
   if (summary.isPending) return <AvailabilitySectionSkeleton label="Loading counselor availability…" />;
   if (summary.isError || !summary.data) return (
     <section>
-      <AvailabilityPageHeading title="Counselor availability" />
+      <AvailabilityPageHeading title="Counselor schedules" />
       <AvailabilityQueryError error={summary.error} fallback="The Counselor could not be loaded." onRetry={() => void summary.refetch()} />
       <Link href="/portal/availability/providers" className="mt-4 inline-block text-sm text-brand hover:underline">← Counselors</Link>
     </section>
