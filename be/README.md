@@ -708,8 +708,9 @@ new schedule configuration. Historical GSS schedule rows remain readable but do 
 provider eligibility. Counselors may manage only their own Provider Availability through the
 `/availability/me/...` API using `availability.manage_self`. Head Guidance Counselors remain
 Counselors and receive separate administrative `availability.manage` authority through their
-Head designation. GSS has no self-management grant by default. Administrative Availability
-mutations require recent MFA; routine Counselor self-service does not.
+Head designation. GSS has no self-management grant by default. Both administrative Availability
+changes and Counselor self-service rely on their respective capabilities and do not require recent
+MFA.
 
 Effective/base Availability is computed from Provider weekly Availability intersected with Office
 weekly Availability, minus applicable Office and Provider exceptions. Service Catalog remains the

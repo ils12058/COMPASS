@@ -33,7 +33,7 @@ const knownErrors: Record<string, string> = {
   invalid_availability_request:
     "Some schedule details need attention. Review them and try again.",
   availability_not_applicable:
-    "Availability cannot be set for the selected Counselor or Service.",
+    "The selected Service, delivery mode, or Counselor is not eligible for this Availability request.",
   availability_conflict:
     "The schedule is unavailable right now. Try again or contact the institutional administrator.",
   permission_denied:
@@ -164,8 +164,8 @@ export function AvailabilityNavigation() {
       ) : null}
       {manage ? (
         <>
-          <NavLink href="/portal/availability/office">Office</NavLink>
-          <NavLink href="/portal/availability/providers">Counselors</NavLink>
+          <NavLink href="/portal/availability/office">Office hours</NavLink>
+          <NavLink href="/portal/availability/providers">Counselor schedules</NavLink>
         </>
       ) : null}
     </WorkspaceTabs>
