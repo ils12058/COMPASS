@@ -269,21 +269,31 @@ for (const role of ["COUNSELOR", "STUDENT"]) {
 {
   const w = world();
   await check("Student-information-403-hides-cached-context-without-revoking-independent-call", ePath, w.options, async (page) => {
-    await page.clock.install();
     await join(page);
     const disclosure = page.getByRole("button", { name: /^Student information/ });
     if (await disclosure.getAttribute("aria-expanded") === "false") await disclosure.click();
-    await shown(page.getByText("Protected Context Fixture", { exact: true }));
+    assert.match(await page.locator("body").innerText(), /Protected Context Fixture/);
     w.state.contextStatus = 403;
-    await page.clock.fastForward(31_000);
-    // A normal portal navigation remounts the information query and rechecks its stale result.
-    await page.evaluate(() => window.next.router.push("/portal/appointments"));
-    await shown(dock(page));
-    await dock(page).getByRole("link", { name: "Return to session", exact: true }).click();
+    // Simulate a real visibility transition: permission-sensitive context is rechecked when focus returns.
+    const deniedContext = page.waitForResponse((response) =>
+      response.url().endsWith(`/api/v1/counseling/context/APPOINTMENT/${appointmentId}`) && response.status() === 403,
+    );
+    await page.evaluate(() => {
+      const descriptor = Object.getOwnPropertyDescriptor(document, "visibilityState");
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+      window.dispatchEvent(new Event("visibilitychange"));
+      Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+      window.dispatchEvent(new Event("visibilitychange"));
+      if (descriptor) Object.defineProperty(document, "visibilityState", descriptor);
+      else delete document.visibilityState;
+    });
+    await deniedContext;
     const reloadedDisclosure = page.getByRole("button", { name: /^Student information/ });
     if (await reloadedDisclosure.getAttribute("aria-expanded") === "false") await reloadedDisclosure.click();
-    await shown(page.getByText("Student information couldn’t be loaded. Try again.", { exact: true }));
-    assert.equal(await page.getByText("Protected Context Fixture", { exact: true }).count(), 0);
+    await eventually(async () => {
+      const text = await page.locator("body").innerText();
+      return text.includes("Student information couldn’t be loaded. Try again.") && !text.includes("Protected Context Fixture");
+    }, "A 403 hides cached Student information without ending the independent call");
     assert.equal(await count(page, "destroy"), 0, "Context denial alone does not revoke the independently authorized call");
   });
 }

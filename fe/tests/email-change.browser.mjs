@@ -210,7 +210,7 @@ function fixtures({
 
 {
   const f = fixtures({ mfa: true, holdSessionCheckAfterTotp: true });
-  await check("navigation during the refreshed-session check discards the email change", "/portal/account/security/email", f.options, async (page) => {
+  await check("navigation during the refreshed-session check discards the email change", "/portal/account/security/email", f.options, async (page, browser) => {
     const sessionCheck = new Promise((resolve) => { f.state.onSessionCheckStarted = resolve; });
     await page.getByLabel("Code from new email", { exact: true }).fill("123456");
     await page.getByRole("button", { name: "Verify email", exact: true }).click();
@@ -224,6 +224,17 @@ function fixtures({
     await page.waitForTimeout(250);
     assert.equal(f.state.confirmations.length, 1);
     assert.equal(f.state.committedConfirmations.length, 0);
+
+    // WebKit reports the deliberately aborted session read as a page error when this test
+    // navigates away mid-request. Accept only that cancellation; unrelated runtime errors remain
+    // visible to the shared harness.
+    const cancelledSessionCheck = browser.failedRequests.some((request) =>
+      request.method === "GET" && request.url.endsWith("/api/v1/auth/session") && /cancel/i.test(request.failure ?? ""),
+    );
+    if (cancelledSessionCheck) {
+      assert.ok(browser.errors.every((error) => String(error).includes("/api/v1/auth/session")));
+      browser.errors.length = 0;
+    }
   });
 }
 
