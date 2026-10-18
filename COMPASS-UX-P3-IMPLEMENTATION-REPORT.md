@@ -8,6 +8,10 @@
 
 **Deployment:** None
 
+**PR:** [#277](https://github.com/ils12058/COMPASS/pull/277) — draft
+
+**Implementation commit SHA:** `d2d8a590de3949d9c7316b41c0f80d31b9c9f225`
+
 ## Summary
 
 Made the E-Counseling workspace easier to scan while keeping device diagnostics, consent meaning, and media-safety status available. Added a fullscreen sizing correction so portrait participant video can shrink inside the call stage and remain fully visible. Scoped black generated text to Good Moral certificates, with other form colors unchanged. The issued-certificate Print action now tries the already authorized PDF preview's browser print function after its frame loads, then offers the same finalized PDF in a new tab or as a download when direct printing is unavailable.
@@ -133,4 +137,4 @@ The user requested that heavy tests remain paused until system load clears. No b
 
 ## PR status
 
-One PR against `staging` will contain the UX-P3 implementation, FIX-1 follow-up, this report, and synthetic evidence. It will remain unmerged, and no deployment is authorized.
+Draft PR [#277](https://github.com/ils12058/COMPASS/pull/277) targets `staging` and contains the UX-P3 implementation, FIX-1 follow-up, this report, and synthetic evidence. It remains a draft while the browser checks listed above are paused. It is unmerged, and no deployment is authorized.
