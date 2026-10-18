@@ -29,8 +29,8 @@ let focusAfterApply: { target: "filters" | "bar"; until: number } | null = null;
 // The structured filters open in a native modal <dialog>: anchored above the bar on wider screens
 // and as a bottom sheet on phones. The dialog stays in the DOM while closed, so its fields stay in
 // the feature's <form> and keep applying — the same rule as FilterToolbar's folded filters. The
-// browser provides the modal semantics, Escape, the inert page behind, and the return of focus to
-// the Filters button.
+// browser provides modal semantics, Escape, and the inert page behind; the explicit Tab loop keeps
+// keyboard focus within the dialog on browser/engine combinations that do not wrap at its last stop.
 //
 // The tools center on the portal workspace through the shell's `--portal-content-inset`, and the
 // shell keeps the last records clear of them while they are on the page (`--list-tools-clearance`).
@@ -56,7 +56,7 @@ export function FloatingListTools({
   children?: ReactNode;
   // The structured filters, each in a FilterField.
   filters?: ReactNode;
-  // How many structured filters differ from their defaults in the applied results.
+  // How many non-default record filters apply. Search and display order are excluded.
   filterCount?: number;
   // Column layout for the filter fields, for example "md:grid-cols-3".
   filtersClassName?: string;
@@ -179,6 +179,24 @@ export function FloatingListTools({
             const active = document.activeElement;
             if (!active || active === document.body || dialogRef.current?.contains(active)) {
               triggerRef.current?.focus();
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key !== "Tab") return;
+            const dialog = dialogRef.current;
+            if (!dialog) return;
+            const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+              'a[href], button:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+            )).filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0);
+            if (!focusable.length) return;
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            if (event.shiftKey && document.activeElement === first) {
+              event.preventDefault();
+              last.focus();
+            } else if (!event.shiftKey && document.activeElement === last) {
+              event.preventDefault();
+              first.focus();
             }
           }}
           onPointerDown={(event) => {

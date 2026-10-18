@@ -164,6 +164,42 @@ for (const status of [403, 404, 500]) {
   });
 }
 {
+  const world = assessmentWorld();
+  await check("Assessment sorting has a separate display group and does not count as a filter", root, world.options({ viewport: { width: 1440, height: 1000 } }), async (page) => {
+    await shown(page.getByRole("link", { name: "Maria Assessment Student", exact: true }));
+    await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+    await page.getByRole("button", { name: "Filters", exact: true }).click();
+    const dialog = page.getByRole("dialog", { name: "Filters", exact: true });
+    await shown(dialog);
+    await shown(dialog.getByRole("group", { name: "Display order", exact: true }));
+    await shown(dialog.getByLabel("Sort by", { exact: true }));
+    await screenshot(page, "assessment-filter-dialog-1440");
+
+    await dialog.getByLabel("Sort by", { exact: true }).selectOption("OLDEST_ADMINISTERED");
+    await page.getByRole("button", { name: "Apply filters", exact: true }).click();
+    await page.waitForURL((url) => url.searchParams.get("ordering") === "OLDEST_ADMINISTERED");
+    await shown(page.getByRole("button", { name: "Filters", exact: true }));
+    await page.getByRole("button", { name: "Filters", exact: true }).click();
+    const sortedDialog = page.getByRole("dialog", { name: "Filters", exact: true });
+    await shown(sortedDialog);
+    assert.equal(await sortedDialog.getByRole("link", { name: "Clear filters", exact: true }).count(), 0, "sorting alone is not an applied filter to clear");
+
+    await sortedDialog.getByLabel("Assessment Type", { exact: true }).selectOption(typeId);
+    await page.getByRole("button", { name: "Apply filters", exact: true }).click();
+    await page.waitForURL((url) => url.searchParams.get("ordering") === "OLDEST_ADMINISTERED" && url.searchParams.get("assessment_type_id") === typeId);
+    await page.getByRole("button", { name: /Filters.*1 in use/ }).click();
+    const filteredDialog = page.getByRole("dialog", { name: "Filters", exact: true });
+    await shown(filteredDialog.getByRole("link", { name: "Clear filters", exact: true }));
+    await filteredDialog.getByRole("link", { name: "Clear filters", exact: true }).click();
+    await page.waitForURL((url) => url.searchParams.get("ordering") === "OLDEST_ADMINISTERED" && !url.searchParams.has("assessment_type_id"));
+    assert.equal(await page.getByRole("button", { name: "Filters", exact: true }).count(), 1);
+    assert.equal(await filteredDialog.getByRole("link", { name: "Clear filters", exact: true }).count(), 0);
+    await screenshot(page, "assessment-sort-only-1440");
+    await page.getByRole("button", { name: "Close filters", exact: true }).click();
+    await hidden(filteredDialog);
+  });
+}
+{
   const world = assessmentWorld({ records: Array.from({ length: 21 }, (_, index) => ({ ...record, id: `record-${index}`, student: { ...record.student, display_name: `Student ${index + 1}` } })) });
   await check("Bounded paging uses has_next without inventing a total", root, world.options(), async (page) => {
     await shown(page.getByRole("link", { name: "Student 1", exact: true }));

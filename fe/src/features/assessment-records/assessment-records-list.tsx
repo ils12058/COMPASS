@@ -93,9 +93,11 @@ export function AssessmentListPage() {
     current.type,
     current.from,
     current.to,
-    order !== "NEWEST_ADMINISTERED",
     params.get("student_id"),
   ].filter(Boolean).length;
+  const clearHref = order === AssessmentRecordOrdering.NEWEST_ADMINISTERED
+    ? "/portal/assessment-records"
+    : `/portal/assessment-records?ordering=${order}`;
   function field(name: keyof typeof draft, value: string) {
     if (name === "ordering") {
       const next = Object.values(AssessmentRecordOrdering).find(
@@ -265,11 +267,8 @@ export function AssessmentListPage() {
           invalid={rangeInvalid}
           filterCount={filterCount}
           clear={
-            filtered || order !== "NEWEST_ADMINISTERED" ? (
-              <Link
-                href="/portal/assessment-records"
-                className={buttonVariants({ variant: "quiet" })}
-              >
+            filtered ? (
+              <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>
                 Clear filters
               </Link>
             ) : undefined
@@ -330,21 +329,24 @@ export function AssessmentListPage() {
                   }
                 />
               </FilterField>
-              <FilterField label="Order" htmlFor="assessment-order">
-                <Select
-                  id="assessment-order"
-                  value={draft.ordering}
-                  onChange={(event) => field("ordering", event.target.value)}
-                >
-                  {Object.entries(assessmentOrderLabels).map(
-                    ([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ),
-                  )}
-                </Select>
-              </FilterField>
+              <fieldset className="grid min-w-0 content-start gap-2 border-t border-brand-line pt-3 sm:col-span-2">
+                <legend className="text-sm font-semibold text-ink">Display order</legend>
+                <FilterField label="Sort by" htmlFor="assessment-order">
+                  <Select
+                    id="assessment-order"
+                    value={draft.ordering}
+                    onChange={(event) => field("ordering", event.target.value)}
+                  >
+                    {Object.entries(assessmentOrderLabels).map(
+                      ([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ),
+                    )}
+                  </Select>
+                </FilterField>
+              </fieldset>
               {rangeInvalid ? (
                 <p
                   id="assessment-range-error"
