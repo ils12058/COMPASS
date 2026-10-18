@@ -257,11 +257,11 @@ function CurrentStudentRequestChoices() {
       <Panel as="div">
         <PanelSection title="Certificate type" titleId="good-moral-certificate-type" description="F4 is for current bachelor's students. F6 is for a completed UCN bachelor's degree, even after postgraduate study.">
           {context.isPending ? <LoadingRegion label="Checking F4 availability…"><Skeleton className="h-14 w-full" /></LoadingRegion> : null}
-          {context.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Couldn't check F4 availability. You can still request F6 for a completed UCN Bachelor&apos;s degree.</Notice> : null}
+          {context.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void context.refetch()}>Retry</Button>}>Couldn&apos;t check F4 availability. You can still request F6 for a completed UCN Bachelor&apos;s degree.</Notice> : null}
           {academicContext && !f4Eligible ? <Notice>{f4EligibilityMessage(academicContext.status)}</Notice> : null}
           <div className="mt-4 flex flex-wrap gap-3" role="group" aria-label="Good Moral certificate type">
             <Button type="button" variant={variant === "CURRENT_STUDENT" ? "primary" : "secondary"} aria-pressed={variant === "CURRENT_STUDENT"} disabled={!f4Eligible} onClick={() => setVariant("CURRENT_STUDENT")}>F4 · Current Student</Button>
-            <Button type="button" variant={variant === "GRADUATE" ? "primary" : "secondary"} aria-pressed={variant === "GRADUATE"} onClick={() => setVariant("GRADUATE")}>F6 · UCN Bachelor's degree</Button>
+            <Button type="button" variant={variant === "GRADUATE" ? "primary" : "secondary"} aria-pressed={variant === "GRADUATE"} onClick={() => setVariant("GRADUATE")}>F6 · UCN Bachelor&apos;s degree</Button>
           </div>
         </PanelSection>
       </Panel>

@@ -10,6 +10,7 @@ const engine = process.env.COMPASS_UI_BROWSER ?? "chromium";
 const { check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness(`frontend-consistency-${engine}`);
 const session = (account) => ({ user: account, session: { id: "consistency", expires_at: "2099-01-01T00:00:00Z", is_current: true } });
 const staff = { ...user(), capabilities: [...user().capabilities, "referrals.view", "referrals.manage", "routine_interviews.view_assigned", "routine_interviews.manage_assigned", "graduate_tracer.view", "announcements.manage"] };
+const itAdmin = { ...user("IT_ADMIN"), capabilities: ["accounts.manage", "platform_operations.view", "platform_operations.manage"] };
 const graduate = { ...user("STUDENT"), student_lifecycle_status: "GRADUATED", capabilities: ["graduate_tracer.view_self"] };
 const tracer = { id: "tracer", status: "SUBMITTED", name: "Synthetic Graduate", student: slip.student, submitted_at: "2026-10-08T00:00:00Z", educational_attainments: [], professional_exams: [], trainings: [] };
 const overrides = {
@@ -79,6 +80,26 @@ for (const width of [320, 393, 1440]) {
   for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]) await check(`operations-${role}-${width}`, "/portal/operations", { viewport, overrides: { "/api/v1/auth/session": session(operationsAccount(role)), "/api/v1/guidance-operations": operationsData(role) } }, async (page) => {
     await shown(page.getByRole("heading", { level: 1, name: "Guidance Operations" }));
     await shown(page.getByText("Active Call Slips", { exact: true })); await noHorizontalOverflow(page);
+  });
+  await check(`it-admin-accounts-${width}`, "/portal/accounts", { viewport, overrides: { ...worlds, "/api/v1/auth/session": session(itAdmin) } }, async (page) => {
+    await shown(page.getByRole("heading", { level: 1, name: "Accounts" }));
+    await shown(page.getByRole("link", { name: "Import CSV", exact: true }));
+    await shown(page.getByRole("link", { name: "Create account", exact: true }));
+    assert.equal(await page.getByRole("search", { name: "Accounts" }).count(), 1);
+    await shown(page.getByRole("searchbox", { name: "Search accounts" }));
+    await shown(page.getByRole("heading", { level: 2, name: "Managed accounts" }));
+    await noHorizontalOverflow(page);
+    if (width === 393) await screenshot(page, `it-admin-accounts-${width}`);
+  });
+  await check(`it-admin-maintenance-${width}`, "/portal/platform/maintenance", { viewport, overrides: {
+    "/api/v1/auth/session": session(itAdmin),
+    "/api/v1/platform/maintenance": { manual_expected_end_at: null, message: "", schedule_active: false, schedule_upcoming: false, scheduled_end_at: null, scheduled_start_at: null, source: "NONE", state: "NORMAL" },
+  } }, async (page) => {
+    await shown(page.getByRole("heading", { level: 1, name: "Maintenance" }));
+    await shown(page.getByRole("heading", { level: 2, name: "Current Maintenance Mode status" }));
+    await shown(page.getByRole("heading", { level: 2, name: "Maintenance controls" }));
+    await noHorizontalOverflow(page);
+    if (width === 393) await screenshot(page, `it-admin-maintenance-${width}`);
   });
 }
 await check("student-tracer-metadata", "/portal/graduate-tracer", { mobile: true, overrides: { "/api/v1/auth/session": session(graduate), "/api/v1/graduate-tracer/me": tracer } }, async (page) => {

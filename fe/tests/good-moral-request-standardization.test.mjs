@@ -167,7 +167,7 @@ test("GM-UX-2: Student F4 shows Inventory-derived Year Level and Semester select
   const html = renderComponent(h(GoodMoralRequestPage));
 
   assert.match(html, /<input[^>]*id="good-moral-year-level"[^>]*readOnly=""[^>]*value="3rd Year"/);
-  assert.match(html, /Taken from your submitted Individual Inventory/);
+  assert.match(html, /From your submitted Individual Inventory/);
   assert.doesNotMatch(html, /5th Year|6th Year|7th Year|8th Year|9th Year|10th Year/);
 
   // Semester select control exists and is required

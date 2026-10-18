@@ -139,9 +139,9 @@ function AssistedRequestForm() {
             <Label htmlFor="assisted-good-moral-variant">Request type <span aria-hidden="true">*</span></Label>
             <Select id="assisted-good-moral-variant" className="mt-2 max-w-xl" value={variant} onChange={(event) => { setVariant(event.target.value as "CURRENT_STUDENT" | "GRADUATE"); setIntent(null); }} disabled={locked}>
               <option value="CURRENT_STUDENT" disabled={student.variant !== "CURRENT_STUDENT" || student.f4_eligibility?.status !== "ELIGIBLE"}>F4 · Current Student</option>
-              <option value="GRADUATE">F6 · UCN Bachelor's degree</option>
+              <option value="GRADUATE">F6 · UCN Bachelor&apos;s degree</option>
             </Select>
-            {variant === "CURRENT_STUDENT" ? <p className="mt-2 text-sm text-muted">Based on the student's current program and year level.</p> : <p className="mt-2 text-sm text-muted">COMPASS hasn't verified the degree or graduation date.</p>}
+            {variant === "CURRENT_STUDENT" ? <p className="mt-2 text-sm text-muted">Based on the student&apos;s current program and year level.</p> : <p className="mt-2 text-sm text-muted">COMPASS hasn&apos;t verified the degree or graduation date.</p>}
           </PanelSection>
         ) : null}
         {student ? (
