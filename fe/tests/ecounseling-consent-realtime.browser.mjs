@@ -30,11 +30,11 @@ function world({ approved = false, recording = "NOT_STARTED", transcription = "N
     role, fakeDaily: true, initScripts: realtime ? [enable] : [],
     beforeNavigate: async ({ context }) => {
       await context.routeWebSocket(/\/api\/realtime\/v1\/socket/, (route) => {
-        const socket = { role, route, closed: false }; state.sockets.push(socket);
+        const socket = { role, route, closed: false, ready: false }; state.sockets.push(socket);
         route.onMessage((message) => {
           assert.equal(JSON.parse(String(message)).type, "authenticate");
           if (outage) route.close({ code: 1013, reason: "synthetic outage" });
-          else route.send('{"v":1,"type":"ready"}');
+          else { socket.ready = true; route.send('{"v":1,"type":"ready"}'); }
         });
         route.onClose(() => { socket.closed = true; });
       });
@@ -183,6 +183,8 @@ for (const boundary of ["hidden", "offline"]) {
   const w = world();
   await check(`${boundary} tab returns to canonical consent without a manual reload`, PATH, w.options("STUDENT"), async (page) => {
     await shown(page.getByRole("heading", { name: "Recording & live transcription", exact: true }));
+    await eventually(() => w.state.reads.some((read) => read.kind === "workspace") && w.state.reads.some((read) => read.kind === "consents"), "Initial workspace and consent reads completed");
+    await eventually(() => w.state.sockets.length === 1 && w.state.sockets[0].ready, "Realtime connection is ready before the foreground transition");
     const before = w.state.reads.filter((read) => read.kind === "consents").length;
     await page.evaluate((value) => {
       if (value === "hidden") {

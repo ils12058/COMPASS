@@ -37,6 +37,8 @@ Run #157 also showed the unsupported seed year cascading into seeder setup error
 - Reused a canonical submitted Bachelor's Inventory in Exit Interview test setup.
 - Updated the OpenAPI operation allowlist and added role coverage for F4 academic context.
 - Updated affected frontend synthetic fixtures and browser assertions; aligned the browser regression Node runtime with the runtime used by frontend unit tests.
+- Corrected the weekly-schedule tab's accessible name, waited for initial consent reads and a ready socket before lifecycle simulation, and settled router prefetches before notification preference navigations.
+- Made the Good Moral print regression verify the PDF MIME type and signature, then simulate the native viewer load event that headless Playwright does not emit.
 - No application page, copy, authorization, eligibility, or domain-service implementation was changed.
 
 ## Validation
@@ -55,12 +57,16 @@ Run #157 also showed the unsupported seed year cascading into seeder setup error
 | `pnpm lint` and `pnpm typecheck` | Passed |
 | `pnpm test` | **818 passed, 0 failed** |
 | Synthetic production build | Passed |
+| Good Moral issued-PDF browser regression | **22/22 passed** on Chromium and WebKit; verified the PDF payload and simulated the headless viewer load event |
+| E-Counseling consent foreground recovery | **11/11 passed** on Chromium and WebKit |
+| Realtime notification preferences | **12/12 passed** on Chromium and WebKit |
+| Draft/session safety browser regression | **24/24 passed** on Chromium and **24/24 passed** on WebKit |
 | Browser regression suites, Chromium | Availability **5/5**; Follow-Ups **18/18**; Messages **41/41**; UI hierarchy **18/18** |
 | Browser regression suites, WebKit | Availability **5/5**; Follow-Ups **18/18**; Messages **41/41**; UI hierarchy **18/18** |
-| ESLint on the modified frontend test files | Passed |
+| ESLint on the modified frontend test files and browser harness | Passed |
 
 Backend tests and Django checks used only the local test database. Browser checks used synthetic fixtures and a loopback-only server. No live staging database, UAT account, credential, or participant data was changed.
 
 ## Remaining status
 
-The fixes are locally validated. Pull-request and exact-head GitHub Actions results are reported separately from these local results; this report does not claim a green remote CI run, merge, or deployment. No genuine application blocker was reproduced in the affected workflows.
+The initial exact-head full backend workflow passed all six test shards and the static/contract job. Follow-up browser checks are locally validated; GitHub Actions must be rerun against the resulting PR head before reporting final remote CI status. No application implementation change or genuine application blocker was reproduced in these follow-up browser cases. Native PDF viewer rendering, print dialogs, and physical printing remain outside headless browser proof.

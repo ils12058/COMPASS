@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { user } from "./support/ui-hierarchy-fixtures.mjs";
 
-const { baseURL, check, shown, screenshot, finish } = await createBrowserHarness("realtime-runtime");
+const { baseURL, check, shown, screenshot, finish, settleFetches } = await createBrowserHarness("realtime-runtime");
 
 const PAGE = "/portal/services";
 const SOCKET_URL = `${baseURL.replace(/^http/, "ws")}/api/realtime/v1/socket`;
@@ -291,6 +291,7 @@ function notificationWorld() {
     assert.equal(await page.getByRole("button", { name: /(?:Mute|Unmute) notification pop-ups/ }).count(), 0, "No standalone header mute button");
     assert.equal(await page.getByRole("link", { name: "Notifications, 1 unread", exact: true }).count(), 1, "The notification bell remains available");
 
+    await settleFetches(page);
     await page.evaluate(() => window.next.router.push("/portal/account/preferences"));
     const preference = page.getByRole("checkbox", { name: "Show pop-up alerts" });
     await shown(preference);
@@ -312,6 +313,7 @@ function notificationWorld() {
     await shown(page.getByRole("link", { name: "Notifications, 2 unread", exact: true }));
     assert.equal(await page.locator("[data-notification-heads-up]").count(), 0, "Disabled pop-ups do not hide notification delivery");
 
+    await settleFetches(page);
     await page.reload();
     const afterReload = page.getByRole("checkbox", { name: "Show pop-up alerts" });
     await shown(afterReload);
@@ -322,6 +324,7 @@ function notificationWorld() {
     assert.equal(await afterReload.isChecked(), false, "The preference survives reload");
 
     world.account = accountUser("B");
+    await settleFetches(page);
     await page.reload();
     const accountB = page.getByRole("checkbox", { name: "Show pop-up alerts" });
     await shown(accountB);
@@ -335,6 +338,7 @@ function notificationWorld() {
     assert.equal(await page.evaluate(() => window.localStorage.getItem("compass-notification-heads-up-v1:account-A")), "false", "Account B cannot overwrite Account A's setting");
 
     world.account = accountUser("A");
+    await settleFetches(page);
     await page.reload();
     const accountA = page.getByRole("checkbox", { name: "Show pop-up alerts" });
     await shown(accountA);

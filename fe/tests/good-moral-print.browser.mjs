@@ -98,7 +98,23 @@ async function issue(page) {
 async function prepared(page) {
   await page.waitForFunction(() => {
     const frame = document.querySelector('iframe[title="Finalized certificate PDF"]');
-    return frame?.src.startsWith('blob:') && frame.dataset.previewReady === 'true';
+    return frame?.src.startsWith('blob:');
+  });
+  const pdf = await page.locator('iframe[title="Finalized certificate PDF"]').evaluate(async frame => {
+    const response = await fetch(frame.src);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    return { type: response.headers.get('content-type'), signature: Array.from(bytes.slice(0, 5)) };
+  });
+  assert.equal(pdf.type, 'application/pdf');
+  assert.deepEqual(pdf.signature, [37, 80, 68, 70, 45], 'The finalized preview contains a PDF response');
+  // Playwright's headless PDF viewer exposes a blank HTML wrapper instead of firing the viewer's
+  // iframe load event. The payload is verified above; emulate the native viewer's ready event.
+  await page.locator('iframe[title="Finalized certificate PDF"]').evaluate(frame => {
+    if (frame.dataset.previewReady !== 'true') frame.dispatchEvent(new Event('load'));
+  });
+  await page.waitForFunction(() => {
+    const frame = document.querySelector('iframe[title="Finalized certificate PDF"]');
+    return frame?.dataset.previewReady === 'true';
   });
   assert.equal(await page.getByRole('button', { name: 'Print certificate', exact: true }).isEnabled(), true);
   await shown(page.getByText('The certificate has been issued. You can print or download the finalized PDF.', { exact: true }));
