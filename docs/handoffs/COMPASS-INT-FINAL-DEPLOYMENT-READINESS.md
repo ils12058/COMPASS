@@ -1,5 +1,11 @@
 # COMPASS-INT-FINAL — Operational Deployment Readiness & Runbook
 
+> RELEASE-UNBLOCK-1 update (2026-10-18): the global `GUIDANCE_FOLLOWUPS_ENABLED` gate and
+> its environment contract are retired. Gate instructions below describe the historical
+> rollout decision; use the current Follow-Up operations runbook for availability.
+> Institutional decisions remain unresolved unless separately documented; this update
+> neither establishes sign-off nor enables external email/push dispatch.
+
 **Repository:** `ils12058/COMPASS`  
 **Target Environment:** `staging` / Pre-Defense Release Candidate  
 **Integration Branch:** `integration/compass-int-final-argon`  

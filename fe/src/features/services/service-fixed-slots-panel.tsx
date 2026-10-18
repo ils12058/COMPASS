@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Ban, Calendar, Clock, User as UserIcon } from "lucide-react";
 
+import { appointmentErrorMessage } from "@/features/appointments/appointments-shared";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -205,7 +206,11 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
       ) : null}
 
       <div className="mt-4 overflow-hidden rounded-md border border-line">
-        {slots.length === 0 ? (
+        {slotsQuery.isPending ? <p role="status" className="p-4 text-sm text-muted">Loading appointment slots…</p> : slotsQuery.isError ? (
+          <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void slotsQuery.refetch()}>Retry slots</Button>}>
+            {appointmentErrorMessage(slotsQuery.error, "Appointment slots could not be loaded. Try again.")}
+          </Notice>
+        ) : slots.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted">
             No fixed-date appointment slots published yet.
           </div>
@@ -495,7 +500,11 @@ export function ServiceFixedSlotsStudentPanel({ service }: { service: ServiceRes
       ) : null}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {slots.length === 0 ? (
+        {slotsQuery.isPending ? <p role="status" className="p-4 text-sm text-muted">Loading appointment slots…</p> : slotsQuery.isError ? (
+          <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void slotsQuery.refetch()}>Retry slots</Button>}>
+            {appointmentErrorMessage(slotsQuery.error, "Appointment slots could not be loaded. Try again.")}
+          </Notice>
+        ) : slots.length === 0 ? (
           <div className="col-span-full rounded-md border border-dashed border-line p-6 text-center text-sm text-muted">
             No fixed consultation slots are currently available for this Service.
           </div>

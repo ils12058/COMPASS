@@ -1,5 +1,8 @@
 "use client";
 
+import { CalendarDays } from "lucide-react";
+import { PageActionLink } from "@/components/ui/page-action";
+import { AppointmentFixedDateBooking } from "./appointment-fixed-date-booking";
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -340,6 +343,7 @@ function BookingWorkspace() {
       <AppointmentsPageHeading
         headingId="book-appointment-heading"
         title="Book appointment"
+        action={<PageActionLink href="/portal/appointments/book?pathway=FIXED_DATE_SLOT" icon={CalendarDays} label="Scheduled slots" variant="secondary" />}
       />
 
       <p className="-mt-3 mb-5 text-sm text-muted">
@@ -635,7 +639,7 @@ function BookingCompletion({ booked, onDone }: { booked: BookedAppointment | nul
   );
 }
 
-export function AppointmentBookingPage() {
+export function AppointmentBookingPage({ scheduledSlots = false }: { scheduledSlots?: boolean } = {}) {
   const { user } = usePortalSession();
   const access = getAppointmentAccess(user);
   if (!access.canBook) {
@@ -663,5 +667,5 @@ export function AppointmentBookingPage() {
       </section>
     );
   }
-  return <BookingWorkspace />;
+  return scheduledSlots ? <AppointmentFixedDateBooking /> : <BookingWorkspace />;
 }

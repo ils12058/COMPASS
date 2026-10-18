@@ -22,6 +22,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Notice } from "@/components/ui/notice";
+import { useServicesGet, useServicesList } from "@/lib/api/generated/services/services";
+import { FloatingListTools, ListToolField } from "@/components/ui/floating-list-tools";
+import { FilterField } from "@/components/ui/filter-toolbar";
+import { groupSessionsError } from "@/features/group-sessions/group-sessions-shared";
 import { Select } from "@/components/ui/select";
 import { PanelSection } from "@/components/ui/panel";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -69,12 +73,22 @@ function dateTimeInput(value: string): string {
 
 // --- STAFF PANEL ---
 
-export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceResponse }) {
+export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false }: { service?: ServiceResponse; attendanceOnly?: boolean }) {
   const { user } = usePortalSession();
   const queryClient = useQueryClient();
   const continuation = useStepUpContinuation();
   const [createOpen, setCreateOpen] = useState(false);
+  const [selectedService, setSelectedService] = useState<ServiceResponse | null>(null);
+  const formService = service ?? selectedService;
+  const [statusFilter, setStatusFilter] = useState("");
+  const [serviceFilter, setServiceFilter] = useState("");
+  const [fromDate, setFromDate] = useState("");
+  const [toDate, setToDate] = useState("");
+  const scopeParams = service ? { service_id: service.id } : undefined;
+  const listParams = statusFilter ? { ...scopeParams, status: statusFilter } : scopeParams;
   const [editingSession, setEditingSession] = useState<GroupSessionResponse | null>(null);
+  const editingService = useServicesGet(editingSession?.service_id ?? "", { query: { retry: false, enabled: !service && Boolean(editingSession) && createOpen && user.capabilities.includes("services.catalog.view") } });
+  const deliveryModes = (editingSession ? service?.delivery_modes ?? editingService.data?.data.delivery_modes : formService?.delivery_modes) ?? [editingSession?.delivery_mode ?? DeliveryMode.IN_PERSON];
   const [scheduleReviewOpen, setScheduleReviewOpen] = useState(false);
   const [cancelModalSession, setCancelModalSession] = useState<GroupSessionResponse | null>(null);
   const [cancelReason, setCancelReason] = useState("");
@@ -88,7 +102,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>(
-    service.delivery_modes[0] ?? DeliveryMode.IN_PERSON
+    formService?.delivery_modes[0] ?? DeliveryMode.IN_PERSON
   );
   const [venueOrUrl, setVenueOrUrl] = useState("");
   const [startDateTime, setStartDateTime] = useState("");
@@ -108,12 +122,12 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
   const [facilitatorsTouched, setFacilitatorsTouched] = useState(false);
 
   const sessionsQuery = useGroupSessionsListStaff(
-    { service_id: service.id },
+    listParams,
     { query: { retry: false } }
   );
   const metricsQuery = useGroupSessionsGetMetrics(
-    { service_id: service.id },
-    { query: { retry: false } }
+    scopeParams,
+    { query: { retry: false, enabled: !attendanceOnly } }
   );
   const facilitatorCandidatesQuery = useGroupSessionsListFacilitatorCandidates(
     undefined,
@@ -127,7 +141,14 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
   const completeMutation = useGroupSessionsComplete();
   const withdrawMutation = useGroupSessionsWithdraw();
 
-  const sessions = sessionsQuery.data?.data ?? [];
+  const allSessions = sessionsQuery.data?.data ?? [];
+  const serviceChoices = Array.from(new Map(allSessions.map((item) => [item.service_id, item.service_name])));
+  const sessions = allSessions.filter((item) =>
+    (!attendanceOnly || item.can_access_participants) &&
+    (!serviceFilter || item.service_id === serviceFilter) &&
+    (!fromDate || isoToInstitutionalDateTimeInput(item.starts_at).slice(0, 10) >= fromDate) &&
+    (!toDate || isoToInstitutionalDateTimeInput(item.starts_at).slice(0, 10) <= toDate)
+  );
   const metrics = metricsQuery.data?.data;
   const facilitatorCandidates = facilitatorCandidatesQuery.data?.data ?? [];
   const visibleFacilitatorCandidates = facilitatorCandidates.filter((candidate) =>
@@ -137,13 +158,13 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
   const invalidateAll = async () => {
     await Promise.all([
       queryClient.invalidateQueries({
-        queryKey: getGroupSessionsListStaffQueryKey({ service_id: service.id }),
+        queryKey: getGroupSessionsListStaffQueryKey(),
       }),
       queryClient.invalidateQueries({
-        queryKey: getGroupSessionsGetMetricsQueryKey({ service_id: service.id }),
+        queryKey: getGroupSessionsGetMetricsQueryKey(),
       }),
       queryClient.invalidateQueries({
-        queryKey: getGroupSessionsDiscoverQueryKey({ service_id: service.id }),
+        queryKey: getGroupSessionsDiscoverQueryKey(),
       }),
     ]);
   };
@@ -151,15 +172,16 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
   const runStaffAction = async <T,>(operation: () => Promise<T>, fallback: string) =>
     continuation.run(operation, {
       onFailure: (caught) => {
-        setErrorMessage(caught instanceof Error ? caught.message : fallback);
+        setErrorMessage(groupSessionsError(caught, fallback));
       },
     });
 
   const resetForm = () => {
     setEditingSession(null);
+    setSelectedService(null);
     setTitle("");
     setDescription("");
-    setDeliveryMode(service.delivery_modes[0] ?? DeliveryMode.IN_PERSON);
+    setDeliveryMode(formService?.delivery_modes[0] ?? DeliveryMode.IN_PERSON);
     setVenueOrUrl("");
     setStartDateTime("");
     setEndDateTime("");
@@ -182,6 +204,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
 
   const openEdit = (session: GroupSessionResponse) => {
     setEditingSession(session);
+    setSelectedService(null);
     setTitle(session.title);
     setDescription(session.description);
     setDeliveryMode(session.delivery_mode as DeliveryMode);
@@ -282,6 +305,11 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
       return;
     }
 
+    if (!editingSession && (!formService?.is_active || !formService.booking_pathways.includes("GROUP_SESSION"))) {
+      setErrorMessage("Choose an active Service that offers Group Sessions.");
+      return;
+    }
+
     let saved: boolean;
     try {
       const facilitatorAssignments = [
@@ -323,7 +351,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
       } else {
         saved = (await runStaffAction(
           () => createMutation.mutateAsync({
-            serviceId: service.id,
+            serviceId: formService!.id,
             data: { ...common, facilitators: facilitatorAssignments },
           }),
           "Could not save the Group Session.",
@@ -404,7 +432,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
 
   return (
     <PanelSection
-      title="Group Sessions & Events"
+      title={attendanceOnly ? "Registrations & Attendance" : "Group Sessions & Events"}
       titleId="service-group-sessions-heading"
     >
       <div className="flex flex-col gap-4">
@@ -425,8 +453,9 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
         ) : null}
 
         {/* Operational Metrics Cards */}
-        {metrics && (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 rounded-lg border border-border bg-subtle p-3">
+        {!attendanceOnly && metricsQuery.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void metricsQuery.refetch()}>Retry summary</Button>}>{groupSessionsError(metricsQuery.error, "The session summary could not be loaded.")}</Notice> : null}
+        {!attendanceOnly && metrics && !metricsQuery.isError && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 rounded-sm border border-border bg-subtle p-3">
             <div>
               <p className="text-xs font-semibold uppercase text-muted">Total Sessions</p>
               <p className="mt-1 text-xl font-bold text-ink">{metrics.total_sessions}</p>
@@ -458,26 +487,34 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
           </div>
         )}
 
-        <div className="flex items-center justify-between">
-          <p className="text-xs text-muted">
-            Manage each event’s schedule, registration window, capacity, and facilitator assignments. A pathway alone does not create a bookable event.
-          </p>
-          <Button
-            className="min-h-8 px-3 py-1 text-xs"
-            onClick={openCreate}
-            disabled={!service.is_active}
-            title={!service.is_active ? "Enable the Service before creating events." : undefined}
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            Schedule Group Session
+        {!service ? <FloatingListTools compact label="Group Session filters" filterCount={Number(Boolean(serviceFilter)) + Number(Boolean(fromDate)) + Number(Boolean(toDate))} clear={serviceFilter || fromDate || toDate ? <Button variant="quiet" onClick={() => { setServiceFilter(""); setFromDate(""); setToDate(""); }}>Clear filters</Button> : undefined} filters={<>
+          <FilterField label="Service" htmlFor="group-session-service-filter"><Select id="group-session-service-filter" value={serviceFilter} onChange={(event) => setServiceFilter(event.target.value)}>
+            <option value="">All Services</option>{serviceChoices.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </Select></FilterField>
+          <FilterField label="From date" htmlFor="group-session-from"><Input id="group-session-from" type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></FilterField>
+          <FilterField label="To date" htmlFor="group-session-to"><Input id="group-session-to" type="date" value={toDate} min={fromDate || undefined} onChange={(event) => setToDate(event.target.value)} /></FilterField>
+        </>}>
+          <ListToolField label="Status" htmlFor="group-session-status"><Select id="group-session-status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+            <option value="">All statuses</option>{["DRAFT", "PUBLISHED", "CANCELLED", "COMPLETED"].map((status) => <option key={status} value={status}>{status.charAt(0) + status.slice(1).toLowerCase()}</option>)}
+          </Select></ListToolField>
+        </FloatingListTools> : null}
+        {!attendanceOnly ? <div className="flex flex-wrap justify-end gap-3">
+          <Button onClick={openCreate} disabled={sessionsQuery.isPending || sessionsQuery.isError || (service ? !service.is_active : !user.capabilities.includes("services.catalog.view"))}
+            title={service && !service.is_active ? "Enable the Service before creating events." : undefined}>
+            <Plus className="mr-1.5 h-4 w-4" />Schedule Group Session
           </Button>
-        </div>
+          {!service && !user.capabilities.includes("services.catalog.view") ? <p className="text-sm text-muted">Service catalog access is needed to choose a Service for a new session.</p> : null}
+        </div> : null}
 
-        {sessionsQuery.isLoading ? (
-          <p className="text-sm text-muted">Loading group sessions...</p>
+        {sessionsQuery.isPending ? (
+          <p className="text-sm text-muted">Loading group sessions…</p>
+        ) : sessionsQuery.isError ? (
+          <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void sessionsQuery.refetch()}>Retry</Button>}>
+            {groupSessionsError(sessionsQuery.error, "Group sessions could not be loaded. Try again.")}
+          </Notice>
         ) : sessions.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
-            No group sessions scheduled for this Service yet. Click &quot;Schedule Group Session&quot; to create one.
+          <div className="rounded-sm border border-dashed border-border p-6 text-center text-sm text-muted">
+            No group sessions match this view.
           </div>
         ) : (
           <div className="flex flex-col gap-3">
@@ -493,25 +530,26 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
               return (
                 <div
                   key={sess.id}
-                  className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-xs"
+                  className="flex flex-col gap-3 rounded-sm border border-border bg-surface p-4"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-2">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-semibold text-ink text-base">{sess.title}</h4>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h4 className="font-semibold text-ink text-base"><Link href={`/portal/group-sessions/${sess.id}`} className="underline underline-offset-4">{sess.title}</Link></h4>
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs font-medium border ${badgeClass}`}
                         >
                           {sess.status}
                         </span>
                       </div>
+                      {!service ? <p className="mt-1 text-sm text-muted">{sess.service_name} · {sess.active_registrations_count}/{sess.capacity} registered</p> : null}
                       {sess.description && (
                         <p className="mt-1 text-sm text-muted line-clamp-2">{sess.description}</p>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      {(sess.status === "DRAFT" || sess.status === "PUBLISHED") &&
+                    <div className="flex flex-wrap items-center gap-2">
+                      {!attendanceOnly && (sess.status === "DRAFT" || sess.status === "PUBLISHED") &&
                       sess.can_manage ? (
                         <Button
                           className="min-h-8 px-2.5 py-1 text-xs"
@@ -521,7 +559,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
                           Edit
                         </Button>
                       ) : null}
-                      {sess.status === "DRAFT" && sess.can_manage && (
+                      {!attendanceOnly && sess.status === "DRAFT" && sess.can_manage && (
                         <>
                           <Button
                             className="min-h-8 px-2.5 py-1 text-xs"
@@ -543,7 +581,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
                         </>
                       )}
 
-                      {sess.status === "PUBLISHED" && sess.can_manage && (
+                      {!attendanceOnly && sess.status === "PUBLISHED" && sess.can_manage && (
                         <>
                           <Button
                             className="min-h-8 px-2.5 py-1 text-xs"
@@ -642,6 +680,8 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
         <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
           <DialogTitle>{editingSession ? "Edit Group Session" : "Schedule Group Session"}</DialogTitle>
           <form onSubmit={(event) => void handleSaveForm(event)} className="mt-4 flex flex-col gap-4">
+            {!service && !editingSession ? <GroupSessionServicePicker selected={selectedService} onSelect={(chosen) => { setSelectedService(chosen); setDeliveryMode(chosen.delivery_modes[0] ?? DeliveryMode.IN_PERSON); }} /> : null}
+            {editingSession ? <p className="text-sm text-muted">{editingSession.service_name}</p> : null}
             <div>
               <Label htmlFor="session-title">Title *</Label>
               <Input
@@ -664,7 +704,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="session-delivery">Delivery Mode</Label>
                 <Select
@@ -672,7 +712,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
                   value={deliveryMode}
                   onChange={(e) => setDeliveryMode(e.target.value as DeliveryMode)}
                 >
-                  {service.delivery_modes.map((mode) => (
+                  {deliveryModes.map((mode) => (
                     <option key={mode} value={mode}>
                       {mode === "ONLINE" ? "Online" : "In-Person"}
                     </option>
@@ -709,7 +749,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="session-start">Start Time *</Label>
                 <Input
@@ -870,7 +910,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
               </div>
             </fieldset>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <Label htmlFor="reg-opens">Reg. Opens (Optional)</Label>
                 <Input
@@ -895,7 +935,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
               <Button type="button" variant="secondary" onClick={() => setCreateOpen(false)}>
                 Cancel
               </Button>
-              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
+              <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending || (!editingSession && !formService)}>
                 {createMutation.isPending || updateMutation.isPending
                   ? "Saving…"
                   : editingSession
@@ -1035,7 +1075,8 @@ function GroupSessionRosterModal({
 
   const handleSaveAttendance = async () => {
     setSaveStatus(null);
-    const records = Object.entries(attendanceState).map(([regId, state]) => ({
+    const activeIds = new Set(regs.filter((registration) => registration.status === "REGISTERED").map((registration) => registration.id));
+    const records = Object.entries(attendanceState).filter(([regId]) => activeIds.has(regId)).map(([regId, state]) => ({
       registration_id: regId,
       attended: state.attended,
       ...(session.can_manage ? { notes: state.notes } : {}),
@@ -1125,10 +1166,14 @@ function GroupSessionRosterModal({
         ) : null}
 
         <div className="mt-3 overflow-y-auto flex-1 pr-1">
-          {regsQuery.isLoading ? (
-            <p className="text-sm text-muted">Loading roster...</p>
+          {regsQuery.isPending ? (
+            <p className="text-sm text-muted">Loading roster…</p>
+          ) : regsQuery.isError ? (
+            <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void regsQuery.refetch()}>Retry roster</Button>}>
+              {groupSessionsError(regsQuery.error, "The participant roster could not be loaded.")}
+            </Notice>
           ) : regs.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
+            <div className="rounded-sm border border-dashed border-border p-6 text-center text-sm text-muted">
               No students have registered for this session yet.
             </div>
           ) : (
@@ -1177,7 +1222,8 @@ function GroupSessionRosterModal({
                       <td className="py-2 px-3 text-center">
                         <input
                           type="checkbox"
-                          disabled={!isRegistered}
+                          aria-label={`Attended: ${r.student_name}`}
+                          disabled={!isRegistered || !session.can_record_attendance}
                           checked={state.attended}
                           onChange={(e) =>
                             setAttendanceState((prev) => ({
@@ -1191,7 +1237,8 @@ function GroupSessionRosterModal({
                       {session.can_manage ? (
                         <td className="py-2 px-3">
                           <Input
-                            disabled={!isRegistered}
+                            aria-label={`Attendance notes: ${r.student_name}`}
+                            disabled={!isRegistered || !session.can_record_attendance}
                             value={state.notes}
                             onChange={(e) =>
                               setAttendanceState((prev) => ({
@@ -1219,7 +1266,7 @@ function GroupSessionRosterModal({
           <Button
             onClick={handleSaveAttendance}
             disabled={
-              !session.can_record_attendance || attendanceMutation.isPending || regs.length === 0
+              !session.can_record_attendance || !["PUBLISHED", "COMPLETED"].includes(session.status) || regsQuery.isError || attendanceMutation.isPending || !regs.some((registration) => registration.status === "REGISTERED")
             }
           >
             {attendanceMutation.isPending ? "Saving..." : "Save Attendance"}
@@ -1321,24 +1368,16 @@ export function ServiceGroupSessionsStudentPanel({
           </Notice>
         )}
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="text-xs text-muted">
-            {service
-              ? `Browse upcoming group sessions for ${service.name} and secure your seat. Capacity is limited.`
-              : "Browse upcoming group sessions and secure your seat. Capacity is limited."}
-          </p>
-          <Link
-            href="/portal/group-sessions/my"
-            className="min-h-10 inline-flex items-center text-sm font-semibold text-brand underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            My group sessions
-          </Link>
-        </div>
+        {service ? <Link href="/portal/group-sessions/my" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand underline underline-offset-4">My Registrations</Link> : null}
 
-        {discoverQuery.isLoading ? (
-          <p className="text-sm text-muted">Loading upcoming group sessions...</p>
+        {discoverQuery.isPending ? (
+          <p className="text-sm text-muted">Loading upcoming group sessions…</p>
+        ) : discoverQuery.isError ? (
+          <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void discoverQuery.refetch()}>Retry</Button>}>
+            {groupSessionsError(discoverQuery.error, "Upcoming group sessions could not be loaded. Try again.")}
+          </Notice>
         ) : sessions.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-border p-6 text-center text-sm text-muted">
+          <div className="rounded-sm border border-dashed border-border p-6 text-center text-sm text-muted">
             {service
               ? "No upcoming group sessions are currently scheduled for this Service."
               : "No upcoming group sessions are currently scheduled."}
@@ -1348,7 +1387,7 @@ export function ServiceGroupSessionsStudentPanel({
             {sessions.map((sess) => (
               <div
                 key={sess.id}
-                className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4 shadow-xs"
+                className="flex flex-col gap-3 rounded-sm border border-border bg-surface p-4"
               >
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
@@ -1367,7 +1406,7 @@ export function ServiceGroupSessionsStudentPanel({
 
                   <div>
                     {sess.is_registered_by_me ? (
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-1 rounded-full bg-success/10 px-2.5 py-0.5 text-xs font-semibold text-success border border-success/20">
                           <CheckCircle className="h-3.5 w-3.5" />
                           You are registered
@@ -1456,4 +1495,27 @@ export function ServiceGroupSessionsStudentPanel({
       </ConsequentialActionDialog>
     </PanelSection>
   );
+}
+
+
+function GroupSessionServicePicker({ selected, onSelect }: { selected: ServiceResponse | null; onSelect: (service: ServiceResponse) => void }) {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const catalog = useServicesList({ page, page_size: 50, search: search || undefined }, { query: { retry: false } });
+  const choices = (catalog.data?.data.items ?? []).filter((item) => item.is_active && item.booking_pathways.includes("GROUP_SESSION"));
+  return <div className="space-y-2">
+    <Label htmlFor="group-session-service-search">Find a Service</Label>
+    <Input id="group-session-service-search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Search Services" />
+    <Label htmlFor="group-session-service">Service *</Label>
+    <Select id="group-session-service" required value={selected?.id ?? ""} disabled={catalog.isPending || catalog.isError} onChange={(event) => {
+      const choice = choices.find((item) => item.id === event.target.value);
+      if (choice) onSelect(choice);
+    }}>
+      <option value="">Choose a Service…</option>
+      {selected && !choices.some((item) => item.id === selected.id) ? <option value={selected.id}>{selected.name}</option> : null}
+      {choices.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
+    </Select>
+    {catalog.isPending ? <p role="status" className="text-sm text-muted">Loading Services…</p> : catalog.isError ? <Notice role="alert" tone="danger" action={<Button type="button" variant="secondary" onClick={() => void catalog.refetch()}>Retry Services</Button>}>{groupSessionsError(catalog.error, "Services could not be loaded.")}</Notice> : choices.length === 0 ? <p className="text-sm text-muted">No Services offering Group Sessions on this page. Try another search or page.</p> : null}
+    <div className="flex gap-3"><Button type="button" variant="quiet" disabled={page === 1} onClick={() => setPage((value) => value - 1)}>Previous Services</Button><Button type="button" variant="quiet" disabled={!catalog.data?.data.has_next} onClick={() => setPage((value) => value + 1)}>More Services</Button></div>
+  </div>;
 }

@@ -39,7 +39,6 @@ from tests.test_referrals import context, create_for, setup_scope, sync_policy
 @pytest.fixture
 def world(settings):
     sync_policy()
-    settings.GUIDANCE_FOLLOWUPS_ENABLED = True
     settings.GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS = (Fernet.generate_key().decode(),)
     counselor_a, counselor_b, gss, student_a, student_b, student_none = setup_scope()
     return counselor_a, counselor_b, gss, student_a, student_b, student_none
@@ -83,9 +82,16 @@ def create(
 pytestmark = pytest.mark.django_db
 
 
-def test_disabled_by_default_and_strict_server_access(world, settings, client):
-    settings.GUIDANCE_FOLLOWUPS_ENABLED = False
-    assert client.get("/api/v1/guidance-followups").status_code in (401, 403, 503)
+def test_core_workspace_uses_authorization_without_rollout_gate(world, client):
+    from tests.test_appointment_management_scope import auth_client
+
+    counselor, _, gss, student, *_ = world
+    assert client.get("/api/v1/guidance-followups").status_code == 401
+    for actor in (counselor, gss):
+        response = auth_client(actor).get("/api/v1/guidance-followups")
+        assert response.status_code == 200
+        assert response.json()["items"] == []
+    assert auth_client(student).get("/api/v1/guidance-followups").status_code == 403
     assert not GuidanceFollowUp.objects.exists()
 
 
@@ -865,3 +871,20 @@ def test_standalone_student_followup_and_student_support_boundary(world):
     assert services.get_followup(actor=gss, followup_id=standalone.pk).pk == standalone.pk
     with pytest.raises(FollowUpNotFound):
         services.get_followup(actor=counselor, followup_id=standalone.pk)
+
+
+@pytest.mark.parametrize("keyring", [(), ("invalid-key",)])
+def test_http_protected_content_fails_closed_without_usable_keyring(world, settings, keyring):
+    from tests.test_appointment_management_scope import auth_client
+
+    counselor, *_ = world
+    item = create(world)
+    settings.GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS = keyring
+    client = auth_client(counselor)
+    summary = client.get("/api/v1/guidance-followups")
+    assert summary.status_code == 200
+    assert "Private notes" not in summary.content.decode()
+    detail = client.get(f"/api/v1/guidance-followups/{item.pk}")
+    assert detail.status_code == 503
+    assert detail.json()["error"]["code"] == "followup_content_unavailable"
+    assert "Private notes" not in detail.content.decode()

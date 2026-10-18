@@ -1,5 +1,11 @@
 # ADR-FUP-1A — Secure Shared Guidance Follow-Up foundation
 
+> RELEASE-UNBLOCK-1 update (2026-10-18): the global `GUIDANCE_FOLLOWUPS_ENABLED` gate and
+> its environment contract are retired. Gate instructions below describe the historical
+> rollout decision; use the current Follow-Up operations runbook for availability.
+> Institutional decisions remain unresolved unless separately documented; this update
+> neither establishes sign-off nor enables external email/push dispatch.
+
 Date: 2026-10-17
 Status: Implementation proposal; institutionally gated / NOT an approved rollout.
 

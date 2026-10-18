@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelBody, PanelHeader, PanelMessage, PanelSection } from "@/components/ui/panel";
+import { GroupSessionsHelp, GroupSessionsNavigation, groupSessionsError } from "./group-sessions-shared";
 import { Skeleton } from "@/components/ui/skeleton";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { formatAppointmentDateTime } from "@/features/appointments/appointments-shared";
@@ -61,19 +62,20 @@ export function GroupSessionDetailPage({ sessionId }: { sessionId: string }) {
             </button>
           }
         >
-          This group session is unavailable to your account, or its details could not be loaded.
+          {groupSessionsError(sessionQuery.error, "The group session details could not be loaded. Try again.")}
         </PanelMessage>
       </>
     );
   }
 
-  const backHref = isStudent ? "/portal/group-sessions/my" : `/portal/services/${session.service_id}`;
-  const backLabel = isStudent ? "My group sessions" : session.service_name;
+  const backHref = isStudent ? "/portal/group-sessions/my" : "/portal/group-sessions/manage";
+  const backLabel = isStudent ? "My Registrations" : "Manage Sessions";
 
   return (
     <>
       <PageHeader
         title={session.title}
+        help={<GroupSessionsHelp />}
         description={session.description || undefined}
         back={
           <Link
@@ -90,6 +92,7 @@ export function GroupSessionDetailPage({ sessionId }: { sessionId: string }) {
         }
       />
 
+      <GroupSessionsNavigation />
       <Panel aria-labelledby="group-session-details-heading">
         <PanelHeader title="Event details" titleId="group-session-details-heading" />
         <PanelSection title="Schedule and place" titleId="group-session-schedule-heading">

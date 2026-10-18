@@ -1,15 +1,15 @@
 # Follow-Up work, delivery, recovery and rollout contract
 
-## CORR-5 activation and dispatch decision
+## Workspace availability and external dispatch
 
-ADR-FUP-1A remains an implementation proposal and explicitly says the rollout is **not approved**.
-Keep `GUIDANCE_FOLLOWUPS_ENABLED=false` until GCO, DPO and Records decisions cover the Follow-Up
-categories, GSS coordination and confidentiality boundaries, retention/hold/disposition, recovery,
-and staging activation; provision and validate the independent web-only keyring; and explicitly
-synchronize the approved identity policy. The checked-in environment examples are templates, not
-evidence of the live staging values. See
-[`COMPASS-CORR-5-ACTIVATION-READINESS.md`](../../docs/handoffs/COMPASS-CORR-5-ACTIVATION-READINESS.md)
-for the audited blockers and deployment handoff.
+RELEASE-UNBLOCK-1 retires the global Follow-Up workspace gate. Core APIs and My Work use
+current role/capability, assignment and resource policy; protected content still fails closed
+without the independent web-only keyring. No setting can bypass these boundaries.
+
+Historical CORR-5 and ADR-FUP-1A findings did not establish institutional rollout approval.
+This code change does not establish written GCO/DPO/Records decisions about categories,
+confidentiality, retention/hold/disposition or recovery. Confirm the intended UAT authorization
+and independently verify the running keyring and identity policy before controlled release.
 
 `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED` is an external email/Web Push dispatch control. With the
 core Follow-Up feature available, disabling external dispatch does not remove authorized in-app
@@ -81,8 +81,7 @@ UUID; email/push reuse existing durable claim/retry state. Payloads contain fixe
 safe navigation only, with no Student names or confidential text. In-app lists/counts suppress stale
 events in SQL before pagination. The latest material event supersedes previous assignment/due-change
 events even if ownership later returns to an earlier owner. Activities and description-only changes
-do not send notifications. Terminal state, recipient/capability/scope/source-access loss and feature
-disablement make old occurrences ineligible. Workers validate eligibility without content keys.
+do not send notifications. Terminal state and recipient/capability/scope/source-access loss make old occurrences ineligible. Workers validate eligibility without content keys.
 
 Claim and final provider handoff recheck current eligibility. Existing email claim ownership,
 expiry and recipient destination are rechecked. Provider acceptance cannot be recalled. Interruption
@@ -94,7 +93,6 @@ reminder schedule or retention duration is invented.
 
 | Setting | Default / consumer | Prerequisite |
 |---|---|---|
-| `GUIDANCE_FOLLOWUPS_ENABLED` | false in examples; web and shared settings consumers | Pending institutional approval, web-only keyring provisioning, and explicit identity-policy sync; do not infer the live value |
 | `GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS` or `_FILE` | empty; web/operator rotation only | Independent ordered Fernet keyring; primary first; no reuse of another domain or Django/TOTP secrets |
 | `GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED` | false in examples; web and email/push delivery workers | External dispatch pause; approved destinations, pending-delivery review, SMTP and browser-push validation |
 | `APPOINTMENT_AUTO_REMINDERS_ENABLED` | false in examples; checked by the reminder task's worker | Separate approved Student Reminder rollout; the worker must load the value, while one healthy Beat keeps the 60-second task registered/enqueued |
@@ -103,8 +101,7 @@ reminder schedule or retention duration is invented.
 Compose grants `guidance_followup_encryption_keys` only to web. Worker/Beat explicitly clear both
 Follow-Up keyring forms; realtime has no Django/database/content secrets. The deployment inventory
 and synthetic Compose checks include the new file. These edits provision no actual secret. The
-staging Compose file requires the reviewed secret file before deploying its web service, even while
-the feature flag is false. Follow-Up workers remain keyless; existing unrelated legacy key mounts
+staging Compose file requires the reviewed secret file before deploying its web service, independently of workspace availability. Follow-Up workers remain keyless; existing unrelated legacy key mounts
 are preserved.
 
 Rotation: put the approved new primary before all still-needed old keys in the web keyring. Run

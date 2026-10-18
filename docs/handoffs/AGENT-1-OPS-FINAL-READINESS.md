@@ -1,5 +1,11 @@
 # OPS-FINAL — Agent 1 readiness report
 
+> RELEASE-UNBLOCK-1 update (2026-10-18): the global `GUIDANCE_FOLLOWUPS_ENABLED` gate and
+> its environment contract are retired. Gate instructions below describe the historical
+> rollout decision; use the current Follow-Up operations runbook for availability.
+> Institutional decisions remain unresolved unless separately documented; this update
+> neither establishes sign-off nor enables external email/push dispatch.
+
 Verification checkpoint: 2026-10-17. **NOT READY — BLOCKERS REMAIN**.
 This report distinguishes implemented behavior, executable evidence, and outstanding gates.
 No staging merge, deployment, live secret operation, UAT reset or outbound enablement was performed.

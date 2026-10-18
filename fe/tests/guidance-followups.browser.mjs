@@ -81,7 +81,7 @@ function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_EN
   }, async (page, { requests }) => {
     await shown(page.getByRole("heading", { name: "Follow-Ups", exact: true }));
     await shown(page.getByRole("link", { name: "Synthetic Student", exact: true }));
-    assert.match(await page.locator('[data-page-header=""]').textContent(), /after counseling, referrals, or other Guidance Office activities/i);
+    assert.match(await page.locator('[data-page-header=""]').textContent(), /Track the next actions assigned to Guidance staff/i);
     await shown(page.getByRole("heading", { name: "Workload overview", exact: true }));
     await shown(page.getByText("Counts include only follow-ups you can currently access. Due soon means the next 7 days.", { exact: true }));
     const overview = page.locator('section[aria-labelledby="followup-workload-heading"] dl');
@@ -420,6 +420,17 @@ for (const role of ["STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
   await check(`${role} has no Follow-Up workspace even with capability strings`, `/portal/follow-ups/${id}`, { handler: fixture.handler }, async (page, { requests }) => {
     await shown(page.getByText("Your account does not have access to Guidance Follow-Ups.", { exact: false }));
     assert.equal(requests.some(row => row.pathname.startsWith("/api/v1/guidance-followups")), false);
+  });
+}
+{
+  const w = world();
+  await check("Follow-Up Help is supplementary and keyboard accessible", "/portal/follow-ups", { handler: w.handler }, async page => {
+    const help = page.getByRole("button", { name: "Help: Guidance Follow-Ups", exact: true });
+    await help.focus(); await page.keyboard.press("Enter");
+    await shown(page.getByRole("heading", { name: "Confidentiality", exact: true }));
+    await shown(page.getByText(/Follow-Ups do not automatically contact the Student/));
+    await page.keyboard.press("Escape");
+    assert.equal(await help.evaluate(el => el === document.activeElement), true);
   });
 }
 await finish();

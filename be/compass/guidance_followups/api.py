@@ -7,7 +7,6 @@ from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
-from django.conf import settings
 from ninja import Header, Query, Router, Schema, Status
 from pydantic import ConfigDict, Field
 
@@ -201,13 +200,7 @@ def _strict_query(request, allowed):
         raise APIError(422, "invalid_followup", "The requested filter is unsupported.")
 
 
-def _enabled():
-    if not settings.GUIDANCE_FOLLOWUPS_ENABLED:
-        raise APIError(503, "followups_not_enabled", "Guidance Follow-Ups are not enabled.")
-
-
 def _write(request):
-    _enabled()
     require_recent_mfa_for_request(request)
 
 
@@ -350,7 +343,6 @@ class FollowUpReport(StrictSchema):
 def recoverable(request, page: int = 1, page_size: int = 20):
     from .recovery import list_recoverable
 
-    _enabled()
     _strict_query(request, ["page", "page_size"])
     try:
         result = list_recoverable(actor=request.auth_user, page=page, page_size=page_size)
@@ -371,7 +363,6 @@ def recoverable(request, page: int = 1, page_size: int = 20):
 def eligible_students(request, search: str | None = None, page: int = 1, page_size: int = 20):
     from compass.operational_students import InvalidOperationalStudentQuery
 
-    _enabled()
     _strict_query(request, ["search", "page", "page_size"])
     try:
         result = workspace.eligible_students(
@@ -412,7 +403,6 @@ def eligible_assignees(
     page: int = 1,
     page_size: int = 20,
 ):
-    _enabled()
     _strict_query(
         request, ["student_id", "category", "source_kind", "source_id", "page", "page_size"]
     )
@@ -449,7 +439,6 @@ def eligible_assignees(
     operation_id="guidanceFollowupsGetContext",
 )
 def context(request, source_kind: SourceKind, source_id: UUID):
-    _enabled()
     _strict_query(request, ["source_kind", "source_id"])
     try:
         return workspace.source_context(
@@ -470,7 +459,6 @@ def report(
     period_end: datetime | None = None,
     horizon_days: int = workspace.DUE_SOON_HORIZON_DAYS,
 ):
-    _enabled()
     _strict_query(request, ["period_start", "period_end", "horizon_days"])
     try:
         return workspace.reporting(
@@ -489,7 +477,6 @@ def report(
     operation_id="guidanceFollowupsList",
 )
 def guidance_followups_list(request, query: Query[FollowUpQuery]):
-    _enabled()
     if set(request.GET) - set(FollowUpQuery.model_fields):
         raise APIError(422, "invalid_followup", "The requested filter is unsupported.")
     try:
@@ -548,7 +535,6 @@ def guidance_followups_create(
     operation_id="guidanceFollowupsGet",
 )
 def guidance_followups_get(request, followup_id: UUID):
-    _enabled()
     try:
         return _detail(
             request.auth_user, get_followup(actor=request.auth_user, followup_id=followup_id)
@@ -734,7 +720,6 @@ class FollowUpHistoryPage(StrictSchema):
     operation_id="guidanceFollowupsHistory",
 )
 def history(request, followup_id: UUID, page: int = 1):
-    _enabled()
     _strict_query(request, ["page"])
     try:
         item = get_followup(actor=request.auth_user, followup_id=followup_id)

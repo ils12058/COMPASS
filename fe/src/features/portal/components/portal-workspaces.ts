@@ -43,6 +43,7 @@ import { hasPrivacyGovernanceWorkspace } from "@/features/privacy-governance/pri
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { canManageResources } from "@/features/resources/resources-access";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
+import { hasGroupSessionsWorkspace } from "@/features/group-sessions/group-sessions-access";
 import { hasServicesWorkspace } from "@/features/services/services-access";
 import {
   canManageOrganization,
@@ -78,8 +79,7 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
   const hasServices = hasServicesWorkspace(user);
   const hasAvailability = hasAvailabilityWorkspace(user);
   const hasAppointments = getAppointmentAccess(user).hasWorkspace;
-  const hasMyGroupSessions =
-    user.role === "STUDENT" && user.capabilities.includes("appointments.view_self");
+  const hasGroupSessions = hasGroupSessionsWorkspace(user);
   // Students with their own Messages, and Guidance staff with Messages for their workload. No other
   // role or designation (IT Admin, Institutional Officer, Head, DPO) adds it.
   const hasMessages = getGuidanceMessagesAccess(user).hasWorkspace;
@@ -126,8 +126,7 @@ export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[]
       label: "Scheduling",
       links: [
         { href: "/portal/appointments", label: "Appointments", icon: CalendarClock, visible: hasAppointments },
-        { href: "/portal/group-sessions/discover", label: "Browse Group Sessions", icon: UsersRound, visible: hasMyGroupSessions },
-        { href: "/portal/group-sessions/my", label: "My group sessions", icon: UsersRound, visible: hasMyGroupSessions },
+        { href: "/portal/group-sessions", label: "Group Sessions", icon: UsersRound, visible: hasGroupSessions },
         { href: "/portal/availability", label: "Availability", icon: Clock3, visible: hasAvailability },
         { href: "/portal/services", label: "Services", icon: HeartHandshake, visible: hasServices },
       ],

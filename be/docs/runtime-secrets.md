@@ -64,7 +64,7 @@ remain trusted. A compromised authorized process can read its own grants.
 | `proxy` | none |
 
 Keep all optional files present, even when empty. The Follow-Up key is a required, non-empty source
-for this deployment contract even while `GUIDANCE_FOLLOWUPS_ENABLED=false`; this file requirement
+for this deployment contract independently of workspace availability; this file requirement
 does not constitute institutional approval to expose the feature. Provision the independent keyring
 through the approved secret procedure and mount it to web only. Django retains existing enabled-feature
 checks; preflight does not reimplement them. Names, hostnames, feature flags, public VAPID keys, SMTP
@@ -687,8 +687,9 @@ maps it to `GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS_FILE=/run/secrets/guidance_followu
 Compose grants this independent ordered Fernet keyring to `web` only; worker and Beat have both key
 forms cleared and receive no mount. Provision it through the approved host secret procedure, never
 in Git or by the deployment helper. The required file is a deployment prerequisite, not institutional
-approval to expose Follow-Ups. Keep `GUIDANCE_FOLLOWUPS_ENABLED=false` until the written GCO/DPO/Records
-decisions, web keyring, identity-policy sync and other ADR-FUP-1A prerequisites are verified.
+approval to expose Follow-Ups. RELEASE-UNBLOCK-1 retires the global availability gate;
+written GCO/DPO/Records decisions, web keyring, identity-policy sync and other ADR-FUP-1A
+prerequisites remain independently verifiable release prerequisites.
 Missing keys continue to fail protected reads/writes closed; no existing domain key or plaintext
 fallback may be used. This repository audit did not inspect or establish the current host file's
 presence. See [the Follow-Up activation runbook](guidance-followups-operations.md).

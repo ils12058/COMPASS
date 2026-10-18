@@ -698,7 +698,6 @@ if keyring_reuses_secret(
 # Follow-Ups do not require new secrets at process startup. Web-only confidential
 # operations fail closed until the operator provisions and approves a separate keyring.
 # Worker, beat and realtime remain keyless; no notification tasks in FUP-1A.
-GUIDANCE_FOLLOWUPS_ENABLED = env_bool("GUIDANCE_FOLLOWUPS_ENABLED", False)
 GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = env_bool("GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED", False)
 _followup_keys = env("GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS", "")
 GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS = (

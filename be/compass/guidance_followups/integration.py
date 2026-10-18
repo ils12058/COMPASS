@@ -2,7 +2,6 @@
 
 from datetime import timedelta
 
-from django.conf import settings
 from django.db.models import Exists, F, OuterRef, Q, Subquery
 
 from compass.accounts.models import User
@@ -24,8 +23,6 @@ def followup_is_time_sensitive(due_at, now) -> bool:
 
 
 def pending_followups(*, actor, limit):
-    if not settings.GUIDANCE_FOLLOWUPS_ENABLED:
-        return ()
     try:
         actor = policy.current_actor(actor, manage=True)
     except FollowUpPermissionDenied:
@@ -58,8 +55,6 @@ def material_events():
 
 
 def current_events(*, actor):
-    if not settings.GUIDANCE_FOLLOWUPS_ENABLED:
-        return GuidanceFollowUpEvent.objects.none()
     try:
         actor = policy.current_actor(actor, manage=True)
     except FollowUpPermissionDenied:

@@ -11,6 +11,9 @@ import {
   ServiceGroupSessionsStaffPanel,
   ServiceGroupSessionsStudentPanel,
 } from "../src/features/services/service-group-sessions-panel.tsx";
+import { GroupSessionsStaffPage } from "../src/features/group-sessions/group-sessions-staff-page.tsx";
+import { GroupSessionsNavigation } from "../src/features/group-sessions/group-sessions-shared.tsx";
+import { CompassApiError } from "../src/lib/api/errors.ts";
 import { GroupSessionsDiscoveryPage } from "../src/features/group-sessions/group-sessions-discovery-page.tsx";
 import { GroupSessionDetailPage } from "../src/features/group-sessions/group-session-detail-page.tsx";
 import { GroupSessionsHistoryPage } from "../src/features/group-sessions/group-sessions-history-page.tsx";
@@ -45,7 +48,7 @@ const student = {
   first_name: "Student",
   last_name: "User",
   email: "student@example.test",
-  capabilities: ["appointments.create"],
+  capabilities: ["appointments.view_self", "appointments.manage_self"],
 };
 
 const SERVICE_ID = "svc-group-1";
@@ -127,10 +130,10 @@ const sampleMetrics = {
   attendance_rate_percent: 95,
 };
 
-function renderWithUser(element, user, seed = () => {}) {
+function renderWithUser(element, user, seed = () => {}, pathname = "/") {
   const client = new QueryClient({
     defaultOptions: {
-      queries: { retry: false, staleTime: Infinity, gcTime: Infinity },
+      queries: { retry: false, retryOnMount: false, staleTime: Infinity, gcTime: Infinity },
     },
   });
   seed(client);
@@ -145,7 +148,7 @@ function renderWithUser(element, user, seed = () => {}) {
           h(UnsavedChangesProvider, null, element)
         )
       ),
-      { params: { serviceId: SERVICE_ID } }
+      { params: { serviceId: SERVICE_ID }, pathname }
     )
   );
 }
@@ -322,7 +325,7 @@ test("Student Group Session discovery is available outside the staff-only Servic
 
   assert.match(html, /Group Sessions &amp; Workshops/);
   assert.match(html, /Resume &amp; Interview Masterclass/);
-  assert.match(html, /My group sessions/);
+  assert.match(html, /My Registrations/);
   assert.doesNotMatch(html, /Services unavailable/);
 });
 
@@ -382,7 +385,7 @@ test("Student history and direct event details remain reachable outside the Serv
   const history = renderWithUser(h(GroupSessionsHistoryPage), student, (client) => {
     client.setQueryData(getGroupSessionsGetMyRegistrationsQueryKey(), ok([registration]));
   });
-  assert.match(history, /My group sessions/);
+  assert.match(history, /My Registrations/);
   assert.match(history, /Cancelled/);
   assert.match(history, /Facilitator illness/);
   assert.match(history, /href="\/portal\/group-sessions\/gs-1"/);
@@ -523,10 +526,67 @@ test("ServiceDetailPage hides group session panels for IT_ADMIN and INSTITUTIONA
   const studentLinks = portalWorkspaceGroups(studentWithSchedulingView)
     .flatMap((group) => group.links)
     .map((link) => link.href);
-  assert.ok(studentLinks.includes("/portal/group-sessions/my"));
-  assert.ok(studentLinks.includes("/portal/group-sessions/discover"));
+  assert.equal(studentLinks.filter((href) => href.startsWith("/portal/group-sessions")).length, 1);
+  assert.ok(studentLinks.includes("/portal/group-sessions"));
   assert.ok(!portalWorkspaceGroups(manager).some((group) =>
     group.links.some((link) => link.href === "/portal/group-sessions/my")
   ));
 });
 
+
+
+test("one Group Sessions sidebar entry follows scheduling role and capability, independently of Services management", () => {
+  for (const role of ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+    const account = { ...manager, role, capabilities: ["appointments.manage", "appointments.view_self"] };
+    const entries = portalWorkspaceGroups(account).flatMap(group => group.links).filter(link => link.href.startsWith("/portal/group-sessions"));
+    assert.equal(entries.length, ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF"].includes(role) ? 1 : 0);
+    if (entries.length) assert.equal(entries[0].href, "/portal/group-sessions");
+  }
+  assert.equal(portalWorkspaceGroups({ ...manager, capabilities: ["services.manage"] }).flatMap(group => group.links).some(link => link.href === "/portal/group-sessions"), false);
+});
+
+test("Student and staff workspace tabs mark the current route", () => {
+  const html = renderWithUser(h(GroupSessionsNavigation), student, () => {}, "/portal/group-sessions/my");
+  assert.match(html, /aria-current="page"[^>]*href="\/portal\/group-sessions\/my"/);
+  assert.match(html, /Browse Sessions/);
+  assert.match(html, /My Registrations/);
+  const staff = renderWithUser(h(GroupSessionsNavigation), manager, () => {}, "/portal/group-sessions/attendance");
+  assert.match(staff, /aria-current="page"[^>]*href="\/portal\/group-sessions\/attendance"/);
+  assert.match(staff, /Manage Sessions/);
+  assert.doesNotMatch(staff, /Browse Sessions/);
+});
+
+test("centralized management reuses scoped session projections without Services management", () => {
+  const html = renderWithUser(h(GroupSessionsStaffPage), { ...manager, capabilities: ["appointments.manage", "services.catalog.view"] }, client => {
+    client.setQueryData(getGroupSessionsListStaffQueryKey(), ok(sampleSessions));
+    client.setQueryData(getGroupSessionsGetMetricsQueryKey(), ok(sampleMetrics));
+  });
+  assert.match(html, /Resume &amp; Interview Masterclass/);
+  assert.match(html, /Schedule Group Session/);
+  assert.match(html, /Help: Group Sessions/);
+  assert.doesNotMatch(html, /Services unavailable/);
+});
+
+test("attendance entry shows only participant-authorized summaries and no lifecycle controls", () => {
+  const html = renderWithUser(h(GroupSessionsStaffPage, { attendance: true }), manager, client => {
+    client.setQueryData(getGroupSessionsListStaffQueryKey(), ok([sampleSessions[0], { ...sampleSessions[0], id: "hidden", title: "No participant authority", can_access_participants: false }]));
+    client.setQueryData(getGroupSessionsGetMetricsQueryKey(), ok(sampleMetrics));
+  });
+  assert.match(html, /Roster &amp; Attendance/);
+  assert.doesNotMatch(html, /No participant authority|Schedule Group Session|>Edit<|>Cancel<|>Publish</);
+  const denied = renderWithUser(h(GroupSessionsStaffPage), { ...manager, role: "IT_ADMIN" });
+  assert.match(denied, /Group Sessions unavailable/);
+  assert.doesNotMatch(denied, /Participant Roster|Manage Sessions/);
+});
+
+test("discovery failures never become empty sessions, and distinguish access denial", () => {
+  for (const status of [403, 500, 503]) {
+    const html = renderWithUser(h(ServiceGroupSessionsStudentPanel), student, client => {
+      client.getQueryCache().build(client, { queryKey: getGroupSessionsDiscoverQueryKey() }).setState({ status: "error", fetchStatus: "idle", error: new CompassApiError({ status, body: { error: { code: "test_error", message: "Internal details" } }, headers: {}, method: "GET", url: "/api/v1/group-sessions/discover" }) });
+    });
+    assert.match(html, /role="alert"/);
+    assert.match(html, /Retry/);
+    assert.doesNotMatch(html, /No upcoming group sessions|Internal details/);
+    if (status === 403) assert.match(html, /access to this Group Sessions view/);
+  }
+});
