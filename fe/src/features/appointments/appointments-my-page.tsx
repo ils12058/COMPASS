@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
@@ -29,6 +30,11 @@ import {
   updateAppointmentQuery,
 } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess, type AppointmentAccess } from "@/features/appointments/appointments-access";
+import {
+  AppointmentsCalendar,
+  AppointmentsPresentationToggle,
+  type AppointmentPresentation,
+} from "@/features/appointments/appointments-calendar";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   AppointmentListOrdering,
@@ -46,6 +52,8 @@ function pageValue(value: string | null): number {
 }
 
 function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
+  const [presentation, setPresentation] = useState<AppointmentPresentation>("list");
+  const [calendarStartDate, setCalendarStartDate] = useState<Date | null>(null);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -74,7 +82,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
       page,
       page_size: 20,
     },
-    { query: { retry: false } },
+    { query: { retry: false, enabled: presentation === "list" } },
   );
 
   function movePage(nextPage: number) {
@@ -106,6 +114,10 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
   );
   // The order the rows are in: the reader's choice, or the default the backend applied.
   const ordering = requestedOrdering ?? pageData?.ordering;
+  function changePresentation(next: AppointmentPresentation) {
+    if (next === "calendar") setCalendarStartDate((current) => current ?? new Date());
+    setPresentation(next);
+  }
 
   return (
     <section aria-labelledby="my-appointments-heading">
@@ -118,9 +130,13 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
             ? "Shows scheduled appointments first. Use Filters to see past appointments."
             : undefined
         }
-      />
+      >
+        <div className="mt-3">
+          <AppointmentsPresentationToggle value={presentation} onChange={changePresentation} />
+        </div>
+      </AppointmentsPageHeading>
 
-      <form action={pathname} method="get" key={searchParams.toString()} role="search" aria-label="My Appointments">
+      <form hidden={presentation !== "list"} action={pathname} method="get" key={searchParams.toString()} role="search" aria-label="My Appointments">
       {/* Applying filters keeps the reader's chosen order. */}
       {requestedOrdering ? <input type="hidden" name="ordering" value={requestedOrdering} /> : null}
       <FloatingListTools
@@ -166,6 +182,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
       </FloatingListTools>
       </form>
 
+      <div hidden={presentation !== "list"}>
       <Panel aria-labelledby="my-appointments-results-heading">
         <PanelHeader
           title="Appointments"
@@ -316,6 +333,21 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
           />
         ) : null}
       </Panel>
+      </div>
+
+      <AppointmentsCalendar
+        active={presentation === "calendar"}
+        source="my"
+        isStudent={access.isStudent}
+        initialDate={calendarStartDate}
+        filters={{
+          ...(search ? { search } : {}),
+          ...(status ? { status } : {}),
+          ...(upcoming ? { upcoming: true } : {}),
+          ...(fromDate ? { fromDate } : {}),
+          ...(toDate ? { toDate } : {}),
+        }}
+      />
     </section>
   );
 }
