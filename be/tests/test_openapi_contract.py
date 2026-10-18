@@ -1092,8 +1092,12 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "EmailChangeRequestResponse",
         "EmailChangeConfirmRequest",
         "EmailChangeConfirmResponse",
+        "EmailChangeStatusRecord",
+        "EmailChangeStatusResponse",
         "ManagedEmailChangeRequest",
         "ManagedEmailChangeResponse",
+        "ManagedEmailChangeStatusRecord",
+        "ManagedEmailChangeStatusResponse",
         "ActivityPageResponse",
         "MyProfileResponse",
         "MyProfileUpdateRequest",
@@ -1272,6 +1276,26 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
             "post",
         )["operationId"]
         == "authConfirmEmailChange"
+    )
+    owner_email_change_status = _operation(
+        schema,
+        "/api/v1/auth/email-change/status",
+        "get",
+    )
+    assert owner_email_change_status["operationId"] == "authGetEmailChangeStatus"
+    managed_email_change_status = _operation(
+        schema,
+        "/api/v1/accounts/{user_id}/email-change",
+        "get",
+    )
+    assert managed_email_change_status["operationId"] == "accountsGetEmailChangeStatus"
+    for status_operation in (owner_email_change_status, managed_email_change_status):
+        response_schema = status_operation["responses"]["200"]["content"]["application/json"][
+            "schema"
+        ]
+        assert response_schema["$ref"]
+    assert set(schemas["EmailChangeStatusRecord"]["properties"]).isdisjoint(
+        {"code", "code_hash", "otp", "otp_hash"}
     )
     assert (
         _operation(

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Notice } from "@/components/ui/notice";
 import { Select } from "@/components/ui/select";
 import { Panel, PanelBody, PanelFooter, PanelHeader } from "@/components/ui/panel";
 import {
@@ -34,6 +35,7 @@ import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   useAccountsDisable,
   useAccountsEnable,
+  useAccountsGetEmailChangeStatus,
   useAccountsRequestEmailChange,
   useAccountsUpdateIdentity,
   useAccountsUpdateStudentLifecycle,
@@ -54,6 +56,16 @@ export function AccountOverview() {
   const action = useManagedAction();
   const updateIdentity = useAccountsUpdateIdentity();
   const changeEmail = useAccountsRequestEmailChange();
+  const emailChangeStatus = useAccountsGetEmailChangeStatus(account.id, {
+    query: {
+      enabled: !self,
+      retry: false,
+      refetchOnMount: "always",
+      refetchOnWindowFocus: true,
+      refetchInterval: 15_000,
+    },
+  });
+  const emailChangeRequest = emailChangeStatus.data?.data.request;
   const disable = useAccountsDisable();
   const enable = useAccountsEnable();
   const updateLifecycle = useAccountsUpdateStudentLifecycle();
@@ -61,7 +73,6 @@ export function AccountOverview() {
   const [identity, setIdentity] = useState<IdentityUpdateRequest>({});
   const [emailOpen, setEmailOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
-  const [stagedEmail, setStagedEmail] = useState<string | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [turnstileReset, setTurnstileReset] = useState(0);
   const [confirm, setConfirm] = useState<Confirmation>(null);
@@ -70,6 +81,10 @@ export function AccountOverview() {
   );
   const busy =
     disable.isPending || enable.isPending || updateLifecycle.isPending;
+
+  useEffect(() => {
+    if (emailChangeRequest?.status === "confirmed") void invalidate();
+  }, [emailChangeRequest?.status, emailChangeRequest?.confirmed_at, invalidate]);
 
   function beginIdentity() {
     setIdentity({
@@ -115,10 +130,7 @@ export function AccountOverview() {
     setTurnstileReset((value) => value + 1);
     if (!response) return;
     setEmailOpen(false);
-    setStagedEmail(requested);
-    action.setNotice(
-      "A verification code was sent to the proposed new email address. The current sign-in email remains unchanged until the account holder confirms the new address.",
-    );
+    await Promise.all([invalidate(), emailChangeStatus.refetch()]);
   }
 
   async function confirmAction() {
@@ -202,14 +214,25 @@ export function AccountOverview() {
             </dd>
           </div>
         </dl>
-        {stagedEmail ? (
-          <p
-            role="status"
-            className="mt-4 rounded-sm bg-brand-wash px-3 py-2.5 text-sm leading-6 text-ink"
-          >
-            Verification required for {stagedEmail}. The current email remains
-            unchanged until the account holder confirms the proposed address.
-          </p>
+        {emailChangeRequest?.status === "pending" ? (
+          <Notice role="status" tone="warning" className="mt-4" title="Verification pending">
+            A code was sent to <span className="break-all font-semibold text-ink">{emailChangeRequest.destination_email}</span>. The current sign-in email remains active until the account holder verifies the new address.
+          </Notice>
+        ) : null}
+        {emailChangeRequest?.status === "confirmed" ? (
+          <Notice role="status" tone="success" className="mt-4" title="Email verified">
+            The account holder verified <span className="break-all font-semibold text-ink">{emailChangeRequest.destination_email}</span>. The sign-in email has been updated.
+          </Notice>
+        ) : null}
+        {emailChangeRequest && ["expired", "cancelled", "verification_unavailable"].includes(emailChangeRequest.status) ? (
+          <Notice role="status" tone="info" className="mt-4">
+            This email change is no longer active. Request a new change to send another verification code.
+          </Notice>
+        ) : null}
+        {emailChangeStatus.isError ? (
+          <Notice role="alert" tone="danger" className="mt-4" action={<Button variant="secondary" onClick={() => void emailChangeStatus.refetch()}>Retry</Button>}>
+            Email verification status could not be loaded.
+          </Notice>
         ) : null}
         {!account.is_active ? (
           <p className="mt-3 text-sm text-muted">

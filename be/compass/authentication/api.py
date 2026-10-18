@@ -34,6 +34,7 @@ from compass.authentication.email_change import (
     EmailChangeNotFound,
     EmailChangeStrongAuthRequired,
     confirm_email_change,
+    get_email_change_status,
     request_current_email_security_challenge,
     request_self_email_change,
 )
@@ -213,6 +214,19 @@ class EmailChangeConfirmRequest(StrictSchema):
 class EmailChangeConfirmResponse(Schema):
     changed: bool
     reauthentication_required: bool
+
+
+class EmailChangeStatusRecord(Schema):
+    status: str
+    request_id: UUID | None = None
+    challenge_id: UUID | None = None
+    destination_email: str | None = None
+    expires_at: datetime | None = None
+    confirmed_at: datetime | None = None
+
+
+class EmailChangeStatusResponse(Schema):
+    request: EmailChangeStatusRecord | None
 
 
 class SessionSummary(Schema):
@@ -639,6 +653,30 @@ def request_email_change(request, payload: EmailChangeRequest):
         "request_id": pending.request_id,
         "challenge_id": pending.challenge_id,
         "expires_at": pending.expires_at,
+    }
+
+
+@router.get(
+    "/email-change/status",
+    response=response_with_errors(EmailChangeStatusResponse, 401),
+    auth=session_auth,
+    operation_id="authGetEmailChangeStatus",
+    summary="Get the authenticated account's latest email-change status",
+)
+def email_change_status(request, response: HttpResponse):
+    status = get_email_change_status(user_id=request.auth_user.pk)
+    response["Cache-Control"] = "no-store"
+    if status.status == "none":
+        return {"request": None}
+    return {
+        "request": {
+            "status": status.status,
+            "request_id": status.request_id,
+            "challenge_id": status.challenge_id,
+            "destination_email": status.destination_email,
+            "expires_at": status.expires_at,
+            "confirmed_at": status.confirmed_at,
+        }
     }
 
 

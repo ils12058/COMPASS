@@ -7,6 +7,7 @@ from enum import StrEnum
 from typing import NoReturn
 from uuid import UUID
 
+from django.http import HttpResponse
 from ninja import File, Router, Schema, Status
 from ninja.files import UploadedFile
 from pydantic import ConfigDict
@@ -27,6 +28,7 @@ from compass.authentication.email_change import (
     EmailChangeInvalid,
     EmailChangeNotFound,
     EmailChangePermissionDenied,
+    get_email_change_status,
     request_administrative_email_change,
 )
 from compass.authentication.email_otp import EmailOTPInvalid, EmailOTPSecurityUnavailable
@@ -154,6 +156,18 @@ class ManagedEmailChangeResponse(StrictSchema):
     request_id: UUID
     challenge_id: UUID
     expires_at: datetime
+
+
+class ManagedEmailChangeStatusRecord(StrictSchema):
+    status: str
+    request_id: UUID | None = None
+    destination_email: str | None = None
+    expires_at: datetime | None = None
+    confirmed_at: datetime | None = None
+
+
+class ManagedEmailChangeStatusResponse(StrictSchema):
+    request: ManagedEmailChangeStatusRecord | None
 
 
 class RoleUpdateRequest(StrictSchema):
@@ -642,6 +656,34 @@ def account_email_change(request, user_id: UUID, payload: ManagedEmailChangeRequ
         "request_id": pending.request_id,
         "challenge_id": pending.challenge_id,
         "expires_at": pending.expires_at,
+    }
+
+
+@router.get(
+    "/{user_id}/email-change",
+    response=response_with_errors(ManagedEmailChangeStatusResponse, 401, 403, 404, 422),
+    auth=session_auth,
+    operation_id="accountsGetEmailChangeStatus",
+    summary="Get the latest managed email-change status",
+)
+def account_email_change_status(request, user_id: UUID, response: HttpResponse):
+    _require_management(request, recent_mfa=False)
+    try:
+        get_account(user_id=user_id)
+    except AccountManagementError as exc:
+        _raise_management_error(exc)
+    status = get_email_change_status(user_id=user_id)
+    response["Cache-Control"] = "no-store"
+    if status.status == "none":
+        return {"request": None}
+    return {
+        "request": {
+            "status": status.status,
+            "request_id": status.request_id,
+            "destination_email": status.destination_email,
+            "expires_at": status.expires_at,
+            "confirmed_at": status.confirmed_at,
+        }
     }
 
 

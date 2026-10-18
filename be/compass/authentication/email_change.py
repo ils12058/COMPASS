@@ -84,6 +84,55 @@ class EmailChangeConfirmation:
     reauthentication_required: bool = True
 
 
+@dataclass(frozen=True, slots=True)
+class EmailChangeStatus:
+    """Safe status projection for the account owner or an authorized account manager."""
+
+    status: str
+    request_id: object | None = None
+    challenge_id: object | None = None
+    destination_email: str | None = None
+    expires_at: datetime | None = None
+    confirmed_at: datetime | None = None
+
+
+def get_email_change_status(*, user_id, now: datetime | None = None) -> EmailChangeStatus:
+    """Return the latest request's safe state without exposing OTP material."""
+
+    current = now or timezone.now()
+    pending = (
+        EmailChangeRequest.objects.filter(user_id=user_id)
+        .select_related("email_otp_challenge")
+        .first()
+    )
+    if pending is None:
+        return EmailChangeStatus(status="none")
+
+    challenge = pending.email_otp_challenge
+    if pending.confirmed_at is not None:
+        status = "confirmed"
+    elif pending.cancelled_at is not None:
+        status = "cancelled"
+    elif pending.expires_at <= current:
+        status = "expired"
+    elif (
+        challenge.consumed_at is not None
+        or challenge.failed_attempt_count >= settings.AUTH_EMAIL_OTP_MAX_ATTEMPTS
+    ):
+        status = "verification_unavailable"
+    else:
+        status = "pending"
+
+    return EmailChangeStatus(
+        status=status,
+        request_id=pending.pk,
+        challenge_id=pending.email_otp_challenge_id if status == "pending" else None,
+        destination_email=pending.new_email,
+        expires_at=pending.expires_at,
+        confirmed_at=pending.confirmed_at,
+    )
+
+
 def _normalize_email(value: str) -> str:
     try:
         return User.objects.clean_email(value)
@@ -462,8 +511,10 @@ __all__ = [
     "EmailChangePermissionDenied",
     "EmailChangeStrongAuthRequired",
     "EmailChangeConfirmation",
+    "EmailChangeStatus",
     "PendingEmailChange",
     "confirm_email_change",
+    "get_email_change_status",
     "request_administrative_email_change",
     "request_current_email_security_challenge",
     "request_self_email_change",
