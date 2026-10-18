@@ -446,7 +446,15 @@ class InventoryPayload(StrictSchema):
     previous_illness: str = ""
     education_entries: list[EducationEntryPayload] = Field(default_factory=list)
     program_id: UUID | None = None
-    year_level: int | None = Field(default=None, ge=1, le=10)
+    year_level: int | None = Field(
+        default=None,
+        ge=1,
+        le=10,
+        description=(
+            "Stored compatibility domain. The selected Program's configured Year Level policy "
+            "is enforced by the Inventory service."
+        ),
+    )
     course_currently_enrolled: str = ""
     major: str = ""
     schedule_satisfied: bool | None = None

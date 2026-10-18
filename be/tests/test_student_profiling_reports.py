@@ -423,12 +423,14 @@ def test_student_profile_enforces_current_counselor_college_scope_across_filters
             academic_year=current_year,
             revision=revision,
             program=program,
+            year_level=5 if student == student_a1 else 1,
         )
         make_inventory(
             student=student,
             academic_year=historical_year,
             revision=revision,
             program=program,
+            year_level=10 if student == student_a1 else 1,
             submitted_time=submitted_at(2025, 8, 30),
         )
 
@@ -458,6 +460,13 @@ def test_student_profile_enforces_current_counselor_college_scope_across_filters
     assert [
         column["submitted_inventory_count"] for column in unfiltered_body["program_columns"]
     ] == [1]
+
+    recorded_fifth = client.get("/api/v1/reports/student-profile", {"year_level": 5})
+    assert recorded_fifth.status_code == 200
+    assert recorded_fifth.json()["report_context"]["submitted_inventory_count"] == 1
+    assert recorded_fifth.json()["report_context"]["year_level_label"] == (
+        "5th Year (recorded value)"
+    )
 
     assert (
         client.get(
@@ -499,6 +508,15 @@ def test_student_profile_enforces_current_counselor_college_scope_across_filters
     assert historical.status_code == 200
     assert historical.json()["report_context"]["submitted_inventory_count"] == 1
     assert historical.json()["inventory_coverage"]["submitted_count"] == 1
+    recorded_tenth = client.get(
+        "/api/v1/reports/student-profile",
+        {"academic_year_id": historical_year.pk, "year_level": 10},
+    )
+    assert recorded_tenth.status_code == 200
+    assert recorded_tenth.json()["report_context"]["submitted_inventory_count"] == 1
+    assert recorded_tenth.json()["report_context"]["year_level_label"] == (
+        "10th Year (recorded value)"
+    )
 
     head_report = auth_client(head).get("/api/v1/reports/student-profile")
     assert head_report.status_code == 200
@@ -516,9 +534,20 @@ def test_student_profile_enforces_current_counselor_college_scope_across_filters
 
 @pytest.mark.parametrize(
     ("value", "label"),
-    [(1, "1st Year"), (2, "2nd Year"), (3, "3rd Year"), (4, "4th Year"), (5, "5th Year")],
+    [
+        (1, "1st Year"),
+        (2, "2nd Year"),
+        (3, "3rd Year"),
+        (4, "4th Year"),
+        (5, "5th Year (recorded value)"),
+        (6, "6th Year (recorded value)"),
+        (7, "7th Year (recorded value)"),
+        (8, "8th Year (recorded value)"),
+        (9, "9th Year (recorded value)"),
+        (10, "10th Year (recorded value)"),
+    ],
 )
-def test_year_level_labels_are_numeric_ordinals(value, label):
+def test_year_level_labels_keep_historical_values_explicit(value, label):
     assert year_level_label(value) == label
     assert all(term not in label for term in ("Freshman", "Sophomore", "Junior", "Senior"))
 

@@ -4,14 +4,36 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from enum import StrEnum
 from types import MappingProxyType
+
+
+class AcademicClassification(StrEnum):
+    BACHELORS = "BACHELORS"
+    MASTERS = "MASTERS"
+    DOCTORAL = "DOCTORAL"
+
+
+class YearLevelPolicyStatus(StrEnum):
+    CONFIGURED = "CONFIGURED"
+    PENDING_POLICY = "PENDING_POLICY"
 
 
 @dataclass(frozen=True, slots=True)
 class CanonicalProgram:
     code: str
     name: str
+    academic_classification: AcademicClassification
+    applicable_year_levels: tuple[int, ...] | None
     active: bool = True
+
+    @property
+    def year_level_policy_status(self) -> YearLevelPolicyStatus:
+        return (
+            YearLevelPolicyStatus.CONFIGURED
+            if self.applicable_year_levels is not None
+            else YearLevelPolicyStatus.PENDING_POLICY
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,8 +52,31 @@ class CanonicalCampus:
     active: bool = True
 
 
-def _program(code: str, name: str) -> CanonicalProgram:
-    return CanonicalProgram(code=code, name=name)
+def _bachelors(code: str, name: str) -> CanonicalProgram:
+    return CanonicalProgram(
+        code=code,
+        name=name,
+        academic_classification=AcademicClassification.BACHELORS,
+        applicable_year_levels=(1, 2, 3, 4),
+    )
+
+
+def _masters(code: str, name: str) -> CanonicalProgram:
+    return CanonicalProgram(
+        code=code,
+        name=name,
+        academic_classification=AcademicClassification.MASTERS,
+        applicable_year_levels=None,
+    )
+
+
+def _doctoral(code: str, name: str) -> CanonicalProgram:
+    return CanonicalProgram(
+        code=code,
+        name=name,
+        academic_classification=AcademicClassification.DOCTORAL,
+        applicable_year_levels=None,
+    )
 
 
 CANONICAL_CAMPUSES = (
@@ -43,55 +88,55 @@ CANONICAL_CAMPUSES = (
                 code="CAS",
                 name="College of Arts and Sciences",
                 programs=(
-                    _program("BSDEVCOM", "Bachelor of Science in Development Communication"),
-                    _program("BSAM", "Bachelor of Science in Applied Mathematics"),
-                    _program("BSPSYCH", "Bachelor of Science in Psychology"),
-                    _program("BSBIOL", "Bachelor of Science in Biology"),
-                    _program("BAELS", "Bachelor of Arts in English Language Studies"),
-                    _program("BASOC", "Bachelor of Arts in Sociology"),
+                    _bachelors("BSDEVCOM", "Bachelor of Science in Development Communication"),
+                    _bachelors("BSAM", "Bachelor of Science in Applied Mathematics"),
+                    _bachelors("BSPSYCH", "Bachelor of Science in Psychology"),
+                    _bachelors("BSBIOL", "Bachelor of Science in Biology"),
+                    _bachelors("BAELS", "Bachelor of Arts in English Language Studies"),
+                    _bachelors("BASOC", "Bachelor of Arts in Sociology"),
                 ),
             ),
             CanonicalCollege(
                 code="CBPA",
                 name="College of Business and Public Administration",
                 programs=(
-                    _program("BPA", "Bachelor of Public Administration"),
-                    _program("BSHM", "Bachelor of Science in Hospitality Management"),
-                    _program("BSA", "Bachelor of Science in Accountancy"),
-                    _program("BSOA", "Bachelor of Science in Office Administration"),
-                    _program("BSENTREP", "Bachelor of Science in Entrepreneurship"),
-                    _program("BSBA", "Bachelor of Science in Business Administration"),
+                    _bachelors("BPA", "Bachelor of Public Administration"),
+                    _bachelors("BSHM", "Bachelor of Science in Hospitality Management"),
+                    _bachelors("BSA", "Bachelor of Science in Accountancy"),
+                    _bachelors("BSOA", "Bachelor of Science in Office Administration"),
+                    _bachelors("BSENTREP", "Bachelor of Science in Entrepreneurship"),
+                    _bachelors("BSBA", "Bachelor of Science in Business Administration"),
                 ),
             ),
             CanonicalCollege(
                 code="COENG",
                 name="College of Engineering",
                 programs=(
-                    _program("BSCE", "Bachelor of Science in Civil Engineering"),
-                    _program("BSEE", "Bachelor of Science in Electrical Engineering"),
-                    _program("BSME", "Bachelor of Science in Mechanical Engineering"),
+                    _bachelors("BSCE", "Bachelor of Science in Civil Engineering"),
+                    _bachelors("BSEE", "Bachelor of Science in Electrical Engineering"),
+                    _bachelors("BSME", "Bachelor of Science in Mechanical Engineering"),
                 ),
             ),
             CanonicalCollege(
                 code="GS",
                 name="Graduate School",
                 programs=(
-                    _program("DBA", "Doctor in Business Administration"),
-                    _program("DPA", "Doctor of Public Administration"),
-                    _program("EDD", "Doctor of Education"),
-                    _program("MBA", "Master in Business Administration"),
-                    _program("MPA", "Master in Public Administration"),
-                    _program("MM", "Master in Management"),
-                    _program("MAED", "Master of Arts in Education"),
+                    _doctoral("DBA", "Doctor in Business Administration"),
+                    _doctoral("DPA", "Doctor of Public Administration"),
+                    _doctoral("EDD", "Doctor of Education"),
+                    _masters("MBA", "Master in Business Administration"),
+                    _masters("MPA", "Master in Public Administration"),
+                    _masters("MM", "Master in Management"),
+                    _masters("MAED", "Master of Arts in Education"),
                 ),
             ),
             CanonicalCollege(
                 code="CCMS",
                 name="College of Computing and Multimedia Studies",
                 programs=(
-                    _program("BSIT", "Bachelor of Science in Information Technology"),
-                    _program("BSIS", "Bachelor of Science in Information Systems"),
-                    _program("MIT", "Master in Information Technology"),
+                    _bachelors("BSIT", "Bachelor of Science in Information Technology"),
+                    _bachelors("BSIS", "Bachelor of Science in Information Systems"),
+                    _masters("MIT", "Master in Information Technology"),
                 ),
             ),
         ),
@@ -104,10 +149,10 @@ CANONICAL_CAMPUSES = (
                 code="COED",
                 name="College of Education",
                 programs=(
-                    _program("BSED", "Bachelor of Secondary Education"),
-                    _program("BEED", "Bachelor of Elementary Education"),
-                    _program("BTLED", "Bachelor of Technology and Livelihood Education"),
-                    _program("BPED", "Bachelor of Physical Education"),
+                    _bachelors("BSED", "Bachelor of Secondary Education"),
+                    _bachelors("BEED", "Bachelor of Elementary Education"),
+                    _bachelors("BTLED", "Bachelor of Technology and Livelihood Education"),
+                    _bachelors("BPED", "Bachelor of Physical Education"),
                 ),
             ),
         ),
@@ -119,7 +164,7 @@ CANONICAL_CAMPUSES = (
             CanonicalCollege(
                 code="CFAST",
                 name="College of Fisheries, Aquatic Sciences, and Technology",
-                programs=(_program("BSF", "Bachelor of Science in Fisheries"),),
+                programs=(_bachelors("BSF", "Bachelor of Science in Fisheries"),),
             ),
         ),
     ),
@@ -131,9 +176,9 @@ CANONICAL_CAMPUSES = (
                 code="CANR",
                 name="College of Agriculture and Natural Resources",
                 programs=(
-                    _program("BSAGRI", "Bachelor of Science in Agriculture"),
-                    _program("BSES", "Bachelor of Science in Environmental Science"),
-                    _program(
+                    _bachelors("BSAGRI", "Bachelor of Science in Agriculture"),
+                    _bachelors("BSES", "Bachelor of Science in Environmental Science"),
+                    _bachelors(
                         "BSABE", "Bachelor of Science in Agricultural and Biosystems Engineering"
                     ),
                 ),
@@ -148,8 +193,8 @@ CANONICAL_CAMPUSES = (
                 code="COTT",
                 name="College of Trades and Technology",
                 programs=(
-                    _program("BTVTED", "Bachelor of Technical-Vocational Teacher Education"),
-                    _program("BSINDTECH", "Bachelor of Science in Industrial Technology"),
+                    _bachelors("BTVTED", "Bachelor of Technical-Vocational Teacher Education"),
+                    _bachelors("BSINDTECH", "Bachelor of Science in Industrial Technology"),
                 ),
             ),
         ),
@@ -162,9 +207,9 @@ CANONICAL_CAMPUSES = (
                 code="ENTIENZA",
                 name="Ret. Judge Antonio C. Entienza Campus",
                 programs=(
-                    _program("BSED", "Bachelor of Secondary Education"),
-                    _program("BEED", "Bachelor of Elementary Education"),
-                    _program("BSENTREP", "Bachelor of Science in Entrepreneurship"),
+                    _bachelors("BSED", "Bachelor of Secondary Education"),
+                    _bachelors("BEED", "Bachelor of Elementary Education"),
+                    _bachelors("BSENTREP", "Bachelor of Science in Entrepreneurship"),
                 ),
             ),
         ),
@@ -216,6 +261,15 @@ def _validate_registry() -> None:
                         f"canonical Program code and name are required under "
                         f"{campus.code}/{college.code}"
                     )
+                if program.academic_classification == AcademicClassification.BACHELORS:
+                    if program.applicable_year_levels != (1, 2, 3, 4):
+                        raise RuntimeError(
+                            "canonical Bachelor's Programs must support Year Levels 1 through 4"
+                        )
+                elif program.applicable_year_levels is not None:
+                    raise RuntimeError(
+                        "postgraduate Year Level policy must remain unconfigured until confirmed"
+                    )
                 if len(program.code) > 32 or len(program.name) > 160:
                     raise RuntimeError(
                         f"canonical Program exceeds DB limits: "
@@ -251,3 +305,18 @@ CANONICAL_PROGRAM_IDENTITIES = frozenset(
     for college in campus.colleges
     for program in college.programs
 )
+CANONICAL_PROGRAM_BY_IDENTITY: Mapping[tuple[str, str, str], CanonicalProgram] = MappingProxyType(
+    {
+        (campus.code, college.code, program.code): program
+        for campus in CANONICAL_CAMPUSES
+        for college in campus.colleges
+        for program in college.programs
+    }
+)
+
+
+def canonical_program_metadata(
+    campus_code: str, college_code: str, program_code: str
+) -> CanonicalProgram | None:
+    """Return metadata only for an exact code-owned Program identity."""
+    return CANONICAL_PROGRAM_BY_IDENTITY.get((campus_code, college_code, program_code))

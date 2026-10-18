@@ -8,6 +8,7 @@ import type {
   CounselorInventoryDetailResponse,
   InventoryResponse,
 } from "@/lib/api/generated/model";
+import { recordedYearLevelFilterLabel } from "@/lib/year-level";
 import {
   CivilStatusCategoryValue,
   CurrentReligionCategoryValue,
@@ -287,7 +288,12 @@ export function InventoryReadOnly({
         <ValueGrid>
           <DefinitionValue label="Program" value={inventory.program ? `${inventory.program.code} · ${inventory.program.name}` : "Not provided"} />
           <DefinitionValue label="Course at submission" value={shown(inventory.course_currently_enrolled)} />
-          <DefinitionValue label="Year Level" value={shown(inventory.year_level)} />
+          <DefinitionValue
+            label="Year Level"
+            value={inventory.year_level !== null && inventory.year_level !== undefined
+              ? recordedYearLevelFilterLabel(inventory.year_level)
+              : "Not provided"}
+          />
           <DefinitionValue label="Major" value={shown(inventory.major)} />
           <DefinitionValue label="Satisfied with schedule" value={yesNo(inventory.schedule_satisfied)} />
           <DefinitionValue label="Schedule satisfaction reason" value={shown(inventory.schedule_satisfaction_reason)} />

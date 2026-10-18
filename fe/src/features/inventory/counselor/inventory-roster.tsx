@@ -30,7 +30,7 @@ import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useAcademicYearsList } from "@/lib/api/generated/academic-years/academic-years";
 import { useInventoryListStudents } from "@/lib/api/generated/inventory/inventory";
 import { InventoryRosterOrdering, InventoryStatusValue, type AcademicYearResponse } from "@/lib/api/generated/model";
-import { YEAR_LEVELS, yearLevelLabel } from "@/lib/year-level";
+import { RECORDED_YEAR_LEVELS, recordedYearLevelFilterLabel } from "@/lib/year-level";
 
 const pageSize = 20;
 
@@ -146,8 +146,8 @@ function RosterFilters({
             onChange={(event) => setDraft((current) => ({ ...current, yearLevel: event.target.value }))}
           >
             <option value="">All Year Levels</option>
-            {YEAR_LEVELS.map((year) => (
-              <option key={year} value={year}>{yearLevelLabel(year)}</option>
+            {RECORDED_YEAR_LEVELS.map((year) => (
+              <option key={year} value={year}>{recordedYearLevelFilterLabel(year)}</option>
             ))}
           </Select>
         </FilterField>
@@ -389,7 +389,11 @@ export function CounselorInventoryRoster() {
                       </th>
                       <td className={`${dataTable.cell} text-ink`}>{row.academic_year.label}</td>
                       <td className={`${dataTable.cell} text-ink`}>{row.program ? `${row.program.code} · ${row.program.name}` : "Not provided"}</td>
-                      <td className={`${dataTable.cell} text-ink`}>{row.year_level ?? "Not provided"}</td>
+                      <td className={`${dataTable.cell} text-ink`}>
+                        {row.year_level === null
+                          ? "Not provided"
+                          : recordedYearLevelFilterLabel(row.year_level)}
+                      </td>
                       <td className={dataTable.cell}>
                         <InventoryStatus status={row.status} correctionPending={row.correction_pending} />
                       </td>

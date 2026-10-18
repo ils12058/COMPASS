@@ -340,7 +340,8 @@ def year_level_label(year_level: int) -> str:
         suffix = "th"
     else:
         suffix = {1: "st", 2: "nd", 3: "rd"}.get(year_level % 10, "th")
-    return f"{year_level}{suffix} Year"
+    label = f"{year_level}{suffix} Year"
+    return f"{label} (recorded value)" if year_level > 4 else label
 
 
 def _organization_reference(item) -> dict[str, object] | None:
