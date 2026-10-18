@@ -107,6 +107,7 @@ EXPECTED_OPERATION_IDS = {
     "authRequestEmailChangeSecurityChallenge",
     "authRequestEmailChange",
     "authConfirmEmailChange",
+    "authGetEmailChangeStatus",
     "authLogin",
     "authRequestPasswordAccess",
     "authConfirmPasswordAccess",
@@ -143,6 +144,7 @@ EXPECTED_OPERATION_IDS = {
     "accountsGetEffectiveAccess",
     "accountsUpdateIdentity",
     "accountsRequestEmailChange",
+    "accountsGetEmailChangeStatus",
     "accountsDisable",
     "accountsEnable",
     "accountsChangeRole",
@@ -2091,7 +2093,12 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         assert not {"appointment_policy", "provider_roles", "default_duration_minutes"} & set(
             properties
         )
-    assert set(schemas["ServiceProviderCandidate"]["properties"]) == {"id", "display_name"}
+    assert set(schemas["ServiceProviderCandidate"]["properties"]) == {
+        "id",
+        "display_name",
+        "profile_photo_url",
+        "profile_photo_updated_at",
+    }
     assert schemas["Weekday"]["enum"] == [
         "MONDAY",
         "TUESDAY",
@@ -2392,8 +2399,20 @@ def test_appointment_frontend_readiness_openapi_contract() -> None:
     assert appointment["properties"]["student"]["$ref"].endswith("/AppointmentStudentSummary")
 
     student = schemas["AppointmentStudentSummary"]
-    assert set(student["properties"]) == {"id", "institutional_id", "display_name"}
-    assert set(student["required"]) == {"id", "institutional_id", "display_name"}
+    assert set(student["properties"]) == {
+        "id",
+        "institutional_id",
+        "display_name",
+        "profile_photo_url",
+        "profile_photo_updated_at",
+    }
+    assert set(student["required"]) == {
+        "id",
+        "institutional_id",
+        "display_name",
+        "profile_photo_url",
+        "profile_photo_updated_at",
+    }
     assert "email" not in student["properties"]
     assert "contact_number" not in student["properties"]
 
@@ -2725,6 +2744,8 @@ def test_counseling_frontend_readiness_openapi_contract() -> None:
         "id",
         "institutional_id",
         "display_name",
+        "profile_photo_url",
+        "profile_photo_updated_at",
     }
 
     correction = schemas["CounselingEncounterAppointmentCandidate"]
@@ -2742,6 +2763,8 @@ def test_counseling_frontend_readiness_openapi_contract() -> None:
         "id",
         "institutional_id",
         "display_name",
+        "profile_photo_url",
+        "profile_photo_updated_at",
     }
 
     student_list = _operation(schema, "/api/v1/counseling/students", "get")
@@ -2820,7 +2843,13 @@ def test_ecounseling_join_and_context_readiness_openapi_contract() -> None:
         "/CounselorWorkspaceStudentSummary"
     )
     workspace_student = schemas["CounselorWorkspaceStudentSummary"]
-    assert set(workspace_student["required"]) == {"id", "display_name", "institutional_id"}
+    assert set(workspace_student["required"]) == {
+        "id",
+        "display_name",
+        "institutional_id",
+        "profile_photo_url",
+        "profile_photo_updated_at",
+    }
     assert {"type": "null"} in workspace_student["properties"]["institutional_id"]["anyOf"]
     student_workspace = schemas["StudentWorkspaceResponse"]
     assert student_workspace["properties"]["counselor"]["$ref"].endswith("/PersonWorkspaceSummary")
