@@ -1,4 +1,6 @@
 {% extends "compass/email/base.txt" %}
 {% block content %}Your Good Moral certificate has been issued in COMPASS.
 
-Sign in to COMPASS to review it.{% endblock %}
+Sign in to review your certificate and the actions available to you.
+
+If you need help accessing it, contact the Guidance and Counseling Office through an official university channel.{% endblock %}

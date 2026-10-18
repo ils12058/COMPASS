@@ -1,4 +1,4 @@
 {% extends "compass/email/base.txt" %}
 {% block content %}A COMPASS Appointment has been cancelled.
 
-Sign in to COMPASS to review the details.{% endblock %}
+Sign in to check the current appointment status and any next steps.{% endblock %}

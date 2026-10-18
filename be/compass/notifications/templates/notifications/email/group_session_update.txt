@@ -1,4 +1,5 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}A COMPASS Group Session you registered for has an update.
-Sign in to COMPASS to review the current details.
+{% block content %}An update affects your COMPASS Group Session registration.
+
+Sign in to review the current registration status, session details, and any instructions.
 {% endblock %}

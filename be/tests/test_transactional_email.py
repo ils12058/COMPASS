@@ -53,8 +53,9 @@ NOTIFICATION_TEMPLATE_DIR = (
     / "notifications"
     / "email"
 )
-FOOTER_LINES = (
-    "This is an automated COMPASS message.",
+FOOTER_LINES = ("This is an automated COMPASS message.",)
+INSTITUTION_LINES = (
+    "COMPASS",
     "University of Camarines Norte",
     "Guidance and Counseling Office",
 )
@@ -146,9 +147,24 @@ def test_every_message_uses_the_branded_shell(name, message):
     heading_at = text.index(heading.group(1))
     footer_at = text.index("This is an automated COMPASS message.")
     assert header_at < heading_at < footer_at
+    for line in INSTITUTION_LINES:
+        assert line in text[:heading_at]
     for line in FOOTER_LINES:
         assert line in text[footer_at:]
+    assert message.text_body.startswith("\n".join(INSTITUTION_LINES))
     assert message.text_body.rstrip().endswith("\n".join(FOOTER_LINES))
+
+
+@pytest.mark.parametrize(("name", "message"), ALL_MESSAGES, ids=message_ids())
+def test_email_shell_uses_a_minimal_white_layout(name, message):
+    html_body = message.html_body.lower()
+    assert "background-color:#ffffff" in html_body
+    assert "background-color:#6b1f2a" not in html_body
+    if name != "authentication-security_code":
+        assert "border-radius" not in html_body
+    if name != "authentication-security_code":
+        assert "border:1px solid #e6dfd0" not in html_body
+    assert "do not reply" not in message.text_body.lower()
 
 
 @pytest.mark.parametrize(("name", "message"), ALL_MESSAGES, ids=message_ids())
@@ -176,6 +192,41 @@ def test_messages_load_nothing_remote_and_run_nothing(name, message):
     assert "<" not in message.text_body
 
 
+@pytest.mark.parametrize(
+    ("event", "required_copy"),
+    [
+        (NotificationEvent.APPOINTMENT_SCHEDULED, "date, time, and any instructions"),
+        (NotificationEvent.APPOINTMENT_REMINDER_24H, "before your session"),
+        (NotificationEvent.APPOINTMENT_RESCHEDULED, "revised schedule"),
+        (NotificationEvent.APPOINTMENT_CANCELLED, "current appointment status"),
+        (NotificationEvent.CALL_SLIP_ISSUED, "instructions for the requested office visit"),
+        (NotificationEvent.GOOD_MORAL_ISSUED, "actions available to you"),
+        (NotificationEvent.ECOUNSELING_CONSENT_REQUESTED, "record your decision"),
+        (NotificationEvent.GROUP_SESSION_REGISTERED, "registration status, session details"),
+    ],
+)
+def test_operational_email_copy_gives_a_clear_next_step(event, required_copy):
+    rendered = render_notification_email(event)
+    assert required_copy in rendered.text_body
+    assert required_copy in visible_text(rendered.html_body)
+    assert "Guidance and Counseling Office through an official university channel" in (
+        rendered.text_body + visible_text(rendered.html_body)
+    ) or event in {
+        NotificationEvent.APPOINTMENT_RESCHEDULED,
+        NotificationEvent.APPOINTMENT_CANCELLED,
+        NotificationEvent.GROUP_SESSION_REGISTERED,
+    }
+
+
+def test_template_autoescapes_subject_and_renders_without_optional_context():
+    from compass.common.email import render_email
+
+    rendered = render_email("<script>alert(1)</script>", "notifications/email/appointment_reminder")
+    assert "<script>alert(1)</script>" not in rendered.html_body
+    assert "&lt;script&gt;alert(1)&lt;/script&gt;" in rendered.html_body
+    assert "You have an upcoming COMPASS appointment." in rendered.text_body
+
+
 @pytest.mark.parametrize(("name", "message"), ALL_MESSAGES, ids=message_ids())
 def test_html_and_plain_text_carry_the_same_wording(name, message):
     text = visible_text(message.html_body)
@@ -192,9 +243,29 @@ def test_security_messages_use_the_security_notice_variant():
         assert ("Security notice" in visible_text(rendered.html_body)) is security
 
     alert = render_email_changed_alert()
-    assert alert.text_body.startswith("Security notice\n\n")
+    assert alert.text_body.startswith("\n".join(INSTITUTION_LINES) + "\n\nSecurity notice\n\n")
     assert "Security notice" in visible_text(alert.html_body)
     assert "Security notice" not in render_security_code_email("482193").text_body
+
+
+def test_security_email_instructions_and_warnings_remain_intact():
+    code_message = render_security_code_email("482193")
+    assert "This code expires shortly and can be used once." in code_message.text_body
+    assert "Never share this code." in code_message.text_body
+
+    expectations = {
+        NotificationEvent.SECURITY_PASSWORD_CHANGED: "If you did not perform this action",
+        NotificationEvent.SECURITY_PASSWORD_RESET: "If you did not perform this action",
+        NotificationEvent.SECURITY_MFA_DISABLED: (
+            "contact the appropriate university office immediately"
+        ),
+        NotificationEvent.SECURITY_MFA_ADMIN_RESET: "You may need to configure MFA again.",
+        NotificationEvent.SECURITY_RECOVERY_CODES_REGENERATED: "review your account security",
+    }
+    for event, instruction in expectations.items():
+        rendered = render_notification_email(event)
+        assert instruction in rendered.text_body
+        assert instruction in visible_text(rendered.html_body)
 
 
 def test_previews_command_writes_every_message_without_sending(tmp_path):

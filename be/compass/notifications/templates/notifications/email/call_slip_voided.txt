@@ -1,4 +1,4 @@
 {% extends "compass/email/base.txt" %}
 {% block content %}A COMPASS Call Slip issued to you has been withdrawn.
 
-Sign in to COMPASS to review the current record.{% endblock %}
+Sign in to review the current Call Slip record. If you planned to act on it, contact the Guidance and Counseling Office through an official university channel to confirm what to do next.{% endblock %}

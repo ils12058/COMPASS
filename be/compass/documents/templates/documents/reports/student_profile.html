@@ -62,6 +62,10 @@
     margin: 0 0 4.5mm;
   }
 
+  .sp-summary {
+    margin-bottom: 5mm;
+  }
+
   .sp-keep {
     break-inside: avoid;
     page-break-inside: avoid;
@@ -242,7 +246,12 @@
   <h2 class="sp-section">1. Report Overview</h2>
   {% include "documents/reports/_student_profile_table.html" with table=student_profile.metadata show_heading=False %}
 
-  <h2 class="sp-section">2. Populations in This Report</h2>
+  <h2 class="sp-section">2. Executive Summary</h2>
+  <section class="sp-summary">
+    {% include "documents/reports/_student_profile_table.html" with table=student_profile.summary show_heading=False %}
+  </section>
+
+  <h2 class="sp-section">3. Populations in This Report</h2>
   <p>This report counts two different populations. They answer different questions and are not interchangeable:</p>
   <ul class="sp-definitions">
     <li><strong>Submitted Inventory Profile Population</strong> — the submitted Individual Inventories described by every distribution in Sections 4 to 6{% if student_profile.appendix %} and Appendix A{% endif %}.</li>
@@ -252,22 +261,22 @@
       <li><strong>Historical Inventory Coverage</strong> — the submitted and draft Inventories that exist for this historical Academic Year within the reporting scope.</li>
     {% endif %}
   </ul>
-  <p>No submission rate is calculated by dividing one population by the other because they are counted on different bases (Section 2.3).</p>
+  <p>A submission rate is not calculated from these populations because they use different counting bases.</p>
 
-  <h3 class="sp-subsection">2.1 Submitted Inventory Profile Population (n = {{ student_profile.population_text }})</h3>
+  <h3 class="sp-subsection">3.1 Submitted Inventory Profile Population (n = {{ student_profile.population_text }})</h3>
   {% if student_profile.college_summary %}
     {% include "documents/reports/_student_profile_table.html" with table=student_profile.college_summary show_heading=False %}
   {% else %}
     <p>No submitted Individual Inventory matched the selected profile filters.</p>
   {% endif %}
 
-  <h3 class="sp-subsection">2.2 {{ student_profile.coverage.title }}</h3>
+  <h3 class="sp-subsection">3.2 {{ student_profile.coverage.title }}</h3>
   {% include "documents/reports/_student_profile_table.html" with table=student_profile.coverage.status show_heading=False %}
 
-  <h3 class="sp-subsection">2.3 {{ student_profile.coverage.reconciliation.title }}</h3>
+  <h3 class="sp-subsection">3.3 {{ student_profile.coverage.reconciliation.title }}</h3>
   {% include "documents/reports/_student_profile_table.html" with table=student_profile.coverage.reconciliation show_heading=False %}
 
-  <h3 class="sp-subsection">2.4 {{ student_profile.filters.title }}</h3>
+  <h3 class="sp-subsection">3.4 {{ student_profile.filters.title }}</h3>
   {% include "documents/reports/_student_profile_table.html" with table=student_profile.filters show_heading=False %}
 
   {% if student_profile.disclosure_warning_messages %}
@@ -279,13 +288,6 @@
       <p>Exact counts are printed below; no value has been suppressed or changed.</p>
     </section>
   {% endif %}
-
-  <h2 class="sp-section">3. Methodology and Data Notes</h2>
-  <dl class="sp-methodology">
-    {% for item in student_profile.methodology %}
-      <div><dt>{{ item.term }}</dt><dd>{{ item.text }}</dd></div>
-    {% endfor %}
-  </dl>
 
   {% if student_profile.empty_message %}
     <p class="sp-empty">{{ student_profile.empty_message }}</p>
@@ -300,25 +302,33 @@
       {% endfor %}
     {% endfor %}
 
-    {% if student_profile.appendix %}
-      <section class="sp-appendix">
-        <h2 class="sp-section">Appendix A. Program Breakdown</h2>
-        <p>Each College is printed as its own group of tables, and each later College starts on a new page. College tables use the College's own submitted Inventories as their denominator. Programs are matched by their recorded identity, and every Program and College total reconciles to Table A.</p>
-        {% include "documents/reports/_student_profile_table.html" with table=student_profile.program_population show_heading=True %}
-        {% for group in student_profile.appendix %}
-          <section class="sp-appendix-group">
-            <div class="sp-group-intro">
-              <h3 class="sp-group-heading">{{ group.heading }}</h3>
-              <p class="sp-group-note">{{ group.summary }}</p>
-              {% for note in group.notes %}<p class="sp-group-note">{{ note }}</p>{% endfor %}
-            </div>
-            {% for table in group.tables %}
-              {% include "documents/reports/_student_profile_table.html" with table=table show_heading=True %}
-            {% endfor %}
-          </section>
-        {% endfor %}
-      </section>
-    {% endif %}
+  {% endif %}
+
+  <h2 class="sp-section">{% if student_profile.empty_message %}4{% else %}7{% endif %}. Methodology and Data Notes</h2>
+  <dl class="sp-methodology">
+    {% for item in student_profile.methodology %}
+      <div><dt>{{ item.term }}</dt><dd>{{ item.text }}</dd></div>
+    {% endfor %}
+  </dl>
+
+  {% if student_profile.appendix %}
+    <section class="sp-appendix">
+      <h2 class="sp-section">Appendix A. Program Breakdown</h2>
+      <p>Each College is printed as its own group of tables, and each later College starts on a new page. College tables use the College's own submitted Inventories as their denominator. Programs are matched by their recorded identity, and every Program and College total reconciles to Table A.</p>
+      {% include "documents/reports/_student_profile_table.html" with table=student_profile.program_population show_heading=True %}
+      {% for group in student_profile.appendix %}
+        <section class="sp-appendix-group">
+          <div class="sp-group-intro">
+            <h3 class="sp-group-heading">{{ group.heading }}</h3>
+            <p class="sp-group-note">{{ group.summary }}</p>
+            {% for note in group.notes %}<p class="sp-group-note">{{ note }}</p>{% endfor %}
+          </div>
+          {% for table in group.tables %}
+            {% include "documents/reports/_student_profile_table.html" with table=table show_heading=True %}
+          {% endfor %}
+        </section>
+      {% endfor %}
+    </section>
   {% endif %}
 </div>
 {% endblock %}
