@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { FollowupsHelp } from "./followups-help";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelSection, PanelFooter } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
@@ -77,7 +78,7 @@ function CreateForm({ source, initialStudentId, initialStudentName }: { source?:
     router.push(response.data.assigned_to_id === user.id ? `/portal/follow-ups/${response.data.id}` : "/portal/follow-ups");
   }
   return <>
-    <PageHeader title="Create follow-up" description="Follow-Ups are for staff. Creating one does not contact the Student or send a Student notification." back={<Link className={pageBackLinkClass} href="/portal/follow-ups">Back to Follow-Ups</Link>} />
+    <PageHeader help={<FollowupsHelp />} title="Create follow-up" description="Follow-Ups are for staff. Creating one does not contact the Student or send a Student notification." back={<Link className={pageBackLinkClass} href="/portal/follow-ups">Back to Follow-Ups</Link>} />
     <form onSubmit={event => void submit(event)}><Panel>
       <PanelSection title="What needs to be done?" titleId="followup-purpose" description="Choose the purpose, then describe the next action if more detail is needed.">
         <div><Label htmlFor="followup-category">Category</Label><Select id="followup-category" value={category} disabled={Boolean(source || submission)} onChange={event => { setCategory(event.target.value as Category); setAssignee(""); }}>

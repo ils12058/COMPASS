@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { dataTable } from "@/components/ui/data-table";
 import { FloatingListTools, ListToolField } from "@/components/ui/floating-list-tools";
 import { FilterField } from "@/components/ui/filter-toolbar";
+import { FollowupsHelp } from "./followups-help";
 import { PageHeader } from "@/components/ui/page-header";
 import { PageActionLink } from "@/components/ui/page-action";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -48,7 +49,7 @@ export function FollowupsList() {
   }
   if (!access.view) return <FollowupRestricted />;
   return <>
-    <PageHeader title="Follow-Ups" description="Track the next actions needed to support students after counseling, referrals, or other Guidance Office activities. Times shown in Philippine Time." actions={<>
+    <PageHeader help={<FollowupsHelp />} title="Follow-Ups" description="Track the next actions assigned to Guidance staff." actions={<>
       {access.manage ? <PageActionLink href="/portal/follow-ups/new" icon={Plus} label="Create" labelDetail="follow-up" /> : null}
     </>} />
     <section aria-labelledby="followup-workload-heading" className="mb-4">

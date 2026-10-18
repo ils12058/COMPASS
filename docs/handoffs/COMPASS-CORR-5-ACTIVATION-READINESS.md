@@ -1,5 +1,11 @@
 # COMPASS-CORR-5 — Feature Activation Cleanup & Operational Readiness
 
+> RELEASE-UNBLOCK-1 update (2026-10-18): the global `GUIDANCE_FOLLOWUPS_ENABLED` gate and
+> its environment contract are retired. Gate instructions below describe the historical
+> rollout decision; use the current Follow-Up operations runbook for availability.
+> Institutional decisions remain unresolved unless separately documented; this update
+> neither establishes sign-off nor enables external email/push dispatch.
+
 **Status:** Static code/configuration audit and focused regression work. This worktree agent made no
 live/staging migration, activation, configuration change or secret operation, and did not dispatch
 notifications, merge or deploy. The parent task owner will create the PR after review.

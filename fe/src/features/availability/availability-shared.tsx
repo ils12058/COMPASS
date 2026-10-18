@@ -198,12 +198,14 @@ export function AvailabilityPageHeading({
   title,
   description,
   action,
+  help,
 }: {
   title: string;
   description?: string;
   action?: ReactNode;
+  help?: ReactNode;
 }) {
-  return <PageHeader title={title} description={description} actions={action} />;
+  return <PageHeader title={title} description={description} actions={action} help={help} />;
 }
 
 export function AvailabilityStatusBadge({

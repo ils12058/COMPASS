@@ -239,19 +239,19 @@ test("the schedule leads, its exceptions sit beside it on wide pages, and the pr
 test("availability workspaces distinguish personal, Office, and managed Counselor schedules", () => {
   const mine = myAvailability();
   assert.match(mine, /My availability/);
-  assert.match(mine, /Set the days and times you can accept appointments/);
+  assert.match(mine, /Set your weekly hours and unavailable dates/);
   assert.match(mine, /Your weekly hours/);
   assert.match(mine, /All delivery modes means these hours apply to online and in-person appointments/);
 
   const office = officeAvailability();
   assert.match(office, /Office hours/);
-  assert.match(office, /Office hours constrain flexible Appointments and fixed-date slots/);
-  assert.match(office, /Group Sessions use their event schedule/);
+  assert.match(office, /Set Office hours and closure dates/);
+  assert.match(office, /Help: Office and Counselor availability/);
   assert.match(office, /Office weekly hours/);
 
   const counselors = counselorDirectory();
   assert.match(counselors, /Counselor schedules/);
-  assert.match(counselors, /Access is limited to IT Administrators, the Head Guidance Counselor, and people explicitly delegated this responsibility/);
+  assert.match(counselors, /Find a counselor to manage their availability/);
   assert.match(counselors, /Manage schedule for /);
   assert.match(counselors, /Morgan Manager/);
 });

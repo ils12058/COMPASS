@@ -24,18 +24,19 @@ Detail exposes encrypted content only after current authorization and supplies a
 terminal provenance. History is paginated at 20 events. Creation freezes an unconfirmed submission
 and its durable key for Retry. Edits retain input on conflict; a fresh saved version must be reviewed
 before a new attempt. Complete/cancel/reassign use the standard consequential confirmation. Retained
-backend recent-MFA requirements use the existing setup/verify flow and never replay actions.
+backend recent-MFA requirements use the shared setup/verify continuation flow (MFA-UX-1).
 
 Reports use the same scoped queryset. Counts include pending/completed/cancelled, overdue, the
 reader-selected due horizon (default explicitly seven days), completed in an aware period (default
 30 days, at most 366), and categories. These are reporting intervals, not institutional reminder or
 retention policies. No descriptions, outcomes, source IDs or exports are part of aggregate reports.
 
-Configuration: keep `GUIDANCE_FOLLOWUPS_ENABLED=false` until web-only independent keyring provisioning
-and rollout are approved. No new secret is generated or installed by this implementation. Workers,
-Beat and realtime must not receive the Follow-Up content keyring. Preserve ordered old keys during
-rotation; use record-bound codecs and tested backups. Existing canonical baseline bytes are pinned
-and the new domain migration is explicitly registered. No baseline reset or data reseeding is needed.
+RELEASE-UNBLOCK-1 retires `GUIDANCE_FOLLOWUPS_ENABLED`; it no longer controls workspace
+availability. Verify current identity policy, resource authorization and the independently
+provisioned web-only Follow-Up keyring before release. Protected content fails closed when keys
+are missing or unusable. Keep external dispatch controls at their separately approved values.
+Written institutional UAT approval remains a distinct prerequisite; no approval is inferred
+from this change. See `guidance-followups-operations.md` and the RELEASE-UNBLOCK-1 report.
 
 Validation evidence must identify exact commits. Source/UI integration does not imply Agent 2's
 Service Catalog has been reconciled: Agent 2 is implementing those slices separately in Antigravity. Final readiness requires the

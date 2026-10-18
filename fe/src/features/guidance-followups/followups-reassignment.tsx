@@ -4,6 +4,7 @@ import { useFollowupsFreshness, followupQueryFreshness } from "./followups-data"
 import Link from "next/link";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { FollowupsHelp } from "./followups-help";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
@@ -25,7 +26,7 @@ export function FollowupsReassignment() {
   const [page, setPage] = useState(1); const [selected, setSelected] = useState<FollowUpSummary | null>(null);
   const query = useGuidanceFollowupsRecoverable({ page }, { query: { ...followupQueryFreshness, enabled: access.manage, retry: false } });
   if (!access.manage) return <FollowupRestricted />;
-  return <><PageHeader title="Recover assignments" description="Restore responsibility for operational follow-ups whose original staff member no longer meets eligibility. Counselor-confidential follow-ups are excluded." back={<Link href="/portal/follow-ups" className={pageBackLinkClass}>Back to Follow-Ups</Link>} />
+  return <><PageHeader help={<FollowupsHelp />} title="Recover assignments" description="Restore responsibility for operational follow-ups whose original staff member no longer meets eligibility. Counselor-confidential follow-ups are excluded." back={<Link href="/portal/follow-ups" className={pageBackLinkClass}>Back to Follow-Ups</Link>} />
     <Panel><PanelHeader title="Assignments needing recovery" />{query.isPending ? <p role="status" className="p-5">Checking assignments…</p> : query.isError ? <FollowupFailure error={query.error} retry={() => void query.refetch()} /> : <>
       {query.data?.data.items.length ? <ul className="divide-y divide-border px-5">{query.data.data.items.map(row => <li key={row.id} className="flex flex-wrap items-center justify-between gap-4 py-3"><div><p className="flex items-center gap-2 font-semibold"><PersonAvatar displayName={row.student_name} photoUrl={row.student_profile_photo_url} photoUpdatedAt={row.student_profile_photo_updated_at} size="compact" />{row.student_name}</p><p className="mt-1 flex items-center gap-2 text-sm"><PersonAvatar displayName={row.assigned_to_name} photoUrl={row.assigned_to_profile_photo_url} photoUpdatedAt={row.assigned_to_profile_photo_updated_at} size="compact" />{row.assigned_to_name} · Due {formatInstitutionalDateTime(row.due_at)}</p></div><Button variant="secondary" onClick={() => setSelected(row)}>Recover assignment <span className="sr-only">for {row.student_name}</span></Button></li>)}</ul> : <PanelMessage>No operational follow-ups need recovery in your current scope.</PanelMessage>}
       {query.data ? <div className="px-5"><CanonicalPagination page={query.data.data.page} hasNext={query.data.data.has_next && page < 100} onPageChange={setPage} /></div> : null}

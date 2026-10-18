@@ -154,7 +154,7 @@ await check(
     await hidden(page.getByRole("button", { name: "Register", exact: true }));
     assert.equal(requests.some((request) => request.method !== "GET"), false);
     assert.equal(
-      await page.getByRole("link", { name: "My group sessions", exact: true }).getAttribute("href"),
+      await page.getByRole("link", { name: "My Registrations", exact: true }).getAttribute("href"),
       "/portal/group-sessions/my",
     );
     await noHorizontalOverflow(page);

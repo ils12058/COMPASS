@@ -2,10 +2,9 @@
 
 The current Compose/runtime-secret source contract is **25 files**, including the dedicated
 non-empty `guidance_followup_encryption_keys` key granted to web only. See
-[`runtime-secrets.md`](runtime-secrets.md) for the authoritative list and service grants. Presence
-of this required source is distinct from approval to enable Follow-Ups; keep
-`GUIDANCE_FOLLOWUPS_ENABLED=false` until ADR-FUP-1A governance, key and identity prerequisites are
-met. The repository contract does not prove that the host file is present.
+[`runtime-secrets.md`](runtime-secrets.md) for the authoritative list and service grants. RELEASE-UNBLOCK-1 retires the global Follow-Up gate. Before controlled release, verify
+ADR-FUP-1A governance, the independent keyring, identity policy and current resource access.
+The repository contract does not prove that the host file is present or that UAT is approved.
 
 COMPASS-LIVE-RESET-1 completed on **2026-10-17**. Initial baseline installation required that
 separate reset; subsequent deployments **reuse its initialized storage**. No reset, import, seed,

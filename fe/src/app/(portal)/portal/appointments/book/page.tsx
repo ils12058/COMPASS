@@ -5,10 +5,11 @@ import { AppointmentBookingPage } from "@/features/appointments/appointment-book
 
 export const metadata: Metadata = { title: "Book appointment" };
 
-export default function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ pathway?: string }> }) {
+  const query = await searchParams;
   return (
     <div className={pageSheetWidth}>
-      <AppointmentBookingPage />
+      <AppointmentBookingPage scheduledSlots={query.pathway === "FIXED_DATE_SLOT"} />
     </div>
   );
 }

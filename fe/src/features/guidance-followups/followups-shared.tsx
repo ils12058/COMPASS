@@ -16,7 +16,6 @@ export function sourceDestination(source: SourceReference) {
 export function followupError(error: unknown) {
   if (error instanceof CompassApiError) {
     const code = readApiErrorCode(error.body);
-    if (code === "followups_not_enabled") return "Follow-Ups are not available yet.";
     if (code === "followup_content_unavailable") return "Protected follow-up content is temporarily unavailable. Your saved information is preserved.";
     if (error.status === 404 || error.status === 403) return "This follow-up is not available to your account.";
     if (error.status === 409) return "This follow-up changed. Review the latest saved details before trying again.";

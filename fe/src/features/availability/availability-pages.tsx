@@ -5,6 +5,7 @@ import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
+import { AvailabilityHelp } from "./availability-help";
 import { ActionStatus, useActionStatus } from "@/components/ui/action-status";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
@@ -156,7 +157,8 @@ export function MyAvailabilityPage() {
     <section>
       <AvailabilityPageHeading
         title="My availability"
-        description="Set the days and times you can accept appointments. Available booking times also depend on Office hours, the selected Service, and its delivery mode."
+        description="Set your weekly hours and unavailable dates."
+        help={<AvailabilityHelp />}
       />
 
       <AvailabilityLayout
@@ -284,7 +286,8 @@ export function OfficeAvailabilityPage() {
     <section>
       <AvailabilityPageHeading
         title="Office hours"
-        description="Office hours constrain flexible Appointments and fixed-date slots. Counselor hours, applicable time off, Service rules, and delivery mode also apply. Group Sessions use their event schedule."
+        description="Set Office hours and closure dates."
+        help={<AvailabilityHelp office />}
       />
 
       <AvailabilityLayout
@@ -442,6 +445,7 @@ function ProviderWorkspace({
       <PageHeader
         title={provider.full_name || provider.email}
         context="Counselor schedule for"
+        help={<AvailabilityHelp office />}
         headingId="provider-availability-heading"
         meta={<AvailabilityStatusBadge active={provider.is_active} legacy={legacy} />}
         back={
@@ -619,7 +623,8 @@ export function ProviderAvailabilityPage() {
     <section>
       <AvailabilityPageHeading
         title="Counselor schedules"
-        description="Manage individual Counselor schedules across the office. Access is limited to IT Administrators, the Head Guidance Counselor, and people explicitly delegated this responsibility."
+        description="Find a counselor to manage their availability."
+        help={<AvailabilityHelp office />}
       />
 
       {/* A lone directory search that applies as you type. */}

@@ -3,7 +3,10 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
-import { PageHeader } from "@/components/ui/page-header";
+import { GroupSessionsHeading, groupSessionsError } from "./group-sessions-shared";
+import { usePortalSession } from "@/features/portal/components/portal-session";
+import { canBrowseGroupSessions } from "./group-sessions-access";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { Panel, PanelBody, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatAppointmentDateTime } from "@/features/appointments/appointments-shared";
@@ -17,15 +20,16 @@ function registrationStatusLabel(status: string): string {
 }
 
 export function GroupSessionsHistoryPage() {
-  const registrations = useGroupSessionsGetMyRegistrations({ query: { retry: false } });
+  const { user } = usePortalSession();
+  const allowed = canBrowseGroupSessions(user);
+  const registrations = useGroupSessionsGetMyRegistrations({ query: { retry: false, enabled: allowed } });
   const rows = registrations.data?.data ?? [];
+
+  if (!allowed) return <WorkspaceUnavailable title="Group Sessions unavailable">You don’t have access to Student registrations.</WorkspaceUnavailable>;
 
   return (
     <>
-      <PageHeader
-        title="My group sessions"
-        description="Your upcoming and past event registrations, including cancelled registrations."
-      />
+      <GroupSessionsHeading />
 
       <Panel aria-labelledby="my-group-sessions-heading">
         <PanelHeader
@@ -48,7 +52,7 @@ export function GroupSessionsHistoryPage() {
               </Button>
             }
           >
-            Your group session registrations could not be loaded. Try again.
+            {groupSessionsError(registrations.error, "Your group session registrations could not be loaded. Try again.")}
           </PanelMessage>
         ) : rows.length === 0 ? (
           <PanelMessage>You have no group session registrations yet.</PanelMessage>

@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { withNextRouter } from "./support/next-router.mjs";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
+import { AppointmentBookingPage } from "../src/features/appointments/appointment-booking-page.tsx";
 import { ServiceDetailPage } from "../src/features/services/service-detail-page.tsx";
 import {
   ServiceFixedSlotsStaffPanel,
@@ -103,7 +104,7 @@ import { UnsavedChangesProvider } from "../src/features/form-safety/unsaved-chan
 function renderWithUser(element, user, seed = () => {}) {
   const client = new QueryClient({
     defaultOptions: {
-      queries: { retry: false, staleTime: Infinity, gcTime: Infinity },
+      queries: { retry: false, retryOnMount: false, staleTime: Infinity, gcTime: Infinity },
     },
   });
   seed(client);
@@ -225,3 +226,33 @@ test("ServiceDetailPage hides fixed slots panels for IT_ADMIN and INSTITUTIONAL_
   assert.match(counselorHtml, /Dr\. Santos/);
 });
 
+
+
+test("fixed-slot pending and failed reads are not presented as no availability", () => {
+  const pending = renderWithUser(h(ServiceFixedSlotsStudentPanel, { service }), student);
+  assert.match(pending, /Loading appointment slots/);
+  assert.doesNotMatch(pending, /No fixed consultation slots/);
+  for (const [Panel, key, account] of [
+    [ServiceFixedSlotsStudentPanel, getServicesListBookableSlotsQueryKey(SERVICE_ID), student],
+    [ServiceFixedSlotsStaffPanel, getServicesListSlotsQueryKey(SERVICE_ID), manager],
+  ]) {
+    const html = renderWithUser(h(Panel, { service }), account, client => {
+      client.getQueryCache().build(client, { queryKey: key }).setState({ status: "error", fetchStatus: "idle", error: new Error("Synthetic failure") });
+    });
+    assert.match(html, /Appointment slots could not be loaded/);
+    assert.match(html, /Retry slots/);
+    assert.doesNotMatch(html, /No fixed.*slots/);
+  }
+});
+
+
+test("scheduled slots are reachable through Student booking without Services management", () => {
+  const account = { ...student, student_lifecycle_status: "CURRENT", capabilities: ["appointments.view_self", "appointments.manage_self", "services.catalog.view"] };
+  const html = renderWithUser(h(AppointmentBookingPage, { scheduledSlots: true }), account);
+  assert.match(html, /Scheduled appointment slots/);
+  assert.match(html, /Search Services/);
+  assert.doesNotMatch(html, /Services unavailable|Booking unavailable/);
+  const denied = renderWithUser(h(AppointmentBookingPage, { scheduledSlots: true }), { ...account, student_lifecycle_status: "GRADUATED" });
+  assert.match(denied, /Booking unavailable/);
+  assert.doesNotMatch(denied, /Scheduled appointment slots/);
+});

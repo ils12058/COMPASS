@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useLayoutEffect, useRef, useState, type FormEvent } from "react";
 import { Check, ChevronDown, ClipboardPenLine } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { FollowupsHelp } from "./followups-help";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelHeader, PanelSection, PanelFooter } from "@/components/ui/panel";
 import { Button } from "@/components/ui/button";
@@ -63,7 +64,7 @@ export function FollowupsDetail({ id }: { id: string }) {
   if (!item || (query.error instanceof CompassApiError && [403, 404].includes(query.error.status))) return <FollowupFailure error={query.error} retry={() => void query.refetch()} />;
   return <>
     {query.isError ? <p role="alert">The latest details could not be confirmed. <Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button></p> : null}
-    <PageHeader title="Follow-Up" description={<span className="inline-flex items-center gap-2"><PersonAvatar displayName={item.student_name} photoUrl={item.student_profile_photo_url} photoUpdatedAt={item.student_profile_photo_updated_at} size="compact" />{item.student_name}</span>} back={<Link href="/portal/follow-ups" className={pageBackLinkClass}>Back to Follow-Ups</Link>} meta={<span ref={statusRef} tabIndex={-1} className="text-sm font-semibold">{statusLabel(item.status)}{item.overdue && item.status === "PENDING" ? " · Overdue" : ""}</span>} />
+    <PageHeader help={<FollowupsHelp />} title="Follow-Up" description={<span className="inline-flex items-center gap-2"><PersonAvatar displayName={item.student_name} photoUrl={item.student_profile_photo_url} photoUpdatedAt={item.student_profile_photo_updated_at} size="compact" />{item.student_name}</span>} back={<Link href="/portal/follow-ups" className={pageBackLinkClass}>Back to Follow-Ups</Link>} meta={<span ref={statusRef} tabIndex={-1} className="text-sm font-semibold">{statusLabel(item.status)}{item.overdue && item.status === "PENDING" ? " · Overdue" : ""}</span>} />
     <Panel>
       <PanelSection title="What needs to be done?" titleId="followup-description" description={categoryLabel(item.category)}>
         <p className="whitespace-pre-wrap break-words">{item.description || "No description recorded."}</p>

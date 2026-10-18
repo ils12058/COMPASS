@@ -1,6 +1,6 @@
 "use client";
 
-import { PageHeader } from "@/components/ui/page-header";
+import { GroupSessionsHeading } from "./group-sessions-shared";
 import { Panel } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
@@ -21,10 +21,7 @@ export function GroupSessionsDiscoveryPage() {
 
   return (
     <>
-      <PageHeader
-        title="Group Sessions & Workshops"
-        description="Browse upcoming events and see whether registration is available for you."
-      />
+      <GroupSessionsHeading />
       <Panel aria-label="Upcoming Group Sessions & Workshops">
         <ServiceGroupSessionsStudentPanel />
       </Panel>
