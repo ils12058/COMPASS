@@ -232,3 +232,9 @@ synchronized through the existing code-defined Accounts identity-policy mechanis
 
 The immediate follow-up slice is Student Profiling Report PDF / Print Foundation, which must consume
 this validated aggregate service rather than duplicate its calculations.
+
+## ACAD-1 reporting amendment (2026-10-18)
+
+Report filters continue accepting recorded Year Levels 1–10 so existing populations remain
+filterable. In the roster and report filter controls, values above 4 are labelled "(recorded
+value)". The aggregate counts, denominators, authorization, and export shapes are unchanged.

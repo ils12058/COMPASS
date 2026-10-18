@@ -62,6 +62,15 @@
         "title": "APIErrorResponse",
         "type": "object"
       },
+      "AcademicClassification": {
+        "enum": [
+          "BACHELORS",
+          "MASTERS",
+          "DOCTORAL"
+        ],
+        "title": "AcademicClassification",
+        "type": "string"
+      },
       "AcademicYearCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -6917,6 +6926,7 @@
                 "type": "null"
               }
             ],
+            "description": "Stored compatibility domain. The selected Program's configured Year Level policy is enforced by the Inventory service.",
             "title": "Year Level"
           }
         },
@@ -17779,6 +17789,7 @@
                 "type": "null"
               }
             ],
+            "description": "Stored compatibility domain. The selected Program's configured Year Level policy is enforced by the Inventory service.",
             "title": "Year Level"
           }
         },
@@ -18551,6 +18562,7 @@
                 "type": "null"
               }
             ],
+            "description": "Stored compatibility domain. The selected Program's configured Year Level policy is enforced by the Inventory service.",
             "title": "Year Level"
           }
         },
@@ -21290,6 +21302,30 @@
       "ProgramSummary": {
         "additionalProperties": false,
         "properties": {
+          "academic_classification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicClassification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applicable_year_levels": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicable Year Levels"
+          },
           "code": {
             "title": "Code",
             "type": "string"
@@ -21309,6 +21345,9 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "year_level_policy_status": {
+            "$ref": "#/components/schemas/YearLevelPolicyStatus"
           }
         },
         "required": [
@@ -21316,7 +21355,10 @@
           "code",
           "name",
           "college",
-          "is_active"
+          "is_active",
+          "academic_classification",
+          "year_level_policy_status",
+          "applicable_year_levels"
         ],
         "title": "ProgramSummary",
         "type": "object"
@@ -27424,6 +27466,14 @@
         ],
         "title": "WorkStudent",
         "type": "object"
+      },
+      "YearLevelPolicyStatus": {
+        "enum": [
+          "CONFIGURED",
+          "PENDING_POLICY"
+        ],
+        "title": "YearLevelPolicyStatus",
+        "type": "string"
       }
     },
     "securitySchemes": {

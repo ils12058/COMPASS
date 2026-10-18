@@ -37,7 +37,7 @@ import { exitInterviewFormFromDetail } from "../src/features/exit-interviews/exi
 import { ExitInterviewFormSections } from "../src/features/exit-interviews/exit-interview-form-sections.tsx";
 import { ReferralCreatePage } from "../src/features/referrals/referral-create-page.tsx";
 import { institutionalDateInputValue } from "../src/lib/institutional-time.ts";
-import { YEAR_LEVELS, yearLevelLabel } from "../src/lib/year-level.ts";
+import { RECORDED_YEAR_LEVELS, recordedYearLevelFilterLabel, retainYearLevelIfApplicable, yearLevelLabel } from "../src/lib/year-level.ts";
 
 function render(element, user = { capabilities: [] }) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } } });
@@ -54,7 +54,7 @@ function tag(html, id, element = "input") {
   return found;
 }
 
-const section = (Component, draft, validationIssues = []) => render(h(Component, { draft, onChange() {}, validationIssues }));
+const section = (Component, draft, validationIssues = [], extraProps = {}) => render(h(Component, { draft, onChange() {}, validationIssues, ...extraProps }));
 const issueTargets = (issues) => issues.map((issue) => [issue.section, issue.targetId, issue.message]);
 
 // --- X-1: limits mirror the server ----------------------------------------------------------
@@ -383,18 +383,72 @@ test("Date referred offers dates up to the institutional today", () => {
 
 // --- Year Level labels ----------------------------------------------------------------------
 
-test("Year Level labels are display text for the stored numbers 1 through 10", () => {
-  assert.deepEqual(YEAR_LEVELS, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
-  assert.deepEqual(YEAR_LEVELS.map(yearLevelLabel), [
+test("Program-based Year Level choices distinguish supported and recorded ranges", () => {
+  assert.deepEqual(RECORDED_YEAR_LEVELS, [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  assert.deepEqual(RECORDED_YEAR_LEVELS.map(yearLevelLabel), [
     "1st Year", "2nd Year", "3rd Year", "4th Year", "5th Year", "6th Year", "7th Year", "8th Year", "9th Year", "10th Year",
   ]);
   assert.equal(yearLevelLabel(11), "11th Year");
   assert.equal(yearLevelLabel(22), "22nd Year");
+  assert.equal(recordedYearLevelFilterLabel(4), "4th Year");
+  assert.equal(recordedYearLevelFilterLabel(5), "5th Year (recorded value)");
+  assert.equal(retainYearLevelIfApplicable(3, [1, 2, 3, 4]), 3);
+  assert.equal(retainYearLevelIfApplicable(5, [1, 2, 3, 4]), null);
+  assert.equal(retainYearLevelIfApplicable(10, RECORDED_YEAR_LEVELS), 10);
 
-  const education = section(EducationSection, { education_entries: [], year_level: 3 });
+  const bachelors = {
+    id: "bsis", code: "BSIS", name: "Bachelor of Science in Information Systems", is_active: true,
+    college: { name: "College of Computing and Multimedia Studies" },
+    academic_classification: "BACHELORS", year_level_policy_status: "CONFIGURED", applicable_year_levels: [1, 2, 3, 4],
+  };
+  const education = section(
+    EducationSection,
+    { education_entries: [], program_id: bachelors.id, year_level: 3 },
+    [],
+    { activePrograms: [bachelors] },
+  );
   const options = [...education.matchAll(/<option value="(\d+)"[^>]*>([^<]+)<\/option>/g)].map(([, value, label]) => [value, label]);
-  assert.deepEqual(options, YEAR_LEVELS.map((level) => [String(level), yearLevelLabel(level)]));
+  assert.deepEqual(options, [1, 2, 3, 4].map((level) => [String(level), yearLevelLabel(level)]));
   assert.match(education, /<option value="3" selected="">3rd Year<\/option>/);
+
+  const invalidSaved = section(
+    EducationSection,
+    { education_entries: [], program_id: bachelors.id, year_level: 5 },
+    [],
+    { activePrograms: [bachelors] },
+  );
+  assert.match(invalidSaved, /5th Year \(saved value; choose a supported level\)/);
+  assert.match(invalidSaved, /id="inventory-year-level"/);
+
+  const pendingPostgraduate = {
+    id: "mit", code: "MIT", name: "Master in Information Technology", is_active: true,
+    college: { name: "College of Computing and Multimedia Studies" },
+    academic_classification: "MASTERS", year_level_policy_status: "PENDING_POLICY", applicable_year_levels: null,
+  };
+  const pendingEducation = section(
+    EducationSection,
+    { education_entries: [], program_id: pendingPostgraduate.id, year_level: 10 },
+    [],
+    { activePrograms: [pendingPostgraduate] },
+  );
+  assert.match(pendingEducation, /Year Level policy for this Program has not been confirmed/);
+  assert.match(pendingEducation, /<option value="10" selected="">10th Year<\/option>/);
+
+  const invalidBachelorIssues = getInventorySubmissionIssues(
+    { program_id: bachelors.id, year_level: 5 },
+    new Set([bachelors.id]),
+    [bachelors],
+  );
+  assert.match(
+    invalidBachelorIssues.find((issue) => issue.targetId === "inventory-year-level").message,
+    /supported by the selected Program/,
+  );
+  const pendingPostgraduateIssues = getInventorySubmissionIssues(
+    { program_id: pendingPostgraduate.id, year_level: 10 },
+    new Set([pendingPostgraduate.id]),
+    [pendingPostgraduate],
+  );
+  assert.equal(pendingPostgraduateIssues.some((issue) => issue.targetId === "inventory-year-level"), false);
 
   const review = render(h(ReviewSection, {
     draft: { year_level: 4, geographic_locations: [] }, academicYear: "2026-2027", formRevision: "UCN-OP-GCO-01F5 · Revision 1",

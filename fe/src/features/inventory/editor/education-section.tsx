@@ -9,7 +9,7 @@ import { educationLevelOptions } from "@/features/inventory/inventory-presentati
 import { FieldGroup, InventoryNotice } from "@/features/inventory/inventory-shared";
 import type { EducationEntryPayload } from "@/lib/api/generated/model";
 import { EducationLevelValue } from "@/lib/api/generated/model";
-import { YEAR_LEVELS, yearLevelLabel } from "@/lib/year-level";
+import { RECORDED_YEAR_LEVELS, retainYearLevelIfApplicable, yearLevelLabel } from "@/lib/year-level";
 
 export function EducationSection({
   draft,
@@ -28,6 +28,28 @@ export function EducationSection({
   const programReview = useInventoryReview("inventory-program");
   const yearLevelReview = useInventoryReview("inventory-year-level");
   const activeSelection = activePrograms.find((program) => program.id === draft.program_id);
+  const configuredYearLevels = activeSelection?.applicable_year_levels ?? null;
+  const selectableYearLevels: readonly number[] = activeSelection
+    ? configuredYearLevels ?? RECORDED_YEAR_LEVELS
+    : [];
+  const selectedYearIsUnavailable =
+    draft.year_level !== null &&
+    draft.year_level !== undefined &&
+    !selectableYearLevels.includes(draft.year_level);
+  const shownYearLevels = selectedYearIsUnavailable
+    ? [...selectableYearLevels, draft.year_level as number].sort((left, right) => left - right)
+    : selectableYearLevels;
+  const savedYearOptionSuffix = activeSelection
+    ? " (saved value; choose a supported level)"
+    : !draft.program_id
+      ? " (saved value; Program not selected)"
+      : !programDiscoveryAllowed
+        ? " (saved value; Program options unavailable)"
+        : programLookupPending
+          ? " (saved value; Program options loading)"
+          : programLookupError
+            ? " (saved value; Program policy unavailable)"
+            : " (saved value; Program inactive)";
   const preserveSnapshot =
     Boolean(draft.program_id) &&
     !activeSelection &&
@@ -77,9 +99,13 @@ export function EducationSection({
               aria-describedby={[programReview.describedBy, programError ? "inventory-program-error" : undefined].filter(Boolean).join(" ") || undefined}
               onChange={(event) => {
                 const selected = activePrograms.find((program) => program.id === event.target.value);
+                const supportedYearLevels = selected
+                  ? selected.applicable_year_levels ?? RECORDED_YEAR_LEVELS
+                  : [];
                 onChange({
                   program_id: selected?.id ?? null,
                   course_currently_enrolled: selected?.name ?? "",
+                  year_level: retainYearLevelIfApplicable(draft.year_level, supportedYearLevels),
                 });
               }}
             >
@@ -117,17 +143,45 @@ export function EducationSection({
               id="inventory-year-level"
               className="mt-2"
               value={draft.year_level ?? ""}
+              disabled={
+                !draft.program_id ||
+                !activeSelection ||
+                programLookupPending ||
+                programLookupError ||
+                !programDiscoveryAllowed
+              }
               aria-required="true"
               aria-invalid={yearLevelError ? true : undefined}
               aria-describedby={[yearLevelReview.describedBy, yearLevelError ? "inventory-year-level-error" : undefined].filter(Boolean).join(" ") || undefined}
               onChange={(event) => onChange({ year_level: event.target.value ? Number(event.target.value) : null })}
             >
-              <option value="">Select a Year Level</option>
-              {YEAR_LEVELS.map((year) => (
-                <option key={year} value={year}>{yearLevelLabel(year)}</option>
+              <option value="">
+                {activeSelection ? "Select a Year Level" : "Select an active Program first"}
+              </option>
+              {shownYearLevels.map((year) => (
+                <option key={year} value={year}>
+                  {yearLevelLabel(year)}
+                  {selectedYearIsUnavailable && year === draft.year_level
+                    ? savedYearOptionSuffix
+                    : ""}
+                </option>
               ))}
             </Select>
             <InventoryReviewHintText hint={yearLevelReview.hint} />
+            {activeSelection?.year_level_policy_status === "PENDING_POLICY" ? (
+              <p className="mt-1.5 text-xs leading-5 text-muted">
+                Year Level policy for this Program has not been confirmed. The existing recorded range remains available for compatibility; it does not establish an institutional limit.
+              </p>
+            ) : null}
+            {draft.program_id &&
+            !activeSelection &&
+            programDiscoveryAllowed &&
+            !programLookupPending &&
+            !programLookupError ? (
+              <p className="mt-1.5 text-xs leading-5 text-muted">
+                This saved Program is no longer active for new selection. Choose an active Program to change its Year Level.
+              </p>
+            ) : null}
             {yearLevelError ? <p id="inventory-year-level-error" role="alert" className="mt-1.5 text-xs leading-5 text-danger">{yearLevelError}</p> : null}
           </div>
           <TextField

@@ -88,7 +88,7 @@ export function validateStudentProfileDraft(
   const yearLevel = draft.year_level.trim();
   if (yearLevel) {
     if (!/^(?:[1-9]|10)$/.test(yearLevel)) {
-      errors.push("Year Level must be from 1 through 10.");
+      errors.push("Choose a recorded Year Level from 1 through 10.");
     } else {
       params.year_level = Number(yearLevel);
     }

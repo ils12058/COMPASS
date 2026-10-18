@@ -8,16 +8,39 @@ import {
   StatusBadge,
   TableSkeleton,
 } from "@/features/organization/components/organization-shared";
+import type { ProgramSummary } from "@/lib/api/generated/model";
 import {
   useOrganizationListCampuses,
   useOrganizationListColleges,
   useOrganizationListPrograms,
 } from "@/lib/api/generated/organization/organization";
+import { yearLevelLabel } from "@/lib/year-level";
 
 // Structure is read-only hierarchical text, not a wide collection, so this page alone is bounded;
 // the other Organization tabs keep the whole workspace for their tables. Each name sits close to its
 // status at this width.
 const structureWidth = "max-w-4xl";
+
+function academicProgramLabel(program: ProgramSummary): string {
+  const classification =
+    program.academic_classification === "BACHELORS"
+      ? "Bachelor's"
+      : program.academic_classification === "MASTERS"
+        ? "Master's"
+        : program.academic_classification === "DOCTORAL"
+          ? "Doctoral"
+          : "Classification pending";
+  const levels = program.applicable_year_levels;
+  if (program.year_level_policy_status !== "CONFIGURED" || !levels?.length) {
+    return `${classification} · Year Level policy pending`;
+  }
+  if (levels.length === 1) {
+    return `${classification} · ${yearLevelLabel(levels[0])}`;
+  }
+  const first = yearLevelLabel(levels[0]).replace(" Year", "");
+  const last = yearLevelLabel(levels[levels.length - 1]).replace(" Year", "");
+  return `${classification} · ${first}–${last} Year`;
+}
 
 export function OrganizationStructurePage() {
   const campuses = useOrganizationListCampuses({}, { query: { retry: false } });
@@ -123,7 +146,11 @@ export function OrganizationStructurePage() {
                                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-0.5 py-1 sm:grid-cols-[minmax(0,1fr)_7rem_auto]"
                                   >
                                     <span className="min-w-0 text-sm text-ink">{program.name}</span>
-                                    <span className="col-start-1 row-start-2 font-mono text-xs text-muted sm:col-start-2 sm:row-start-1">{program.code}</span>
+                                    <span className="col-start-1 row-start-2 text-xs text-muted sm:col-start-2 sm:row-start-1">
+                                      <span className="font-mono">{program.code}</span>
+                                      <span className="mx-1.5" aria-hidden="true">·</span>
+                                      {academicProgramLabel(program)}
+                                    </span>
                                     <span className="col-start-2 row-start-1 sm:col-start-3"><StatusBadge active={program.is_active} /></span>
                                   </li>
                                 ))}

@@ -77,7 +77,12 @@ test("Profile confirms a save transiently and keeps a failure, and the typed val
 
 const campus = (id, name, active = true) => ({ id, code: id.toUpperCase(), name, is_active: active });
 const college = (id, campusId, name, active = true) => ({ id, code: id.toUpperCase(), name, is_active: active, campus: { id: campusId, code: campusId.toUpperCase(), name: "" } });
-const program = (id, collegeId, name, active = true) => ({ id, code: id.toUpperCase(), name, is_active: active, college: { id: collegeId, code: collegeId.toUpperCase(), name: "" } });
+const program = (id, collegeId, name, active = true, classification = "BACHELORS", levels = [1, 2, 3, 4]) => ({
+  id, code: id.toUpperCase(), name, is_active: active, college: { id: collegeId, code: collegeId.toUpperCase(), name: "" },
+  academic_classification: classification,
+  year_level_policy_status: levels ? "CONFIGURED" : "PENDING_POLICY",
+  applicable_year_levels: levels,
+});
 
 function structure({ campuses, colleges, programs }) {
   return render(createElement(OrganizationStructurePage), [
@@ -91,7 +96,12 @@ test("Structure reads as a hierarchy: each Campus, its Colleges, and each Colleg
   const html = structure({
     campuses: [campus("main", "Main Campus"), campus("north", "North Campus")],
     colleges: [college("ccms", "main", "College of Computing"), college("cba", "main", "College of Business", false)],
-    programs: [program("bsis", "ccms", "BS Information Systems"), program("bsit", "ccms", "BS Information Technology"), program("bsba", "cba", "BS Business Administration", false)],
+    programs: [
+      program("bsis", "ccms", "BS Information Systems"),
+      program("bsit", "ccms", "BS Information Technology"),
+      program("mit", "ccms", "Master in Information Technology", true, "MASTERS", null),
+      program("bsba", "cba", "BS Business Administration", false),
+    ],
   });
 
   assert.match(html, /<section aria-labelledby="organization-structure-heading" class="max-w-4xl">/);
@@ -99,6 +109,8 @@ test("Structure reads as a hierarchy: each Campus, its Colleges, and each Colleg
   const computing = html.slice(html.indexOf('id="college-ccms"'), html.indexOf('id="college-cba"'));
   assert.match(computing, /aria-label="Programs in College of Computing"/);
   assert.match(computing, /BS Information Systems[\s\S]*BS Information Technology/);
+  assert.match(computing, /Bachelor&#x27;s · 1st–4th Year/);
+  assert.match(computing, /Master&#x27;s · Year Level policy pending/);
   assert.doesNotMatch(computing, /BS Business Administration/);
   const business = html.slice(html.indexOf('id="college-cba"'));
   assert.match(business, /BS Business Administration[\s\S]*Inactive/);

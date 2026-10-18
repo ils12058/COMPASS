@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import type { InventorySubmissionIssue } from "@/features/inventory/inventory-payload";
 import { inventorySections } from "@/features/inventory/inventory-presentation";
 import { FieldGroup, InventoryNotice } from "@/features/inventory/inventory-shared";
-import type { InventoryPayload } from "@/lib/api/generated/model";
+import type { InventoryPayload, ProgramSummary } from "@/lib/api/generated/model";
 import { yearLevelLabel } from "@/lib/year-level";
 
 export function ReviewSection({
@@ -13,6 +13,7 @@ export function ReviewSection({
   formRevision,
   issues,
   programLookupReady,
+  selectedProgram,
   onSelectIssue,
 }: {
   draft: InventoryPayload;
@@ -20,9 +21,17 @@ export function ReviewSection({
   formRevision: string;
   issues: InventorySubmissionIssue[];
   programLookupReady: boolean;
+  selectedProgram: ProgramSummary | null;
   onSelectIssue: (issue: InventorySubmissionIssue) => void;
 }) {
   const hasProgram = Boolean(draft.program_id);
+  const yearLevelIsUnsupported = Boolean(
+    draft.year_level !== null &&
+      draft.year_level !== undefined &&
+      selectedProgram?.year_level_policy_status === "CONFIGURED" &&
+      selectedProgram.applicable_year_levels &&
+      !selectedProgram.applicable_year_levels.includes(draft.year_level),
+  );
   return (
     <div className="space-y-7">
       <FieldGroup legend="Record details">
@@ -43,7 +52,16 @@ export function ReviewSection({
           </div>
           <div className="border-b border-border py-3">
             <dt className="text-xs font-semibold text-muted">Year Level</dt>
-            <dd className="mt-1 text-sm text-ink">{draft.year_level ? yearLevelLabel(draft.year_level) : "Not selected"}</dd>
+            <dd className="mt-1 text-sm text-ink">
+              {draft.year_level
+                ? `${yearLevelLabel(draft.year_level)}${yearLevelIsUnsupported ? " (saved value; unsupported for this Program)" : !selectedProgram && draft.year_level > 4 ? " (recorded value)" : ""}`
+                : "Not selected"}
+            </dd>
+            {selectedProgram?.year_level_policy_status === "PENDING_POLICY" ? (
+              <p className="mt-1 text-xs leading-5 text-muted">
+                The Year Level policy for this Program is pending institutional confirmation.
+              </p>
+            ) : null}
           </div>
         </dl>
       </FieldGroup>

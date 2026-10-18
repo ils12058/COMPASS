@@ -11,6 +11,7 @@ import {
   PostGraduationFieldValue,
   PWDStatusValue,
   TransportationFrequencyCategoryValue,
+  type ProgramSummary,
   type InventoryPayload,
   type InventoryResponse,
 } from "@/lib/api/generated/model";
@@ -227,6 +228,7 @@ export function getInventoryDraftIssues(
 export function getInventorySubmissionIssues(
   input: InventoryPayload,
   activeProgramIds: ReadonlySet<string> | undefined,
+  programs?: readonly ProgramSummary[],
 ): InventorySubmissionIssue[] {
   const payload = normalizeInventoryPayload(input);
   const issues: InventorySubmissionIssue[] = [];
@@ -293,7 +295,20 @@ export function getInventorySubmissionIssues(
     add("education", "inventory-program", "Choose a currently active program.");
   }
   if (!payload.year_level || payload.year_level < 1 || payload.year_level > 10) {
-    add("education", "inventory-year-level", "Choose a Year Level from 1 through 10.");
+    add("education", "inventory-year-level", "Choose a Year Level from the available Program options.");
+  } else {
+    const selectedProgram = programs?.find((program) => program.id === payload.program_id);
+    if (
+      selectedProgram?.year_level_policy_status === "CONFIGURED" &&
+      selectedProgram.applicable_year_levels &&
+      !selectedProgram.applicable_year_levels.includes(payload.year_level)
+    ) {
+      add(
+        "education",
+        "inventory-year-level",
+        "Choose a Year Level supported by the selected Program.",
+      );
+    }
   }
 
   if (

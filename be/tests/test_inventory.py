@@ -33,6 +33,7 @@ from compass.inventory.services import (
     submit_current_inventory,
 )
 from compass.organization.academic_years import create_academic_year, set_current_academic_year
+from compass.organization.bootstrap import sync_organization_catalog
 from compass.organization.models import Campus, College, Program
 from compass.service_catalog.services import set_service_active
 from tests.canonical_service_helpers import legacy_counseling_service
@@ -79,6 +80,106 @@ def configure_program(*, code: str = "BSIS", name: str = "BS Information Systems
     campus = Campus.objects.create(code=f"CAMP-{code}", name="Main Campus")
     college = College.objects.create(campus=campus, code=f"COL-{code}", name="Test College")
     return Program.objects.create(college=college, code=code, name=name)
+
+
+@pytest.mark.django_db
+def test_configured_bachelors_year_levels_and_pending_postgraduate_compatibility():
+    sync_policy()
+    actor = make_user("classification-admin@example.edu", "IT_ADMIN")
+    student = make_user("classification-student@example.edu", "STUDENT")
+    configure_year(actor)
+    item = ensure_current_inventory(student=student, context=context(student))
+    sync_organization_catalog()
+
+    bachelors = Program.objects.get(
+        college__campus__code="MAIN",
+        college__code="CCMS",
+        code="BSIS",
+    )
+    bachelors_values = minimum_normalized_inventory_values(
+        program_id=bachelors.pk,
+        year_level=4,
+    )
+    bachelors_values["education_entries"] = [
+        {"level": "COLLEGIATE", "inclusive_years": "2010-2026"}
+    ]
+    accepted = replace_current_inventory(student=student, values=bachelors_values)
+    assert accepted.pk == item.pk
+    assert accepted.year_level == 4
+
+    with pytest.raises(InvalidInventoryInput, match="supported levels for the selected Program"):
+        replace_current_inventory(
+            student=student,
+            values={**bachelors_values, "year_level": 5},
+        )
+
+    masters = Program.objects.get(
+        college__campus__code="MAIN",
+        college__code="CCMS",
+        code="MIT",
+    )
+    pending_policy_value = replace_current_inventory(
+        student=student,
+        values=minimum_normalized_inventory_values(program_id=masters.pk, year_level=10),
+    )
+    assert pending_policy_value.program_id == masters.pk
+    assert pending_policy_value.year_level == 10
+
+
+@pytest.mark.django_db
+def test_submission_rejects_unsupported_bachelors_year_level_saved_in_a_draft():
+    sync_policy()
+    student = make_user("classification-submit-student@example.edu", "STUDENT")
+    actor = make_user("classification-submit-admin@example.edu", "IT_ADMIN")
+    configure_year(actor)
+    item = ensure_current_inventory(student=student, context=context(student))
+    sync_organization_catalog()
+    bachelors = Program.objects.get(
+        college__campus__code="MAIN",
+        college__code="CCMS",
+        code="BSIS",
+    )
+    replace_current_inventory(
+        student=student,
+        values=minimum_normalized_inventory_values(program_id=bachelors.pk, year_level=4),
+    )
+
+    # Exercise a previously stored value that bypassed the new draft-write validation.
+    StudentInventory.objects.filter(pk=item.pk).update(year_level=5)
+    with pytest.raises(InvalidInventoryInput, match="supported levels for the selected Program"):
+        submit_current_inventory(student=student, context=context(student))
+    item.refresh_from_db()
+    assert item.submitted_at is None
+
+    StudentInventory.objects.filter(pk=item.pk).update(year_level=4)
+    submitted = submit_current_inventory(student=student, context=context(student))
+    assert submitted.year_level == 4
+    assert submitted.submitted_at is not None
+
+
+@pytest.mark.django_db
+def test_unmodified_or_inactive_program_draft_values_remain_editable():
+    sync_policy()
+    actor = make_user("classification-draft-admin@example.edu", "IT_ADMIN")
+    student = make_user("classification-draft-student@example.edu", "STUDENT")
+    configure_year(actor)
+    item = ensure_current_inventory(student=student, context=context(student))
+    sync_organization_catalog()
+    bachelors = Program.objects.get(
+        college__campus__code="MAIN",
+        college__code="CCMS",
+        code="BSIS",
+    )
+    bachelors.is_active = False
+    bachelors.save(update_fields=["is_active", "updated_at"])
+    StudentInventory.objects.filter(pk=item.pk).update(program=bachelors, year_level=5)
+
+    draft_values = minimum_normalized_inventory_values(program_id=bachelors.pk, year_level=5)
+    draft_values["nickname"] = "Draft remains editable"
+    updated = replace_current_inventory(student=student, values=draft_values)
+    assert updated.program_id == bachelors.pk
+    assert updated.year_level == 5
+    assert read_confidential_content(updated).nickname == "Draft remains editable"
 
 
 def set_inventory_context(

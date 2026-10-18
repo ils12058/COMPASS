@@ -15,6 +15,11 @@ from compass.authentication.api import session_auth
 from compass.authentication.step_up import require_recent_mfa_for_request
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.organization.canonical import (
+    AcademicClassification,
+    YearLevelPolicyStatus,
+    canonical_program_metadata,
+)
 from compass.organization.models import CounselorResponsibility, StaffSupervision
 from compass.organization.services import (
     DEFAULT_PAGE_SIZE,
@@ -74,6 +79,9 @@ class ProgramSummary(StrictSchema):
     name: str
     college: CollegeSummary
     is_active: bool
+    academic_classification: AcademicClassification | None
+    year_level_policy_status: YearLevelPolicyStatus
+    applicable_year_levels: list[int] | None
 
 
 class ProgramListResponse(StrictSchema):
@@ -197,12 +205,30 @@ def _college(college) -> dict[str, object]:
 
 
 def _program(program) -> dict[str, object]:
+    metadata = canonical_program_metadata(
+        program.college.campus.code,
+        program.college.code,
+        program.code,
+    )
     return {
         "id": program.pk,
         "code": program.code,
         "name": program.name,
         "college": _college(program.college),
         "is_active": program.is_active,
+        "academic_classification": (
+            metadata.academic_classification if metadata is not None else None
+        ),
+        "year_level_policy_status": (
+            metadata.year_level_policy_status
+            if metadata is not None
+            else YearLevelPolicyStatus.PENDING_POLICY
+        ),
+        "applicable_year_levels": (
+            list(metadata.applicable_year_levels)
+            if metadata is not None and metadata.applicable_year_levels is not None
+            else None
+        ),
     }
 
 

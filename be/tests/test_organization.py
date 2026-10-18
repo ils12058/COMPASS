@@ -22,6 +22,7 @@ from compass.organization.access_scope import (
     resolve_general_guidance_college_scope,
     resolve_operational_responsibility_scope,
 )
+from compass.organization.bootstrap import sync_organization_catalog
 from compass.organization.models import (
     Campus,
     College,
@@ -135,6 +136,40 @@ def test_structural_reads_are_available_without_organization_management():
 
     officer = make_user("read-officer@example.edu", "INSTITUTIONAL_OFFICER")
     assert auth_client(officer).get("/api/v1/organization/campuses").status_code == 403
+
+
+@pytest.mark.django_db
+def test_program_read_exposes_exact_academic_classification_and_pending_policy():
+    sync_policy()
+    sync_organization_catalog()
+    student = make_user("program-metadata@example.edu", "STUDENT")
+    response = auth_client(student).get("/api/v1/organization/programs", {"is_active": True})
+    assert response.status_code == 200
+    items = response.json()["items"]
+
+    def find(campus: str, college: str, code: str):
+        return next(
+            item
+            for item in items
+            if item["college"]["campus"]["code"] == campus
+            and item["college"]["code"] == college
+            and item["code"] == code
+        )
+
+    bachelors = find("MAIN", "CCMS", "BSIS")
+    assert bachelors["academic_classification"] == "BACHELORS"
+    assert bachelors["year_level_policy_status"] == "CONFIGURED"
+    assert bachelors["applicable_year_levels"] == [1, 2, 3, 4]
+
+    masters = find("MAIN", "CCMS", "MIT")
+    assert masters["academic_classification"] == "MASTERS"
+    assert masters["year_level_policy_status"] == "PENDING_POLICY"
+    assert masters["applicable_year_levels"] is None
+
+    doctoral = find("MAIN", "GS", "DBA")
+    assert doctoral["academic_classification"] == "DOCTORAL"
+    assert doctoral["year_level_policy_status"] == "PENDING_POLICY"
+    assert doctoral["applicable_year_levels"] is None
 
 
 @pytest.mark.django_db

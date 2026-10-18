@@ -1353,7 +1353,22 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert "profile_photo_object_key" not in profile_update
 
     program_summary = schemas["ProgramSummary"]["properties"]
-    assert {"id", "code", "name", "college", "is_active"} == set(program_summary)
+    assert {
+        "id",
+        "code",
+        "name",
+        "college",
+        "is_active",
+        "academic_classification",
+        "year_level_policy_status",
+        "applicable_year_levels",
+    } == set(program_summary)
+    assert schemas["AcademicClassification"]["enum"] == [
+        "BACHELORS",
+        "MASTERS",
+        "DOCTORAL",
+    ]
+    assert schemas["YearLevelPolicyStatus"]["enum"] == ["CONFIGURED", "PENDING_POLICY"]
     inventory_payload = schemas["InventoryPayload"]["properties"]
     assert {
         "program_id",

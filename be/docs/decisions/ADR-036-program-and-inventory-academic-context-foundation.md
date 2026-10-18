@@ -116,3 +116,24 @@ This foundation adds no StudentAcademicClassification, Registrar/SIS subsystem, 
 transfer ledger, academic-year synchronization engine, Major catalog, Block/Section model,
 semester/curriculum model, roster/denominator table, CAPS integration, profiling endpoint,
 analytics dashboard, percentages, or report/PDF generation.
+
+## ACAD-1 amendment (2026-10-18)
+
+The canonical Program catalog now carries a code-owned academic classification. Bachelor's
+Programs have supported Year Levels 1–4. Master's and Doctoral Programs are classified
+independently of their College; their Year Level policy remains explicitly pending until UCN
+confirms it. In particular, Master in Information Technology is classified as Master's while it
+remains under CCMS.
+
+This amendment does not change the nullable numeric Inventory field or its database constraint of
+1–10. That stored domain preserves already accepted Inventory rows and lets Programs with pending
+policy continue using the existing compatibility behavior. It is not a statement that UCN's
+postgraduate programs have a 10-year limit. New Bachelor's Inventory choices and submissions use
+only the configured 1–4 levels. No progression is inferred from elapsed years or repeating.
+
+Roster and Student Profiling filters continue to expose the recorded 1–10 values. Values above 4
+are labelled as recorded values in those reporting contexts so historical data remains reachable
+without presenting those levels as normal Bachelor's choices. No rows are rewritten. This
+amendment supersedes only the former universal user-facing interpretation of the 1–10 field; it
+does not replace the historical storage constraint or create a Student academic-classification
+model.

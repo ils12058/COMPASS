@@ -71,6 +71,7 @@ export function InventoryEditor({
 
   const [draft, setDraft] = useState(() => toInventoryPayload(inventory));
   const [saved, setSaved] = useState(() => toInventoryPayload(inventory));
+  const selectedProgram = activePrograms.find((program) => program.id === draft.program_id) ?? null;
   const [section, setSection] = useState<InventorySectionId>("personal");
   const [validationVisible, setValidationVisible] = useState(false);
   const pendingTargetRef = useRef<string | null>(null);
@@ -94,7 +95,7 @@ export function InventoryEditor({
     dirty,
     message: "Discard your unsaved Individual Inventory changes?",
   });
-  const issues = getInventorySubmissionIssues(draft, activeProgramIds);
+  const issues = getInventorySubmissionIssues(draft, activeProgramIds, activePrograms);
   const currentSectionIndex = inventorySections.findIndex((item) => item.id === section);
   const currentCorrection = inventory.correction_pending ? inventory.latest_correction : null;
   const correctionTargetValues = currentCorrection?.targets;
@@ -362,6 +363,7 @@ export function InventoryEditor({
                   formRevision={`${inventory.form_revision.official_code} · Revision ${inventory.form_revision.official_revision}`}
                   issues={issues}
                   programLookupReady={Boolean(programQuery.data) || !canDiscoverPrograms}
+                  selectedProgram={selectedProgram}
                   onSelectIssue={selectIssue}
                 />
               ) : null}

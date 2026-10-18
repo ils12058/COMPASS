@@ -16,6 +16,8 @@ from compass.organization.canonical import (
     CANONICAL_CAMPUSES,
     CANONICAL_COLLEGE_IDENTITIES,
     CANONICAL_PROGRAM_IDENTITIES,
+    AcademicClassification,
+    YearLevelPolicyStatus,
 )
 from compass.organization.models import (
     AcademicYear,
@@ -78,6 +80,41 @@ def test_canonical_registry_pins_current_ucn_catalog_and_program_major_boundary(
     assert "Bachelor of Science in Business Administration" in program_names
     assert not any("Marketing Management" in name for name in program_names)
     assert not any("Crop Science" in name for name in program_names)
+
+    catalog_programs = [
+        program
+        for campus in CANONICAL_CAMPUSES
+        for college in campus.colleges
+        for program in college.programs
+    ]
+    assert all(program.academic_classification for program in catalog_programs)
+    assert all(
+        program.applicable_year_levels == (1, 2, 3, 4)
+        for program in catalog_programs
+        if program.academic_classification == AcademicClassification.BACHELORS
+    )
+    assert all(
+        program.applicable_year_levels is None
+        for program in catalog_programs
+        if program.academic_classification
+        in {AcademicClassification.MASTERS, AcademicClassification.DOCTORAL}
+    )
+
+    main_programs = {
+        (college.code, program.code): program
+        for college in main.colleges
+        for program in college.programs
+    }
+    assert main_programs["CCMS", "MIT"].academic_classification == (AcademicClassification.MASTERS)
+    assert main_programs["CCMS", "MIT"].year_level_policy_status == (
+        YearLevelPolicyStatus.PENDING_POLICY
+    )
+    assert main_programs["GS", "DBA"].academic_classification == (AcademicClassification.DOCTORAL)
+    assert main_programs["GS", "MBA"].academic_classification == (AcademicClassification.MASTERS)
+    assert main_programs["CCMS", "BSIS"].academic_classification == (
+        AcademicClassification.BACHELORS
+    )
+    assert main_programs["CCMS", "BSIS"].applicable_year_levels == (1, 2, 3, 4)
 
 
 @pytest.mark.django_db

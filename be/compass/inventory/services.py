@@ -49,6 +49,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
+from compass.organization.canonical import canonical_program_metadata
 from compass.organization.models import AcademicYear, College, Program
 from compass.student_support.models import (
     FourPsStatus,
@@ -554,6 +555,27 @@ def _require_active_program(program_id: UUID) -> Program:
     ):
         raise InventoryConflict("The selected Program, College, and Campus must all be active.")
     return program
+
+
+def _validate_program_year_level(program: Program, year_level: int | None) -> None:
+    """Enforce configured Program policy while retaining the stored compatibility domain."""
+    if year_level is None:
+        return
+    if type(year_level) is not int or not 1 <= year_level <= 10:
+        raise InvalidInventoryInput("year_level must be between 1 and 10.")
+    metadata = canonical_program_metadata(
+        program.college.campus.code,
+        program.college.code,
+        program.code,
+    )
+    if (
+        metadata is not None
+        and metadata.applicable_year_levels is not None
+        and year_level not in metadata.applicable_year_levels
+    ):
+        raise InvalidInventoryInput(
+            "Year Level must match the supported levels for the selected Program."
+        )
 
 
 def _choice_label(choice_class, value: str) -> str:
@@ -1182,21 +1204,37 @@ def replace_current_inventory(
             raise InventoryNotFound("The current academic-year Individual Inventory was not found.")
         if item.submitted_at is not None:
             raise InventoryConflict("A submitted Individual Inventory is locked.")
-        private = read_inventory_private_projection(item)
         normalized_values = _normalize_snapshot_categories(values)
         support_values = None
         if "support_profile" in normalized_values:
             support_values = _normalize_support_profile(normalized_values.pop("support_profile"))
         profile = _lock_or_create_support_profile(item)
+        original_program_id = item.program_id
+        program_changed = False
         if "program_id" in normalized_values:
             program_id = normalized_values.pop("program_id")
-            item.program = None if program_id is None else _require_active_program(program_id)
+            program_changed = program_id != original_program_id
+            if program_changed:
+                item.program = None if program_id is None else _require_active_program(program_id)
         if item.program_id is not None:
-            item.program = _require_active_program(item.program_id)
+            if not program_changed:
+                # An unchanged historical snapshot may be inactive and remains editable without
+                # being reselected. A newly selected Program was required active above.
+                item.program = Program.objects.select_related("college__campus").get(
+                    pk=item.program_id
+                )
             normalized_values["course_currently_enrolled"] = item.program.name
+        year_level = normalized_values.get("year_level", item.year_level)
+        year_level_changed = year_level != item.year_level
+        if year_level is not None and (type(year_level) is not int or not 1 <= year_level <= 10):
+            raise InvalidInventoryInput("year_level must be between 1 and 10.")
+        if item.program is not None and (program_changed or year_level_changed):
+            _validate_program_year_level(item.program, year_level)
         canonical_institutional_id = locked_student.institutional_id
         if canonical_institutional_id is not None:
             normalized_values["student_number"] = canonical_institutional_id
+        # Validate queryable Program and Year Level metadata before loading confidential content.
+        private = read_inventory_private_projection(item)
         _apply_scalar_values(item, normalized_values, private)
         item.save(
             update_fields=[
@@ -1379,6 +1417,7 @@ def submit_current_inventory(
         if item.year_level is None:
             raise InventoryConflict("Year Level is required before Inventory submission.")
         item.program = _require_active_program(item.program_id)
+        _validate_program_year_level(item.program, item.year_level)
         item.course_currently_enrolled = item.program.name
         profile = _lock_or_create_support_profile(item)
         if locked_student.institutional_id is not None:
