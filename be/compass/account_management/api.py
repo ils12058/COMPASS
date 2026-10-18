@@ -19,7 +19,6 @@ from compass.accounts.api_codes import (
     StudentLifecycleCode,
 )
 from compass.accounts.models import UserCapabilityOverride
-from compass.accounts.profile_photos import profile_photo_projection
 from compass.audit.context import AuditContext
 from compass.authentication.abuse import AuthenticationRateLimited
 from compass.authentication.api import session_auth

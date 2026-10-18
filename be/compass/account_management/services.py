@@ -22,7 +22,6 @@ from compass.accounts.models import (
     UserCapabilityOverride,
     UserDesignation,
 )
-from compass.accounts.profile_photos import profile_photo_projection
 from compass.accounts.policy import (
     CAPABILITY_CODES,
     CAPABILITY_DEFINITIONS,
@@ -34,6 +33,7 @@ from compass.accounts.policy import (
     missing_required_capabilities,
     required_capabilities,
 )
+from compass.accounts.profile_photos import profile_photo_projection
 from compass.accounts.services import (
     effective_capabilities,
     projected_capabilities,

@@ -518,13 +518,15 @@ def test_provider_management_reads_are_manager_only_and_narrow():
     assert providers.status_code == 200
     assert providers.json() == {
         "provider_coverage": "SELECTED_COUNSELORS",
-        "counselors": [{
-            "id": str(alpha.pk),
-            "display_name": "Test Alpha",
-            "profile_photo_url": None,
-            "profile_photo_updated_at": None,
-            "is_active": True,
-        }],
+        "counselors": [
+            {
+                "id": str(alpha.pk),
+                "display_name": "Test Alpha",
+                "profile_photo_url": None,
+                "profile_photo_updated_at": None,
+                "is_active": True,
+            }
+        ],
     }
 
     student_client = auth_client(student)
