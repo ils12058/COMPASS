@@ -3,7 +3,7 @@
 **Date:** 2026-10-18
 **Base:** `staging` at `4d87a839` (UX-P2A, UX-P2B, and merged UX-P3 included)
 **Branch:** `codex/ops-1b-floating-filter-refinement`
-**Pull request:** pending
+**Pull request:** [#279](https://github.com/ils12058/COMPASS/pull/279)
 **Merge or deployment:** none; this work is limited to a frontend PR.
 
 ## Audit matrix
@@ -64,5 +64,5 @@ The Follow-Ups browser run also captured the 320px toolbar/dialog and wrote stru
 
 Other audited collection pages were left intact because their controls already follow their workflow or because a wider change would overlap concurrent work. No Availability, Good Moral issuance/printing, document-rendering, or backend files were changed. The branch is based on `staging` and does not depend on OPS-1A or UX-P3 unmerged changes.
 
-**Pull request:** pending
+**Pull request:** [#279](https://github.com/ils12058/COMPASS/pull/279)
 **Implementation commit SHA:** `bd727f6d0af2de02a50d677104930566b0cc98bc`
