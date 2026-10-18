@@ -4,9 +4,9 @@
 
 **Target:** `staging`
 
-**PR:** Pending
+**PR:** [#278](https://github.com/ils12058/COMPASS/pull/278)
 
-**Implementation commit:** Pending
+**Implementation commit:** `ce6f648ab7de9c1b5ba7bd5a36c746dcfbbcbd4d`
 
 **Merge or deployment:** None
 
@@ -104,4 +104,4 @@ The remaining provider-detail captures are `before-counselor-detail-desktop.png`
 
 ## PR handoff
 
-PR URL and implementation commit SHA will be recorded here when the PR is opened. The PR will target `staging` and remain unmerged and undeployed.
+PR #278 targets `staging` and remains unmerged and undeployed.
