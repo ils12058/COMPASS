@@ -187,7 +187,18 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                 </li>
               ))}
             </ul>
-            <div className={`${dataTable.scroll} hidden md:block`}>
+            <div
+              className={`${dataTable.scroll} hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus md:block`}
+              role="region"
+              aria-label="Referrals. Scroll horizontally to view all columns."
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+                event.preventDefault();
+                event.currentTarget.scrollLeft += event.key === "ArrowRight" ? 160 : -160;
+              }}
+            >
+              <p aria-hidden="true" className="px-4 py-2 text-xs text-muted 2xl:hidden">Scroll horizontally to see all columns.</p>
               <table className={`${dataTable.table} min-w-[760px]`}>
                 <caption className="sr-only">Referrals</caption>
                 <thead className={dataTable.head}>
@@ -200,7 +211,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                       descendingLabel="Student Z–A"
                       current={ordering}
                       onSort={setOrdering}
-                      className={dataTable.headerCell}
+                      className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}
                     />
                     <th scope="col" className={dataTable.headerCell}>Course / Year / Block</th>
                     <SortableColumnHeader
@@ -222,7 +233,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                 <tbody className={dataTable.body}>
                   {items.map((referral) => (
                     <tr key={referral.id} className={dataTable.row}>
-                      <th scope="row" className={`${dataTable.cell} font-normal`}>
+                      <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-normal`}>
                         <Link href={`/portal/referrals/${referral.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{referral.reference_code}</Link>
                         <span className="mt-1 block text-ink">{referral.student_name_snapshot}</span>
                         {referral.student.institutional_id ? <span className="mt-1 block text-xs text-muted">{referral.student.institutional_id}</span> : null}

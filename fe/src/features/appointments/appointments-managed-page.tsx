@@ -268,6 +268,12 @@ function ManagedAppointmentsList() {
   // The order the rows are in: the reader's choice, or the default the backend applied.
   const ordering = requestedOrdering ?? pageData?.ordering;
   const selectable = items.filter((item) => item.status === AppointmentStatus.SCHEDULED);
+  const appointmentHeaderCell = canSendReminders
+    ? "sticky left-12 z-20 bg-brand-wash"
+    : dataTable.stickyHeaderCell;
+  const appointmentIdentityCell = canSendReminders
+    ? "sticky left-12 z-10 bg-surface-raised transition-colors group-hover:bg-surface-subtle"
+    : dataTable.stickyCell;
 
   return (
     <section aria-labelledby="manage-appointments-heading">
@@ -370,18 +376,29 @@ function ManagedAppointmentsList() {
           </PanelMessage>
         ) : (
           <>
-            <div className={`${dataTable.scroll} hidden md:block`}>
+            <div
+              className={`${dataTable.scroll} hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus md:block`}
+              role="region"
+              aria-label="Managed appointments. Scroll horizontally to view all columns."
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.target !== event.currentTarget || (event.key !== "ArrowLeft" && event.key !== "ArrowRight")) return;
+                event.preventDefault();
+                event.currentTarget.scrollLeft += event.key === "ArrowRight" ? 160 : -160;
+              }}
+            >
+              <p aria-hidden="true" className="px-4 py-2 text-xs text-muted 2xl:hidden">Scroll horizontally to see all columns.</p>
               <table className={`${dataTable.table} min-w-[1000px]`}>
                 <caption className="sr-only">Managed appointments</caption>
                 <thead className={dataTable.head}>
                   <tr>
-                    {canSendReminders ? <th scope="col" className={dataTable.headerCell}>
+                    {canSendReminders ? <th scope="col" className={`${dataTable.headerCell} sticky left-0 z-30 w-12 bg-brand-wash`}>
                       <input type="checkbox" aria-label="Select eligible appointments on this page"
                         disabled={selectable.length === 0}
                         checked={selectable.length > 0 && selectable.every((item) => selectedIds.includes(item.id))}
                         onChange={(event) => setSelectedIds(event.target.checked ? selectable.slice(0, 25).map((item) => item.id) : [])} />
                     </th> : null}
-                    <th scope="col" className={dataTable.headerCell}>Appointment</th>
+                    <th scope="col" className={`${dataTable.headerCell} ${appointmentHeaderCell}`}>Appointment</th>
                     <th scope="col" className={dataTable.headerCell}>Student</th>
                     <th scope="col" className={dataTable.headerCell}>Service</th>
                     <th scope="col" className={dataTable.headerCell}>Counselor</th>
@@ -402,11 +419,11 @@ function ManagedAppointmentsList() {
                 <tbody className={dataTable.body}>
                   {items.map((appointment) => (
                     <tr key={appointment.id} className={dataTable.row}>
-                      {canSendReminders ? <td className={dataTable.cell}><input type="checkbox" aria-label={`Select ${appointment.reference_code}`}
+                      {canSendReminders ? <td className={`${dataTable.cell} sticky left-0 z-20 w-12 bg-surface-raised group-hover:bg-surface-subtle`}><input type="checkbox" aria-label={`Select ${appointment.reference_code}`}
                         checked={selectedIds.includes(appointment.id)}
                         disabled={!selectable.some((item) => item.id === appointment.id) || (!selectedIds.includes(appointment.id) && selectedIds.length >= 25)}
                         onChange={(event) => setSelectedIds((previous) => event.target.checked ? [...previous, appointment.id] : previous.filter((id) => id !== appointment.id))} /></td> : null}
-                      <th scope="row" className={`${dataTable.cell} font-normal`}>
+                      <th scope="row" className={`${dataTable.cell} ${appointmentIdentityCell} font-normal`}>
                         <Link href={`/portal/appointments/${appointment.id}`} className="font-mono text-xs font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{appointment.reference_code}</Link>
                       </th>
                       <td className={dataTable.cell}>
