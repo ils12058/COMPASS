@@ -78,12 +78,19 @@ All fixtures and document data are synthetic. The Good Moral comparison uses the
 | `pnpm build` | Passed before the final iframe-readiness guard; not rerun during the requested pause |
 | `pnpm api:generate` | Passed; generated API client files have no diff |
 | Good Moral print browser suite | Chromium 22/22 and WebKit 22/22 before the final iframe-readiness guard; rerun pending |
-| E-Counseling Chromium browser checks | Call 37/37 and consent/realtime 11/11. Media/realtime was stopped at 8/16 after the user requested pausing heavy tests under high system load; the initial-ready/reconnect case separately passed 1/1. The remaining media checks are pending. |
+| E-Counseling Chromium browser checks | Call 37/37 and consent/realtime 11/11. The first media/realtime run passed 15/16; its initial-ready/reconnect socket check passed on an isolated 1/1 rerun. A later full retry was stopped at 8/16 after the user requested pausing heavy tests under high system load; the remaining media checks are pending. |
 | E-Counseling WebKit browser checks | Consent/realtime 11/11, media/realtime 16/16, fullscreen-fit 1/1. The full call suite remains pending. |
 | Targeted backend document rendering/color checks | Passed: 10 passed, 36 deselected |
 | Ruff on `be/tests/test_documents.py` | Passed |
 
 The user requested that heavy tests remain paused until system load clears. No browser tests were started after that request. The pending browser checks above are intentionally left visible rather than reported as passing.
+
+## Shared components, responsive behavior, and accessibility
+
+- Reused the existing `DeviceDialog` and `DeviceField` for advanced device selection and diagnostics. The connected call continues to use its existing `CallControl` and runtime. Good Moral still reads the authorized finalized PDF through the existing query and uses the existing Blob preview/download paths. No dependency was added.
+- Browser fixtures cover narrow-phone, phone, tablet, laptop, and desktop layouts, including open Guidance Messages and the existing layout presets. The completed Chromium call suite passed at the recorded viewports; screenshot evidence is grouped by engine and scenario under `fe/docs/ux-p3-visuals/`.
+- Visible labels and names remain on the Mic, Camera, Devices, and call controls. Keyboard focus behavior is covered by the `help-keyboard-focus` browser case; the compact consent rows retain their status semantics and confirmation dialogs. Manual screen-reader verification remains part of UAT.
+- No live staging role-based UAT or real Daily capture was performed. Native print-dialog behavior still needs direct Safari/macOS verification as described below.
 
 ## Changed files
 
