@@ -101,8 +101,10 @@ for (const width of [320, 1440]) {
         await shown(page.getByText(/Your answers are kept on this page/));
         assert.equal(await field.inputValue(), 'Unsaved Synthetic Name');
     });
-    await check(`good-moral-unconfirmed-${width}`, '/portal/good-moral/request', { viewport, overrides: { '/api/v1/auth/session': session(currentStudent), '/api/v1/exit-interviews/me/status': { graduation_good_moral_blocked: false }, 'POST /api/v1/good-moral/me/requests/current-student': error('internal_error', 500) } }, async (page, { requests }) => {
-        await page.getByLabel('Year level').selectOption('4th Year');
+    await check(`good-moral-unconfirmed-${width}`, '/portal/good-moral/request', { viewport, overrides: { '/api/v1/auth/session': session(currentStudent), '/api/v1/good-moral/me/academic-context': { status: 'ELIGIBLE', academic_classification: 'BACHELORS', year_level: 4 }, '/api/v1/exit-interviews/me/status': { graduation_good_moral_blocked: false }, 'POST /api/v1/good-moral/me/requests/current-student': error('internal_error', 500) } }, async (page, { requests }) => {
+        const yearLevel = page.getByLabel('Year Level', { exact: true });
+        assert.equal(await yearLevel.inputValue(), '4th Year');
+        assert.ok(await yearLevel.getAttribute('readonly') !== null);
         await page.getByLabel('Semester').selectOption('First Semester');
         await page.getByRole('button', { name: 'Submit request', exact: true }).click();
         await oneAlert(page, 'The request result could not be confirmed.');
