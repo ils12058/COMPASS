@@ -87,6 +87,26 @@ export function FloatingListTools({
     if (!open && dialog.open) dialog.close();
   }, [open]);
 
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (!open || !dialog) return;
+    function keepTabWithinDialog(event: KeyboardEvent) {
+      if (event.key !== "Tab" || !dialog?.open) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      )).filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0);
+      if (!focusable.length) return;
+      const index = focusable.indexOf(document.activeElement as HTMLElement);
+      const nextIndex = event.shiftKey
+        ? index <= 0 ? focusable.length - 1 : index - 1
+        : index < 0 || index === focusable.length - 1 ? 0 : index + 1;
+      event.preventDefault();
+      focusable[nextIndex].focus();
+    }
+    document.addEventListener("keydown", keepTabWithinDialog, true);
+    return () => document.removeEventListener("keydown", keepTabWithinDialog, true);
+  }, [open]);
+
   // Applying the filters, from the bar or from the panel, closes the panel. The decision waits for
   // the feature's own submit handler, which may refuse the filters and say why in the panel.
   const invalidRef = useRef(invalid);
@@ -175,29 +195,8 @@ export function FloatingListTools({
           aria-labelledby={titleId}
           onClose={() => {
             setOpen(false);
-            // Browsers return focus to the Filters button; this covers one that does not.
-            const active = document.activeElement;
-            if (!active || active === document.body || dialogRef.current?.contains(active)) {
-              triggerRef.current?.focus();
-            }
-          }}
-          onKeyDown={(event) => {
-            if (event.key !== "Tab") return;
-            const dialog = dialogRef.current;
-            if (!dialog) return;
-            const focusable = Array.from(dialog.querySelectorAll<HTMLElement>(
-              'a[href], button:not([disabled]), input:not([type="hidden"]):not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
-            )).filter((element) => element.tabIndex >= 0 && element.getClientRects().length > 0);
-            if (!focusable.length) return;
-            const first = focusable[0];
-            const last = focusable[focusable.length - 1];
-            if (event.shiftKey && document.activeElement === first) {
-              event.preventDefault();
-              last.focus();
-            } else if (!event.shiftKey && document.activeElement === last) {
-              event.preventDefault();
-              first.focus();
-            }
+            // Native dialog focus restoration varies between browsers; keep keyboard users at the trigger.
+            triggerRef.current?.focus();
           }}
           onPointerDown={(event) => {
             backdropPress.current = event.target === event.currentTarget;
