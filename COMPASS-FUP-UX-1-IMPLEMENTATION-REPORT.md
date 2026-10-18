@@ -5,8 +5,8 @@
 - **Baseline:** `origin/staging` at `2d5c024222b098fe8ce7011a8ff80e92571d8f5a` (latest fetched staging on 2026-10-18, including the listed UX-P3/FIX-1, OPS-1A, OPS-1B, and DOC-1 work).
 - **Branch:** `codex/fup-ux-1-followups-usability`
 - **PR target:** `staging`
-- **Implementation SHA:** pending commit; this report will be updated with the exact SHA before handoff.
-- **PR URL:** pending creation.
+- **Implementation SHA:** `663c3bbfa66486c96a80d54ea61431be2e982043`.
+- **PR URL:** https://github.com/ils12058/COMPASS/pull/282
 - **Merge/deployment:** none.
 
 The work was implemented in its own managed Git worktree. No Appointment Calendar or other concurrent worktree files were changed.
@@ -131,5 +131,5 @@ The browser coverage verifies overview/report query semantics, the OPS-1B filter
 
 ## Final handoff
 
-- **Implementation SHA:** pending.
-- **PR URL:** pending.
+- **Implementation SHA:** `663c3bbfa66486c96a80d54ea61431be2e982043`.
+- **PR URL:** https://github.com/ils12058/COMPASS/pull/282
