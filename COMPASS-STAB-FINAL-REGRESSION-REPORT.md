@@ -72,4 +72,57 @@ Backend tests and Django checks used only the local test database. Browser check
 
 ## Remaining status
 
-All PR checks and the full backend workflow passed on code/test commit `b5f42ad90acacd66db9812f91d12bf44e31340f6`. A later documentation-only update to this report changes no application or test source. PR #286 remains open and unmerged; no deployment was performed. No application implementation change or genuine application blocker was reproduced in the follow-up browser cases. Native PDF viewer rendering, print dialogs, and physical printing remain outside headless browser proof.
+All PR checks and the full backend workflow passed on code/test commit `b5f42ad90acacd66db9812f91d12bf44e31340f6`. PR #286 was subsequently merged into `staging` at `c568f2ff222ce069926330db3466b232c0172f12`; no deployment was performed. No application implementation change or genuine application blocker was reproduced in the earlier follow-up browser cases. Native PDF viewer rendering, print dialogs, and physical printing remain outside headless browser proof.
+
+## Follow-up: admin-initiated email-change verification
+
+### Root cause and severity
+
+**High impact workflow gap.** The backend already staged administrator-initiated address changes in the existing `EmailChangeRequest` workflow and required the account holder to prove possession of the proposed mailbox before changing `User.email`. The owner could complete that workflow only while the browser still held the response from their own initiation. The email-change page kept that response in component state, and there was no authenticated status read. After refresh or reauthentication, an admin-initiated request was invisible to its owner. The IT Admin's pending notice was also local-only, so it did not survive navigation or confirm completion. The security-code email did not explain where to enter the code.
+
+### Affected files
+
+- `be/compass/authentication/email_change.py`
+- `be/compass/authentication/api.py`
+- `be/compass/account_management/api.py`
+- `be/compass/authentication/security_email.py`
+- `be/compass/authentication/tasks.py`
+- `be/compass/authentication/templates/authentication/email/security_code.html`
+- `be/compass/authentication/templates/authentication/email/security_code.txt`
+- `be/tests/test_email_change.py`
+- `be/tests/test_openapi_contract.py`
+- `contracts/openapi.json`
+- `fe/src/features/account/security/security-overview.tsx`
+- `fe/src/features/account/security/email/email-change-page.tsx`
+- `fe/src/features/accounts/detail/overview/account-overview.tsx`
+- `fe/tests/email-change.browser.mjs`
+
+The Orval-generated TypeScript client was regenerated locally from the committed OpenAPI contract; generated client files are ignored by repository policy.
+
+### Fixes
+
+- Added an authenticated owner status endpoint that scopes all reads to the signed-in account. It returns only the latest request state, proposed address, expiry, and identifiers needed for confirmation. The OTP, hash, and other authentication material are never returned, and responses are marked `Cache-Control: no-store`.
+- Added an `accounts.manage`-protected status read so IT Admin can see pending, completed, expired, replaced, or unavailable verification state after refresh. The account record continues to show the existing address until owner verification succeeds.
+- Added a persistent Security notice with a keyboard-accessible **Verify email** link. The owner can enter the proposed-mailbox code directly; they do not need to start another email-change request first. Expired, replaced, and exhausted challenges lead back through the existing safe request flow and its existing proof/rate limits.
+- Kept the existing OTP confirmation authoritative, including account-owner binding, TOTP step-up, audit events, and session invalidation. No administrative confirmation path was added.
+- Updated the security-code email with a generic instruction to sign in and use **Account Security → Verify email**; it contains no account address or bearer link.
+- Replaced the admin page's transient success-style message with durable pending/completed state. It refreshes the managed account after confirmation.
+
+### Focused verification
+
+| Check | Result |
+|---|---|
+| `uv run pytest tests/test_email_change.py tests/test_openapi_contract.py::test_core_schemas_and_realistic_error_responses_are_typed -q` | **11 passed** |
+| `DJANGO_SETTINGS_MODULE=tests.settings uv run python manage.py export_openapi --check` | Passed; contract current |
+| Targeted `ruff check` and `ruff format --check` on affected backend files | Passed |
+| `pnpm api:generate` | Passed |
+| `pnpm lint` | Passed |
+| `pnpm typecheck` | Passed |
+| `COMPASS_UI_BASE_URL=http://localhost:3115 node tests/email-change.browser.mjs` | **5/5 passed** on Chromium, including phone viewport |
+| `COMPASS_UI_BASE_URL=http://localhost:3115 COMPASS_UI_BROWSER=webkit node tests/email-change.browser.mjs` | **5/5 passed** on WebKit |
+
+Backend and browser scenarios cover admin staging without changing the current address, owner-only discovery, reauthentication/refresh rediscovery, code confirmation and wrong-code feedback, wrong-owner rejection, expiration, superseding, attempt exhaustion, MFA step-up, security-event provenance, admin-visible completion, and generic email instructions. The browser checks use synthetic API responses and a loopback Next.js server. No broad CI suite was run for this follow-up; no merge or deployment was performed.
+
+### Follow-up status
+
+Implementation is on branch `codex/stab-final-email-change-verification`, based on `staging` revision `c568f2ff222ce069926330db3466b232c0172f12`. It remains unmerged and undeployed pending review.

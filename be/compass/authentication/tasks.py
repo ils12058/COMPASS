@@ -43,7 +43,7 @@ def deliver_email_otp(self, challenge_id: str, code: str) -> int:
     ):
         return 0
     try:
-        message = render_security_code_email(code)
+        message = render_security_code_email(code, purpose=challenge.purpose)
     except Exception:
         # No exception detail: a rendering failure must not carry the code into worker logs.
         logger.error(

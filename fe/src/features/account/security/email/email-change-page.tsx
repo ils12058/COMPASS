@@ -18,17 +18,20 @@ import { useOptionalActiveECounselingCall } from "@/features/ecounseling/runtime
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   useAuthConfirmEmailChange,
+  useAuthGetEmailChangeStatus,
   useAuthGetMfaStatus,
   useAuthRequestEmailChange,
   useAuthRequestEmailChangeSecurityChallenge,
 } from "@/lib/api/generated/auth/auth";
-import type { EmailChangeRequestResponse } from "@/lib/api/generated/model";
 
 export function EmailChangePage() {
   const { user } = usePortalSession();
   const queryClient = useQueryClient();
   const call = useOptionalActiveECounselingCall();
   const mfa = useAuthGetMfaStatus({ query: { retry: false } });
+  const emailChangeStatus = useAuthGetEmailChangeStatus({
+    query: { retry: false, refetchOnMount: "always", refetchOnWindowFocus: true },
+  });
   const challenge = useAuthRequestEmailChangeSecurityChallenge();
   const requestChange = useAuthRequestEmailChange();
   const confirmChange = useAuthConfirmEmailChange();
@@ -36,7 +39,7 @@ export function EmailChangePage() {
   const [currentCode, setCurrentCode] = useState("");
   const [newEmail, setNewEmail] = useState("");
   const [newCode, setNewCode] = useState("");
-  const [pending, setPending] = useState<EmailChangeRequestResponse | null>(null);
+  const [restartRequested, setRestartRequested] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [resetKey, setResetKey] = useState(0);
   const [stepUpOpen, setStepUpOpen] = useState(false);
@@ -45,6 +48,16 @@ export function EmailChangePage() {
   const [setupRequired, setSetupRequired] = useState(false);
   const usesMfa = mfa.data?.data.enabled ?? false;
   const recent = mfa.data?.data.recent || verified;
+  const serverRequest = emailChangeStatus.data?.data.request;
+  const pending =
+    !restartRequested && serverRequest?.status === "pending" && serverRequest.request_id && serverRequest.challenge_id
+      ? {
+          request_id: serverRequest.request_id,
+          challenge_id: serverRequest.challenge_id,
+          expires_at: serverRequest.expires_at ?? "",
+          destination_email: serverRequest.destination_email ?? "",
+        }
+      : null;
 
   function resetTurnstile() {
     setToken(null);
@@ -81,14 +94,16 @@ export function EmailChangePage() {
       return;
     }
     try {
-      const response = await requestChange.mutateAsync({ data: {
+      await requestChange.mutateAsync({ data: {
         new_email: newEmail,
         ...(!usesMfa ? { current_email_challenge_id: currentChallengeId, current_email_code: currentCode } : {}),
         ...(isTurnstileConfigured ? { turnstile_token: token } : {}),
       } });
-      setPending(response.data);
+      setRestartRequested(false);
+      setCurrentChallengeId(null);
       setCurrentCode("");
       resetTurnstile();
+      await emailChangeStatus.refetch();
     } catch (caught) {
       handleError(caught);
       resetTurnstile();
@@ -99,6 +114,10 @@ export function EmailChangePage() {
     event.preventDefault();
     if (!pending) return;
     setError(null);
+    if (usesMfa && !recent) {
+      setStepUpOpen(true);
+      return;
+    }
     try {
       const response = await confirmChange.mutateAsync({ data: {
         request_id: pending.request_id,
@@ -116,6 +135,7 @@ export function EmailChangePage() {
       window.location.replace("/login?email_changed=1");
     } catch (caught) {
       handleError(caught);
+      await emailChangeStatus.refetch();
     }
   }
 
@@ -129,9 +149,24 @@ export function EmailChangePage() {
         headingId="email-heading"
         description={<>Current sign-in email: <span className="break-all font-semibold text-ink">{user.email}</span></>}
       />
+      {emailChangeStatus.isError ? (
+        <Notice
+          role="alert"
+          tone="danger"
+          className="mb-4"
+          action={<Button variant="secondary" onClick={() => void emailChangeStatus.refetch()}>Retry</Button>}
+        >
+          Email verification status could not be loaded. Try again before requesting a new code.
+        </Notice>
+      ) : null}
+      {emailChangeStatus.isSuccess && serverRequest && ["expired", "cancelled", "verification_unavailable"].includes(serverRequest.status) ? (
+        <Notice role="status" tone="info" className="mb-4">
+          This email change is no longer active. Start a new request to try again.
+        </Notice>
+      ) : null}
       {mfa.isPending ? <RowsSkeleton label="Checking security requirements…" rows={2} framed /> : null}
       {mfa.isError ? <Notice role="alert" tone="danger" action={<Button variant="secondary" onClick={() => void mfa.refetch()}>Retry</Button>}>Security requirements could not be loaded.</Notice> : null}
-      {mfa.isSuccess && !usesMfa && !currentChallengeId ? (
+      {mfa.isSuccess && emailChangeStatus.isSuccess && !emailChangeStatus.isFetching && !pending && !usesMfa && !currentChallengeId ? (
         <Panel as="div">
           <PanelHeader title="Verify your current email" description="First, request a code at your current sign-in email. You will verify the new email separately." />
           <PanelBody>
@@ -140,7 +175,7 @@ export function EmailChangePage() {
           </PanelBody>
         </Panel>
       ) : null}
-      {mfa.isSuccess && !pending && (usesMfa || currentChallengeId) ? (
+      {mfa.isSuccess && emailChangeStatus.isSuccess && !emailChangeStatus.isFetching && !pending && (usesMfa || currentChallengeId) ? (
         <Panel as="div">
         <form onSubmit={requestNewEmail}>
           <PanelHeader title="Enter your new email" />
@@ -155,17 +190,17 @@ export function EmailChangePage() {
         </form>
         </Panel>
       ) : null}
-      {mfa.isSuccess && pending ? (
+      {mfa.isSuccess && emailChangeStatus.isSuccess && pending ? (
         <Panel as="div">
         <form onSubmit={confirmNewEmail}>
           <PanelHeader
             title="Verify your new email"
-            description={<>Enter the code sent to <span className="break-all font-semibold text-ink">{newEmail}</span>. Confirming this change will sign you out.</>}
+            description={<>Enter the code sent to <span className="break-all font-semibold text-ink">{pending.destination_email}</span>. Confirming this change will sign you out.</>}
           />
           <PanelBody className="space-y-5">
           <div className="grid gap-2"><Label htmlFor="new-email-code">Code from new email</Label><Input id="new-email-code" autoComplete="one-time-code" inputMode="numeric" required value={newCode} onChange={(event) => setNewCode(event.target.value)} /></div>
-          <Button type="submit" disabled={busy}>{confirmChange.isPending ? "Changing email…" : "Change sign-in email"}</Button>
-          <button type="button" onClick={() => { setPending(null); setNewCode(""); setError(null); }} className="block min-h-10 text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Start a new email request</button>
+          <Button type="submit" disabled={busy}>{confirmChange.isPending ? "Verifying email…" : "Verify email"}</Button>
+          <button type="button" onClick={() => { setRestartRequested(true); setCurrentChallengeId(null); setCurrentCode(""); setNewCode(""); setError(null); }} className="block min-h-10 text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Start a new email request</button>
           </PanelBody>
         </form>
         </Panel>

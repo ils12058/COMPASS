@@ -1,5 +1,5 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}Use this COMPASS security code to continue:
+{% block content %}{{ instructions }}
 
 {{ code }}
 

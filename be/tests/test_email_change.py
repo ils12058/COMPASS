@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
@@ -27,6 +28,7 @@ from compass.authentication.sessions import (
 )
 from compass.authentication.tasks import (
     deliver_email_change_security_alert,
+    deliver_email_otp,
     recover_unsent_email_change_security_alerts,
 )
 from compass.common.rate_limit import RateLimitResult
@@ -111,6 +113,10 @@ def post(client: Client, path: str, payload: dict[str, object]):
         content_type="application/json",
         **csrf(client),
     )
+
+
+def get(client: Client, path: str):
+    return client.get(path)
 
 
 @pytest.mark.django_db
@@ -341,6 +347,202 @@ def test_admin_can_only_stage_email_change_and_target_new_mailbox_must_confirm()
     assert confirmed.status_code == 200
     target.refresh_from_db()
     assert target.email == "managed-new@example.edu"
+
+
+@pytest.mark.django_db
+def test_admin_initiated_request_is_discoverable_only_by_owner_and_reports_completion():
+    sync_policy()
+    admin = make_user("status-admin@example.edu", role="IT_ADMIN", institutional_id="EMP-EMAIL-002")
+    target = make_user("status-old@example.edu", institutional_id="UCN-MANAGED-002")
+    other = make_user("status-other@example.edu", institutional_id="UCN-MANAGED-003")
+    admin_client, _admin_session = auth_client(admin, recent_mfa=True)
+
+    staged = post(
+        admin_client,
+        f"/api/v1/accounts/{target.pk}/email-change",
+        {"new_email": "status-new@example.edu"},
+    )
+    assert staged.status_code == 200
+    request_id = staged.json()["request_id"]
+    challenge_id = staged.json()["challenge_id"]
+    target.refresh_from_db()
+    assert target.email == "status-old@example.edu"
+
+    owner_client, owner_session = auth_client(target)
+    assert get(Client(), "/api/v1/auth/email-change/status").status_code == 401
+    status = get(owner_client, "/api/v1/auth/email-change/status")
+    assert status.status_code == 200
+    assert status["Cache-Control"] == "no-store"
+    status_request = status.json()["request"]
+    assert status_request["status"] == "pending"
+    assert status_request["request_id"] == request_id
+    assert status_request["challenge_id"] == challenge_id
+    assert status_request["destination_email"] == "status-new@example.edu"
+    assert status_request["confirmed_at"] is None
+    assert status_request["expires_at"]
+    serialized = json.dumps(status.json())
+    assert "code_hash" not in serialized
+    assert "123456" not in serialized
+
+    other_client, _other_session = auth_client(other)
+    assert get(other_client, "/api/v1/auth/email-change/status").json() == {"request": None}
+    wrong_owner = post(
+        other_client,
+        "/api/v1/auth/email-change/confirm",
+        {"request_id": request_id, "challenge_id": challenge_id, "code": "123456"},
+    )
+    assert wrong_owner.status_code == 404
+    target.refresh_from_db()
+    assert target.email == "status-old@example.edu"
+
+    with patch("compass.authentication.tasks.Mailer.send", return_value=1) as send:
+        assert deliver_email_otp.run(challenge_id, "123456") == 1
+    email_body = send.call_args.kwargs["body"]
+    email_html = send.call_args.kwargs["html_body"]
+    assert "Account Security" in email_body
+    assert "Verify email" in email_body
+    assert "Account Security" in email_html
+    assert "Verify email" in email_html
+    assert "status-new@example.edu" not in email_body + email_html
+
+    with patch("compass.authentication.email_change._safe_enqueue_old_email_alert"):
+        confirmed = post(
+            owner_client,
+            "/api/v1/auth/email-change/confirm",
+            {"request_id": request_id, "challenge_id": challenge_id, "code": "123456"},
+        )
+    assert confirmed.status_code == 200
+    target.refresh_from_db()
+    assert target.email == "status-new@example.edu"
+    assert AuthSession.objects.get(pk=owner_session.pk).revoked_at is not None
+    changed_event = AuditEvent.objects.get(action="auth.email.changed", actor_user=target)
+    assert changed_event.metadata["initiator"] == "administrator"
+
+    reauthenticated_owner, _new_session = auth_client(target)
+    owner_completed = get(reauthenticated_owner, "/api/v1/auth/email-change/status")
+    assert owner_completed.status_code == 200
+    assert owner_completed.json()["request"]["status"] == "confirmed"
+    assert owner_completed.json()["request"]["challenge_id"] is None
+
+    managed_status = get(admin_client, f"/api/v1/accounts/{target.pk}/email-change")
+    assert managed_status.status_code == 200
+    assert managed_status["Cache-Control"] == "no-store"
+    assert managed_status.json()["request"]["status"] == "confirmed"
+    assert managed_status.json()["request"]["destination_email"] == "status-new@example.edu"
+
+
+@pytest.mark.django_db
+def test_admin_email_change_status_covers_expiration_supersession_and_locked_otp(settings):
+    sync_policy()
+    admin = make_user("state-admin@example.edu", role="IT_ADMIN", institutional_id="EMP-EMAIL-003")
+    target = make_user("state-old@example.edu", institutional_id="UCN-MANAGED-004")
+    admin_client, _admin_session = auth_client(admin, recent_mfa=True)
+
+    first = post(
+        admin_client,
+        f"/api/v1/accounts/{target.pk}/email-change",
+        {"new_email": "state-first@example.edu"},
+    )
+    old_request = EmailChangeRequest.objects.get(pk=first.json()["request_id"])
+    old_request.created_at = timezone.now() - timedelta(minutes=2)
+    old_request.expires_at = old_request.created_at + timedelta(minutes=1)
+    old_request.save(update_fields=["created_at", "expires_at"])
+    owner_client, _owner_session = auth_client(target)
+    expired = get(owner_client, "/api/v1/auth/email-change/status").json()["request"]
+    assert expired["status"] == "expired"
+    assert expired["challenge_id"] is None
+    expired_confirm = post(
+        owner_client,
+        "/api/v1/auth/email-change/confirm",
+        {
+            "request_id": first.json()["request_id"],
+            "challenge_id": first.json()["challenge_id"],
+            "code": "123456",
+        },
+    )
+    assert expired_confirm.status_code == 422
+    target.refresh_from_db()
+    assert target.email == "state-old@example.edu"
+
+    second = post(
+        admin_client,
+        f"/api/v1/accounts/{target.pk}/email-change",
+        {"new_email": "state-second@example.edu"},
+    )
+    old_request.refresh_from_db()
+    assert old_request.cancelled_at is not None
+    replacement = get(owner_client, "/api/v1/auth/email-change/status").json()["request"]
+    assert replacement["status"] == "pending"
+    assert replacement["request_id"] == second.json()["request_id"]
+    assert replacement["destination_email"] == "state-second@example.edu"
+
+    settings.AUTH_EMAIL_OTP_MAX_ATTEMPTS = 1
+    wrong = post(
+        owner_client,
+        "/api/v1/auth/email-change/confirm",
+        {
+            "request_id": second.json()["request_id"],
+            "challenge_id": second.json()["challenge_id"],
+            "code": "000000",
+        },
+    )
+    assert wrong.status_code == 422
+    exhausted = get(owner_client, "/api/v1/auth/email-change/status").json()["request"]
+    assert exhausted["status"] == "verification_unavailable"
+    assert exhausted["challenge_id"] is None
+    target.refresh_from_db()
+    assert target.email == "state-old@example.edu"
+    assert AuditEvent.objects.filter(action="auth.email.otp.failed", actor_user=target).exists()
+
+
+@pytest.mark.django_db
+def test_admin_initiated_email_change_still_requires_recent_mfa_for_target():
+    sync_policy()
+    admin = make_user("mfa-admin@example.edu", role="IT_ADMIN", institutional_id="EMP-EMAIL-004")
+    target = make_user("mfa-target-old@example.edu", institutional_id="UCN-MANAGED-005")
+    TOTPFactor.objects.create(
+        user=target,
+        encrypted_secret=encrypt_totp_secret("JBSWY3DPEHPK3PXP"),
+        confirmed_at=timezone.now(),
+    )
+    admin_client, _admin_session = auth_client(admin, recent_mfa=True)
+    staged = post(
+        admin_client,
+        f"/api/v1/accounts/{target.pk}/email-change",
+        {"new_email": "mfa-target-new@example.edu"},
+    )
+
+    stale_owner, _stale_session = auth_client(target)
+    blocked = post(
+        stale_owner,
+        "/api/v1/auth/email-change/confirm",
+        {
+            "request_id": staged.json()["request_id"],
+            "challenge_id": staged.json()["challenge_id"],
+            "code": "123456",
+        },
+    )
+    assert blocked.status_code == 403
+    assert blocked.json()["error"]["code"] == "recent_mfa_required"
+    target.refresh_from_db()
+    assert target.email == "mfa-target-old@example.edu"
+
+    recent_owner, _recent_session = auth_client(target, recent_mfa=True)
+    with patch("compass.authentication.email_change._safe_enqueue_old_email_alert"):
+        confirmed = post(
+            recent_owner,
+            "/api/v1/auth/email-change/confirm",
+            {
+                "request_id": staged.json()["request_id"],
+                "challenge_id": staged.json()["challenge_id"],
+                "code": "123456",
+            },
+        )
+    assert confirmed.status_code == 200
+    target.refresh_from_db()
+    assert target.email == "mfa-target-new@example.edu"
+    changed_event = AuditEvent.objects.get(action="auth.email.changed", actor_user=target)
+    assert changed_event.metadata["initiator"] == "administrator"
 
 
 @pytest.mark.django_db

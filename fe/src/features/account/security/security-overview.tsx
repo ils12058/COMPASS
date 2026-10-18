@@ -3,10 +3,11 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
-import { useAuthGetMfaStatus } from "@/lib/api/generated/auth/auth";
+import { useAuthGetEmailChangeStatus, useAuthGetMfaStatus } from "@/lib/api/generated/auth/auth";
 
 const securityRows = [
   { title: "Password", detail: "Change your COMPASS sign-in password.", label: "Change password", href: "/portal/account/security/password" },
@@ -16,10 +17,47 @@ const securityRows = [
 export function SecurityOverview() {
   const { user } = usePortalSession();
   const mfa = useAuthGetMfaStatus({ query: { retry: false } });
+  const emailChange = useAuthGetEmailChangeStatus({
+    query: { retry: false, refetchOnMount: "always", refetchOnWindowFocus: true },
+  });
+  const emailChangeRequest = emailChange.data?.data.request;
 
   return (
     <section aria-labelledby="security-heading">
       <PageHeader title="Security" headingId="security-heading" />
+      {emailChangeRequest?.status === "pending" ? (
+        <Notice
+          role="status"
+          tone="warning"
+          className="mb-4"
+          title="Verify your new sign-in email"
+          action={
+            <Link
+              href="/portal/account/security/email"
+              className="inline-flex min-h-10 items-center font-semibold text-brand underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+            >
+              Verify email
+            </Link>
+          }
+        >
+          A verification code was sent to <span className="break-all font-semibold text-ink">{emailChangeRequest.destination_email}</span>. Enter it to finish changing your sign-in email.
+        </Notice>
+      ) : null}
+      {emailChangeRequest && ["expired", "cancelled", "verification_unavailable"].includes(emailChangeRequest.status) ? (
+        <Notice role="status" tone="info" className="mb-4">
+          This email change is no longer active. Start a new request to try again.
+        </Notice>
+      ) : null}
+      {emailChange.isError ? (
+        <Notice
+          role="alert"
+          tone="danger"
+          className="mb-4"
+          action={<Button variant="secondary" onClick={() => void emailChange.refetch()}>Retry</Button>}
+        >
+          Email verification status could not be loaded.
+        </Notice>
+      ) : null}
       <Panel as="div" className="divide-y divide-border">
         <div className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
           <div>
