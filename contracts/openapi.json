@@ -2969,12 +2969,18 @@
             "type": "string"
           },
           "year_level": {
-            "title": "Year Level",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
           }
         },
         "required": [
-          "year_level",
           "semester",
           "student_id"
         ],
@@ -7900,12 +7906,18 @@
             "type": "string"
           },
           "year_level": {
-            "title": "Year Level",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
           }
         },
         "required": [
-          "year_level",
           "semester"
         ],
         "title": "CurrentStudentRequestPayload",
@@ -12497,6 +12509,23 @@
         "title": "GoodMoralCorrectionPayload",
         "type": "object"
       },
+      "GoodMoralDegreeOptionsResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Items",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items"
+        ],
+        "title": "GoodMoralDegreeOptionsResponse",
+        "type": "object"
+      },
       "GoodMoralDetailResponse": {
         "additionalProperties": false,
         "properties": {
@@ -12758,6 +12787,52 @@
         ],
         "title": "GoodMoralDetailResponse",
         "type": "object"
+      },
+      "GoodMoralF4AcademicContextResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_classification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicClassification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "status": {
+            "$ref": "#/components/schemas/GoodMoralF4EligibilityStatus"
+          },
+          "year_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "GoodMoralF4AcademicContextResponse",
+        "type": "object"
+      },
+      "GoodMoralF4EligibilityStatus": {
+        "enum": [
+          "ELIGIBLE",
+          "NOT_CURRENT",
+          "INVENTORY_REQUIRED",
+          "UNCLASSIFIED_PROGRAM",
+          "POSTGRADUATE_PROGRAM",
+          "UNSUPPORTED_YEAR_LEVEL"
+        ],
+        "title": "GoodMoralF4EligibilityStatus",
+        "type": "string"
       },
       "GoodMoralHistoryResponse": {
         "additionalProperties": false,
@@ -13382,6 +13457,16 @@
           "display_name": {
             "title": "Display Name",
             "type": "string"
+          },
+          "f4_eligibility": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralF4AcademicContextResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "id": {
             "format": "uuid",
@@ -42915,6 +43000,53 @@
         ]
       }
     },
+    "/api/v1/good-moral/degree-options": {
+      "get": {
+        "operationId": "goodMoralListDegreeOptions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralDegreeOptionsResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral Degree Options",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
     "/api/v1/good-moral/me": {
       "get": {
         "operationId": "goodMoralListMyRequests",
@@ -42957,6 +43089,53 @@
           }
         ],
         "summary": "Good Moral List My",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/me/academic-context": {
+      "get": {
+        "operationId": "goodMoralGetMyF4AcademicContext",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralF4AcademicContextResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral My Academic Context",
         "tags": [
           "good-moral"
         ]

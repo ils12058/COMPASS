@@ -53,13 +53,11 @@ from compass.institutional_forms.services import (
     is_supported_form_revision,
     require_active_supported_form_revision,
 )
-from compass.inventory.services import (
-    CurrentAcademicYearNotConfigured,
-    InventoryConflict,
-    require_current_submitted_inventory,
-)
+from compass.inventory.models import StudentInventory
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
+from compass.organization.academic_years import get_current_academic_year
+from compass.organization.canonical import AcademicClassification, canonical_program_metadata
 from compass.organization.models import StudentAffiliation
 
 from .models import (
@@ -99,12 +97,36 @@ class GoodMoralCurrentStudentRequired(GoodMoralError):
     pass
 
 
-class GoodMoralGraduatedStudentRequired(GoodMoralError):
-    pass
-
-
 class GoodMoralInventoryRequired(GoodMoralError):
     pass
+
+
+class GoodMoralF4AcademicEligibilityRequired(GoodMoralError):
+    pass
+
+
+class F4AcademicEligibility(StrEnum):
+    ELIGIBLE = "ELIGIBLE"
+    NOT_CURRENT = "NOT_CURRENT"
+    INVENTORY_REQUIRED = "INVENTORY_REQUIRED"
+    UNCLASSIFIED_PROGRAM = "UNCLASSIFIED_PROGRAM"
+    POSTGRADUATE_PROGRAM = "POSTGRADUATE_PROGRAM"
+    UNSUPPORTED_YEAR_LEVEL = "UNSUPPORTED_YEAR_LEVEL"
+
+
+@dataclass(frozen=True, slots=True)
+class F4AcademicContext:
+    status: F4AcademicEligibility
+    academic_classification: AcademicClassification | None = None
+    year_level: int | None = None
+
+
+F4_YEAR_LEVEL_LABELS = {
+    1: "1st Year",
+    2: "2nd Year",
+    3: "3rd Year",
+    4: "4th Year",
+}
 
 
 class GoodMoralExitInterviewRequired(GoodMoralError):
@@ -394,12 +416,114 @@ def _clean_amount(value: object) -> Decimal | None:
 
 
 def _require_submitted_inventory(student: User):
-    try:
-        return require_current_submitted_inventory(student)
-    except (CurrentAcademicYearNotConfigured, InventoryConflict) as exc:
+    current_year = get_current_academic_year()
+    if current_year is None:
         raise GoodMoralInventoryRequired(
             "A submitted Individual Inventory for the current Academic Year is required."
-        ) from exc
+        )
+    # Good Moral needs only these submitted academic facts. Avoid hydrating the Inventory's
+    # confidential answer graph when creating or summarizing a certificate request.
+    inventory = (
+        StudentInventory.objects.select_related("academic_year", "program__college__campus")
+        .only(
+            "id",
+            "student_id",
+            "academic_year_id",
+            "academic_year__label",
+            "submitted_at",
+            "program_id",
+            "program__code",
+            "program__college__code",
+            "program__college__campus__code",
+            "year_level",
+            "course_currently_enrolled",
+            "major",
+        )
+        .filter(student_id=student.pk, academic_year_id=current_year.pk)
+        .first()
+    )
+    if inventory is None or inventory.submitted_at is None:
+        raise GoodMoralInventoryRequired(
+            "A submitted Individual Inventory for the current Academic Year is required."
+        )
+    return inventory
+
+
+def _f4_academic_context(*, program, year_level: int | None) -> F4AcademicContext:
+    if program is None:
+        return F4AcademicContext(F4AcademicEligibility.UNCLASSIFIED_PROGRAM)
+    metadata = canonical_program_metadata(
+        program.college.campus.code,
+        program.college.code,
+        program.code,
+    )
+    if metadata is None:
+        return F4AcademicContext(F4AcademicEligibility.UNCLASSIFIED_PROGRAM)
+    if metadata.academic_classification != AcademicClassification.BACHELORS:
+        return F4AcademicContext(
+            F4AcademicEligibility.POSTGRADUATE_PROGRAM,
+            academic_classification=metadata.academic_classification,
+        )
+    if (
+        year_level is None
+        or metadata.applicable_year_levels is None
+        or year_level not in metadata.applicable_year_levels
+        or year_level not in F4_YEAR_LEVEL_LABELS
+    ):
+        return F4AcademicContext(
+            F4AcademicEligibility.UNSUPPORTED_YEAR_LEVEL,
+            academic_classification=metadata.academic_classification,
+        )
+    return F4AcademicContext(
+        F4AcademicEligibility.ELIGIBLE,
+        academic_classification=metadata.academic_classification,
+        year_level=year_level,
+    )
+
+
+def get_f4_academic_context(student: User) -> F4AcademicContext:
+    if not is_current_student(student):
+        return F4AcademicContext(F4AcademicEligibility.NOT_CURRENT)
+    current_year = get_current_academic_year()
+    if current_year is None:
+        return F4AcademicContext(F4AcademicEligibility.INVENTORY_REQUIRED)
+    inventory = (
+        StudentInventory.objects.select_related("program__college__campus")
+        .only(
+            "submitted_at",
+            "program_id",
+            "program__code",
+            "program__college__code",
+            "program__college__campus__code",
+            "year_level",
+        )
+        .filter(student_id=student.pk, academic_year_id=current_year.pk)
+        .first()
+    )
+    if inventory is None or inventory.submitted_at is None:
+        return F4AcademicContext(F4AcademicEligibility.INVENTORY_REQUIRED)
+    return _f4_academic_context(program=inventory.program, year_level=inventory.year_level)
+
+
+def _require_f4_bachelors_inventory(inventory) -> str:
+    academic = _f4_academic_context(program=inventory.program, year_level=inventory.year_level)
+    if academic.status == F4AcademicEligibility.UNCLASSIFIED_PROGRAM:
+        raise GoodMoralF4AcademicEligibilityRequired(
+            "The submitted Individual Inventory Program is not classified for a Good Moral form. "
+            "Contact the Guidance Office to confirm the Program record."
+        )
+    if academic.status == F4AcademicEligibility.POSTGRADUATE_PROGRAM:
+        raise GoodMoralF4AcademicEligibilityRequired(
+            "F4 is available for current Bachelor's students. COMPASS does not currently offer an "
+            "approved postgraduate Good Moral form."
+        )
+    if academic.status == F4AcademicEligibility.UNSUPPORTED_YEAR_LEVEL:
+        raise GoodMoralF4AcademicEligibilityRequired(
+            "F4 supports 1st through 4th Year for the submitted Bachelor's Program. "
+            "Correct the submitted Inventory or contact the Guidance Office."
+        )
+    assert academic.year_level is not None
+    return F4_YEAR_LEVEL_LABELS[academic.year_level]
 
 
 def _current_affiliation(student: User) -> StudentAffiliation:
@@ -492,7 +616,7 @@ def _notify_assisted_creation(item: GoodMoralRequest) -> None:
 def create_my_current_student(
     *,
     student: User,
-    year_level: str,
+    year_level: str | None = None,
     semester: str,
     idempotency_key: str,
     request_fingerprint: str,
@@ -589,6 +713,7 @@ def list_eligible_students(
         student_lifecycle_status__in=(
             StudentLifecycleStatus.CURRENT,
             StudentLifecycleStatus.GRADUATED,
+            StudentLifecycleStatus.FORMER,
         ),
     ).select_related("organization_student_affiliation__college__campus")
     if term:
@@ -610,7 +735,7 @@ def list_eligible_students(
 def _create_current_student(
     *,
     student: User,
-    year_level: str,
+    year_level: str | None = None,
     semester: str,
     idempotency_key: str,
     request_fingerprint: str,
@@ -620,7 +745,7 @@ def _create_current_student(
     _validate_creation_student(student, initiator=initiator)
     key = _validate_idempotency_key(idempotency_key)
     fingerprint = _validate_fingerprint(request_fingerprint)
-    year = _clean_required(year_level, "year_level", 64)
+    year = "" if year_level is None else _clean_optional(year_level, "year_level", 64)
     term = _clean_required(semester, "semester", 80)
     digest = (
         hashlib.sha256(f"gco_assisted\0{initiator.pk}\0{key}".encode()).hexdigest()
@@ -648,11 +773,6 @@ def _create_current_student(
         if existing is not None:
             return existing
 
-        if year not in CANONICAL_YEAR_LEVELS:
-            raise InvalidGoodMoralInput("year_level is not supported.")
-        if term not in CANONICAL_SEMESTERS:
-            raise InvalidGoodMoralInput("semester is not supported.")
-
         _reject_assisted_pending(locked_student, initiator=initiator)
         if not is_current_student(locked_student):
             raise GoodMoralCurrentStudentRequired(
@@ -660,6 +780,15 @@ def _create_current_student(
             )
 
         inventory = _require_submitted_inventory(locked_student)
+        if year and year not in CANONICAL_YEAR_LEVELS:
+            raise InvalidGoodMoralInput("year_level must be between 1st and 4th Year.")
+        if term not in CANONICAL_SEMESTERS:
+            raise InvalidGoodMoralInput("semester is not supported.")
+        inventory_year = _require_f4_bachelors_inventory(inventory)
+        if year and year != inventory_year:
+            raise InvalidGoodMoralInput(
+                "year_level must match the Year Level on the submitted Individual Inventory."
+            )
         graduation_opportunity, exit_interview = _graduation_prerequisite(
             locked_student, inventory.academic_year_id
         )
@@ -685,7 +814,7 @@ def _create_current_student(
                     if exit_interview
                     else None,
                     applicant_name_snapshot=profile.full_name.strip(),
-                    year_level_snapshot=year,
+                    year_level_snapshot=inventory_year,
                     college_snapshot=affiliation.college.name.strip(),
                     course_snapshot=inventory.course_currently_enrolled.strip(),
                     major_snapshot=inventory.major.strip(),
@@ -762,12 +891,12 @@ def _create_graduate(
         if existing is not None:
             return existing
 
-        _reject_assisted_pending(locked_student, initiator=initiator)
-        if locked_student.student_lifecycle_status != StudentLifecycleStatus.GRADUATED:
-            raise GoodMoralGraduatedStudentRequired(
-                "Graduated Student lifecycle is required to request the F6 Good Moral certificate."
+        if locked_student.student_lifecycle_status not in StudentLifecycleStatus.values:
+            raise InvalidGoodMoralInput(
+                "A recorded Student lifecycle status is required to request F6."
             )
 
+        _reject_assisted_pending(locked_student, initiator=initiator)
         profile = get_person_profile_context(locked_student)
         try:
             with transaction.atomic():
@@ -1048,6 +1177,42 @@ def update_request(
                 and normalized["year_level_snapshot"] not in CANONICAL_YEAR_LEVELS
             ):
                 raise InvalidGoodMoralInput("year_level is not supported.")
+            if "year_level_snapshot" in changed:
+                linked_inventory = (
+                    StudentInventory.objects.select_related("program__college__campus")
+                    .only(
+                        "submitted_at",
+                        "program_id",
+                        "program__code",
+                        "program__college__code",
+                        "program__college__campus__code",
+                        "year_level",
+                    )
+                    .filter(pk=item.inventory_id)
+                    .first()
+                    if item.inventory_id
+                    else None
+                )
+                linked_context = (
+                    _f4_academic_context(
+                        program=linked_inventory.program,
+                        year_level=linked_inventory.year_level,
+                    )
+                    if linked_inventory is not None and linked_inventory.submitted_at is not None
+                    else None
+                )
+                expected_year = (
+                    F4_YEAR_LEVEL_LABELS[linked_context.year_level]
+                    if linked_context is not None
+                    and linked_context.status == F4AcademicEligibility.ELIGIBLE
+                    and linked_context.year_level is not None
+                    else None
+                )
+                if expected_year is None or normalized["year_level_snapshot"] != expected_year:
+                    raise InvalidGoodMoralInput(
+                        "Corrected year_level must match the linked submitted Inventory's "
+                        "classified Bachelor's Program and Year Level."
+                    )
             if (
                 "semester_snapshot" in changed
                 and normalized["semester_snapshot"] not in CANONICAL_SEMESTERS

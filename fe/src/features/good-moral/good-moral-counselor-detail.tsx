@@ -121,6 +121,7 @@ export function GoodMoralCounselorDetail({
             {item.status === "ISSUED" ? <GoodMoralField label="Issuer name on certificate" value={item.issued_by_name_snapshot} /> : null}
           </dl>
         </PanelSection>
+        {item.variant === "GRADUATE" ? <Notice>COMPASS hasn&apos;t verified this degree.</Notice> : null}
         <PanelSection
           title="Official Receipt"
           titleId="good-moral-counselor-receipt"

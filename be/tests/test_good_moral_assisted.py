@@ -24,6 +24,7 @@ from compass.good_moral.models import GoodMoralRequest, GoodMoralVariant
 from compass.notifications.delivery import deliver_email_delivery, render_notification_email
 from compass.notifications.models import EmailDelivery, Notification, NotificationPreference
 from compass.notifications.policy import NotificationEvent, get_event_definition
+from compass.organization.models import Program
 from tests.test_good_moral import (
     auth_client,
     good_moral_create_headers,
@@ -178,16 +179,48 @@ def test_inactive_actor_rejected(world):
     assert response.status_code in {401, 403}
 
 
-def test_graduate_creation_and_wrong_lifecycle(world):
+def test_graduate_creation_and_current_lifecycle_claim(world):
     response = post(world["gss"], world["graduate"], variant="graduate", payload=GRADUATE)
     assert response.status_code == 201, response.content
     data = response.json()
     assert data["degree"] == GRADUATE["degree"]
     assert data["inventory_id"] is None and data["graduation_date"] == "2020-06-01"
-    assert (
-        post(world["staff"], world["student"], variant="graduate", payload=GRADUATE).status_code
-        == 409
+    current_claim = post(world["staff"], world["student"], variant="graduate", payload=GRADUATE)
+    assert current_claim.status_code == 201, current_claim.content
+    assert current_claim.json()["degree"] == GRADUATE["degree"]
+
+
+def test_assisted_f6_is_available_for_a_current_student_reenrolled_in_local_postgraduate_program(
+    world,
+):
+    mit, _ = Program.objects.get_or_create(
+        college=world["inventory"].program.college,
+        code="MIT",
+        defaults={"name": "Master in Information Technology"},
     )
+    world["inventory"].program = mit
+    world["inventory"].year_level = None
+    world["inventory"].save(update_fields=["program", "year_level", "updated_at"])
+
+    options = auth_client(world["staff"]).get("/api/v1/good-moral/student-options")
+    assert options.status_code == 200
+    current = next(
+        item for item in options.json()["items"] if item["id"] == str(world["student"].pk)
+    )
+    assert current["f4_eligibility"]["status"] == "POSTGRADUATE_PROGRAM"
+    assert set(current["f4_eligibility"]) == {"status", "academic_classification", "year_level"}
+
+    f4 = post(world["staff"], world["student"])
+    assert f4.status_code == 409
+    assert f4.json()["error"]["code"] == "good_moral_f4_academic_eligibility_required"
+
+    f6 = post(world["gss"], world["student"], variant="graduate", payload=GRADUATE)
+    assert f6.status_code == 201
+    item = GoodMoralRequest.objects.get(pk=f6.json()["id"])
+    assert item.variant == GoodMoralVariant.GRADUATE
+    assert item.status == "REQUESTED"
+    assert item.inventory_id is None
+    assert item.degree_snapshot == GRADUATE["degree"]
 
 
 @pytest.mark.parametrize("state", ["inactive", "former", "graduate", "not_student"])
@@ -369,7 +402,7 @@ def test_notification_mandatory_safe_unique_and_transactional(
     definition = get_event_definition(EVENT)
     assert definition.channels == {"IN_APP", "EMAIL"}
     mail = render_notification_email(EVENT)
-    assert "Sign in to COMPASS" in mail.text_body and "<p>" in mail.html_body
+    assert "Sign in to review the request status" in mail.text_body and "<p>" in mail.html_body
     for text in [notification.title, notification.message, mail.text_body, mail.html_body]:
         for private in [
             str(item.pk),
@@ -450,7 +483,14 @@ def test_options_bound_minimized_office_wide_and_revalidated(world):
     assert response.status_code == 200
     data = response.json()
     assert len(data["items"]) == 1 and data["has_next"]
-    assert set(data["items"][0]) == {"id", "display_name", "institutional_id", "college", "variant"}
+    assert set(data["items"][0]) == {
+        "id",
+        "display_name",
+        "institutional_id",
+        "college",
+        "variant",
+        "f4_eligibility",
+    }
     assert "email" not in response.content.decode()
     assert client.get(url, {"page_size": 51}).status_code == 422
     assert client.get(url, {"page": 0}).status_code == 422

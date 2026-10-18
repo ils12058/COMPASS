@@ -101,6 +101,7 @@ export function GoodMoralStudentDetail({
             )}
           </dl>
         </PanelSection>
+        {item.variant === "GRADUATE" ? <Notice>COMPASS can&apos;t verify the degree.</Notice> : null}
         {hasReceipt ? (
           <PanelSection title="Official Receipt" titleId="good-moral-student-receipt">
             <dl className={factGrid}>

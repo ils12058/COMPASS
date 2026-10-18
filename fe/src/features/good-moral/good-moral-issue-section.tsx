@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { Notice } from "@/components/ui/notice";
 import { GoodMoralField, GoodMoralSection, formatGoodMoralDate, goodMoralErrorCode, goodMoralErrorMessage, uncertainGoodMoralMutation } from "@/features/good-moral/good-moral-shared";
 import { goodMoralIssueRequest, getGoodMoralGetRequestQueryKey, getGoodMoralListRequestsQueryKey } from "@/lib/api/generated/good-moral/good-moral";
 import type { GoodMoralOperationalDetailResponse } from "@/lib/api/generated/model";
@@ -120,6 +121,7 @@ export function GoodMoralIssueSection({
         title="Issuance review"
         description="Review certificate details before issuing."
       >
+        {item.variant === "GRADUATE" ? <Notice>Confirm the degree and date with the Registrar before issuing F6.</Notice> : null}
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
           <GoodMoralField label="Applicant name" value={item.applicant_name} />
           {item.variant === "CURRENT_STUDENT" ? (
@@ -167,9 +169,10 @@ export function GoodMoralIssueSection({
           The issued certificate will record the approved form revision,
           issuance date, and issuing counselor. Review the details below before issuing.
         </p>
+        {item.variant === "GRADUATE" ? <Notice>Confirm the degree and date with the Registrar before issuing F6.</Notice> : null}
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
           <GoodMoralField label="Applicant name" value={item.applicant_name} />
-          <GoodMoralField label="Variant" value={item.variant === "CURRENT_STUDENT" ? "Current Student" : "Graduate"} />
+          <GoodMoralField label="Variant" value={item.variant === "CURRENT_STUDENT" ? "Current Student" : "UCN Bachelor's degree"} />
           {item.variant === "CURRENT_STUDENT" ? (
             <>
               <GoodMoralField label="Year level" value={item.year_level} />

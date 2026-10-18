@@ -37,12 +37,6 @@ CANONICAL_YEAR_LEVELS: tuple[str, ...] = (
     "2nd Year",
     "3rd Year",
     "4th Year",
-    "5th Year",
-    "6th Year",
-    "7th Year",
-    "8th Year",
-    "9th Year",
-    "10th Year",
 )
 
 CANONICAL_SEMESTERS: tuple[str, ...] = (

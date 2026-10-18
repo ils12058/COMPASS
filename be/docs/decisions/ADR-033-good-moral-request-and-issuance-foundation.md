@@ -317,3 +317,32 @@ key/version used at issuance while continuing to use shared current branding for
 
 The Institutional Forms required-resolution contract is now consistent for Inventory, Referral,
 Call Slip, and Good Moral, while Routine Interview deliberately remains optional.
+
+## GM-UX-2 amendment (2026-10-18)
+
+The original F4/F6 lifecycle-initiation rule above is superseded for new requests as follows:
+
+- F4 remains a current-Student certificate. Creation requires the current submitted Inventory to
+  reference a canonical Bachelor's Program with a supported 1st–4th Year Level. COMPASS derives
+  the request snapshot from that Inventory; a submitted legacy Year Level, when present, must
+  match it. A postgraduate, unclassified, missing, or unsupported Inventory context cannot create
+  a new F4 request.
+- F6 request intake is available to an active Student account whose lifecycle is any recorded
+  value (`CURRENT`, `GRADUATED`, or `FORMER`). Lifecycle controls account workflow and historical
+  access; it does not assert which degree the Student completed. This preserves F6 access when a
+  UCN Bachelor's alumnus later re-enrolls in local postgraduate study or pursues postgraduate study
+  elsewhere.
+- F6's degree and graduation date remain Student-reported request facts. A postgraduate Program,
+  current Inventory, affiliation, Graduate Tracer response, Program suggestion, or free-text degree
+  does not verify a completed UCN Bachelor's qualification. The `REQUESTED` state is an
+  unverified claim, not an eligibility determination.
+
+The active code and available workflow records contain no Registrar/SIS completion feed, verified
+degree record, or documented GCO verification procedure. Graduate Tracer academic fields are
+explicitly self-reported. COMPASS therefore cannot distinguish an actual completed UCN Bachelor's
+degree from a claim at F6 request intake, and it cannot enforce or audit a later manual GCO check.
+Before issuance, the minimal proposed GCO procedure is to confirm the claimed UCN degree and
+completion date against an institutionally approved official Registrar source, then record the
+reviewer, review date, source, and outcome on the request. GCO must approve the source and procedure
+before a future software gate is designed. This amendment adds no academic-history subsystem,
+external-institution evidence field, Registrar integration, or automatic eligibility guarantee.

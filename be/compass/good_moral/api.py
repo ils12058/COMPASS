@@ -22,6 +22,7 @@ from compass.institutional_forms.filter_options import (
     CollectionFilterOptions,
     project_filter_options,
 )
+from compass.organization.canonical import CANONICAL_CAMPUSES, AcademicClassification
 from compass.privacy_governance.releases import (
     ReleaseAuditUnavailable,
     record_good_moral_release,
@@ -39,7 +40,7 @@ from .services import (
     GoodMoralDocumentUnavailable,
     GoodMoralError,
     GoodMoralExitInterviewRequired,
-    GoodMoralGraduatedStudentRequired,
+    GoodMoralF4AcademicEligibilityRequired,
     GoodMoralInventoryRequired,
     GoodMoralNotFound,
     GoodMoralNotPermitted,
@@ -52,6 +53,7 @@ from .services import (
     create_assisted_request,
     create_my_current_student,
     create_my_graduate,
+    get_f4_academic_context,
     get_mine,
     get_request,
     issue_request,
@@ -98,7 +100,7 @@ class GoodMoralStatusValue(StrEnum):
 
 
 class CurrentStudentRequestPayload(StrictSchema):
-    year_level: str
+    year_level: str | None = None
     semester: str
 
 
@@ -122,12 +124,32 @@ class GoodMoralStudentCollegeResponse(StrictSchema):
     name: str
 
 
+class GoodMoralF4EligibilityStatus(StrEnum):
+    ELIGIBLE = "ELIGIBLE"
+    NOT_CURRENT = "NOT_CURRENT"
+    INVENTORY_REQUIRED = "INVENTORY_REQUIRED"
+    UNCLASSIFIED_PROGRAM = "UNCLASSIFIED_PROGRAM"
+    POSTGRADUATE_PROGRAM = "POSTGRADUATE_PROGRAM"
+    UNSUPPORTED_YEAR_LEVEL = "UNSUPPORTED_YEAR_LEVEL"
+
+
+class GoodMoralF4AcademicContextResponse(StrictSchema):
+    status: GoodMoralF4EligibilityStatus
+    academic_classification: AcademicClassification | None = None
+    year_level: int | None = None
+
+
+class GoodMoralDegreeOptionsResponse(StrictSchema):
+    items: list[str]
+
+
 class GoodMoralStudentOptionResponse(StrictSchema):
     id: UUID
     display_name: str
     institutional_id: str | None
     college: GoodMoralStudentCollegeResponse | None
     variant: GoodMoralVariantValue
+    f4_eligibility: GoodMoralF4AcademicContextResponse | None = None
 
 
 class GoodMoralStudentOptionPage(StrictSchema):
@@ -302,8 +324,8 @@ def _raise(exc: GoodMoralError) -> NoReturn:
         raise APIError(403, "permission_denied", str(exc)) from exc
     if isinstance(exc, GoodMoralCurrentStudentRequired):
         raise APIError(409, "current_student_required", str(exc)) from exc
-    if isinstance(exc, GoodMoralGraduatedStudentRequired):
-        raise APIError(409, "graduated_student_required", str(exc)) from exc
+    if isinstance(exc, GoodMoralF4AcademicEligibilityRequired):
+        raise APIError(409, "good_moral_f4_academic_eligibility_required", str(exc)) from exc
     if isinstance(exc, GoodMoralExitInterviewRequired):
         raise APIError(409, "good_moral_exit_interview_required", str(exc)) from exc
     if isinstance(exc, GoodMoralInventoryRequired):
@@ -498,7 +520,56 @@ def _pdf_response(
     return response
 
 
+def _f4_academic_context_response(student) -> dict[str, object]:
+    context = get_f4_academic_context(student)
+    return {
+        "status": context.status,
+        "academic_classification": context.academic_classification,
+        "year_level": context.year_level,
+    }
+
+
+def _require_degree_options_access(request) -> None:
+    user = request.auth_user
+    if (
+        user.is_active
+        and user.role.code == "STUDENT"
+        and user.has_capability("good_moral.request_self")
+    ):
+        return
+    if (
+        user.is_active
+        and user.role.code in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        and (
+            user.has_capability("good_moral.initiate") or user.has_capability("good_moral.prepare")
+        )
+    ):
+        return
+    raise APIError(403, "permission_denied", "Good Moral degree suggestions are unavailable.")
+
+
 # Static operational routes precede UUID detail routes.
+@router.get(
+    "/degree-options",
+    response=response_with_errors(GoodMoralDegreeOptionsResponse, 401, 403),
+    auth=session_auth,
+    operation_id="goodMoralListDegreeOptions",
+)
+def good_moral_degree_options(request):
+    _require_degree_options_access(request)
+    items = sorted(
+        {
+            program.name
+            for campus in CANONICAL_CAMPUSES
+            for college in campus.colleges
+            for program in college.programs
+            if program.active
+            and program.academic_classification == AcademicClassification.BACHELORS
+        }
+    )
+    return {"items": items}
+
+
 @router.get(
     "/student-options",
     response=response_with_errors(GoodMoralStudentOptionPage, 401, 403, 422),
@@ -533,6 +604,11 @@ def good_moral_student_options(
                 "variant": GoodMoralVariant.CURRENT_STUDENT
                 if student.student_lifecycle_status == "CURRENT"
                 else GoodMoralVariant.GRADUATE,
+                "f4_eligibility": (
+                    _f4_academic_context_response(student)
+                    if student.student_lifecycle_status == "CURRENT"
+                    else None
+                ),
             }
         )
     return {"items": items, "page": page, "page_size": page_size, "has_next": has_next}
@@ -646,6 +722,17 @@ def good_moral_create_my_current_student(
     except GoodMoralError as exc:
         _raise(exc)
     return Status(201, _detail(item))
+
+
+@router.get(
+    "/me/academic-context",
+    response=response_with_errors(GoodMoralF4AcademicContextResponse, 401, 403),
+    auth=session_auth,
+    operation_id="goodMoralGetMyF4AcademicContext",
+)
+def good_moral_my_academic_context(request):
+    _require_student(request, "good_moral.request_self")
+    return _f4_academic_context_response(request.auth_user)
 
 
 @router.post(

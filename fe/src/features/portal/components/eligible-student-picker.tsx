@@ -29,6 +29,7 @@ export function EligibleStudentPicker({
   selectedStudent,
   selectedId,
   onSelect,
+  optionDescription,
   page,
   hasNext,
   isLoading,
@@ -45,6 +46,7 @@ export function EligibleStudentPicker({
   selectedStudent: EligibleStudentOption | null;
   selectedId: string | null;
   onSelect: (student: EligibleStudentOption) => void;
+  optionDescription?: (student: EligibleStudentOption) => string;
   page: number;
   hasNext: boolean;
   isLoading: boolean;
@@ -65,7 +67,7 @@ export function EligibleStudentPicker({
         }}
       >
         <div className="min-w-0 flex-1">
-          <Label htmlFor="eligible-student-search">Search eligible Students</Label>
+          <Label htmlFor="eligible-student-search">Search Students</Label>
           <Input
             id="eligible-student-search"
             type="search"
@@ -97,7 +99,7 @@ export function EligibleStudentPicker({
         <p role="status" className="mt-4 text-sm text-muted">Loading eligible Students…</p>
       ) : items.length === 0 ? (
         <p className="mt-4 rounded-sm bg-surface-subtle px-4 py-3 text-sm text-muted">
-          No eligible students match this search.
+          No Students match this search.
         </p>
       ) : (
         <ul className="mt-3 divide-y divide-border rounded-sm border border-border">
@@ -118,6 +120,7 @@ export function EligibleStudentPicker({
                     {student.institutional_id ? `Institutional ID ${student.institutional_id}` : "Institutional ID not available"}
                     {student.college ? ` · ${student.college.name}` : ""}
                   </span>
+                  {optionDescription?.(student) ? <span className="mt-1 block text-xs text-muted">{optionDescription(student)}</span> : null}
                 </span>
               </label>
             </li>
@@ -129,7 +132,7 @@ export function EligibleStudentPicker({
           className="mt-3 border-t-0 pb-0"
           page={page}
           hasNext={hasNext}
-          label="Eligible Student results"
+          label="Student results"
           onPageChange={onPageChange}
         />
       ) : null}

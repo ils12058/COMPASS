@@ -1,0 +1,14 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "current Student re-enrolled in local postgraduate Program retains F6 request access",
+      "passed": true
+    },
+    {
+      "name": "former UCN alumnus pursuing postgraduate study elsewhere retains F6 self-service",
+      "passed": true
+    }
+  ]
+}

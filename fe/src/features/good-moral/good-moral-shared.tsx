@@ -33,12 +33,6 @@ export const GOOD_MORAL_YEAR_LEVELS = [
   "2nd Year",
   "3rd Year",
   "4th Year",
-  "5th Year",
-  "6th Year",
-  "7th Year",
-  "8th Year",
-  "9th Year",
-  "10th Year",
 ] as const;
 
 export const GOOD_MORAL_SEMESTERS = [
@@ -55,7 +49,7 @@ export function isCanonicalSemester(value: string | null | undefined): boolean {
 }
 
 export function goodMoralVariantLabel(variant: GoodMoralVariantValue): string {
-  return variant === "CURRENT_STUDENT" ? "Current Student" : "Graduate";
+  return variant === "CURRENT_STUDENT" ? "Current Student" : "UCN Bachelor's degree";
 }
 
 export function goodMoralStatusLabel(status: GoodMoralStatusValue): string {
