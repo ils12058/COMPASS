@@ -32,6 +32,11 @@ import {
 import { AppointmentsUnavailable, appointmentOrderingOptions } from "@/features/appointments/appointments-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
+  AppointmentsCalendar,
+  AppointmentsPresentationToggle,
+  type AppointmentPresentation,
+} from "@/features/appointments/appointments-calendar";
+import {
   AppointmentListOrdering,
   AppointmentStatus,
   DeliveryMode,
@@ -66,6 +71,7 @@ type ManagedFilters = {
 // Search and filters apply together through one Apply action. The parent remounts this form when
 // the URL changes, so the fields always start from the applied filters.
 function ManagedAppointmentFilters({
+  hidden,
   applied,
   hasFilters,
   canFilterService,
@@ -75,6 +81,7 @@ function ManagedAppointmentFilters({
   onApply,
   onClear,
 }: {
+  hidden: boolean;
   applied: ManagedFilters;
   hasFilters: boolean;
   canFilterService: boolean;
@@ -101,6 +108,7 @@ function ManagedAppointmentFilters({
 
   return (
     <form
+      hidden={hidden}
       role="search"
       aria-label="Managed appointments"
       onSubmit={(event) => {
@@ -186,6 +194,8 @@ function ManagedAppointmentFilters({
 function ManagedAppointmentsList() {
   const { user } = usePortalSession();
   const canSendReminders = user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF";
+  const [presentation, setPresentation] = useState<AppointmentPresentation>("list");
+  const [calendarStartDate, setCalendarStartDate] = useState<Date | null>(null);
   const [reminderOpen, setReminderOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const router = useRouter();
@@ -229,7 +239,7 @@ function ManagedAppointmentsList() {
       page,
       page_size: 20,
     },
-    { query: { retry: false } },
+    { query: { retry: false, enabled: presentation === "list" } },
   );
 
   function applyFilters(next: ManagedFilters) {
@@ -275,16 +285,26 @@ function ManagedAppointmentsList() {
     ? "sticky left-12 z-10 bg-surface-raised transition-colors group-hover:bg-surface-subtle"
     : dataTable.stickyCell;
 
+  function changePresentation(next: AppointmentPresentation) {
+    if (next === "calendar") setCalendarStartDate((current) => current ?? new Date());
+    setPresentation(next);
+  }
+
   return (
     <section aria-labelledby="manage-appointments-heading">
       <AppointmentsLocalNavigation />
       <AppointmentsPageHeading
         headingId="manage-appointments-heading"
         title="Manage appointments"
-      />
+      >
+        <div className="mt-3">
+          <AppointmentsPresentationToggle value={presentation} onChange={changePresentation} />
+        </div>
+      </AppointmentsPageHeading>
 
       <ReminderSender selected={selectedIds} open={reminderOpen} onClose={() => { setReminderOpen(false); setSelectedIds([]); }} />
       <ManagedAppointmentFilters
+        hidden={presentation !== "list"}
         key={searchParams.toString()}
         applied={{
           search,
@@ -310,6 +330,7 @@ function ManagedAppointmentsList() {
         )}
       />
 
+      <div hidden={presentation !== "list"}>
       <Panel aria-labelledby="managed-appointments-results-heading">
         <PanelHeader
           title="Appointments"
@@ -480,6 +501,23 @@ function ManagedAppointmentsList() {
           />
         ) : null}
       </Panel>
+      </div>
+
+      <AppointmentsCalendar
+        active={presentation === "calendar"}
+        source="managed"
+        isStudent={false}
+        initialDate={calendarStartDate}
+        filters={{
+          ...(search ? { search } : {}),
+          ...(serviceId ? { serviceId } : {}),
+          ...(status ? { status } : {}),
+          ...(upcoming ? { upcoming: true } : {}),
+          ...(mode ? { deliveryMode: mode } : {}),
+          ...(fromDate ? { fromDate } : {}),
+          ...(toDate ? { toDate } : {}),
+        }}
+      />
     </section>
   );
 }
