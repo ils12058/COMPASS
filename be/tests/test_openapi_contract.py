@@ -287,6 +287,8 @@ EXPECTED_OPERATION_IDS = {
     "reportsDownloadGraduateTracerXlsx",
     "goodMoralCreateMyCurrentStudentRequest",
     "goodMoralCreateMyGraduateRequest",
+    "goodMoralListDegreeOptions",
+    "goodMoralGetMyF4AcademicContext",
     "goodMoralListMyRequests",
     "goodMoralGetMyRequest",
     "goodMoralCancelMyRequest",

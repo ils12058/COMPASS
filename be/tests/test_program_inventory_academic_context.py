@@ -11,6 +11,7 @@ from compass.accounts.models import Role, User
 from compass.accounts.profiles import PersonProfileContext
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
+from compass.inventory.confidential_content import read_confidential_content
 from compass.inventory.models import StudentInventory
 from compass.inventory.services import (
     InvalidInventoryInput,
@@ -140,7 +141,7 @@ def test_inventory_submission_requires_structured_program_and_year_level():
 
 
 @pytest.mark.django_db
-def test_inactive_program_or_parent_chain_blocks_edit_and_submission():
+def test_inactive_program_reference_allows_draft_edits_but_blocks_reselection_and_submission():
     sync_policy()
     actor = make_user("inactive-admin@example.edu", "IT_ADMIN")
     student = make_user("inactive-student@example.edu", "STUDENT")
@@ -155,16 +156,32 @@ def test_inactive_program_or_parent_chain_blocks_edit_and_submission():
     Program.objects.filter(pk=program.pk).update(is_active=False)
     with pytest.raises(InventoryConflict, match="must all be active"):
         submit_current_inventory(student=student, context=context(student))
+
+    edited = replace_current_inventory(student=student, values={"nickname": "Still draft"})
+    assert edited.program_id == program.pk
+    assert read_confidential_content(edited).nickname == "Still draft"
+
+    new_student = make_user("new-inactive-student@example.edu", "STUDENT")
+    ensure_current_inventory(student=new_student, context=context(new_student))
     with pytest.raises(InventoryConflict, match="must all be active"):
-        replace_current_inventory(student=student, values={"nickname": "Still draft"})
+        replace_current_inventory(
+            student=new_student,
+            values={"program_id": program.pk, "year_level": 1},
+        )
 
     Program.objects.filter(pk=program.pk).update(is_active=True)
     College.objects.filter(pk=program.college_id).update(is_active=False)
+    edited = replace_current_inventory(student=student, values={"nickname": "College retained"})
+    assert edited.program_id == program.pk
+    assert read_confidential_content(edited).nickname == "College retained"
     with pytest.raises(InventoryConflict, match="must all be active"):
         submit_current_inventory(student=student, context=context(student))
 
     College.objects.filter(pk=program.college_id).update(is_active=True)
     Campus.objects.filter(pk=program.college.campus_id).update(is_active=False)
+    edited = replace_current_inventory(student=student, values={"nickname": "Campus retained"})
+    assert edited.program_id == program.pk
+    assert read_confidential_content(edited).nickname == "Campus retained"
     with pytest.raises(InventoryConflict, match="must all be active"):
         submit_current_inventory(student=student, context=context(student))
 

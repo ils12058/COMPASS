@@ -819,10 +819,10 @@ for (const device of ["desktop", "phone"]) {
     await shown(page.getByRole("radio", { name: /John Reyes/ }));
     const searches = () => backend.requests((request) => request.pathname.endsWith("/eligible-students"));
     const initial = searches().length;
-    await page.getByLabel("Search eligible Students").fill("John");
+    await page.getByLabel("Search Students", { exact: true }).fill("John");
     await page.waitForTimeout(800);
     assert.equal(searches().length, initial, "Typing alone does not search");
-    await page.getByLabel("Search eligible Students").press("Enter");
+    await page.getByLabel("Search Students", { exact: true }).press("Enter");
     await eventually(() => searches().some((request) => request.search.includes("search=John")), "Search runs on Enter");
     assert.match(searches().at(-1).search, /page=1/);
     await page.getByRole("radio", { name: /John Reyes/ }).check();

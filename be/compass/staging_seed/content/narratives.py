@@ -393,7 +393,7 @@ GOOD_MORAL_CURRENT = {
 }
 GOOD_MORAL_CURRENT_RECEIPT = {"official_receipt_number": "STG-OR-0142", "amount": "50.00"}
 GOOD_MORAL_DUPLICATE_CANCEL_REASON = "Duplicate request submitted by mistake."
-GRADUATING_GOOD_MORAL = {"year_level": "5th Year"}
+GRADUATING_GOOD_MORAL = {"year_level": "4th Year"}
 RECENT_GRADUATE_GOOD_MORAL = {
     "degree": "Bachelor of Science in Development Communication",
     "major": "",

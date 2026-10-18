@@ -207,12 +207,22 @@ export async function createBrowserHarness(suite) {
     if (failures.length) process.exitCode = 1;
   }
 
+  async function settleFetches(page) {
+    const fetches = pageFetches.get(page);
+    const calledAt = Date.now();
+    while (fetches.pending.size || Date.now() - Math.max(fetches.changedAt, calledAt) < 500) {
+      if (Date.now() - calledAt > 12_000) throw new Error(`${fetches.pending.size} page fetches did not settle`);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+  }
+
   return {
     baseURL,
     artifacts,
     check,
     openPage,
     finish,
+    settleFetches,
     // A check's own hard navigation. WebKit reports a fetch cancelled by a document navigation as
     // an access-control error, which Playwright delivers as a page error. A test must not cancel
     // the page's in-flight reads or the router's link prefetches itself, so wait until the page's
@@ -220,12 +230,7 @@ export async function createBrowserHarness(suite) {
     // just-shown link has started). Bounded: a page that never settles fails the check. Runtime
     // errors, and errors from navigations the application performs, are still asserted.
     async navigate(page, path) {
-      const fetches = pageFetches.get(page);
-      const calledAt = Date.now();
-      while (fetches.pending.size || Date.now() - Math.max(fetches.changedAt, calledAt) < 500) {
-        if (Date.now() - calledAt > 12_000) throw new Error(`${fetches.pending.size} page fetches did not settle before navigation`);
-        await new Promise((resolve) => setTimeout(resolve, 50));
-      }
+      await settleFetches(page);
       await page.goto(`${baseURL}${path}`);
     },
     async shown(locator) { await locator.waitFor({ state: "visible" }); },

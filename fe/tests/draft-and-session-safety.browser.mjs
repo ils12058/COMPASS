@@ -597,7 +597,7 @@ async function refreshReferral(page, state) {
   }, async (page) => {
     const dialogs = answerDialogs(page);
     const save = page.getByRole("button", { name: "Save weekly schedule", exact: true });
-    const office = page.getByRole("link", { name: "Office", exact: true });
+    const office = page.getByRole("link", { name: "Office hours", exact: true });
     await page.getByRole("button", { name: "Add time on Tuesday", exact: true }).click();
     await office.click();
     await eventually(() => dialogs.seen.length === 1, "Leaving with unsaved hours asks first");

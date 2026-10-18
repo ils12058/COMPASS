@@ -21,6 +21,7 @@ await check("appointment-dialogs", appointmentPath, {}, async (page) => {
   assert.match(await dialog.innerText(), /Current time[\s\S]*New time/);
   await page.keyboard.press("Escape");
   await hidden(dialog);
+  await page.waitForFunction((element) => element === document.activeElement, await reschedule.elementHandle());
   assert.equal(await reschedule.evaluate((element) => element === document.activeElement), true);
   await reschedule.click();
   assert.equal(await dialog.getByLabel("Reason (optional)", { exact: true }).inputValue(), "Schedule adjustment");
@@ -131,7 +132,8 @@ await check("page-action-label-and-confirmation-focus", `/portal/call-slips/${sl
   const download = page.getByRole("button", { name: "Download Call Slip", exact: true });
   await shown(download);
   await shown(download.locator("[data-page-action-label]"));
-  assert.equal(await download.locator("[data-page-action-label]").innerText(), "Download", "The visible command label stays concise");
+  const visibleLabel = await download.locator("[data-page-action-label]").evaluate((element) => Array.from(element.childNodes).filter((node) => node.nodeType === Node.TEXT_NODE).map((node) => node.textContent).join("").trim());
+  assert.equal(visibleLabel, "Download", "The visible command label stays concise");
   await download.focus();
   assert.equal(await download.evaluate((element) => element === document.activeElement), true);
   await screenshot(page, "call-slip-detail");
