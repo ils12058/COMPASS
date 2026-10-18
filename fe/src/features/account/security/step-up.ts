@@ -8,7 +8,7 @@ export type StepUpRequirement = "verify" | "setup";
 export const AUTHENTICATOR_SETUP_HREF = "/portal/account/security/authenticator";
 
 export function stepUpRequirement(error: unknown): StepUpRequirement | null {
-  if (!(error instanceof CompassApiError)) return null;
+  if (!(error instanceof CompassApiError) || error.status !== 403) return null;
   const code = readApiErrorCode(error.body);
   if (code === "recent_mfa_required") return "verify";
   if (code === "mfa_setup_required") return "setup";
@@ -19,5 +19,5 @@ export function stepUpRequirement(error: unknown): StepUpRequirement | null {
 export function stepUpNotice(requirement: StepUpRequirement): string {
   return requirement === "setup"
     ? "This action needs an authenticator. Set one up in Security, then try again."
-    : "Verify your authenticator, then submit the action again.";
+    : "Verify your authenticator to continue this action.";
 }

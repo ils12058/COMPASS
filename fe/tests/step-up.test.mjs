@@ -21,6 +21,8 @@ const refusal = (code, status = 403) =>
 test("the backend's step-up codes map to verify or set up, and nothing else opens step-up", () => {
   assert.equal(stepUpRequirement(refusal("recent_mfa_required")), "verify");
   assert.equal(stepUpRequirement(refusal("mfa_setup_required")), "setup");
+  assert.equal(stepUpRequirement(refusal("recent_mfa_required", 500)), null);
+  assert.equal(stepUpRequirement(refusal("mfa_setup_required", 401)), null);
   assert.equal(stepUpRequirement(refusal("permission_denied")), null);
   assert.equal(stepUpRequirement(new TypeError("offline")), null);
   assert.match(stepUpNotice("setup"), /Set one up in Security/);
@@ -102,6 +104,8 @@ test("step-up handling stays on the features whose actions keep it", () => {
     "platform/platform-actions.tsx",
     "privacy-governance/privacy-governance-shared.tsx",
     "services/",
+    // Staff Group Session writes enforce recent MFA; student registration does not.
+    "services/service-group-sessions-panel.tsx",
     // CORR-2A reconciles recent MFA for appointment reminder issuance.
     "appointments/appointment-reminders.tsx",
     // FUP-1A preserves recent MFA for all Follow-Up lifecycle writes.

@@ -182,7 +182,6 @@ export function AccountAccess() {
               "Role could not be changed.",
               () => setConfirm(null),
               undefined,
-              () => setConfirm(item),
             ),
           );
         case "assign":
@@ -196,7 +195,6 @@ export function AccountAccess() {
               "Designation could not be assigned.",
               () => setConfirm(null),
               undefined,
-              () => setConfirm(item),
             ),
           );
         case "removeDesignation":
@@ -210,7 +208,6 @@ export function AccountAccess() {
               "Designation could not be removed.",
               () => setConfirm(null),
               undefined,
-              () => setConfirm(item),
             ),
           );
         case "setOverride":
@@ -229,7 +226,6 @@ export function AccountAccess() {
               "Override could not be set.",
               () => setConfirm(null),
               undefined,
-              () => setConfirm(item),
             ),
           );
         case "removeOverride":
@@ -243,7 +239,6 @@ export function AccountAccess() {
               "Override could not be removed.",
               () => setConfirm(null),
               undefined,
-              () => setConfirm(item),
             ),
           );
       }

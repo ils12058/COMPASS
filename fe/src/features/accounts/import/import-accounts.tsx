@@ -144,7 +144,6 @@ export function ImportAccounts() {
         setConflict(true);
         setIssues(csvIssues(error));
       },
-      () => setCommitReview(reviewed),
     );
     if (!response) return;
     setCommitReview(null);

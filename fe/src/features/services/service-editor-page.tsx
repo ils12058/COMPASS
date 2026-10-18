@@ -853,7 +853,6 @@ export function EditServicePage() {
       "The Service could not be updated.",
       {
         onStepUpRequired: () => setReview(null),
-        onStepUpVerified: () => setReview(pendingReview),
         onError: (caught, code) => {
           if (code === "service_scheduling_consequence_review_required") {
             setReview({

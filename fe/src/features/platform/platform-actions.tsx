@@ -5,11 +5,7 @@ import { useState } from "react";
 
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { StepUpDialog } from "@/features/account/security/security-shared";
-import {
-  stepUpNotice,
-  stepUpRequirement,
-  type StepUpRequirement,
-} from "@/features/account/security/step-up";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import {
   CompassApiError,
   readApiErrorCode,
@@ -43,8 +39,7 @@ export function platformErrorMessage(error: unknown, fallback: string): string {
 export function usePlatformAction() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
-  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
+  const continuation = useStepUpContinuation();
 
   // Maintenance changes keep step-up; email retry does not need it.
   async function run<T>(
@@ -54,39 +49,29 @@ export function usePlatformAction() {
   ): Promise<boolean> {
     setError(null);
     setNotice(null);
-    try {
-      await operation();
-      return true;
-    } catch (caught) {
-      const requirement = stepUpRequirement(caught);
-      if (requirement) {
-        onStepUpRequired?.();
-        setStepUp(requirement);
-        setNotice(stepUpNotice(requirement));
-        setStepUpOpen(true);
-      } else {
+    const result = await continuation.run(operation, {
+      onStepUpRequired,
+      onFailure: (caught) => {
         setError(platformErrorMessage(caught, fallback));
-      }
-      return false;
-    }
+      },
+    });
+    if (result !== undefined) setNotice(null);
+    return result !== undefined;
   }
 
   const stepUpDialog = (
     <StepUpDialog
-      open={stepUpOpen}
-      requirement={stepUp}
-      onOpenChange={setStepUpOpen}
-      onVerified={() =>
-        setNotice(
-          "Verification complete. Submit and confirm the action again to continue.",
-        )
-      }
+      open={continuation.open}
+      requirement={continuation.requirement}
+      onOpenChange={continuation.setOpen}
+      isContinuing={continuation.isContinuing}
+      onVerified={continuation.continueAfterVerification}
     />
   );
 
   return {
     error,
-    notice,
+    notice: notice ?? continuation.notice,
     setError,
     setNotice,
     run,

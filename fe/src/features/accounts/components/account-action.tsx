@@ -5,11 +5,7 @@ import { useCallback, useState } from "react";
 
 import { accountErrorCode } from "@/features/account/components/account-errors";
 import { StepUpDialog } from "@/features/account/security/security-shared";
-import {
-  stepUpNotice,
-  stepUpRequirement,
-  type StepUpRequirement,
-} from "@/features/account/security/step-up";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import {
   getAccountsGetEffectiveAccessQueryKey,
   getAccountsGetQueryKey,
@@ -44,9 +40,15 @@ export function managedAccountError(error: unknown, fallback: string): string {
 export function useManagedAction() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
-  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
-  const [afterStepUp, setAfterStepUp] = useState<(() => void) | null>(null);
+  const {
+    run: runContinuation,
+    requirement,
+    open,
+    setOpen,
+    isContinuing,
+    notice: continuationNotice,
+    continueAfterVerification,
+  } = useStepUpContinuation();
 
   const run = useCallback(
     async <T,>(
@@ -54,28 +56,20 @@ export function useManagedAction() {
       fallback: string,
       onStepUpRequired?: () => void,
       onFailure?: (error: unknown) => void,
-      onStepUpVerified?: () => void,
     ): Promise<T | undefined> => {
       setError(null);
       setNotice(null);
-      try {
-        return await operation();
-      } catch (caught) {
-        const requirement = stepUpRequirement(caught);
-        if (requirement) {
-          onStepUpRequired?.();
-          setAfterStepUp(() => (requirement === "verify" ? onStepUpVerified ?? null : null));
-          setStepUp(requirement);
-          setStepUpOpen(true);
-          setNotice(stepUpNotice(requirement));
-        } else {
+      const result = await runContinuation(operation, {
+        onStepUpRequired,
+        onFailure: (caught) => {
           setError(managedAccountError(caught, fallback));
           onFailure?.(caught);
-        }
-        return undefined;
-      }
+        },
+      });
+      if (result !== undefined) setNotice(null);
+      return result;
     },
-    [],
+    [runContinuation],
   );
 
   return {
@@ -84,11 +78,12 @@ export function useManagedAction() {
     setError,
     setNotice,
     run,
-    stepUp,
-    stepUpOpen,
-    setStepUpOpen,
-    afterStepUp,
-    setAfterStepUp,
+    stepUp: requirement,
+    stepUpOpen: open,
+    setStepUpOpen: setOpen,
+    isContinuing,
+    continuationNotice,
+    continueAfterVerification,
   };
 }
 
@@ -106,23 +101,17 @@ export function ManagedActionFeedback({
           {action.error}
         </p>
       ) : null}
-      {showMessages && action.notice ? (
-        <p role="status" className="mt-4 text-sm text-success">
-          {action.notice}
+      {showMessages && (action.notice || action.continuationNotice) ? (
+        <p role="status" className="mt-4 text-sm text-muted">
+          {action.notice ?? action.continuationNotice}
         </p>
       ) : null}
       <StepUpDialog
         open={action.stepUpOpen}
         requirement={action.stepUp}
         onOpenChange={action.setStepUpOpen}
-        onVerified={() => {
-          action.setNotice(
-            "Verification complete. Review and confirm the action again to continue.",
-          );
-          const resume = action.afterStepUp;
-          action.setAfterStepUp(null);
-          resume?.();
-        }}
+        isContinuing={action.isContinuing}
+        onVerified={action.continueAfterVerification}
       />
     </>
   );

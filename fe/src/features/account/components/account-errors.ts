@@ -10,7 +10,7 @@ const messages: Record<string, string> = {
   mfa_failed: "The authenticator code could not be verified.",
   mfa_not_configured: "Set up an authenticator before continuing.",
   mfa_setup_required: "Set up an authenticator before continuing.",
-  recent_mfa_required: "Verify with your authenticator, then try again.",
+  recent_mfa_required: "Your security check needs to be repeated. Review the action before trying again.",
   password_change_authentication_failed: "The current password could not be verified.",
   profile_photo_storage_unavailable: "The profile photo could not be updated right now. Your other profile information is still available.",
   profile_unavailable: "Your profile is temporarily unavailable. Try again.",

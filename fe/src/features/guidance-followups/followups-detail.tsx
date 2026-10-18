@@ -18,7 +18,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { StepUpDialog } from "@/features/account/security/security-shared";
-import { stepUpRequirement, type StepUpRequirement } from "@/features/account/security/step-up";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
@@ -121,7 +121,7 @@ function FollowupActionForm({ item, action, onClose, confirmed }: { item: Follow
   const [review, setReview] = useState(false);
   const [conflict, setConflict] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [stepUp, setStepUp] = useState<StepUpRequirement | null>(null);
+  const continuation = useStepUpContinuation();
   const assignees = useGuidanceFollowupsEligibleAssignees({ student_id: item.student_id, category: item.category, source_kind: item.source?.kind, source_id: item.source?.id, page: staffPage }, { query: { ...followupQueryFreshness, enabled: action === "reassign", retry: false } });
   const mutation = useMutation({ mutationFn: async () => {
     const common = { expected_version: version };
@@ -140,21 +140,20 @@ function FollowupActionForm({ item, action, onClose, confirmed }: { item: Follow
   useUnsavedChangesGuard({ dirty: !mutation.isSuccess && Boolean(text || assignee || due !== isoToInstitutionalDateTimeInput(item.due_at)), message: "Your follow-up changes have not been saved." });
   async function save() {
     setError(null);
-    try {
-      const result = await mutation.mutateAsync();
-      await invalidateFollowups(client);
-      if (action === "reassign" && result.data.assigned_to_id !== item.assigned_to_id) router.push("/portal/follow-ups");
-      else { client.setQueryData(getGuidanceFollowupsGetQueryKey(item.id), result); onClose(); }
-    } catch (caught) {
-      setReview(false);
-      const requirement = stepUpRequirement(caught);
-      if (requirement) { setStepUp(requirement); return; }
+    const result = await continuation.run(() => mutation.mutateAsync(), {
+      onStepUpRequired: () => setReview(false),
+      onFailure: (caught) => {
       if (caught instanceof CompassApiError && caught.status === 409) {
         setConflict(true);
-        await client.invalidateQueries({ queryKey: getGuidanceFollowupsGetQueryKey(item.id) });
+        void client.invalidateQueries({ queryKey: getGuidanceFollowupsGetQueryKey(item.id) });
       }
       setError(followupError(caught));
-    }
+      },
+    });
+    if (!result) return;
+    await invalidateFollowups(client);
+    if (action === "reassign" && result.data.assigned_to_id !== item.assigned_to_id) router.push("/portal/follow-ups");
+    else { client.setQueryData(getGuidanceFollowupsGetQueryKey(item.id), result); onClose(); }
   }
   const consequential = ["complete", "cancel", "reassign"].includes(action);
   function submit(event: FormEvent) { event.preventDefault(); if (consequential) setReview(true); else void save(); }
@@ -167,7 +166,7 @@ function FollowupActionForm({ item, action, onClose, confirmed }: { item: Follow
           {assignees.isError ? <FollowupFailure error={assignees.error} retry={() => void assignees.refetch()} /> : null}
           {assignees.data ? <CanonicalPagination page={assignees.data.data.page} hasNext={assignees.data.data.has_next} onPageChange={setStaffPage} /> : null}
         </> : <><Label htmlFor="followup-action-text">{action === "edit" ? "Task description" : action === "complete" ? "Completion outcome" : action === "cancel" ? "Cancellation reason" : "Activity or update"}</Label><Textarea id="followup-action-text" maxLength={4000} value={text} required={action !== "edit"} disabled={mutation.isPending} onChange={event => { setText(event.target.value); setRequestKey(crypto.randomUUID()); }} />{action === "activity" ? <p className="text-sm text-muted">Record an action or update. This follow-up will remain Pending.</p> : action === "complete" ? <p className="text-sm text-muted">Record what was accomplished, then mark this follow-up as completed.</p> : null}</>}
-        {error ? <p role="alert">{error}</p> : null}
+        {error ? <p role="alert">{error}</p> : continuation.notice ? <p role="status" className="text-sm text-muted">{continuation.notice}</p> : null}
         {conflict ? <div className="space-y-2 border border-border p-3"><p>Latest saved version: {item.version}. Due {formatInstitutionalDateTime(item.due_at)}. Assigned to {item.assigned_to_name}. {statusLabel(item.status)}.</p><p className="whitespace-pre-wrap break-words">Saved description: {item.description || "None"}</p><Button variant="secondary" disabled={item.status !== "PENDING" || !confirmed} onClick={() => { setVersion(item.version); setRequestKey(crypto.randomUUID()); setConflict(false); setError(null); }}>I reviewed the latest details</Button></div> : null}
       </div>
       <PanelFooter><Button type="submit" disabled={mutation.isPending || conflict || !confirmed}>{mutation.isPending ? "Saving follow-up…" : consequential ? `Review ${actionLabel[action].toLowerCase()}` : "Save changes"}</Button><Button variant="secondary" disabled={mutation.isPending} onClick={onClose}>Close</Button></PanelFooter>
@@ -175,7 +174,7 @@ function FollowupActionForm({ item, action, onClose, confirmed }: { item: Follow
     <ConsequentialActionDialog open={review} title={`${actionLabel[action]}?`} confirmLabel={actionLabel[action]} pendingLabel="Saving follow-up…" pending={mutation.isPending} error={null} variant={action === "cancel" ? "danger" : "primary"} onOpenChange={setReview} onConfirm={() => void save()}>
       <p>{action === "reassign" ? "Responsibility transfers to the selected staff member. You may lose access after reassignment." : action === "complete" ? "This follow-up will be completed with the outcome you recorded." : "This follow-up will be cancelled with the reason you recorded."} Related Counseling records, Referrals and Appointments keep their own status.</p>
     </ConsequentialActionDialog>
-    <StepUpDialog open={Boolean(stepUp)} requirement={stepUp ?? "verify"} onOpenChange={open => { if (!open) setStepUp(null); }} />
+    <StepUpDialog open={continuation.open} requirement={continuation.requirement} onOpenChange={(open) => { continuation.setOpen(open); if (!open) setError(null); }} isContinuing={continuation.isContinuing} onVerified={continuation.continueAfterVerification} />
   </>;
 }
 

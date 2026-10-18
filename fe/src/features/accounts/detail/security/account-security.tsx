@@ -52,7 +52,6 @@ export function AccountSecurity() {
         "Multi-factor authentication could not be reset.",
         () => setConfirm(null),
         undefined,
-        () => setConfirm(kind),
       );
       if (!result) return;
       setConfirm(null);
@@ -68,7 +67,6 @@ export function AccountSecurity() {
         "Sessions could not be signed out.",
         () => setConfirm(null),
         undefined,
-        () => setConfirm(kind),
       );
       if (!result) return;
       setConfirm(null);
@@ -82,7 +80,6 @@ export function AccountSecurity() {
       "Trusted-browser authorizations could not be removed.",
       () => setConfirm(null),
       undefined,
-      () => setConfirm(kind),
     );
     if (!result) return;
     setConfirm(null);

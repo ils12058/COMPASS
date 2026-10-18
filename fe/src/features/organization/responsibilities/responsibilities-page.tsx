@@ -155,7 +155,6 @@ export function ResponsibilitiesPage() {
       "The responsible Counselor could not be assigned.",
       {
         onStepUpRequired: () => setCollegeReview(null),
-        onStepUpVerified: () => setCollegeReview(target),
       },
     );
     if (!response) return;
@@ -172,7 +171,6 @@ export function ResponsibilitiesPage() {
       "The responsible Counselor could not be removed.",
       {
         onStepUpRequired: () => setCollegeRemoval(null),
-        onStepUpVerified: () => setCollegeRemoval(target),
       },
     );
     if (!response) return;
@@ -222,7 +220,6 @@ export function ResponsibilitiesPage() {
       "The Staff supervisor could not be assigned.",
       {
         onStepUpRequired: () => setStaffReview(null),
-        onStepUpVerified: () => setStaffReview(target),
       },
     );
     if (!response) return;
@@ -241,7 +238,6 @@ export function ResponsibilitiesPage() {
       "The Staff supervisor could not be removed.",
       {
         onStepUpRequired: () => setStaffRemoval(null),
-        onStepUpVerified: () => setStaffRemoval(target),
       },
     );
     if (!response) return;

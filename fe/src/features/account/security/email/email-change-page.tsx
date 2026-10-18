@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { isTurnstileConfigured, TurnstileWidget } from "@/features/auth/components/turnstile-widget";
 import { accountErrorCode, accountErrorMessage } from "@/features/account/components/account-errors";
 import { SecurityBackLink, StepUpDialog } from "@/features/account/security/security-shared";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import { useOptionalActiveECounselingCall } from "@/features/ecounseling/runtime/active-call-context";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
@@ -35,6 +36,7 @@ export function EmailChangePage() {
   const challenge = useAuthRequestEmailChangeSecurityChallenge();
   const requestChange = useAuthRequestEmailChange();
   const confirmChange = useAuthConfirmEmailChange();
+  const continuation = useStepUpContinuation();
   const [currentChallengeId, setCurrentChallengeId] = useState<string | null>(null);
   const [currentCode, setCurrentCode] = useState("");
   const [newEmail, setNewEmail] = useState("");
@@ -42,12 +44,10 @@ export function EmailChangePage() {
   const [restartRequested, setRestartRequested] = useState(false);
   const [token, setToken] = useState<string | null>(null);
   const [resetKey, setResetKey] = useState(0);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
-  const [verified, setVerified] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [setupRequired, setSetupRequired] = useState(false);
   const usesMfa = mfa.data?.data.enabled ?? false;
-  const recent = mfa.data?.data.recent || verified;
+  const recent = mfa.data?.data.recent ?? false;
   const serverRequest = emailChangeStatus.data?.data.request;
   const pending =
     !restartRequested && serverRequest?.status === "pending" && serverRequest.request_id && serverRequest.challenge_id
@@ -58,85 +58,81 @@ export function EmailChangePage() {
           destination_email: serverRequest.destination_email ?? "",
         }
       : null;
+  const formValuesRef = useRef({ currentChallengeId, currentCode, newEmail, newCode, token });
+  useEffect(() => {
+    formValuesRef.current = { currentChallengeId, currentCode, newEmail, newCode, token };
+  }, [currentChallengeId, currentCode, newEmail, newCode, token]);
 
   function resetTurnstile() {
     setToken(null);
     setResetKey((value) => value + 1);
   }
 
-  function handleError(caught: unknown) {
+  function handleTerminalError(caught: unknown) {
     const code = accountErrorCode(caught);
-    if (code === "recent_mfa_required") {
-      setStepUpOpen(true);
-      return;
-    }
     if (code === "totp_step_up_required") setSetupRequired(true);
     setError(accountErrorMessage(caught, "The email change could not be completed. Please try again."));
   }
 
   async function requestCurrentProof() {
     setError(null);
-    try {
-      const response = await challenge.mutateAsync({ data: isTurnstileConfigured ? { turnstile_token: token } : {} });
-      setCurrentChallengeId(response.data.challenge_id);
-      resetTurnstile();
-    } catch (caught) {
-      handleError(caught);
-      resetTurnstile();
-    }
+    const response = await continuation.run(
+      () => challenge.mutateAsync({ data: isTurnstileConfigured ? { turnstile_token: formValuesRef.current.token } : {} }),
+      {
+        onFailure: handleTerminalError,
+      },
+    );
+    resetTurnstile();
+    if (response) setCurrentChallengeId(response.data.challenge_id);
   }
 
   async function requestNewEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
-    if (usesMfa && !recent) {
-      setStepUpOpen(true);
-      return;
-    }
-    try {
-      await requestChange.mutateAsync({ data: {
-        new_email: newEmail,
-        ...(!usesMfa ? { current_email_challenge_id: currentChallengeId, current_email_code: currentCode } : {}),
-        ...(isTurnstileConfigured ? { turnstile_token: token } : {}),
-      } });
-      setRestartRequested(false);
-      setCurrentChallengeId(null);
-      setCurrentCode("");
-      resetTurnstile();
-      await emailChangeStatus.refetch();
-    } catch (caught) {
-      handleError(caught);
-      resetTurnstile();
-    }
+    const destination = newEmail.trim();
+    const currentChallenge = currentChallengeId;
+    const response = await continuation.run(
+      () => requestChange.mutateAsync({ data: {
+        new_email: destination,
+        ...(!usesMfa ? { current_email_challenge_id: currentChallenge, current_email_code: formValuesRef.current.currentCode } : {}),
+        ...(isTurnstileConfigured ? { turnstile_token: formValuesRef.current.token } : {}),
+      } }),
+      {
+        onFailure: handleTerminalError,
+      },
+    );
+    resetTurnstile();
+    if (!response) return;
+    setRestartRequested(false);
+    setCurrentChallengeId(null);
+    setCurrentCode("");
+    await emailChangeStatus.refetch();
   }
 
   async function confirmNewEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!pending) return;
     setError(null);
-    if (usesMfa && !recent) {
-      setStepUpOpen(true);
+    const target = { request_id: pending.request_id, challenge_id: pending.challenge_id };
+    const response = await continuation.run(
+      () => confirmChange.mutateAsync({ data: { ...target, code: formValuesRef.current.newCode } }),
+      {
+        onFailure: (caught) => {
+          handleTerminalError(caught);
+          void emailChangeStatus.refetch();
+        },
+      },
+    );
+    if (!response) return;
+    if (!response.data.changed || !response.data.reauthentication_required) {
+      setError("The email change could not be confirmed. Please try again.");
       return;
     }
-    try {
-      const response = await confirmChange.mutateAsync({ data: {
-        request_id: pending.request_id,
-        challenge_id: pending.challenge_id,
-        code: newCode,
-      } });
-      if (!response.data.changed || !response.data.reauthentication_required) {
-        setError("The email change could not be confirmed. Please try again.");
-        return;
-      }
-      setNewCode("");
-      // The change ended this sign-in, so an E-Counseling call ends with it before the reload.
-      await call?.end();
-      queryClient.clear();
-      window.location.replace("/login?email_changed=1");
-    } catch (caught) {
-      handleError(caught);
-      await emailChangeStatus.refetch();
-    }
+    setNewCode("");
+    // The change ended this sign-in, so an E-Counseling call ends with it before the reload.
+    await call?.end();
+    queryClient.clear();
+    window.location.replace("/login?email_changed=1");
   }
 
   const busy = challenge.isPending || requestChange.isPending || confirmChange.isPending;
@@ -205,9 +201,9 @@ export function EmailChangePage() {
         </form>
         </Panel>
       ) : null}
-      {error ? <p role="alert" className="mt-5 text-sm text-danger">{error}</p> : null}
+      {error || continuation.notice ? <p role={error ? "alert" : "status"} className={`mt-5 text-sm ${error ? "text-danger" : "text-muted"}`}>{error ?? continuation.notice}</p> : null}
       {setupRequired ? <Link href="/portal/account/security/authenticator" className="mt-3 inline-flex min-h-10 items-center font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Manage authenticator</Link> : null}
-      <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => setVerified(true)} />
+      <StepUpDialog open={continuation.open} requirement={continuation.requirement} onOpenChange={continuation.setOpen} isContinuing={continuation.isContinuing} onVerified={continuation.continueAfterVerification} />
     </section>
   );
 }

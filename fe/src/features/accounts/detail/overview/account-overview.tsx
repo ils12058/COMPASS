@@ -156,7 +156,6 @@ export function AccountOverview() {
         : "Account status could not be changed.",
       () => setConfirm(null),
       undefined,
-      () => setConfirm(kind),
     );
     if (!response) return;
     setConfirm(null);

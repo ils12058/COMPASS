@@ -3,11 +3,7 @@
 import { useState } from "react";
 
 import { StepUpDialog } from "@/features/account/security/security-shared";
-import {
-  stepUpNotice,
-  stepUpRequirement,
-  type StepUpRequirement,
-} from "@/features/account/security/step-up";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import {
   CompassApiError,
   readApiErrorCode,
@@ -34,37 +30,28 @@ export function organizationErrorMessage(
 export function useOrganizationAction() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
-  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
-  const [afterStepUp, setAfterStepUp] = useState<(() => void) | null>(null);
+  const continuation = useStepUpContinuation();
 
   async function run<T>(
     operation: () => Promise<T>,
     fallback: string,
     options?: {
       onStepUpRequired?: () => void;
-      onStepUpVerified?: () => void;
     },
   ): Promise<T | undefined> {
     setError(null);
     setNotice(null);
-    try {
-      return await operation();
-    } catch (caught) {
-      const requirement = stepUpRequirement(caught);
-      if (requirement) {
-        setStepUp(requirement);
-        options?.onStepUpRequired?.();
-        setAfterStepUp(() => options?.onStepUpVerified ?? null);
-        setNotice(stepUpNotice(requirement));
-        setStepUpOpen(true);
-      } else {
+    const result = await continuation.run(operation, {
+      onStepUpRequired: options?.onStepUpRequired,
+      onFailure: (caught) => {
         setError(organizationErrorMessage(caught, fallback));
-      }
-      return undefined;
-    }
+      },
+    });
+    if (result !== undefined) setNotice(null);
+    return result;
   }
 
+  const visibleNotice = notice ?? continuation.notice;
   const messages = (
     <>
       {error ? (
@@ -72,9 +59,9 @@ export function useOrganizationAction() {
           {error}
         </p>
       ) : null}
-      {notice ? (
-        <p role="status" className="mt-4 text-sm text-success">
-          {notice}
+      {visibleNotice ? (
+        <p role="status" className="mt-4 text-sm text-muted">
+          {visibleNotice}
         </p>
       ) : null}
     </>
@@ -82,21 +69,17 @@ export function useOrganizationAction() {
 
   const stepUpDialog = (
     <StepUpDialog
-      open={stepUpOpen}
-      requirement={stepUp}
-      onOpenChange={setStepUpOpen}
-      onVerified={() => {
-        setNotice("Verification complete. Submit the action again to continue.");
-        const resume = afterStepUp;
-        setAfterStepUp(null);
-        resume?.();
-      }}
+      open={continuation.open}
+      requirement={continuation.requirement}
+      onOpenChange={continuation.setOpen}
+      isContinuing={continuation.isContinuing}
+      onVerified={continuation.continueAfterVerification}
     />
   );
 
   return {
     error,
-    notice,
+    notice: visibleNotice,
     setError,
     setNotice,
     run,

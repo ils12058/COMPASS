@@ -25,6 +25,8 @@ import { Notice } from "@/components/ui/notice";
 import { Select } from "@/components/ui/select";
 import { PanelSection } from "@/components/ui/panel";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { StepUpDialog } from "@/features/account/security/security-shared";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   formatInstitutionalDateTime,
@@ -70,6 +72,7 @@ function dateTimeInput(value: string): string {
 export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceResponse }) {
   const { user } = usePortalSession();
   const queryClient = useQueryClient();
+  const continuation = useStepUpContinuation();
   const [createOpen, setCreateOpen] = useState(false);
   const [editingSession, setEditingSession] = useState<GroupSessionResponse | null>(null);
   const [scheduleReviewOpen, setScheduleReviewOpen] = useState(false);
@@ -144,6 +147,13 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
       }),
     ]);
   };
+
+  const runStaffAction = async <T,>(operation: () => Promise<T>, fallback: string) =>
+    continuation.run(operation, {
+      onFailure: (caught) => {
+        setErrorMessage(caught instanceof Error ? caught.message : fallback);
+      },
+    });
 
   const resetForm = () => {
     setEditingSession(null);
@@ -272,6 +282,7 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
       return;
     }
 
+    let saved: boolean;
     try {
       const facilitatorAssignments = [
         ...internalFacilitatorIds.map((id) => ({
@@ -299,19 +310,26 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
         reg_closes_at: regClosesAtIso,
       };
       if (editingSession) {
-        await updateMutation.mutateAsync({
-          sessionId: editingSession.id,
-          data: {
-            ...common,
-            ...(facilitatorsTouched ? { facilitators: facilitatorAssignments } : {}),
-          },
-        });
+        saved = (await runStaffAction(
+          () => updateMutation.mutateAsync({
+            sessionId: editingSession.id,
+            data: {
+              ...common,
+              ...(facilitatorsTouched ? { facilitators: facilitatorAssignments } : {}),
+            },
+          }),
+          "Could not save the Group Session.",
+        )) !== undefined;
       } else {
-        await createMutation.mutateAsync({
-          serviceId: service.id,
-          data: { ...common, facilitators: facilitatorAssignments },
-        });
+        saved = (await runStaffAction(
+          () => createMutation.mutateAsync({
+            serviceId: service.id,
+            data: { ...common, facilitators: facilitatorAssignments },
+          }),
+          "Could not save the Group Session.",
+        )) !== undefined;
       }
+      if (!saved) return;
 
       await invalidateAll();
       setSuccessMessage(
@@ -331,27 +349,25 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
   const handlePublish = async (session: GroupSessionResponse) => {
     setErrorMessage(null);
     setSuccessMessage(null);
-    try {
-      await publishMutation.mutateAsync({ sessionId: session.id });
-      await invalidateAll();
-      setSuccessMessage(`Session "${session.title}" published for student registration.`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to publish session.";
-      setErrorMessage(msg);
-    }
+    const result = await runStaffAction(
+      () => publishMutation.mutateAsync({ sessionId: session.id }),
+      "Failed to publish session.",
+    );
+    if (!result) return;
+    await invalidateAll();
+    setSuccessMessage(`Session "${session.title}" published for student registration.`);
   };
 
   const handleComplete = async (session: GroupSessionResponse) => {
     setErrorMessage(null);
     setSuccessMessage(null);
-    try {
-      await completeMutation.mutateAsync({ sessionId: session.id });
-      await invalidateAll();
-      setSuccessMessage(`Session "${session.title}" marked as completed.`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to complete session.";
-      setErrorMessage(msg);
-    }
+    const result = await runStaffAction(
+      () => completeMutation.mutateAsync({ sessionId: session.id }),
+      "Failed to complete session.",
+    );
+    if (!result) return;
+    await invalidateAll();
+    setSuccessMessage(`Session "${session.title}" marked as completed.`);
   };
 
   const handleCancel = async () => {
@@ -360,35 +376,30 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
       setErrorMessage("A cancellation reason is required.");
       return;
     }
-    try {
-      await cancelMutation.mutateAsync({
-        sessionId: cancelModalSession.id,
-        data: { reason: cancelReason.trim() },
-      });
-      await invalidateAll();
-      setSuccessMessage(`Session "${cancelModalSession.title}" cancelled.`);
-      setCancelModalSession(null);
-      setCancelReason("");
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to cancel session.";
-      setErrorMessage(msg);
-    }
+    const target = cancelModalSession;
+    const reason = cancelReason.trim();
+    const result = await runStaffAction(
+      () => cancelMutation.mutateAsync({ sessionId: target.id, data: { reason } }),
+      "Failed to cancel session.",
+    );
+    if (!result) return;
+    await invalidateAll();
+    setSuccessMessage(`Session "${target.title}" cancelled.`);
+    setCancelModalSession(null);
+    setCancelReason("");
   };
 
   const handleWithdraw = async () => {
     if (!withdrawSession) return;
-    try {
-      await withdrawMutation.mutateAsync({
-        sessionId: withdrawSession.id,
-        data: { reason: "Draft withdrawn by staff." },
-      });
-      await invalidateAll();
-      setSuccessMessage(`Draft session "${withdrawSession.title}" withdrawn. Its record is preserved.`);
-      setWithdrawSession(null);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to withdraw session.";
-      setErrorMessage(msg);
-    }
+    const target = withdrawSession;
+    const result = await runStaffAction(
+      () => withdrawMutation.mutateAsync({ sessionId: target.id, data: { reason: "Draft withdrawn by staff." } }),
+      "Failed to withdraw session.",
+    );
+    if (!result) return;
+    await invalidateAll();
+    setSuccessMessage(`Draft session "${target.title}" withdrawn. Its record is preserved.`);
+    setWithdrawSession(null);
   };
 
   return (
@@ -407,6 +418,11 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
             {successMessage}
           </Notice>
         )}
+        {continuation.notice ? (
+          <Notice role="status" tone="info" className="mb-2">
+            {continuation.notice}
+          </Notice>
+        ) : null}
 
         {/* Operational Metrics Cards */}
         {metrics && (
@@ -968,6 +984,13 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
           }}
         />
       )}
+      <StepUpDialog
+        open={continuation.open}
+        requirement={continuation.requirement}
+        onOpenChange={continuation.setOpen}
+        isContinuing={continuation.isContinuing}
+        onVerified={continuation.continueAfterVerification}
+      />
     </PanelSection>
   );
 }
@@ -982,6 +1005,7 @@ function GroupSessionRosterModal({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
+  const continuation = useStepUpContinuation();
   const regsQuery = useGroupSessionsListRegistrations(session.id, {
     query: { retry: false },
   });
@@ -1017,18 +1041,15 @@ function GroupSessionRosterModal({
       ...(session.can_manage ? { notes: state.notes } : {}),
     }));
 
-    try {
-      await attendanceMutation.mutateAsync({
-        sessionId: session.id,
-        data: { records },
-      });
-      await queryClient.invalidateQueries({
-        queryKey: getGroupSessionsListRegistrationsQueryKey(session.id),
-      });
-      setSaveStatus("Attendance saved successfully.");
-    } catch {
-      setSaveStatus("Failed to save attendance.");
-    }
+    const result = await continuation.run(
+      () => attendanceMutation.mutateAsync({ sessionId: session.id, data: { records } }),
+      { onFailure: () => setSaveStatus("Failed to save attendance.") },
+    );
+    if (!result) return;
+    await queryClient.invalidateQueries({
+      queryKey: getGroupSessionsListRegistrationsQueryKey(session.id),
+    });
+    setSaveStatus("Attendance saved successfully.");
   };
 
   const handleExportCsv = async () => {
@@ -1057,6 +1078,7 @@ function GroupSessionRosterModal({
   };
 
   return (
+    <>
     <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
         <DialogTitle className="flex items-center justify-between">
@@ -1095,6 +1117,12 @@ function GroupSessionRosterModal({
             {saveStatus}
           </Notice>
         )}
+
+        {continuation.notice ? (
+          <Notice role="status" tone="info" className="my-2">
+            {continuation.notice}
+          </Notice>
+        ) : null}
 
         <div className="mt-3 overflow-y-auto flex-1 pr-1">
           {regsQuery.isLoading ? (
@@ -1199,6 +1227,14 @@ function GroupSessionRosterModal({
         </div>
       </DialogContent>
     </Dialog>
+    <StepUpDialog
+      open={continuation.open}
+      requirement={continuation.requirement}
+      onOpenChange={continuation.setOpen}
+      isContinuing={continuation.isContinuing}
+      onVerified={continuation.continueAfterVerification}
+    />
+    </>
   );
 }
 

@@ -5,7 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Button } from "@/components/ui/button";
 import { StepUpDialog } from "@/features/account/security/security-shared";
-import { stepUpRequirement, type StepUpRequirement } from "@/features/account/security/step-up";
+import { stepUpRequirement } from "@/features/account/security/step-up";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import {
   appointmentsPreviewReminders,
   getAppointmentsPreviewRemindersMutationKey,
@@ -30,7 +31,8 @@ export function ReminderSender(props: Props) {
 
 function ReminderConfirmation({ selected, onClose, onComplete }: Props) {
   const [requestKey] = useState(() => crypto.randomUUID());
-  const [stepUp, setStepUp] = useState<StepUpRequirement | null>(null);
+  const [terminalFailure, setTerminalFailure] = useState(false);
+  const continuation = useStepUpContinuation();
   const preview = useQuery({
     queryKey: [...getAppointmentsPreviewRemindersMutationKey(), selected],
     queryFn: ({ signal }) => appointmentsPreviewReminders({ appointment_ids: selected }, { signal }),
@@ -41,7 +43,15 @@ function ReminderConfirmation({ selected, onClose, onComplete }: Props) {
   const send = useAppointmentsSendReminders();
   const rows = send.data?.data.items ?? preview.data?.data.items ?? [];
   const available = rows.filter((item) => item.eligible).length;
-  const needsStepUp = send.isError && stepUpRequirement(send.error) !== null;
+  const needsStepUp = send.isError && stepUpRequirement(send.error) !== null && !terminalFailure;
+  async function sendConfirmedReminders() {
+    setTerminalFailure(false);
+    const result = await continuation.run(
+      () => send.mutateAsync({ data: { appointment_ids: selected, request_key: requestKey } }),
+      { onFailure: () => setTerminalFailure(true) },
+    );
+    if (result) onComplete?.();
+  }
   const recipients = <ul className="divide-y divide-border text-sm" aria-label="Reminder recipients">
     {rows.map((row) => <li key={row.appointment_id} className="py-2">
       <p className="font-medium text-ink">{row.student_name ?? "Unavailable appointment"}</p>
@@ -57,11 +67,9 @@ function ReminderConfirmation({ selected, onClose, onComplete }: Props) {
       confirmDisabled={!preview.isSuccess || preview.isFetching || available === 0}
       error={send.isError && !needsStepUp ? "We couldn't confirm the request. Retry keeps the same confirmation and prevents duplicate reminders." : null}
       onOpenChange={(next) => { if (!next) onClose(); }}
-      onConfirm={() => send.mutate({ data: { appointment_ids: selected, request_key: requestKey } }, {
-        onSuccess: () => onComplete?.(),
-        onError: (caught) => { const requirement = stepUpRequirement(caught); if (requirement) setStepUp(requirement); },
-      })}
+      onConfirm={() => void sendConfirmedReminders()}
       choices={!send.isSuccess ? <>
+        {continuation.notice ? <p role="status" className="text-sm text-muted">{continuation.notice}</p> : null}
         {preview.isPending ? <p role="status">Checking appointments…</p> : null}
         {preview.isError ? <p role="alert">We could not check the appointments. <Button variant="secondary" onClick={() => void preview.refetch()}>Retry</Button></p> : recipients}
       </> : undefined}
@@ -72,6 +80,6 @@ function ReminderConfirmation({ selected, onClose, onComplete }: Props) {
     >
       <p>Review the students before sending. Each eligible student receives a reminder in COMPASS. Email and browser notifications follow when available.</p>
     </ConsequentialActionDialog>
-    <StepUpDialog open={Boolean(stepUp)} requirement={stepUp ?? "verify"} onOpenChange={(next) => { if (!next) setStepUp(null); }} />
+    <StepUpDialog open={continuation.open} requirement={continuation.requirement} onOpenChange={(next) => continuation.setOpen(next)} isContinuing={continuation.isContinuing} onVerified={continuation.continueAfterVerification} />
   </>;
 }
