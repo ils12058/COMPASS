@@ -395,7 +395,6 @@ export function ServiceGroupSessionsStaffPanel({ service }: { service: ServiceRe
     <PanelSection
       title="Group Sessions & Events"
       titleId="service-group-sessions-heading"
-      className="mt-6"
     >
       <div className="flex flex-col gap-4">
         {errorMessage && (
@@ -1273,7 +1272,6 @@ export function ServiceGroupSessionsStudentPanel({
     <PanelSection
       title="Upcoming Group Sessions & Workshops"
       titleId="group-sessions-student-heading"
-      className="mt-6"
     >
       <div className="flex flex-col gap-4">
         {errorMessage && (

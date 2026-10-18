@@ -14,6 +14,7 @@ import {
   CallSlipLifecycleStateValue,
   CallSlipOrdering,
 } from "@/lib/api/generated/model";
+import type { CallSlipLifecycleStateValue as CallSlipLifecycleState } from "@/lib/api/generated/model";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Notice } from "@/components/ui/notice";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
@@ -142,6 +143,25 @@ export function callSlipStateLabel(
   if (state === CallSlipLifecycleStateValue.ACTIVE) return "Active";
   if (state === CallSlipLifecycleStateValue.COMPLETED) return "Completed";
   return studentFacing ? "Withdrawn" : "Voided";
+}
+
+export function CallSlipStatusBadge({
+  state,
+  studentFacing = false,
+}: {
+  state: CallSlipLifecycleState;
+  studentFacing?: boolean;
+}) {
+  const tone = state === CallSlipLifecycleStateValue.ACTIVE
+    ? "border-info/30 bg-info/10 text-info"
+    : state === CallSlipLifecycleStateValue.COMPLETED
+      ? "border-success/30 bg-success/10 text-success"
+      : "border-warning/30 bg-warning/10 text-warning";
+  return (
+    <span className={`inline-flex min-h-6 items-center rounded-full border px-2.5 text-xs font-semibold ${tone}`}>
+      {callSlipStateLabel(state, studentFacing)}
+    </span>
+  );
 }
 
 export function callSlipDestinationLabel(

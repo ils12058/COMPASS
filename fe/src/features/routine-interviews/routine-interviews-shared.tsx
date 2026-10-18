@@ -26,7 +26,7 @@ import {
   INSTITUTION_TIME_ZONE,
 } from "@/lib/institutional-time";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
-import { Panel } from "@/components/ui/panel";
+import { Panel, PanelSection, RecordSummary } from "@/components/ui/panel";
 
 export function formatRoutineDateTime(value: string): string {
   return formatInstitutionalDateTime(value);
@@ -262,78 +262,60 @@ export function RoutineContextSummary({
   const inventoryNote = routineInventoryNote(inventoryContext);
 
   return (
-    <Panel aria-label="Routine Interview context" className="mb-5">
-      <dl className="grid gap-x-7 gap-y-4 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-3">
-        <MetadataItem label="Student" value={personName} />
-        <MetadataItem label="Academic Year" value={routineAcademicYearLabel(academicYear)} />
-        {program ? <MetadataItem label="Course and major" value={program} /> : null}
-        {inventoryNote ? <MetadataItem label="Individual Inventory" value={inventoryNote} /> : null}
-        {counselor ? (
-          <MetadataItem label="Counselor" value={counselor.display_name} />
-        ) : null}
-        <MetadataItem label="Nature of visit" value={routineEntryModeLabel(entryMode)} />
-        <MetadataItem label="Delivery mode" value={routineDeliveryModeLabel(deliveryMode)} />
-        {appointment ? (
-          <MetadataItem
-            label="Appointment"
-            value={
-              <span>
-                {appointment.reference_code}
-                <span className="block text-muted">
-                  {formatRoutineDateTimeRange(appointment.starts_at, appointment.ends_at)}
-                </span>
+    <Panel aria-label="Routine Interview context">
+      <RecordSummary
+        label="Student"
+        title={personName}
+        titleId="routine-interview-student"
+        facts={[
+          { label: "Academic Year", value: routineAcademicYearLabel(academicYear) },
+          {
+            label: "Student Intake",
+            value: (
+              <span className="inline-flex flex-wrap items-center gap-2">
+                <RoutineStatus complete={intakeStatus === "SUBMITTED"}>
+                  {routineIntakeStatusLabel(intakeStatus)}
+                </RoutineStatus>
+                {intakeSubmittedAt ? <span className="text-xs text-muted">{formatRoutineDateTime(intakeSubmittedAt)}</span> : null}
               </span>
-            }
-          />
-        ) : null}
-        {encounter ? (
-          <MetadataItem
-            label={studentFacing ? "Counseling session" : "Counseling Encounter"}
-            value={
-              <span>
-                {formatRoutineDateTime(encounter.started_at)}
-                <span className="block text-muted">
-                  Ended {formatRoutineDateTime(encounter.ended_at)}
-                </span>
-              </span>
-            }
-          />
-        ) : null}
-        <MetadataItem
-          label="Student Intake"
-          value={
-            <span className="inline-flex flex-wrap items-center gap-2">
-              <RoutineStatus complete={intakeStatus === "SUBMITTED"}>
-                {routineIntakeStatusLabel(intakeStatus)}
-              </RoutineStatus>
-              {intakeSubmittedAt ? (
-                <span className="text-xs text-muted">
-                  {formatRoutineDateTime(intakeSubmittedAt)}
-                </span>
-              ) : null}
-            </span>
-          }
-        />
-        {evaluationStatus ? (
-          <MetadataItem
-            label="Counselor Evaluation"
-            value={
+            ),
+          },
+          ...(evaluationStatus ? [{
+            label: "Counselor Evaluation",
+            value: (
               <span className="inline-flex flex-wrap items-center gap-2">
                 <RoutineStatus complete={evaluationStatus === "FINALIZED"}>
                   {routineEvaluationStatusLabel(evaluationStatus)}
                 </RoutineStatus>
-                {evaluationFinalizedAt ? (
-                  <span className="text-xs text-muted">
-                    {formatRoutineDateTime(evaluationFinalizedAt)}
-                  </span>
-                ) : null}
+                {evaluationFinalizedAt ? <span className="text-xs text-muted">{formatRoutineDateTime(evaluationFinalizedAt)}</span> : null}
               </span>
-            }
-          />
-        ) : null}
-        <MetadataItem label="Created" value={formatRoutineDateTime(createdAt)} />
-        {revision ? <MetadataItem label="Form revision" value={revision} /> : null}
-      </dl>
+            ),
+          }] : []),
+        ]}
+      />
+      <PanelSection title="Interview context" titleId="routine-interview-context-heading">
+        <dl className="grid gap-x-7 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+          {program ? <MetadataItem label="Course and major" value={program} /> : null}
+          {inventoryNote ? <MetadataItem label="Individual Inventory" value={inventoryNote} /> : null}
+          {counselor ? <MetadataItem label="Counselor" value={counselor.display_name} /> : null}
+          <MetadataItem label="Nature of visit" value={routineEntryModeLabel(entryMode)} />
+          <MetadataItem label="Delivery mode" value={routineDeliveryModeLabel(deliveryMode)} />
+          {appointment ? (
+            <MetadataItem
+              label="Appointment"
+              value={<span>{appointment.reference_code}<span className="block text-muted">{formatRoutineDateTimeRange(appointment.starts_at, appointment.ends_at)}</span></span>}
+            />
+          ) : null}
+          {encounter ? (
+            <MetadataItem
+              label={studentFacing ? "Counseling session" : "Counseling Encounter"}
+              value={<span>{formatRoutineDateTime(encounter.started_at)}<span className="block text-muted">Ended {formatRoutineDateTime(encounter.ended_at)}</span></span>}
+            />
+          ) : null}
+          <MetadataItem label="Created" value={formatRoutineDateTime(createdAt)} />
+          {revision ? <MetadataItem label="Form revision" value={revision} /> : null}
+        </dl>
+      </PanelSection>
     </Panel>
   );
 }

@@ -1,10 +1,9 @@
 "use client";
 
-import { Download } from "lucide-react";
-import { PageAction } from "@/components/ui/page-action";
+import { ArrowUpRight, Download } from "lucide-react";
+import { PageAction, PageActionGroup, PageActionLink } from "@/components/ui/page-action";
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useState, type FormEvent, type ReactNode } from "react";
 
 import { CallSlipHelp } from "@/features/call-slips/call-slip-help";
@@ -15,11 +14,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Notice } from "@/components/ui/notice";
-import { Panel, PanelHeader, PanelSection } from "@/components/ui/panel";
+import { Panel, PanelHeader, PanelSection, RecordSummary } from "@/components/ui/panel";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
-import { CallSlipAccessUnavailable, CallSlipDetailSkeleton, CallSlipHeading, CallSlipQueryError, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipIssuanceModeLabels, callSlipStateLabel, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
+import { CallSlipAccessUnavailable, CallSlipDetailSkeleton, CallSlipHeading, CallSlipQueryError, CallSlipStatusBadge, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipIssuanceModeLabels, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import {
@@ -67,28 +66,43 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   return (
     <div className="space-y-5">
       {slip.isError ? <RefreshFailureNotice onRetry={() => void slip.refetch()} retrying={slip.isFetching} /> : null}
-      <CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" backLabel="Back to My Call Slips" action={<CallSlipPdfDownload callSlipId={item.id} studentFacing />} />
-      {item.state === CallSlipLifecycleStateValue.VOIDED ? <Notice role="status" tone="warning" title={<span className="text-warning">Withdrawn</span>}><p className="text-ink">This Call Slip is no longer active.</p></Notice> : null}
-      <Panel as="div">
-      <RecordSection title="Permit details">
-        <Field label="Student identity" value={item.student.display_name} />
-        <Field label="Name on Call Slip" value={item.student_name_snapshot} />
-        <Field label="Course / Year" value={item.course_year_snapshot} />
-        <Field label="Please report to" value={callSlipDestinationLabel(item.destination_type, item.other_destination)} />
-        <Field label="Date and time to report" value={formatInstitutionalDateTime(item.report_at)} />
-      </RecordSection>
-      <PanelSection title="Instruction" titleId="student-call-slip-instruction">
-        <p className="max-w-3xl text-sm leading-6 text-ink">Show this Call Slip to your instructor and report to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
-      </PanelSection>
-      <RecordSection title="Issuance and status">
-        <Field label="Issuing Guidance Counselor" value={item.issued_by_name_snapshot} />
-        <Field label="State" value={callSlipStateLabel(item.state, true)} />
-        <Field label="Current issuer account" value={item.issued_by.display_name} />
-        <Field label="Interview ended" value={formatInstitutionalDateTime(item.interview_ended_at)} />
-        <Field label="Recorded in COMPASS" value={formatInstitutionalDateTime(item.created_at)} />
-      </RecordSection>
-      <FormRevisionSection revision={item.form_revision} />
-      </Panel>
+      <CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" backLabel="Back to My Call Slips" />
+      <div data-page-action-layout="call-slip" className="grid gap-4 lg:grid-cols-[7rem_minmax(0,1fr)] lg:gap-5">
+        <PageActionGroup
+          aria-label="Call Slip page actions"
+          data-page-action-rail=""
+          className="empty:hidden lg:sticky lg:top-4 lg:flex-col lg:items-center lg:gap-x-0 lg:gap-y-3"
+        >
+          <CallSlipPdfDownload callSlipId={item.id} studentFacing />
+        </PageActionGroup>
+        <div className="min-w-0 space-y-5">
+          {item.state === CallSlipLifecycleStateValue.VOIDED ? <Notice role="status" tone="warning" title={<span className="text-warning">Withdrawn</span>}><p className="text-ink">This Call Slip is no longer active.</p></Notice> : null}
+          <Panel as="div">
+            <RecordSummary
+              label="Name on Call Slip"
+              title={item.student_name_snapshot}
+              titleId="student-call-slip-summary"
+              status={<CallSlipStatusBadge state={item.state} studentFacing />}
+              facts={[
+                { label: "Current Student identity", value: item.student.display_name },
+                { label: "Course / Year", value: item.course_year_snapshot },
+                { label: "Please report to", value: callSlipDestinationLabel(item.destination_type, item.other_destination) },
+                { label: "Date and time to report", value: formatInstitutionalDateTime(item.report_at) },
+              ]}
+            />
+            <PanelSection title="Instruction" titleId="student-call-slip-instruction">
+              <p className="max-w-3xl text-sm leading-6 text-ink">Show this Call Slip to your instructor and report to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
+            </PanelSection>
+            <RecordSection title="Issuance">
+              <Field label="Issuing Guidance Counselor" value={item.issued_by_name_snapshot} />
+              <Field label="Current issuer account" value={item.issued_by.display_name} />
+              <Field label="Interview ended" value={formatInstitutionalDateTime(item.interview_ended_at)} />
+              <Field label="Recorded in COMPASS" value={formatInstitutionalDateTime(item.created_at)} />
+            </RecordSection>
+            <FormRevisionSection revision={item.form_revision} />
+          </Panel>
+        </div>
+      </div>
     </div>
   );
 }
@@ -108,49 +122,65 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
   return (
     <div className="space-y-5">
       {slip.isError ? <RefreshFailureNotice onRetry={() => void slip.refetch()} retrying={slip.isFetching} /> : null}
-      <CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" help={<CallSlipHelp />} action={<CallSlipPdfDownload callSlipId={item.id} />} />
-      {item.state === CallSlipLifecycleStateValue.VOIDED ? (
-        <Notice role="status" tone="warning" title={<span className="text-warning">Voided</span>}>
-          <p className="whitespace-pre-wrap text-ink">{item.void_reason}</p>
-          {item.voided_at ? <p className="mt-1 text-muted">Voided {formatInstitutionalDateTime(item.voided_at)}</p> : null}
-          {item.voided_by ? <p className="mt-1 text-muted">Voided by {item.voided_by.display_name}</p> : null}
-        </Notice>
-      ) : null}
-      <Panel as="div">
-      <RecordSection title="Permit details">
-        <Field label="Student on Call Slip" value={item.student_name_snapshot} />
-        <Field label="Current Student identity" value={item.student.display_name} />
-        {item.student_institutional_id ? <Field label="Institutional ID" value={item.student_institutional_id} /> : null}
-        <Field label="Course / Year" value={item.course_year_snapshot} />
-        <Field label="Please report to" value={callSlipDestinationLabel(item.destination_type, item.other_destination)} />
-        <Field label="Date and time to report" value={formatInstitutionalDateTime(item.report_at)} />
-      </RecordSection>
-      <PanelSection title="Source instruction" titleId="operational-call-slip-instruction">
-        <p className="max-w-3xl text-sm leading-6 text-ink">Show to the instructor; report to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
-      </PanelSection>
-      <RecordSection title="Issuance and recordkeeping">
-        <Field label="Issuer name on Call Slip" value={item.issued_by_name_snapshot} />
-        <Field label="Current issuer account" value={item.issued_by.display_name} />
-        <Field label="Recorded by" value={item.recorded_by?.display_name ?? "Not separately recorded"} />
-        <Field label="Issuance mode" value={callSlipIssuanceModeLabels[item.issuance_mode]} />
-        <Field label="State" value={callSlipStateLabel(item.state)} />
-        <Field label="Interview ended" value={formatInstitutionalDateTime(item.interview_ended_at)} />
-        <Field label="Created in COMPASS" value={formatInstitutionalDateTime(item.created_at)} />
-        <Field label="Last updated" value={formatInstitutionalDateTime(item.updated_at)} />
-      </RecordSection>
-      <FormRevisionSection revision={item.form_revision} />
-      {item.referral ? (
-        <PanelSection title="Linked Referral" titleId="linked-referral-heading">
-          {referralAccess.canView ? (
-            <Link href={`/portal/referrals/${item.referral.id}`} className="inline-block font-semibold text-brand underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Open linked Referral {item.referral.reference_code}</Link>
-          ) : <p className="text-sm text-muted">A linked referral exists, but its reference is unavailable to this account.</p>}
-        </PanelSection>
-      ) : null}
-      </Panel>
-      {access.canManageOperational && !slip.isError ? <CallSlipLifecycleActions slip={item} onRefresh={async () => {
-        const refreshed = await slip.refetch();
-        return refreshed.isSuccess ? refreshed.data.data : undefined;
-      }} /> : null}
+      <CallSlipHeading title="Call Slip / Interview Permit" backHref="/portal/call-slips" help={<CallSlipHelp />} />
+      <div data-page-action-layout="call-slip" className="grid gap-4 lg:grid-cols-[7rem_minmax(0,1fr)] lg:gap-5">
+        <PageActionGroup
+          aria-label="Call Slip page actions"
+          data-page-action-rail=""
+          className="empty:hidden lg:sticky lg:top-4 lg:flex-col lg:items-center lg:gap-x-0 lg:gap-y-3"
+        >
+          <CallSlipPdfDownload callSlipId={item.id} />
+          {item.referral && referralAccess.canView ? (
+            <PageActionLink href={`/portal/referrals/${item.referral.id}`} icon={ArrowUpRight} variant="secondary" label="Open Referral" labelDetail={item.referral.reference_code} />
+          ) : null}
+        </PageActionGroup>
+        <div className="min-w-0 space-y-5">
+          {item.state === CallSlipLifecycleStateValue.VOIDED ? (
+            <Notice role="status" tone="warning" title={<span className="text-warning">Voided</span>}>
+              <p className="whitespace-pre-wrap text-ink">{item.void_reason}</p>
+              {item.voided_at ? <p className="mt-1 text-muted">Voided {formatInstitutionalDateTime(item.voided_at)}</p> : null}
+              {item.voided_by ? <p className="mt-1 text-muted">Voided by {item.voided_by.display_name}</p> : null}
+            </Notice>
+          ) : null}
+          <Panel as="div">
+            <RecordSummary
+              label="Name on Call Slip"
+              title={item.student_name_snapshot}
+              titleId="operational-call-slip-summary"
+              status={<CallSlipStatusBadge state={item.state} />}
+              facts={[
+                { label: "Current Student identity", value: item.student.display_name },
+                ...(item.student_institutional_id ? [{ label: "Institutional ID", value: item.student_institutional_id }] : []),
+                { label: "Course / Year", value: item.course_year_snapshot },
+                { label: "Please report to", value: callSlipDestinationLabel(item.destination_type, item.other_destination) },
+                { label: "Date and time to report", value: formatInstitutionalDateTime(item.report_at) },
+              ]}
+            />
+            <PanelSection title="Source instruction" titleId="operational-call-slip-instruction">
+              <p className="max-w-3xl text-sm leading-6 text-ink">Show to the instructor; report to {callSlipDestinationLabel(item.destination_type, item.other_destination)}.</p>
+            </PanelSection>
+            <RecordSection title="Issuance and recordkeeping">
+              <Field label="Issuer name on Call Slip" value={item.issued_by_name_snapshot} />
+              <Field label="Current issuer account" value={item.issued_by.display_name} />
+              <Field label="Recorded by" value={item.recorded_by?.display_name ?? "Not separately recorded"} />
+              <Field label="Issuance mode" value={callSlipIssuanceModeLabels[item.issuance_mode]} />
+              <Field label="Interview ended" value={formatInstitutionalDateTime(item.interview_ended_at)} />
+              <Field label="Created in COMPASS" value={formatInstitutionalDateTime(item.created_at)} />
+              <Field label="Last updated" value={formatInstitutionalDateTime(item.updated_at)} />
+            </RecordSection>
+            <FormRevisionSection revision={item.form_revision} />
+            {item.referral && !referralAccess.canView ? (
+              <PanelSection title="Linked Referral" titleId="linked-referral-heading">
+                <p className="text-sm text-muted">A linked referral exists, but its reference is unavailable to this account.</p>
+              </PanelSection>
+            ) : null}
+          </Panel>
+          {access.canManageOperational && !slip.isError ? <CallSlipLifecycleActions slip={item} onRefresh={async () => {
+            const refreshed = await slip.refetch();
+            return refreshed.isSuccess ? refreshed.data.data : undefined;
+          }} /> : null}
+        </div>
+      </div>
     </div>
   );
 }
@@ -193,7 +223,7 @@ function CallSlipPdfDownload({ callSlipId, studentFacing = false }: { callSlipId
     }
   }
 
-  return <div className="flex flex-col items-start gap-2 sm:items-end"><PageAction icon={Download} variant="secondary" label={pending ? "Preparing Call Slip…" : "Download Call Slip"} onClick={() => void download()} disabled={pending} aria-busy={pending} />{error ? <p role="alert" className="max-w-sm text-sm text-danger">{error}</p> : null}</div>;
+  return <div className="flex flex-col items-center gap-2"><PageAction icon={Download} variant="secondary" label={pending ? "Preparing Call Slip…" : "Download"} labelDetail={pending ? undefined : "Call Slip"} onClick={() => void download()} disabled={pending} aria-busy={pending} />{error ? <p role="alert" className="w-28 text-center text-xs text-danger">{error}</p> : null}</div>;
 }
 
 function CallSlipLifecycleActions({ slip, onRefresh }: { slip: CallSlipOperationalResponse; onRefresh: () => Promise<CallSlipOperationalResponse | undefined> }) {

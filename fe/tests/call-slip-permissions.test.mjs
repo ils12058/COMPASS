@@ -23,7 +23,8 @@ function render(role, capabilities, state = "ACTIVE", { error = null, referralAc
   } finally { client.clear(); }
 }
 function assertReadable(html) {
-  for (const text of ["Maria Santos", "BSIT / 4", "Guidance Office", "Date and time to report", "Maria Reyes", "TEST-CS", "Revision 1", "Download Call Slip"]) assert.ok(html.includes(text), text);
+  for (const text of ["Maria Santos", "BSIT / 4", "Guidance Office", "Date and time to report", "Maria Reyes", "TEST-CS", "Revision 1", "data-page-action-label"]) assert.ok(html.includes(text), text);
+  assert.match(html, /data-page-action-label=""[^>]*>Download<span class="sr-only"> Call Slip<\/span>/);
 }
 function assertNoManagement(html) {
   assert.doesNotMatch(html, /Operational actions|Record interview end|Review interview end|Void Call Slip|call-slip-interview-ended|call-slip-void-reason|role="alertdialog"/);
@@ -46,7 +47,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]) {
   }
   test(`${role} management capability never implies viewing`, () => {
     const html = render(role, ["call_slips.manage"]);
-    assertNoManagement(html); assert.doesNotMatch(html, /Maria Santos|Download Call Slip|TEST-CS/);
+    assertNoManagement(html); assert.doesNotMatch(html, /Maria Santos|data-page-action-layout="call-slip"|TEST-CS/);
   });
   test(`${role} failed refresh retains readable data and suppresses lifecycle actions`, () => {
     const html = render(role, ["call_slips.view", "call_slips.manage"], "ACTIVE", { error: new TypeError("Synthetic offline") });
@@ -66,10 +67,10 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN
   test(`${role} without applicable viewing authority cannot render seeded protected detail`, () => {
     const capabilities = ["unrelated.view", ...(role === "IT_ADMIN" || role === "INSTITUTIONAL_OFFICER" ? ["call_slips.view", "call_slips.manage", "call_slips.view_self"] : [])];
     const html = render(role, capabilities);
-    assertNoManagement(html); assert.doesNotMatch(html, /Maria Santos|Download Call Slip|TEST-CS/);
+    assertNoManagement(html); assert.doesNotMatch(html, /Maria Santos|data-page-action-layout="call-slip"|TEST-CS/);
   });
 }
 test("authorized linked Referral remains available to a view-only Counselor", () => {
   const html = render("COUNSELOR", ["call_slips.view"], "ACTIVE", { referralAccess: true });
-  assert.match(html, /Open linked Referral REF-TEST/); assertNoManagement(html);
+  assert.match(html, /Open Referral<span class="sr-only"> REF-TEST<\/span>/); assertNoManagement(html);
 });

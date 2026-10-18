@@ -131,7 +131,7 @@ await check("page-action-label-and-confirmation-focus", `/portal/call-slips/${sl
   const download = page.getByRole("button", { name: "Download Call Slip", exact: true });
   await shown(download);
   await shown(download.locator("[data-page-action-label]"));
-  assert.equal(await download.locator("[data-page-action-label]").innerText(), "Download Call Slip", "Desktop command keeps its visible name");
+  assert.equal(await download.locator("[data-page-action-label]").innerText(), "Download", "The visible command label stays concise");
   await download.focus();
   assert.equal(await download.evaluate((element) => element === document.activeElement), true);
   await screenshot(page, "call-slip-detail");
