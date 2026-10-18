@@ -16,7 +16,7 @@ import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { StepUpDialog } from "@/features/account/security/security-shared";
-import { stepUpRequirement, type StepUpRequirement } from "@/features/account/security/step-up";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import { guidanceFollowupsCreate, useGuidanceFollowupsGetContext, useGuidanceFollowupsEligibleStudents, useGuidanceFollowupsEligibleAssignees } from "@/lib/api/generated/guidance-followups/guidance-followups";
 import { CompassApiError } from "@/lib/api/errors";
 import { Category, SourceKind, type FollowUpCreate, type SourceContext } from "@/lib/api/generated/model";
@@ -54,7 +54,7 @@ function CreateForm({ source, initialStudentId, initialStudentName }: { source?:
   const [due, setDue] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [stepUp, setStepUp] = useState<StepUpRequirement | null>(null);
+  const continuation = useStepUpContinuation();
   const [submission, setSubmission] = useState<{ data: FollowUpCreate; key: string } | null>(null);
   const create = useMutation({ mutationFn: (value: { data: FollowUpCreate; key: string }) => guidanceFollowupsCreate(value.data, { headers: { "Idempotency-Key": value.key } }) });
   const students = useGuidanceFollowupsEligibleStudents({ search, page }, { query: { enabled: !source } });
@@ -66,15 +66,15 @@ function CreateForm({ source, initialStudentId, initialStudentName }: { source?:
     if (!studentId || !assignee || !dueAt) { setError("Choose a Student, responsible staff member and due date."); return; }
     const value = submission ?? { key: crypto.randomUUID(), data: { student_id: studentId, assigned_to_id: assignee, category, due_at: dueAt, description: description || null, source_kind: source?.source_kind, source_id: source?.source_id } };
     setSubmission(value);
-    try {
-      const response = await create.mutateAsync(value);
-      await invalidateFollowups(client);
-      router.push(response.data.assigned_to_id === user.id ? `/portal/follow-ups/${response.data.id}` : "/portal/follow-ups");
-    } catch (caught) {
-      const requirement = stepUpRequirement(caught);
-      if (requirement) { setStepUp(requirement); setSubmission(null); }
-      else { if (caught instanceof CompassApiError && caught.status === 422) setSubmission(null); setError(followupError(caught)); }
-    }
+    const response = await continuation.run(() => create.mutateAsync(value), {
+      onFailure: (caught) => {
+        if (caught instanceof CompassApiError && caught.status === 422) setSubmission(null);
+        setError(followupError(caught));
+      },
+    });
+    if (!response) return;
+    await invalidateFollowups(client);
+    router.push(response.data.assigned_to_id === user.id ? `/portal/follow-ups/${response.data.id}` : "/portal/follow-ups");
   }
   return <>
     <PageHeader title="Create follow-up" description="Follow-Ups are for staff. Creating one does not contact the Student or send a Student notification." back={<Link className={pageBackLinkClass} href="/portal/follow-ups">Back to Follow-Ups</Link>} />
@@ -113,8 +113,8 @@ function CreateForm({ source, initialStudentId, initialStudentName }: { source?:
       <PanelSection title="Due date and time" titleId="followup-due-section" description="Use Philippine Time. A due date is required.">
         <Label htmlFor="followup-due">Due date and time (Philippine Time)</Label><Input id="followup-due" type="datetime-local" required value={due} disabled={Boolean(submission)} onChange={event => setDue(event.target.value)} />
       </PanelSection>
-      <PanelFooter><Button type="submit" disabled={create.isPending || assignees.isFetching}>{create.isPending ? "Creating follow-up…" : submission ? "Retry the same follow-up" : "Create follow-up"}</Button>{error ? <p role="alert">{error} Return to Follow-Ups to check the saved record before starting another request.</p> : null}</PanelFooter>
+      <PanelFooter><Button type="submit" disabled={create.isPending || assignees.isFetching}>{create.isPending ? "Creating follow-up…" : submission ? "Retry the same follow-up" : "Create follow-up"}</Button>{error ? <p role="alert">{error} Return to Follow-Ups to check the saved record before starting another request.</p> : continuation.notice ? <p role="status" className="text-sm text-muted">{continuation.notice}</p> : null}</PanelFooter>
     </Panel></form>
-    <StepUpDialog open={Boolean(stepUp)} requirement={stepUp ?? "verify"} onOpenChange={open => { if (!open) setStepUp(null); }} />
+    <StepUpDialog open={continuation.open} requirement={continuation.requirement} onOpenChange={(open) => { continuation.setOpen(open); if (!open) setError(null); }} isContinuing={continuation.isContinuing} onVerified={continuation.continueAfterVerification} />
   </>;
 }

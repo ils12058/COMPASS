@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { user } from "./support/ui-hierarchy-fixtures.mjs";
 
-const { check, finish, noHorizontalOverflow, shown } = await createBrowserHarness("email-change");
+const { baseURL, check, finish, noHorizontalOverflow, shown } = await createBrowserHarness("email-change");
 const requestId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 const challengeId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const pendingStatus = () => ({
@@ -17,24 +17,48 @@ const pendingStatus = () => ({
   },
 });
 
-function fixtures({ mfa = false } = {}) {
+function fixtures({
+  mfa = false,
+  totpFailure = false,
+  switchSessionAfterTotp = false,
+  postStepUpFailure = null,
+  holdSessionCheckAfterTotp = false,
+} = {}) {
   const state = {
     emailChange: pendingStatus(),
     mfa: { enabled: mfa, recent: false },
+    sessionId: "synthetic-owner-session",
+    totpFailure,
+    switchSessionAfterTotp,
+    postStepUpFailure,
+    holdSessionCheckAfterTotp,
+    onSessionCheckStarted: null,
+    releaseSessionCheck: null,
     confirmations: [],
+    committedConfirmations: [],
     stepUps: [],
   };
   return {
     state,
     options: {
       device: "phone",
-      overrides: {
-        "/api/v1/auth/session": {
-          user: { ...user("STUDENT"), email: "old-address@example.test" },
-          session: { id: "synthetic-owner-session", expires_at: "2099-01-01T00:00:00Z", is_current: true },
-        },
-      },
-      handler: async ({ pathname, method, request, reply }) => {
+      overrides: {},
+      handler: async ({ pathname, method, request, reply, route }) => {
+        if (pathname === "/api/v1/auth/session" && method === "GET") {
+          const response = {
+            authenticated: true,
+            user: { ...user("STUDENT"), email: "old-address@example.test" },
+            session: { id: state.sessionId, expires_at: "2099-01-01T00:00:00Z", is_current: true },
+          };
+          if (state.holdSessionCheckAfterTotp && state.mfa.recent) {
+            state.holdSessionCheckAfterTotp = false;
+            state.releaseSessionCheck = () => reply(response);
+            state.onSessionCheckStarted?.();
+            return true;
+          }
+          await reply(response);
+          return true;
+        }
         if (pathname === "/api/v1/auth/email-change/status" && method === "GET") {
           await reply(state.emailChange);
           return true;
@@ -45,16 +69,39 @@ function fixtures({ mfa = false } = {}) {
         }
         if (pathname === "/api/v1/auth/mfa/totp/verify" && method === "POST") {
           state.stepUps.push(JSON.parse(request.postData()));
+          if (state.totpFailure) {
+            await reply({ error: { code: "invalid_totp_code", message: "The code could not be verified." } }, 422);
+            return true;
+          }
           state.mfa = { enabled: true, recent: true };
+          if (state.switchSessionAfterTotp) state.sessionId = "synthetic-new-session";
           await reply({ verified: true, recent: true });
           return true;
         }
         if (pathname === "/api/v1/auth/email-change/confirm" && method === "POST") {
-          state.confirmations.push(JSON.parse(request.postData()));
-          if (JSON.parse(request.postData()).code !== "123456") {
+          const confirmation = JSON.parse(request.postData());
+          state.confirmations.push(confirmation);
+          if (state.mfa.enabled && !state.mfa.recent) {
+            await reply({ error: { code: "recent_mfa_required", message: "Recent MFA is required." } }, 403);
+            return true;
+          }
+          if (state.postStepUpFailure?.kind === "network") {
+            await route.abort("failed");
+            return true;
+          }
+          if (state.postStepUpFailure?.kind === "permission") {
+            await reply({ error: { code: "permission_denied", message: "Permission denied." } }, 403);
+            return true;
+          }
+          if (state.postStepUpFailure?.kind === "repeat-stepup") {
+            await reply({ error: { code: "recent_mfa_required", message: "Recent MFA is required." } }, 403);
+            return true;
+          }
+          if (confirmation.code !== "123456") {
             await reply({ error: { code: "invalid_email_change_request", message: "Verification unavailable." } }, 422);
             return true;
           }
+          state.committedConfirmations.push(confirmation);
           state.emailChange.request.status = "confirmed";
           state.emailChange.request.challenge_id = null;
           state.emailChange.request.confirmed_at = "2026-10-18T00:00:00Z";
@@ -65,6 +112,45 @@ function fixtures({ mfa = false } = {}) {
       },
     },
   };
+}
+
+{
+  const f = fixtures({ mfa: true, totpFailure: true });
+  await check("invalid TOTP never repeats the confirmed email change", "/portal/account/security/email", f.options, async (page) => {
+    await page.getByLabel("Code from new email", { exact: true }).fill("123456");
+    await page.getByRole("button", { name: "Verify email", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await shown(dialog);
+    await dialog.getByLabel("Authenticator code", { exact: true }).fill("000000");
+    await dialog.getByRole("button", { name: "Verify", exact: true }).evaluate((button) => {
+      button.click();
+      button.click();
+    });
+    await shown(dialog.getByRole("alert"));
+    assert.equal(f.state.stepUps.length, 1);
+    assert.equal(f.state.confirmations.length, 1);
+    assert.equal(f.state.committedConfirmations.length, 0);
+    await dialog.getByRole("button", { name: "Cancel", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    assert.equal(f.state.confirmations.length, 1);
+    assert.equal(f.state.committedConfirmations.length, 0);
+  });
+}
+
+{
+  const f = fixtures({ mfa: true, switchSessionAfterTotp: true });
+  await check("a changed sign-in session discards the pending email change", "/portal/account/security/email", f.options, async (page) => {
+    await page.getByLabel("Code from new email", { exact: true }).fill("123456");
+    await page.getByRole("button", { name: "Verify email", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await shown(dialog);
+    await dialog.getByLabel("Authenticator code", { exact: true }).fill("987654");
+    await dialog.getByRole("button", { name: "Verify", exact: true }).click();
+    await dialog.waitFor({ state: "hidden" });
+    await shown(page.getByText("Your sign-in changed. Review the action and try again.", { exact: true }));
+    assert.equal(f.state.confirmations.length, 1);
+    assert.equal(f.state.committedConfirmations.length, 0);
+  });
 }
 
 {
@@ -104,22 +190,60 @@ function fixtures({ mfa = false } = {}) {
 
 {
   const f = fixtures({ mfa: true });
-  await check("owner must complete TOTP step-up before admin-request confirmation", "/portal/account/security/email", f.options, async (page) => {
+  await check("owner completes TOTP step-up and the confirmed email change continues once", "/portal/account/security/email", f.options, async (page) => {
     await page.getByLabel("Code from new email", { exact: true }).fill("123456");
     await page.getByRole("button", { name: "Verify email", exact: true }).click();
     const dialog = page.getByRole("dialog");
     await shown(dialog);
-    assert.equal(f.state.confirmations.length, 0);
+    assert.equal(f.state.confirmations.length, 1);
+    assert.equal(f.state.committedConfirmations.length, 0);
+    await dialog.getByLabel("Authenticator code", { exact: true }).fill("987654");
+    await dialog.getByRole("button", { name: "Verify", exact: true }).click();
+    await page.waitForURL("**/login?email_changed=1");
+    assert.deepEqual(f.state.stepUps, [{ code: "987654" }]);
+    assert.equal(f.state.confirmations.length, 2);
+    assert.deepEqual(f.state.confirmations[0], f.state.confirmations[1]);
+    assert.equal(f.state.committedConfirmations.length, 1);
+    assert.equal(f.state.committedConfirmations[0].code, "123456");
+  });
+}
+
+{
+  const f = fixtures({ mfa: true, holdSessionCheckAfterTotp: true });
+  await check("navigation during the refreshed-session check discards the email change", "/portal/account/security/email", f.options, async (page) => {
+    const sessionCheck = new Promise((resolve) => { f.state.onSessionCheckStarted = resolve; });
+    await page.getByLabel("Code from new email", { exact: true }).fill("123456");
+    await page.getByRole("button", { name: "Verify email", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await shown(dialog);
+    await dialog.getByLabel("Authenticator code", { exact: true }).fill("987654");
+    await dialog.getByRole("button", { name: "Verify", exact: true }).click();
+    await sessionCheck;
+    await page.goto(`${baseURL}/portal/account/security`, { waitUntil: "domcontentloaded" });
+    await f.state.releaseSessionCheck?.().catch(() => {});
+    await page.waitForTimeout(250);
+    assert.equal(f.state.confirmations.length, 1);
+    assert.equal(f.state.committedConfirmations.length, 0);
+  });
+}
+
+for (const kind of ["permission", "network", "repeat-stepup"]) {
+  const f = fixtures({ mfa: true, postStepUpFailure: { kind } });
+  await check(`a ${kind} failure after TOTP is terminal and never replays the email change`, "/portal/account/security/email", f.options, async (page) => {
+    await page.getByLabel("Code from new email", { exact: true }).fill("123456");
+    await page.getByRole("button", { name: "Verify email", exact: true }).click();
+    const dialog = page.getByRole("dialog");
+    await shown(dialog);
     await dialog.getByLabel("Authenticator code", { exact: true }).fill("987654");
     await dialog.getByRole("button", { name: "Verify", exact: true }).click();
     await dialog.waitFor({ state: "hidden" });
-    assert.deepEqual(f.state.stepUps, [{ code: "987654" }]);
-    const accepted = page.waitForResponse((response) => response.url().endsWith("/api/v1/auth/email-change/confirm") && response.status() === 200);
-    await page.getByRole("button", { name: "Verify email", exact: true }).click();
-    await accepted;
-    await page.waitForURL("**/login?email_changed=1");
-    assert.equal(f.state.confirmations.length, 1);
-    assert.equal(f.state.confirmations[0].code, "123456");
+    const message = kind === "repeat-stepup"
+      ? "Your security check needs to be repeated. Review the action before trying again."
+      : "The email change could not be completed. Please try again.";
+    await shown(page.getByText(message, { exact: true }));
+    assert.equal(f.state.confirmations.length, 2);
+    assert.equal(f.state.stepUps.length, 1);
+    assert.equal(f.state.committedConfirmations.length, 0);
   });
 }
 

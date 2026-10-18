@@ -178,4 +178,99 @@ await check(
   },
 );
 
+{
+  const staffAccount = {
+    ...user("COUNSELOR"),
+    id: "counselor-group-session-step-up",
+    capabilities: ["services.catalog.view", "services.manage", "appointments.manage"],
+  };
+  const managedService = {
+    ...service,
+    appointment_booking_enabled: false,
+    booking_pathways: ["GROUP_SESSION"],
+  };
+  const draft = {
+    ...event,
+    status: "DRAFT",
+    service_id: serviceId,
+    version: 1,
+    schedule_revision: 1,
+    active_registrations_count: 0,
+    organizer_id: staffAccount.id,
+    organizer_name: "Ana Cruz",
+    cancellation_reason: null,
+    cancelled_at: null,
+    created_at: "2026-10-01T00:00:00Z",
+    updated_at: "2026-10-01T00:00:00Z",
+    can_view: true,
+    can_manage: true,
+    can_access_participants: false,
+    can_record_attendance: false,
+    can_export_roster: false,
+    can_complete: false,
+  };
+  const state = { mfaRecent: false, publishAttempts: [], committed: 0 };
+  const handler = async ({ pathname, method, url, request, reply }) => {
+    if (pathname === "/api/v1/auth/session" && method === "GET") {
+      await reply(sessionFor(staffAccount));
+      return true;
+    }
+    if (pathname === "/api/v1/auth/mfa/status" && method === "GET") {
+      await reply({ enabled: true, recent: state.mfaRecent });
+      return true;
+    }
+    if (pathname === "/api/v1/auth/mfa/totp/verify" && method === "POST") {
+      state.mfaRecent = true;
+      await reply({ enabled: true, recent: true, verified: true });
+      return true;
+    }
+    if (pathname === `/api/v1/services/${serviceId}` && method === "GET") {
+      await reply(managedService);
+      return true;
+    }
+    if (pathname === "/api/v1/group-sessions" && method === "GET") {
+      await reply(url.searchParams.get("service_id") === serviceId ? [draft] : []);
+      return true;
+    }
+    if (pathname === "/api/v1/group-sessions/metrics" && method === "GET") {
+      await reply({ total_sessions: 1, published_sessions: state.committed, completed_sessions: 0, total_capacity: 25, total_registrations: 0, cancelled_registrations: 0, attended_count: 0, absent_count: 0, capacity_utilization_percent: 0, attendance_rate_percent: 0 });
+      return true;
+    }
+    if (pathname === `/api/v1/group-sessions/${sessionId}/publish` && method === "POST") {
+      state.publishAttempts.push(request.postData());
+      if (!state.mfaRecent) {
+        await reply({ error: { code: "recent_mfa_required", message: "Recent MFA is required." } }, 403);
+        return true;
+      }
+      state.committed += 1;
+      draft.status = "PUBLISHED";
+      await reply(draft);
+      return true;
+    }
+    return false;
+  };
+
+  await check(
+    "staff continues a confirmed Group Session publish after TOTP exactly once",
+    `/portal/services/${serviceId}`,
+    { handler, role: "COUNSELOR" },
+    async (page) => {
+      await shown(page.getByRole("button", { name: "Publish", exact: true }));
+      await page.getByRole("button", { name: "Publish", exact: true }).evaluate((button) => {
+        button.click();
+        button.click();
+      });
+      const dialog = page.getByRole("dialog");
+      await shown(dialog);
+      assert.equal(state.publishAttempts.length, 1);
+      await dialog.getByLabel("Authenticator code", { exact: true }).fill("987654");
+      await dialog.getByRole("button", { name: "Verify", exact: true }).click();
+      await shown(page.getByText(`Session "${draft.title}" published for student registration.`, { exact: true }));
+      assert.equal(state.publishAttempts.length, 2);
+      assert.equal(state.committed, 1);
+      await noHorizontalOverflow(page);
+    },
+  );
+}
+
 await finish();

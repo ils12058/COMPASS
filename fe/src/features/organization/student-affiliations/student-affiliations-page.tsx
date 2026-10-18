@@ -204,7 +204,6 @@ export function StudentAffiliationsPage() {
       "The Student affiliation could not be saved.",
       {
         onStepUpRequired: () => setReview(null),
-        onStepUpVerified: () => setReview(target),
       },
     );
     if (!response) return;
@@ -221,7 +220,6 @@ export function StudentAffiliationsPage() {
       "The Student affiliation could not be removed.",
       {
         onStepUpRequired: () => setRemoval(null),
-        onStepUpVerified: () => setRemoval(target),
       },
     );
     if (!response) return;

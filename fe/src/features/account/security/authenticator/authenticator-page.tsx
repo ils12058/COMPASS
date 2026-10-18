@@ -15,6 +15,7 @@ import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { PasswordInput } from "@/features/auth/components/password-input";
 import { accountErrorCode, accountErrorMessage } from "@/features/account/components/account-errors";
 import { SecurityBackLink, StepUpDialog } from "@/features/account/security/security-shared";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import {
   getAuthGetMfaStatusQueryKey,
   getAuthGetSessionQueryKey,
@@ -84,26 +85,20 @@ export function AuthenticatorPage() {
   const confirm = useAuthConfirmTotpSetup();
   const regenerate = useAuthRegenerateRecoveryCodes();
   const disable = useAuthDisableTotp();
+  const continuation = useStepUpContinuation();
   const [setup, setSetup] = useState<TOTPSetupResponse | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [code, setCode] = useState("");
   const [codes, setCodes] = useState<string[] | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
-  const [verified, setVerified] = useState(false);
   const [confirmAction, setConfirmAction] = useState<"regenerate" | "disable" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const secret = useMemo(() => setup ? manualSecret(setup.provisioning_uri) : null, [setup]);
-  const recent = mfa.data?.data.recent || verified;
   const actionPending = regenerate.isPending || disable.isPending;
 
   function beginAction(action: "regenerate" | "disable") {
     setError(null);
     setSuccess(null);
-    if (!recent) {
-      setStepUpOpen(true);
-      return;
-    }
     setConfirmAction(action);
   }
 
@@ -148,31 +143,29 @@ export function AuthenticatorPage() {
     const action = confirmAction;
     if (!action) return;
     setError(null);
-    try {
+    const result = await continuation.run(async () => {
       if (action === "regenerate") {
         const response = await regenerate.mutateAsync();
-        setCodes(response.data.recovery_codes);
-      } else {
-        await disable.mutateAsync();
-        setVerified(false);
-        setSuccess("Authenticator disabled.");
-        await Promise.all([
-          queryClient.invalidateQueries({ queryKey: getAuthGetMfaStatusQueryKey() }),
-          queryClient.invalidateQueries({ queryKey: getAuthListTrustedSessionsQueryKey() }),
-          queryClient.invalidateQueries({ queryKey: getAuthGetSessionQueryKey() }),
-        ]);
+        return { action, codes: response.data.recovery_codes } as const;
       }
-      setConfirmAction(null);
-    } catch (caught) {
-      if (accountErrorCode(caught) === "recent_mfa_required") {
-        setConfirmAction(null);
-        setVerified(false);
-        setError("Recent authenticator verification is required. Verify, then select the action again.");
-        setStepUpOpen(true);
-      } else {
-        setError(accountErrorMessage(caught, "The authenticator action could not be completed. Please try again."));
-      }
+      await disable.mutateAsync();
+      return { action } as const;
+    }, {
+      onStepUpRequired: () => setConfirmAction(null),
+      onFailure: (caught) => setError(accountErrorMessage(caught, "The authenticator action could not be completed. Please try again.")),
+    });
+    if (!result) return;
+    if (result.action === "regenerate") {
+      setCodes(result.codes);
+    } else {
+      setSuccess("Authenticator disabled.");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getAuthGetMfaStatusQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getAuthListTrustedSessionsQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getAuthGetSessionQueryKey() }),
+      ]);
     }
+    setConfirmAction(null);
   }
 
   return (
@@ -236,7 +229,8 @@ export function AuthenticatorPage() {
       ) : null}
       {error && confirmAction === null ? <p role="alert" className="mt-5 text-sm text-danger">{error}</p> : null}
       {success ? <p role="status" className="mt-5 text-sm text-success">{success}</p> : null}
-      <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => { setVerified(true); setError(null); setSuccess("Verification complete. Select the action again to continue."); }} />
+      {continuation.notice ? <p role="status" className="mt-5 text-sm text-muted">{continuation.notice}</p> : null}
+      <StepUpDialog open={continuation.open} requirement={continuation.requirement} onOpenChange={continuation.setOpen} isContinuing={continuation.isContinuing} onVerified={continuation.continueAfterVerification} />
       <ConsequentialActionDialog
         open={confirmAction !== null}
         title={

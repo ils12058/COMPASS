@@ -1,8 +1,7 @@
 "use client";
 
 import { useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -12,8 +11,9 @@ import { Panel, PanelBody, PanelFooter } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { PasswordInput } from "@/features/auth/components/password-input";
 import { passwordPolicyMessages } from "@/features/auth/utils/errors";
-import { accountErrorCode, accountErrorMessage } from "@/features/account/components/account-errors";
+import { accountErrorMessage } from "@/features/account/components/account-errors";
 import { SecurityBackLink, StepUpDialog } from "@/features/account/security/security-shared";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import {
   getAuthGetMfaStatusQueryKey,
   getAuthGetSessionQueryKey,
@@ -26,17 +26,19 @@ export function PasswordChangePage() {
   const queryClient = useQueryClient();
   const mfa = useAuthGetMfaStatus({ query: { retry: false } });
   const change = useAuthChangePassword();
-  const [stepUpOpen, setStepUpOpen] = useState(false);
-  const [verified, setVerified] = useState(false);
+  const continuation = useStepUpContinuation();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [policyIssues, setPolicyIssues] = useState<string[]>([]);
   const [changed, setChanged] = useState(false);
-  const [setupRequired, setSetupRequired] = useState(false);
   const usesMfa = mfa.data?.data.enabled ?? false;
-  const recent = mfa.data?.data.recent || verified;
+  const recent = mfa.data?.data.recent ?? false;
+  const credentialsRef = useRef({ currentPassword, newPassword });
+  useEffect(() => {
+    credentialsRef.current = { currentPassword, newPassword };
+  }, [currentPassword, newPassword]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -46,39 +48,33 @@ export function PasswordChangePage() {
       setError("The new passwords do not match.");
       return;
     }
-    if (usesMfa && !recent) {
-      setStepUpOpen(true);
-      return;
-    }
-    try {
-      const response = await change.mutateAsync({ data: {
-        new_password: newPassword,
-        ...(!usesMfa ? { current_password: currentPassword } : {}),
-      } });
-      if (!response.data.changed) {
-        setError("The password could not be changed. Please try again.");
-        return;
-      }
-      setCurrentPassword("");
-      setNewPassword("");
-      setConfirmation("");
-      setChanged(true);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getAuthGetSessionQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: getAuthGetMfaStatusQueryKey() }),
-        queryClient.invalidateQueries({ queryKey: getAuthListSessionsQueryKey() }),
-      ]);
-    } catch (caught) {
-      const code = accountErrorCode(caught);
-      if (code === "recent_mfa_required") {
-        setStepUpOpen(true);
-        return;
-      }
-      if (code === "mfa_setup_required") setSetupRequired(true);
+    const response = await continuation.run(
+      () => change.mutateAsync({ data: {
+        new_password: credentialsRef.current.newPassword,
+        ...(!usesMfa ? { current_password: credentialsRef.current.currentPassword } : {}),
+      } }),
+      {
+        onFailure: (caught) => {
       const issues = passwordPolicyMessages(caught);
       setPolicyIssues(issues);
       setError(issues.length ? "The new password does not meet the password policy." : accountErrorMessage(caught, "The password could not be changed. Please try again."));
+        },
+      },
+    );
+    if (!response) return;
+    if (!response.data.changed) {
+      setError("The password could not be changed. Please try again.");
+      return;
     }
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmation("");
+    setChanged(true);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getAuthGetSessionQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getAuthGetMfaStatusQueryKey() }),
+      queryClient.invalidateQueries({ queryKey: getAuthListSessionsQueryKey() }),
+    ]);
   }
 
   return (
@@ -91,13 +87,13 @@ export function PasswordChangePage() {
         <Panel as="div">
         <form onSubmit={submit}>
           <PanelBody className="space-y-5">
-          {usesMfa && !recent ? <p className="text-sm leading-6 text-muted">Verify with your authenticator app before changing your password.</p> : null}
+          {usesMfa && !recent ? <p className="text-sm leading-6 text-muted">You&apos;ll verify with your authenticator before your password changes.</p> : null}
           {!usesMfa ? <div className="grid gap-2"><Label htmlFor="current-password">Current password</Label><PasswordInput id="current-password" name="current-password" autoComplete="current-password" required value={currentPassword} onChange={(event) => { setCurrentPassword(event.target.value); setChanged(false); }} /></div> : null}
           <div className="grid gap-2"><Label htmlFor="account-new-password">New password</Label><PasswordInput id="account-new-password" name="new-password" autoComplete="new-password" required value={newPassword} onChange={(event) => { setNewPassword(event.target.value); setChanged(false); }} /></div>
           <div className="grid gap-2"><Label htmlFor="account-confirm-password">Confirm new password</Label><PasswordInput id="account-confirm-password" name="confirm-password" autoComplete="new-password" required value={confirmation} onChange={(event) => { setConfirmation(event.target.value); setChanged(false); }} aria-describedby={error ? "password-change-error" : undefined} /></div>
           {error ? <p id="password-change-error" role="alert" className="text-sm text-danger">{error}</p> : null}
+          {continuation.notice ? <p role="status" className="text-sm text-muted">{continuation.notice}</p> : null}
           {policyIssues.length ? <ul className="list-disc space-y-1 pl-5 text-sm text-danger">{policyIssues.map((issue) => <li key={issue}>{issue}</li>)}</ul> : null}
-          {setupRequired ? <Link href="/portal/account/security/authenticator" className="inline-flex min-h-10 items-center font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Set up authenticator</Link> : null}
           {changed ? <p role="status" className="text-sm text-success">Password changed. Other sessions and trusted-browser access were revoked.</p> : null}
           </PanelBody>
           <PanelFooter>
@@ -106,7 +102,7 @@ export function PasswordChangePage() {
         </form>
         </Panel>
       ) : null}
-      <StepUpDialog open={stepUpOpen} onOpenChange={setStepUpOpen} onVerified={() => setVerified(true)} />
+      <StepUpDialog open={continuation.open} requirement={continuation.requirement} onOpenChange={continuation.setOpen} isContinuing={continuation.isContinuing} onVerified={continuation.continueAfterVerification} />
     </section>
   );
 }

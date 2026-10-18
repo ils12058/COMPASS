@@ -2,7 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -32,17 +32,19 @@ export function StepUpDialog({
   open,
   onOpenChange,
   onVerified,
+  isContinuing = false,
   requirement = "verify",
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onVerified?: () => void;
+  onVerified?: () => void | Promise<void>;
+  isContinuing?: boolean;
   requirement?: StepUpRequirement;
 }) {
   if (requirement === "setup") {
     return <AuthenticatorSetupDialog open={open} onOpenChange={onOpenChange} />;
   }
-  return <AuthenticatorCodeDialog open={open} onOpenChange={onOpenChange} onVerified={onVerified} />;
+  return <AuthenticatorCodeDialog open={open} onOpenChange={onOpenChange} onVerified={onVerified} isContinuing={isContinuing} />;
 }
 
 function AuthenticatorSetupDialog({
@@ -75,33 +77,52 @@ function AuthenticatorCodeDialog({
   open,
   onOpenChange,
   onVerified,
+  isContinuing,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onVerified?: () => void;
+  onVerified?: () => void | Promise<void>;
+  isContinuing: boolean;
 }) {
   const queryClient = useQueryClient();
   const verify = useAuthVerifyTotp();
+  const verificationRunning = useRef(false);
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [completing, setCompleting] = useState(false);
+  const busy = verify.isPending || completing || isContinuing;
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (verificationRunning.current || busy) return;
+    verificationRunning.current = true;
     setError(null);
     try {
       await verify.mutateAsync({ data: { code } });
-      setCode("");
-      onOpenChange(false);
-      onVerified?.();
     } catch (caught) {
       setError(accountErrorMessage(caught, "The authenticator code could not be verified."));
+      verificationRunning.current = false;
       return;
     }
-    void queryClient.invalidateQueries({ queryKey: getAuthGetMfaStatusQueryKey() });
-    void queryClient.invalidateQueries({ queryKey: getAuthGetSessionQueryKey() });
+    setCode("");
+    setCompleting(true);
+    try {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: getAuthGetMfaStatusQueryKey() }),
+        queryClient.invalidateQueries({ queryKey: getAuthGetSessionQueryKey() }),
+      ]);
+      await onVerified?.();
+      onOpenChange(false);
+    } catch {
+      setError("Verification succeeded, but the action could not be completed. Review its status before trying again.");
+    } finally {
+      setCompleting(false);
+      verificationRunning.current = false;
+    }
   }
 
   function close() {
+    if (busy) return;
     onOpenChange(false);
     setCode("");
     setError(null);
@@ -112,18 +133,23 @@ function AuthenticatorCodeDialog({
       if (next) onOpenChange(true);
       else close();
     }}>
-      <DialogContent dismissible={!verify.isPending}>
+      <DialogContent dismissible={!busy}>
         <DialogTitle>Verify it&apos;s you</DialogTitle>
-        <DialogDescription>Enter the current code from your authenticator app.</DialogDescription>
+        <DialogDescription>
+          {onVerified
+            ? "This confirmed action needs a recent security check. Enter the current code from your authenticator app to continue."
+            : "Enter the current code from your authenticator app."}
+        </DialogDescription>
         <form className="mt-6 space-y-5" onSubmit={submit}>
           <div className="grid gap-2">
             <Label htmlFor="step-up-code">Authenticator code</Label>
-            <Input id="step-up-code" autoComplete="one-time-code" inputMode="numeric" maxLength={6} required value={code} onChange={(event) => setCode(event.target.value)} aria-describedby={error ? "step-up-error" : undefined} />
+            <Input id="step-up-code" autoComplete="one-time-code" inputMode="numeric" maxLength={6} required disabled={busy} value={code} onChange={(event) => setCode(event.target.value)} aria-describedby={error ? "step-up-error" : undefined} />
           </div>
           {error ? <p id="step-up-error" role="alert" className="text-sm text-danger">{error}</p> : null}
+          {busy && !verify.isPending ? <p role="status" className="text-sm text-muted">Verification succeeded. Completing your action…</p> : null}
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" disabled={verify.isPending} onClick={close}>Cancel</Button>
-            <Button type="submit" disabled={verify.isPending}>{verify.isPending ? "Verifying…" : "Verify"}</Button>
+            <Button variant="secondary" disabled={busy} onClick={close}>Cancel</Button>
+            <Button type="submit" disabled={busy}>{verify.isPending ? "Verifying…" : busy ? "Completing…" : "Verify"}</Button>
           </div>
         </form>
       </DialogContent>

@@ -9,12 +9,8 @@ import { Button } from "@/components/ui/button";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
-import {
-  stepUpNotice,
-  stepUpRequirement,
-  type StepUpRequirement,
-} from "@/features/account/security/step-up";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { hasServicesWorkspace } from "@/features/services/services-access";
@@ -252,40 +248,29 @@ export function ServicesGate({ children }: { children: ReactNode }) {
 export function useServicesAction() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
-  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
-  const [afterStepUp, setAfterStepUp] = useState<(() => void) | null>(null);
+  const continuation = useStepUpContinuation();
 
   async function run<T>(
     operation: () => Promise<T>,
     fallback: string,
     options?: {
       onStepUpRequired?: () => void;
-      onStepUpVerified?: () => void;
       onError?: (error: unknown, code: string | undefined) => boolean;
     },
   ): Promise<T | undefined> {
     setError(null);
     setNotice(null);
-    try {
-      return await operation();
-    } catch (caught) {
-      const code =
-        caught instanceof CompassApiError
-          ? readApiErrorCode(caught.body)
-          : undefined;
-      const requirement = stepUpRequirement(caught);
-      if (requirement) {
-        setStepUp(requirement);
-        options?.onStepUpRequired?.();
-        setAfterStepUp(() => options?.onStepUpVerified ?? null);
-        setNotice(stepUpNotice(requirement));
-        setStepUpOpen(true);
-      } else if (!options?.onError?.(caught, code)) {
+    const result = await continuation.run(operation, {
+      onStepUpRequired: options?.onStepUpRequired,
+      onFailure: (caught) => {
+        const code = caught instanceof CompassApiError ? readApiErrorCode(caught.body) : undefined;
+        if (!options?.onError?.(caught, code)) {
         setError(servicesErrorMessage(caught, fallback));
-      }
-      return undefined;
-    }
+        }
+      },
+    });
+    if (result !== undefined) setNotice(null);
+    return result;
   }
 
   const messages = (
@@ -295,9 +280,9 @@ export function useServicesAction() {
           {error}
         </p>
       ) : null}
-      {notice ? (
-        <p role="status" className="mt-4 text-sm text-success">
-          {notice}
+      {notice || continuation.notice ? (
+        <p role="status" className="mt-4 text-sm text-muted">
+          {notice ?? continuation.notice}
         </p>
       ) : null}
     </>
@@ -305,21 +290,17 @@ export function useServicesAction() {
 
   const stepUpDialog = (
     <StepUpDialog
-      open={stepUpOpen}
-      requirement={stepUp}
-      onOpenChange={setStepUpOpen}
-      onVerified={() => {
-        setNotice("Verification complete. Submit the action again to continue.");
-        const resume = afterStepUp;
-        setAfterStepUp(null);
-        resume?.();
-      }}
+      open={continuation.open}
+      requirement={continuation.requirement}
+      onOpenChange={continuation.setOpen}
+      isContinuing={continuation.isContinuing}
+      onVerified={continuation.continueAfterVerification}
     />
   );
 
   return {
     error,
-    notice,
+    notice: notice ?? continuation.notice,
     setError,
     setNotice,
     run,

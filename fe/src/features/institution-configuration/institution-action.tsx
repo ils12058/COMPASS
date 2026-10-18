@@ -1,13 +1,9 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 
 import { StepUpDialog } from "@/features/account/security/security-shared";
-import {
-  stepUpNotice,
-  stepUpRequirement,
-  type StepUpRequirement,
-} from "@/features/account/security/step-up";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 
 const knownErrors: Record<string, string> = {
@@ -34,15 +30,12 @@ export function institutionConfigurationErrorMessage(
 
 type StepUpOptions = {
   onStepUpRequired?: () => void;
-  onStepUpVerified?: () => void;
 };
 
 export function useInstitutionConfigurationAction() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
-  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
-  const restoreInteraction = useRef<(() => void) | null>(null);
+  const continuation = useStepUpContinuation();
 
   function resetFeedback() {
     setError(null);
@@ -55,40 +48,29 @@ export function useInstitutionConfigurationAction() {
     options?: StepUpOptions,
   ): Promise<T | undefined> {
     resetFeedback();
-    try {
-      return await operation();
-    } catch (caught) {
-      const requirement = stepUpRequirement(caught);
-      if (requirement) {
-        setStepUp(requirement);
-        options?.onStepUpRequired?.();
-        restoreInteraction.current = options?.onStepUpVerified ?? null;
-        setNotice(stepUpNotice(requirement));
-        setStepUpOpen(true);
-      } else {
+    const result = await continuation.run(operation, {
+      onStepUpRequired: options?.onStepUpRequired,
+      onFailure: (caught) => {
         setError(institutionConfigurationErrorMessage(caught, fallback));
-      }
-      return undefined;
-    }
+      },
+    });
+    if (result !== undefined) setNotice(null);
+    return result;
   }
 
   const stepUpDialog = (
     <StepUpDialog
-      open={stepUpOpen}
-      requirement={stepUp}
-      onOpenChange={setStepUpOpen}
-      onVerified={() => {
-        setNotice("Verification complete. Submit or confirm the action again.");
-        const restore = restoreInteraction.current;
-        restoreInteraction.current = null;
-        restore?.();
-      }}
+      open={continuation.open}
+      requirement={continuation.requirement}
+      onOpenChange={continuation.setOpen}
+      isContinuing={continuation.isContinuing}
+      onVerified={continuation.continueAfterVerification}
     />
   );
 
   return {
     error,
-    notice,
+    notice: notice ?? continuation.notice,
     resetFeedback,
     run,
     setError,

@@ -10,11 +10,7 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { StepUpDialog } from "@/features/account/security/security-shared";
-import {
-  stepUpNotice,
-  stepUpRequirement,
-  type StepUpRequirement,
-} from "@/features/account/security/step-up";
+import { useStepUpContinuation } from "@/features/account/security/step-up-continuation";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
@@ -47,13 +43,12 @@ export function usePrivacyAccess() {
   };
 }
 
-// Publishing and retiring a notice require recent MFA; drafting does not. A step-up opens the
-// shared dialog and the person submits again; the mutation is never replayed automatically.
+// Publishing and retiring a notice require recent MFA; drafting does not. The shared
+// continuation only repeats the protected mutation rejected before its domain operation.
 export function usePrivacyAction(labels?: PrivacyFieldLabels) {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [stepUpOpen, setStepUpOpen] = useState(false);
-  const [stepUp, setStepUp] = useState<StepUpRequirement>("verify");
+  const continuation = useStepUpContinuation();
 
   async function run<T>(
     operation: () => Promise<T>,
@@ -65,21 +60,15 @@ export function usePrivacyAction(labels?: PrivacyFieldLabels) {
   ): Promise<T | undefined> {
     setError(null);
     setNotice(null);
-    try {
-      return await operation();
-    } catch (caught) {
-      const requirement = stepUpRequirement(caught);
-      if (requirement) {
-        options?.onStepUpRequired?.();
-        setStepUp(requirement);
-        setNotice(stepUpNotice(requirement));
-        setStepUpOpen(true);
-      } else {
+    const result = await continuation.run(operation, {
+      onStepUpRequired: options?.onStepUpRequired,
+      onFailure: (caught) => {
         setError(privacyErrorMessage(caught, fallback, labels));
         options?.onError?.(caught);
-      }
-      return undefined;
-    }
+      },
+    });
+    if (result !== undefined) setNotice(null);
+    return result;
   }
 
   function reset() {
@@ -89,16 +78,15 @@ export function usePrivacyAction(labels?: PrivacyFieldLabels) {
 
   const stepUpDialog = (
     <StepUpDialog
-      open={stepUpOpen}
-      requirement={stepUp}
-      onOpenChange={setStepUpOpen}
-      onVerified={() =>
-        setNotice("Verification complete. Submit the action again to continue.")
-      }
+      open={continuation.open}
+      requirement={continuation.requirement}
+      onOpenChange={continuation.setOpen}
+      isContinuing={continuation.isContinuing}
+      onVerified={continuation.continueAfterVerification}
     />
   );
 
-  return { error, notice, setError, setNotice, reset, run, stepUpDialog };
+  return { error, notice: notice ?? continuation.notice, setError, setNotice, reset, run, stepUpDialog };
 }
 
 export function ActionMessages({

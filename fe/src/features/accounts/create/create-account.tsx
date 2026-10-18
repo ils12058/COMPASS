@@ -65,7 +65,6 @@ export function CreateAccount() {
       "The account could not be created.",
       () => setReview(null),
       undefined,
-      () => setReview(reviewed),
     );
     if (!response) return;
     setReview(null);

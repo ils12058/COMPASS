@@ -82,7 +82,6 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
       "The Academic Year could not be added.",
       {
         onStepUpRequired: () => setCreateOpen(false),
-        onStepUpVerified: () => setCreateOpen(true),
       },
     );
     if (!created) return;
@@ -105,7 +104,6 @@ function AcademicYearsWorkspace({ canManage }: { canManage: boolean }) {
       "The current Academic Year could not be changed.",
       {
         onStepUpRequired: () => setConfirmOpen(false),
-        onStepUpVerified: () => setConfirmOpen(true),
       },
     );
     if (!updated) return;

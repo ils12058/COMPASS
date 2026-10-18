@@ -233,7 +233,6 @@ export function ServiceDetailPage() {
       "The service status could not be changed.",
       {
         onStepUpRequired: () => setLifecycleOpen(false),
-        onStepUpVerified: () => setLifecycleOpen(true),
         onError: (caught, code) => {
           if (code !== "service_scheduling_consequence_review_required") return false;
           setDisableReview(serviceSchedulingConsequenceDetails(caught));
