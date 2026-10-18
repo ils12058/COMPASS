@@ -57,6 +57,9 @@ Run #157 also showed the unsupported seed year cascading into seeder setup error
 | `pnpm lint` and `pnpm typecheck` | Passed |
 | `pnpm test` | **818 passed, 0 failed** |
 | Synthetic production build | Passed |
+| PR checks on code/test commit `b5f42ad90acacd66db9812f91d12bf44e31340f6` | Targeted frontend lint/typecheck/build, unit tests, and all **8 Chromium/WebKit browser shards** passed ([run](https://github.com/ils12058/COMPASS/actions/runs/39105799716)) |
+| Targeted backend CI on the same code/test commit | All **4 test shards** passed ([run](https://github.com/ils12058/COMPASS/actions/runs/39105799709)) |
+| Full backend CI on the same code/test commit | Static and contract checks plus all **6 test shards** passed ([run](https://github.com/ils12058/COMPASS/actions/runs/39105806817)) |
 | Good Moral issued-PDF browser regression | **22/22 passed** on Chromium and WebKit; verified the PDF payload and simulated the headless viewer load event |
 | E-Counseling consent foreground recovery | **11/11 passed** on Chromium and WebKit |
 | Realtime notification preferences | **12/12 passed** on Chromium and WebKit |
@@ -69,4 +72,4 @@ Backend tests and Django checks used only the local test database. Browser check
 
 ## Remaining status
 
-The initial exact-head full backend workflow passed all six test shards and the static/contract job. Follow-up browser checks are locally validated; GitHub Actions must be rerun against the resulting PR head before reporting final remote CI status. No application implementation change or genuine application blocker was reproduced in these follow-up browser cases. Native PDF viewer rendering, print dialogs, and physical printing remain outside headless browser proof.
+All PR checks and the full backend workflow passed on code/test commit `b5f42ad90acacd66db9812f91d12bf44e31340f6`. A later documentation-only update to this report changes no application or test source. PR #286 remains open and unmerged; no deployment was performed. No application implementation change or genuine application blocker was reproduced in the follow-up browser cases. Native PDF viewer rendering, print dialogs, and physical printing remain outside headless browser proof.
