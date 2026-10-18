@@ -94,13 +94,14 @@ export function GoodMoralStudentDetail({
               </>
             ) : (
               <>
-                <GoodMoralField label="Degree" value={item.degree} />
+                <GoodMoralField label="Student-reported degree" value={item.degree} />
                 <GoodMoralField label="Major" value={item.major} />
                 <GoodMoralField label="Graduation date" value={formatGoodMoralDate(item.graduation_date)} />
               </>
             )}
           </dl>
         </PanelSection>
+        {item.variant === "GRADUATE" ? <Notice>F6 records the degree and graduation date entered for this request. COMPASS does not verify UCN Bachelor&apos;s completion.</Notice> : null}
         {hasReceipt ? (
           <PanelSection title="Official Receipt" titleId="good-moral-student-receipt">
             <dl className={factGrid}>

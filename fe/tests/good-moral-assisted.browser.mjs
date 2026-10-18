@@ -5,8 +5,9 @@ import { counselor, certificate, requestId } from './support/good-moral-print-fi
 const engine = process.env.COMPASS_UI_BROWSER ?? 'chromium';
 const { check, navigate, shown, hidden, noHorizontalOverflow, screenshot, finish } = await createBrowserHarness(`good-moral-assisted-${engine}`);
 const start = '/portal/good-moral/start';
-const current = { id: '11111111-1111-4111-8111-111111111111', display_name: 'Current Synthetic', institutional_id: 'SYNTHETIC-1', college: { id: 'college', code: 'TEST', name: 'Synthetic College' }, variant: 'CURRENT_STUDENT' };
-const graduate = { ...current, id: '22222222-2222-4222-8222-222222222222', display_name: 'Graduate Synthetic', institutional_id: 'SYNTHETIC-2', variant: 'GRADUATE' };
+const current = { id: '11111111-1111-4111-8111-111111111111', display_name: 'Current Synthetic', institutional_id: 'SYNTHETIC-1', college: { id: 'college', code: 'TEST', name: 'Synthetic College' }, variant: 'CURRENT_STUDENT', f4_eligibility: { status: 'ELIGIBLE', academic_classification: 'BACHELORS', year_level: 4 } };
+const graduate = { ...current, id: '22222222-2222-4222-8222-222222222222', display_name: 'External Postgraduate Synthetic', institutional_id: 'SYNTHETIC-2', variant: 'GRADUATE', f4_eligibility: null };
+const localPostgraduate = { ...current, id: '33333333-3333-4333-8333-333333333333', display_name: 'Local Postgraduate Synthetic', institutional_id: 'SYNTHETIC-3', f4_eligibility: { status: 'POSTGRADUATE_PROGRAM', academic_classification: 'MASTERS', year_level: null } };
 const empty = { items: [], page: 1, page_size: 10, has_next: false, filter_options: { form_revisions: [] } };
 function fixture({ role = 'COUNSELOR', errorCode, hold = false, authorized = true } = {}) {
   let calls = 0, release, began;
@@ -21,8 +22,9 @@ function fixture({ role = 'COUNSELOR', errorCode, hold = false, authorized = tru
       if (pathname === '/api/v1/good-moral/student-options') {
         state.searches.push(url.search);
         const page = Number(url.searchParams.get('page') || 1), term = url.searchParams.get('search') ?? '';
-        await reply({ ...empty, items: term.includes('Graduate') || page === 2 ? [graduate] : [state.currentStudent], page, has_next: !term && page === 1 }); return true;
+        await reply({ ...empty, items: term.includes('Postgraduate') ? [localPostgraduate] : term.includes('Graduate') || page === 2 ? [graduate] : [state.currentStudent], page, has_next: !term && page === 1 }); return true;
       }
+      if (pathname === '/api/v1/good-moral/degree-options') { await reply({ items: ['Bachelor of Science in Information Systems'] }); return true; }
       if (method === 'POST' && /^\/api\/v1\/good-moral\/requests\/(current-student|graduate)$/.test(pathname)) {
         calls++; state.bodies.push(JSON.parse(request.postData())); state.keys.push(request.headers()['idempotency-key']);
         began(); await gate;
@@ -36,7 +38,8 @@ function fixture({ role = 'COUNSELOR', errorCode, hold = false, authorized = tru
 }
 async function chooseCurrent(page) {
   await page.getByRole('radio', { name: /Current Synthetic/ }).check();
-  await page.getByLabel('Year level').selectOption('4th Year');
+  assert.equal(await page.getByLabel('Year level').inputValue(), '4th Year');
+  assert.equal(await page.getByLabel('Year level').isEditable(), false);
   await page.getByLabel('Semester', { exact: false }).selectOption('First Semester');
   await page.getByRole('button', { name: 'Review request', exact: true }).click();
   const dialog = page.getByRole('alertdialog');
@@ -48,6 +51,7 @@ for (const role of ['COUNSELOR', 'GUIDANCE_SERVICES_STAFF']) {
   const f = fixture({ role, hold: true });
   await check(`${role} confirmation, double submit and operational navigation`, start, f.options, async page => {
     const dialog = await chooseCurrent(page);
+    await screenshot(page, `${role.toLowerCase()}-assisted-f4-confirmation`);
     await dialog.getByRole('button', { name: 'Start Good Moral request', exact: true }).click();
     await f.started;
     assert.equal(await dialog.getByRole('button', { name: 'Starting request…', exact: true }).isDisabled(), true);
@@ -56,7 +60,7 @@ for (const role of ['COUNSELOR', 'GUIDANCE_SERVICES_STAFF']) {
     await dialog.getByRole('button', { name: 'Open request', exact: true }).click();
     await page.waitForURL(`**/portal/good-moral/${requestId}`);
     await shown(page.getByText('Synthetic Initiator', { exact: true }));
-    assert.deepEqual(f.state.bodies[0], { student_id: current.id, year_level: '4th Year', semester: 'First Semester' });
+    assert.deepEqual(f.state.bodies[0], { student_id: current.id, semester: 'First Semester' });
     assert.equal(f.state.keys[0].length, 36);
     await hidden(page.getByRole('button', { name: 'Print certificate', exact: true }));
   });
@@ -65,12 +69,12 @@ for (const role of ['COUNSELOR', 'GUIDANCE_SERVICES_STAFF']) {
   const f = fixture();
   await check('Graduate search, pagination, historical date and review', start, f.options, async page => {
     await page.getByRole('button', { name: 'Next', exact: true }).click();
-    await shown(page.getByRole('radio', { name: /Graduate Synthetic/ }));
-    await page.getByLabel('Search eligible Students').fill('Graduate');
+    await shown(page.getByRole('radio', { name: /External Postgraduate Synthetic/ }));
+    await page.getByLabel('Search Students').fill('Graduate');
     await page.getByRole('button', { name: 'Search', exact: true }).click();
-    await page.getByRole('radio', { name: /Graduate Synthetic/ }).check();
+    await page.getByRole('radio', { name: /External Postgraduate Synthetic/ }).check();
     await hidden(page.getByLabel('Year level'));
-    await page.getByLabel('Degree', { exact: false }).fill('Bachelor of Science');
+    await page.getByLabel('Student-reported degree').fill('Bachelor of Science');
     await page.getByLabel('Major (optional)').fill('Computing');
     await page.getByLabel('Graduation date', { exact: false }).fill('2020-06-01');
     await page.getByRole('button', { name: 'Review request', exact: true }).click();
@@ -81,6 +85,21 @@ for (const role of ['COUNSELOR', 'GUIDANCE_SERVICES_STAFF']) {
     assert.equal(f.state.bodies[0].student_id, graduate.id);
     assert.equal(f.state.bodies[0].graduation_date, '2020-06-01');
     assert.ok(f.state.searches.some(search => search.includes('search=Graduate') && search.includes('page=1')));
+  });
+}
+{
+  const f = fixture({ role: 'GUIDANCE_SERVICES_STAFF' });
+  await check('local postgraduate lifecycle keeps F6 claim available while F4 stays unavailable', start, f.options, async page => {
+    await page.getByLabel('Search Students').fill('Postgraduate');
+    await page.getByRole('button', { name: 'Search', exact: true }).click();
+    await page.getByRole('radio', { name: /Local Postgraduate Synthetic/ }).check();
+    const type = page.getByLabel('Request type');
+    assert.equal(await type.locator('option[value="CURRENT_STUDENT"]').isDisabled(), true);
+    assert.match(await page.locator('main').textContent(), /postgraduate Program/);
+    await hidden(page.getByLabel('Year level'));
+    await shown(page.getByLabel('Student-reported degree'));
+    await shown(page.getByText(/current or postgraduate enrollment is not proof of a completed UCN Bachelor's degree/i));
+    await screenshot(page, 'gss-local-postgraduate-f6-claim');
   });
 }
 for (const errorCode of ['good_moral_inventory_required', 'good_moral_exit_interview_required', 'good_moral_not_found', 'good_moral_conflict']) {
@@ -116,7 +135,7 @@ for (const errorCode of ['good_moral_inventory_required', 'good_moral_exit_inter
     await hidden(page.getByRole('link', { name: /Start request/ }));
     await navigate(page, start);
     await shown(page.getByRole('heading', { name: 'Request initiation unavailable' }));
-    await hidden(page.getByLabel('Search eligible Students'));
+    await hidden(page.getByLabel('Search Students'));
   });
 }
 {
@@ -131,7 +150,7 @@ for (const errorCode of ['good_moral_inventory_required', 'good_moral_exit_inter
     await page.getByRole('button', { name: 'Search', exact: true }).click();
     await page.getByRole('radio', { name: /Current Synthetic/ }).check();
     assert.ok(f.state.searches.length > previousSearches);
-    await shown(page.getByLabel('Degree', { exact: false }));
+    await shown(page.getByLabel('Student-reported degree'));
     await hidden(page.getByLabel('Year level'));
   });
 }
@@ -139,6 +158,7 @@ for (const device of ['phone', 'tablet']) {
   const f = fixture({ role: 'GUIDANCE_SERVICES_STAFF' });
   await check(`${device} layout and keyboard review`, start, { ...f.options, device }, async page => {
     await chooseCurrent(page); await noHorizontalOverflow(page);
+    if (device === 'tablet') await screenshot(page, 'gss-assisted-f4');
     await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel', exact: true }).focus();
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.activeElement?.textContent === 'Review request');

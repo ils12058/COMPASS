@@ -13,11 +13,9 @@ export function GoodMoralWorkspacePage({ filters }: { filters: GoodMoralOperatio
   const access: GoodMoralAccess = getGoodMoralAccess(user);
 
   if (access.isStudent && access.hasStudentWorkspace) {
-    const requestHref = access.canRequestSelf && user.student_lifecycle_status === "CURRENT"
+    const requestHref = access.canRequestSelf && user.student_lifecycle_status
       ? "/portal/good-moral/request"
-      : access.canRequestSelf && user.student_lifecycle_status === "GRADUATED"
-        ? "/portal/good-moral/request"
-        : null;
+      : null;
     return (
       <div className={pageSheetWidth}>
         <GoodMoralStudentHistory

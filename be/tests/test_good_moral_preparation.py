@@ -151,7 +151,7 @@ def test_safe_corrections_preserve_sources_and_ready_requires_reconfirmation():
         actor=staff,
         request_id=item.pk,
         changes={
-            "year_level_snapshot": "3rd Year",
+            "year_level_snapshot": "4th Year",
             "course_snapshot": "BS Computing",
             "official_receipt_number": "OR-123",
         },

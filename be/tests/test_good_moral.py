@@ -67,7 +67,8 @@ from compass.institutional_forms.bootstrap import sync_institutional_forms
 from compass.institutional_forms.models import FormRevision
 from compass.inventory.models import StudentInventory
 from compass.notifications.models import EmailDelivery, Notification, NotificationPreference
-from compass.organization.models import AcademicYear, Campus, College, StudentAffiliation
+from compass.organization.canonical import canonical_program_metadata
+from compass.organization.models import AcademicYear, Campus, College, Program, StudentAffiliation
 from tests.inventory_encryption_helpers import create_inventory_row
 
 
@@ -143,10 +144,10 @@ def make_affiliation(student: User, *, code: str = "CCMS") -> StudentAffiliation
         code="MAIN",
         defaults={"name": "Main Campus"},
     )
-    college = College.objects.create(
+    college, _ = College.objects.get_or_create(
         campus=campus,
         code=code,
-        name=f"{code} College",
+        defaults={"name": f"{code} College"},
     )
     return StudentAffiliation.objects.create(student=student, college=college)
 
@@ -162,16 +163,36 @@ def make_inventory(
     submitted: bool = True,
     course: str = "Bachelor of Science in Information Systems",
     major: str = "",
+    year_level: int | None = 4,
+    program_code: str | None = "BSIS",
+    program_college_code: str = "CCMS",
 ) -> StudentInventory:
     revision = FormRevision.objects.get(
         family__key="individual_inventory",
         status="ACTIVE",
     )
+    program = None
+    if program_code is not None:
+        metadata = canonical_program_metadata("MAIN", program_college_code, program_code)
+        assert metadata is not None
+        campus, _ = Campus.objects.get_or_create(code="MAIN", defaults={"name": "Main Campus"})
+        college, _ = College.objects.get_or_create(
+            campus=campus,
+            code=program_college_code,
+            defaults={"name": f"{program_college_code} College"},
+        )
+        program, _ = Program.objects.get_or_create(
+            college=college,
+            code=program_code,
+            defaults={"name": metadata.name},
+        )
     return create_inventory_row(
         StudentInventory,
         student=student,
         academic_year=academic_year,
         form_revision=revision,
+        program=program,
+        year_level=year_level,
         submitted_at=timezone.now() if submitted else None,
         course_currently_enrolled=course,
         major=major,
@@ -206,7 +227,7 @@ def make_graduate_request(student: User) -> GoodMoralRequest:
 
 
 @pytest.mark.django_db
-def test_f4_creation_uses_locked_current_student_exact_inventory_and_local_text_snapshots():
+def test_f4_creation_uses_locked_current_student_inventory_year_and_local_text_snapshots():
     sync_policy()
     student = make_user("current.student@example.edu")
     affiliation = make_affiliation(student)
@@ -220,13 +241,13 @@ def test_f4_creation_uses_locked_current_student_exact_inventory_and_local_text_
 
     first = create_my_current_student(
         student=student,
-        year_level="  5th Year  ",
+        year_level="  4th Year  ",
         semester="  First Semester  ",
         context=AuditContext.user(student),
     )
     second = create_my_current_student(
         student=student,
-        year_level="5th Year",
+        year_level="4th Year",
         semester="First Semester",
         context=AuditContext.user(student),
     )
@@ -240,27 +261,116 @@ def test_f4_creation_uses_locked_current_student_exact_inventory_and_local_text_
     assert first.college_snapshot == affiliation.college.name
     assert first.course_snapshot == "BS Information Systems"
     assert first.major_snapshot == "Systems Development"
-    assert first.year_level_snapshot == "5th Year"
+    assert first.year_level_snapshot == "4th Year"
     assert first.semester_snapshot == "First Semester"
     assert second.pk != first.pk
     assert GoodMoralRequest.objects.filter(student=student).count() == 2
 
 
 @pytest.mark.django_db
-def test_f4_uses_resolver_returned_inventory_academic_year_without_second_year_resolution(
-    monkeypatch,
+def test_f4_year_level_is_derived_from_inventory_and_explicit_mismatch_is_rejected():
+    sync_policy()
+    student = make_user("inventory.year.level@example.edu")
+    make_affiliation(student)
+    make_inventory(student, make_academic_year(), year_level=2)
+    client = auth_client(student)
+
+    mismatch = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps({"year_level": "4th Year", "semester": "First Semester"}),
+        content_type="application/json",
+        **good_moral_create_headers(client, "gm-f4-level-mismatch"),
+    )
+    assert mismatch.status_code == 422
+    assert (
+        "must match the Year Level on the submitted Individual Inventory"
+        in mismatch.json()["error"]["message"]
+    )
+
+    derived = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps({"semester": "First Semester"}),
+        content_type="application/json",
+        **good_moral_create_headers(client, "gm-f4-level-derived"),
+    )
+    assert derived.status_code == 201
+    assert derived.json()["year_level"] == "2nd Year"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("program_code", "college_code", "inventory_year", "expected_status"),
+    [
+        ("MIT", "CCMS", 1, "POSTGRADUATE_PROGRAM"),
+        ("MBA", "GS", None, "POSTGRADUATE_PROGRAM"),
+        ("DBA", "GS", None, "POSTGRADUATE_PROGRAM"),
+        (None, "CCMS", 4, "UNCLASSIFIED_PROGRAM"),
+        ("BSIS", "CCMS", 5, "UNSUPPORTED_YEAR_LEVEL"),
+    ],
+)
+def test_f4_rejects_postgraduate_unclassified_and_unsupported_inventory_facts(
+    program_code, college_code, inventory_year, expected_status
 ):
+    sync_policy()
+    student = make_user(f"f4-{expected_status.lower()}-{program_code}@example.edu")
+    make_affiliation(student)
+    make_inventory(
+        student,
+        make_academic_year(),
+        year_level=inventory_year,
+        program_code=program_code,
+        program_college_code=college_code,
+    )
+    client = auth_client(student)
+
+    context = client.get("/api/v1/good-moral/me/academic-context")
+    assert context.status_code == 200
+    assert context.json()["status"] == expected_status
+    assert set(context.json()) == {"status", "academic_classification", "year_level"}
+
+    response = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps({"semester": "First Semester"}),
+        content_type="application/json",
+        **good_moral_create_headers(client),
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "good_moral_f4_academic_eligibility_required"
+    assert not GoodMoralRequest.objects.filter(student=student).exists()
+
+
+@pytest.mark.django_db
+def test_degree_suggestions_are_bachelor_only_and_capability_scoped():
+    sync_policy()
+    student = make_user(
+        "degree-suggestions.student@example.edu", lifecycle=StudentLifecycleStatus.CURRENT
+    )
+    counselor = make_user("degree-suggestions.counselor@example.edu", role="COUNSELOR")
+    staff = make_user("degree-suggestions.gss@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    it_user = make_user("degree-suggestions.it@example.edu", role="IT_ADMIN")
+
+    response = auth_client(student).get("/api/v1/good-moral/degree-options")
+    assert response.status_code == 200
+    items = response.json()["items"]
+    assert items == sorted(set(items))
+    assert "Bachelor of Science in Information Systems" in items
+    assert "Master in Information Technology" not in items
+    assert "Master in Business Administration" not in items
+    assert "Doctor in Business Administration" not in items
+    assert auth_client(counselor).get("/api/v1/good-moral/degree-options").status_code == 200
+    assert auth_client(staff).get("/api/v1/good-moral/degree-options").status_code == 200
+    assert auth_client(it_user).get("/api/v1/good-moral/degree-options").status_code == 403
+
+
+@pytest.mark.django_db
+def test_f4_uses_submitted_inventory_for_current_academic_year():
     sync_policy()
     student = make_user("resolver.student@example.edu")
     make_affiliation(student)
     current_year = make_academic_year("2026-2027", current=True)
     prior_year = make_academic_year("2025-2026", current=False)
-    inventory = make_inventory(student, prior_year)
-
-    monkeypatch.setattr(
-        "compass.good_moral.services.require_current_submitted_inventory",
-        lambda locked_student: inventory,
-    )
+    inventory = make_inventory(student, current_year)
+    make_inventory(student, prior_year)
     item = create_my_current_student(
         student=student,
         year_level="4th Year",
@@ -270,7 +380,7 @@ def test_f4_uses_resolver_returned_inventory_academic_year_without_second_year_r
 
     assert current_year.is_current
     assert item.inventory_id == inventory.pk
-    assert item.academic_year_id == prior_year.pk
+    assert item.academic_year_id == current_year.pk
 
 
 @pytest.mark.django_db
@@ -405,7 +515,7 @@ def test_graduate_f6_uses_same_student_account_without_current_context():
     "lifecycle",
     [StudentLifecycleStatus.CURRENT, StudentLifecycleStatus.FORMER],
 )
-def test_f6_rejects_non_graduated_student(lifecycle: str):
+def test_f6_claim_submission_is_not_blocked_by_lifecycle_alone(lifecycle: str):
     sync_policy()
     student = make_user("not.graduate@example.edu", lifecycle=lifecycle)
     client = auth_client(student)
@@ -423,8 +533,127 @@ def test_f6_rejects_non_graduated_student(lifecycle: str):
         **good_moral_create_headers(client),
     )
 
-    assert response.status_code == 409
-    assert response.json()["error"]["code"] == "graduated_student_required"
+    assert response.status_code == 201
+    assert response.json()["degree"] == "BS Information Systems"
+
+
+@pytest.mark.django_db
+def test_f6_ucn_undergraduate_claim_remains_available_during_local_postgraduate_reenrollment():
+    sync_policy()
+    student = make_user(
+        "local-postgraduate-alumnus@example.edu", lifecycle=StudentLifecycleStatus.CURRENT
+    )
+    make_affiliation(student)
+    make_inventory(
+        student,
+        make_academic_year(),
+        program_code="MIT",
+        program_college_code="CCMS",
+        year_level=None,
+    )
+    client = auth_client(student)
+
+    assert (
+        client.get("/api/v1/good-moral/me/academic-context").json()["status"]
+        == "POSTGRADUATE_PROGRAM"
+    )
+    f4 = client.post(
+        "/api/v1/good-moral/me/requests/current-student",
+        data=json.dumps({"semester": "First Semester"}),
+        content_type="application/json",
+        **good_moral_create_headers(client, "local-postgraduate-f4"),
+    )
+    assert f4.status_code == 409
+
+    f6 = client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(
+            {
+                "degree": "Bachelor of Science in Information Systems",
+                "major": "Systems Development",
+                "graduation_date": "2020-06-30",
+            }
+        ),
+        content_type="application/json",
+        **good_moral_create_headers(client, "local-postgraduate-f6"),
+    )
+    assert f6.status_code == 201
+    item = GoodMoralRequest.objects.get(pk=f6.json()["id"])
+    assert item.student_id == student.pk
+    assert item.variant == GoodMoralVariant.GRADUATE
+    assert item.status == GoodMoralStatus.REQUESTED
+    assert item.inventory_id is None
+    assert item.degree_snapshot == "Bachelor of Science in Information Systems"
+    assert item.prepared_at is None and item.issued_at is None
+
+
+@pytest.mark.django_db
+def test_ucn_postgraduate_record_does_not_verify_reported_external_bachelor_qualification():
+    sync_policy()
+    student = make_user(
+        "external-degree-claim@example.edu", lifecycle=StudentLifecycleStatus.CURRENT
+    )
+    make_affiliation(student)
+    make_inventory(
+        student,
+        make_academic_year(),
+        program_code="MIT",
+        program_college_code="CCMS",
+        year_level=None,
+    )
+    client = auth_client(student)
+
+    response = client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(
+            {
+                "degree": "Bachelor of Science completed at another institution",
+                "major": "Computing",
+                "graduation_date": "2021-06-30",
+            }
+        ),
+        content_type="application/json",
+        **good_moral_create_headers(client),
+    )
+    assert response.status_code == 201
+    item = GoodMoralRequest.objects.get(pk=response.json()["id"])
+    assert item.status == GoodMoralStatus.REQUESTED
+    assert item.inventory_id is None
+    assert item.degree_snapshot == "Bachelor of Science completed at another institution"
+    assert item.prepared_at is None and item.issued_at is None
+
+
+@pytest.mark.django_db
+def test_ucn_bachelor_alumnus_can_request_f6_while_pursuing_postgraduate_studies_elsewhere():
+    sync_policy()
+    # External postgraduate enrollment is not represented in COMPASS; FORMER is the account's
+    # recorded UCN lifecycle state. This keeps historical self-service access without treating
+    # the degree text or lifecycle state as verified graduation evidence.
+    student = make_user(
+        "external-postgraduate-alumnus@example.edu", lifecycle=StudentLifecycleStatus.FORMER
+    )
+    client = auth_client(student)
+
+    response = client.post(
+        "/api/v1/good-moral/me/requests/graduate",
+        data=json.dumps(
+            {
+                "degree": "Bachelor of Science in Information Systems (UCN)",
+                "major": "Systems Development",
+                "graduation_date": "2020-06-30",
+            }
+        ),
+        content_type="application/json",
+        **good_moral_create_headers(client),
+    )
+
+    assert response.status_code == 201
+    item = GoodMoralRequest.objects.get(pk=response.json()["id"])
+    assert item.student_id == student.pk
+    assert item.status == GoodMoralStatus.REQUESTED
+    assert item.inventory_id is None
+    assert item.degree_snapshot == "Bachelor of Science in Information Systems (UCN)"
+    assert item.prepared_at is None and item.issued_at is None
 
 
 @pytest.mark.django_db
@@ -1368,7 +1597,7 @@ def test_f4_persistent_replay_precedes_lifecycle_inventory_affiliation_and_snaps
         raise AssertionError("exact replay must not resolve current affiliation")
 
     monkeypatch.setattr(
-        "compass.good_moral.services.require_current_submitted_inventory",
+        "compass.good_moral.services._require_submitted_inventory",
         fail_inventory,
     )
     monkeypatch.setattr(
@@ -1480,8 +1709,8 @@ def test_f6_persistent_replay_precedes_lifecycle_and_profile_refresh():
         content_type="application/json",
         **good_moral_create_headers(client, "gm-f6-new-intent"),
     )
-    assert new_intent.status_code == 409
-    assert new_intent.json()["error"]["code"] == "graduated_student_required"
+    assert new_intent.status_code == 201
+    assert new_intent.json()["degree"] == payload["degree"]
 
 
 @pytest.mark.django_db
@@ -1960,12 +2189,12 @@ def test_legacy_certificate_reprint_preserves_saved_form_and_template(graduate):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("year_level", CANONICAL_YEAR_LEVELS)
-def test_form_input_1a_creation_accepts_all_ten_canonical_year_levels(year_level: str):
+def test_form_input_1a_creation_accepts_inventory_derived_bachelors_year_levels(year_level: str):
     sync_policy()
     student = make_user(f"year.{year_level.replace(' ', '.').lower()}@example.edu")
     make_affiliation(student)
     academic_year = make_academic_year()
-    make_inventory(student, academic_year)
+    make_inventory(student, academic_year, year_level=CANONICAL_YEAR_LEVELS.index(year_level) + 1)
     client = auth_client(student)
 
     response = client.post(
@@ -1987,7 +2216,7 @@ def test_form_input_1a_creation_accepts_both_canonical_semesters(semester: str):
     student = make_user(f"sem.{semester.replace(' ', '.').lower()}@example.edu")
     make_affiliation(student)
     academic_year = make_academic_year()
-    make_inventory(student, academic_year)
+    make_inventory(student, academic_year, year_level=3)
     client = auth_client(student)
 
     response = client.post(
@@ -2033,7 +2262,7 @@ def test_form_input_1a_creation_rejects_unsupported_year_level(invalid_year: str
     )
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_good_moral_request"
-    assert "year_level is not supported" in response.json()["error"]["message"]
+    assert "year_level must be between 1st and 4th Year" in response.json()["error"]["message"]
 
 
 @pytest.mark.django_db
@@ -2056,7 +2285,7 @@ def test_form_input_1a_creation_rejects_unsupported_semester(invalid_sem: str):
     student = make_user("bad.sem@example.edu")
     make_affiliation(student)
     academic_year = make_academic_year()
-    make_inventory(student, academic_year)
+    make_inventory(student, academic_year, year_level=3)
     client = auth_client(student)
 
     response = client.post(
@@ -2071,7 +2300,7 @@ def test_form_input_1a_creation_rejects_unsupported_semester(invalid_sem: str):
 
 
 @pytest.mark.django_db
-def test_form_input_1a_idempotent_replay_preserves_older_accepted_requests_with_legacy_values():
+def test_form_input_1a_idempotent_replay_preserves_older_accepted_fifth_year_requests(monkeypatch):
     sync_policy()
     student = make_user("idem.legacy@example.edu")
     make_affiliation(student)
@@ -2089,7 +2318,7 @@ def test_form_input_1a_idempotent_replay_preserves_older_accepted_requests_with_
         inventory=inventory,
         academic_year=academic_year,
         applicant_name_snapshot=student.get_full_name(),
-        year_level_snapshot="Fourth",
+        year_level_snapshot="5th Year",
         college_snapshot="College of Arts",
         course_snapshot="BA History",
         major_snapshot="",
@@ -2098,22 +2327,25 @@ def test_form_input_1a_idempotent_replay_preserves_older_accepted_requests_with_
         creation_request_fingerprint=fingerprint,
     )
 
-    # Calling create_my_current_student with identical key and fingerprint replays cleanly
+    def fail_inventory(_student):
+        raise AssertionError("an exact historical replay must not revalidate the Inventory")
+
+    monkeypatch.setattr(good_moral_services, "_require_submitted_inventory", fail_inventory)
     replayed = good_moral_services.create_my_current_student(
         student=student,
-        year_level="Fourth",
+        year_level="5th Year",
         semester="First",
         idempotency_key=key,
         request_fingerprint=fingerprint,
         context=AuditContext.user(student),
     )
     assert replayed.pk == legacy_item.pk
-    assert replayed.year_level_snapshot == "Fourth"
+    assert replayed.year_level_snapshot == "5th Year"
     assert replayed.semester_snapshot == "First"
 
 
 @pytest.mark.django_db
-def test_form_input_1a_operational_correction_counselor_and_gss_can_update_to_canonical():
+def test_form_input_1a_counselor_and_gss_corrections_match_the_linked_inventory():
     sync_policy()
     student = make_user("correction.student@example.edu")
     counselor = make_user("correction.counselor@example.edu", role="COUNSELOR")
@@ -2126,21 +2358,39 @@ def test_form_input_1a_operational_correction_counselor_and_gss_can_update_to_ca
     item, _ = make_current_request(student)
     assert item.year_level_snapshot == "4th Year"
     assert item.semester_snapshot == "First Semester"
+    # Historical certificates can carry a legacy value that needs an explicit correction.
+    item.year_level_snapshot = "5th Year"
+    item.save(update_fields=["year_level_snapshot", "updated_at"])
 
-    # Counselor can update to another canonical value
+    # A changed value is accepted when it matches the linked submitted Inventory.
     updated_by_counselor = update_request(
         actor=counselor,
         request_id=item.pk,
-        changes={"year_level_snapshot": "5th Year", "semester_snapshot": "Second Semester"},
+        changes={"year_level_snapshot": "4th Year", "semester_snapshot": "Second Semester"},
         context=AuditContext.user(counselor),
     )
-    assert updated_by_counselor.year_level_snapshot == "5th Year"
+    assert updated_by_counselor.year_level_snapshot == "4th Year"
     assert updated_by_counselor.semester_snapshot == "Second Semester"
 
-    # GSS clerical can also update to another canonical value
+    # GSS retains authorized clerical correction access for a request linked to 1st Year.
+    other_student = make_user("correction.gss.student@example.edu")
+    make_affiliation(other_student)
+    make_inventory(
+        other_student,
+        AcademicYear.objects.get(pk=item.academic_year_id),
+        year_level=1,
+    )
+    staff_item = create_my_current_student(
+        student=other_student,
+        year_level="1st Year",
+        semester="Second Semester",
+        context=AuditContext.user(other_student),
+    )
+    staff_item.year_level_snapshot = "5th Year"
+    staff_item.save(update_fields=["year_level_snapshot", "updated_at"])
     updated_by_staff = update_request(
         actor=staff,
-        request_id=item.pk,
+        request_id=staff_item.pk,
         changes={"year_level_snapshot": "1st Year", "semester_snapshot": "First Semester"},
         context=AuditContext.user(staff),
     )
@@ -2149,7 +2399,10 @@ def test_form_input_1a_operational_correction_counselor_and_gss_can_update_to_ca
 
 
 @pytest.mark.django_db
-def test_form_input_1a_operational_correction_preserves_untouched_legacy_values():
+@pytest.mark.parametrize(
+    "legacy_level", ["5th Year", "6th Year", "7th Year", "8th Year", "9th Year", "10th Year"]
+)
+def test_form_input_1a_operational_correction_preserves_untouched_legacy_values(legacy_level):
     sync_policy()
     student = make_user("legacy.preserve@example.edu")
     counselor = make_user("legacy.counselor@example.edu", role="COUNSELOR")
@@ -2164,7 +2417,7 @@ def test_form_input_1a_operational_correction_preserves_untouched_legacy_values(
         inventory=inventory,
         academic_year=academic_year,
         applicant_name_snapshot=student.get_full_name(),
-        year_level_snapshot="Fourth",
+        year_level_snapshot=legacy_level,
         college_snapshot="College of Engineering",
         course_snapshot="BS Civil Engineering",
         major_snapshot="",
@@ -2183,7 +2436,7 @@ def test_form_input_1a_operational_correction_preserves_untouched_legacy_values(
     )
     assert updated.course_snapshot == "BS Electrical Engineering"
     assert updated.official_receipt_number == "OR-2026-9999"
-    assert updated.year_level_snapshot == "Fourth"
+    assert updated.year_level_snapshot == legacy_level
     assert updated.semester_snapshot == "First"
 
     # Providing the exact same legacy values unchanged in changes also succeeds
@@ -2191,13 +2444,13 @@ def test_form_input_1a_operational_correction_preserves_untouched_legacy_values(
         actor=counselor,
         request_id=item.pk,
         changes={
-            "year_level_snapshot": "Fourth",
+            "year_level_snapshot": legacy_level,
             "semester_snapshot": "First",
             "official_receipt_number": "OR-2026-1000",
         },
         context=AuditContext.user(counselor),
     )
-    assert updated_same.year_level_snapshot == "Fourth"
+    assert updated_same.year_level_snapshot == legacy_level
     assert updated_same.semester_snapshot == "First"
     assert updated_same.official_receipt_number == "OR-2026-1000"
 
@@ -2215,6 +2468,14 @@ def test_form_input_1a_operational_correction_rejects_unsupported_values_when_ch
             actor=counselor,
             request_id=item.pk,
             changes={"year_level_snapshot": "Senior Year"},
+            context=AuditContext.user(counselor),
+        )
+
+    with pytest.raises(InvalidGoodMoralInput, match="must match the linked submitted Inventory"):
+        update_request(
+            actor=counselor,
+            request_id=item.pk,
+            changes={"year_level_snapshot": "3rd Year"},
             context=AuditContext.user(counselor),
         )
 

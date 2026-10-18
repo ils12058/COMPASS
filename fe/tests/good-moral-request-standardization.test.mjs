@@ -15,6 +15,7 @@ import {
 } from "../src/features/good-moral/good-moral-shared.tsx";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
 import { getExitInterviewsGetMyStatusQueryKey } from "../src/lib/api/generated/exit-interviews/exit-interviews.ts";
+import { getGoodMoralGetMyF4AcademicContextQueryKey, getGoodMoralListDegreeOptionsQueryKey } from "../src/lib/api/generated/good-moral/good-moral.ts";
 
 const student = {
   id: "student-1",
@@ -112,6 +113,16 @@ function renderComponent(element, user = student, querySetup = () => {}) {
     status: 200,
     headers: {},
   });
+  client.setQueryData(getGoodMoralGetMyF4AcademicContextQueryKey(), {
+    data: { status: "ELIGIBLE", academic_classification: "BACHELORS", year_level: 3 },
+    status: 200,
+    headers: {},
+  });
+  client.setQueryData(getGoodMoralListDegreeOptionsQueryKey(), {
+    data: { items: ["Bachelor of Science in Information Systems"] },
+    status: 200,
+    headers: {},
+  });
   querySetup(client);
   const html = renderToStaticMarkup(
     withNextRouter(
@@ -122,18 +133,12 @@ function renderComponent(element, user = student, querySetup = () => {}) {
   return html;
 }
 
-test("FORM-INPUT-1A: Shared constants and type guards match approved domain", () => {
+test("GM-UX-2: Shared constants and type guards match approved undergraduate domain", () => {
   assert.deepEqual(GOOD_MORAL_YEAR_LEVELS, [
     "1st Year",
     "2nd Year",
     "3rd Year",
     "4th Year",
-    "5th Year",
-    "6th Year",
-    "7th Year",
-    "8th Year",
-    "9th Year",
-    "10th Year",
   ]);
   assert.deepEqual(GOOD_MORAL_SEMESTERS, [
     "First Semester",
@@ -158,17 +163,12 @@ test("FORM-INPUT-1A: Shared constants and type guards match approved domain", ()
   assert.equal(isCanonicalSemester(null), false);
 });
 
-test("FORM-INPUT-1A: Student request form renders controlled Year Level and Semester selects", () => {
+test("GM-UX-2: Student F4 shows Inventory-derived Year Level and Semester selection", () => {
   const html = renderComponent(h(GoodMoralRequestPage));
 
-  // Year Level select control exists and is required
-  assert.match(html, /<select[^>]*id="good-moral-year-level"[^>]*required=""/);
-  // Default placeholder is present and unselected initially
-  assert.match(html, /<option value=""[^>]*>Select your Year Level<\/option>/);
-  // All 10 approved Year Level choices are present
-  for (const level of GOOD_MORAL_YEAR_LEVELS) {
-    assert.match(html, new RegExp(`<option value="${level}"[^>]*>${level}</option>`));
-  }
+  assert.match(html, /<input[^>]*id="good-moral-year-level"[^>]*readOnly=""[^>]*value="3rd Year"/);
+  assert.match(html, /Taken from your submitted Individual Inventory/);
+  assert.doesNotMatch(html, /5th Year|6th Year|7th Year|8th Year|9th Year|10th Year/);
 
   // Semester select control exists and is required
   assert.match(html, /<select[^>]*id="good-moral-semester"[^>]*required=""/);
@@ -188,7 +188,7 @@ test("FORM-INPUT-1A: Student request form renders controlled Year Level and Seme
   assert.doesNotMatch(html, /Up to 80 characters/);
 });
 
-test("FORM-INPUT-1A: Operational correction form renders canonical selections for canonical records", () => {
+test("GM-UX-2: Operational correction form offers only 1st–4th Year values", () => {
   const html = renderComponent(
     h(GoodMoralCorrectionForm, {
       item: canonicalItem,
@@ -203,6 +203,7 @@ test("FORM-INPUT-1A: Operational correction form renders canonical selections fo
   assert.match(html, /<select[^>]*id="good-moral-correction-year-level"/);
   // Canonical value 3rd Year is selected
   assert.match(html, /<option value="3rd Year" selected="">3rd Year<\/option>/);
+  assert.doesNotMatch(html, /<option value="[5-9]th Year">|<option value="10th Year">/);
 
   // Semester select exists
   assert.match(html, /<select[^>]*id="good-moral-correction-semester"/);
@@ -213,7 +214,7 @@ test("FORM-INPUT-1A: Operational correction form renders canonical selections fo
   assert.doesNotMatch(html, /Historical value as entered/);
 });
 
-test("FORM-INPUT-1A: Operational correction form displays and preserves historical non-canonical values", () => {
+test("GM-UX-2: Operational correction form displays and preserves historical non-canonical values", () => {
   const html = renderComponent(
     h(GoodMoralCorrectionForm, {
       item: legacyItem,
@@ -246,7 +247,7 @@ test("FORM-INPUT-1A: Operational correction form displays and preserves historic
     /Historical value as entered: “1st semester”\. Select a standardized Semester to update it\./,
   );
 
-  // All 10 canonical Year Levels and 2 Semesters are also available for deliberate replacement
+  // The supported Year Levels and both Semesters are available for deliberate replacement
   for (const level of GOOD_MORAL_YEAR_LEVELS) {
     assert.match(html, new RegExp(`<option value="${level}">${level}</option>`));
   }
@@ -255,11 +256,15 @@ test("FORM-INPUT-1A: Operational correction form displays and preserves historic
   }
 });
 
-test("FORM-INPUT-1A: Graduate Good Moral request remains strictly unaffected", () => {
+test("GM-UX-2: F6 suggestions preserve historical fallback and disclose the verification limit", () => {
   const html = renderComponent(h(GoodMoralRequestPage), graduateStudent);
 
   // Graduate fields are rendered
   assert.match(html, /id="good-moral-degree"/);
+  assert.match(html, /list="good-moral-degree-suggestions"/);
+  assert.match(html, /Bachelor of Science in Information Systems/);
+  assert.match(html, /Suggestions do not verify graduation/);
+  assert.match(html, /F6 is for a previously completed UCN/);
   assert.match(html, /id="good-moral-major"/);
   assert.match(html, /id="good-moral-graduation-date"/);
 

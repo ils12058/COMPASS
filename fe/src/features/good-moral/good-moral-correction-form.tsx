@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
+import { GoodMoralDegreeInput } from "@/features/good-moral/good-moral-degree-input";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
@@ -218,6 +219,7 @@ export function GoodMoralCorrectionForm({
                       {!isCanonicalYearLevel(item.year_level) && item.year_level ? (
                         <p className="mt-1 text-xs text-muted">Historical value as entered: “{item.year_level}”. Select a standardized Year Level to update it.</p>
                       ) : null}
+                      <p className="mt-1 text-xs text-muted">A changed Year Level must match the linked submitted Inventory. Saving a correction does not change the Inventory.</p>
                     </div>
                     {item.actions.correction_fields.includes("college") ? <div>{correctionFieldLabel("college", "College")}<Input id="good-moral-correction-college" className="mt-2" maxLength={160} value={draft.college} onChange={(event) => setField("college", event.target.value)} /></div> : null}
                     <div>{correctionFieldLabel("course", "Course")}<Input id="good-moral-correction-course" className="mt-2" maxLength={180} value={draft.course} onChange={(event) => setField("course", event.target.value)} /></div>
@@ -249,7 +251,7 @@ export function GoodMoralCorrectionForm({
                   </>
                 ) : (
                   <>
-                    {item.actions.correction_fields.includes("degree") ? <div>{correctionFieldLabel("degree", "Degree")}<Input id="good-moral-correction-degree" className="mt-2" maxLength={255} value={draft.degree} onChange={(event) => setField("degree", event.target.value)} /></div> : null}
+                    {item.actions.correction_fields.includes("degree") ? <GoodMoralDegreeInput id="good-moral-correction-degree" value={draft.degree} onChange={(value) => setField("degree", value)} required={false} label="Student-reported degree" /> : null}
                     <div>{correctionFieldLabel("major", "Major")}<Input id="good-moral-correction-major" className="mt-2" maxLength={180} value={draft.major} onChange={(event) => setField("major", event.target.value)} /></div>
                     {item.actions.correction_fields.includes("graduation_date") ? <div>{correctionFieldLabel("graduation-date", "Graduation date")}<Input id="good-moral-correction-graduation-date" className="mt-2" type="date" max={today} value={draft.graduationDate} onChange={(event) => setField("graduationDate", event.target.value)} /></div> : null}
                   </>
