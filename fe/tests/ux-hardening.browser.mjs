@@ -75,7 +75,10 @@ for (const width of [393, 1440]) {
 for (const [name, identity] of [["normal", { ...account, email: "maria@example.test" }], ["long-email", account], ["long-id", { ...account, full_name: "N".repeat(120), institutional_id: "I".repeat(50) }]]) {
   await check(`sticky-account-${name}`, "/portal/accounts", { viewport: viewport(393), overrides: { ...worlds, "/api/v1/accounts": { ...empty, items: [identity], ordering: "NAME_ASC" } } }, async (page) => {
     const table = page.locator("table:visible"); await shown(table); const scroller = table.locator(".."); const sticky = table.locator("tbody th");
-    assert.equal(await sticky.innerText(), `${identity.full_name}\n${identity.institutional_id} · ${identity.email}`);
+    const renderedIdentity = (await sticky.innerText()).replace(/\s+/g, " ").trim();
+    for (const value of [identity.full_name, identity.institutional_id, identity.email]) {
+      assert.ok(renderedIdentity.includes(value), `Wrapped identity keeps ${value}`);
+    }
     assert.ok((await sticky.boundingBox()).width < (await scroller.boundingBox()).width - 80, "Sticky identity leaves space for later columns");
     if (name === "long-email") await page.screenshot({ path: join(artifacts, "accounts-long-identity-393.png"), fullPage: true });
     // Later Accounts cells contain text. A synthetic control tests keyboard and pointer

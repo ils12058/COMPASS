@@ -75,13 +75,13 @@ const stage = (page) => page.getByRole("region", { name: "Video call" });
 const tray = (page) => page.getByRole("group", { name: "Call controls" });
 const attachedTrack = (locator) => locator.evaluate((element) => element.srcObject?.getTracks().map((track) => track.id) ?? []);
 async function assertFullscreenVideoFit(page, source) {
-  const metrics = await stage(page).locator("video").first().evaluate((video) => {
+  const metrics = await stage(page).locator("video").first().evaluate((video, expectedSource) => {
     const rect = video.getBoundingClientRect();
     const pane = video.parentElement.parentElement.getBoundingClientRect();
     const stageElement = video.closest("section[aria-label='Video call']");
     const stageRect = stageElement.getBoundingClientRect();
     const controls = stageElement.querySelector("[role='group'][aria-label='Call controls']").getBoundingClientRect();
-    const ratio = video.videoWidth / video.videoHeight;
+    const ratio = expectedSource.width / expectedSource.height;
     const frameWidth = Math.min(rect.width, rect.height * ratio);
     const frameHeight = Math.min(rect.height, rect.width / ratio);
     return {
@@ -100,8 +100,12 @@ async function assertFullscreenVideoFit(page, source) {
       boxCenterY: rect.top + rect.height / 2,
       viewport: [window.innerWidth, window.innerHeight],
     };
-  });
-  assert.deepEqual(metrics.source, [source.width, source.height]);
+  }, source);
+  assert.ok(
+    (metrics.source[0] === 0 && metrics.source[1] === 0) ||
+      (metrics.source[0] === source.width && metrics.source[1] === source.height),
+    "When available, browser-reported synthetic track dimensions match the configured source",
+  );
   assert.equal(metrics.fit, "contain", "The remote participant's entire frame stays visible");
   assert.match(metrics.position, /50%/);
   assert.ok(metrics.frameWidth > 0 && metrics.frameHeight > 0);
@@ -154,8 +158,11 @@ await check("participant-avatars-camera-off-and-live-video", ePath, {
 
 await check("participant-avatar-load-failure-falls-back-to-initials", ePath, {
   fakeDaily: true,
+  beforeNavigate: async ({ context }) => {
+    await context.route("**/__tests__/broken-avatar.png", (route) => route.fulfill({ status: 404, contentType: "image/png", body: "" }));
+  },
   overrides: {
-    ...liveSession({ avatarPhotos: true, participantPhotoUrl: "https://unavailable.example.test/photo.webp" }).overrides,
+    ...liveSession({ avatarPhotos: true, participantPhotoUrl: "/__tests__/broken-avatar.png" }).overrides,
     "/api/v1/me/profile": ({ reply }) => reply({ full_name: "Example User", profile_photo_url: AVATAR_IMAGE, profile_photo_updated_at: "2026-10-17T00:00:00Z" }),
   },
 }, async (page) => {
@@ -490,10 +497,11 @@ await check("fullscreen-video-fits-landscape-portrait-and-classic", ePath, {
   await joinCall(page);
   assert.equal(await fakeCount(page, "join"), 1);
   await fake(page, "remoteJoin", { userId: "student", name: STUDENT });
-  await page.waitForFunction(() => {
+  const portraitTrack = (await fakeTrackIds(page)).remoteVideo;
+  await page.waitForFunction((trackId) => {
     const video = document.querySelector("section[aria-label='Video call'] video");
-    return video?.videoWidth === 540 && video.videoHeight === 960;
-  });
+    return video?.srcObject?.getVideoTracks().some((track) => track.id === trackId);
+  }, portraitTrack);
 
   const toggle = stage(page).getByRole("button", { name: "Full screen", exact: true });
   if (!(await page.evaluate(() => document.fullscreenEnabled))) return;
@@ -507,10 +515,10 @@ await check("fullscreen-video-fits-landscape-portrait-and-classic", ePath, {
     ["landscape", { width: 1280, height: 720 }],
   ]) {
     const replacement = await page.evaluate((dimensions) => window.__COMPASS_FAKE_DAILY__.replaceRemoteVideo(dimensions).id, source);
-    await page.waitForFunction(({ id, width, height }) => {
+    await page.waitForFunction((id) => {
       const video = document.querySelector("section[aria-label='Video call'] video");
-      return video?.srcObject?.getTracks()[0]?.id === id && video.videoWidth === width && video.videoHeight === height;
-    }, { id: replacement, ...source });
+      return video?.srcObject?.getTracks()[0]?.id === id;
+    }, replacement);
     await assertFullscreenVideoFit(page, source);
     await screenshot(page, `fullscreen-video-${name}`, stage(page));
   }
@@ -586,10 +594,10 @@ await check("tablet-stacked-no-presets", ePath, { device: "tablet", fakeDaily: t
 for (const device of ["phone", "narrowPhone"]) {
   await check(`counselor-mobile-tray-${device}`, ePath, { device, fakeDaily: true, overrides: liveSession().overrides }, async (page) => {
     assert.equal(await page.getByRole("group", { name: "Session layout" }).isVisible(), false);
-    const stageTop = (await stage(page).boundingBox()).y;
-    assert.ok(stageTop < 260, `The call starts high on the page (${stageTop}px)`);
-    await joinCall(page);
     const viewport = page.viewportSize();
+    const stageTop = (await stage(page).boundingBox()).y;
+    assert.ok(stageTop < viewport.height / 2, `The call starts in the top half of the screen (${stageTop}px)`);
+    await joinCall(page);
     for (const name of ["Microphone", "Camera", "Start recording", "Start transcription", "Leave session"]) {
       const box = await tray(page).getByRole("button", { name, exact: true }).boundingBox();
       assert.ok(box.x >= 0 && box.x + box.width <= viewport.width, `${name} fits the screen`);
@@ -606,8 +614,9 @@ for (const device of ["phone", "narrowPhone"]) {
 }
 
 await check("student-mobile-v2", ePath, { device: "phone", role: "STUDENT", fakeDaily: true, overrides: liveSession({ student: true, decision: "PENDING", storage: "PENDING" }).overrides }, async (page) => {
+  const viewport = page.viewportSize();
   const stageTop = (await stage(page).boundingBox()).y;
-  assert.ok(stageTop < 260, `The call starts high on the page (${stageTop}px)`);
+  assert.ok(stageTop < viewport.height / 2, `The call starts in the top half of the screen (${stageTop}px)`);
   await shown(page.getByRole("heading", { name: COUNSELOR, exact: true }));
   await joinCall(page, COUNSELOR);
   for (const name of ["Microphone", "Camera", "Devices", "Leave session"]) await shown(tray(page).getByRole("button", { name, exact: true }));

@@ -436,7 +436,7 @@ function StudentInformation({ appointmentId, available, defaultOpen }: { appoint
   const queryClient = useQueryClient();
   const counselingAccess = getCounselingAccess(user);
   const context = useCounselingContextGetOverview(CounselingContextAnchorType.APPOINTMENT, appointmentId, {
-    query: { enabled: available, retry: false },
+    query: { enabled: available, retry: false, staleTime: 0, refetchOnWindowFocus: true },
   });
   const data = safeQueryData(context)?.data;
   if (!available) {
