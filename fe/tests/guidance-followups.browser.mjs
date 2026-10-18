@@ -7,14 +7,20 @@ const { check, shown, hidden, noHorizontalOverflow, screenshot, finish } = await
 const id = "11111111-1111-4111-8111-111111111111";
 const studentId = "22222222-2222-4222-8222-222222222222";
 const sourceId = "33333333-3333-4333-8333-333333333333";
-function world(role = "COUNSELOR", { source = false, recoverable = false } = {}) {
+function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_ENCOUNTER", recoverable = false, empty = "none" } = {}) {
   const staff = { ...user(role), capabilities: [...user(role).capabilities, "guidance_followups.view", "guidance_followups.manage"] };
+  const confidential = source && sourceKind !== "REFERRAL";
+  const category = source ? sourceKind === "REFERRAL" ? "REFERRAL_ACTION" : "COUNSELING" : "ADMINISTRATIVE";
   let item = { id, student_id: studentId, student_name: "Synthetic Student", assigned_to_id: staff.id,
-    assigned_to_name: "Synthetic Counselor", category: source ? "COUNSELING" : "ADMINISTRATIVE",
-    visibility: source ? "COUNSELOR_CONFIDENTIAL" : "OPERATIONAL", due_at: "2099-01-01T02:00:00Z",
+    assigned_to_name: "Synthetic Counselor", category,
+    visibility: confidential ? "COUNSELOR_CONFIDENTIAL" : "OPERATIONAL", due_at: "2026-10-20T02:00:00Z",
     status: "PENDING", overdue: false, version: 1, created_at: "2026-10-17T00:00:00Z", updated_at: "2026-10-17T00:00:00Z",
-    description: "Protected synthetic description", outcome: null, source: source ? { kind: "COUNSELING_ENCOUNTER", id: sourceId } : null,
-    source_unavailable: false, completed_at: null, completed_by_name: null, cancelled_at: null, cancelled_by_name: null, events: [], events_has_next: false };
+    description: "Protected synthetic description", outcome: null, source: source ? { kind: sourceKind, id: sourceId } : null,
+    source_unavailable: false, completed_at: null, completed_by_name: null, cancelled_at: null, cancelled_by_name: null,
+    events: [
+      { id: "created-event", kind: "CREATED", revision: 1, actor_id: staff.id, actor_name: "Synthetic Counselor", created_at: "2026-10-14T00:00:00Z", old_assignee_id: null, new_assignee_id: staff.id, old_due_at: null, new_due_at: "2026-10-19T02:00:00Z", remarks: null },
+      { id: "due-change-event", kind: "UPDATED", revision: 2, actor_id: staff.id, actor_name: "Synthetic Counselor", created_at: "2026-10-15T00:00:00Z", old_assignee_id: null, new_assignee_id: null, old_due_at: "2026-10-19T02:00:00Z", new_due_at: "2026-10-20T02:00:00Z", remarks: null },
+    ], events_has_next: false };
   let recovery = recoverable;
   let uncertainCreate = true;
   let conflictEdit = true;
@@ -25,18 +31,24 @@ function world(role = "COUNSELOR", { source = false, recoverable = false } = {})
     if (!pathname.startsWith("/api/v1/guidance-followups")) return false;
     if (pathname.endsWith("/eligible-students")) { await reply(page([{ id: studentId, display_name: "Synthetic Student", institutional_id: "TEST-2026" }])); return true; }
     if (pathname.endsWith("/eligible-assignees")) { await reply(page([{ id: staff.id, display_name: "Synthetic Counselor" }])); return true; }
-    if (pathname.endsWith("/context")) { await reply({ source_kind: "COUNSELING_ENCOUNTER", source_id: sourceId, student_id: studentId, student_name: "Synthetic Student", category: "COUNSELING", visibility: "COUNSELOR_CONFIDENTIAL", can_create: true }); return true; }
+    if (pathname.endsWith("/context")) { await reply({ source_kind: sourceKind, source_id: sourceId, student_id: studentId, student_name: "Synthetic Student", category, visibility: confidential ? "COUNSELOR_CONFIDENTIAL" : "OPERATIONAL", can_create: true }); return true; }
     if (pathname.endsWith("/recoverable")) { await reply({ ...page(recovery ? [{ ...item, assigned_to_id: "inactive-staff", assigned_to_name: "Inactive Staff" }] : []), ordering: "EARLIEST_DUE" }); return true; }
-    if (pathname.endsWith("/report")) { await reply({ pending: 1, completed: 0, cancelled: 0, overdue: 0, due_soon: 0, completed_in_period: 0, period_start: "2026-09-17T00:00:00Z", period_end: "2026-10-17T00:00:00Z", generated_at: "2026-10-17T00:00:00Z", horizon_days: 7, categories: [{ category: "ADMINISTRATIVE", count: 1 }] }); return true; }
+    if (pathname.endsWith("/report")) {
+      const counts = empty === "no-assigned" ? { pending: 0, completed: 0, cancelled: 0, overdue: 0, due_soon: 0 }
+        : empty === "no-pending" ? { pending: 0, completed: 1, cancelled: 0, overdue: 0, due_soon: 0 }
+          : { pending: 3, completed: 0, cancelled: 0, overdue: 1, due_soon: 2 };
+      await reply({ ...counts, completed_in_period: 0, period_start: "2026-09-17T00:00:00Z", period_end: "2026-10-17T00:00:00Z", generated_at: "2026-10-18T00:00:00Z", horizon_days: 7, categories: [{ category, count: counts.pending + counts.completed }] }); return true;
+    }
     if (method === "GET") {
       if (pathname === "/api/v1/guidance-followups") {
         const requestedPage = Number(url.searchParams.get("page") ?? 1);
         const requestedStatus = url.searchParams.get("status");
         const matchesStatus = !requestedStatus || requestedStatus === item.status;
+        const overdueItem = { ...item, id: "overdue-synthetic", student_id: "overdue-student", student_name: "Synthetic Overdue Student", due_at: "2026-10-17T00:00:00Z", overdue: true };
         await reply({
-          ...page(matchesStatus ? [item] : []),
+          ...page(matchesStatus && empty === "none" ? [item, overdueItem] : []),
           page: requestedPage,
-          has_next: matchesStatus && requestedPage === 1,
+          has_next: matchesStatus && empty === "none" && requestedPage === 1,
           ordering: url.searchParams.get("ordering") ?? "EARLIEST_DUE",
         });
       } else await reply(item);
@@ -53,8 +65,9 @@ function world(role = "COUNSELOR", { source = false, recoverable = false } = {})
     if (method === "PATCH" && conflictEdit) { conflictEdit = false; item = { ...item, version: item.version + 1 }; await reply({ error: { code: "followup_conflict", message: "Changed" } }, 409); return true; }
     item = { ...item, version: item.version + 1 };
     if (method === "PATCH") item = { ...item, ...body };
-    if (pathname.endsWith("/activities")) item.events.push({ id: sourceId, kind: "ACTIVITY_RECORDED", revision: item.version, actor_id: staff.id, actor_name: "Synthetic Counselor", created_at: item.created_at, old_assignee_id: null, new_assignee_id: null, old_due_at: null, new_due_at: null, remarks: body.remarks });
-    if (pathname.endsWith("/complete")) item = { ...item, status: "COMPLETED", outcome: body.outcome, completed_at: item.created_at, completed_by_name: "Synthetic Counselor" };
+    if (pathname.endsWith("/activities")) item.events.push({ id: `activity-${item.version}`, kind: "ACTIVITY_RECORDED", revision: item.version, actor_id: staff.id, actor_name: "Synthetic Counselor", created_at: "2026-10-18T01:00:00Z", old_assignee_id: null, new_assignee_id: null, old_due_at: null, new_due_at: null, remarks: body.remarks });
+    if (pathname.endsWith("/complete")) { item = { ...item, status: "COMPLETED", outcome: body.outcome, completed_at: "2026-10-18T02:00:00Z", completed_by_name: "Synthetic Counselor" }; item.events.push({ id: `completed-${item.version}`, kind: "COMPLETED", revision: item.version, actor_id: staff.id, actor_name: "Synthetic Counselor", created_at: "2026-10-18T02:00:00Z", old_assignee_id: null, new_assignee_id: null, old_due_at: null, new_due_at: null, remarks: null }); }
+    if (pathname.endsWith("/cancel")) { item = { ...item, status: "CANCELLED", cancelled_at: "2026-10-18T02:00:00Z", cancelled_by_name: "Synthetic Counselor" }; item.events.push({ id: `cancelled-${item.version}`, kind: "CANCELLED", revision: item.version, actor_id: staff.id, actor_name: "Synthetic Counselor", created_at: "2026-10-18T02:00:00Z", old_assignee_id: null, new_assignee_id: null, old_due_at: null, new_due_at: null, remarks: body.reason }); }
     if (pathname.endsWith("/reassign")) recovery = false;
     await reply(item); return true;
   };
@@ -68,6 +81,19 @@ function world(role = "COUNSELOR", { source = false, recoverable = false } = {})
   }, async (page, { requests }) => {
     await shown(page.getByRole("heading", { name: "Follow-Ups", exact: true }));
     await shown(page.getByRole("link", { name: "Synthetic Student", exact: true }));
+    assert.match(await page.locator('[data-page-header=""]').textContent(), /after counseling, referrals, or other Guidance Office activities/i);
+    await shown(page.getByRole("heading", { name: "Workload overview", exact: true }));
+    await shown(page.getByText("Counts include only follow-ups you can currently access. Due soon means the next 7 days.", { exact: true }));
+    const overview = page.locator('section[aria-labelledby="followup-workload-heading"] dl');
+    assert.equal(await overview.getByText("3", { exact: true }).count(), 1, "Pending is the authorized report total");
+    assert.equal(await overview.getByText("1", { exact: true }).count(), 1, "Overdue is counted separately");
+    assert.equal(await overview.getByText("2", { exact: true }).count(), 1, "Due soon excludes overdue work");
+    const reportRequest = requests.find(request => request.pathname.endsWith("/report"));
+    assert.equal(new URLSearchParams(reportRequest?.search ?? "").get("horizon_days"), "7");
+    await shown(page.locator("tbody").getByText("Due soon", { exact: true }));
+    await shown(page.locator("tbody").getByText("Overdue", { exact: true }));
+    await hidden(page.getByText("Protected synthetic description", { exact: true }));
+    await hidden(page.getByText("Protected synthetic outcome", { exact: true }));
     await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
     const filterButton = () => page.getByRole("button", { name: "Filters", exact: true });
     const filterTrigger = () => page.locator('[data-floating-list-tools] button[aria-haspopup="dialog"]');
@@ -85,11 +111,12 @@ function world(role = "COUNSELOR", { source = false, recoverable = false } = {})
     assert.equal(defaultQuery.get("status"), "PENDING");
     await screenshot(page, "followups-default-1440");
 
-    await page.getByRole("button", { name: "Next", exact: true }).click();
-    await page.waitForResponse((response) => {
+    const nextPageRequest = page.waitForResponse((response) => {
       const url = new URL(response.url());
       return url.pathname === "/api/v1/guidance-followups" && url.searchParams.get("page") === "2";
     });
+    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await nextPageRequest;
     assert.equal(latestQuery().get("page"), "2");
 
     let completedRequest = queryFor("status", "COMPLETED");
@@ -178,6 +205,7 @@ function world(role = "COUNSELOR", { source = false, recoverable = false } = {})
       const filters = page.getByRole("button", { name: "Filters", exact: true });
       await shown(status);
       await shown(filters);
+      const statusBounds = await status.boundingBox();
       const toolbar = await page.locator("[data-floating-list-tools] > div").boundingBox();
       assert.ok(toolbar && toolbar.x >= 0 && toolbar.x + toolbar.width <= width + 1, `${width}px toolbar stays in the viewport`);
       if (width === 1024) {
@@ -185,7 +213,7 @@ function world(role = "COUNSELOR", { source = false, recoverable = false } = {})
         assert.ok(workspace && workspace.width < width, "the expanded navigation dock narrows the 1024px workspace");
         assert.ok(toolbar && toolbar.x >= workspace.x && toolbar.x + toolbar.width <= workspace.x + workspace.width + 1, "the toolbar stays centered in the narrowed workspace");
       }
-      assert.ok((await status.boundingBox())?.height >= 40, `${width}px Status remains a usable touch target`);
+      assert.ok(statusBounds?.height >= 40, `${width}px Status remains a usable touch target (height ${statusBounds?.height}px)`);
       assert.ok((await filters.boundingBox())?.height >= 40, `${width}px Filters remains a usable touch target`);
       if (width === 320 || width === 375 || width === 1024 || width === 1440) {
         await screenshot(page, `followups-default-${width}`);
@@ -221,39 +249,90 @@ function world(role = "COUNSELOR", { source = false, recoverable = false } = {})
 for (const mobile of [false, true]) {
   const fixture = world();
   await check(`Create freezes an unconfirmed submission and retries one key ${mobile ? "phone" : "desktop"}`, "/portal/follow-ups/new", { handler: fixture.handler, mobile }, async page => {
-    await page.getByLabel("Student", { exact: true }).selectOption(studentId);
-    await page.getByLabel("Responsible staff member", { exact: true }).selectOption(user("COUNSELOR").id);
+    await shown(page.getByRole("heading", { name: "What needs to be done?", exact: true }));
+    await shown(page.getByRole("heading", { name: "Student", exact: true }));
+    await shown(page.getByRole("heading", { name: "Responsible staff member", exact: true }));
+    await shown(page.getByRole("heading", { name: "Due date and time", exact: true }));
+    await shown(page.getByText(/For a counseling follow-up, open the Student’s authorized Counseling Encounter or Routine Interview/));
+    await shown(page.getByText("Creating one does not contact the Student or send a Student notification."));
+    await noHorizontalOverflow(page);
+    await screenshot(page, mobile ? "create-standalone-phone" : "create-standalone-desktop");
+    await page.locator("#followup-student").selectOption(studentId);
+    await page.locator("#followup-assignee").selectOption(user("COUNSELOR").id);
     await page.getByLabel("Due date and time (Philippine Time)", { exact: true }).fill("2099-01-01T10:00");
-    await page.getByLabel("Follow-up description (optional)", { exact: true }).fill("Synthetic follow-up content");
+    await page.getByLabel("Task description (optional)", { exact: true }).fill("Synthetic follow-up content");
     await page.getByRole("button", { name: "Create follow-up", exact: true }).click();
     await shown(page.locator("form").getByRole("alert"));
-    assert.equal(await page.getByLabel("Follow-up description (optional)", { exact: true }).isDisabled(), true);
+    assert.equal(await page.getByLabel("Task description (optional)", { exact: true }).isDisabled(), true);
     await page.getByRole("button", { name: "Retry the same follow-up", exact: true }).click();
-    await shown(page.getByRole("heading", { name: "Guidance follow-up", exact: true }));
+    await shown(page.getByRole("heading", { name: "Follow-Up", exact: true }));
     assert.equal(fixture.writes.length, 2); assert.deepEqual(fixture.writes[0], fixture.writes[1]); assert.ok(fixture.writes[0].key);
     await noHorizontalOverflow(page); await screenshot(page, mobile ? "detail-phone" : "detail-desktop");
   });
 }
+for (const [empty, title, description] of [
+  ["no-assigned", "No follow-ups assigned", "Follow-ups appear here when a next action is assigned to you."],
+  ["no-pending", "No Pending follow-ups", "Choose another Status to review completed or cancelled work."],
+]) {
+  const fixture = world("COUNSELOR", { empty });
+  await check(`Follow-Up empty state explains ${empty}`, "/portal/follow-ups", { handler: fixture.handler }, async page => {
+    const message = page.locator('[data-density="compact"] p');
+    await shown(message);
+    assert.match(await message.textContent(), new RegExp(title));
+    assert.match(await message.textContent(), new RegExp(description));
+    await noHorizontalOverflow(page);
+    await screenshot(page, empty === "no-assigned" ? "followups-empty-unassigned" : "followups-empty-pending");
+  });
+}
+{
+  const fixture = world("COUNSELOR", { empty: "no-assigned" });
+  await check("Follow-Up empty state distinguishes an active filter from no assigned work", "/portal/follow-ups", { handler: fixture.handler }, async page => {
+    await page.getByLabel("Status", { exact: true }).selectOption("COMPLETED");
+    const message = page.locator('[data-density="compact"] p');
+    await shown(message);
+    assert.match(await message.textContent(), /No matching follow-ups/);
+    assert.match(await message.textContent(), /Change Status or open Filters/);
+  });
+}
 {
   const fixture = world();
-  await check("Edit conflict preserves input and requires deliberate review, then completes independently", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
-    await page.getByRole("button", { name: "Edit follow-up", exact: true }).click();
-    await page.getByRole("textbox", { name: "Description", exact: true }).fill("Retained synthetic edit");
+  await check("Primary actions, secondary actions, task hierarchy, chronological history and conflict review remain clear", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
+    await shown(page.getByRole("heading", { name: "What needs to be done?", exact: true }));
+    await shown(page.getByRole("heading", { name: "Current status and due date", exact: true }));
+    await shown(page.getByRole("heading", { name: "Responsible staff member", exact: true }));
+    await noHorizontalOverflow(page); await screenshot(page, "detail-pending-desktop");
+    await shown(page.getByRole("button", { name: "Record activity", exact: true }));
+    await shown(page.getByRole("button", { name: "Mark complete", exact: true }));
+    const moreActions = page.getByRole("button", { name: "More actions", exact: true });
+    await moreActions.focus(); await page.keyboard.press("Enter");
+    const menu = page.getByRole("menu"); await shown(menu);
+    assert.equal(await page.getByRole("menuitem", { name: "Edit task details", exact: true }).evaluate(element => element === document.activeElement), true, "keyboard opening moves focus into More actions");
+    await page.keyboard.press("Escape");
+    assert.equal(await moreActions.evaluate(element => element === document.activeElement), true, "closing More actions restores focus");
+    await moreActions.click();
+    for (const label of ["Edit task details", "Change due date", "Reassign", "Cancel follow-up"]) await shown(menu.getByRole("menuitem", { name: label, exact: true }));
+    await menu.getByRole("menuitem", { name: "Edit task details", exact: true }).click();
+    await page.getByRole("textbox", { name: "Task description", exact: true }).fill("Retained synthetic edit");
     await page.getByRole("button", { name: "Save changes", exact: true }).click();
     await shown(page.getByRole("button", { name: "I reviewed the latest details", exact: true }));
-    assert.equal(await page.getByRole("textbox", { name: "Description", exact: true }).inputValue(), "Retained synthetic edit");
+    assert.equal(await page.getByRole("textbox", { name: "Task description", exact: true }).inputValue(), "Retained synthetic edit");
     assert.equal(await page.getByRole("button", { name: "Save changes", exact: true }).isDisabled(), true);
     await page.getByRole("button", { name: "I reviewed the latest details", exact: true }).click();
     await page.getByRole("button", { name: "Save changes", exact: true }).click();
-    await shown(page.getByRole("button", { name: "Complete follow-up", exact: true }));
-    await page.getByRole("button", { name: "Complete follow-up", exact: true }).click();
+    await page.getByRole("button", { name: "Mark complete", exact: true }).click();
     await page.getByLabel("Completion outcome", { exact: true }).fill("Synthetic completion outcome");
-    await page.getByRole("button", { name: "Review complete follow-up", exact: true }).click();
+    await page.getByRole("button", { name: "Review mark complete", exact: true }).click();
     const dialog = page.getByRole("alertdialog"); await shown(dialog);
     assert.equal(fixture.writes.length, 2);
-    await dialog.getByRole("button", { name: "Complete follow-up", exact: true }).click();
+    await screenshot(page, "complete-confirmation-desktop");
+    await dialog.getByRole("button", { name: "Mark complete", exact: true }).click();
     await shown(page.getByText("Synthetic completion outcome", { exact: true }));
-    assert.equal(fixture.writes.length, 3); assert.ok(fixture.writes.every(row => row.key)); await noHorizontalOverflow(page);
+    await shown(page.getByRole("heading", { name: "Completion outcome", exact: true }));
+    await shown(page.getByText("Due date changed", { exact: false }));
+    await shown(page.getByText("Completed · Synthetic Counselor", { exact: true }));
+    assert.equal(await page.getByRole("button", { name: "More actions", exact: true }).count(), 0, "terminal records have no mutation menu");
+    await noHorizontalOverflow(page); await screenshot(page, "detail-completed-desktop");
+    assert.equal(fixture.writes.length, 3); assert.ok(fixture.writes.every(row => row.key));
   });
 }
 {
@@ -266,12 +345,71 @@ for (const mobile of [false, true]) {
   });
 }
 {
+  const fixture = world();
+  await check("Recording activity logs progress, leaves the follow-up Pending, and restores focus", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
+    await page.getByRole("button", { name: "Record activity", exact: true }).click();
+    await shown(page.getByText("Record an action or update. This follow-up will remain Pending.", { exact: true }));
+    await page.getByLabel("Activity or update", { exact: true }).fill("Attempted Student contact; no answer.");
+    await noHorizontalOverflow(page); await screenshot(page, "record-activity-desktop");
+    await page.getByRole("button", { name: "Save changes", exact: true }).click();
+    await shown(page.getByText("Activity recorded · Synthetic Counselor", { exact: true }));
+    await shown(page.getByText("Attempted Student contact; no answer.", { exact: true }));
+    assert.equal(await page.locator('[data-page-header=""]').getByText("Pending", { exact: true }).count(), 1);
+    assert.equal(fixture.writes.length, 1);
+    assert.match(fixture.writes[0].pathname, /\/activities$/);
+    assert.equal(await page.getByRole("button", { name: "Record activity", exact: true }).evaluate(element => element === document.activeElement), true, "completed activity returns focus to its action");
+    await noHorizontalOverflow(page);
+  });
+}
+{
+  const fixture = world();
+  await check("Cancellation requires confirmation and leaves a readable terminal record", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
+    await page.getByRole("button", { name: "More actions", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Cancel follow-up", exact: true }).click();
+    await page.getByLabel("Cancellation reason", { exact: true }).fill("The next action is no longer needed.");
+    await page.getByRole("button", { name: "Review cancel follow-up", exact: true }).click();
+    const dialog = page.getByRole("alertdialog"); await shown(dialog);
+    assert.equal(fixture.writes.length, 0, "the request waits for explicit confirmation");
+    await screenshot(page, "cancel-confirmation-desktop");
+    await dialog.getByRole("button", { name: "Cancel follow-up", exact: true }).click();
+    await shown(page.getByRole("heading", { name: "Cancellation details", exact: true }));
+    await shown(page.getByText("The next action is no longer needed.", { exact: true }).first());
+    await shown(page.getByText("Cancelled · Synthetic Counselor", { exact: true }));
+    assert.equal(await page.getByRole("button", { name: "More actions", exact: true }).count(), 0);
+    assert.equal(fixture.writes.length, 1); await noHorizontalOverflow(page); await screenshot(page, "detail-cancelled-desktop");
+  });
+}
+for (const [sourceKind, category, visibility] of [
+  ["COUNSELING_ENCOUNTER", "COUNSELING", "COUNSELOR_CONFIDENTIAL"],
+  ["ROUTINE_INTERVIEW", "COUNSELING", "COUNSELOR_CONFIDENTIAL"],
+  ["REFERRAL", "REFERRAL_ACTION", "OPERATIONAL"],
+]) {
+  const fixture = world("COUNSELOR", { source: true, sourceKind });
+  await check(`${sourceKind} creation keeps the authorized source, category and assignment scope`, `/portal/follow-ups/new?source_kind=${sourceKind}&source_id=${sourceId}`, { handler: fixture.handler }, async (page, { requests }) => {
+    await shown(page.getByText("Synthetic Student", { exact: true }));
+    assert.equal(await page.getByLabel("Category", { exact: true }).inputValue(), category);
+    assert.equal(await page.getByLabel("Category", { exact: true }).isDisabled(), true);
+    assert.equal(requests.some(row => row.pathname.endsWith("/eligible-students")), false);
+    const assigneeRequest = requests.find(row => row.pathname.endsWith("/eligible-assignees"));
+    const parameters = new URLSearchParams(assigneeRequest?.search ?? "");
+    assert.equal(parameters.get("student_id"), studentId);
+    assert.equal(parameters.get("category"), category);
+    assert.equal(parameters.get("source_kind"), sourceKind);
+    assert.equal(parameters.get("source_id"), sourceId);
+    if (visibility === "COUNSELOR_CONFIDENTIAL") await shown(page.getByText("Only the authorized Counselor for this record can be assigned.", { exact: true }));
+    else await shown(page.getByText(/Operational coordination.*Created from the authorized related record/));
+    await noHorizontalOverflow(page);
+    if (sourceKind === "COUNSELING_ENCOUNTER") await screenshot(page, "create-counseling-linked-desktop");
+  });
+}
+{
   const fixture = world("GUIDANCE_SERVICES_STAFF", { recoverable: true });
-  await check("Operational recovery exposes only the summary and explicit reassignment", "/portal/follow-ups/reassignment", { handler: fixture.handler, mobile: true }, async page => {
-    await page.getByRole("button", { name: "Reassign Synthetic Student", exact: true }).click();
+  await check("Operational recovery exposes only the summary and scoped assignment restoration", "/portal/follow-ups/reassignment", { handler: fixture.handler, mobile: true }, async page => {
+    await shown(page.getByRole("heading", { name: "Recover assignments", exact: true }));
+    await page.getByRole("button", { name: "Recover assignment for Synthetic Student", exact: true }).click();
     await page.getByLabel("Responsible staff member", { exact: true }).selectOption(user("GUIDANCE_SERVICES_STAFF").id);
-    await page.getByRole("button", { name: "Reassign follow-up", exact: true }).click();
-    await shown(page.getByText("No operational follow-ups need reassignment in your current scope.", { exact: true }));
+    await page.getByRole("button", { name: "Recover assignment", exact: true }).click();
+    await shown(page.getByText("No operational follow-ups need recovery in your current scope.", { exact: true }));
     assert.equal(fixture.writes.length, 1); await hidden(page.getByText("Protected synthetic description", { exact: true }));
     await noHorizontalOverflow(page);
   });
