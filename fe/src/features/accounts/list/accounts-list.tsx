@@ -18,6 +18,7 @@ import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { RowsSkeleton } from "@/components/ui/rows-skeleton";
 import { safeQueryData } from "@/features/freshness/query-freshness";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import {
   accountName,
   designationLabels,
@@ -347,7 +348,14 @@ export function AccountsList() {
                       scope="row"
                       className={`${dataTable.cell} ${dataTable.stickyCell} text-left font-normal`}
                     >
-                      <div className="w-48 max-w-48 [overflow-wrap:anywhere] sm:w-64 sm:max-w-64">
+                      <div className="flex w-48 max-w-48 items-center gap-2 [overflow-wrap:anywhere] sm:w-64 sm:max-w-64">
+                        <PersonAvatar
+                          displayName={accountName(account)}
+                          photoUrl={account.profile_photo_url}
+                          photoUpdatedAt={account.profile_photo_updated_at}
+                          size="compact"
+                        />
+                        <div className="min-w-0">
                         <Link
                           href={`/portal/accounts/${encodeURIComponent(account.id)}${detailSuffix}`}
                           className="font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
@@ -358,6 +366,7 @@ export function AccountsList() {
                           {account.institutional_id || "No Institutional ID"} ·{" "}
                           {account.email}
                         </span>
+                        </div>
                       </div>
                     </th>
                     <td className={dataTable.cell}>{roleLabels[account.role]}</td>

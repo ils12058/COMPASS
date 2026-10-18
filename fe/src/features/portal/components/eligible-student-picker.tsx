@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import type {
   AssessmentStudentOption,
   CallSlipStudentOptionResponse,
@@ -83,10 +84,12 @@ export function EligibleStudentPicker({
         </Button>
       </form>
       {selectedStudent ? (
-        <p className="mt-3 rounded-sm bg-brand-wash px-3 py-2 text-sm text-ink">
-          Selected: <span className="font-semibold">{selectedStudent.display_name}</span>
-          {selectedStudent.institutional_id ? ` · ${selectedStudent.institutional_id}` : ""}
-        </p>
+        <div className="mt-3 flex items-center gap-2 rounded-sm bg-brand-wash px-3 py-2 text-sm text-ink">
+          <PersonAvatar displayName={selectedStudent.display_name} photoUrl={"profile_photo_url" in selectedStudent ? selectedStudent.profile_photo_url : null} photoUpdatedAt={"profile_photo_updated_at" in selectedStudent ? selectedStudent.profile_photo_updated_at : null} size="compact" />
+          <p>Selected: <span className="font-semibold">{selectedStudent.display_name}</span>
+            {selectedStudent.institutional_id ? ` · ${selectedStudent.institutional_id}` : ""}
+          </p>
+        </div>
       ) : null}
       {isError ? (
         <div role="alert" className="mt-4">
@@ -114,6 +117,7 @@ export function EligibleStudentPicker({
                   checked={selectedId === student.id}
                   onChange={() => onSelect(student)}
                 />
+                <PersonAvatar displayName={student.display_name} photoUrl={"profile_photo_url" in student ? student.profile_photo_url : null} photoUpdatedAt={"profile_photo_updated_at" in student ? student.profile_photo_updated_at : null} size="compact" />
                 <span className="min-w-0">
                   <span className="block font-semibold">{student.display_name}</span>
                   <span className="mt-1 block text-xs text-muted">

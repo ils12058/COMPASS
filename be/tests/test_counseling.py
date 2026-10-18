@@ -899,6 +899,8 @@ def test_api_assignment_privacy_student_lookup_and_no_idempotency_requirement():
             "id": str(student.pk),
             "institutional_id": student.institutional_id,
             "display_name": student.get_full_name(),
+            "profile_photo_url": None,
+            "profile_photo_updated_at": None,
         }
     ]
     assert "email" not in students.content.decode().lower()
@@ -1111,6 +1113,8 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
             "id": str(student.pk),
             "institutional_id": "UCN-COUNSEL-001",
             "display_name": student.get_full_name(),
+            "profile_photo_url": None,
+            "profile_photo_updated_at": None,
         }
 
     serialized = json.dumps(response.json())
@@ -1237,6 +1241,8 @@ def test_counseling_student_search_includes_institutional_id_without_org_or_life
             "id": str(student.pk),
             "institutional_id": "UCN-2026-4242",
             "display_name": student.get_full_name(),
+            "profile_photo_url": None,
+            "profile_photo_updated_at": None,
         }
     ]
     serialized = json.dumps(response.json()).lower()

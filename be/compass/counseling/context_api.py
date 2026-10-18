@@ -112,6 +112,8 @@ class ContextStudentOverviewResponse(StrictSchema):
     id: UUID
     institutional_id: str | None
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
     campus: ContextOrganizationResponse | None
     college: ContextOrganizationResponse | None
     program: ContextProgramResponse | None
@@ -227,6 +229,8 @@ def _overview_payload(item) -> dict[str, object]:
             "id": item.student_id,
             "institutional_id": item.institutional_id,
             "display_name": item.display_name,
+            "profile_photo_url": item.profile_photo_url,
+            "profile_photo_updated_at": item.profile_photo_updated_at,
             "campus": (
                 {"id": item.campus.id, "code": item.campus.code, "name": item.campus.name}
                 if item.campus is not None

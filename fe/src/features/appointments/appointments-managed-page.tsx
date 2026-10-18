@@ -15,6 +15,7 @@ import { Select } from "@/components/ui/select";
 import { SortField } from "@/components/ui/sort-field";
 import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import {
@@ -448,11 +449,11 @@ function ManagedAppointmentsList() {
                         <Link href={`/portal/appointments/${appointment.id}`} className="font-mono text-xs font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{appointment.reference_code}</Link>
                       </th>
                       <td className={dataTable.cell}>
-                        <p className="font-medium text-ink">{appointment.student.display_name}</p>
+                        <div className="flex items-center gap-2"><PersonAvatar displayName={appointment.student.display_name} photoUrl={appointment.student.profile_photo_url} photoUpdatedAt={appointment.student.profile_photo_updated_at} size="compact" /><p className="font-medium text-ink">{appointment.student.display_name}</p></div>
                         {appointment.student.institutional_id ? <p className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</p> : null}
                       </td>
                       <td className={`${dataTable.cell} text-ink`}>{appointment.service.name}</td>
-                      <td className={`${dataTable.cell} text-ink`}>{appointment.provider.display_name}</td>
+                      <td className={`${dataTable.cell} text-ink`}><span className="inline-flex items-center gap-2"><PersonAvatar displayName={appointment.provider.display_name} photoUrl={appointment.provider.profile_photo_url} photoUpdatedAt={appointment.provider.profile_photo_updated_at} size="compact" />{appointment.provider.display_name}</span></td>
                       <td className={`${dataTable.cell} text-ink`}>{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</td>
                       <td className={`${dataTable.cell} text-ink`}>{deliveryModeLabel(appointment.delivery_mode)}</td>
                       <td className={dataTable.cell}><AppointmentStatusBadge status={appointment.status} /></td>
@@ -474,14 +475,14 @@ function ManagedAppointmentsList() {
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
                         <Link href={`/portal/appointments/${appointment.id}`} className="break-all font-mono text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{appointment.reference_code}</Link>
-                        <p className="mt-1 break-words font-medium text-ink">{appointment.student.display_name}</p>
+                        <div className="mt-1 flex items-center gap-2"><PersonAvatar displayName={appointment.student.display_name} photoUrl={appointment.student.profile_photo_url} photoUpdatedAt={appointment.student.profile_photo_updated_at} size="compact" /><p className="break-words font-medium text-ink">{appointment.student.display_name}</p></div>
                         {appointment.student.institutional_id ? <p className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</p> : null}
                       </div>
                       <AppointmentStatusBadge status={appointment.status} />
                     </div>
                     <dl className="mt-3 grid gap-x-5 gap-y-2 text-sm sm:grid-cols-2">
                       <div><dt className="text-xs text-muted">Service</dt><dd className="mt-0.5 text-ink">{appointment.service.name}</dd></div>
-                      <div><dt className="text-xs text-muted">Counselor</dt><dd className="mt-0.5 text-ink">{appointment.provider.display_name}</dd></div>
+                      <div><dt className="text-xs text-muted">Counselor</dt><dd className="mt-0.5 text-ink"><span className="inline-flex items-center gap-2"><PersonAvatar displayName={appointment.provider.display_name} photoUrl={appointment.provider.profile_photo_url} photoUpdatedAt={appointment.provider.profile_photo_updated_at} size="compact" />{appointment.provider.display_name}</span></dd></div>
                       <div><dt className="text-xs text-muted">Date and time</dt><dd className="mt-0.5 text-ink">{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</dd></div>
                       <div><dt className="text-xs text-muted">Delivery</dt><dd className="mt-0.5 text-ink">{deliveryModeLabel(appointment.delivery_mode)}</dd></div>
                     </dl>

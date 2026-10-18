@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID
 
 from django.db.models import Q
 
 from compass.accounts.models import StudentLifecycleStatus, User
+from compass.accounts.profile_photos import profile_photo_projection
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -31,6 +33,8 @@ class OperationalStudentOption:
     institutional_id: str | None
     display_name: str
     college: OperationalCollegeOption | None
+    profile_photo_url: str | None = None
+    profile_photo_updated_at: datetime | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,6 +82,7 @@ def list_scoped_operational_students(
     search: str | None = None,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
+    include_profile_photos: bool = False,
 ) -> OperationalStudentPage:
     page, page_size = _pagination(page, page_size)
     term = _search_term(search)
@@ -116,6 +121,7 @@ def list_scoped_operational_students(
                 institutional_id=row.institutional_id,
                 display_name=row.get_full_name(),
                 college=_college_option(row),
+                **(profile_photo_projection(row) if include_profile_photos else {}),
             )
             for row in rows[:page_size]
         ),

@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelBody, PanelHeader, PanelSection } from "@/components/ui/panel";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { callSlipErrorMessage } from "@/features/call-slips/call-slips-shared";
@@ -176,7 +177,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
       </RecordSection>
 
       <RecordSection title="Current Student account">
-        <div><dt className="text-xs font-semibold text-muted">Name</dt><dd className="mt-1 text-sm text-ink">{item.student.display_name}</dd></div>
+        <div><dt className="text-xs font-semibold text-muted">Name</dt><dd className="mt-1 flex items-center gap-2 text-sm text-ink"><PersonAvatar displayName={item.student.display_name} photoUrl={item.student.profile_photo_url} photoUpdatedAt={item.student.profile_photo_updated_at} size="compact" />{item.student.display_name}</dd></div>
         <div><dt className="text-xs font-semibold text-muted">Institutional ID</dt><dd className="mt-1 text-sm text-ink">{item.student.institutional_id ?? "Not recorded"}</dd></div>
       </RecordSection>
 

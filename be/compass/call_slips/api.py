@@ -11,6 +11,7 @@ from django.http import HttpResponse
 from ninja import Header, Router, Schema, Status
 from pydantic import ConfigDict
 
+from compass.accounts.profile_photos import profile_photo_projection
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
@@ -125,6 +126,8 @@ class CallSlipVoidRequest(StrictSchema):
 class CallSlipPersonSummary(StrictSchema):
     id: UUID
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
 
 
 class CallSlipFormRevisionSummary(StrictSchema):
@@ -149,6 +152,8 @@ class CallSlipStudentOptionResponse(StrictSchema):
     id: UUID
     institutional_id: str | None
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
     college: CallSlipStudentCollegeResponse | None
 
 
@@ -254,7 +259,11 @@ def _raise(exc: CallSlipError) -> NoReturn:
 
 
 def _person(user) -> dict[str, object]:
-    return {"id": user.pk, "display_name": user.get_full_name()}
+    return {
+        "id": user.pk,
+        "display_name": user.get_full_name(),
+        **profile_photo_projection(user),
+    }
 
 
 def _revision(revision) -> dict[str, object]:
@@ -271,6 +280,8 @@ def _student_option(item) -> dict[str, object]:
         "id": item.id,
         "institutional_id": item.institutional_id,
         "display_name": item.display_name,
+        "profile_photo_url": item.profile_photo_url,
+        "profile_photo_updated_at": item.profile_photo_updated_at,
         "college": (
             {
                 "id": item.college.id,

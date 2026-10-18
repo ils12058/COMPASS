@@ -50,6 +50,7 @@ import {
 } from "@/features/appointments/appointment-booking-outcome";
 import { AppointmentsLocalNavigation, AppointmentsPageHeading, formatAppointmentDateTime, formatAppointmentTime, deliveryModeLabel } from "@/features/appointments/appointments-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { isCounselingService } from "@/features/counseling/canonical-counseling-service";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { focusHeading } from "@/lib/focus-heading";
@@ -539,7 +540,7 @@ function BookingWorkspace() {
             <PanelSection title="5. Review appointment" titleId="booking-review-heading">
               <dl className="grid max-w-3xl gap-x-8 gap-y-4 sm:grid-cols-2">
                 <div><dt className="text-xs font-semibold text-muted">Service</dt><dd className="mt-1 text-sm text-ink">{service.name}</dd></div>
-                <div><dt className="text-xs font-semibold text-muted">Counselor</dt><dd className="mt-1 text-sm text-ink">{selectedCounselor.display_name}{selectedCounselor.is_default ? " · Assigned counselor" : ""}</dd></div>
+                <div><dt className="text-xs font-semibold text-muted">Counselor</dt><dd className="mt-1 flex items-center gap-2 text-sm text-ink"><PersonAvatar displayName={selectedCounselor.display_name} photoUrl={selectedCounselor.profile_photo_url} photoUpdatedAt={selectedCounselor.profile_photo_updated_at} size="compact" />{selectedCounselor.display_name}{selectedCounselor.is_default ? " · Assigned counselor" : ""}</dd></div>
                 <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(deliveryMode)}</dd></div>
                 <div><dt className="text-xs font-semibold text-muted">Schedule</dt><dd className="mt-1 text-sm text-ink">{formatAppointmentDateTime(selectedSlot.starts_at, selectedSlot.ends_at, slots.data?.data.timezone)}</dd></div>
                 <div><dt className="text-xs font-semibold text-muted">Duration</dt><dd className="mt-1 text-sm text-ink">{slots.data?.data.duration_minutes ?? service.default_appointment_duration_minutes} minutes</dd></div>

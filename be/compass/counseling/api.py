@@ -10,6 +10,7 @@ from uuid import UUID
 from ninja import Router, Schema
 from pydantic import ConfigDict
 
+from compass.accounts.profile_photos import profile_photo_projection
 from compass.appointments.api import AppointmentStatus
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
@@ -100,6 +101,8 @@ class CounselingSharedSummaryPutRequest(StrictSchema):
 class IdentitySummaryResponse(StrictSchema):
     id: UUID
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
 
 
 class ServiceSummaryResponse(StrictSchema):
@@ -148,6 +151,8 @@ class CounselingStudentResponse(StrictSchema):
     id: UUID
     institutional_id: str | None
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
 
 
 class CounselingEncounterCreationOptions(StrictSchema):
@@ -159,6 +164,8 @@ class CounselingAppointmentCandidateStudent(StrictSchema):
     id: UUID
     institutional_id: str | None
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
 
 
 class CounselingAppointmentCandidate(StrictSchema):
@@ -295,10 +302,12 @@ def _encounter(item) -> dict[str, object]:
         "student": {
             "id": item.student_id,
             "display_name": item.student.get_full_name(),
+            **profile_photo_projection(item.student),
         },
         "counselor": {
             "id": item.counselor_id,
             "display_name": item.counselor.get_full_name(),
+            **profile_photo_projection(item.counselor),
         },
         "service": {
             "id": item.service_id,
@@ -330,6 +339,7 @@ def _appointment_candidate(item) -> dict[str, object]:
             "id": item.student_id,
             "institutional_id": item.student.institutional_id,
             "display_name": item.student.get_full_name(),
+            **profile_photo_projection(item.student),
         },
         "delivery_mode": item.delivery_mode,
         "starts_at": _institutional(item.starts_at),
@@ -453,6 +463,7 @@ def counseling_list_students(
                 "id": student.pk,
                 "institutional_id": student.institutional_id,
                 "display_name": student.get_full_name(),
+                **profile_photo_projection(student),
             }
             for student in result.items
         ],
@@ -505,6 +516,7 @@ def counseling_list_my_encounters(
                     "id": item.student_id,
                     "display_name": item.student.get_full_name(),
                     "institutional_id": item.student.institutional_id,
+                    **profile_photo_projection(item.student),
                 },
             }
             for item in result.items

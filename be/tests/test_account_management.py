@@ -166,6 +166,8 @@ def test_manager_can_list_create_and_inspect_accounts_without_sensitive_fields()
     assert not hasattr(created, "password_hash")
     assert "password" not in body
     assert "profile_photo_object_key" not in body
+    assert body["profile_photo_url"] is None
+    assert body["profile_photo_updated_at"] is None
     assert AuditEvent.objects.filter(
         action="account.created",
         actor_user=_admin,

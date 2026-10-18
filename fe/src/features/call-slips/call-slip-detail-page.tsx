@@ -20,6 +20,7 @@ import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notic
 import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { CallSlipAccessUnavailable, CallSlipDetailSkeleton, CallSlipHeading, CallSlipQueryError, CallSlipStatusBadge, callSlipDestinationLabel, callSlipErrorCode, callSlipErrorMessage, callSlipIssuanceModeLabels, uncertainCallSlipMutation } from "@/features/call-slips/call-slips-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import {
   callSlipsDownloadMyPdf,
@@ -84,7 +85,7 @@ function StudentCallSlipDetail({ callSlipId }: { callSlipId: string }) {
               titleId="student-call-slip-summary"
               status={<CallSlipStatusBadge state={item.state} studentFacing />}
               facts={[
-                { label: "Current Student identity", value: item.student.display_name },
+                { label: "Current Student identity", value: <span className="inline-flex items-center gap-2"><PersonAvatar displayName={item.student.display_name} photoUrl={item.student.profile_photo_url} photoUpdatedAt={item.student.profile_photo_updated_at} size="compact" />{item.student.display_name}</span> },
                 { label: "Course / Year", value: item.course_year_snapshot },
                 { label: "Please report to", value: callSlipDestinationLabel(item.destination_type, item.other_destination) },
                 { label: "Date and time to report", value: formatInstitutionalDateTime(item.report_at) },
@@ -149,7 +150,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
               titleId="operational-call-slip-summary"
               status={<CallSlipStatusBadge state={item.state} />}
               facts={[
-                { label: "Current Student identity", value: item.student.display_name },
+                { label: "Current Student identity", value: <span className="inline-flex items-center gap-2"><PersonAvatar displayName={item.student.display_name} photoUrl={item.student.profile_photo_url} photoUpdatedAt={item.student.profile_photo_updated_at} size="compact" />{item.student.display_name}</span> },
                 ...(item.student_institutional_id ? [{ label: "Institutional ID", value: item.student_institutional_id }] : []),
                 { label: "Course / Year", value: item.course_year_snapshot },
                 { label: "Please report to", value: callSlipDestinationLabel(item.destination_type, item.other_destination) },
@@ -186,7 +187,7 @@ function OperationalCallSlipDetail({ callSlipId }: { callSlipId: string }) {
 }
 
 
-function Field({ label, value }: { label: string; value: string }) {
+function Field({ label, value }: { label: string; value: ReactNode }) {
   return <div><dt className="text-xs font-semibold text-muted">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words text-sm text-ink">{value}</dd></div>;
 }
 

@@ -126,6 +126,8 @@ class AppointmentWorkspaceSummary(StrictSchema):
 class PersonWorkspaceSummary(StrictSchema):
     id: UUID
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
 
 
 class CounselorWorkspaceStudentSummary(PersonWorkspaceSummary):

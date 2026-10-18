@@ -156,6 +156,8 @@ function initialFromService(
     selectedCounselors: providers.counselors.map((item) => ({
       id: item.id,
       displayName: item.display_name,
+      photoUrl: item.profile_photo_url,
+      photoUpdatedAt: item.profile_photo_updated_at,
       isActive: item.is_active,
     })),
   };

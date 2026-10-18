@@ -19,6 +19,7 @@ from compass.accounts.api_codes import (
     StudentLifecycleCode,
 )
 from compass.accounts.models import UserCapabilityOverride
+from compass.accounts.profile_photos import profile_photo_projection
 from compass.audit.context import AuditContext
 from compass.authentication.abuse import AuthenticationRateLimited
 from compass.authentication.api import session_auth
@@ -104,6 +105,8 @@ class AccountSummaryResponse(StrictSchema):
     last_name: str
     suffix: str
     full_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
     role: RoleCode
     student_lifecycle_status: StudentLifecycleCode | None
     designations: list[DesignationCode]

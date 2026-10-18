@@ -8,6 +8,7 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelHeader } from "@/components/ui/panel";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { EncounterCorrectionForm } from "@/features/counseling/encounter-correction-form";
 import {
@@ -55,8 +56,8 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
           actions={access.canManageAssigned ? <Button variant="secondary" onClick={() => setCorrectionOpen((open) => !open)}>{correctionOpen ? "Close correction" : "Correct encounter details"}</Button> : undefined}
         />
         <dl className="grid gap-x-8 gap-y-4 px-4 py-4 sm:grid-cols-2 sm:px-5 lg:grid-cols-3">
-          <Metadata label="Student" value={encounter.student.display_name} />
-          <Metadata label="Counselor" value={encounter.counselor.display_name} />
+          <Metadata label="Student" value={<span className="inline-flex items-center gap-2"><PersonAvatar displayName={encounter.student.display_name} photoUrl={encounter.student.profile_photo_url} photoUpdatedAt={encounter.student.profile_photo_updated_at} size="compact" />{encounter.student.display_name}</span>} />
+          <Metadata label="Counselor" value={<span className="inline-flex items-center gap-2"><PersonAvatar displayName={encounter.counselor.display_name} photoUrl={encounter.counselor.profile_photo_url} photoUpdatedAt={encounter.counselor.profile_photo_updated_at} size="compact" />{encounter.counselor.display_name}</span>} />
           <Metadata label="Service" value={<>{encounter.service.name}</>} />
           <Metadata label="Appointment" value={encounter.appointment ? <Link href={`/portal/appointments/${encounter.appointment.id}`} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.appointment.reference_code}</Link> : "No linked Appointment"} />
           <Metadata label="Origin" value={counselingEntryModeLabel(encounter.entry_mode)} />

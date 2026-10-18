@@ -501,7 +501,12 @@ def test_provider_management_reads_are_manager_only_and_narrow():
     assert candidates.status_code == 200
     names = [row["display_name"] for row in candidates.json()["items"]]
     assert names == ["Test Alpha", "Test Beta"]
-    assert set(candidates.json()["items"][0]) == {"id", "display_name"}
+    assert candidates.json()["items"][0] == {
+        "id": str(alpha.pk),
+        "display_name": "Test Alpha",
+        "profile_photo_url": None,
+        "profile_photo_updated_at": None,
+    }
     assert [
         row["display_name"]
         for row in client.get("/api/v1/services/provider-candidates", {"search": "bet"}).json()[
@@ -513,7 +518,13 @@ def test_provider_management_reads_are_manager_only_and_narrow():
     assert providers.status_code == 200
     assert providers.json() == {
         "provider_coverage": "SELECTED_COUNSELORS",
-        "counselors": [{"id": str(alpha.pk), "display_name": "Test Alpha", "is_active": True}],
+        "counselors": [{
+            "id": str(alpha.pk),
+            "display_name": "Test Alpha",
+            "profile_photo_url": None,
+            "profile_photo_updated_at": None,
+            "is_active": True,
+        }],
     }
 
     student_client = auth_client(student)

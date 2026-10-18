@@ -14,6 +14,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from compass.accounts.models import User
+from compass.accounts.profile_photos import profile_photo_projection
 from compass.accounts.services import is_current_student
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.audit.actions import ECOUNSELING_JOIN_AUTHORIZED, ECOUNSELING_ROOM_PROVISIONED
@@ -314,6 +315,7 @@ def get_student_workspace(
         "counselor": {
             "id": appointment.provider_id,
             "display_name": appointment.provider.get_full_name(),
+            **profile_photo_projection(appointment.provider),
         },
         "provider_readiness": _provider_readiness(appointment, room, now=now),
         "routine_interview": routine_summary,
@@ -352,6 +354,7 @@ def get_counselor_workspace(
             "id": appointment.student_id,
             "display_name": appointment.student.get_full_name(),
             "institutional_id": appointment.student.institutional_id,
+            **profile_photo_projection(appointment.student),
         },
         "provider_readiness": _provider_readiness(appointment, room, now=current),
         "routine_interview": routine_summary,

@@ -361,11 +361,13 @@ def test_counselor_workspace_projects_each_students_own_institutional_id_to_assi
         "id": identified.pk,
         "display_name": identified.get_full_name(),
         "institutional_id": "SYNTH-2026-0203",
+        "profile_photo_url": None,
+        "profile_photo_updated_at": None,
     }
     assert second_view["student"]["id"] == unidentified.pk
     assert second_view["student"]["institutional_id"] is None
     # The Student's own workspace names its Counselor only.
-    assert set(student_view["counselor"]) == {"id", "display_name"}
+    assert set(student_view["counselor"]) == {"id", "display_name", "profile_photo_url", "profile_photo_updated_at"}
     with pytest.raises(ECounselingNotPermitted):
         get_counselor_workspace(counselor=unrelated, appointment_id=first.pk)
 
@@ -394,13 +396,15 @@ def test_counselor_workspace_api_returns_institutional_id_only_within_existing_a
         "id": str(student.pk),
         "display_name": student.get_full_name(),
         "institutional_id": "SYNTH-2026-0204",
+        "profile_photo_url": None,
+        "profile_photo_updated_at": None,
     }
     for response in (refused, as_student):
         assert response.status_code in {403, 404}
         assert "SYNTH-2026-0204" not in response.content.decode()
     assert own.status_code == 200
     assert "student" not in own.json()
-    assert set(own.json()["counselor"]) == {"id", "display_name"}
+    assert set(own.json()["counselor"]) == {"id", "display_name", "profile_photo_url", "profile_photo_updated_at"}
 
 
 @pytest.mark.django_db

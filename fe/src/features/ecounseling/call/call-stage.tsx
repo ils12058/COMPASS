@@ -4,6 +4,7 @@ import { Clock, LoaderCircle, Maximize, Mic, MicOff, Minimize, PhoneOff, Setting
 import { useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { formatECounselingDateTime } from "@/features/ecounseling/ecounseling-shared";
 import { ECounselingJoinState, type MediaWorkspaceState, type ProviderReadiness } from "@/lib/api/generated/model";
 import { cn } from "@/lib/utils/cn";
@@ -53,9 +54,10 @@ function callAnnouncement(call: CallControls, participantName: string): string {
   }
 }
 
-function CameraOff({ name, compact = false, status = "Camera off" }: { name: string; compact?: boolean; status?: string }) {
+function CameraOff({ name, photoUrl, photoUpdatedAt, compact = false, status = "Camera off" }: { name: string; photoUrl?: string | null; photoUpdatedAt?: string | null; compact?: boolean; status?: string }) {
   return (
     <div className="flex size-full flex-col items-center justify-center gap-1 bg-ink px-2 text-center text-on-brand">
+      <PersonAvatar displayName={name} photoUrl={photoUrl} photoUpdatedAt={photoUpdatedAt} size={compact ? "compact" : "large"} />
       <VideoOff aria-hidden="true" size={compact ? 16 : 28} className="text-on-brand/70" />
       <p className={cn("font-semibold", compact ? "text-xs" : "text-lg")}>{name}</p>
       <p className={cn("text-on-brand/75", compact ? "text-[0.6875rem]" : "text-sm")}>{status}</p>
@@ -63,7 +65,7 @@ function CameraOff({ name, compact = false, status = "Camera off" }: { name: str
   );
 }
 
-function RemoteParticipantStage({ remote, name }: { remote: ParticipantView | null; name: string }) {
+function RemoteParticipantStage({ remote, name, photoUrl, photoUpdatedAt }: { remote: ParticipantView | null; name: string; photoUrl?: string | null; photoUpdatedAt?: string | null }) {
   if (!remote) {
     return (
       <div className="flex size-full flex-col items-center justify-center gap-2 px-4 text-center">
@@ -77,7 +79,7 @@ function RemoteParticipantStage({ remote, name }: { remote: ParticipantView | nu
       {remote.video.track && remote.video.playable ? (
         <ParticipantVideo key={remote.key} track={remote.video.track} className="object-contain" />
       ) : (
-        <CameraOff name={name} />
+        <CameraOff name={name} photoUrl={photoUrl} photoUpdatedAt={photoUpdatedAt} />
       )}
       {remote.audio.off ? (
         <p className="absolute right-2 top-14 inline-flex items-center gap-1 rounded-sm bg-ink/85 px-2 py-1 text-xs font-semibold text-on-brand sm:right-3">
@@ -89,11 +91,11 @@ function RemoteParticipantStage({ remote, name }: { remote: ParticipantView | nu
   );
 }
 
-function SelfView({ local, cameraOn, microphoneOn }: { local: ParticipantView | null; cameraOn: boolean; microphoneOn: boolean }) {
+function SelfView({ local, cameraOn, microphoneOn, name, photoUrl, photoUpdatedAt }: { local: ParticipantView | null; cameraOn: boolean; microphoneOn: boolean; name: string; photoUrl?: string | null; photoUpdatedAt?: string | null }) {
   const showVideo = cameraOn && local?.video.track && local.video.playable;
   return (
     <figure className="absolute bottom-2 right-2 aspect-video w-[28%] min-w-24 max-w-48 overflow-hidden rounded-sm border border-on-brand/40 bg-ink shadow-float sm:bottom-3 sm:right-3">
-      {showVideo ? <ParticipantVideo track={local.video.track} mirrored className="object-cover" /> : <CameraOff name="You" compact />}
+      {showVideo ? <ParticipantVideo track={local.video.track} mirrored className="object-cover" /> : <CameraOff name={name} photoUrl={photoUrl} photoUpdatedAt={photoUpdatedAt} compact />}
       <figcaption className="absolute bottom-1 left-1 inline-flex items-center gap-1 rounded-sm bg-ink/85 px-1.5 py-0.5 text-[0.6875rem] font-semibold text-on-brand">
         {showVideo ? "You" : <span className="sr-only">You, camera off</span>}
         {!microphoneOn ? (
@@ -128,6 +130,11 @@ function StageMessage({ children, detail, action, alert = false }: { children: R
 export function CallStage({
   call,
   participantName,
+  participantPhotoUrl,
+  participantPhotoUpdatedAt,
+  selfName,
+  selfPhotoUrl,
+  selfPhotoUpdatedAt,
   readiness,
   canJoin,
   media,
@@ -143,6 +150,11 @@ export function CallStage({
 }: {
   call: CallControls;
   participantName: string;
+  participantPhotoUrl?: string | null;
+  participantPhotoUpdatedAt?: string | null;
+  selfName: string;
+  selfPhotoUrl?: string | null;
+  selfPhotoUpdatedAt?: string | null;
   readiness: ProviderReadiness;
   canJoin: boolean;
   media: MediaWorkspaceState;
@@ -249,7 +261,7 @@ export function CallStage({
 
   let main: ReactNode;
   if (connected) {
-    main = <RemoteParticipantStage remote={call.remote} name={participantName} />;
+    main = <RemoteParticipantStage remote={call.remote} name={participantName} photoUrl={participantPhotoUrl} photoUpdatedAt={participantPhotoUpdatedAt} />;
   } else if (call.phase === "requesting" || call.phase === "joining" || call.phase === "leaving") {
     main = (
       <div className="flex size-full flex-col items-center justify-center gap-3">
@@ -276,7 +288,7 @@ export function CallStage({
             <p className="text-sm font-semibold">Checking devices…</p>
           </div>
         ) : (
-          <CameraOff name="You" status={call.mediaProblem?.camera ? "Camera unavailable" : "Camera off"} />
+          <CameraOff name={selfName} photoUrl={selfPhotoUrl} photoUpdatedAt={selfPhotoUpdatedAt} status={call.mediaProblem?.camera ? "Camera unavailable" : "Camera off"} />
         )
       );
     }
@@ -391,7 +403,7 @@ export function CallStage({
           {connected && audio?.blocked ? <PlayAudioPrompt onPlay={audio.resume} /> : null}
         </div>
 
-        {connected ? <SelfView local={call.local} cameraOn={call.cameraOn} microphoneOn={call.microphoneOn} /> : null}
+        {connected ? <SelfView local={call.local} cameraOn={call.cameraOn} microphoneOn={call.microphoneOn} name={selfName} photoUrl={selfPhotoUrl} photoUpdatedAt={selfPhotoUpdatedAt} /> : null}
       </div>
 
       <p aria-live="polite" className="sr-only">{callAnnouncement(call, participantName)}</p>

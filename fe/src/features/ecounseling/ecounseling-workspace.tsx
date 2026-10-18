@@ -27,6 +27,8 @@ import { useECounselingResourceDenial } from "@/features/ecounseling/use-ecounse
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { canShowLastKnownData, safeQueryData } from "@/features/freshness/query-freshness";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
+import { accountDisplayName } from "@/features/account/components/account-avatar";
 import { GuidanceContextualMessages, GuidanceMessagesTrigger } from "@/features/guidance-messages/guidance-contextual-messages";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
@@ -44,6 +46,7 @@ import {
   useECounselingGetAssignedWorkspace,
   useECounselingGetMyWorkspace,
 } from "@/lib/api/generated/e-counseling/e-counseling";
+import { useProfileGetMyProfile } from "@/lib/api/generated/profile/profile";
 import { cn } from "@/lib/utils/cn";
 
 
@@ -52,12 +55,22 @@ import { cn } from "@/lib/utils/cn";
 function SessionHeader({
   appointmentId,
   participant,
+  participantPhotoUrl,
+  participantPhotoUpdatedAt,
+  selfName,
+  selfPhotoUrl,
+  selfPhotoUpdatedAt,
   appointment,
   mediaPolicyVersion,
   layoutControl,
 }: {
   appointmentId: string;
   participant: string;
+  participantPhotoUrl?: string | null;
+  participantPhotoUpdatedAt?: string | null;
+  selfName: string;
+  selfPhotoUrl?: string | null;
+  selfPhotoUpdatedAt?: string | null;
   appointment: AppointmentWorkspaceSummary;
   mediaPolicyVersion: MediaWorkspaceState["media_policy_version"];
   // Shown beside the title only where the workspace is wide enough for presets to change anything.
@@ -65,7 +78,7 @@ function SessionHeader({
 }) {
   return (
     <PageHeader
-      title={participant}
+      title={<span className="inline-flex items-center gap-3"><PersonAvatar displayName={participant} photoUrl={participantPhotoUrl} photoUpdatedAt={participantPhotoUpdatedAt} size="standard" />{participant}</span>}
       meta={<AppointmentStatusBadge status={appointment.status} />}
       // Guidance Messages is the session's durable text channel (ADR-103); there is no call chat.
       actions={<div className="flex flex-wrap items-start gap-2"><GuidanceMessagesTrigger />{layoutControl}</div>}
@@ -81,6 +94,7 @@ function SessionHeader({
         <span aria-hidden="true"> · </span>
         <span className="whitespace-nowrap">E-Counseling</span>
       </p>
+      <p className="mt-2 inline-flex items-center gap-2 text-sm text-muted"><PersonAvatar displayName={selfName} photoUrl={selfPhotoUrl} photoUpdatedAt={selfPhotoUpdatedAt} size="compact" />You · {selfName}</p>
     </PageHeader>
   );
 }
@@ -242,6 +256,9 @@ function StudentSession({ appointmentId, access, data }: {
   access: ECounselingAccess;
   data: StudentWorkspaceResponse;
 }) {
+  const { user } = usePortalSession();
+  const profile = useProfileGetMyProfile({ query: { retry: false, staleTime: 60_000 } }).data?.data;
+  const selfName = accountDisplayName(user, profile);
   const view = useSessionCallView({
     appointmentId,
     participantName: data.counselor.display_name,
@@ -254,6 +271,11 @@ function StudentSession({ appointmentId, access, data }: {
       <SessionHeader
         appointmentId={appointmentId}
         participant={data.counselor.display_name}
+        participantPhotoUrl={data.counselor.profile_photo_url}
+        participantPhotoUpdatedAt={data.counselor.profile_photo_updated_at}
+        selfName={selfName}
+        selfPhotoUrl={profile?.profile_photo_url}
+        selfPhotoUpdatedAt={profile?.profile_photo_updated_at}
         appointment={data.appointment}
         mediaPolicyVersion={data.media.media_policy_version}
       />
@@ -263,6 +285,11 @@ function StudentSession({ appointmentId, access, data }: {
           className={cn(phoneBleed, sessionStageClass.balanced, "[--call-stage-max-height:max(14rem,calc(100dvh-18rem))]")}
           call={view.call}
           participantName={data.counselor.display_name}
+          participantPhotoUrl={data.counselor.profile_photo_url}
+          participantPhotoUpdatedAt={data.counselor.profile_photo_updated_at}
+          selfName={selfName}
+          selfPhotoUrl={profile?.profile_photo_url}
+          selfPhotoUpdatedAt={profile?.profile_photo_updated_at}
           readiness={data.provider_readiness}
           canJoin={access.canJoinSelf}
           media={data.media}
@@ -456,6 +483,8 @@ function CounselorSession({ appointmentId, access, data, sessionStateCurrent }: 
   });
   const inCall = view.inCall;
   const { user } = usePortalSession();
+  const profile = useProfileGetMyProfile({ query: { retry: false, staleTime: 60_000 } }).data?.data;
+  const selfName = accountDisplayName(user, profile);
   const counselingAccess = getCounselingAccess(user);
   const rootRef = useRef<HTMLDivElement>(null);
   const wide = useWideWorkspace(rootRef);
@@ -474,6 +503,11 @@ function CounselorSession({ appointmentId, access, data, sessionStateCurrent }: 
       <SessionHeader
         appointmentId={appointmentId}
         participant={data.student.display_name}
+        participantPhotoUrl={data.student.profile_photo_url}
+        participantPhotoUpdatedAt={data.student.profile_photo_updated_at}
+        selfName={selfName}
+        selfPhotoUrl={profile?.profile_photo_url}
+        selfPhotoUpdatedAt={profile?.profile_photo_updated_at}
         appointment={data.appointment}
         mediaPolicyVersion={data.media.media_policy_version}
         layoutControl={wide ? <LayoutPresetControl value={preset} onChange={setPreset} /> : undefined}
@@ -483,6 +517,11 @@ function CounselorSession({ appointmentId, access, data, sessionStateCurrent }: 
           className={cn(phoneBleed, sessionStageClass[preset], "[--call-stage-max-height:max(14rem,calc(100dvh-18rem))]")}
           call={view.call}
           participantName={data.student.display_name}
+          participantPhotoUrl={data.student.profile_photo_url}
+          participantPhotoUpdatedAt={data.student.profile_photo_updated_at}
+          selfName={selfName}
+          selfPhotoUrl={profile?.profile_photo_url}
+          selfPhotoUpdatedAt={profile?.profile_photo_updated_at}
           readiness={data.provider_readiness}
           canJoin={access.canJoinAssigned}
           media={data.media}

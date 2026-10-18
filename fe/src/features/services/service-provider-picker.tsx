@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { servicesErrorMessage } from "@/features/services/services-shared";
@@ -13,6 +14,8 @@ import { useServicesListProviderCandidates } from "@/lib/api/generated/services/
 export type SelectedCounselor = {
   id: string;
   displayName: string;
+  photoUrl?: string | null;
+  photoUpdatedAt?: string | null;
   // False for an already-selected Counselor whose account has since become inactive.
   isActive: boolean;
 };
@@ -57,11 +60,14 @@ export function ServiceProviderPicker({
           <ul aria-label="Selected Counselors" className="mt-2 divide-y divide-border rounded-sm border border-border">
             {selected.map((counselor) => (
               <li key={counselor.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-                <span className="text-sm text-ink">
+                <span className="flex items-center gap-2 text-sm text-ink">
+                  <PersonAvatar displayName={counselor.displayName} photoUrl={counselor.photoUrl} photoUpdatedAt={counselor.photoUpdatedAt} size="compact" />
+                  <span>
                   {counselor.displayName}
                   {!counselor.isActive ? (
                     <span className="block text-xs text-muted">Inactive account · not eligible</span>
                   ) : null}
+                  </span>
                 </span>
                 <Button
                   type="button"
@@ -112,7 +118,7 @@ export function ServiceProviderPicker({
                 const chosen = selectedIds.has(candidate.id);
                 return (
                   <li key={candidate.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2">
-                    <span className="text-sm text-ink">{candidate.display_name}</span>
+                    <span className="flex items-center gap-2 text-sm text-ink"><PersonAvatar displayName={candidate.display_name} photoUrl={candidate.profile_photo_url} photoUpdatedAt={candidate.profile_photo_updated_at} size="compact" />{candidate.display_name}</span>
                     <Button
                       type="button"
                       variant="secondary"
@@ -120,7 +126,7 @@ export function ServiceProviderPicker({
                       onClick={() =>
                         onChange([
                           ...selected,
-                          { id: candidate.id, displayName: candidate.display_name, isActive: true },
+                          { id: candidate.id, displayName: candidate.display_name, photoUrl: candidate.profile_photo_url, photoUpdatedAt: candidate.profile_photo_updated_at, isActive: true },
                         ])
                       }
                     >
