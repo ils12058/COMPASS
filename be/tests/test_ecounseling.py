@@ -367,7 +367,12 @@ def test_counselor_workspace_projects_each_students_own_institutional_id_to_assi
     assert second_view["student"]["id"] == unidentified.pk
     assert second_view["student"]["institutional_id"] is None
     # The Student's own workspace names its Counselor only.
-    assert set(student_view["counselor"]) == {"id", "display_name", "profile_photo_url", "profile_photo_updated_at"}
+    assert set(student_view["counselor"]) == {
+        "id",
+        "display_name",
+        "profile_photo_url",
+        "profile_photo_updated_at",
+    }
     with pytest.raises(ECounselingNotPermitted):
         get_counselor_workspace(counselor=unrelated, appointment_id=first.pk)
 
@@ -404,7 +409,12 @@ def test_counselor_workspace_api_returns_institutional_id_only_within_existing_a
         assert "SYNTH-2026-0204" not in response.content.decode()
     assert own.status_code == 200
     assert "student" not in own.json()
-    assert set(own.json()["counselor"]) == {"id", "display_name", "profile_photo_url", "profile_photo_updated_at"}
+    assert set(own.json()["counselor"]) == {
+        "id",
+        "display_name",
+        "profile_photo_url",
+        "profile_photo_updated_at",
+    }
 
 
 @pytest.mark.django_db

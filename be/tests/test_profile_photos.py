@@ -103,7 +103,7 @@ def test_profile_photo_is_validated_normalized_and_stored_through_object_storage
 
 
 @pytest.mark.django_db
-def test_authorized_identity_projection_returns_only_optional_photo_fields_and_falls_back_on_storage_failure(photo_user):
+def test_photo_projection_falls_back_when_signing_fails(photo_user):
     photo_user.profile_photo_object_key = f"profile-photos/users/{photo_user.pk}/private.webp"
     photo_user.profile_photo_updated_at = timezone.now()
     storage = ObjectStorage(FailingURLBackend())
