@@ -308,6 +308,7 @@ for (const [empty, title, description] of [
     const menu = page.getByRole("menu"); await shown(menu);
     assert.equal(await page.getByRole("menuitem", { name: "Edit task details", exact: true }).evaluate(element => element === document.activeElement), true, "keyboard opening moves focus into More actions");
     await page.keyboard.press("Escape");
+    await page.waitForFunction(element => element === document.activeElement, await moreActions.elementHandle());
     assert.equal(await moreActions.evaluate(element => element === document.activeElement), true, "closing More actions restores focus");
     await moreActions.click();
     for (const label of ["Edit task details", "Change due date", "Reassign", "Cancel follow-up"]) await shown(menu.getByRole("menuitem", { name: label, exact: true }));

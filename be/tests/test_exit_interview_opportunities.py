@@ -43,7 +43,13 @@ from tests.test_exit_interviews import (
     sync_policy,
     valid_payload,
 )
-from tests.test_good_moral import create_my_current_student, make_affiliation
+from tests.test_good_moral import (
+    create_my_current_student,
+    make_affiliation,
+)
+from tests.test_good_moral import (
+    make_inventory as make_good_moral_inventory,
+)
 
 
 def setup_student():
@@ -51,7 +57,7 @@ def setup_student():
     student = make_user("opportunity-student@example.edu")
     head = make_head("opportunity-head@example.edu")
     year = make_year()
-    inventory = make_inventory(student, year, admit=False)
+    inventory = make_good_moral_inventory(student, year)
     return student, head, year, inventory
 
 

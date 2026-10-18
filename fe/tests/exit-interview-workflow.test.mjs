@@ -16,6 +16,7 @@ import { PortalSessionProvider } from "../src/features/portal/components/portal-
 import { portalWorkspaceGroups } from "../src/features/portal/components/portal-workspaces.ts";
 import { portalCommandDestinations } from "../src/features/portal/components/portal-command-destinations.ts";
 import { getExitInterviewsGetMyCurrentQueryKey, getExitInterviewsGetMyStatusQueryKey, getExitInterviewsListMineQueryKey } from "../src/lib/api/generated/exit-interviews/exit-interviews.ts";
+import { getGoodMoralGetMyF4AcademicContextQueryKey } from "../src/lib/api/generated/good-moral/good-moral.ts";
 
 import { getStudentActionsListQueryKey } from "../src/lib/api/generated/student-actions/student-actions.ts";
 
@@ -29,6 +30,7 @@ function render(element, state = empty, user = student, history = [], actions = 
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } } });
   client.setQueryData(getStudentActionsListQueryKey({ page: 1, page_size: 5 }), ok({ items: actions, page: 1, page_size: 5, has_next: false, generated_at: "2026-10-10T00:00:00Z" }));
   client.setQueryData(getExitInterviewsGetMyStatusQueryKey(), ok(state));
+  client.setQueryData(getGoodMoralGetMyF4AcademicContextQueryKey(), ok({ status: "ELIGIBLE", academic_classification: "BACHELORS", year_level: 4 }));
   if (state.current_record) client.setQueryData(getExitInterviewsGetMyCurrentQueryKey(), ok({ ...state.current_record, can_edit: state.can_edit_current }));
   client.setQueryData(getExitInterviewsListMineQueryKey(), ok({ items: history }));
   const html = renderToStaticMarkup(withNextRouter(h(QueryClientProvider, { client }, h(PortalSessionProvider, { value: { user } }, element))));

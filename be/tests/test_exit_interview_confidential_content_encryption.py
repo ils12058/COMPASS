@@ -42,13 +42,13 @@ from tests.test_exit_interviews import (
     auth_client,
     csrf,
     make_head,
-    make_inventory,
     make_user,
     make_year,
     sync_policy,
     valid_payload,
 )
 from tests.test_good_moral import make_affiliation
+from tests.test_good_moral import make_inventory as make_good_moral_inventory
 
 K1, K2, K3, K4, K5, K6, K7, K8 = (
     base64.urlsafe_b64encode(bytes([n]) * 32).decode("ascii") for n in range(101, 109)
@@ -92,7 +92,7 @@ def world(db):
     student = make_user("encrypted-exit-student@example.edu")
     head = make_head("encrypted-exit-head@example.edu")
     year = make_year()
-    inventory = make_inventory(student, year, admit=False)
+    inventory = make_good_moral_inventory(student, year)
     opp = open_opportunity(
         actor=head,
         student_id=student.pk,

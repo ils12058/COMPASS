@@ -172,7 +172,7 @@ GRADUATING = StudentSpec(
     program_code="BSBA",
     home_address="Purok 1, Barangay Poblacion, Vinzons, Camarines Norte",
     # A one-semester leave of absence moved graduation to the end of this first semester.
-    year_levels=(("2024-2025", 3), (PREVIOUS_YEAR, 4), (CURRENT_YEAR, 5)),
+    year_levels=(("2024-2025", 3), (PREVIOUS_YEAR, 4), (CURRENT_YEAR, 4)),
     summary=(
         "Delayed final year: Exit Interview draft, pending Good Moral request and a career "
         "consultation booked with the Head Guidance Counselor."

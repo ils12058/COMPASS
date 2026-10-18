@@ -860,9 +860,7 @@ def test_explicit_manage_override_allows_cross_provider_edit_and_revoke_blocks_i
     )
     assert exception_response.status_code == 201
     exception_id = exception_response.json()["id"]
-    assert ProviderUnavailability.objects.filter(
-        pk=exception_id, provider=provider
-    ).exists()
+    assert ProviderUnavailability.objects.filter(pk=exception_id, provider=provider).exists()
 
     # Capability resolution reads the current override on each request. A session created while
     # the grant was active cannot continue to mutate after an explicit REVOKE takes effect.

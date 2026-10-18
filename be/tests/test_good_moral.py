@@ -363,6 +363,19 @@ def test_degree_suggestions_are_bachelor_only_and_capability_scoped():
 
 
 @pytest.mark.django_db
+def test_f4_academic_context_is_student_self_service_only():
+    sync_policy()
+    student = make_user("f4-context.student@example.edu")
+    counselor = make_user("f4-context.counselor@example.edu", role="COUNSELOR")
+    staff = make_user("f4-context.gss@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    it_user = make_user("f4-context.it@example.edu", role="IT_ADMIN")
+
+    assert auth_client(student).get("/api/v1/good-moral/me/academic-context").status_code == 200
+    for actor in (counselor, staff, it_user):
+        assert auth_client(actor).get("/api/v1/good-moral/me/academic-context").status_code == 403
+
+
+@pytest.mark.django_db
 def test_f4_uses_submitted_inventory_for_current_academic_year():
     sync_policy()
     student = make_user("resolver.student@example.edu")

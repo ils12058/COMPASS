@@ -135,6 +135,18 @@ def fingerprint(rows):
     return hashlib.sha256(json.dumps(rows, sort_keys=True, default=str).encode()).hexdigest()
 
 
+def pre_acad_account_snapshot(account):
+    """Keep the staged identity snapshot while allowing the approved year-level correction."""
+    values = asdict(account)
+    if account.key == "graduating":
+        years = list(values["year_levels"])
+        current_year, current_level = years[-1]
+        assert current_level == 4
+        years[-1] = (current_year, 5)
+        values["year_levels"] = tuple(years)
+    return values
+
+
 def dataset_now() -> datetime:
     """The dataset's own clock: noon on the preparation date in Asia/Manila."""
 
@@ -256,12 +268,16 @@ def test_manifest_population_and_uat_rules():
 
 
 def identity(account) -> dict:
-    return {k: v for k, v in asdict(account).items() if k not in CATALOG_ONLY_FIELDS}
+    return {
+        k: v for k, v in pre_acad_account_snapshot(account).items() if k not in CATALOG_ONLY_FIELDS
+    }
 
 
 def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
     # Frozen from staging 8684ea10 (113 accounts, 91 scenarios) and b917e0c8 (116 accounts,
-    # 94 scenarios). The College promotion changes only catalog text and suitability.
+    # 94 scenarios). The College promotion changes only catalog text and suitability. The
+    # graduating Student's one unsupported fifth-year value is normalized back to the frozen
+    # snapshot here; the dedicated seed regression below verifies the corrected fourth year.
     original_accounts = [a for a in ACCOUNTS if a.key not in EXPANSION_KEYS]
     original_scenarios = [
         asdict(s) for s in SCENARIOS if s.id not in EXPANSION_SCENARIOS | COLLEGE_SCENARIOS
@@ -271,8 +287,11 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
     assert fingerprint([identity(a) for a in ACCOUNTS]) == (
         "56c9cd98a74255cc05d353346ba5939e40e11faafe8260fa356e99fb0fbbf9d6"
     )
-    assert fingerprint([asdict(a) for a in original_accounts if a.key not in PROMOTED_KEYS]) == (
-        "6ddaa162ce458270f175d8cb0c8fd3aa257f08ee3c1bfec7fa0f2d7bcf4a8ae7"
+    assert (
+        fingerprint(
+            [pre_acad_account_snapshot(a) for a in original_accounts if a.key not in PROMOTED_KEYS]
+        )
+        == "6ddaa162ce458270f175d8cb0c8fd3aa257f08ee3c1bfec7fa0f2d7bcf4a8ae7"
     )
     assert fingerprint(original_scenarios) == (
         "1b63b4f8283d740993af7eccdafdc034565e15a5de26263b83b4af6775ddffa8"
@@ -524,6 +543,17 @@ class SeededDatasetTests(TestCase):
         assert failures == []
         assert result.passed
         assert set(result.scenario_status.values()) == {"READY", Readiness.PENDING_IMPLEMENTATION}
+
+    def test_graduating_bachelors_seed_uses_supported_year_levels(self):
+        persona = STUDENTS_BY_KEY["graduating"]
+        assert persona.program_code == "BSBA"
+        assert [level for _year, level in persona.year_levels] == [3, 4, 4]
+
+        current = StudentInventory.objects.get(
+            student=dataset_user("graduating"), academic_year__is_current=True
+        )
+        assert current.program.code == persona.program_code
+        assert current.year_level == 4
 
     def test_seeding_has_no_external_side_effects(self):
         ids = list(
