@@ -72,12 +72,12 @@ const projectedStates: Record<ECounselingConsentStatus, PermissionState> = {
 };
 
 const permissionCopy: Record<PermissionState, { text: (subject: string) => string; icon: LucideIcon; tone: string }> = {
-  "not-requested": { text: (subject) => `${subject} not requested`, icon: Circle, tone: "text-muted" },
+  "not-requested": { text: (subject) => `${subject} · Not requested`, icon: Circle, tone: "text-muted" },
   pending: { text: (subject) => `${subject} · Waiting for Student`, icon: Clock, tone: "text-ink" },
-  approved: { text: (subject) => `${subject} approved`, icon: Check, tone: "text-success" },
-  invalid: { text: (subject) => `${subject} no longer valid`, icon: X, tone: "text-muted" },
-  declined: { text: (subject) => `${subject} declined`, icon: X, tone: "text-muted" },
-  withdrawn: { text: (subject) => `${subject} withdrawn`, icon: X, tone: "text-muted" },
+  approved: { text: (subject) => `${subject} · Approved`, icon: Check, tone: "text-success" },
+  invalid: { text: (subject) => `${subject} · No longer valid`, icon: X, tone: "text-muted" },
+  declined: { text: (subject) => `${subject} · Declined`, icon: X, tone: "text-muted" },
+  withdrawn: { text: (subject) => `${subject} · Withdrawn`, icon: X, tone: "text-muted" },
 };
 
 type PermissionRow = {
@@ -410,28 +410,28 @@ export function CounselorMediaStrip({ media }: { media: CounselorMedia }) {
           <Button variant="secondary" className="min-h-9 px-3 py-1" onClick={() => void consentQuery.refetch()}>Retry</Button>
         </div>
       ) : null}
-      <ul aria-label="Media permission" className="flex flex-wrap gap-x-6 gap-y-1">
-        {media.permissions.map((permission) => (
-          <PermissionItem key={permission.key} permission={permission} busy={media.requesting} onRequest={(scopes) => void media.requestPermission(scopes)} />
-        ))}
-      </ul>
       {!media.sessionStateCurrent ? (
-        <p role="status" className="text-sm text-muted">Session status couldn’t be refreshed. Starting recording or transcription is paused until it’s back.</p>
+        <p role="alert" className="text-sm font-medium text-danger">Session status couldn’t be refreshed. Starting recording or transcription is paused until it’s back.</p>
       ) : null}
       {problems.map((kind) => (
-        <p key={kind} className="text-sm font-medium text-danger">{kind === "recording" ? "Recording" : "Transcription"} · {captureStatusLabel(media.status[kind], kind)}. Stopping has not been confirmed.</p>
+        <p key={kind} role="alert" className="text-sm font-semibold text-danger">{kind === "recording" ? "Recording" : "Transcription"} · {captureStatusLabel(media.status[kind], kind)}. Stopping has not been confirmed.</p>
       ))}
       {stopOutsideCall.length ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-ink">Stopping has not been confirmed:</span>
+          <span className="text-sm font-semibold text-danger">Stopping has not been confirmed:</span>
           {stopOutsideCall.map((kind) => (
-            <Button key={kind} variant="secondary" className="min-h-9 px-3 py-1" disabled={media.stopping[kind]} onClick={() => void media.stop(kind)}>
+            <Button key={kind} variant="secondary" className="min-h-11 px-3 py-1" disabled={media.stopping[kind]} onClick={() => void media.stop(kind)}>
               {media.stopping[kind] ? "Stopping…" : kind === "recording" ? "Stop recording" : "Stop transcription"}
             </Button>
           ))}
         </div>
       ) : null}
-      {media.error && !media.pendingStart ? <p role="alert" className="text-sm text-danger">{media.error}</p> : null}
+      {media.error && !media.pendingStart ? <p role="alert" className="text-sm font-medium text-danger">{media.error}</p> : null}
+      <ul aria-label="Media permission" className="flex flex-wrap gap-x-6 gap-y-1">
+        {media.permissions.map((permission) => (
+          <PermissionItem key={permission.key} permission={permission} busy={media.requesting} onRequest={(scopes) => void media.requestPermission(scopes)} />
+        ))}
+      </ul>
       {media.notice ? <p role="status" className="text-sm text-success">{media.notice}</p> : null}
       {withTimes.length ? (
         <Disclosure summary="Details" summaryClassName="min-h-9">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { LoaderCircle, RotateCw } from "lucide-react";
+import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -84,6 +85,8 @@ export function DeviceDialog({
   onSelectCamera,
   onSelectMicrophone,
   onSelectSpeaker,
+  description = "Changes apply to this call right away.",
+  children,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -92,10 +95,27 @@ export function DeviceDialog({
   onSelectCamera: (id: string) => Promise<void>;
   onSelectMicrophone: (id: string) => Promise<void>;
   onSelectSpeaker: (id: string) => Promise<void>;
+  description?: string;
+  children?: ReactNode;
 }) {
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshInFlightRef = useRef(false);
+
+  const refreshDevices = useCallback(async () => {
+    if (refreshInFlightRef.current) return;
+    refreshInFlightRef.current = true;
+    setRefreshing(true);
+    try {
+      await onRefresh();
+    } finally {
+      refreshInFlightRef.current = false;
+      setRefreshing(false);
+    }
+  }, [onRefresh]);
+
   useEffect(() => {
-    if (open) void onRefresh();
-  }, [open, onRefresh]);
+    if (open) void refreshDevices();
+  }, [open, refreshDevices]);
 
   const select = (kind: DeviceKind, id: string) =>
     kind === "camera" ? onSelectCamera(id) : kind === "microphone" ? onSelectMicrophone(id) : onSelectSpeaker(id);
@@ -104,12 +124,19 @@ export function DeviceDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent closeLabel="Close devices">
         <DialogTitle>Devices</DialogTitle>
-        <DialogDescription>Changes apply to this call right away.</DialogDescription>
-        <div className="mt-5 space-y-4">
+        <DialogDescription>{description}</DialogDescription>
+        <div className="mt-4 flex justify-end">
+          <Button type="button" variant="secondary" className="min-h-11" aria-busy={refreshing} disabled={refreshing} onClick={() => void refreshDevices()}>
+            {refreshing ? <LoaderCircle aria-hidden="true" size={16} className="animate-spin motion-reduce:animate-none" /> : <RotateCw aria-hidden="true" size={16} />}
+            {refreshing ? "Refreshing devices…" : "Refresh devices"}
+          </Button>
+        </div>
+        <div className="mt-4 space-y-4">
           <DeviceField kind="camera" label="Camera" options={devices.cameras} value={devices.camera} onSelect={select} />
           <DeviceField kind="microphone" label="Microphone" options={devices.microphones} value={devices.microphone} onSelect={select} />
           <DeviceField kind="speaker" label="Speaker" options={devices.speakerSelectable ? devices.speakers : []} value={devices.speaker} onSelect={select} />
         </div>
+        {children}
         <div className="mt-6 flex justify-end">
           <DialogClose asChild>
             <Button variant="secondary">Done</Button>

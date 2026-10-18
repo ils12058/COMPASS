@@ -114,7 +114,7 @@ test("governed media controls keep specific blockers and failed states visible a
     client.setQueryData(getECounselingListAssignedConsentsQueryKey(appointmentId), { data: { items: consents("DENIED") }, status: 200, headers: {} });
   });
   assert.match(html, /Status uncertain\. Stopping has not been confirmed/);
-  assert.match(html, /Recording permission declined/);
+  assert.match(html, /Recording permission · Declined/);
   assert.doesNotMatch(html, /aria-label="Start recording"/, "A capture needing attention offers no start");
   assert.match(html, /<button type="button" aria-label="Recording status uncertain" disabled=""(?:(?!<\/button>).)*>Status uncertain<\/span>/);
 });

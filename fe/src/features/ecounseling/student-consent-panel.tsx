@@ -206,20 +206,32 @@ export function StudentConsentPanel({
               const copy = scopeCopy(scope, isV2);
               const withdrawn = Boolean(row?.withdrawn_at);
               const awaiting = row?.decision === ECounselingConsentDecision.PENDING && !withdrawn;
-              const canWithdraw = row?.decision === ECounselingConsentDecision.APPROVED && row.effective && !withdrawn;
+              const approved = row?.decision === ECounselingConsentDecision.APPROVED && row.effective && !withdrawn;
+              const invalid = row?.decision === ECounselingConsentDecision.APPROVED && !row.effective && !withdrawn;
+              const canWithdraw = approved;
               const declined = row?.decision === ECounselingConsentDecision.DENIED && !withdrawn;
               const subject = copy.label.toLowerCase();
+              const explanation = awaiting
+                ? copy.short
+                : declined
+                  ? "This won’t be requested again for this session."
+                  : withdrawn
+                    ? "This permission is withdrawn for this session."
+                    : invalid
+                      ? "This permission is no longer valid."
+                      : null;
               return (
-                <li key={row?.id ?? scope} className="px-4 py-3 sm:px-5">
+                <li key={row?.id ?? scope} className="px-4 py-2.5 sm:px-5">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5">
                     <h3 className="font-semibold text-ink">{copy.label}</h3>
                     <span className={cn("text-sm", awaiting ? "font-semibold text-ink" : "text-muted")}>{decisionLabel(row)}</span>
                   </div>
                   {row ? (
                     <>
-                      <p className="mt-0.5 text-sm leading-6 text-muted">{declined ? "This won’t be requested again for this session." : copy.short}</p>
-                      <Disclosure summary="Details" summaryClassName="min-h-9 text-xs">
+                      {explanation ? <p className="mt-0.5 text-sm leading-5 text-muted">{explanation}</p> : null}
+                      <Disclosure summary="Details" summaryClassName="min-h-10 text-xs">
                         <div className="space-y-1 pb-1 text-sm leading-6 text-muted">
+                          {approved ? <p>{copy.short}</p> : null}
                           {copy.details ? <p>{copy.details}</p> : null}
                           <p className="text-xs">
                             Requested {formatECounselingDateTime(row.requested_at)}
@@ -232,12 +244,12 @@ export function StudentConsentPanel({
                   ) : null}
                   {awaiting && row ? (
                     <div className="mt-1.5 flex flex-wrap gap-2">
-                      <Button aria-label={`Allow ${subject}`} disabled={pending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.APPROVED }); }}>Allow</Button>
-                      <Button variant="secondary" aria-label={`Decline ${subject}`} disabled={pending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.DENIED }); }}>Decline</Button>
+                      <Button className="min-h-11 min-w-11" aria-label={`Allow ${subject}`} disabled={pending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.APPROVED }); }}>Allow</Button>
+                      <Button className="min-h-11 min-w-11" variant="secondary" aria-label={`Decline ${subject}`} disabled={pending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, decision: ConsentDecisionRequestDecision.DENIED }); }}>Decline</Button>
                     </div>
                   ) : null}
                   {canWithdraw && row ? (
-                    <Button className="mt-1 min-h-9 px-3 py-1" variant="secondary" aria-label={`Withdraw ${copy.withdrawSubject} permission`} disabled={pending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, withdraw: true }); }}>Withdraw permission</Button>
+                    <Button className="mt-1 min-h-11 px-3 py-1" variant="secondary" aria-label={`Withdraw ${copy.withdrawSubject} permission`} disabled={pending} onClick={() => { setError(null); setAction({ consentId: row.id, scope, withdraw: true }); }}>Withdraw permission</Button>
                   ) : null}
                   {error?.scope === scope ? <p role="alert" className="mt-2 text-sm text-danger">{copy.label}: {error.message}</p> : null}
                 </li>

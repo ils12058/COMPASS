@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+from datetime import date
 from hashlib import sha256
 from io import BytesIO
 from uuid import UUID
@@ -132,46 +133,66 @@ def test_official_documents_enable_optional_accreditation_footer():
 
 
 @pytest.mark.parametrize(
-    ("template_key", "context", "static_selector"),
+    ("template_key", "version", "context", "expected_color", "static_selector"),
     [
         (
             "good_moral_current_student",
+            1,
             {"certificate": {"applicant_name": "Filled Student"}},
+            "rgb(0, 0, 0)",
+            ".good-moral-certificate h1",
+        ),
+        (
+            "good_moral_current_student",
+            2,
+            {"certificate": {"applicant_name": "Filled UCN Student"}},
+            "rgb(0, 0, 0)",
             ".good-moral-certificate h1",
         ),
         (
             "good_moral_graduate",
+            1,
             {"certificate": {"applicant_name": "Filled Graduate"}},
+            "rgb(0, 0, 0)",
             ".good-moral-certificate h1",
         ),
         (
             "referral_slip",
+            1,
             {"referral": {"student_name": "Filled Referral"}},
+            "rgb(0, 0, 255)",
             ".official-form-label",
         ),
         (
             "call_slip",
+            1,
             {"call_slip": {"student_name": "Filled Call Slip"}},
+            "rgb(0, 0, 255)",
             ".official-form-label",
         ),
     ],
 )
-def test_controlled_forms_color_only_filled_values_blue_and_use_arial(
-    template_key, context, static_selector
+def test_good_moral_generated_values_are_black_and_other_forms_stay_blue(
+    template_key, version, context, expected_color, static_selector
 ):
-    html, _ = render_document_html(template_key, 1, context=context)
+    html, _ = render_document_html(template_key, version, context=context)
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         try:
             page = browser.new_page()
             page.set_content(html)
-            filled = page.locator(".generated-value").first
-            assert filled.evaluate("element => getComputedStyle(element).color") == "rgb(0, 0, 255)"
+            generated = page.locator(".generated-value")
+            assert generated.count() > 0
+            colors = generated.evaluate_all(
+                "elements => [...new Set(elements.map(element => getComputedStyle(element).color))]"
+            )
+            assert colors == [expected_color]
+            filled = generated.first
             assert filled.evaluate("element => getComputedStyle(element).fontFamily").startswith(
                 "Arial"
             )
             static = page.locator(static_selector).first
-            assert static.evaluate("element => getComputedStyle(element).color") != "rgb(0, 0, 255)"
+            assert static.evaluate("element => getComputedStyle(element).color") != expected_color
             if template_key.startswith("good_moral_"):
                 assert (
                     page.locator(".good-moral-certificate")
@@ -180,6 +201,134 @@ def test_controlled_forms_color_only_filled_values_blue_and_use_arial(
                 )
         finally:
             browser.close()
+
+
+@pytest.mark.parametrize(
+    ("template_key", "version", "context", "expects_blue"),
+    [
+        (
+            "good_moral_current_student",
+            1,
+            {
+                "certificate": {
+                    "applicant_name": (
+                        "Alexandra Maria de la Cruz - Delos Santos (Synthetic Applicant)"
+                    ),
+                    "year_level": "4th",
+                    "college": (
+                        "University of Camarines Norte College of Computing and Multimedia Studies"
+                    ),
+                    "major": "Information Systems and Community Technology",
+                    "semester": "Second",
+                    "academic_year": "2025-2026",
+                    "issued_on": date(2026, 10, 18),
+                    "issuer_name": "Dr. Maria Elena R. Santos - Guidance Counselor",
+                    "official_receipt_number": "OR-2026-001234567890-TEST",
+                    "official_receipt_date": date(2026, 10, 18),
+                    "official_receipt_amount": "125.00",
+                }
+            },
+            False,
+        ),
+        (
+            "good_moral_current_student",
+            2,
+            {
+                "certificate": {
+                    "applicant_name": (
+                        "Alexandra Maria de la Cruz - Delos Santos (Synthetic Applicant)"
+                    ),
+                    "year_level": "4th",
+                    "college": (
+                        "University of Camarines Norte College of Computing and Multimedia Studies"
+                    ),
+                    "major": "Information Systems and Community Technology",
+                    "semester": "Second",
+                    "academic_year": "2025-2026",
+                    "issued_on": date(2026, 10, 18),
+                    "issuer_name": "Dr. Maria Elena R. Santos - Guidance Counselor",
+                    "official_receipt_number": "OR-2026-001234567890-TEST",
+                    "official_receipt_date": date(2026, 10, 18),
+                    "official_receipt_amount": "125.00",
+                }
+            },
+            False,
+        ),
+        (
+            "good_moral_graduate",
+            1,
+            {
+                "certificate": {
+                    "applicant_name": (
+                        "Alexandra Maria de la Cruz - Delos Santos (Synthetic Applicant)"
+                    ),
+                    "degree": (
+                        "Bachelor of Science in Psychology with Counseling and "
+                        "Community Development"
+                    ),
+                    "major": "Counseling Psychology and Community Mental Health",
+                    "graduation_date": date(2025, 6, 12),
+                    "issued_on": date(2026, 10, 18),
+                    "issuer_name": "Dr. Maria Elena R. Santos - Guidance Counselor",
+                    "official_receipt_number": "OR-2026-001234567890-TEST",
+                    "official_receipt_date": date(2026, 10, 18),
+                    "official_receipt_amount": "125.00",
+                }
+            },
+            False,
+        ),
+        (
+            "referral_slip",
+            1,
+            {
+                "referral": {
+                    "student_name": "Synthetic Referral Student",
+                    "reason": "Synthetic referral purpose",
+                }
+            },
+            True,
+        ),
+        (
+            "call_slip",
+            1,
+            {
+                "call_slip": {
+                    "student_name": "Synthetic Call Slip Student",
+                    "destination": "Guidance Office",
+                }
+            },
+            True,
+        ),
+    ],
+)
+def test_rendered_pdf_keeps_generated_ink_scoped_to_good_moral(
+    template_key, version, context, expects_blue
+):
+    pdf = render_document_pdf(template_key, version, context=context).pdf_bytes
+    pages = PdfReader(BytesIO(pdf)).pages
+    page = pages[0]
+    colors = []
+
+    def collect_color(operator, operands, _cm, _tm):
+        if operator == b"rg" and len(operands) == 3:
+            colors.append(tuple(float(value) for value in operands))
+
+    page.extract_text(visitor_operand_before=collect_color)
+    assert colors
+    if expects_blue:
+        assert (0.0, 0.0, 1.0) in colors
+    else:
+        assert (0.0, 0.0, 0.0) in colors
+        assert (0.0, 0.0, 1.0) not in colors
+        assert len(pages) == 1, "Long generated certificate values remain on the certificate page"
+        text_without_line_break_spacing = "".join(page.extract_text().split())
+        certificate = context["certificate"]
+        for marker in (
+            certificate["applicant_name"],
+            certificate["official_receipt_number"],
+            certificate["issuer_name"].upper(),
+        ):
+            assert "".join(marker.split()) in text_without_line_break_spacing
 
 
 @pytest.mark.django_db

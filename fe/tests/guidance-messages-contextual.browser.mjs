@@ -22,7 +22,7 @@ import {
   threadIds,
 } from "./support/guidance-messages-fixtures.mjs";
 
-const { baseURL, check, shown, hidden, finish, navigate, noHorizontalOverflow } = await createBrowserHarness("guidance-messages-contextual");
+const { baseURL, check, shown, hidden, screenshot, finish, navigate, noHorizontalOverflow } = await createBrowserHarness("guidance-messages-contextual");
 
 const SOCKET_URL = `${baseURL.replace(/^http/, "ws")}/api/realtime/v1/socket`;
 const enableRealtime = `window.__COMPASS_REALTIME_TEST_CONFIG__ = { url: ${JSON.stringify(SOCKET_URL)} };`;
@@ -334,6 +334,7 @@ for (const role of ["STUDENT", "COUNSELOR"]) {
     await surface.getByRole("button", { name: "Send", exact: true }).click();
     await shown(history(surface).getByText(`Sent during the call by ${role.toLowerCase()}`));
     await shown(stage(page).getByText("Connected", { exact: true }));
+    if (role === "COUNSELOR") await screenshot(page, "counselor-contextual-messages-open");
     await surface.getByRole("button", { name: "Close Messages" }).click();
     await hidden(surface);
 

@@ -1,0 +1,154 @@
+{
+  "baseURL": "http://127.0.0.1:3117",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "counselor-native-call-desktop",
+      "passed": true
+    },
+    {
+      "name": "call-controls-and-devices",
+      "passed": true
+    },
+    {
+      "name": "speaker-selection-fallback",
+      "passed": true
+    },
+    {
+      "name": "leave-and-rejoin-fresh-credential",
+      "passed": true
+    },
+    {
+      "name": "governed-recording-through-compass",
+      "passed": true
+    },
+    {
+      "name": "governed-transcription-storage-choice",
+      "passed": true
+    },
+    {
+      "name": "transcription-without-storage-consent",
+      "passed": true
+    },
+    {
+      "name": "provider-events-only-refresh",
+      "passed": true
+    },
+    {
+      "name": "leave-warning-during-capture",
+      "passed": true
+    },
+    {
+      "name": "camera-error-product-copy",
+      "passed": true
+    },
+    {
+      "name": "reconnecting-and-network",
+      "passed": true
+    },
+    {
+      "name": "remote-audio-autoplay-blocked",
+      "passed": true
+    },
+    {
+      "name": "refresh-failure-keeps-call-local-controls",
+      "passed": true
+    },
+    {
+      "name": "fullscreen-stage",
+      "passed": true
+    },
+    {
+      "name": "fullscreen-video-fits-landscape-portrait-and-classic",
+      "passed": true
+    },
+    {
+      "name": "layout-presets-desktop",
+      "passed": true
+    },
+    {
+      "name": "session-remains-mounted-with-collapsed-sidebar",
+      "passed": true
+    },
+    {
+      "name": "laptop-1280-two-columns",
+      "passed": true
+    },
+    {
+      "name": "tablet-stacked-no-presets",
+      "passed": true
+    },
+    {
+      "name": "counselor-mobile-tray-phone",
+      "passed": true
+    },
+    {
+      "name": "counselor-mobile-tray-narrowPhone",
+      "passed": true
+    },
+    {
+      "name": "student-mobile-v2",
+      "passed": true
+    },
+    {
+      "name": "student-withdrawal-consequence",
+      "passed": true
+    },
+    {
+      "name": "student-v1-scopes-stay-distinct",
+      "passed": true
+    },
+    {
+      "name": "help-keyboard-focus",
+      "passed": true
+    },
+    {
+      "name": "visible-video-blocker",
+      "passed": true
+    },
+    {
+      "name": "active-capture-visible-before-joining",
+      "passed": true
+    },
+    {
+      "name": "encounter-separate-from-recording",
+      "passed": true
+    },
+    {
+      "name": "encounter-save-dismissal",
+      "passed": true
+    },
+    {
+      "name": "v2-session-files-preparing",
+      "passed": true
+    },
+    {
+      "name": "v2-no-transcript-saved-copy",
+      "passed": true
+    },
+    {
+      "name": "v2-fresh-download-per-click",
+      "passed": true
+    },
+    {
+      "name": "v2-download-error",
+      "passed": true
+    },
+    {
+      "name": "prejoin-device-check-student-too-early",
+      "passed": true
+    },
+    {
+      "name": "prejoin-device-check-and-join-transition",
+      "passed": true
+    },
+    {
+      "name": "student-prejoin-mobile",
+      "passed": true
+    },
+    {
+      "name": "prejoin-navigation-cancels-pending-permission",
+      "passed": true
+    }
+  ]
+}

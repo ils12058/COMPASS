@@ -1,0 +1,158 @@
+{
+  "baseURL": "http://127.0.0.1:3117",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "COUNSELOR-recording-ACTIVE-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-recording-START_REQUESTED-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-recording-STOP_REQUESTED-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-recording-ERROR-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-transcription-ACTIVE-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-transcription-START_REQUESTED-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-transcription-STOP_REQUESTED-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-transcription-ERROR-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-recording-ACTIVE-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-recording-START_REQUESTED-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-recording-STOP_REQUESTED-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-recording-ERROR-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-transcription-ACTIVE-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-transcription-START_REQUESTED-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-transcription-STOP_REQUESTED-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-transcription-ERROR-leave-safety",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-both-unresolved-sign-out",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-both-unresolved-sign-out",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-NOT_STARTED-leave-without-warning",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-READY-leave-without-warning",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-NOT_STARTED-leave-without-warning",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-READY-leave-without-warning",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-legacy-transcription-stop-is-uncertain",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-legacy-transcription-stop-is-uncertain",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-503-preserves-call-and-warning",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-timeout-preserves-call-and-warning",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-503-preserves-call-and-warning",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-timeout-preserves-call-and-warning",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR-403-conceals-dependent-views-and-allows-fresh-recovery",
+      "passed": true
+    },
+    {
+      "name": "STUDENT-403-conceals-dependent-views-and-allows-fresh-recovery",
+      "passed": true
+    },
+    {
+      "name": "off-route-denial-removes-Routine-and-dock-context",
+      "passed": true
+    },
+    {
+      "name": "delayed-Student-information-cannot-resurrect-denied-workspace",
+      "passed": true
+    },
+    {
+      "name": "denial-during-credential-fetch-drops-late-credential",
+      "passed": true
+    },
+    {
+      "name": "401-uses-confirmed-session-loss-cleanup",
+      "passed": true
+    },
+    {
+      "name": "Student-information-403-hides-cached-context-without-revoking-independent-call",
+      "passed": true
+    },
+    {
+      "name": "imperative-file-link-403-conceals-workspace-and-closes-call",
+      "passed": true
+    },
+    {
+      "name": "imperative-file-link-401-follows-session-loss-flow",
+      "passed": true
+    },
+    {
+      "name": "late-file-link-is-never-opened-after-denial",
+      "passed": true
+    }
+  ]
+}
