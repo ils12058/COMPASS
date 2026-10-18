@@ -11,6 +11,7 @@ from django.conf import settings
 from ninja import Header, Query, Router, Schema, Status
 from pydantic import ConfigDict, Field
 
+from compass.accounts.profile_photos import profile_photo_projection
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
 from compass.authentication.step_up import require_recent_mfa_for_request
@@ -135,8 +136,12 @@ class FollowUpSummary(StrictSchema):
     id: UUID
     student_id: UUID
     student_name: str
+    student_profile_photo_url: str | None
+    student_profile_photo_updated_at: datetime | None
     assigned_to_id: UUID
     assigned_to_name: str
+    assigned_to_profile_photo_url: str | None
+    assigned_to_profile_photo_updated_at: datetime | None
     category: Category
     visibility: Visibility
     due_at: datetime
@@ -229,12 +234,18 @@ def _raise(exc: FollowUpError) -> NoReturn:
 def _summary(item):
     from django.utils import timezone
 
+    student_photo = profile_photo_projection(item.student)
+    assignee_photo = profile_photo_projection(item.assigned_to)
     return {
         "id": item.pk,
         "student_id": item.student_id,
         "student_name": item.student.get_full_name(),
+        "student_profile_photo_url": student_photo["profile_photo_url"],
+        "student_profile_photo_updated_at": student_photo["profile_photo_updated_at"],
         "assigned_to_id": item.assigned_to_id,
         "assigned_to_name": item.assigned_to.get_full_name(),
+        "assigned_to_profile_photo_url": assignee_photo["profile_photo_url"],
+        "assigned_to_profile_photo_updated_at": assignee_photo["profile_photo_updated_at"],
         "category": item.category,
         "visibility": item.visibility,
         "due_at": item.due_at,
@@ -280,6 +291,8 @@ def _detail_or_receipt(actor, item):
 class StaffOption(StrictSchema):
     id: UUID
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
 
 
 class StaffOptionPage(StrictSchema):
@@ -370,6 +383,8 @@ def eligible_students(request, search: str | None = None, page: int = 1, page_si
                     "id": row.id,
                     "display_name": row.display_name,
                     "institutional_id": row.institutional_id,
+                    "profile_photo_url": row.profile_photo_url,
+                    "profile_photo_updated_at": row.profile_photo_updated_at,
                 }
                 for row in result.items
             ],
@@ -412,7 +427,14 @@ def eligible_assignees(
             page_size=page_size,
         )
         return {
-            "items": [{"id": row.pk, "display_name": row.get_full_name()} for row in result.items],
+            "items": [
+                {
+                    "id": row.pk,
+                    "display_name": row.get_full_name(),
+                    **profile_photo_projection(row),
+                }
+                for row in result.items
+            ],
             "page": result.page,
             "page_size": result.page_size,
             "has_next": result.has_next,

@@ -1,10 +1,9 @@
 "use client";
 
-import Image from "next/image";
-import { useState } from "react";
-
 import { userDisplayName } from "@/features/portal/components/portal-presentation";
 import type { MyProfileResponse, UserSummary } from "@/lib/api/generated/model";
+
+import { PersonAvatar } from "./person-avatar";
 
 export function accountDisplayName(user: UserSummary, profile?: MyProfileResponse): string {
   return profile?.full_name.trim() || userDisplayName(user);
@@ -27,26 +26,13 @@ export function AccountAvatar({
   profile?: MyProfileResponse;
   size?: "topbar" | "profile";
 }) {
-  const [failedUrl, setFailedUrl] = useState<string | null>(null);
-  const photoUrl = profile?.profile_photo_url;
-  const dimension = size === "profile" ? 72 : 40;
-
   return (
-    <span
-      aria-hidden="true"
-      className={`relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-support-soft font-heading font-bold text-support-strong ${size === "profile" ? "size-[4.5rem] text-xl" : "size-10 text-sm"}`}
-    >
-      {photoUrl && failedUrl !== photoUrl ? (
-        <Image
-          src={photoUrl}
-          alt=""
-          width={dimension}
-          height={dimension}
-          unoptimized
-          className="size-full object-cover"
-          onError={() => setFailedUrl(photoUrl)}
-        />
-      ) : accountInitials(user, profile)}
-    </span>
+    <PersonAvatar
+      displayName={accountDisplayName(user, profile)}
+      initials={accountInitials(user, profile)}
+      photoUrl={profile?.profile_photo_url}
+      photoUpdatedAt={profile?.profile_photo_updated_at}
+      size={size === "profile" ? "large" : "standard"}
+    />
   );
 }

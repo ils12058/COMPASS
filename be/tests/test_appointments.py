@@ -1123,6 +1123,8 @@ def test_appointment_responses_expose_narrow_student_projection_consistently():
         "id": str(student.pk),
         "institutional_id": "2023-12345",
         "display_name": "Reynan Santos Tolentino",
+        "profile_photo_url": None,
+        "profile_photo_updated_at": None,
     }
     provider_rows = auth_client(provider).get("/api/v1/appointments/me").json()["items"]
     managed_rows = auth_client(provider).get("/api/v1/appointments").json()["items"]
@@ -1135,7 +1137,7 @@ def test_appointment_responses_expose_narrow_student_projection_consistently():
     for row in (provider_row, managed_row, detail):
         assert row["student_id"] == str(student.pk)
         assert row["student"] == expected
-        assert set(row["student"]) == {"id", "institutional_id", "display_name"}
+        assert set(row["student"]) == set(expected)
 
     second_row = next(row for row in managed_rows if row["id"] == str(second.pk))
     assert second_row["student"]["institutional_id"] is None

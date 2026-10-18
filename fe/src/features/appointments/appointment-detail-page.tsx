@@ -51,6 +51,7 @@ import { getAppointmentAccess } from "@/features/appointments/appointments-acces
 import { getECounselingAccess } from "@/features/ecounseling/ecounseling-access";
 import { GuidanceContextualMessages, GuidanceMessagesTrigger } from "@/features/guidance-messages/guidance-contextual-messages";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { CompassApiError } from "@/lib/api/errors";
 import { formatInstitutionalDateTime, institutionalDateInputValue } from "@/lib/institutional-time";
 import { isCounselingService } from "@/features/counseling/canonical-counseling-service";
@@ -657,14 +658,14 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
               ? [{
                   label: "Student",
                   value: (
-                    <>
-                      <span className="block break-words">{appointment.student.display_name}</span>
-                      {appointment.student.institutional_id ? <span className="mt-0.5 block break-all text-xs text-muted">{appointment.student.institutional_id}</span> : null}
-                    </>
+                    <span className="flex items-start gap-2">
+                      <PersonAvatar displayName={appointment.student.display_name} photoUrl={appointment.student.profile_photo_url} photoUpdatedAt={appointment.student.profile_photo_updated_at} size="standard" />
+                      <span className="block break-words">{appointment.student.display_name}{appointment.student.institutional_id ? <span className="mt-0.5 block break-all text-xs text-muted">{appointment.student.institutional_id}</span> : null}</span>
+                    </span>
                   ),
                 }]
               : []),
-            { label: "Counselor", value: appointment.provider.display_name },
+            { label: "Counselor", value: <span className="inline-flex items-center gap-2"><PersonAvatar displayName={appointment.provider.display_name} photoUrl={appointment.provider.profile_photo_url} photoUpdatedAt={appointment.provider.profile_photo_updated_at} size="standard" />{appointment.provider.display_name}</span> },
             { label: "Date and time", value: formatAppointmentDateTime(appointment.starts_at, appointment.ends_at) },
           ]}
         />

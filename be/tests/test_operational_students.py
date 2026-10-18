@@ -77,6 +77,27 @@ def test_institution_wide_picker_requires_active_current_lifecycle(list_students
 
 
 @pytest.mark.django_db
+def test_photo_enriched_picker_reads_a_bounded_page_without_per_student_queries(
+    django_assert_num_queries,
+):
+    call_command("sync_identity_policy", verbosity=0)
+    students = [_user(f"photo-picker-{index}@example.edu") for index in range(4)]
+    for index, student in enumerate(students):
+        student.profile_photo_object_key = f"profile-photos/users/{student.pk}/{index}.webp"
+        student.save(update_fields=["profile_photo_object_key", "updated_at"])
+
+    with django_assert_num_queries(1):
+        page = list_scoped_operational_students(
+            college_ids=None,
+            page_size=50,
+            include_profile_photos=True,
+        )
+
+    assert {item.id for item in page.items} == {student.pk for student in students}
+    assert all(item.profile_photo_updated_at is None for item in page.items)
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize(
     "list_students",
     [list_handled_students, list_referral_students, list_call_slip_students],

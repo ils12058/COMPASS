@@ -3,12 +3,14 @@ from unittest.mock import Mock
 
 import pytest
 from django.test import TestCase, override_settings
+from django.utils import timezone
 from PIL import Image
 
 from compass.accounts.models import Role, User
 from compass.accounts.profile_photos import (
     ProfilePhotoValidationError,
     normalize_profile_photo,
+    profile_photo_projection,
     profile_photo_url,
     remove_profile_photo,
     set_profile_photo,
@@ -41,6 +43,11 @@ class MemoryBackend:
 
     def url(self, name):
         return f"https://signed.example.test/{name}?signature=test"
+
+
+class FailingURLBackend(MemoryBackend):
+    def url(self, name):
+        raise RuntimeError("private storage unavailable")
 
 
 def image_upload(image_format="PNG", *, size=(1600, 1200), with_exif=False):
@@ -93,6 +100,21 @@ def test_profile_photo_is_validated_normalized_and_stored_through_object_storage
         assert len(normalized.getexif()) == 0
 
     assert profile_photo_url(photo_user, storage=storage).startswith("https://signed.example.test/")
+
+
+@pytest.mark.django_db
+def test_authorized_identity_projection_returns_only_optional_photo_fields_and_falls_back_on_storage_failure(photo_user):
+    photo_user.profile_photo_object_key = f"profile-photos/users/{photo_user.pk}/private.webp"
+    photo_user.profile_photo_updated_at = timezone.now()
+    storage = ObjectStorage(FailingURLBackend())
+
+    projection = profile_photo_projection(photo_user, storage=storage)
+
+    assert projection == {
+        "profile_photo_url": None,
+        "profile_photo_updated_at": photo_user.profile_photo_updated_at,
+    }
+    assert "profile_photo_object_key" not in projection
 
 
 @pytest.mark.django_db

@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelBody, PanelHeader } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
@@ -387,7 +388,7 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
                   <li key={candidate.id}>
                     <button type="button" aria-pressed={selectedAppointmentId === candidate.id} onClick={() => { setSelectedAppointmentId(candidate.id); setSelectedAppointmentRecord(candidate); clearTimes(); setError(null); }} className={`flex w-full flex-wrap items-start justify-between gap-3 px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${selectedAppointmentId === candidate.id ? "bg-brand-wash" : "hover:bg-surface-subtle"}`}>
                       <span>
-                        <span className="block font-semibold text-ink">{candidate.reference_code} · {candidate.student.display_name}</span>
+                        <span className="flex items-center gap-2 font-semibold text-ink"><PersonAvatar displayName={candidate.student.display_name} photoUrl={candidate.student.profile_photo_url} photoUpdatedAt={candidate.student.profile_photo_updated_at} size="compact" />{candidate.reference_code} · {candidate.student.display_name}</span>
                         <span className="mt-1 block text-sm text-muted">{candidate.student.institutional_id ? `Institutional ID ${candidate.student.institutional_id} · ` : ""}{formatCounselingDateTime(candidate.starts_at)} – {formatCounselingDateTime(candidate.ends_at)}</span>
                       </span>
                       <span className="text-sm text-muted">{counselingDeliveryModeLabel(candidate.delivery_mode)} · {statusLabel(candidate.status)}</span>
@@ -419,7 +420,7 @@ export function RecordEncounterForm({ preset, framed = true, onCancel, onCreated
                 {studentItems.map((student) => (
                   <li key={student.id}>
                     <button type="button" aria-pressed={selectedStudentId === student.id} onClick={() => { if (selectedStudentId !== student.id) clearTimes(); setSelectedStudentId(student.id); setSelectedStudentRecord(student); setError(null); }} className={`w-full px-4 py-3.5 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${selectedStudentId === student.id ? "bg-brand-wash" : "hover:bg-surface-subtle"}`}>
-                      <span className="block font-semibold text-ink">{student.display_name}</span>
+                      <span className="flex items-center gap-2 font-semibold text-ink"><PersonAvatar displayName={student.display_name} photoUrl={student.profile_photo_url} photoUpdatedAt={student.profile_photo_updated_at} size="compact" />{student.display_name}</span>
                       <span className="mt-1 block text-sm text-muted">Institutional ID: {student.institutional_id ?? "Not provided"}</span>
                     </button>
                   </li>

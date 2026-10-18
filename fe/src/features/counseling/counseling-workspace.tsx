@@ -40,6 +40,7 @@ import {
   unconfirmedEncounterMessage,
 } from "@/features/counseling/counseling-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import type {
   ContextHistoryKind,
   ContextHistoryStatus,
@@ -479,7 +480,7 @@ function ContextOverview({ overview, showInteractionFacts }: { overview: Counsel
   return (
     <Panel as="div">
       <dl className="grid gap-x-8 px-4 py-2 sm:grid-cols-2 sm:px-5">
-        <Metadata label="Student">{overview.student.display_name}</Metadata>
+        <Metadata label="Student"><span className="inline-flex items-center gap-2"><PersonAvatar displayName={overview.student.display_name} photoUrl={overview.student.profile_photo_url} photoUpdatedAt={overview.student.profile_photo_updated_at} size="compact" />{overview.student.display_name}</span></Metadata>
         <Metadata label="Institutional ID">{overview.student.institutional_id ?? "Not provided"}</Metadata>
         <Metadata label="Campus">{overview.student.campus?.name ?? "Not provided"}</Metadata>
         <Metadata label="College">{overview.student.college?.name ?? "Not provided"}</Metadata>

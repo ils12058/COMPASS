@@ -15,6 +15,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel,
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { Textarea } from "@/components/ui/textarea";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { StepUpDialog } from "@/features/account/security/security-shared";
@@ -62,7 +63,7 @@ export function FollowupsDetail({ id }: { id: string }) {
   if (!item || (query.error instanceof CompassApiError && [403, 404].includes(query.error.status))) return <FollowupFailure error={query.error} retry={() => void query.refetch()} />;
   return <>
     {query.isError ? <p role="alert">The latest details could not be confirmed. <Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button></p> : null}
-    <PageHeader title="Follow-Up" description={item.student_name} back={<Link href="/portal/follow-ups" className={pageBackLinkClass}>Back to Follow-Ups</Link>} meta={<span ref={statusRef} tabIndex={-1} className="text-sm font-semibold">{statusLabel(item.status)}{item.overdue && item.status === "PENDING" ? " · Overdue" : ""}</span>} />
+    <PageHeader title="Follow-Up" description={<span className="inline-flex items-center gap-2"><PersonAvatar displayName={item.student_name} photoUrl={item.student_profile_photo_url} photoUpdatedAt={item.student_profile_photo_updated_at} size="compact" />{item.student_name}</span>} back={<Link href="/portal/follow-ups" className={pageBackLinkClass}>Back to Follow-Ups</Link>} meta={<span ref={statusRef} tabIndex={-1} className="text-sm font-semibold">{statusLabel(item.status)}{item.overdue && item.status === "PENDING" ? " · Overdue" : ""}</span>} />
     <Panel>
       <PanelSection title="What needs to be done?" titleId="followup-description" description={categoryLabel(item.category)}>
         <p className="whitespace-pre-wrap break-words">{item.description || "No description recorded."}</p>
@@ -74,7 +75,7 @@ export function FollowupsDetail({ id }: { id: string }) {
         </dl>
       </PanelSection>
       <PanelSection title="Responsible staff member" titleId="followup-assignee">
-        <p>{item.assigned_to_name}</p>
+        <p className="flex items-center gap-2"><PersonAvatar displayName={item.assigned_to_name} photoUrl={item.assigned_to_profile_photo_url} photoUpdatedAt={item.assigned_to_profile_photo_updated_at} size="compact" />{item.assigned_to_name}</p>
       </PanelSection>
       {item.status === "COMPLETED" ? <PanelSection title="Completion outcome" titleId="followup-completion"><p className="whitespace-pre-wrap break-words">{item.outcome}</p><p className="mt-2 text-sm text-muted">Completed by {item.completed_by_name} · {item.completed_at ? formatInstitutionalDateTime(item.completed_at) : ""}</p></PanelSection> : item.status === "CANCELLED" ? <PanelSection title="Cancellation details" titleId="followup-cancellation">
         <p>Cancelled by {item.cancelled_by_name} · {item.cancelled_at ? formatInstitutionalDateTime(item.cancelled_at) : ""}</p>

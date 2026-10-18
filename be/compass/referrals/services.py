@@ -544,6 +544,7 @@ def list_eligible_students(
             search=search,
             page=page,
             page_size=page_size,
+            include_profile_photos=True,
         )
     except InvalidOperationalStudentQuery as exc:
         raise InvalidReferralInput(str(exc)) from exc

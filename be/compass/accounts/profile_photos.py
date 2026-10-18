@@ -6,8 +6,9 @@ import logging
 import uuid
 import warnings
 from dataclasses import dataclass
+from datetime import datetime
 from io import BytesIO
-from typing import BinaryIO
+from typing import BinaryIO, TypedDict
 
 from django.conf import settings
 from django.core.files.base import ContentFile
@@ -34,6 +35,11 @@ class NormalizedProfilePhoto:
     content: bytes
     content_type: str = "image/webp"
     extension: str = ".webp"
+
+
+class ProfilePhotoProjection(TypedDict):
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
 
 
 def _setting(name: str, default: int) -> int:
@@ -242,3 +248,23 @@ def profile_photo_url(user: User, *, storage: ObjectStorage | None = None) -> st
     if not user.profile_photo_object_key:
         return None
     return _storage_or_default(storage).url(user.profile_photo_object_key)
+
+
+def profile_photo_projection(
+    user: User, *, storage: ObjectStorage | None = None
+) -> ProfilePhotoProjection:
+    """Return only the public identity fields for an already-authorized person projection.
+
+    Profile images are optional. A private-storage outage must not prevent an otherwise authorized
+    workflow from loading, so a failed URL signature falls back to the initials presentation.
+    The object key stays inside this module and is never part of the response.
+    """
+
+    try:
+        url = profile_photo_url(user, storage=storage)
+    except Exception:
+        url = None
+    return {
+        "profile_photo_url": url,
+        "profile_photo_updated_at": user.profile_photo_updated_at,
+    }

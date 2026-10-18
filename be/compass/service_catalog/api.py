@@ -10,6 +10,7 @@ from uuid import UUID
 from ninja import Router, Schema, Status
 from pydantic import ConfigDict, Field
 
+from compass.accounts.profile_photos import profile_photo_projection
 from compass.appointments.access import appointment_management_access_allowed
 from compass.appointments.services import (
     AppointmentCurrentStudentRequired,
@@ -165,6 +166,8 @@ class ServiceListResponse(StrictSchema):
 class ServiceProviderCounselor(StrictSchema):
     id: UUID
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
     # A selected Counselor whose account is inactive stays listed but is not eligible.
     is_active: bool
 
@@ -177,6 +180,8 @@ class ServiceProvidersResponse(StrictSchema):
 class ServiceProviderCandidate(StrictSchema):
     id: UUID
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
 
 
 class ServiceProviderCandidatePage(StrictSchema):
@@ -464,7 +469,10 @@ def services_list_provider_candidates(
     except ServiceCatalogError as exc:
         _raise(exc)
     return {
-        "items": [{"id": user.pk, "display_name": user.get_full_name()} for user in result.items],
+        "items": [
+            {"id": user.pk, "display_name": user.get_full_name(), **profile_photo_projection(user)}
+            for user in result.items
+        ],
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
@@ -503,7 +511,12 @@ def services_get_providers(request, service_id: UUID):
     return {
         "provider_coverage": result.provider_coverage,
         "counselors": [
-            {"id": user.pk, "display_name": user.get_full_name(), "is_active": user.is_active}
+            {
+                "id": user.pk,
+                "display_name": user.get_full_name(),
+                **profile_photo_projection(user),
+                "is_active": user.is_active,
+            }
             for user in result.counselors
         ],
     }
@@ -538,7 +551,10 @@ def services_list_operational_provider_candidates(
     except ServiceCatalogError as exc:
         _raise(exc)
     return {
-        "items": [{"id": user.pk, "display_name": user.get_full_name()} for user in result.items],
+        "items": [
+            {"id": user.pk, "display_name": user.get_full_name(), **profile_photo_projection(user)}
+            for user in result.items
+        ],
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,

@@ -7,6 +7,7 @@ from datetime import datetime
 from uuid import UUID
 
 from compass.accounts.models import User
+from compass.accounts.profile_photos import profile_photo_projection
 from compass.appointments.models import Appointment
 from compass.call_slips.models import CallSlip
 from compass.inventory.models import StudentInventory
@@ -61,6 +62,8 @@ class CounselingContextOverview:
     student_id: UUID
     institutional_id: str | None
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
     campus: ContextOrganizationReference | None
     college: ContextOrganizationReference | None
     program: ContextProgramReference | None
@@ -246,6 +249,7 @@ def get_context_overview(access: CounselingContextAccess) -> CounselingContextOv
         student_id=student.pk,
         institutional_id=student.institutional_id,
         display_name=student.get_full_name(),
+        **profile_photo_projection(student),
         campus=campus,
         college=college,
         program=_program_reference(inventory),

@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelSection } from "@/components/ui/panel";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
   ServiceFixedSlotsStaffPanel,
@@ -142,7 +143,7 @@ function SelectedProviders({ serviceId }: { serviceId: string }) {
     <ul className="mt-3 divide-y divide-border rounded-sm border border-border">
       {counselors.map((counselor) => (
         <li key={counselor.id} className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 text-sm text-ink">
-          {counselor.display_name}
+          <span className="inline-flex items-center gap-2"><PersonAvatar displayName={counselor.display_name} photoUrl={counselor.profile_photo_url} photoUpdatedAt={counselor.profile_photo_updated_at} size="compact" />{counselor.display_name}</span>
           {!counselor.is_active ? (
             <span className="text-xs text-muted">Inactive account · not eligible</span>
           ) : null}

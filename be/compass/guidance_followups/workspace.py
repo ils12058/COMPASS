@@ -43,6 +43,7 @@ def eligible_students(*, actor, search=None, page=1, page_size=20):
         search=search,
         page=page,
         page_size=page_size,
+        include_profile_photos=True,
     )
 
 

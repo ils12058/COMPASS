@@ -22,6 +22,7 @@ from compass.accounts.models import (
     UserCapabilityOverride,
     UserDesignation,
 )
+from compass.accounts.profile_photos import profile_photo_projection
 from compass.accounts.policy import (
     CAPABILITY_CODES,
     CAPABILITY_DEFINITIONS,
@@ -452,6 +453,7 @@ def serialize_account(user: User, *, detail: bool = False) -> dict[str, object]:
         "last_name": user.last_name,
         "suffix": user.suffix,
         "full_name": user.get_full_name(),
+        **profile_photo_projection(user),
         "role": user.role.code,
         "student_lifecycle_status": user.student_lifecycle_status,
         "designations": _account_designation_codes(user),

@@ -471,6 +471,29 @@
             "title": "Password Configured",
             "type": "boolean"
           },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          },
           "role": {
             "$ref": "#/components/schemas/RoleCode"
           },
@@ -503,6 +526,8 @@
           "last_name",
           "suffix",
           "full_name",
+          "profile_photo_url",
+          "profile_photo_updated_at",
           "role",
           "student_lifecycle_status",
           "designations",
@@ -669,6 +694,29 @@
             "title": "Password Configured",
             "type": "boolean"
           },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          },
           "role": {
             "$ref": "#/components/schemas/RoleCode"
           },
@@ -696,6 +744,8 @@
           "last_name",
           "suffix",
           "full_name",
+          "profile_photo_url",
+          "profile_photo_updated_at",
           "role",
           "student_lifecycle_status",
           "designations",
@@ -1801,11 +1851,36 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
-          "display_name"
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
         ],
         "title": "AppointmentReassignmentCandidate",
         "type": "object"
@@ -2290,12 +2365,37 @@
               }
             ],
             "title": "Institutional Id"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
           "institutional_id",
-          "display_name"
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
         ],
         "title": "AppointmentStudentSummary",
         "type": "object"
@@ -4022,11 +4122,36 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
-          "display_name"
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
         ],
         "title": "CallSlipPersonSummary",
         "type": "object"
@@ -4160,12 +4285,37 @@
               }
             ],
             "title": "Institutional Id"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
           "institutional_id",
           "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at",
           "college"
         ],
         "title": "CallSlipStudentOptionResponse",
@@ -5200,6 +5350,29 @@
             ],
             "title": "Institutional Id"
           },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
+          },
           "program": {
             "anyOf": [
               {
@@ -5226,6 +5399,8 @@
           "id",
           "institutional_id",
           "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at",
           "campus",
           "college",
           "program",
@@ -5351,12 +5526,37 @@
               }
             ],
             "title": "Institutional Id"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
           "institutional_id",
-          "display_name"
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
         ],
         "title": "CounselingAppointmentCandidateStudent",
         "type": "object"
@@ -6064,12 +6264,37 @@
               }
             ],
             "title": "Institutional Id"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
           "institutional_id",
-          "display_name"
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
         ],
         "title": "CounselingStudentResponse",
         "type": "object"
@@ -7639,11 +7864,36 @@
               }
             ],
             "title": "Institutional Id"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
           "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at",
           "institutional_id"
         ],
         "title": "CounselorWorkspaceStudentSummary",
@@ -8698,11 +8948,36 @@
           "is_default": {
             "title": "Is Default",
             "type": "boolean"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
           "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at",
           "is_default"
         ],
         "title": "EligibleCounselorResponse",
@@ -9232,11 +9507,36 @@
               }
             ],
             "title": "Institutional Id"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
           "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at",
           "institutional_id"
         ],
         "title": "EncounterCollectionStudent",
@@ -10915,6 +11215,29 @@
             "title": "Assigned To Name",
             "type": "string"
           },
+          "assigned_to_profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To Profile Photo Updated At"
+          },
+          "assigned_to_profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To Profile Photo Url"
+          },
           "cancelled_at": {
             "anyOf": [
               {
@@ -11042,6 +11365,29 @@
             "title": "Student Name",
             "type": "string"
           },
+          "student_profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Profile Photo Updated At"
+          },
+          "student_profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Profile Photo Url"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -11059,8 +11405,12 @@
           "id",
           "student_id",
           "student_name",
+          "student_profile_photo_url",
+          "student_profile_photo_updated_at",
           "assigned_to_id",
           "assigned_to_name",
+          "assigned_to_profile_photo_url",
+          "assigned_to_profile_photo_updated_at",
           "category",
           "visibility",
           "due_at",
@@ -11465,6 +11815,29 @@
             "title": "Assigned To Name",
             "type": "string"
           },
+          "assigned_to_profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To Profile Photo Updated At"
+          },
+          "assigned_to_profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned To Profile Photo Url"
+          },
           "category": {
             "$ref": "#/components/schemas/Category"
           },
@@ -11499,6 +11872,29 @@
             "title": "Student Name",
             "type": "string"
           },
+          "student_profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Profile Photo Updated At"
+          },
+          "student_profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Profile Photo Url"
+          },
           "updated_at": {
             "format": "date-time",
             "title": "Updated At",
@@ -11516,8 +11912,12 @@
           "id",
           "student_id",
           "student_name",
+          "student_profile_photo_url",
+          "student_profile_photo_updated_at",
           "assigned_to_id",
           "assigned_to_name",
+          "assigned_to_profile_photo_url",
+          "assigned_to_profile_photo_updated_at",
           "category",
           "visibility",
           "due_at",
@@ -16918,11 +17318,36 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
-          "display_name"
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
         ],
         "title": "IdentitySummaryResponse",
         "type": "object"
@@ -21061,11 +21486,36 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
-          "display_name"
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
         ],
         "title": "PersonWorkspaceSummary",
         "type": "object"
@@ -21694,11 +22144,36 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
-          "display_name"
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
         ],
         "title": "ProviderSummaryResponse",
         "type": "object"
@@ -21984,11 +22459,36 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
-          "display_name"
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
         ],
         "title": "ReferralActorSummary",
         "type": "object"
@@ -22290,12 +22790,37 @@
               }
             ],
             "title": "Institutional Id"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
           "display_name",
-          "institutional_id"
+          "institutional_id",
+          "profile_photo_url",
+          "profile_photo_updated_at"
         ],
         "title": "ReferralPersonSummary",
         "type": "object"
@@ -22403,12 +22928,37 @@
               }
             ],
             "title": "Institutional Id"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
           "institutional_id",
           "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at",
           "college"
         ],
         "title": "ReferralStudentOptionResponse",
@@ -24688,11 +25238,36 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
-          "display_name"
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
         ],
         "title": "ServiceProviderCandidate",
         "type": "object"
@@ -24744,11 +25319,36 @@
           "is_active": {
             "title": "Is Active",
             "type": "boolean"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
           "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at",
           "is_active"
         ],
         "title": "ServiceProviderCounselor",
@@ -25511,11 +26111,36 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
-          "display_name"
+          "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at"
         ],
         "title": "StaffOption",
         "type": "object"
@@ -26057,11 +26682,36 @@
               }
             ],
             "title": "Institutional Id"
+          },
+          "profile_photo_updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Updated At"
+          },
+          "profile_photo_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Profile Photo Url"
           }
         },
         "required": [
           "id",
           "display_name",
+          "profile_photo_url",
+          "profile_photo_updated_at",
           "institutional_id"
         ],
         "title": "StudentOption",

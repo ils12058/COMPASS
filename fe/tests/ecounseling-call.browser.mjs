@@ -14,13 +14,19 @@ const { check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await
 const ePath = `/portal/e-counseling/${appointmentId}`;
 const STUDENT = "Maria Santos";
 const COUNSELOR = "Maria Reyes";
+const AVATAR_IMAGE = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' fill='%237c3aed'/%3E%3C/svg%3E";
 
 // A session whose capture and consent state a test can change while the page is open.
-function liveSession({ student = false, version = 2, recording = "NOT_STARTED", transcription = "NOT_STARTED", decision = "APPROVED", storage = null, artifact = null, context = false, joinState = "OPEN", roomProvisioned = true, joinAllowed = true } = {}) {
+function liveSession({ student = false, version = 2, recording = "NOT_STARTED", transcription = "NOT_STARTED", decision = "APPROVED", storage = null, artifact = null, context = false, joinState = "OPEN", roomProvisioned = true, joinAllowed = true, avatarPhotos = false, participantPhotoUrl = AVATAR_IMAGE } = {}) {
   const state = { recording, transcription, decision, storage, artifact, failWorkspace: false, joins: 0, workspaceReads: 0, joinState, roomProvisioned, joinAllowed };
   const prefix = `/api/v1/e-counseling/${student ? "me/" : ""}appointments/${appointmentId}`;
   const data = () => {
     const value = workspace();
+    if (avatarPhotos) {
+      value.student = { ...value.student, profile_photo_url: participantPhotoUrl, profile_photo_updated_at: "2026-10-17T00:00:00Z" };
+      value.counselor = { ...value.counselor, profile_photo_url: participantPhotoUrl, profile_photo_updated_at: "2026-10-17T00:00:00Z" };
+      value.appointment = { ...value.appointment, student: value.student, provider: value.counselor };
+    }
     value.counseling_context_available = context;
     value.provider_readiness.join_state = state.joinState;
     value.provider_readiness.room_provisioned = state.roomProvisioned;
@@ -112,6 +118,72 @@ async function joinCall(page, name = STUDENT) {
   await shown(stage(page).getByText(`Waiting for ${name}…`, { exact: true }).first());
   await shown(tray(page));
 }
+
+await check("participant-avatars-camera-off-and-live-video", ePath, {
+  fakeDaily: true,
+  overrides: {
+    ...liveSession({ avatarPhotos: true }).overrides,
+    "/api/v1/me/profile": ({ reply }) => reply({ full_name: "Example User", profile_photo_url: AVATAR_IMAGE, profile_photo_updated_at: "2026-10-17T00:00:00Z" }),
+  },
+}, async (page, { requests }) => {
+  const callStage = stage(page);
+  await shown(page.getByText("You · Example User", { exact: true }));
+  const profileReadsBeforeCall = requests.filter((request) => request.pathname === "/api/v1/me/profile").length;
+  assert.equal(await page.locator("[data-page-header] img").count(), 2, "The pre-join header shows both authorized people’s photos");
+  const persisted = await page.evaluate(() => [localStorage, sessionStorage].flatMap((store) => Array.from({ length: store.length }, (_, index) => `${store.key(index)}=${store.getItem(store.key(index))}`)).join("\n"));
+  assert.doesNotMatch(persisted, /data:image|profile_photo_url/);
+  assert.doesNotMatch(page.url(), /data:image/);
+  await joinCall(page);
+  await fake(page, "remoteJoin", { userId: "student", name: "Maria" });
+  const remotePane = callStage.locator("div.relative.size-full").first();
+  await shown(remotePane.locator("video"));
+  assert.equal(await remotePane.locator("img").count(), 0, "A playable remote video is never covered by a profile photo");
+
+  await fake(page, "remoteVideo", false);
+  await shown(remotePane.getByText("Camera off", { exact: true }));
+  await shown(remotePane.locator("img"));
+  assert.ok(await remotePane.locator("img").evaluate((image) => image.naturalWidth > 0));
+  await screenshot(page, "avatar-camera-off-and-live-video");
+
+  await tray(page).getByRole("button", { name: "Camera", exact: true }).click();
+  const selfView = callStage.locator("figure");
+  await shown(selfView.getByText("You, camera off", { exact: true }));
+  await shown(selfView.locator("img"));
+  assert.equal(requests.filter((request) => request.pathname === "/api/v1/me/profile").length, profileReadsBeforeCall, "Camera state changes do not refetch the signed-in profile photo");
+});
+
+await check("participant-avatar-load-failure-falls-back-to-initials", ePath, {
+  fakeDaily: true,
+  overrides: {
+    ...liveSession({ avatarPhotos: true, participantPhotoUrl: "https://unavailable.example.test/photo.webp" }).overrides,
+    "/api/v1/me/profile": ({ reply }) => reply({ full_name: "Example User", profile_photo_url: AVATAR_IMAGE, profile_photo_updated_at: "2026-10-17T00:00:00Z" }),
+  },
+}, async (page) => {
+  const pageHeader = page.locator("[data-page-header]");
+  await shown(pageHeader.getByText("MS", { exact: true }));
+  await joinCall(page);
+  await fake(page, "remoteJoin", { userId: "student", name: "Maria" });
+  const remotePane = stage(page).locator("div.relative.size-full").first();
+  await shown(remotePane.locator("video"));
+  await fake(page, "remoteVideo", false);
+  await shown(remotePane.getByText("Camera off", { exact: true }));
+  await shown(remotePane.getByText("MS", { exact: true }));
+  assert.equal(await remotePane.locator("img").count(), 0, "A failed image becomes initials, not a broken-image icon");
+});
+
+await check("participant-avatars-phone-layout", ePath, {
+  device: "phone",
+  fakeDaily: true,
+  overrides: {
+    ...liveSession({ avatarPhotos: true }).overrides,
+    "/api/v1/me/profile": ({ reply }) => reply({ full_name: "Example User", profile_photo_url: AVATAR_IMAGE, profile_photo_updated_at: "2026-10-17T00:00:00Z" }),
+  },
+}, async (page) => {
+  await shown(page.getByText("You · Example User", { exact: true }));
+  await shown(stage(page).getByText("Ready to join", { exact: true }));
+  await noHorizontalOverflow(page);
+  await screenshot(page, "avatar-prejoin-phone");
+});
 
 await check("counselor-native-call-desktop", ePath, { fakeDaily: true, overrides: liveSession().overrides }, async (page, { requests }) => {
   await shown(stage(page).getByText("Ready to join", { exact: true }).first());

@@ -13,6 +13,7 @@ import { PageActionLink } from "@/components/ui/page-action";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useGuidanceFollowupsList, useGuidanceFollowupsReport } from "@/lib/api/generated/guidance-followups/guidance-followups";
 import { DueWindow, StatusValue, type FollowUpQuery } from "@/lib/api/generated/model";
@@ -152,8 +153,8 @@ export function FollowupsList() {
           const dueSoon = Boolean(workload && row.status === StatusValue.PENDING && !row.overdue && Number.isFinite(dueAt) && Number.isFinite(reportAt)
             && dueAt >= reportAt && dueAt <= reportAt + workload.horizon_days * 24 * 60 * 60 * 1000);
           return <tr key={row.id} className={dataTable.row}>
-          <th scope="row" className={dataTable.cell}><Link className="font-semibold text-brand underline underline-offset-4" href={`/portal/follow-ups/${row.id}`}>{row.student_name}</Link></th>
-          <td className={dataTable.cell}>{categoryLabel(row.category)}</td><td className={dataTable.cell}>{formatInstitutionalDateTime(row.due_at)}{row.overdue ? <span className="block font-semibold text-danger">Overdue</span> : dueSoon ? <span className="block font-semibold">Due soon</span> : null}</td><td className={dataTable.cell}>{row.assigned_to_name}</td><td className={dataTable.cell}>{statusLabel(row.status)}</td>
+          <th scope="row" className={dataTable.cell}><span className="inline-flex items-center gap-2"><PersonAvatar displayName={row.student_name} photoUrl={row.student_profile_photo_url} photoUpdatedAt={row.student_profile_photo_updated_at} size="compact" /><Link className="font-semibold text-brand underline underline-offset-4" href={`/portal/follow-ups/${row.id}`}>{row.student_name}</Link></span></th>
+          <td className={dataTable.cell}>{categoryLabel(row.category)}</td><td className={dataTable.cell}>{formatInstitutionalDateTime(row.due_at)}{row.overdue ? <span className="block font-semibold text-danger">Overdue</span> : dueSoon ? <span className="block font-semibold">Due soon</span> : null}</td><td className={dataTable.cell}><span className="inline-flex items-center gap-2"><PersonAvatar displayName={row.assigned_to_name} photoUrl={row.assigned_to_profile_photo_url} photoUpdatedAt={row.assigned_to_profile_photo_updated_at} size="compact" />{row.assigned_to_name}</span></td><td className={dataTable.cell}>{statusLabel(row.status)}</td>
         </tr>;
         })}</tbody></table></div> : <PanelMessage>
           <span className="font-semibold text-ink">{emptyTitle}.</span> {emptyCopy}

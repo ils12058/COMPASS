@@ -32,6 +32,7 @@ import {
   lifecycles,
 } from "@/features/accounts/presentation";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import {
   useAccountsDisable,
   useAccountsEnable,
@@ -204,7 +205,15 @@ export function AccountOverview() {
           </div>
           <div>
             <dt className="text-muted">Name</dt>
-            <dd className="mt-1 font-medium text-ink">{account.full_name}</dd>
+            <dd className="mt-1 flex items-center gap-2 font-medium text-ink">
+              <PersonAvatar
+                displayName={account.full_name}
+                photoUrl={account.profile_photo_url}
+                photoUpdatedAt={account.profile_photo_updated_at}
+                size="standard"
+              />
+              <span className="break-words">{account.full_name}</span>
+            </dd>
           </div>
           <div>
             <dt className="text-muted">Current sign-in email</dt>

@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { SortField } from "@/components/ui/sort-field";
 import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import {
@@ -267,16 +268,21 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
                   {items.map((appointment) => (
                     <tr key={appointment.id} className={dataTable.row}>
                       <th scope="row" className={`${dataTable.cell} font-normal`}>
-                        <Link href={`/portal/appointments/${appointment.id}`} className="font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                          {access.isStudent ? appointment.service.name : appointment.student.display_name}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          {!access.isStudent ? <PersonAvatar displayName={appointment.student.display_name} photoUrl={appointment.student.profile_photo_url} photoUpdatedAt={appointment.student.profile_photo_updated_at} size="compact" /> : null}
+                          <Link href={`/portal/appointments/${appointment.id}`} className="font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                            {access.isStudent ? appointment.service.name : appointment.student.display_name}
+                          </Link>
+                        </div>
                         <p className="mt-1 font-mono text-xs text-muted">{appointment.reference_code}</p>
                         {!access.isStudent && appointment.student.institutional_id ? (
                           <p className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</p>
                         ) : null}
                       </th>
                       <td className={`${dataTable.cell} text-ink`}>
-                        {access.isStudent ? appointment.provider.display_name : appointment.service.name}
+                        {access.isStudent ? (
+                          <span className="inline-flex items-center gap-2"><PersonAvatar displayName={appointment.provider.display_name} photoUrl={appointment.provider.profile_photo_url} photoUpdatedAt={appointment.provider.profile_photo_updated_at} size="compact" />{appointment.provider.display_name}</span>
+                        ) : appointment.service.name}
                       </td>
                       <td className={`${dataTable.cell} text-ink`}>{formatAppointmentDateTime(appointment.starts_at, appointment.ends_at)}</td>
                       <td className={`${dataTable.cell} text-ink`}>{deliveryModeLabel(appointment.delivery_mode)}</td>
@@ -293,9 +299,12 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
                   <article>
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <Link href={`/portal/appointments/${appointment.id}`} className="break-words font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                          {access.isStudent ? appointment.service.name : appointment.student.display_name}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          {!access.isStudent ? <PersonAvatar displayName={appointment.student.display_name} photoUrl={appointment.student.profile_photo_url} photoUpdatedAt={appointment.student.profile_photo_updated_at} size="compact" /> : null}
+                          <Link href={`/portal/appointments/${appointment.id}`} className="break-words font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+                            {access.isStudent ? appointment.service.name : appointment.student.display_name}
+                          </Link>
+                        </div>
                         <p className="mt-1 font-mono text-xs text-muted">{appointment.reference_code}</p>
                         {!access.isStudent && appointment.student.institutional_id ? (
                           <p className="mt-1 break-all text-xs text-muted">{appointment.student.institutional_id}</p>
@@ -306,7 +315,7 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
                     <dl className="mt-3 grid gap-x-5 gap-y-2 text-sm sm:grid-cols-2">
                       <div>
                         <dt className="text-xs text-muted">{access.isStudent ? "Counselor" : "Service"}</dt>
-                        <dd className="mt-0.5 text-ink">{access.isStudent ? appointment.provider.display_name : appointment.service.name}</dd>
+                        <dd className="mt-0.5 text-ink">{access.isStudent ? <span className="inline-flex items-center gap-2"><PersonAvatar displayName={appointment.provider.display_name} photoUrl={appointment.provider.profile_photo_url} photoUpdatedAt={appointment.provider.profile_photo_updated_at} size="compact" />{appointment.provider.display_name}</span> : appointment.service.name}</dd>
                       </div>
                       <div>
                         <dt className="text-xs text-muted">Date and time</dt>

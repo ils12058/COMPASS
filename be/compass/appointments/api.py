@@ -12,6 +12,7 @@ from django.http import HttpResponse, JsonResponse
 from ninja import Header, Router, Schema
 from pydantic import ConfigDict
 
+from compass.accounts.profile_photos import profile_photo_projection
 from compass.appointments.reminders import (
     issue_bulk_reminders,
     issue_manual_reminder,
@@ -199,12 +200,16 @@ class ServiceSummaryResponse(StrictSchema):
 class ProviderSummaryResponse(StrictSchema):
     id: UUID
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
 
 
 class AppointmentStudentSummary(StrictSchema):
     id: UUID
     institutional_id: str | None
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
 
 
 class AppointmentBookingServiceSummary(StrictSchema):
@@ -292,6 +297,8 @@ class BookableSlotListResponse(StrictSchema):
 class AppointmentReassignmentCandidate(StrictSchema):
     id: UUID
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
 
 
 class AppointmentReassignmentCandidateList(StrictSchema):
@@ -301,6 +308,8 @@ class AppointmentReassignmentCandidateList(StrictSchema):
 class EligibleCounselorResponse(StrictSchema):
     id: UUID
     display_name: str
+    profile_photo_url: str | None
+    profile_photo_updated_at: datetime | None
     is_default: bool
 
 
@@ -401,6 +410,7 @@ def _appointment(item) -> dict[str, object]:
             "id": item.student_id,
             "institutional_id": item.student.institutional_id,
             "display_name": item.student.get_full_name(),
+            **profile_photo_projection(item.student),
         },
         "service": {
             "id": item.service_id,
@@ -410,6 +420,7 @@ def _appointment(item) -> dict[str, object]:
         "provider": {
             "id": item.provider_id,
             "display_name": item.provider.get_full_name(),
+            **profile_photo_projection(item.provider),
         },
         "delivery_mode": item.delivery_mode,
         "starts_at": _institutional(item.starts_at),
@@ -694,6 +705,7 @@ def appointments_list_eligible_counselors(
             {
                 "id": row.user.pk,
                 "display_name": row.user.get_full_name(),
+                **profile_photo_projection(row.user),
                 "is_default": row.is_default,
             }
             for row in rows
@@ -1058,6 +1070,7 @@ def appointments_list_reassignment_candidates(request, appointment_id: UUID):
             {
                 "id": row.user.pk,
                 "display_name": row.user.get_full_name(),
+                **profile_photo_projection(row.user),
             }
             for row in rows
         ]

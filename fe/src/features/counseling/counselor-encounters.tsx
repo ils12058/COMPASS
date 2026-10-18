@@ -17,6 +17,7 @@ import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
 import { useListOrdering } from "@/features/portal/components/list-ordering";
 import { Select } from "@/components/ui/select";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
+import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import type { CounselingAccess } from "@/features/counseling/counseling-access";
 import {
@@ -170,7 +171,7 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
                   <tbody className={dataTable.body}>
                     {items.map((encounter) => (
                       <tr key={encounter.id} className={dataTable.row}>
-                        <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} min-w-48 font-normal`}><Link href={`/portal/counseling/encounters/${encounter.id}`} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.student.display_name}</Link>{encounter.student.institutional_id ? <span className="mt-1 block text-xs text-muted">{encounter.student.institutional_id}</span> : null}</th>
+                        <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} min-w-48 font-normal`}><span className="flex items-center gap-2"><PersonAvatar displayName={encounter.student.display_name} photoUrl={encounter.student.profile_photo_url} photoUpdatedAt={encounter.student.profile_photo_updated_at} size="compact" /><Link href={`/portal/counseling/encounters/${encounter.id}`} className="font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{encounter.student.display_name}</Link></span>{encounter.student.institutional_id ? <span className="mt-1 block text-xs text-muted">{encounter.student.institutional_id}</span> : null}</th>
                         <td className={dataTable.cell}>{counselingEntryModeLabel(encounter.entry_mode)}</td>
                         <td className={dataTable.cell}>{counselingDeliveryModeLabel(encounter.delivery_mode)}</td>
                         <td className={dataTable.cell}>{formatCounselingDateTime(encounter.started_at)}</td>
