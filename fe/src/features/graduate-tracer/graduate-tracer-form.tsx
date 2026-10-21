@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Notice } from "@/components/ui/notice";
-import { Panel, PanelHeader } from "@/components/ui/panel";
+import { FormErrorSummary, FormSaveStatus, FormSectionLinks } from "@/components/ui/form-experience";
+import { Panel, PanelHeader, PanelSection, PanelFooter, PanelMessage } from "@/components/ui/panel";
 import { GraduateTracerEducationSection, GraduateTracerGeneralSection, GraduateTracerTrainingSection } from "@/features/graduate-tracer/graduate-tracer-form-sections";
 import { GraduateTracerCurriculumSection, GraduateTracerEmploymentSection } from "@/features/graduate-tracer/graduate-tracer-employment-section";
 import { FORM_SECTIONS, graduateTracerDraftFromDetail, graduateTracerPayloadFromDraft, getGraduateTracerDraftRowIssues, getGraduateTracerSubmissionIssues, normalizeGraduateTracerDraft, type GraduateTracerFormDraft, type SubmissionIssue } from "@/features/graduate-tracer/graduate-tracer-presentation";
@@ -73,7 +73,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
   const visibleIssues = [
     ...(draftValidationVisible ? draftIssues : []),
     ...(submissionValidationVisible ? submissionIssues : []),
-  ];
+  ].filter((issue, index, issues) => issues.findIndex((other) => other.targetId === issue.targetId) === index);
   const errorFor = (targetId: string) =>
     visibleIssues.find((issue) => issue.targetId === targetId)?.message;
 
@@ -209,31 +209,20 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
 
   return (
     <section aria-labelledby="graduate-tracer-form-heading">
-      <div className="lg:grid lg:grid-cols-[13rem_minmax(0,1fr)] lg:gap-6">
-        <nav aria-label="Survey sections" className="mb-5 overflow-x-auto lg:mb-0">
-          <div className="flex min-w-max gap-2 lg:sticky lg:top-5 lg:min-w-0 lg:flex-col lg:gap-1">
-            {FORM_SECTIONS.map((section) => (
-              <a key={section.id} href={`#${section.id}`} className="inline-flex min-h-10 items-center rounded-md px-3 text-sm font-medium text-muted transition-colors hover:bg-brand-wash hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
-                {section.label}
-              </a>
-            ))}
-          </div>
-        </nav>
-
-        <form onSubmit={(event) => event.preventDefault()} aria-busy={pending} className="min-w-0">
-          <Panel as="div">
+      <form onSubmit={(event) => event.preventDefault()} aria-busy={pending} className="@container/tracer min-w-0 [overflow-wrap:anywhere]">
+        <Panel as="div">
           <PanelHeader
             title="Graduate Tracer Survey"
             titleId="graduate-tracer-form-heading"
             description="Your draft remains private until you submit it."
           />
-          {localIssue || saveError || saveMessage ? (
-            <div className="space-y-3 border-b border-brand-line px-4 py-4 sm:px-5">
-              {localIssue ? <Notice role="alert" tone="warning"><span className="text-ink">{localIssue}</span></Notice> : null}
-              {saveError ? <Notice role="alert" tone="danger"><span className="text-ink">{saveError}</span></Notice> : null}
-              {saveMessage ? <Notice role="status" tone="success"><span className="text-ink">{saveMessage}</span></Notice> : null}
-            </div>
-          ) : null}
+          <div className="border-b border-brand-line px-4 py-4 sm:px-5">
+            <FormSectionLinks id="graduate-tracer-section-links" label="Survey sections" sections={FORM_SECTIONS} onSelect={(id) => {
+              const target = document.getElementById(id);
+              target?.scrollIntoView({ block: "start" });
+              target?.focus({ preventScroll: true });
+            }} />
+          </div>
 
           <fieldset disabled={pending} className="min-w-0">
             <GraduateTracerGeneralSection draft={draft} onChange={updateDraft} errorFor={errorFor} />
@@ -243,14 +232,40 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
             <GraduateTracerCurriculumSection draft={draft} onChange={updateDraft} />
           </fieldset>
 
-          <div className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-5 sm:px-5">
-            {dirty ? <p className="mb-3 text-sm text-warning">Unsaved changes. Save the draft before submitting.</p> : null}
-            {draftRowIssues.length ? <p className="mb-3 text-sm text-warning">{draftRowIssues[0].message}</p> : null}
-            <div className="flex flex-wrap gap-3">
-              <Button type="button" variant="secondary" disabled={!dirty || pending} onClick={() => void saveDraft()}>
+          <PanelSection title="Review and submit" titleId="graduate-tracer-review-heading">
+            <p className="max-w-3xl text-sm leading-6 text-muted">
+              You can save a partial draft. Save your changes before submitting; submission uses your saved answers and makes this response read-only.
+            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1">
+              <Button type="button" variant="quiet" className="px-0" disabled={pending} onClick={() => {
+                setDraftValidationVisible(true);
+                setSubmissionValidationVisible(true);
+                setLocalIssue(undefined);
+              }}>Review answers</Button>
+              <a href="#graduate-tracer-section-links" className="inline-flex min-h-11 items-center text-sm font-medium text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" onClick={(event) => {
+                event.preventDefault();
+                const target = document.getElementById("graduate-tracer-section-links");
+                target?.scrollIntoView({ block: "start" });
+                target?.focus({ preventScroll: true });
+              }}>Back to sections</a>
+            </div>
+            {visibleIssues.length ? (
+              <div className="mt-4">
+                <FormErrorSummary id="graduate-tracer-error-summary" issues={visibleIssues} onSelect={focusIssue}
+                  title={submissionValidationVisible ? "Check these answers before submitting" : "Check these answers before saving"}
+                  instruction={submissionValidationVisible ? "Select an item to return to its question. You can still save a partial draft." : "Correct these draft values, then save again. Other incomplete answers can remain in your draft."} />
+              </div>
+            ) : submissionValidationVisible ? <p className="mt-2 text-sm text-muted">The required answers are ready for review. Check your responses before submitting.</p> : null}
+          </PanelSection>
+          {localIssue && !visibleIssues.length ? <PanelMessage role="alert">{localIssue}</PanelMessage> : null}
+          {saveError ? <PanelMessage role="alert" tone="danger">{saveError}</PanelMessage> : null}
+          <PanelFooter className="items-start justify-between">
+            <FormSaveStatus dirty={dirty} saving={save.isPending} savedMessage={submit.isPending ? "Submitting…" : needsSubmissionCheck ? "Submission status could not be confirmed" : saveMessage} />
+            <div className="flex min-w-0 max-w-full flex-wrap gap-3">
+              <Button type="button" variant="secondary" className="whitespace-normal" disabled={!dirty || pending} onClick={() => void saveDraft()}>
                 {save.isPending ? "Saving…" : "Save draft"}
               </Button>
-              <Button type="button" disabled={pending || dirty} onClick={openSubmitConfirmation}>Submit Graduate Tracer Survey</Button>
+              <Button type="button" className="whitespace-normal" disabled={pending || dirty} onClick={openSubmitConfirmation}>Submit Graduate Tracer Survey</Button>
               <ConsequentialActionDialog
                 open={confirmSubmit}
                 title="Submit Graduate Tracer Survey?"
@@ -279,10 +294,9 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
                 ) : null}
               </ConsequentialActionDialog>
             </div>
-          </div>
-          </Panel>
-        </form>
-      </div>
+          </PanelFooter>
+        </Panel>
+      </form>
     </section>
   );
 }
