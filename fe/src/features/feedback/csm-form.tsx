@@ -279,10 +279,21 @@ export function CsmForm() {
 
   return (
     <section aria-labelledby="csm-page-heading">
-      <FeedbackPageHeading headingId="csm-page-heading" eyebrow="Client Satisfaction Measurement" title="HELP US SERVE YOU BETTER!" description={`Feedback for ${opportunityData.service_label}. Taking part is optional; if you choose to continue, please answer the required questions.`} />
-      <form className="mt-5" onSubmit={prepareSubmission} noValidate>
-        {error && !confirmationOpen ? <Notice role="alert" tone="danger" className="mb-5">{error}</Notice> : null}
-        {isUncertain ? <div className="mb-5 rounded-sm border border-warning/40 bg-surface-raised px-4 py-4 sm:px-5" role="status" aria-live="polite"><p className="text-sm font-semibold text-ink">Submission result not confirmed</p><p className="mt-1 text-sm leading-6 text-muted">Your response is still on this page. Retry the same submission to safely check whether it was received.</p><Button className="mt-3" disabled={create.isPending} onClick={() => void send(uncertainIntent.body)}>{create.isPending ? "Checking submission…" : "Retry same submission"}</Button></div> : null}
+      <FeedbackPageHeading headingId="csm-page-heading" eyebrow="Client Satisfaction Measurement" title="HELP US SERVE YOU BETTER!" description={`Feedback for ${opportunityData.service_label}. Taking part is optional. Questions marked * are required; suggestions and email are optional.`} />
+      <form className="mt-5 min-w-0 [overflow-wrap:anywhere]" onSubmit={prepareSubmission} noValidate>
+        {error && !confirmationOpen && !isUncertain ? <Notice role="alert" tone="danger" className="mb-5">{error}</Notice> : null}
+        {isUncertain ? (
+          <Notice
+            role="status"
+            aria-live="polite"
+            tone="warning"
+            className="mb-5"
+            title={<p>Submission result not confirmed</p>}
+            action={<Button className="min-h-11" disabled={create.isPending} onClick={() => void send(uncertainIntent.body)}>{create.isPending ? "Checking submission…" : "Retry same submission"}</Button>}
+          >
+            {error ?? "Your response is still on this page. Retry the same submission to safely check whether it was received."}
+          </Notice>
+        ) : null}
         <Panel as="div">
         <fieldset disabled={isUncertain || create.isPending} className="min-w-0 disabled:opacity-75">
           <legend className="sr-only">Client Satisfaction Measurement response fields</legend>
@@ -326,8 +337,8 @@ export function CsmForm() {
         </fieldset>
         <PanelFooter>
           {create.isPending ? <p role="status" aria-live="polite" className="w-full text-sm text-muted">Submitting Client Satisfaction Measurement…</p> : null}
-          <Button type="submit" disabled={create.isPending || isUncertain}>{create.isPending ? "Submitting…" : "Review and submit"}</Button>
-          <GuardedPortalLink href="/portal/feedback" className={buttonVariants({ variant: "quiet" })}>Back to Feedback</GuardedPortalLink>
+          <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={create.isPending || isUncertain}>{create.isPending ? "Submitting…" : "Review and submit"}</Button>
+          <GuardedPortalLink href="/portal/feedback" className={buttonVariants({ variant: "quiet", className: "min-h-11 w-full justify-start sm:w-auto sm:justify-center" })}>Back to Feedback</GuardedPortalLink>
         </PanelFooter>
         </Panel>
       </form>

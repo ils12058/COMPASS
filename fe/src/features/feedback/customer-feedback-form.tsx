@@ -6,6 +6,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { FormSectionLinks } from "@/components/ui/form-experience";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Input } from "@/components/ui/input";
@@ -13,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelFooter } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
-import { FeedbackFormSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackSubmissionErrorMessage, feedbackOpportunityId } from "@/features/feedback/feedback-shared";
+import { FeedbackFormSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackSubmissionErrorMessage, feedbackOpportunityId, feedbackSectionHeadingId } from "@/features/feedback/feedback-shared";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { feedbackSubmitCustomerFeedback, useFeedbackGetMyOpportunity } from "@/lib/api/generated/feedback/feedback";
 import { CustomerFeedbackAccommodatedByValue, CustomerFeedbackRatingValue, CustomerFeedbackServiceValue, type CustomerFeedbackSubmitRequest } from "@/lib/api/generated/model";
@@ -50,6 +51,18 @@ const ratingRows = [
   ["personnel_availability_rating", "Availability of the services of the personnel"],
   ["overall_satisfaction_rating", "Overall, how satisfied are you with your customer experience?"],
 ] as const;
+
+const customerFeedbackSectionLinks = [
+  ["I. Service/s received", "Services received"],
+  ["II. Guidance Counselor and accommodation", "Counselor and accommodation"],
+  ["III. Number of office visits", "Office visits"],
+  ["IV. Service personnel experience", "Personnel experience"],
+  ["V. Office experience", "Office experience"],
+  ["VI. Overall satisfaction", "Overall satisfaction"],
+  ["VII. Additional feedback", "Additional feedback"],
+  ["VIII. Future service improvement", "Future improvements"],
+  ["IX. Respondent information", "Respondent information"],
+].map(([title, label]) => ({ id: feedbackSectionHeadingId(title), label }));
 
 type RatingKey = (typeof ratingRows)[number][0];
 type Draft = {
@@ -202,6 +215,20 @@ export function CustomerFeedbackForm() {
     setError(null);
   }
 
+  function focusServiceSelection() {
+    const input = document.querySelector<HTMLInputElement>("#feedback-services input[type='checkbox']:not(:disabled)");
+    input?.scrollIntoView({ block: "center" });
+    input?.focus({ preventScroll: true });
+  }
+
+  function selectSection(id: string) {
+    const heading = document.getElementById(id);
+    if (!heading) return;
+    heading.setAttribute("tabindex", "-1");
+    heading.focus({ preventScroll: true });
+    heading.scrollIntoView({ block: "start", inline: "nearest" });
+  }
+
   function prepareSubmission(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
@@ -209,14 +236,14 @@ export function CustomerFeedbackForm() {
     if (isUncertain) return;
     if (!selectedServices.length) {
       setServiceError("Select at least one service received.");
-      document.getElementById("feedback-services")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      focusServiceSelection();
       return;
     }
     const form = event.currentTarget;
     if (!form.reportValidity()) return;
     if (requiredService && !selectedServices.includes(requiredService)) {
       setServiceError(`Keep ${requiredServiceLabel} selected for this completed service.`);
-      document.getElementById("feedback-services")?.scrollIntoView({ behavior: "smooth", block: "center" });
+      focusServiceSelection();
       return;
     }
     const body = makeBody(
@@ -281,15 +308,23 @@ export function CustomerFeedbackForm() {
 
   return (
     <section aria-labelledby="customer-feedback-heading">
-      <FeedbackPageHeading headingId="customer-feedback-heading" title="Customer Feedback Form" description={`Feedback for ${opportunityData.service_label}.`} />
-      <form className="mt-5" onSubmit={prepareSubmission} noValidate>
-        {error && !confirmationOpen ? <Notice role="alert" tone="danger" className="mb-5">{error}</Notice> : null}
+      <FeedbackPageHeading headingId="customer-feedback-heading" title="Customer Feedback Form" description={`Feedback for ${opportunityData.service_label}. Questions marked * are required; optional items can be left blank.`} />
+      <div className="mb-5">
+        <FormSectionLinks id="customer-feedback-section-links" label="Customer Feedback sections" sections={customerFeedbackSectionLinks} onSelect={selectSection} />
+      </div>
+      <form className="min-w-0 [overflow-wrap:anywhere] [&_h2]:scroll-mt-24 [&_h2:focus]:outline-none [&_h2:focus]:ring-2 [&_h2:focus]:ring-focus" onSubmit={prepareSubmission} noValidate>
+        {error && !confirmationOpen && !isUncertain ? <Notice role="alert" tone="danger" className="mb-5">{error}</Notice> : null}
         {isUncertain ? (
-          <div className="mb-5 rounded-sm border border-warning/40 bg-surface-raised px-4 py-4 sm:px-5" role="status" aria-live="polite">
-            <p className="text-sm font-semibold text-ink">Submission result not confirmed</p>
-            <p className="mt-1 text-sm leading-6 text-muted">Your response is still on this page. Retry the same submission to safely check whether it was received.</p>
-            <Button className="mt-3" disabled={create.isPending} onClick={() => void send(uncertainIntent.body)}>{create.isPending ? "Checking submission…" : "Retry same submission"}</Button>
-          </div>
+          <Notice
+            role="status"
+            aria-live="polite"
+            tone="warning"
+            className="mb-5"
+            title={<p>Submission result not confirmed</p>}
+            action={<Button className="min-h-11" disabled={create.isPending} onClick={() => void send(uncertainIntent.body)}>{create.isPending ? "Checking submission…" : "Retry same submission"}</Button>}
+          >
+            {error ?? "Your response is still on this page. Retry the same submission to safely check whether it was received."}
+          </Notice>
         ) : null}
         <Panel as="div">
         <fieldset disabled={isUncertain || create.isPending} className="min-w-0 disabled:opacity-75">
@@ -301,7 +336,7 @@ export function CustomerFeedbackForm() {
               <div className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
                 {serviceChoices.map((choice) => {
                   const id = `feedback-service-${choice.value.toLowerCase()}`;
-                  return <label key={choice.value} htmlFor={id} className="flex min-h-10 items-center gap-3 text-sm text-ink"><input id={id} type="checkbox" className="h-4 w-4 accent-brand" checked={selectedServices.includes(choice.value)} disabled={choice.value === requiredService} onChange={(event) => changeService(choice.value, event.target.checked)} aria-describedby={serviceError ? "feedback-services-error" : undefined} />{choice.label}</label>;
+                  return <label key={choice.value} htmlFor={id} className="flex min-h-11 items-center gap-3 rounded-sm px-2 py-2 text-sm text-ink hover:bg-surface-subtle focus-within:ring-2 focus-within:ring-focus"><input id={id} type="checkbox" className="h-4 w-4 shrink-0 accent-brand" checked={selectedServices.includes(choice.value)} disabled={choice.value === requiredService} onChange={(event) => changeService(choice.value, event.target.checked)} aria-invalid={serviceError ? true : undefined} aria-describedby={serviceError ? "feedback-services-error" : undefined} />{choice.label}</label>;
                 })}
               </div>
               {draft.services.includes(CustomerFeedbackServiceValue.OTHER) ? (
@@ -373,8 +408,8 @@ export function CustomerFeedbackForm() {
 
         <PanelFooter>
           {create.isPending ? <p role="status" aria-live="polite" className="w-full text-sm text-muted">Submitting Customer Feedback…</p> : null}
-          <Button type="submit" disabled={create.isPending || isUncertain}>{create.isPending ? "Submitting…" : "Review and submit"}</Button>
-          <GuardedPortalLink href="/portal/feedback" className={buttonVariants({ variant: "quiet" })}>Back to Feedback</GuardedPortalLink>
+          <Button type="submit" className="min-h-11 w-full sm:w-auto" disabled={create.isPending || isUncertain}>{create.isPending ? "Submitting…" : "Review and submit"}</Button>
+          <GuardedPortalLink href="/portal/feedback" className={buttonVariants({ variant: "quiet", className: "min-h-11 w-full justify-start sm:w-auto sm:justify-center" })}>Back to Feedback</GuardedPortalLink>
         </PanelFooter>
         </Panel>
       </form>
