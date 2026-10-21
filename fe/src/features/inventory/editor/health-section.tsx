@@ -26,7 +26,7 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
   return (
     <div className="space-y-7">
       <FieldGroup legend="Living conditions">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 @md/inventory:grid-cols-2">
           <SelectField
             id="inventory-living-arrangement"
             error={errorFor("inventory-living-arrangement")}
@@ -67,7 +67,7 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
           />
         </div>
         {boarding ? (
-          <div className="mt-5 grid gap-4 rounded-sm bg-surface-subtle p-4 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4 rounded-sm bg-surface-subtle p-4 @md/inventory:grid-cols-2">
             <BooleanField
               id="inventory-boarding-exclusive"
               legend="Is the boarding house exclusive to one sex?"
@@ -98,7 +98,7 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
         <p className="mb-5 max-w-3xl text-sm leading-6 text-muted">
           Share only what you are comfortable providing. These responses are confidential Student information and are not medical advice.
         </p>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 @md/inventory:grid-cols-2">
           <TextAreaField
             id="inventory-accidents"
             label="Accidents experienced"
@@ -123,7 +123,7 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
             value={draft.operations_effect}
             onChange={(value) => onChange({ operations_effect: value })}
           />
-          <div className="sm:col-span-2">
+          <div className="@md/inventory:col-span-2">
             <CheckboxGroupField
               id="inventory-immunizations"
               legend="Immunizations you have had"

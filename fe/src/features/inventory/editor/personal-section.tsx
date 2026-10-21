@@ -37,7 +37,7 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
         legend="Personal data"
         className="border-t-0 pt-0"
       >
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 @md/inventory:grid-cols-2">
           <TextField
             id="inventory-full-name"
             maxLength={inventoryTextLimits.full_name}
@@ -131,7 +131,7 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
       </FieldGroup>
 
       <FieldGroup legend="Contact and addresses">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 @md/inventory:grid-cols-2">
           <TextAreaField
             id="inventory-current-address"
             label="Current address"
