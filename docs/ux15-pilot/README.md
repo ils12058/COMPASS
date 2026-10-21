@@ -1,7 +1,10 @@
 # COMPASS-UX15-PILOT-1 — Unified Form Experience Foundation
 
-Reversible Individual Inventory pilot for team review. Base: `staging` at
-`0a843dae20c01984d0fb9aa46d5eef34102ab386`, fetched October 21, 2026.
+Reversible, experimental Individual Inventory pilot for team review. Source baseline:
+`staging` at `0a843dae20c01984d0fb9aa46d5eef34102ab386`, fetched October 21, 2026.
+The dedicated `integration/ux15-modernization` branch was absent and was created from that
+exact staging HEAD. Implementation branch: `feat/ux15-form-foundation`; PR target:
+`integration/ux15-modernization`.
 The supplied Development Proposal Notes, especially #15, are design references;
 the explicit pilot request defines implementation scope. This is not institutional sign-off.
 
@@ -87,5 +90,9 @@ overflow at desktop, 390px and 320px. Treat the top bar as a separate accessibil
 5. **Feedback / CSM:** error-summary presentation where useful, keeping short survey layout and
    final idempotent submission; no invented persistent drafts.
 
-Adoption requires a separate scoped change and team review. Keep this PR draft; do not merge
-or deploy it as part of the pilot.
+Adoption requires a separate scoped change and team review. Future Proposal #15 slices branch
+from `integration/ux15-modernization` and target that same branch. Proposal #15 remains
+experimental until formally accepted by the team. This PR is ready for review, with no automatic
+merge or deployment. Do not merge Proposal #15 work into `staging` or `main` as part of this pilot.
+
+See the [branch and workflow safety audit](integration-safety.md).

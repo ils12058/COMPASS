@@ -1,7 +1,8 @@
 # Targeted validation — October 21, 2026
 
-All checks ran in the isolated pilot worktree. No full frontend/backend test suite ran.
-Browser checks used the production Next build on localhost:3115, with synthetic API fixtures
+Checks were rerun in the isolated `feat/ux15-form-foundation` worktree based on
+`integration/ux15-modernization`; the application source matches the previously validated pilot. No full frontend/backend test suite ran.
+Browser checks used the production Next build on localhost:3117, with synthetic API fixtures
 and outbound provider/API access blocked by the shared harness.
 
 | Check | Result |
@@ -35,21 +36,24 @@ node --import ./tests/support/register-tsx.mjs --test \
   tests/form-ui-1b.test.mjs \
   tests/routine-inventory-decoupling.test.mjs \
   tests/page-header-contract.test.mjs
-pnpm start --port 3115
+pnpm start --port 3117
 ```
 
 In another terminal, from `fe/`:
 
 ```sh
-COMPASS_UI_BASE_URL=http://localhost:3115 node tests/ux15-inventory.browser.mjs
-COMPASS_UI_BASE_URL=http://localhost:3115 COMPASS_UI_BROWSER=webkit node tests/ux15-inventory.browser.mjs
-COMPASS_UI_BASE_URL=http://localhost:3115 node tests/form-corr-1-inventory.browser.mjs
-COMPASS_UI_BASE_URL=http://localhost:3115 COMPASS_UI_BROWSER=webkit node tests/form-corr-1-inventory.browser.mjs
-COMPASS_UI_BASE_URL=http://localhost:3115 COMPASS_UI_CHECK=Inventory node tests/form-ui-1b.browser.mjs
-COMPASS_UI_BASE_URL=http://localhost:3115 COMPASS_UI_CHECK=inventory-draft-survives node tests/draft-and-session-safety.browser.mjs
+COMPASS_UI_BASE_URL=http://localhost:3117 node tests/ux15-inventory.browser.mjs
+COMPASS_UI_BASE_URL=http://localhost:3117 COMPASS_UI_BROWSER=webkit node tests/ux15-inventory.browser.mjs
+COMPASS_UI_BASE_URL=http://localhost:3117 node tests/form-corr-1-inventory.browser.mjs
+COMPASS_UI_BASE_URL=http://localhost:3117 COMPASS_UI_BROWSER=webkit node tests/form-corr-1-inventory.browser.mjs
+COMPASS_UI_BASE_URL=http://localhost:3117 COMPASS_UI_CHECK=Inventory node tests/form-ui-1b.browser.mjs
+COMPASS_UI_BASE_URL=http://localhost:3117 COMPASS_UI_CHECK=inventory-draft-survives node tests/draft-and-session-safety.browser.mjs
 ```
 
-The existing browser-suite discovery automatically includes the new suite in CI.
+The existing browser-suite discovery includes the new suite. However, the current GitHub
+Actions PR branch filters exclude `integration/ux15-modernization`, so this PR relies on the
+focused local validation reported here. No workflow was dispatched and no CI/deployment
+configuration was changed. See [the workflow audit](integration-safety.md).
 `COMPASS_UI_ARTIFACTS` can select an evidence directory. `COMPASS_UX15_SCREENSHOTS=before`
 selects the two baseline screenshot scenarios and must be run on the original base editor
 for a genuine baseline. Committed before captures came from that base under Next dev;
