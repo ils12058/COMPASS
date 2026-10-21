@@ -244,21 +244,28 @@ function RatingMatrix({
     ? [{ value: 0, label: "" }, ...scale.slice().reverse()]
     : scale;
   const review = useExitInterviewReviewLookup();
+  // Keep a readable pinned question beside the choices without covering a narrow/enlarged sheet.
+  const itemColumn = "sticky left-0 z-10 w-[min(9rem,40cqi)] min-w-[min(9rem,40cqi)] max-w-[min(9rem,40cqi)] @2xl/exit:w-auto @2xl/exit:min-w-64 @2xl/exit:max-w-none";
 
   return (
     // relative: the header cells' sr-only labels are absolutely positioned and must stay inside the
     // horizontal scroll area instead of widening the page on narrow screens. On phones the pinned
     // Item column is narrowed so rating columns can scroll into view beside it.
-    <div className="relative mt-4 overflow-x-auto rounded-sm border border-border">
-      <table className="w-full border-collapse text-sm sm:min-w-[42rem]">
+    <div role="region" aria-label={`${title} rating choices`} aria-describedby={`exit-${matrixId}-rating-help`} tabIndex={0} onKeyDown={(event) => {
+      // Keep radio-group arrow keys native. Only the focused scroll region moves the table.
+      if (event.target !== event.currentTarget || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      event.preventDefault();
+      event.currentTarget.scrollBy({ left: (event.key === "ArrowRight" ? 1 : -1) * event.currentTarget.clientWidth / 2, behavior: "instant" });
+    }} className="relative mt-4 overflow-x-auto rounded-sm border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+      <table className="w-full min-w-[29rem] border-collapse text-sm @2xl/exit:min-w-[42rem]">
         <caption className="sr-only">{title} rating matrix</caption>
         <thead className="bg-brand-wash text-xs text-brand-strong">
           <tr>
-            <th scope="col" className="sticky left-0 z-10 w-36 bg-brand-wash px-3 py-3 text-left font-semibold sm:w-auto sm:min-w-64">
+            <th scope="col" className={`${itemColumn} bg-brand-wash px-3 py-3 text-left font-semibold`}>
               Item
             </th>
             {options.map((option) => (
-              <th key={option.value} scope="col" className="min-w-12 px-2 py-3 text-center font-semibold sm:min-w-16">
+              <th key={option.value} scope="col" className="min-w-12 px-2 py-3 text-center font-semibold @2xl/exit:min-w-16">
                 <span>{option.value}</span>
                 {option.label ? <span className="sr-only"> — {option.label}</span> : null}
               </th>
@@ -282,7 +289,7 @@ function RatingMatrix({
               aria-describedby={describedBy}
               className={`align-middle ${invalid ? "bg-danger/5" : ""}`}
             >
-              <th scope="row" className={`sticky left-0 z-10 px-3 py-3 text-left font-medium text-ink ${invalid ? "bg-danger/5" : "bg-surface-raised"}`}>
+              <th scope="row" className={`${itemColumn} px-3 py-3 text-left font-medium text-ink ${invalid ? "bg-danger/5" : "bg-surface-raised"}`}>
                 {item.label}
                 <ExitInterviewReviewHintText hint={rowReview.hint} className="mt-1 block" />
                 {invalid ? <span id={errorId} className="mt-1 block text-xs font-normal text-danger">Choose a rating for this item.</span> : null}
@@ -293,8 +300,8 @@ function RatingMatrix({
                   ? `${option.value}, ${option.label}`
                   : String(option.value);
                 return (
-                  <td key={option.value} className="px-2 py-3 text-center">
-                    <label htmlFor={id} className="inline-flex min-h-8 min-w-8 cursor-pointer items-center justify-center rounded focus-within:outline-none focus-within:ring-2 focus-within:ring-focus">
+                  <td key={option.value} className="px-1 py-1 text-center">
+                    <label htmlFor={id} className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded focus-within:outline-none focus-within:ring-2 focus-within:ring-focus">
                       <input
                         id={id}
                         type="radio"
@@ -302,7 +309,7 @@ function RatingMatrix({
                         value={option.value}
                         checked={values[item.code] === String(option.value)}
                         disabled={disabled}
-                        aria-describedby={rowReview.describedBy}
+                        aria-describedby={describedBy}
                         onChange={() => onChange(item.code, String(option.value))}
                         className="h-4 w-4 accent-brand"
                       />
@@ -366,7 +373,7 @@ export function ExitInterviewFormSections({
         <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
           These values belong to this Exit Interview only. Changes here do not update your Account Profile or Individual Inventory.
         </p>
-        <div className="mt-5 grid gap-x-6 gap-y-5 sm:grid-cols-2">
+        <div className="mt-5 grid gap-x-6 gap-y-5 @md/exit:grid-cols-2">
           <FormField id="exit-student-name" maxLength={exitInterviewTextLimits.studentName} label="Student name" value={form.studentName} disabled={disabled} onChange={(value) => onTextChange("studentName", value)} />
           <FormField id="exit-age" label="Age" type="number" min={0} max={150} value={form.age} disabled={disabled} onChange={(value) => onTextChange("age", value)} />
           <FormField id="exit-civil-status" maxLength={exitInterviewTextLimits.civilStatus} label="Civil Status" value={form.civilStatus} disabled={disabled} onChange={(value) => onTextChange("civilStatus", value)} />
@@ -374,7 +381,7 @@ export function ExitInterviewFormSections({
           <FormField id="exit-major" maxLength={exitInterviewTextLimits.major} label="Major" value={form.major} disabled={disabled} onChange={(value) => onTextChange("major", value)} />
           <FormField id="exit-email-address" maxLength={exitInterviewTextLimits.emailAddress} label="Email Address" type="email" value={form.emailAddress} disabled={disabled} onChange={(value) => onTextChange("emailAddress", value)} />
           <FormField id="exit-contact-number" maxLength={exitInterviewTextLimits.contactNumber} label="Contact Number" type="tel" hint="For example, 0917 123 4567." value={form.contactNumber} disabled={disabled} onChange={(value) => onTextChange("contactNumber", value)} />
-          <div className="sm:col-span-2">
+          <div className="@md/exit:col-span-2">
             <FormTextArea id="exit-home-address" maxLength={exitInterviewTextLimits.homeAddress} label="Home Address" value={form.homeAddress} disabled={disabled} onChange={(value) => onTextChange("homeAddress", value)} />
           </div>
         </div>
@@ -385,7 +392,7 @@ export function ExitInterviewFormSections({
         <fieldset id="exit-program-completion" aria-describedby={completionReview.describedBy} className="mt-4">
           <legend className="text-sm font-semibold text-ink">Program completion</legend>
           <ExitInterviewReviewHintText hint={completionReview.hint} className="mt-1 block" />
-          <div className="mt-2 flex flex-col gap-1 sm:flex-row sm:gap-6">
+          <div className="mt-2 flex flex-col gap-1 @md/exit:flex-row @md/exit:gap-6">
             {PROGRAM_COMPLETION_CHOICES.map(({ value, label }) => (
               <label key={value} className="flex min-h-9 items-center gap-2 text-sm text-ink">
                 <input
@@ -405,7 +412,7 @@ export function ExitInterviewFormSections({
           </div>
         </fieldset>
         {delayed ? (
-          <div className="mt-4 max-w-2xl space-y-4 rounded-sm bg-surface-subtle px-4 py-4">
+          <div className="mt-4 max-w-2xl space-y-4">
             <FormField id="exit-extra-terms" label="Number of extra terms" type="number" min={1} value={form.extraTermsCount} required error={extraTermsError} disabled={disabled} onChange={(value) => onTextChange("extraTermsCount", value)} />
             <fieldset id="exit-delay-reasons" aria-describedby={delayReview.describedBy}>
               <legend className="text-sm font-semibold text-ink">Reason for delay</legend>
@@ -434,7 +441,7 @@ export function ExitInterviewFormSections({
           <fieldset id="exit-learning-experiences" aria-describedby={learningReview.describedBy} className="mt-2">
             <legend className="sr-only">Select significant learning experiences</legend>
             <ExitInterviewReviewHintText hint={learningReview.hint} className="mb-1 block" />
-            <div className="grid gap-x-6 sm:grid-cols-2">
+            <div className="grid gap-x-6 @md/exit:grid-cols-2">
               {SIGNIFICANT_LEARNING_CHOICES.map((choice) => (
                 <ChoiceCheckbox
                   key={choice.value}
@@ -457,7 +464,7 @@ export function ExitInterviewFormSections({
         <div className="mt-7 border-t border-border pt-5">
           <h3 className="font-semibold text-ink">Career plans</h3>
           <p className="mt-1 text-sm text-muted">Work and Study are independent choices. You may select both.</p>
-          <div className="mt-3 grid gap-6 lg:grid-cols-2">
+          <div className="mt-3 grid gap-6 @2xl/exit:grid-cols-2">
             <fieldset id="exit-career-work-plans" aria-describedby={workReview.describedBy}>
               <legend className="font-semibold text-ink">Work</legend>
               <ExitInterviewReviewHintText hint={workReview.hint} className="mt-1 block" />
@@ -505,6 +512,7 @@ export function ExitInterviewFormSections({
         <p className="mt-2 text-sm leading-6 text-muted">
           Rate each item using the source scale: 5 — Much enhanced; 4 — Enhanced; 3 — No Difference; 2 — Became Worse; 1 — I don&apos;t know.
         </p>
+        <p id="exit-self-rating-help" className="mt-2 text-sm leading-6 text-muted">Choose one rating per item. Scroll sideways for more choices when needed.</p>
         <RatingMatrix
           title="Self-Assessment"
           matrixId="self"
@@ -525,6 +533,7 @@ export function ExitInterviewFormSections({
         <p className="mt-2 text-sm text-muted">
           The source form includes 0 as a response option but does not specify its meaning.
         </p>
+        <p id="exit-college-rating-help" className="mt-2 text-sm leading-6 text-muted">Choose one rating per item. Scroll sideways for more choices when needed.</p>
         {collegeFeedbackCategories(form.collegeFeedbackItemCodes).map((category) => (
           <section key={category.code} aria-labelledby={`exit-feedback-${category.code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="mt-6 border-t border-border pt-5">
             <h3 id={`exit-feedback-${category.code.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`} className="font-semibold text-ink">{category.label}</h3>
