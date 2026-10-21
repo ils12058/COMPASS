@@ -7,10 +7,18 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { FormSaveStatus } from "@/components/ui/form-experience";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
-import { Panel, PanelHeader } from "@/components/ui/panel";
+import {
+  Panel,
+  PanelFooter,
+  PanelHeader,
+  PanelMessage,
+  PanelSection,
+} from "@/components/ui/panel";
+import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import {
   formatRoutineDateTime,
@@ -19,6 +27,7 @@ import {
   routineErrorCode,
   routineErrorMessage,
 } from "@/features/routine-interviews/routine-interviews-shared";
+import { CompassApiError } from "@/lib/api/errors";
 import {
   RoutineEntryMode,
   type RoutineEncounterCandidate,
@@ -29,9 +38,11 @@ import {
   getRoutineInterviewsGetAssignedQueryKey,
   getRoutineInterviewsListAssignedQueryKey,
   getRoutineInterviewsListEncounterCandidatesQueryKey,
+  getRoutineInterviewsListEncounterCandidatesQueryOptions,
   getRoutineInterviewsFinalizeAssignedEvaluationMutationKey,
   getRoutineInterviewsReplaceAssignedEvaluationMutationKey,
   routineInterviewsFinalizeAssignedEvaluation,
+  routineInterviewsGetAssigned,
   routineInterviewsReplaceAssignedEvaluation,
   useRoutineInterviewsListEncounterCandidates,
 } from "@/lib/api/generated/routine-interviews/routine-interviews";
@@ -94,37 +105,39 @@ function RatingGroup({
   id,
   label,
   value,
+  scaleDescriptionId,
   disabled = false,
   onChange,
 }: {
   id: string;
   label: string;
   value: number | null;
+  scaleDescriptionId: string;
   disabled?: boolean;
   onChange?: (value: number | null) => void;
 }) {
-  const describedBy = `${id}-anchors`;
   return (
-    <fieldset className="min-w-0 py-4" disabled={disabled}>
+    <fieldset
+      className="min-w-0 py-3"
+      disabled={disabled}
+      aria-describedby={scaleDescriptionId}
+    >
       <legend className="font-medium text-ink">{label}</legend>
-      <p id={describedBy} className="mt-1 text-xs text-muted">
-        Scale anchors: 1 = Poor · 5 = Average · 10 = Excellent
-      </p>
-      <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <label className="inline-flex min-h-10 cursor-pointer items-center gap-1.5 rounded-md border border-border-strong px-2.5 text-sm text-ink focus-within:ring-2 focus-within:ring-focus has-[:checked]:border-brand has-[:checked]:bg-brand-wash">
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <label className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-md border border-border-strong px-2.5 text-sm text-ink focus-within:ring-2 focus-within:ring-focus has-[:checked]:border-brand has-[:checked]:bg-brand-wash">
           <input
             type="radio"
             name={id}
             value="null"
             checked={value === null}
             onChange={() => onChange?.(null)}
-            aria-describedby={describedBy}
+            aria-describedby={scaleDescriptionId}
             className="accent-brand"
           />
           Not rated
         </label>
         {Array.from({ length: 10 }, (_, index) => index + 1).map((rating) => (
-          <label key={rating} className="inline-flex size-10 cursor-pointer items-center justify-center gap-1 rounded-md border border-border-strong text-sm font-semibold text-ink focus-within:ring-2 focus-within:ring-focus has-[:checked]:border-brand has-[:checked]:bg-brand-wash has-[:checked]:text-brand">
+          <label key={rating} className="inline-flex size-11 cursor-pointer items-center justify-center gap-1 rounded-md border border-border-strong text-sm font-semibold text-ink focus-within:ring-2 focus-within:ring-focus has-[:checked]:border-brand has-[:checked]:bg-brand-wash has-[:checked]:text-brand">
             <input
               type="radio"
               name={id}
@@ -132,7 +145,7 @@ function RatingGroup({
               checked={value === rating}
               onChange={() => onChange?.(rating)}
               aria-label={`${label}: ${rating}`}
-              aria-describedby={describedBy}
+              aria-describedby={scaleDescriptionId}
               className="sr-only"
             />
             {rating}
@@ -196,6 +209,10 @@ export function RoutineCounselorEvaluationWorkspace({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
+  useUnsavedChangesGuard({
+    dirty: dirty && !evaluationFinalized,
+    message: "Discard your unsaved Counselor Evaluation changes?",
+  });
   const save = useMutation({
     mutationKey: getRoutineInterviewsReplaceAssignedEvaluationMutationKey(),
     mutationFn: (data: RoutineEvaluationPayload) =>
@@ -235,6 +252,14 @@ export function RoutineCounselorEvaluationWorkspace({
     setNotice(null);
   }
 
+  function acceptCanonicalEvaluation(evaluation: RoutineEvaluationPayload) {
+    const current = normalizeEvaluation(evaluation);
+    setDraft(current);
+    setSaved(current);
+    setSaveError(null);
+    setNotice(null);
+  }
+
   if (evaluationFinalized) {
     return (
       <Panel aria-labelledby="routine-evaluation-heading">
@@ -252,55 +277,90 @@ export function RoutineCounselorEvaluationWorkspace({
         title="Counselor Evaluation"
         titleId="routine-evaluation-heading"
         description={
-          <>
-            <span className="block max-w-3xl">Guidance Counselor / Coordinator section. This is separate from the Student-authored Intake.</span>
-            <span className="mt-1 block text-xs">Source evaluation scale: 1 = Poor · 5 = Average · 10 = Excellent.</span>
-          </>
+          "Counselor-authored professional documentation, separate from the Student Intake."
         }
       />
 
-      {saveError ? <p role="alert" className="border-b border-border px-4 py-3 text-sm text-danger sm:px-5">{saveError}</p> : null}
-      {notice ? <p role="status" className="border-b border-border px-4 py-3 text-sm text-success sm:px-5">{notice}</p> : null}
+      {saveError ? (
+        <PanelMessage role="alert" tone="danger">
+          {saveError}
+        </PanelMessage>
+      ) : null}
 
       <form
-        className="px-4 sm:px-5"
+        className="min-w-0"
         onSubmit={(event) => {
           event.preventDefault();
           void saveProgress();
         }}
       >
-        <div className="divide-y divide-border">
-          {ratings.map((rating) => (
-            <RatingGroup
-              key={rating.key}
-              id={`routine-evaluation-${rating.key}`}
-              label={rating.label}
-              value={draft[rating.key]}
-              disabled={save.isPending}
-              onChange={(value) => updateRating(rating.key, value)}
-            />
-          ))}
-        </div>
-        {evaluationText.map((field) => (
-          <div key={field.key} className="mt-5 max-w-3xl">
-            <Label htmlFor={`routine-evaluation-${field.key}`}>{field.label}</Label>
-            <Textarea
-              id={`routine-evaluation-${field.key}`}
-              className="mt-2"
-              value={draft[field.key]}
-              onChange={(event) => updateText(field.key, event.target.value)}
-              disabled={save.isPending}
-            />
+        <PanelSection
+          title="Adjustment ratings"
+          titleId="routine-evaluation-ratings-heading"
+          description="Choose a value from 1 to 10, or Not rated. The source scale anchors are 1 = Poor, 5 = Average, and 10 = Excellent."
+        >
+          <div className="max-w-5xl @container/evaluation">
+            <div className="divide-y divide-border @3xl/evaluation:grid @3xl/evaluation:grid-cols-2 @3xl/evaluation:divide-y-0 @3xl/evaluation:gap-x-8">
+              {ratings.map((rating) => (
+                <RatingGroup
+                  key={rating.key}
+                  id={`routine-evaluation-${rating.key}`}
+                  label={rating.label}
+                  value={draft[rating.key]}
+                  scaleDescriptionId="routine-evaluation-scale-description"
+                  disabled={save.isPending}
+                  onChange={(value) => updateRating(rating.key, value)}
+                />
+              ))}
+            </div>
           </div>
-        ))}
-        <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-border py-4">
+          <span id="routine-evaluation-scale-description" className="sr-only">
+            Rating options are Not rated and integers from 1 through 10. Source scale anchors: 1 = Poor, 5 = Average, and 10 = Excellent.
+          </span>
+        </PanelSection>
+
+        <PanelSection
+          title="Narrative observations"
+          titleId="routine-evaluation-narrative-heading"
+          description="Complete the existing narrative fields in the Counselor's own words."
+        >
+          <div className="max-w-3xl space-y-5">
+            {evaluationText.map((field) => (
+              <div key={field.key} className="min-w-0">
+                <Label
+                  htmlFor={`routine-evaluation-${field.key}`}
+                  className="block max-w-full break-words"
+                >
+                  {field.label}
+                </Label>
+                <Textarea
+                  id={`routine-evaluation-${field.key}`}
+                  className="mt-2 min-h-36"
+                  rows={5}
+                  value={draft[field.key]}
+                  onChange={(event) => updateText(field.key, event.target.value)}
+                  disabled={save.isPending}
+                />
+              </div>
+            ))}
+          </div>
+        </PanelSection>
+
+        <PanelFooter>
           <Button type="submit" variant="secondary" disabled={save.isPending || !dirty}>
-            {save.isPending ? "Saving…" : "Save evaluation"}
+            Save Evaluation
           </Button>
-          <p role="status" className="text-sm text-muted">
-            {dirty ? "Unsaved changes. Save before finalizing." : "Saved"}
-          </p>
-        </div>
+          <div className="min-w-0">
+            <FormSaveStatus
+              dirty={dirty}
+              saving={save.isPending}
+              savedMessage={notice}
+            />
+            <p className="mt-1 text-xs text-muted">
+              Saving keeps this draft editable. Finalization is a separate action.
+            </p>
+          </div>
+        </PanelFooter>
       </form>
 
       <RoutineEncounterFinalization
@@ -309,6 +369,7 @@ export function RoutineCounselorEvaluationWorkspace({
         linkedEncounter={linkedEncounter}
         workspaceHref={workspaceHref ?? null}
         disabled={dirty || save.isPending}
+        onCanonicalEvaluation={acceptCanonicalEvaluation}
       />
     </Panel>
   );
@@ -320,18 +381,23 @@ function RoutineEncounterFinalization({
   linkedEncounter,
   workspaceHref,
   disabled,
+  onCanonicalEvaluation,
 }: {
   routineInterviewId: string;
   entryMode: RoutineEntryMode;
   linkedEncounter: RoutineEncounterSummary | null;
   workspaceHref: string | null;
   disabled: boolean;
+  onCanonicalEvaluation: (evaluation: RoutineEvaluationPayload) => void;
 }) {
   const queryClient = useQueryClient();
   const [page, setPage] = useState(1);
   const [selectedEncounterId, setSelectedEncounterId] = useState("");
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [requiresStatusCheck, setRequiresStatusCheck] = useState(false);
+  const [checkingCurrentStatus, setCheckingCurrentStatus] = useState(false);
+  const [reconciliationMessage, setReconciliationMessage] = useState<string | null>(null);
   const appointmentBacked = entryMode === RoutineEntryMode.APPOINTMENT;
   const linked = linkedEncounter !== null;
   // Only an unlinked direct Routine Interview needs the Counselor to name an Encounter: one
@@ -356,32 +422,94 @@ function RoutineEncounterFinalization({
   const pending = finalize.isPending;
   const ready = linked || (!candidates.isPending && !candidates.isError && items.length > 0 && (!recovery || Boolean(selectedEncounterId)));
 
-  async function confirmFinalize() {
-    if (disabled || pending || !ready) return;
+  async function checkCurrentStatus() {
+    setCheckingCurrentStatus(true);
     setError(null);
+    setReconciliationMessage(null);
     try {
-      const response = await finalize.mutateAsync();
-      queryClient.setQueryData(getRoutineInterviewsGetAssignedQueryKey(routineInterviewId), response);
-      setConfirmOpen(false);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetAssignedQueryKey(routineInterviewId) }),
-        queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListAssignedQueryKey() }),
-        invalidateGuidanceWork(queryClient),
-        queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(routineInterviewId) }),
-      ]);
+      const current = await routineInterviewsGetAssigned(routineInterviewId);
+      queryClient.setQueryData(
+        getRoutineInterviewsGetAssignedQueryKey(routineInterviewId),
+        current,
+      );
+      if (current.data.evaluation_status === "FINALIZED") {
+        setRequiresStatusCheck(false);
+        return;
+      }
+      if (current.data.evaluation_status !== "DRAFT") {
+        throw new Error("The current Evaluation status is unavailable.");
+      }
+      onCanonicalEvaluation(current.data.evaluation);
+      if (!current.data.counseling_encounter) {
+        await queryClient.fetchQuery({
+          ...getRoutineInterviewsListEncounterCandidatesQueryOptions(
+            routineInterviewId,
+            params,
+            { query: { retry: false, staleTime: 0 } },
+          ),
+          retry: false,
+          staleTime: 0,
+        });
+      }
+      setRequiresStatusCheck(false);
+      setReconciliationMessage(
+        "The latest Evaluation is still a draft. Review the current Counseling Encounter details before finalizing again.",
+      );
+    } catch {
+      setRequiresStatusCheck(true);
+      setError(
+        "The current Evaluation status could not be confirmed. Check it before trying to finalize again.",
+      );
+    } finally {
+      setCheckingCurrentStatus(false);
+    }
+  }
+
+  async function confirmFinalize() {
+    if (disabled || pending || !ready || requiresStatusCheck) return;
+    setError(null);
+    setReconciliationMessage(null);
+    let response;
+    try {
+      response = await finalize.mutateAsync();
     } catch (caught) {
       const code = routineErrorCode(caught);
-      const changed = code === "routine_interview_encounter_mismatch" || code === "routine_interview_encounter_required" || code === "routine_interview_encounter_conflict";
-      setError(changed
-        ? "The Counseling interaction changed while this page was open. The latest details are now shown; review them before finalizing."
-        : routineErrorMessage(caught, "The Counselor Evaluation could not be finalized."));
-      if (changed) {
+      const changed =
+        code === "routine_interview_encounter_mismatch" ||
+        code === "routine_interview_encounter_required" ||
+        code === "routine_interview_encounter_conflict" ||
+        code === "routine_interview_evaluation_finalized";
+      const uncertain =
+        !(caught instanceof CompassApiError) ||
+        caught.status === 408 ||
+        caught.status >= 500;
+      if (changed || uncertain) {
         setSelectedEncounterId("");
         setConfirmOpen(false);
-        void queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(routineInterviewId) });
+        setRequiresStatusCheck(true);
+        setError(
+          uncertain
+            ? "Finalization could not be confirmed. Checking the current record before another attempt."
+            : "The Counseling interaction changed. Checking the latest Evaluation and Encounter details before another attempt.",
+        );
+        await checkCurrentStatus();
+      } else {
+        setError(routineErrorMessage(caught, "The Counselor Evaluation could not be finalized."));
+        if (routineErrorCode(caught)) {
+          void queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetAssignedQueryKey(routineInterviewId) });
+        }
       }
-      void queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetAssignedQueryKey(routineInterviewId) });
+      return;
     }
+
+    queryClient.setQueryData(getRoutineInterviewsGetAssignedQueryKey(routineInterviewId), response);
+    setConfirmOpen(false);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetAssignedQueryKey(routineInterviewId) }),
+      queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListAssignedQueryKey() }),
+      invalidateGuidanceWork(queryClient),
+      queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(routineInterviewId) }),
+    ]);
   }
 
   const recordLink = workspaceHref ? (
@@ -391,15 +519,21 @@ function RoutineEncounterFinalization({
   ) : null;
 
   return (
-    <section aria-labelledby="routine-encounter-finalization" className="border-t border-brand-line px-4 py-5 sm:px-5">
-      <h3 id="routine-encounter-finalization" className="font-heading text-sm font-semibold uppercase tracking-[0.08em] text-brand">Finalize evaluation</h3>
-      <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
-        Finalizing links the completed encounter and permanently locks this evaluation.
-      </p>
+    <PanelSection
+      title="Finalize evaluation"
+      titleId="routine-encounter-finalization"
+      level={3}
+      description="Finalization links a completed Counseling Encounter and makes this Evaluation read-only in this workflow."
+    >
+      {disabled ? (
+        <PanelMessage role="status">
+          Save the Evaluation before finalizing it.
+        </PanelMessage>
+      ) : null}
 
       {linkedEncounter ? (
-        <dl className="mt-4 rounded-sm bg-surface-subtle px-4 py-3">
-          <dt className="text-xs font-semibold text-muted">Counseling Encounter</dt>
+        <dl className="mt-4 max-w-3xl">
+          <dt className="text-sm font-medium text-ink">Encounter already linked</dt>
           <dd className="mt-1 text-sm text-ink">
             {formatRoutineDateTime(linkedEncounter.started_at)}
             <span className="block text-muted">Ended {formatRoutineDateTime(linkedEncounter.ended_at)}</span>
@@ -410,43 +544,54 @@ function RoutineEncounterFinalization({
           <Skeleton className="h-14 w-full" />
         </div>
       ) : candidates.isError ? (
-        <div role="alert" className="mt-4">
-          <p className="text-sm text-danger">{routineErrorMessage(candidates.error, "Completed Counseling interactions could not be loaded.")}</p>
-          <Button className="mt-3" variant="secondary" onClick={() => void candidates.refetch()}>Retry</Button>
-        </div>
+        <PanelMessage
+          className="mt-4 px-0 sm:px-0"
+          role="alert"
+          tone="danger"
+          action={
+            <Button variant="secondary" onClick={() => void candidates.refetch()}>
+              Retry
+            </Button>
+          }
+        >
+          {routineErrorMessage(candidates.error, "Completed Counseling interactions could not be loaded.")}
+        </PanelMessage>
       ) : appointmentBacked ? (
-        <p className="mt-4 rounded-sm bg-surface-subtle px-4 py-3 text-sm text-ink">
+        <p className="mt-4 max-w-3xl text-sm leading-6 text-ink">
           {items.length > 0
-            ? "The completed Counseling Encounter for this Appointment is recorded. Finalizing links it to this Routine Interview."
-            : "A completed Counseling Encounter for this Appointment is required before the Evaluation can be finalized."}
+            ? "The completed Counseling Encounter for this Appointment is available. Finalization will link it to this Routine Interview."
+            : "A completed, matching Counseling Encounter for this Appointment is required before finalization."}
         </p>
       ) : (
-        <div className="mt-4 rounded-sm bg-surface-subtle px-4 py-3">
-          <p className="font-medium text-ink">Counseling Encounter not yet recorded</p>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted">
-            Record the encounter from this interview&rsquo;s Counseling workspace.{recordLink ? <> {recordLink}</> : null}
+        <div className="mt-4 max-w-3xl">
+          <p className="font-medium text-ink">No eligible completed Encounter is available yet.</p>
+          <p className="mt-1 text-sm leading-6 text-muted">
+            Record this interaction in its Counseling workspace or wait until a matching Encounter is available.{recordLink ? <> {recordLink}</> : null}
           </p>
         </div>
       )}
 
       {recovery && !candidates.isPending && !candidates.isError && items.length > 0 ? (
         <fieldset className="mt-4 min-w-0">
-          <legend className="text-sm font-medium text-ink">Encounters recorded outside this Routine Interview</legend>
-          <p className="mb-2 mt-1 max-w-3xl text-sm text-muted">
-            Choose the encounter for this interaction before finalizing.
+          <legend className="text-sm font-medium text-ink">Select the completed Encounter for this interaction</legend>
+          <p className="mb-2 mt-1 max-w-3xl text-sm leading-6 text-muted">
+            These recorded Encounters match the existing Student, Counselor, Counseling Service, visit type, and delivery rules. Select the one linked to this Routine Interview.
           </p>
           <div className="divide-y divide-border rounded-sm border border-border">
             {items.map((candidate: RoutineEncounterCandidate) => (
-              <label key={candidate.id} className="flex cursor-pointer items-start gap-3 px-3 py-3 has-[:checked]:bg-brand-wash">
+              <label key={candidate.id} className="flex min-h-14 cursor-pointer items-start gap-3 px-3 py-3 focus-within:relative focus-within:z-10 focus-within:ring-2 focus-within:ring-focus has-[:checked]:bg-brand-wash">
                 <input
                   type="radio"
                   name="routine-finalize-encounter"
                   value={candidate.id}
                   checked={candidate.id === selectedEncounterId}
-                  onChange={() => setSelectedEncounterId(candidate.id)}
+                  onChange={() => {
+                    setSelectedEncounterId(candidate.id);
+                    setReconciliationMessage(null);
+                  }}
                   className="mt-1 size-4 accent-brand"
                 />
-                <span>
+                <span className="min-w-0 break-words">
                   <span className="block font-medium text-ink">{formatRoutineDateTime(candidate.started_at)}</span>
                   <span className="mt-1 block text-sm text-muted">Ended {formatRoutineDateTime(candidate.ended_at)} · {routineEntryModeLabel(candidate.entry_mode)} · {routineDeliveryModeLabel(candidate.delivery_mode)}</span>
                 </span>
@@ -466,11 +611,43 @@ function RoutineEncounterFinalization({
         </fieldset>
       ) : null}
 
-      {error && !confirmOpen ? <p role="alert" className="mt-4 text-sm text-danger">{error}</p> : null}
+      {checkingCurrentStatus ? (
+        <PanelMessage role="status" className="mt-4 px-0 sm:px-0">
+          Checking the current Evaluation and Encounter details…
+        </PanelMessage>
+      ) : null}
+      {requiresStatusCheck && !checkingCurrentStatus ? (
+        <PanelMessage
+          className="mt-4 px-0 sm:px-0"
+          role="alert"
+          tone="danger"
+          action={
+            <Button variant="secondary" onClick={() => void checkCurrentStatus()}>
+              Check current status
+            </Button>
+          }
+        >
+          {error}
+        </PanelMessage>
+      ) : null}
+      {reconciliationMessage ? (
+        <PanelMessage role="status" className="mt-4 px-0 sm:px-0">
+          {reconciliationMessage}
+        </PanelMessage>
+      ) : null}
+      {error && !confirmOpen && !requiresStatusCheck && !checkingCurrentStatus ? (
+        <PanelMessage role="alert" tone="danger" className="mt-4 px-0 sm:px-0">
+          {error}
+        </PanelMessage>
+      ) : null}
       <Button
         className="mt-5"
-        disabled={disabled || pending || !ready}
-        onClick={() => setConfirmOpen(true)}
+        disabled={disabled || pending || !ready || requiresStatusCheck || checkingCurrentStatus}
+        onClick={() => {
+          setError(null);
+          setReconciliationMessage(null);
+          setConfirmOpen(true);
+        }}
       >
         Finalize Counselor Evaluation
       </Button>
@@ -481,16 +658,15 @@ function RoutineEncounterFinalization({
         confirmLabel="Finalize evaluation"
         pendingLabel="Finalizing…"
         pending={pending}
-        confirmDisabled={disabled}
+        confirmDisabled={disabled || requiresStatusCheck || checkingCurrentStatus}
         error={error}
         onOpenChange={setConfirmOpen}
         onConfirm={() => void confirmFinalize()}
       >
         <p>
-          After finalization, this Evaluation becomes read-only and stays
-          linked to the completed Counseling interaction.
+          Finalizing links the completed Counseling Encounter to this Routine Interview and makes the Evaluation read-only. You cannot edit it afterward in this workflow.
         </p>
       </ConsequentialActionDialog>
-    </section>
+    </PanelSection>
   );
 }
