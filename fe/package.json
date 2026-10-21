@@ -25,6 +25,7 @@
     "test:ui:ecounseling:consent": "node tests/ecounseling-consent-realtime.browser.mjs && COMPASS_UI_BROWSER=webkit node tests/ecounseling-consent-realtime.browser.mjs",
     "test:ui:ecounseling:media": "node tests/ecounseling-media-realtime.browser.mjs && COMPASS_UI_BROWSER=webkit node tests/ecounseling-media-realtime.browser.mjs",
     "test:ui:feedback": "node tests/customer-feedback-identity.browser.mjs && COMPASS_UI_BROWSER=webkit node tests/customer-feedback-identity.browser.mjs",
+    "test:ui:feedback-csm": "node tests/ux15-feedback-csm.browser.mjs && COMPASS_UI_BROWSER=webkit node tests/ux15-feedback-csm.browser.mjs",
     "test:ui:forms": "node tests/form-input-standardization.browser.mjs && COMPASS_UI_BROWSER=webkit node tests/form-input-standardization.browser.mjs",
     "test:ui:counseling:encounter": "node tests/counseling-encounter-consistency.browser.mjs && COMPASS_UI_BROWSER=webkit node tests/counseling-encounter-consistency.browser.mjs",
     "test:ui:call-slips": "node tests/call-slip-permissions.browser.mjs && COMPASS_UI_BROWSER=webkit node tests/call-slip-permissions.browser.mjs",
