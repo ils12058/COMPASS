@@ -53,7 +53,7 @@ export function InterestsSection({ draft, onChange, validationIssues = [] }: Inv
               hint="Removing Other reason clears this detail."
             />
           ) : null}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 @md/inventory:grid-cols-2">
             <TextAreaField
               id="inventory-lowest-subjects"
               label="Subjects with lowest grades and grades received"
@@ -98,7 +98,7 @@ export function InterestsSection({ draft, onChange, validationIssues = [] }: Inv
             onChange={(values) => onChange({ interests: values })}
             columns={3}
           />
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 @md/inventory:grid-cols-2">
             <TextAreaField
               id="inventory-other-skills-hobbies"
               label="Other skills and hobbies"
@@ -132,7 +132,7 @@ export function InterestsSection({ draft, onChange, validationIssues = [] }: Inv
             <p className="mt-1 text-xs leading-5 text-muted">
               Each value may be entered independently. The combined values do not need to total 24.
             </p>
-            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-4 grid gap-4 @md/inventory:grid-cols-2 @2xl/inventory:grid-cols-3">
               {hours.map(([key, label]) => (
                 <TextField
                   key={key}

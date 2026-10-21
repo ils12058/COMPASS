@@ -222,7 +222,7 @@ export function CheckboxGroupField<T extends string>({
   error?: string;
 }) {
   const values = value ?? [];
-  const grid = columns === 1 ? "sm:grid-cols-1" : columns === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2";
+  const grid = columns === 1 ? "@md/inventory:grid-cols-1" : columns === 3 ? "@md/inventory:grid-cols-3" : "@md/inventory:grid-cols-2";
   const hintId = id && hint ? `${id}-hint` : undefined;
   const errorId = id && error ? `${id}-error` : undefined;
   const review = useInventoryReview(id);

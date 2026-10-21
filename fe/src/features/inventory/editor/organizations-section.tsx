@@ -80,7 +80,7 @@ export function OrganizationsSection({ draft, onChange, validationIssues = [] }:
                 <InventoryReviewHintText hint={listReview.hint} className="mt-1" />
                 <div className="mt-3 divide-y divide-border rounded-sm border border-border">
                   {rows.map((row, index) => (
-                    <div key={`${scope}-${index}`} className="grid gap-4 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+                    <div key={`${scope}-${index}`} className="grid gap-4 px-4 py-4 @md/inventory:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] @md/inventory:items-end">
                       <TextField
                         id={`inventory-membership-${scope.toLowerCase()}-${index}-organization`}
                         label="Organization name"
@@ -139,7 +139,7 @@ export function OrganizationsSection({ draft, onChange, validationIssues = [] }:
           role="group"
           aria-label="Transportation modes"
           aria-describedby={modesReview.describedBy}
-          className="grid gap-x-5 gap-y-3 sm:grid-cols-2 lg:grid-cols-3"
+          className="grid gap-x-5 gap-y-3 @md/inventory:grid-cols-2 @2xl/inventory:grid-cols-3"
         >
           {transportationModes.map(([mode, label]) => {
             const selected = transportation.some((entry) => entry.mode === mode);
@@ -163,8 +163,8 @@ export function OrganizationsSection({ draft, onChange, validationIssues = [] }:
             if (!entry) return [];
             const rowReview = review(`inventory-transport-${mode.toLowerCase()}`);
             return [
-              <section key={mode} className="grid gap-4 px-4 py-5 sm:grid-cols-2" aria-labelledby={`inventory-transport-${mode.toLowerCase()}`} aria-describedby={rowReview.hint?.id}>
-                <div className="sm:col-span-2">
+              <section key={mode} className="grid gap-4 px-4 py-5 @md/inventory:grid-cols-2" aria-labelledby={`inventory-transport-${mode.toLowerCase()}`} aria-describedby={rowReview.hint?.id}>
+                <div className="@md/inventory:col-span-2">
                   <h3 id={`inventory-transport-${mode.toLowerCase()}`} className="font-semibold text-ink">{label}</h3>
                   <InventoryReviewHintText hint={rowReview.hint} className="mt-1" />
                 </div>

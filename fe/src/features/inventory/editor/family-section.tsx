@@ -105,7 +105,7 @@ export function FamilySection({ draft, onChange, validationIssues = [] }: Invent
       </FieldGroup>
 
       <FieldGroup legend="Parent status">
-        <div className="grid gap-5 lg:grid-cols-2">
+        <div className="grid gap-5 @2xl/inventory:grid-cols-2">
           <SelectField
             id="inventory-parent-status-category"
             error={errorFor("inventory-parent-status-category")}
@@ -127,7 +127,7 @@ export function FamilySection({ draft, onChange, validationIssues = [] }: Invent
       </FieldGroup>
 
       <FieldGroup legend="Guardian and emergency contact">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 @md/inventory:grid-cols-2">
           <TextField
             id="inventory-guardian-name"
             maxLength={inventoryTextLimits.guardian_name}
@@ -180,7 +180,7 @@ export function FamilySection({ draft, onChange, validationIssues = [] }: Invent
         <p className="mb-5 max-w-3xl text-sm leading-6 text-muted">
           These responses are confidential support information. They are not shown in the Counselor roster.
         </p>
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 @md/inventory:grid-cols-2">
           <SelectField
             id="inventory-four-ps"
             error={errorFor("inventory-four-ps")}
@@ -293,7 +293,7 @@ function FamilyMemberFields({
           </Button>
         ) : null}
       </div>
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div className="mt-4 grid gap-4 @md/inventory:grid-cols-2">
         <TextField id={`${prefix}-name`} label="Name" maxLength={familyMemberTextLimits.name} value={member.name} onChange={(value) => onChange({ name: value })} />
         <SelectField
           id={`${prefix}-occupation-category`}
@@ -345,7 +345,7 @@ function FamilyMemberFields({
         <summary className="min-h-9 cursor-pointer text-sm font-semibold text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
           Additional {label.toLowerCase()} information
         </summary>
-        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="mt-4 grid gap-4 @md/inventory:grid-cols-2">
           <TextField id={`${prefix}-date-of-birth`} label="Date of birth" type="date" max={institutionalDateInputValue()} error={birthDateError} value={member.date_of_birth} onChange={(value) => onChange({ date_of_birth: value || null })} />
           <TextField id={`${prefix}-place-of-birth`} label="Place of birth" maxLength={familyMemberTextLimits.place_of_birth} value={member.place_of_birth} onChange={(value) => onChange({ place_of_birth: value })} />
           <TextAreaField id={`${prefix}-current-address`} label="Current address" value={member.current_address} onChange={(value) => onChange({ current_address: value })} />

@@ -8,8 +8,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
-import { Select } from "@/components/ui/select";
-import { Panel, PanelHeader } from "@/components/ui/panel";
+import { FormSaveStatus, FormSectionNavigation } from "@/components/ui/form-experience";
+import { Panel, PanelHeader, PanelFooter, PanelMessage } from "@/components/ui/panel";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { BackgroundSection } from "@/features/inventory/editor/background-section";
@@ -119,15 +119,17 @@ export function InventoryEditor({
     const target = document.getElementById(pendingTargetId);
     if (!target) return;
     target.scrollIntoView({ block: "center" });
-    const focusTarget = target.matches("input, select, textarea, button")
+    const focusTarget = target.matches("input, select, textarea, button, [tabindex]")
       ? target
       : target.querySelector<HTMLElement>("input, select, textarea, button");
     (focusTarget as HTMLElement | null)?.focus({ preventScroll: true });
   }, [section, focusRequest]);
 
-  function navigateToSection(next: InventorySectionId) {
+  function navigateToSection(next: InventorySectionId, focusSection = true) {
+    if (focusSection) pendingTargetRef.current = INVENTORY_SECTION_START_ID;
     if (next === "review") setValidationVisible(true);
     setSection(next);
+    if (focusSection) setFocusRequest((current) => current + 1);
   }
 
   function selectCorrectionTarget(target: InventoryCorrectionTarget) {
@@ -268,10 +270,9 @@ export function InventoryEditor({
       />
       {refreshNotice}
 
-      <div className="mt-5">
-        <InventoryNotice>
-          Your Individual Inventory helps the Guidance and Counseling Office understand your needs and future plans. Please provide accurate information. Your responses are handled as confidential Student information.
-        </InventoryNotice>
+      <div className="mt-4 max-w-3xl space-y-2 text-sm leading-6 text-muted">
+        <p>Your Individual Inventory helps the Guidance and Counseling Office understand your needs and future plans. Please provide accurate information. Your responses are handled as confidential Student information.</p>
+        <p>Move between sections in any order. Save progress before leaving.</p>
       </div>
 
       {currentCorrection ? (
@@ -281,46 +282,18 @@ export function InventoryEditor({
       ) : null}
 
       <div className="mt-5 md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:items-start md:gap-6">
-        <div className="mb-6 md:mb-0">
-          <label htmlFor="inventory-section-select" className="mb-2 block text-sm font-semibold text-ink md:sr-only">
-            Inventory section
-          </label>
-          <Select
+        <div className="mb-4 md:sticky md:top-5 md:mb-0">
+          <FormSectionNavigation
             id="inventory-section-select"
-            className="min-h-11 font-semibold md:hidden"
-            value={section}
-            onChange={(event) => {
-              const next = inventorySections.find((item) => item.id === event.target.value);
-              if (next) navigateToSection(next.id);
-            }}
-          >
-            {inventorySections.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}{item.id === "review" && issues.length ? ` · ${issues.length} needs attention` : ""}
-              </option>
-            ))}
-          </Select>
-          <nav aria-label="Individual Inventory sections" className="hidden overflow-hidden rounded-sm border border-brand-line bg-surface-raised md:sticky md:top-5 md:block">
-            <ol>
-              {inventorySections.map((item, index) => {
-                const count = issues.filter((issue) => issue.section === item.id).length;
-                const active = section === item.id;
-                return (
-                  <li key={item.id} className="border-b border-border last:border-b-0">
-                    <button
-                      type="button"
-                      aria-current={active ? "step" : undefined}
-                      className={`flex min-h-12 w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus ${active ? "bg-brand-wash font-semibold text-brand" : "text-ink hover:bg-surface-subtle"}`}
-                      onClick={() => navigateToSection(item.id)}
-                    >
-                      <span><span className="mr-2 text-xs text-muted">{index + 1}.</span>{item.label}</span>
-                      {count ? <span className="shrink-0 text-xs font-semibold text-warning">{count}</span> : null}
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-          </nav>
+            label="Inventory section"
+            navigationLabel="Individual Inventory sections"
+            sections={inventorySections.map((item) => ({
+              ...item,
+              attentionCount: validationVisible ? issues.filter((issue) => item.id === "review" || issue.section === item.id).length : undefined,
+            }))}
+            current={section}
+            onSelect={navigateToSection}
+          />
         </div>
 
         <Panel as="div" className="min-w-0">
@@ -333,15 +306,15 @@ export function InventoryEditor({
             />
           </div>
 
-          {saveError || submitError || notice ? (
-            <div className="space-y-3 border-b border-brand-line px-4 py-4 sm:px-5">
-              {saveError ? <InventoryNotice tone="danger" role="alert">{saveError}</InventoryNotice> : null}
-              {submitError ? <InventoryNotice tone="danger" role="alert">{submitError}</InventoryNotice> : null}
-              {notice ? <InventoryNotice tone="success">{notice}</InventoryNotice> : null}
+          {saveError || submitError ? (
+            <div className="border-b border-brand-line">
+              {saveError ? <PanelMessage tone="danger" role="alert">{saveError}</PanelMessage> : null}
+              {submitError ? <PanelMessage tone="danger" role="alert">{submitError}</PanelMessage> : null}
             </div>
           ) : null}
 
-          <fieldset disabled={pending} className="min-w-0 px-4 py-5 disabled:opacity-100 sm:px-5">
+          {/* Field columns follow the sheet width, including when text size grows. */}
+          <fieldset disabled={pending} className="@container/inventory min-w-0 px-4 py-5 [overflow-wrap:anywhere] disabled:opacity-100 sm:px-5">
             <InventoryReviewProvider value={reviewHints}>
               {section !== "review" && reviewHints.sections.has(section) ? (
                 <p id={INVENTORY_SECTION_REVIEW_ID} tabIndex={-1} className="mb-5 rounded-sm text-sm font-medium leading-6 text-info focus:outline-none focus-visible:ring-2 focus-visible:ring-focus">
@@ -365,19 +338,16 @@ export function InventoryEditor({
                   programLookupReady={Boolean(programQuery.data) || !canDiscoverPrograms}
                   selectedProgram={selectedProgram}
                   onSelectIssue={selectIssue}
+                  onSelectSection={navigateToSection}
                 />
               ) : null}
             </InventoryReviewProvider>
           </fieldset>
 
-          <div className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-4 sm:px-5">
-            {dirty ? (
-              <p role="status" className="mb-4 text-sm font-semibold text-warning">Unsaved changes</p>
-            ) : (
-              <p role="status" className="mb-4 text-sm text-muted">Saved</p>
-            )}
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex flex-wrap gap-2">
+          <PanelFooter className="block space-y-3">
+            <FormSaveStatus dirty={dirty} saving={save.isPending} savedMessage={notice} />
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap gap-2 *:max-w-full">
                 <Button
                   variant="secondary"
                   disabled={pending || !dirty}
@@ -402,26 +372,26 @@ export function InventoryEditor({
                   </Button>
                 )}
               </div>
-              <div className="flex justify-between gap-2 sm:justify-end">
+              <div className="flex min-w-0 flex-wrap gap-2 *:max-w-full">
                 <Button
-                  variant="quiet"
+                  variant="secondary"
                   disabled={pending || currentSectionIndex <= 0}
                   onClick={() => navigateToSection(inventorySections[currentSectionIndex - 1].id)}
                 >
-                  Previous section
+                  Back
                 </Button>
                 {section !== "review" ? (
                   <Button
-                    variant="quiet"
+                    variant="primary"
                     disabled={pending}
                     onClick={() => navigateToSection(inventorySections[currentSectionIndex + 1].id)}
                   >
-                    Next section
+                    {inventorySections[currentSectionIndex + 1].id === "review" ? "Review answers" : "Continue"}
                   </Button>
                 ) : null}
               </div>
             </div>
-          </div>
+          </PanelFooter>
         </Panel>
       </div>
 

@@ -90,7 +90,7 @@ export function BackgroundSection({ draft, onChange, validationIssues = [] }: In
                   </Button>
                 </div>
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 @md/inventory:grid-cols-2">
                 <TextField
                   id={`inventory-sibling-${index}-name`}
                   maxLength={siblingTextLimits.name}
@@ -164,7 +164,7 @@ export function BackgroundSection({ draft, onChange, validationIssues = [] }: In
       </FieldGroup>
 
       <FieldGroup legend="Personal background and unique features">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 @md/inventory:grid-cols-2">
           <TextAreaField
             id="inventory-friends-in-school"
             label="Friends in school"

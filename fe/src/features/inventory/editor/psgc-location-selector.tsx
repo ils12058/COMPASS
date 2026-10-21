@@ -221,7 +221,7 @@ export function PSGCLocationSelector({
               Saved location data is preserved. You can continue editing other sections.
             </InventoryNotice>
           ) : null}
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 @md/inventory:grid-cols-2">
             <div>
               <Label htmlFor={`${prefix}-region`}>Region</Label>
               <Select
