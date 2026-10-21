@@ -13,7 +13,7 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
   return (
     <div className="space-y-7">
       <FieldGroup legend="Plans after graduation">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 @md/inventory:grid-cols-2">
           <SelectField
             id="inventory-ideal-allowance"
             label="Ideal monthly allowance"
@@ -64,7 +64,7 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
             })}
           />
           {draft.prior_counseling_experience === true ? (
-            <div className="grid gap-4 rounded-sm bg-surface-subtle p-4 sm:grid-cols-2">
+            <div className="grid gap-4 rounded-sm bg-surface-subtle p-4 @md/inventory:grid-cols-2">
               <TextField
                 id="inventory-prior-counselor"
                 maxLength={inventoryTextLimits.prior_counselor_name}

@@ -1,9 +1,10 @@
 "use client";
 
+import { FormErrorSummary } from "@/components/ui/form-experience";
 import { Button } from "@/components/ui/button";
 import type { InventorySubmissionIssue } from "@/features/inventory/inventory-payload";
-import { inventorySections } from "@/features/inventory/inventory-presentation";
-import { FieldGroup, InventoryNotice } from "@/features/inventory/inventory-shared";
+import { inventorySections, type InventorySectionId } from "@/features/inventory/inventory-presentation";
+import { FieldGroup } from "@/features/inventory/inventory-shared";
 import type { InventoryPayload, ProgramSummary } from "@/lib/api/generated/model";
 import { yearLevelLabel } from "@/lib/year-level";
 
@@ -15,6 +16,7 @@ export function ReviewSection({
   programLookupReady,
   selectedProgram,
   onSelectIssue,
+  onSelectSection,
 }: {
   draft: InventoryPayload;
   academicYear: string;
@@ -23,6 +25,7 @@ export function ReviewSection({
   programLookupReady: boolean;
   selectedProgram: ProgramSummary | null;
   onSelectIssue: (issue: InventorySubmissionIssue) => void;
+  onSelectSection: (section: InventorySectionId) => void;
 }) {
   const hasProgram = Boolean(draft.program_id);
   const yearLevelIsUnsupported = Boolean(
@@ -35,7 +38,7 @@ export function ReviewSection({
   return (
     <div className="space-y-7">
       <FieldGroup legend="Record details">
-        <dl className="grid gap-x-6 sm:grid-cols-2">
+        <dl className="grid gap-x-6 @md/inventory:grid-cols-2">
           <div className="border-b border-border py-3">
             <dt className="text-xs font-semibold text-muted">Academic Year</dt>
             <dd className="mt-1 text-sm text-ink">{academicYear}</dd>
@@ -67,24 +70,8 @@ export function ReviewSection({
       </FieldGroup>
 
       <FieldGroup legend="Before you submit">
-        {issues.length > 0 ? (
-          <InventoryNotice title="Complete these answers" tone="warning">
-            <p>Select an item below to go to the question.</p>
-            <ul className="mt-3 space-y-2">
-              {issues.map((issue, index) => (
-                <li key={`${issue.section}-${index}`}>
-                  <Button
-                    variant="quiet"
-                    className="h-auto min-h-8 whitespace-normal px-1 py-1 text-left"
-                    onClick={() => onSelectIssue(issue)}
-                  >
-                    {issue.message}
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </InventoryNotice>
-        ) : null}
+        <FormErrorSummary id="inventory-validation-heading" issues={issues} onSelect={onSelectIssue} />
+        {!issues.length ? <p className="text-sm leading-6 text-ink">No required answers are missing. Review your sections below before submitting.</p> : null}
         {!programLookupReady ? (
           <p role="status" className="mt-4 text-sm leading-6 text-muted">
             Couldn’t load the program choices. Your saved program is unchanged.
@@ -96,14 +83,16 @@ export function ReviewSection({
       </FieldGroup>
 
       <FieldGroup legend="Sections">
-        <ol className="grid gap-x-6 sm:grid-cols-2">
+        <ol className="grid gap-x-6 @md/inventory:grid-cols-2">
           {inventorySections
             .filter((section) => section.id !== "review")
             .map((section) => {
               const sectionIssues = issues.filter((issue) => issue.section === section.id);
               return (
                 <li key={section.id} className="flex min-h-11 items-center justify-between gap-3 border-b border-border py-2">
-                  <span className="text-sm text-ink">{section.label}</span>
+                  <Button variant="quiet" className="min-h-11 justify-start whitespace-normal px-0 text-left" onClick={() => onSelectSection(section.id)} aria-label={`Review ${section.label}`}>
+                    {section.label}
+                  </Button>
                   {sectionIssues.length ? (
                     <span className="text-xs font-semibold text-warning">{sectionIssues.length} needs attention</span>
                   ) : null}

@@ -84,7 +84,7 @@ export function EducationSection({
       </FieldGroup>
 
       <FieldGroup legend="Current Program and course choices">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 @md/inventory:grid-cols-2">
           <div>
             <label htmlFor="inventory-program" className="text-sm font-semibold text-ink">
               Current Program <span aria-hidden="true" className="ml-1 text-danger">*</span>
@@ -208,7 +208,7 @@ export function EducationSection({
           </p>
         ) : null}
 
-        <div className="mt-6 grid gap-4 sm:grid-cols-2">
+        <div className="mt-6 grid gap-4 @md/inventory:grid-cols-2">
           <BooleanField
             id="inventory-schedule-satisfied"
             legend="Are you satisfied with your present schedule?"
@@ -249,7 +249,7 @@ function EducationLevelRow({
   const key = level.toLowerCase();
   const review = useInventoryReview(`inventory-education-${key}`);
   return (
-    <section className="grid gap-4 px-4 py-5 lg:grid-cols-[12rem_minmax(0,1fr)_11rem_12rem] lg:items-start">
+    <section className="grid gap-4 px-4 py-5 @4xl/inventory:grid-cols-[12rem_minmax(0,1fr)_11rem_12rem] @4xl/inventory:items-start">
       <div className="pt-2">
         <h3 className="text-sm font-semibold text-ink">{label}</h3>
         <InventoryReviewHintText hint={review.hint} className="mt-1" />
