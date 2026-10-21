@@ -7,10 +7,22 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import {
+  FormErrorSummary,
+  FormSaveStatus,
+  FormSectionLinks,
+} from "@/components/ui/form-experience";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Panel, PanelHeader } from "@/components/ui/panel";
+import {
+  Panel,
+  PanelBody,
+  PanelFooter,
+  PanelHeader,
+  PanelMessage,
+  PanelSection,
+} from "@/components/ui/panel";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import {
   RoutineConcernValue,
@@ -82,6 +94,60 @@ const intentionalResponseKeys: RoutineIntakeTextKey[] = [
   "academic_goals",
   "career_goals",
 ];
+
+const routineIntakeSections = [
+  { id: "routine-intake-section-1", label: "1. Coping with college" },
+  { id: "routine-intake-section-2", label: "2. College experience" },
+  { id: "routine-intake-section-3", label: "3. Family" },
+  { id: "routine-intake-section-4", label: "4. Current concerns" },
+  { id: "routine-intake-section-5", label: "5. College adjustment" },
+  { id: "routine-intake-section-6", label: "6. Academic goals" },
+  { id: "routine-intake-section-7", label: "7. Career goals" },
+] as const;
+
+type RoutineIntakeIssue = {
+  id: "meaningful-response" | "other-specification";
+  message: string;
+  targetId: string;
+};
+
+function getRoutineIntakeIssues(
+  intake: RoutineIntakePayload,
+): RoutineIntakeIssue[] {
+  const issues: RoutineIntakeIssue[] = [];
+  if (
+    !intake.concerns?.length &&
+    !intentionalResponseKeys.some((key) => Boolean(intake[key]?.trim()))
+  ) {
+    issues.push({
+      id: "meaningful-response",
+      message:
+        "Add at least one written response or select a concern to continue.",
+      targetId: "routine-intake-section-1",
+    });
+  }
+  if (
+    intake.concerns?.includes(RoutineConcernValue.OTHER) &&
+    !intake.other_concern_specification?.trim()
+  ) {
+    issues.push({
+      id: "other-specification",
+      message: "Please specify the other concern before submitting.",
+      targetId: "routine-other-concern-specification",
+    });
+  }
+  return issues;
+}
+
+function focusRoutineIntakeTarget(targetId: string) {
+  const target = document.getElementById(targetId);
+  if (!(target instanceof HTMLElement)) return;
+  target.scrollIntoView({
+    block: target.matches("input, select, textarea, button") ? "center" : "start",
+    behavior: "auto",
+  });
+  target.focus({ preventScroll: true });
+}
 
 export function normalizeRoutineIntake(
   intake: RoutineIntakePayload,
@@ -262,6 +328,7 @@ export function RoutineStudentIntakeEditor({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [validationAttempted, setValidationAttempted] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const save = useMutation({
     mutationKey: getRoutineInterviewsReplaceMyIntakeMutationKey(),
@@ -280,6 +347,9 @@ export function RoutineStudentIntakeEditor({
   });
   const selectedOther =
     draft.concerns?.includes(RoutineConcernValue.OTHER) ?? false;
+  const validationIssues = validationAttempted
+    ? getRoutineIntakeIssues(draft)
+    : [];
 
   function updateText(key: RoutineIntakeTextKey, value: string) {
     setDraft((current) => ({ ...current, [key]: value }));
@@ -356,18 +426,10 @@ export function RoutineStudentIntakeEditor({
       setSubmitError("Save your changes before submitting the Intake.");
       return;
     }
-    if (
-      !draft.concerns?.length &&
-      !intentionalResponseKeys.some((key) => Boolean(draft[key]?.trim()))
-    ) {
-      setSubmitError(
-        "Add at least one response or select a concern before submitting.",
-      );
-      return;
-    }
-    if (selectedOther && !draft.other_concern_specification?.trim()) {
-      setSubmitError("Please specify the other concern before submitting.");
-      document.getElementById("routine-other-concern-specification")?.focus();
+    setValidationAttempted(true);
+    const issues = getRoutineIntakeIssues(draft);
+    if (issues.length) {
+      focusRoutineIntakeTarget(issues[0].targetId);
       return;
     }
     setConfirmSubmit(true);
@@ -413,47 +475,66 @@ export function RoutineStudentIntakeEditor({
       setSubmitError(
         routineErrorMessage(
           error,
-          "Your Routine Interview Intake could not be submitted.",
+          "Your Intake submission could not be confirmed. Refresh this page to check its status before trying again.",
         ),
       );
     }
   }
 
+  const otherIssue = validationIssues.some(
+    (issue) => issue.id === "other-specification",
+  );
+
   return (
-    <Panel aria-labelledby="routine-student-intake-heading">
+    <Panel aria-labelledby="routine-student-intake-heading" className="min-w-0 [overflow-wrap:anywhere]">
       <PanelHeader
         title="Student Intake"
         titleId="routine-student-intake-heading"
-        description="Answer what you would like to share. To submit, add at least one written response or select a concern."
+        description="Share what feels useful to you. Every question is optional, and you can visit sections in any order."
       />
 
-      {saveError ? (
-        <p role="alert" className="border-b border-border px-4 py-3 text-sm text-danger sm:px-5">
-          {saveError}
+      <PanelBody className="space-y-3">
+        <p className="max-w-3xl text-sm leading-6 text-muted">
+          To submit, add at least one written response or select a concern. You
+          may leave other questions blank.
         </p>
-      ) : null}
-      {submitError && !confirmSubmit ? (
-        <p role="alert" className="border-b border-border px-4 py-3 text-sm text-danger sm:px-5">
-          {submitError}
-        </p>
-      ) : null}
-      {notice ? (
-        <p role="status" className="border-b border-border px-4 py-3 text-sm text-success sm:px-5">
-          {notice}
-        </p>
-      ) : null}
+        <FormSectionLinks
+          id="routine-intake-section-links"
+          label="Routine Interview sections"
+          sections={routineIntakeSections}
+          onSelect={focusRoutineIntakeTarget}
+        />
+      </PanelBody>
 
       <form
+        aria-busy={pending}
+        className="min-w-0 [overflow-wrap:anywhere]"
         onSubmit={(event) => {
           event.preventDefault();
           void saveProgress();
         }}
       >
-        <div className="divide-y divide-border">
-          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
-            <legend className="font-heading text-lg font-semibold text-ink">
-              1. Coping with college
-            </legend>
+        {saveError ? (
+          <PanelMessage role="alert" tone="danger" className="px-4 py-3 sm:px-5">
+            {saveError}
+          </PanelMessage>
+        ) : null}
+        {submitError && !confirmSubmit ? (
+          <PanelMessage role="alert" tone="danger" className="px-4 py-3 sm:px-5">
+            {submitError}
+          </PanelMessage>
+        ) : null}
+
+        <PanelSection
+          id="routine-intake-section-1"
+          tabIndex={-1}
+          title="1. Coping with college"
+          titleId="routine-intake-editor-q1"
+          level={3}
+          className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <fieldset disabled={pending} className="min-w-0">
+            <legend className="sr-only">1. Coping with college</legend>
             <TextField
               id="routine-coping"
               label="How are you? How are you coping with the challenges in college?"
@@ -469,11 +550,18 @@ export function RoutineStudentIntakeEditor({
               onChange={(value) => updateText("coping_remarks", value)}
             />
           </fieldset>
+        </PanelSection>
 
-          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
-            <legend className="font-heading text-lg font-semibold text-ink">
-              2. College experience
-            </legend>
+        <PanelSection
+          id="routine-intake-section-2"
+          tabIndex={-1}
+          title="2. College experience"
+          titleId="routine-intake-editor-q2"
+          level={3}
+          className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <fieldset disabled={pending} className="min-w-0">
+            <legend className="sr-only">2. College experience</legend>
             <TextField
               id="routine-college-experience"
               label="How has your UCN experience been so far?"
@@ -509,11 +597,18 @@ export function RoutineStudentIntakeEditor({
               }
             />
           </fieldset>
+        </PanelSection>
 
-          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
-            <legend className="font-heading text-lg font-semibold text-ink">
-              3. Family
-            </legend>
+        <PanelSection
+          id="routine-intake-section-3"
+          tabIndex={-1}
+          title="3. Family"
+          titleId="routine-intake-editor-q3"
+          level={3}
+          className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <fieldset disabled={pending} className="min-w-0">
+            <legend className="sr-only">3. Family</legend>
             <TextField
               id="routine-family"
               label="Please tell us something about your family."
@@ -521,44 +616,53 @@ export function RoutineStudentIntakeEditor({
               onChange={(value) => updateText("family_description", value)}
             />
           </fieldset>
+        </PanelSection>
 
-          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
-            <legend className="font-heading text-lg font-semibold text-ink">
-              4. Current concerns
-            </legend>
-            <p className="mt-2 text-sm font-medium text-ink">
-              What concerns do you have right now?
-            </p>
-            <div className="mt-3 grid gap-x-5 gap-y-2 sm:grid-cols-2">
-              {concernOptions.map((option) => {
-                const checked =
-                  draft.concerns?.includes(option.value) ?? false;
-                return (
-                  <label
-                    key={option.value}
-                    className="inline-flex min-h-10 items-start gap-3 py-2 text-sm text-ink"
-                  >
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 shrink-0 accent-brand"
-                      checked={checked}
-                      onChange={() => toggleConcern(option.value)}
-                      aria-controls={
-                        option.value === RoutineConcernValue.OTHER
-                          ? "routine-other-concern-specification"
-                          : undefined
-                      }
-                      aria-expanded={
-                        option.value === RoutineConcernValue.OTHER
-                          ? selectedOther
-                          : undefined
-                      }
-                    />
-                    <span>{option.label}</span>
-                  </label>
-                );
-              })}
-            </div>
+        <PanelSection
+          id="routine-intake-section-4"
+          tabIndex={-1}
+          title="4. Current concerns"
+          titleId="routine-intake-editor-q4"
+          level={3}
+          className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <fieldset disabled={pending} className="min-w-0">
+            <legend className="sr-only">4. Current concerns</legend>
+            <fieldset className="min-w-0">
+              <legend className="text-sm font-medium leading-6 text-ink">
+                What concerns do you have right now?
+              </legend>
+              <div className="mt-2 grid min-w-0 gap-x-5 gap-y-1 sm:grid-cols-2">
+                {concernOptions.map((option) => {
+                  const checked =
+                    draft.concerns?.includes(option.value) ?? false;
+                  return (
+                    <label
+                      key={option.value}
+                      className="flex min-h-11 min-w-0 items-center gap-3 py-2 text-sm leading-6 text-ink"
+                    >
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 shrink-0 accent-brand"
+                        checked={checked}
+                        onChange={() => toggleConcern(option.value)}
+                        aria-controls={
+                          option.value === RoutineConcernValue.OTHER
+                            ? "routine-other-concern-specification"
+                            : undefined
+                        }
+                        aria-expanded={
+                          option.value === RoutineConcernValue.OTHER
+                            ? selectedOther
+                            : undefined
+                        }
+                      />
+                      <span className="min-w-0">{option.label}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
             {selectedOther ? (
               <div className="mt-4 max-w-2xl">
                 <Label htmlFor="routine-other-concern-specification">
@@ -568,6 +672,10 @@ export function RoutineStudentIntakeEditor({
                   id="routine-other-concern-specification"
                   className="mt-2"
                   value={draft.other_concern_specification ?? ""}
+                  aria-invalid={otherIssue ? true : undefined}
+                  aria-describedby={
+                    otherIssue ? "routine-other-concern-error" : undefined
+                  }
                   onChange={(event) =>
                     updateText(
                       "other_concern_specification",
@@ -575,6 +683,14 @@ export function RoutineStudentIntakeEditor({
                     )
                   }
                 />
+                {otherIssue ? (
+                  <p
+                    id="routine-other-concern-error"
+                    className="mt-2 text-sm leading-6 text-danger"
+                  >
+                    Please specify the other concern before submitting.
+                  </p>
+                ) : null}
               </div>
             ) : null}
             <TextField
@@ -584,11 +700,18 @@ export function RoutineStudentIntakeEditor({
               onChange={(value) => updateText("concerns_explanation", value)}
             />
           </fieldset>
+        </PanelSection>
 
-          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
-            <legend className="font-heading text-lg font-semibold text-ink">
-              5. College adjustment
-            </legend>
+        <PanelSection
+          id="routine-intake-section-5"
+          tabIndex={-1}
+          title="5. College adjustment"
+          titleId="routine-intake-editor-q5"
+          level={3}
+          className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <fieldset disabled={pending} className="min-w-0">
+            <legend className="sr-only">5. College adjustment</legend>
             <TextField
               id="routine-adjustment"
               label="How are you adjusting to college life? How about your peer group or barkada?"
@@ -598,11 +721,18 @@ export function RoutineStudentIntakeEditor({
               }
             />
           </fieldset>
+        </PanelSection>
 
-          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
-            <legend className="font-heading text-lg font-semibold text-ink">
-              6. Academic goals
-            </legend>
+        <PanelSection
+          id="routine-intake-section-6"
+          tabIndex={-1}
+          title="6. Academic goals"
+          titleId="routine-intake-editor-q6"
+          level={3}
+          className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <fieldset disabled={pending} className="min-w-0">
+            <legend className="sr-only">6. Academic goals</legend>
             <TextField
               id="routine-academic-goals"
               label="What are your academic goals?"
@@ -610,11 +740,18 @@ export function RoutineStudentIntakeEditor({
               onChange={(value) => updateText("academic_goals", value)}
             />
           </fieldset>
+        </PanelSection>
 
-          <fieldset disabled={pending} className="min-w-0 px-4 py-5 sm:px-5">
-            <legend className="font-heading text-lg font-semibold text-ink">
-              7. Career goals
-            </legend>
+        <PanelSection
+          id="routine-intake-section-7"
+          tabIndex={-1}
+          title="7. Career goals"
+          titleId="routine-intake-editor-q7"
+          level={3}
+          className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        >
+          <fieldset disabled={pending} className="min-w-0">
+            <legend className="sr-only">7. Career goals</legend>
             <TextField
               id="routine-career-goals"
               label="What are your career goals?"
@@ -622,44 +759,68 @@ export function RoutineStudentIntakeEditor({
               onChange={(value) => updateText("career_goals", value)}
             />
           </fieldset>
-        </div>
+        </PanelSection>
 
-        <div className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-5 sm:px-5">
-          <h3 className="font-semibold text-ink">Review before submitting</h3>
-          <p className="mt-2 max-w-3xl text-sm leading-6 text-muted">
-            Your answers will become read-only after submission and will be
-            available to your assigned Counselor. You can save a draft and
-            return before submitting.
+        <PanelSection
+          id="routine-intake-review"
+          title="Review before submitting"
+          titleId="routine-intake-review-heading"
+          level={3}
+        >
+          <p className="max-w-3xl text-sm leading-6 text-muted">
+            Your answers remain a private draft until you submit. Save Progress
+            keeps the draft editable. After submission, responses become
+            read-only and are available to your assigned Counselor under the
+            existing access rules.
           </p>
-          {dirty ? (
-            <p role="status" className="mt-4 text-sm font-semibold text-warning">
-              Unsaved changes
-            </p>
-          ) : (
-            <p role="status" className="mt-4 text-sm text-muted">Saved</p>
-          )}
-          <div className="mt-4 flex flex-wrap gap-3">
+          {validationIssues.length ? (
+            <div
+              role="alert"
+              className="mt-4 rounded-sm bg-surface-subtle px-3 py-3"
+            >
+              <FormErrorSummary
+                id="routine-intake-validation-heading"
+                issues={validationIssues}
+                title="Before you submit"
+                instruction="Select a message below to go to the relevant section or field."
+                onSelect={(issue) => focusRoutineIntakeTarget(issue.targetId)}
+              />
+            </div>
+          ) : null}
+        </PanelSection>
+
+        <PanelFooter className="items-start justify-between gap-y-4">
+          <div className="min-w-0 basis-full sm:basis-auto">
+            <FormSaveStatus
+              dirty={dirty}
+              saving={save.isPending}
+              savedMessage={notice}
+            />
+            {dirty ? (
+              <p className="mt-1 text-sm leading-6 text-muted">
+                Save your changes before submitting.
+              </p>
+            ) : null}
+          </div>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:justify-end">
             <Button
               type="submit"
               variant="secondary"
+              className="w-full sm:w-auto"
               disabled={pending || !dirty}
             >
-              {save.isPending ? "Saving…" : "Save progress"}
+              {save.isPending ? "Saving…" : "Save Progress"}
             </Button>
             <Button
               type="button"
+              className="w-full sm:w-auto"
               disabled={pending || dirty}
               onClick={requestSubmit}
             >
               {submit.isPending ? "Submitting…" : "Submit Intake"}
             </Button>
           </div>
-          {dirty ? (
-            <p className="mt-3 text-sm text-muted">
-              Save your changes before submitting.
-            </p>
-          ) : null}
-        </div>
+        </PanelFooter>
       </form>
 
       <ConsequentialActionDialog
