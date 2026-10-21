@@ -78,6 +78,7 @@ export function TextField({
     <FormField id={id} label={label} hint={hint} required={required} error={error}>
       <Input
         id={id}
+        className="min-w-0"
         type={type}
         placeholder={placeholder}
         value={value ?? ""}
@@ -150,6 +151,7 @@ export function SelectField<T extends string>({
     <FormField id={id} label={label} required={required} error={error}>
       <Select
         id={id}
+        className="min-w-0"
         value={value ?? ""}
         disabled={disabled}
         aria-required={required || undefined}
@@ -194,14 +196,14 @@ export function RadioField<T extends string>({
         {legend}
         {required ? <span aria-hidden="true" className="ml-1 text-danger">*</span> : null}
       </legend>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 @2xl/tracer:grid-cols-2">
         {options.map((option) => {
           const inputId = `${id}-${option.value.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
           return (
             <label
               key={option.value}
               htmlFor={inputId}
-              className={`flex min-h-10 items-start gap-2 rounded-md border px-3 py-2 text-sm text-ink focus-within:ring-2 focus-within:ring-focus/30 ${error ? "border-danger" : "border-border"}`}
+              className={`flex min-h-11 items-start gap-2 rounded-md border px-3 py-2 text-sm text-ink focus-within:ring-2 focus-within:ring-focus/30 ${error ? "border-danger" : "border-border"}`}
             >
               <input
                 id={inputId}
@@ -210,6 +212,7 @@ export function RadioField<T extends string>({
                 value={option.value}
                 checked={value === option.value}
                 onChange={() => onChange(option.value)}
+                aria-describedby={errorId}
                 className="mt-0.5 accent-brand"
               />
               <span>{option.label}</span>
@@ -262,7 +265,7 @@ export function BooleanField({
           <label
             key={String(option.value)}
             htmlFor={`${id}-${option.suffix}`}
-            className={`inline-flex min-h-10 items-center gap-2 rounded-md border px-3 py-2 text-sm text-ink focus-within:ring-2 focus-within:ring-focus/30 ${error ? "border-danger" : "border-border"}`}
+            className={`inline-flex min-h-11 items-center gap-2 rounded-md border px-3 py-2 text-sm text-ink focus-within:ring-2 focus-within:ring-focus/30 ${error ? "border-danger" : "border-border"}`}
           >
             <input
               id={`${id}-${option.suffix}`}
@@ -270,6 +273,7 @@ export function BooleanField({
               name={id}
               checked={value === option.value}
               onChange={() => onChange(option.value)}
+              aria-describedby={errorId}
               className="accent-brand"
             />
             {option.label}
@@ -316,20 +320,21 @@ export function CheckboxField<T extends string>({
         {legend}
         {required ? <span aria-hidden="true" className="ml-1 text-danger">*</span> : null}
       </legend>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 @2xl/tracer:grid-cols-2">
         {options.map((option) => {
           const inputId = `${id}-${option.value.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`;
           return (
             <label
               key={option.value}
               htmlFor={inputId}
-              className={`flex min-h-10 items-start gap-2 rounded-md border px-3 py-2 text-sm leading-5 text-ink focus-within:ring-2 focus-within:ring-focus/30 ${error ? "border-danger" : "border-border"}`}
+              className={`flex min-h-11 items-start gap-2 rounded-md border px-3 py-2 text-sm leading-5 text-ink focus-within:ring-2 focus-within:ring-focus/30 ${error ? "border-danger" : "border-border"}`}
             >
               <input
                 id={inputId}
                 type="checkbox"
                 checked={values?.includes(option.value) ?? false}
                 onChange={() => toggle(option.value)}
+                aria-describedby={errorId}
                 className="mt-1 accent-brand"
               />
               <span>{option.label}</span>
@@ -339,5 +344,28 @@ export function CheckboxField<T extends string>({
       </div>
       {error ? <p id={errorId} role="alert" className="text-xs leading-5 text-danger">{error}</p> : null}
     </fieldset>
+  );
+}
+
+// The two survey comparisons retain one semantic table and one original control per answer.
+// Only a focused scroll region handles horizontal arrows; native input keys stay native.
+export function GraduateTracerChoiceMatrix({ id, label, children }: {
+  id: string;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <p id={`${id}-scroll-help`} className="mt-3 text-sm leading-6 text-muted">Scroll the table to compare both answer columns. With the table area focused, use Left and Right arrow keys.</p>
+      <div role="region" aria-label={label} aria-describedby={`${id}-scroll-help`} tabIndex={0}
+        className="relative mt-2 max-w-full overflow-x-auto rounded-sm border border-border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || !["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+          event.preventDefault();
+          event.currentTarget.scrollBy({ left: (event.key === "ArrowRight" ? 1 : -1) * event.currentTarget.clientWidth / 2, behavior: "instant" });
+        }}>
+        {children}
+      </div>
+    </>
   );
 }

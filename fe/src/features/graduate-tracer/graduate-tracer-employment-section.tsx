@@ -18,6 +18,7 @@ import {
 } from "@/features/graduate-tracer/graduate-tracer-presentation";
 import {
   BooleanField,
+  GraduateTracerChoiceMatrix,
   CheckboxField,
   SelectField,
   TextAreaField,
@@ -96,7 +97,7 @@ export function GraduateTracerEmploymentSection({
                 />
               </div>
             ) : null}
-            <div className="mt-5 grid gap-5 sm:grid-cols-2">
+            <div className="mt-5 grid gap-5 @2xl/tracer:grid-cols-2">
               <TextField id="gts-present-occupation" label="Q19. Present Occupation" value={draft.present_occupation} required error={errorFor("gts-present-occupation")} onChange={(value) => onChange("present_occupation", value)} />
               <SelectField id="gts-business-line" label="Q20. Major Line of Business" value={draft.employer_business_line} options={BUSINESS_LINE_CHOICES} required error={errorFor("gts-business-line")} onChange={(value) => onChange("employer_business_line", value)} />
               <SelectField id="gts-place-of-work" label="Q21. Place of Work" value={draft.place_of_work} options={PLACE_OF_WORK_CHOICES} required error={errorFor("gts-place-of-work")} onChange={(value) => onChange("place_of_work", value)} />
@@ -113,7 +114,7 @@ export function GraduateTracerEmploymentSection({
               onChange={(value) => onChange("first_job_after_college", value)}
             />
             {firstJob ? (
-              <div className="mt-6 space-y-6 rounded-sm bg-surface-subtle px-4 py-5 sm:px-6">
+              <div className="mt-6 space-y-6">
                 <CheckboxField
                   id="gts-staying-reasons"
                   legend="What are your reason(s) for staying on the job?"
@@ -175,7 +176,7 @@ export function GraduateTracerEmploymentSection({
           </div>
 
           <div className="border-t border-border pt-6">
-            <div className="grid gap-5 sm:grid-cols-2">
+            <div className="grid gap-5 @2xl/tracer:grid-cols-2">
               <SelectField id="gts-first-job-duration" label="How long did you stay in your first job?" value={draft.first_job_duration} options={FIRST_JOB_DURATION_CHOICES} required error={errorFor("gts-first-job-duration")} onChange={(value) => onChange("first_job_duration", value)} />
               <SelectField id="gts-first-job-source" label="How did you find your first job?" value={draft.first_job_source} options={FIRST_JOB_SOURCE_CHOICES} required error={errorFor("gts-first-job-source")} onChange={(value) => onChange("first_job_source", value)} />
               <SelectField id="gts-time-to-first-job" label="How long did it take you to land your first job?" value={draft.time_to_first_job} options={FIRST_JOB_DURATION_CHOICES} required error={errorFor("gts-time-to-first-job")} onChange={(value) => onChange("time_to_first_job", value)} />
@@ -193,13 +194,12 @@ export function GraduateTracerEmploymentSection({
 
           <div className="border-t border-border pt-6">
             <h3 className="font-semibold text-ink">Job level position</h3>
-            {/* On phones the pinned Job Level column is narrowed so both answer columns can scroll beside it. */}
-            <div className="relative mt-4 overflow-x-auto rounded-sm border border-border">
-              <table className="w-full border-collapse text-sm sm:min-w-[38rem]">
+            <GraduateTracerChoiceMatrix id="gts-job-level" label="Job level comparison choices">
+              <table className="w-full table-fixed border-collapse text-sm min-w-[24rem] @2xl/tracer:table-auto @2xl/tracer:min-w-[38rem]">
                 <caption className="sr-only">Compare job level in the first job and current or present job</caption>
                 <thead className="bg-brand-wash text-left text-xs uppercase tracking-wide text-brand-strong">
                   <tr>
-                    <th scope="col" className="sticky left-0 z-10 w-36 bg-brand-wash px-3 py-3 font-semibold sm:w-auto sm:min-w-[18rem]">Job Level</th>
+                    <th scope="col" className="sticky left-0 z-10 w-[min(9rem,40cqi)] min-w-[min(9rem,40cqi)] max-w-[min(9rem,40cqi)] bg-brand-wash px-3 py-3 font-semibold @2xl/tracer:w-auto @2xl/tracer:min-w-[18rem] @2xl/tracer:max-w-none">Job Level</th>
                     <th scope="col" className="min-w-28 px-3 py-3 font-semibold sm:min-w-36">First Job <span aria-hidden="true" className="text-danger">*</span></th>
                     <th scope="col" className="min-w-28 px-3 py-3 font-semibold sm:min-w-36">Current or Present Job <span aria-hidden="true" className="text-danger">*</span></th>
                   </tr>
@@ -207,14 +207,14 @@ export function GraduateTracerEmploymentSection({
                 <tbody className="divide-y divide-border">
                   {JOB_LEVEL_CHOICES.map((choice, index) => (
                     <tr key={choice.value}>
-                      <th scope="row" className="sticky left-0 z-10 bg-surface-raised px-3 py-3 text-left font-medium text-ink">{choice.label}</th>
-                      <td className="px-3 py-3"><input id={index === 0 ? "gts-first-job-level" : undefined} type="radio" name="gts-first-job-level" aria-label={`${choice.label} — First Job, required`} aria-describedby={errorFor("gts-first-job-level") ? "gts-first-job-level-error" : undefined} checked={draft.first_job_level === choice.value} onChange={() => onChange("first_job_level", choice.value)} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /></td>
-                      <td className="px-3 py-3"><input id={index === 0 ? "gts-current-job-level" : undefined} type="radio" name="gts-current-job-level" aria-label={`${choice.label} — Current or Present Job, required`} aria-describedby={errorFor("gts-current-job-level") ? "gts-current-job-level-error" : undefined} checked={draft.current_job_level === choice.value} onChange={() => onChange("current_job_level", choice.value)} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /></td>
+                      <th scope="row" className="sticky left-0 z-10 w-[min(9rem,40cqi)] min-w-[min(9rem,40cqi)] max-w-[min(9rem,40cqi)] @2xl/tracer:w-auto @2xl/tracer:min-w-0 @2xl/tracer:max-w-none bg-surface-raised px-3 py-3 text-left font-medium text-ink">{choice.label}</th>
+                      <td className="px-3 py-3"><label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-sm focus-within:ring-2 focus-within:ring-focus"><input id={index === 0 ? "gts-first-job-level" : undefined} type="radio" name="gts-first-job-level" aria-label={`${choice.label} — First Job, required`} aria-describedby={errorFor("gts-first-job-level") ? "gts-first-job-level-error" : undefined} checked={draft.first_job_level === choice.value} onChange={() => onChange("first_job_level", choice.value)} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /></label></td>
+                      <td className="px-3 py-3"><label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-sm focus-within:ring-2 focus-within:ring-focus"><input id={index === 0 ? "gts-current-job-level" : undefined} type="radio" name="gts-current-job-level" aria-label={`${choice.label} — Current or Present Job, required`} aria-describedby={errorFor("gts-current-job-level") ? "gts-current-job-level-error" : undefined} checked={draft.current_job_level === choice.value} onChange={() => onChange("current_job_level", choice.value)} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /></label></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
-            </div>
+            </GraduateTracerChoiceMatrix>
             {errorFor("gts-first-job-level") ? <p id="gts-first-job-level-error" role="alert" className="mt-2 text-xs leading-5 text-danger">{errorFor("gts-first-job-level")}</p> : null}
             {errorFor("gts-current-job-level") ? <p id="gts-current-job-level-error" role="alert" className="mt-1 text-xs leading-5 text-danger">{errorFor("gts-current-job-level")}</p> : null}
             <div className="mt-5 max-w-2xl">
