@@ -1,0 +1,162 @@
+{
+  "baseURL": "http://localhost:3123",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "visual-desktop-pending",
+      "passed": true
+    },
+    {
+      "name": "visual-desktop-empty",
+      "passed": true
+    },
+    {
+      "name": "visual-mobile-pending",
+      "passed": true
+    },
+    {
+      "name": "visual-narrow-enlarged",
+      "passed": true
+    },
+    {
+      "name": "visual-join-now",
+      "passed": true
+    },
+    {
+      "name": "visual-failed-actions",
+      "passed": true
+    },
+    {
+      "name": "visual-graduated",
+      "passed": true
+    },
+    {
+      "name": "visual-professional",
+      "passed": true
+    },
+    {
+      "name": "layout-320-100-percent-text",
+      "passed": true
+    },
+    {
+      "name": "layout-320-200-percent-text",
+      "passed": true
+    },
+    {
+      "name": "layout-360-100-percent-text",
+      "passed": true
+    },
+    {
+      "name": "layout-360-200-percent-text",
+      "passed": true
+    },
+    {
+      "name": "layout-390-100-percent-text",
+      "passed": true
+    },
+    {
+      "name": "layout-390-200-percent-text",
+      "passed": true
+    },
+    {
+      "name": "layout-768-100-percent-text",
+      "passed": true
+    },
+    {
+      "name": "layout-768-200-percent-text",
+      "passed": true
+    },
+    {
+      "name": "layout-1024-100-percent-text",
+      "passed": true
+    },
+    {
+      "name": "layout-1024-200-percent-text",
+      "passed": true
+    },
+    {
+      "name": "layout-1440-100-percent-text",
+      "passed": true
+    },
+    {
+      "name": "layout-1440-200-percent-text",
+      "passed": true
+    },
+    {
+      "name": "new-current-student-has-only-canonical-inventory-action",
+      "passed": true
+    },
+    {
+      "name": "canonical-first-five-preview-and-view-all-open-the-owning-workspace",
+      "passed": true
+    },
+    {
+      "name": "lifecycle-GRADUATED-keeps-own-reading-and-action-eligibility",
+      "passed": true
+    },
+    {
+      "name": "lifecycle-FORMER-keeps-own-reading-and-action-eligibility",
+      "passed": true
+    },
+    {
+      "name": "no-unauthorized-shortcuts-or-fabricated-zero-counts",
+      "passed": true
+    },
+    {
+      "name": "loading-actions-keeps-confirmed-context-and-announcements-usable",
+      "passed": true
+    },
+    {
+      "name": "initial-action-failure-retries-without-claiming-completion",
+      "passed": true
+    },
+    {
+      "name": "summary-failure-does-not-hide-actions-or-invent-counts",
+      "passed": true
+    },
+    {
+      "name": "stale-actions-retain-confirmed-order-offer-retry-and-hide-after-denial",
+      "passed": true
+    },
+    {
+      "name": "failed-empty-refresh-cannot-claim-the-student-is-currently-caught-up",
+      "passed": true
+    },
+    {
+      "name": "announcements-retain-server-order-pins-links-and-preview-parameters",
+      "passed": true
+    },
+    {
+      "name": "announcement-failure-retry-and-empty-do-not-disrupt-student-actions",
+      "passed": true
+    },
+    {
+      "name": "account-switch-discards-private-action-presentation-and-rechecks-discovery",
+      "passed": true
+    },
+    {
+      "name": "ended-session-removes-private-home-and-returns-to-sign-in",
+      "passed": true
+    },
+    {
+      "name": "professional-home-COUNSELOR-preserves-queues-metrics-and-role-boundaries",
+      "passed": true
+    },
+    {
+      "name": "professional-home-GUIDANCE_SERVICES_STAFF-preserves-queues-metrics-and-role-boundaries",
+      "passed": true
+    },
+    {
+      "name": "professional-home-IT_ADMIN-preserves-queues-metrics-and-role-boundaries",
+      "passed": true
+    },
+    {
+      "name": "professional-home-INSTITUTIONAL_OFFICER-preserves-queues-metrics-and-role-boundaries",
+      "passed": true
+    },
+    {
+      "name": "home-keyboard-order-focus-rings-and-native-navigation",
+      "passed": true
+    }
+  ]
+}

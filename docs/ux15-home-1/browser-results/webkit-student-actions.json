@@ -1,0 +1,94 @@
+{
+  "baseURL": "http://localhost:3123",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "My actions order, routes and wrapping labels at 320",
+      "passed": true
+    },
+    {
+      "name": "My actions order, routes and wrapping labels at 375",
+      "passed": true
+    },
+    {
+      "name": "My actions order, routes and wrapping labels at 390",
+      "passed": true
+    },
+    {
+      "name": "My actions order, routes and wrapping labels at 430",
+      "passed": true
+    },
+    {
+      "name": "My actions order, routes and wrapping labels at 768",
+      "passed": true
+    },
+    {
+      "name": "My actions order, routes and wrapping labels at 1440",
+      "passed": true
+    },
+    {
+      "name": "My actions navigation and direct route for COUNSELOR",
+      "passed": true
+    },
+    {
+      "name": "My actions navigation and direct route for GUIDANCE_SERVICES_STAFF",
+      "passed": true
+    },
+    {
+      "name": "My actions navigation and direct route for STUDENT",
+      "passed": true
+    },
+    {
+      "name": "My actions navigation and direct route for IT_ADMIN",
+      "passed": true
+    },
+    {
+      "name": "My actions navigation and direct route for INSTITUTIONAL_OFFICER",
+      "passed": true
+    },
+    {
+      "name": "confirmed empty HTTP queue works with realtime disabled",
+      "passed": true
+    },
+    {
+      "name": "canonical pagination preserves backend pages",
+      "passed": true
+    },
+    {
+      "name": "refresh failure keeps confirmed work; 403 hides it",
+      "passed": true
+    },
+    {
+      "name": "Student Overview uses the shared preview and keeps counts",
+      "passed": true
+    },
+    {
+      "name": "shared Message and Notification hints add and remove unread actions with one socket",
+      "passed": true
+    },
+    {
+      "name": "account boundary discards prior confirmed work",
+      "passed": true
+    },
+    {
+      "name": "a failed empty refresh never claims caught up",
+      "passed": true
+    },
+    {
+      "name": "visible online safety poll opens and closes time-sensitive join actions without realtime",
+      "passed": true
+    },
+    {
+      "name": "first load failure has Retry and never claims caught up",
+      "passed": true
+    },
+    {
+      "name": "same-tab Message visibility read invalidates actions without polling or socket",
+      "passed": true
+    },
+    {
+      "name": "same-tab consent decisions refresh grouped actions without safety polling",
+      "passed": true
+    }
+  ]
+}
