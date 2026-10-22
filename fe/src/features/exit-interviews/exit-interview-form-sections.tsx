@@ -205,7 +205,7 @@ function ChoiceCheckbox({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label htmlFor={id} className="flex min-h-9 items-center gap-2 text-sm text-ink">
+    <label htmlFor={id} className="flex min-h-11 items-center gap-2 text-sm text-ink">
       <input
         id={id}
         type="checkbox"
