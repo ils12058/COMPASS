@@ -1,0 +1,774 @@
+{
+  "phase": "before",
+  "measurements": [
+    {
+      "viewport": 320,
+      "text": 100,
+      "dock": "narrow-screen",
+      "document": {
+        "clientWidth": 320,
+        "scrollWidth": 320
+      },
+      "main": {
+        "x": 0,
+        "width": 320,
+        "right": 320
+      },
+      "editor": {
+        "x": 16,
+        "width": 288,
+        "right": 304
+      },
+      "workspace": {
+        "x": 16,
+        "width": 288,
+        "right": 304
+      },
+      "layout": {
+        "x": 16,
+        "width": 288,
+        "right": 304,
+        "scrollWidth": 288,
+        "gridColumns": "288px"
+      },
+      "navigation": {
+        "x": 16,
+        "width": 288,
+        "right": 304,
+        "scrollWidth": 288,
+        "clientWidth": 288
+      },
+      "panel": {
+        "x": 16,
+        "width": 288,
+        "right": 304
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 320,
+      "text": 200,
+      "dock": "narrow-screen",
+      "document": {
+        "clientWidth": 320,
+        "scrollWidth": 320
+      },
+      "main": {
+        "x": 0,
+        "width": 320,
+        "right": 320
+      },
+      "editor": {
+        "x": 32,
+        "width": 256,
+        "right": 288
+      },
+      "workspace": {
+        "x": 32,
+        "width": 256,
+        "right": 288
+      },
+      "layout": {
+        "x": 32,
+        "width": 256,
+        "right": 288,
+        "scrollWidth": 256,
+        "gridColumns": "256px"
+      },
+      "navigation": {
+        "x": 32,
+        "width": 256,
+        "right": 288,
+        "scrollWidth": 256,
+        "clientWidth": 256
+      },
+      "panel": {
+        "x": 32,
+        "width": 256,
+        "right": 288
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 360,
+      "text": 100,
+      "dock": "narrow-screen",
+      "document": {
+        "clientWidth": 360,
+        "scrollWidth": 360
+      },
+      "main": {
+        "x": 0,
+        "width": 360,
+        "right": 360
+      },
+      "editor": {
+        "x": 16,
+        "width": 328,
+        "right": 344
+      },
+      "workspace": {
+        "x": 16,
+        "width": 328,
+        "right": 344
+      },
+      "layout": {
+        "x": 16,
+        "width": 328,
+        "right": 344,
+        "scrollWidth": 328,
+        "gridColumns": "328px"
+      },
+      "navigation": {
+        "x": 16,
+        "width": 328,
+        "right": 344,
+        "scrollWidth": 328,
+        "clientWidth": 328
+      },
+      "panel": {
+        "x": 16,
+        "width": 328,
+        "right": 344
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 360,
+      "text": 200,
+      "dock": "narrow-screen",
+      "document": {
+        "clientWidth": 360,
+        "scrollWidth": 360
+      },
+      "main": {
+        "x": 0,
+        "width": 360,
+        "right": 360
+      },
+      "editor": {
+        "x": 32,
+        "width": 296,
+        "right": 328
+      },
+      "workspace": {
+        "x": 32,
+        "width": 296,
+        "right": 328
+      },
+      "layout": {
+        "x": 32,
+        "width": 296,
+        "right": 328,
+        "scrollWidth": 296,
+        "gridColumns": "296px"
+      },
+      "navigation": {
+        "x": 32,
+        "width": 296,
+        "right": 328,
+        "scrollWidth": 296,
+        "clientWidth": 296
+      },
+      "panel": {
+        "x": 32,
+        "width": 296,
+        "right": 328
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 390,
+      "text": 100,
+      "dock": "narrow-screen",
+      "document": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "main": {
+        "x": 0,
+        "width": 390,
+        "right": 390
+      },
+      "editor": {
+        "x": 16,
+        "width": 358,
+        "right": 374
+      },
+      "workspace": {
+        "x": 16,
+        "width": 358,
+        "right": 374
+      },
+      "layout": {
+        "x": 16,
+        "width": 358,
+        "right": 374,
+        "scrollWidth": 358,
+        "gridColumns": "358px"
+      },
+      "navigation": {
+        "x": 16,
+        "width": 358,
+        "right": 374,
+        "scrollWidth": 358,
+        "clientWidth": 358
+      },
+      "panel": {
+        "x": 16,
+        "width": 358,
+        "right": 374
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 390,
+      "text": 200,
+      "dock": "narrow-screen",
+      "document": {
+        "clientWidth": 390,
+        "scrollWidth": 390
+      },
+      "main": {
+        "x": 0,
+        "width": 390,
+        "right": 390
+      },
+      "editor": {
+        "x": 32,
+        "width": 326,
+        "right": 358
+      },
+      "workspace": {
+        "x": 32,
+        "width": 326,
+        "right": 358
+      },
+      "layout": {
+        "x": 32,
+        "width": 326,
+        "right": 358,
+        "scrollWidth": 326,
+        "gridColumns": "326px"
+      },
+      "navigation": {
+        "x": 32,
+        "width": 326,
+        "right": 358,
+        "scrollWidth": 326,
+        "clientWidth": 326
+      },
+      "panel": {
+        "x": 32,
+        "width": 326,
+        "right": 358
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 768,
+      "text": 100,
+      "dock": "narrow-screen",
+      "document": {
+        "clientWidth": 768,
+        "scrollWidth": 768
+      },
+      "main": {
+        "x": 0,
+        "width": 768,
+        "right": 768
+      },
+      "editor": {
+        "x": 24,
+        "width": 720,
+        "right": 744
+      },
+      "workspace": {
+        "x": 24,
+        "width": 720,
+        "right": 744
+      },
+      "layout": {
+        "x": 24,
+        "width": 720,
+        "right": 744,
+        "scrollWidth": 720,
+        "gridColumns": "208px 488px"
+      },
+      "navigation": {
+        "x": 24,
+        "width": 208,
+        "right": 232,
+        "scrollWidth": 208,
+        "clientWidth": 208
+      },
+      "panel": {
+        "x": 256,
+        "width": 488,
+        "right": 744
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 768,
+      "text": 200,
+      "dock": "narrow-screen",
+      "document": {
+        "clientWidth": 768,
+        "scrollWidth": 768
+      },
+      "main": {
+        "x": 0,
+        "width": 768,
+        "right": 768
+      },
+      "editor": {
+        "x": 48,
+        "width": 672,
+        "right": 720
+      },
+      "workspace": {
+        "x": 48,
+        "width": 672,
+        "right": 720
+      },
+      "layout": {
+        "x": 48,
+        "width": 672,
+        "right": 720,
+        "scrollWidth": 672,
+        "gridColumns": "416px 208px"
+      },
+      "navigation": {
+        "x": 48,
+        "width": 416,
+        "right": 464,
+        "scrollWidth": 416,
+        "clientWidth": 416
+      },
+      "panel": {
+        "x": 512,
+        "width": 208,
+        "right": 720
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 1024,
+      "text": 100,
+      "dock": "expanded",
+      "document": {
+        "clientWidth": 1024,
+        "scrollWidth": 1024
+      },
+      "main": {
+        "x": 256,
+        "width": 768,
+        "right": 1024
+      },
+      "editor": {
+        "x": 288,
+        "width": 704,
+        "right": 992
+      },
+      "workspace": {
+        "x": 288,
+        "width": 704,
+        "right": 992
+      },
+      "layout": {
+        "x": 288,
+        "width": 704,
+        "right": 992,
+        "scrollWidth": 704,
+        "gridColumns": "208px 472px"
+      },
+      "navigation": {
+        "x": 288,
+        "width": 208,
+        "right": 496,
+        "scrollWidth": 208,
+        "clientWidth": 208
+      },
+      "panel": {
+        "x": 520,
+        "width": 472,
+        "right": 992
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 1024,
+      "text": 200,
+      "dock": "expanded",
+      "document": {
+        "clientWidth": 1024,
+        "scrollWidth": 1223
+      },
+      "main": {
+        "x": 512,
+        "width": 512,
+        "right": 1024
+      },
+      "editor": {
+        "x": 576,
+        "width": 384,
+        "right": 960
+      },
+      "workspace": {
+        "x": 576,
+        "width": 384,
+        "right": 960
+      },
+      "layout": {
+        "x": 576,
+        "width": 384,
+        "right": 960,
+        "scrollWidth": 647,
+        "gridColumns": "416px 0px"
+      },
+      "navigation": {
+        "x": 576,
+        "width": 416,
+        "right": 992,
+        "scrollWidth": 416,
+        "clientWidth": 416
+      },
+      "panel": {
+        "x": 1040,
+        "width": 2,
+        "right": 1042
+      },
+      "offenders": [
+        {
+          "tag": "p",
+          "id": null,
+          "className": "text-sm text-muted",
+          "x": 1081,
+          "width": 104,
+          "right": 1185
+        },
+        {
+          "tag": "button",
+          "id": "inventory-permanent-location-add",
+          "className": "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none border-border-strong bg-surface-raised text-ink hover:bg-surface-muted",
+          "x": 1081,
+          "width": 92,
+          "right": 1173
+        },
+        {
+          "tag": "button",
+          "id": null,
+          "className": "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none border-border-strong bg-surface-raised text-ink hover:bg-surface-muted",
+          "x": 1081,
+          "width": 66,
+          "right": 1147
+        },
+        {
+          "tag": "button",
+          "id": null,
+          "className": "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none border-border-strong bg-surface-raised text-ink hover:bg-surface-muted",
+          "x": 1081,
+          "width": 66,
+          "right": 1147
+        },
+        {
+          "tag": "button",
+          "id": null,
+          "className": "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none border-border-strong bg-surface-raised text-ink hover:bg-surface-muted",
+          "x": 1081,
+          "width": 66,
+          "right": 1147
+        },
+        {
+          "tag": "button",
+          "id": null,
+          "className": "inline-flex min-h-10 items-center justify-center gap-2 rounded-md border px-4 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body disabled:cursor-not-allowed disabled:opacity-55 motion-reduce:transition-none border-brand bg-brand text-on-brand hover:bg-brand-strong",
+          "x": 1081,
+          "width": 66,
+          "right": 1147
+        },
+        {
+          "tag": "input",
+          "id": "inventory-full-name",
+          "className": "min-h-10 w-full rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink outline-none placeholder:text-muted focus:border-focus focus:ring-2 focus:ring-focus/25 aria-[invalid=true]:border-danger aria-[invalid=true]:focus:border-danger aria-[invalid=true]:focus:ring-danger/25 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-70",
+          "x": 1081,
+          "width": 50,
+          "right": 1131
+        },
+        {
+          "tag": "input",
+          "id": "inventory-nickname",
+          "className": "min-h-10 w-full rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink outline-none placeholder:text-muted focus:border-focus focus:ring-2 focus:ring-focus/25 aria-[invalid=true]:border-danger aria-[invalid=true]:focus:border-danger aria-[invalid=true]:focus:ring-danger/25 disabled:cursor-not-allowed disabled:bg-surface-muted disabled:opacity-70",
+          "x": 1081,
+          "width": 50,
+          "right": 1131
+        }
+      ]
+    },
+    {
+      "viewport": 1024,
+      "text": 100,
+      "dock": "collapsed",
+      "document": {
+        "clientWidth": 1024,
+        "scrollWidth": 1024
+      },
+      "main": {
+        "x": 76,
+        "width": 948,
+        "right": 1024
+      },
+      "editor": {
+        "x": 108,
+        "width": 884,
+        "right": 992
+      },
+      "workspace": {
+        "x": 108,
+        "width": 884,
+        "right": 992
+      },
+      "layout": {
+        "x": 108,
+        "width": 884,
+        "right": 992,
+        "scrollWidth": 884,
+        "gridColumns": "208px 652px"
+      },
+      "navigation": {
+        "x": 108,
+        "width": 208,
+        "right": 316,
+        "scrollWidth": 208,
+        "clientWidth": 208
+      },
+      "panel": {
+        "x": 340,
+        "width": 652,
+        "right": 992
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 1024,
+      "text": 200,
+      "dock": "collapsed",
+      "document": {
+        "clientWidth": 1024,
+        "scrollWidth": 1024
+      },
+      "main": {
+        "x": 152,
+        "width": 872,
+        "right": 1024
+      },
+      "editor": {
+        "x": 216,
+        "width": 744,
+        "right": 960
+      },
+      "workspace": {
+        "x": 216,
+        "width": 744,
+        "right": 960
+      },
+      "layout": {
+        "x": 216,
+        "width": 744,
+        "right": 960,
+        "scrollWidth": 744,
+        "gridColumns": "416px 280px"
+      },
+      "navigation": {
+        "x": 216,
+        "width": 416,
+        "right": 632,
+        "scrollWidth": 416,
+        "clientWidth": 416
+      },
+      "panel": {
+        "x": 680,
+        "width": 280,
+        "right": 960
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 1440,
+      "text": 100,
+      "dock": "expanded",
+      "document": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440
+      },
+      "main": {
+        "x": 256,
+        "width": 1184,
+        "right": 1440
+      },
+      "editor": {
+        "x": 288,
+        "width": 1120,
+        "right": 1408
+      },
+      "workspace": {
+        "x": 288,
+        "width": 1120,
+        "right": 1408
+      },
+      "layout": {
+        "x": 288,
+        "width": 1120,
+        "right": 1408,
+        "scrollWidth": 1120,
+        "gridColumns": "208px 888px"
+      },
+      "navigation": {
+        "x": 288,
+        "width": 208,
+        "right": 496,
+        "scrollWidth": 208,
+        "clientWidth": 208
+      },
+      "panel": {
+        "x": 520,
+        "width": 888,
+        "right": 1408
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 1440,
+      "text": 200,
+      "dock": "expanded",
+      "document": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440
+      },
+      "main": {
+        "x": 512,
+        "width": 928,
+        "right": 1440
+      },
+      "editor": {
+        "x": 576,
+        "width": 800,
+        "right": 1376
+      },
+      "workspace": {
+        "x": 576,
+        "width": 800,
+        "right": 1376
+      },
+      "layout": {
+        "x": 576,
+        "width": 800,
+        "right": 1376,
+        "scrollWidth": 800,
+        "gridColumns": "416px 336px"
+      },
+      "navigation": {
+        "x": 576,
+        "width": 416,
+        "right": 992,
+        "scrollWidth": 416,
+        "clientWidth": 416
+      },
+      "panel": {
+        "x": 1040,
+        "width": 336,
+        "right": 1376
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 1440,
+      "text": 100,
+      "dock": "collapsed",
+      "document": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440
+      },
+      "main": {
+        "x": 76,
+        "width": 1364,
+        "right": 1440
+      },
+      "editor": {
+        "x": 108,
+        "width": 1152,
+        "right": 1260
+      },
+      "workspace": {
+        "x": 108,
+        "width": 1152,
+        "right": 1260
+      },
+      "layout": {
+        "x": 108,
+        "width": 1152,
+        "right": 1260,
+        "scrollWidth": 1152,
+        "gridColumns": "208px 920px"
+      },
+      "navigation": {
+        "x": 108,
+        "width": 208,
+        "right": 316,
+        "scrollWidth": 208,
+        "clientWidth": 208
+      },
+      "panel": {
+        "x": 340,
+        "width": 920,
+        "right": 1260
+      },
+      "offenders": []
+    },
+    {
+      "viewport": 1440,
+      "text": 200,
+      "dock": "collapsed",
+      "document": {
+        "clientWidth": 1440,
+        "scrollWidth": 1440
+      },
+      "main": {
+        "x": 152,
+        "width": 1288,
+        "right": 1440
+      },
+      "editor": {
+        "x": 216,
+        "width": 1160,
+        "right": 1376
+      },
+      "workspace": {
+        "x": 216,
+        "width": 1160,
+        "right": 1376
+      },
+      "layout": {
+        "x": 216,
+        "width": 1160,
+        "right": 1376,
+        "scrollWidth": 1160,
+        "gridColumns": "416px 696px"
+      },
+      "navigation": {
+        "x": 216,
+        "width": 416,
+        "right": 632,
+        "scrollWidth": 416,
+        "clientWidth": 416
+      },
+      "panel": {
+        "x": 680,
+        "width": 696,
+        "right": 1376
+      },
+      "offenders": []
+    }
+  ]
+}
