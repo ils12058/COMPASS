@@ -218,8 +218,9 @@ before publishing the single integration-target PR.
 
 Relevant backend/frontend workflows filter PR targets to staging/canonical baseline,
 excluding integration/ux15-modernization. Do not modify triggers or dispatch workflows
-for a green badge. Exact PR-head hosted status is read after PR creation and recorded
-separately in the manifest; local tests are not hosted CI success.
+for a green badge. Published PR #313 was checked at implementation head `38f632ae70073861f480500be1664c4af9b67eb7`: zero commit statuses and zero workflow runs.
+The manifest records that head; the final agent report verifies the final evidence-
+metadata head as well. Local tests are not hosted CI success.
 
 Not executed: real SMTP, staging deployment/configuration verification, Gmail/Outlook/
 phone-email acceptance, spam/inbox behavior, screen readers, physical devices and

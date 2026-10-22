@@ -56,7 +56,12 @@
     "synthetic_production_build": "passed, 95 pages",
     "planner": "174 files exactly once, six shards; 38 self-tests passed"
   },
-  "hosted_ci": "Relevant workflows exclude integration target; exact PR-head status recorded in manifest",
+  "hosted_ci": {
+    "checked_implementation_head": "38f632ae70073861f480500be1664c4af9b67eb7",
+    "commit_statuses": 0,
+    "workflow_runs": 0,
+    "note": "Relevant workflows exclude integration target; final documentation-head check reported in final agent report"
+  },
   "not_executed": [
     "SMTP",
     "Gmail/Outlook/phone mail acceptance",
@@ -65,5 +70,6 @@
     "stakeholder manual UAT",
     "deployment/live configuration verification"
   ],
-  "approval": "Whole four-family operational_v1 bundle requires GCO/UCN authorization"
+  "approval": "Whole four-family operational_v1 bundle requires GCO/UCN authorization",
+  "pull_request": "https://github.com/ils12058/COMPASS/pull/313"
 }
