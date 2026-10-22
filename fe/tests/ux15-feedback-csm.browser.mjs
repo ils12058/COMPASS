@@ -121,7 +121,7 @@ async function fillCsmRequired(page, { cc1 = 1, zeroFirstSqd = false } = {}) {
   }
 }
 
-await check("customer desktop context and continuous section navigation", customerPath, feedbackOptions({ family: "customer" }), async (page, fixture) => {
+await check("customer desktop context and continuous section navigation", customerPath, feedbackOptions({ family: "customer", opportunity: customerOpportunity({ csm_submitted: true }) }), async (page, fixture) => {
   await shown(page.getByRole("heading", { level: 1, name: "Customer Feedback Form" }));
   await shown(page.getByText("Feedback for Counseling."));
   assert.equal(await page.locator("#feedback-service-counseling").isChecked(), true);
@@ -229,10 +229,114 @@ await check("customer uncertain submission retries the identical body and key", 
   await page.getByText("Submission result not confirmed", { exact: true }).scrollIntoViewIfNeeded();
   await capture(page, "customer-uncertain");
   assert.equal(await page.locator("fieldset[disabled]").count(), 1);
-  await page.getByRole("button", { name: "Retry same submission", exact: true }).click();
+  await page.getByRole("button", { name: "Retry same submission", exact: true }).evaluate((button) => { button.click(); button.click(); });
   await shown(page.getByRole("heading", { name: "Customer Feedback submitted", exact: true }));
   assert.equal(requests.length, 2);
   assert.deepEqual(requests[1], requests[0]);
+});
+
+await check("customer response lost after commit resolves to already-submitted without claiming request identity", customerPath, feedbackOptions({ family: "customer" }), async (page, fixture) => {
+  await shown(page.getByRole("heading", { name: "Customer Feedback Form", exact: true }));
+  let statusReads = 0;
+  let submissions = 0;
+  const canonical = customerOpportunity({ customer_feedback_submitted: true, can_submit_customer_feedback: false });
+  await fixture.context.route(`**/api/v1/feedback/opportunities/${customerOpportunityId}`, async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    statusReads += 1;
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(canonical) });
+  });
+  await fixture.context.route("**/api/v1/feedback/customer-feedback", async (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    submissions += 1;
+    return route.abort("connectionreset");
+  });
+  await fillCustomerRequired(page);
+  await page.getByRole("button", { name: "Review and submit", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Customer Feedback", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Customer Feedback already submitted", exact: true }));
+  await shown(page.getByText(/We couldn't verify which attempt was received/));
+  await capture(page, "customer-already-submitted-after-lost-response");
+  assert.equal(statusReads, 1, "the form checks the domain-owned opportunity with a fresh GET");
+  assert.equal(submissions, 1, "status reconciliation never posts again automatically");
+  assert.equal(await page.getByRole("button", { name: "Retry same submission", exact: true }).count(), 0);
+});
+
+await check("customer status-read failures preserve exact intent and expose only safe recovery", customerPath, feedbackOptions({ family: "customer" }), async (page, fixture) => {
+  await shown(page.getByRole("heading", { name: "Customer Feedback Form", exact: true }));
+  const attempts = [];
+  const statusReads = [];
+  const statusReplies = [
+    { status: 503, body: { error: { code: "synthetic_status_unavailable" } } },
+    { status: 403, body: { error: { code: "permission_denied" } } },
+    { status: 404, body: { error: { code: "feedback_opportunity_not_found" } } },
+    { status: 200, body: customerOpportunity() },
+  ];
+  await fixture.context.route(`**/api/v1/feedback/opportunities/${customerOpportunityId}`, async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    statusReads.push(route.request().url());
+    const next = statusReplies.shift();
+    return route.fulfill({ status: next.status, contentType: "application/json", body: JSON.stringify(next.body) });
+  });
+  await fixture.context.route("**/api/v1/feedback/customer-feedback", async (route) => {
+    const request = route.request();
+    if (request.method() !== "POST") return route.fallback();
+    attempts.push({ body: request.postData(), key: request.headers()["idempotency-key"] });
+    if (attempts.length === 1) return route.fulfill({ status: 503, contentType: "application/json", body: JSON.stringify({ error: { code: "idempotency_unavailable" } }) });
+    return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(successBody) });
+  });
+  await fillCustomerRequired(page);
+  await page.getByRole("button", { name: "Review and submit", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Customer Feedback", exact: true }).click();
+  await shown(page.getByText("We couldn't confirm whether your response was received."));
+  await capture(page, "customer-status-unavailable");
+  await page.getByRole("button", { name: "Check status", exact: true }).click();
+  await shown(page.getByText("We couldn't check this opportunity with your current access."));
+  assert.equal(await page.getByRole("button", { name: "Retry same submission", exact: true }).count(), 0);
+  await page.getByRole("button", { name: "Check status", exact: true }).click();
+  await shown(page.getByText("We couldn't check this opportunity with your current access."));
+  await page.getByRole("button", { name: "Check status", exact: true }).click();
+  await shown(page.getByText("Your response is still unsubmitted. You can safely retry this same submission."));
+  assert.equal(statusReads.length, 4);
+  await page.getByRole("button", { name: "Retry same submission", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Customer Feedback submitted", exact: true }));
+  assert.equal(attempts.length, 2);
+  assert.deepEqual(attempts[1], attempts[0]);
+});
+
+await check("customer already-submitted conflict reconciles the Customer Feedback flag", customerPath, feedbackOptions({ family: "customer" }), async (page, fixture) => {
+  await shown(page.getByRole("heading", { name: "Customer Feedback Form", exact: true }));
+  let statusReads = 0;
+  const canonical = customerOpportunity({ customer_feedback_submitted: true, can_submit_customer_feedback: false, csm_submitted: false });
+  await fixture.context.route(`**/api/v1/feedback/opportunities/${customerOpportunityId}`, async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    statusReads += 1;
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(canonical) });
+  });
+  await fixture.context.route("**/api/v1/feedback/customer-feedback", async (route) => route.request().method() === "POST"
+    ? route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: { code: "feedback_already_submitted" } }) })
+    : route.fallback());
+  await fillCustomerRequired(page);
+  await page.getByRole("button", { name: "Review and submit", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Customer Feedback", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Customer Feedback already submitted", exact: true }));
+  assert.equal(statusReads, 1);
+  assert.equal(await page.getByRole("button", { name: "Retry same submission", exact: true }).count(), 0);
+});
+
+await check("customer invalid idempotency key remains a confirmed rejection", customerPath, feedbackOptions({ family: "customer" }), async (page, fixture) => {
+  let submissions = 0;
+  await fixture.context.route("**/api/v1/feedback/customer-feedback", async (route) => {
+    if (route.request().method() !== "POST") return route.fallback();
+    submissions += 1;
+    return route.fulfill({ status: 422, contentType: "application/json", body: JSON.stringify({ error: { code: "invalid_idempotency_key" } }) });
+  });
+  await fillCustomerRequired(page);
+  await page.getByRole("button", { name: "Review and submit", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Customer Feedback", exact: true }).click();
+  await shown(page.getByRole("alert").filter({ hasText: "This submission attempt could not be verified" }));
+  assert.equal(submissions, 1);
+  assert.equal(await page.getByRole("button", { name: "Check status", exact: true }).count(), 0, "a deterministic key rejection is not described as an uncertain result");
+  assert.equal(await page.locator("#feedback-office-visits").isDisabled(), false);
 });
 
 await check("customer phone keyboard, touch target, and 768px reflow", customerPath, { ...feedbackOptions({ family: "customer", device: "phone" }), viewport: { width: 390, height: 844 } }, async (page) => {
@@ -315,7 +419,7 @@ await check("Customer Feedback opportunity owned by another Student is unavailab
   assert.equal(fixture.requests.some(({ method }) => method === "POST"), false);
 });
 
-await check("CSM context, Citizen's Charter transition and Not Applicable value 0", csmPath, feedbackOptions({ family: "csm" }), async (page, fixture) => {
+await check("CSM context, Citizen's Charter transition and Not Applicable value 0", csmPath, feedbackOptions({ family: "csm", opportunity: csmOpportunity({ customer_feedback_submitted: true }) }), async (page, fixture) => {
   await shown(page.getByRole("heading", { level: 1, name: "HELP US SERVE YOU BETTER!" }));
   await shown(page.getByText(/Feedback for Counseling/));
   await shown(page.locator('input[name="csm-cc2"][value="1"]'));
@@ -405,10 +509,112 @@ await check("CSM uncertain submission reuses the exact request and idempotency k
   await page.getByText("Submission result not confirmed", { exact: true }).scrollIntoViewIfNeeded();
   await capture(page, "csm-uncertain");
   assert.equal(await page.locator("fieldset[disabled]").count(), 1);
+  await page.getByRole("button", { name: "Retry same submission", exact: true }).evaluate((button) => { button.click(); button.click(); });
+  await shown(page.getByRole("heading", { name: "Client Satisfaction Measurement submitted", exact: true }));
+  assert.equal(sent.length, 2);
+  assert.deepEqual(sent[1], sent[0]);
+});
+
+await check("CSM HTTP 408 can be deliberately replayed with the same exact key and zero value", csmPath, feedbackOptions({ family: "csm" }), async (page, fixture) => {
+  const sent = [];
+  await fixture.context.route("**/api/v1/feedback/csm", async (route) => {
+    const request = route.request();
+    if (request.method() !== "POST") return route.fallback();
+    sent.push({ body: request.postData(), key: request.headers()["idempotency-key"] });
+    if (sent.length === 1) return route.fulfill({ status: 408, contentType: "application/json", body: JSON.stringify({ error: { code: "synthetic_timeout" } }) });
+    return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(successBody) });
+  });
+  await fillCsmRequired(page, { cc1: 1, zeroFirstSqd: true });
+  await page.getByRole("button", { name: "Review and submit", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Client Satisfaction Measurement", exact: true }).click();
+  await shown(page.getByText("Your response is still unsubmitted. You can safely retry this same submission."));
+  await capture(page, "csm-unsubmitted-same-key-retry");
   await page.getByRole("button", { name: "Retry same submission", exact: true }).click();
   await shown(page.getByRole("heading", { name: "Client Satisfaction Measurement submitted", exact: true }));
   assert.equal(sent.length, 2);
   assert.deepEqual(sent[1], sent[0]);
+  assert.equal(JSON.parse(sent[0].body).sqd0, 0);
+});
+
+await check("CSM HTTP 500 with an unsubmitted opportunity offers only deliberate same-key replay", csmPath, feedbackOptions({ family: "csm" }), async (page, fixture) => {
+  const sent = [];
+  await fixture.context.route("**/api/v1/feedback/csm", async (route) => {
+    const request = route.request();
+    if (request.method() !== "POST") return route.fallback();
+    sent.push({ body: request.postData(), key: request.headers()["idempotency-key"] });
+    if (sent.length === 1) return route.fulfill({ status: 500, contentType: "application/json", body: JSON.stringify({ error: { code: "synthetic_server_error" } }) });
+    return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(successBody) });
+  });
+  await fillCsmRequired(page, { cc1: 1 });
+  await page.getByRole("button", { name: "Review and submit", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Client Satisfaction Measurement", exact: true }).click();
+  await shown(page.getByText("Your response is still unsubmitted. You can safely retry this same submission."));
+  assert.equal(sent.length, 1, "the HTTP 500 never starts an automatic second POST");
+  await page.getByRole("button", { name: "Retry same submission", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Client Satisfaction Measurement submitted", exact: true }));
+  assert.equal(sent.length, 2);
+  assert.deepEqual(sent[1], sent[0]);
+});
+
+await check("CSM idempotency in-progress response retains and replays the exact intent", csmPath, feedbackOptions({ family: "csm" }), async (page, fixture) => {
+  const sent = [];
+  await fixture.context.route("**/api/v1/feedback/csm", async (route) => {
+    const request = route.request();
+    if (request.method() !== "POST") return route.fallback();
+    sent.push({ body: request.postData(), key: request.headers()["idempotency-key"] });
+    if (sent.length === 1) return route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: { code: "idempotency_in_progress" } }) });
+    return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(successBody) });
+  });
+  await fillCsmRequired(page, { cc1: 1 });
+  await page.getByRole("button", { name: "Review and submit", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Client Satisfaction Measurement", exact: true }).click();
+  await shown(page.getByText("Your response is still unsubmitted. You can safely retry this same submission."));
+  await page.getByRole("button", { name: "Retry same submission", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Client Satisfaction Measurement submitted", exact: true }));
+  assert.equal(sent.length, 2);
+  assert.deepEqual(sent[1], sent[0]);
+});
+
+await check("CSM idempotency conflict requires fresh review before a new key is created", csmPath, feedbackOptions({ family: "csm" }), async (page, fixture) => {
+  const sent = [];
+  await fixture.context.route("**/api/v1/feedback/csm", async (route) => {
+    const request = route.request();
+    if (request.method() !== "POST") return route.fallback();
+    sent.push({ body: request.postData(), key: request.headers()["idempotency-key"] });
+    if (sent.length === 1) return route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: { code: "idempotency_key_conflict" } }) });
+    return route.fulfill({ status: 201, contentType: "application/json", body: JSON.stringify(successBody) });
+  });
+  await fillCsmRequired(page);
+  await page.getByRole("button", { name: "Review and submit", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Client Satisfaction Measurement", exact: true }).click();
+  await shown(page.getByRole("alert").filter({ hasText: "This submission attempt was rejected" }));
+  assert.equal(sent.length, 1, "a key conflict is not blindly replayed");
+  assert.equal(await page.locator("#csm-age").isDisabled(), false, "the rejected response is available for review");
+  await page.getByRole("button", { name: "Review and submit", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Client Satisfaction Measurement", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Client Satisfaction Measurement submitted", exact: true }));
+  assert.equal(sent.length, 2);
+  assert.notEqual(sent[1].key, sent[0].key, "a new key is created only after fresh confirmation of the unsubmitted opportunity");
+});
+
+await check("CSM already-submitted conflict uses its own canonical opportunity flag", csmPath, feedbackOptions({ family: "csm" }), async (page, fixture) => {
+  await shown(page.getByRole("heading", { name: "HELP US SERVE YOU BETTER!", exact: true }));
+  let statusReads = 0;
+  const canonical = csmOpportunity({ csm_submitted: true, can_submit_csm: false, customer_feedback_submitted: false });
+  await fixture.context.route(`**/api/v1/feedback/opportunities/${csmOpportunityId}`, async (route) => {
+    if (route.request().method() !== "GET") return route.fallback();
+    statusReads += 1;
+    return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(canonical) });
+  });
+  await fixture.context.route("**/api/v1/feedback/csm", async (route) => route.request().method() === "POST"
+    ? route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: { code: "feedback_already_submitted" } }) })
+    : route.fallback());
+  await fillCsmRequired(page);
+  await page.getByRole("button", { name: "Review and submit", exact: true }).click();
+  await page.getByRole("button", { name: "Submit Client Satisfaction Measurement", exact: true }).click();
+  await shown(page.getByRole("heading", { name: "Client Satisfaction Measurement already submitted", exact: true }));
+  assert.equal(statusReads, 1);
+  assert.equal(await page.getByRole("button", { name: "Retry same submission", exact: true }).count(), 0);
 });
 
 await check("CSM phone and narrow reflow keep six native choices keyboard accessible", csmPath, { ...feedbackOptions({ family: "csm", device: "phone" }), viewport: { width: 390, height: 844 } }, async (page) => {
