@@ -23,16 +23,22 @@ from compass.common.email import RenderedEmail, render_email
 from compass.integrations.mail import Mailer
 
 from .current import notification_is_current
+from .email_disclosure import (
+    APPOINTMENT_EMAIL_FIELD_POLICY,
+    APPROVED_EMAIL_EVENTS,
+    APPROVED_OPERATIONAL_POLICY,
+    OPERATIONAL_EMAIL_EVENTS,
+    OPERATIONAL_EMAIL_TARGETS,
+    email_disclosure_policy,
+)
 from .email_links import NotificationEmailTarget, build_notification_email_link
 from .email_presentation import (
-    APPOINTMENT_EMAIL_FIELD_POLICY,
-    APPROVED_APPOINTMENT_POLICY,
     EmailPresentationReason,
     NotificationEmailPresentation,
-    appointment_email_disclosure_policy,
     resolve_notification_email_presentation,
 )
 from .models import EmailDelivery, EmailDeliveryStatus, Notification
+from .operational_email_rendering import operational_email_context
 from .policy import NotificationEvent, NotificationTargetType, get_event_definition
 
 logger = logging.getLogger("compass.notifications")
@@ -166,13 +172,15 @@ def render_notification_email(
             raise ValueError("inconsistent notification email action")
         if presentation.target is not None:
             if (
-                event_code not in APPOINTMENT_EMAIL_EVENTS
+                event_code not in APPROVED_EMAIL_EVENTS
                 or (
                     presentation.reason == EmailPresentationReason.LINK_AVAILABLE
+                    and event_code in APPOINTMENT_EMAIL_EVENTS
                     and event_code != NotificationEvent.APPOINTMENT_SCHEDULED
                 )
                 or not isinstance(presentation.target, NotificationEmailTarget)
-                or presentation.target.target_type != NotificationTargetType.APPOINTMENT
+                or presentation.target.target_type
+                != OPERATIONAL_EMAIL_TARGETS.get(event_code, NotificationTargetType.APPOINTMENT)
             ):
                 raise ValueError("unsupported notification email action")
             link = build_notification_email_link(presentation.target)
@@ -184,11 +192,12 @@ def render_notification_email(
             facts = presentation.appointment_facts
             fields = APPOINTMENT_EMAIL_FIELD_POLICY.get(presentation.recipient_class, frozenset())
             if (
-                type(facts) is not AppointmentEmailFacts
+                event_code not in APPOINTMENT_EMAIL_EVENTS
+                or type(facts) is not AppointmentEmailFacts
                 or presentation.reason != EmailPresentationReason.RICH_AVAILABLE
-                or presentation.disclosure_policy != APPROVED_APPOINTMENT_POLICY
+                or presentation.disclosure_policy != APPROVED_OPERATIONAL_POLICY
                 or presentation.validated_link is None
-                or appointment_email_disclosure_policy() != APPROVED_APPOINTMENT_POLICY
+                or email_disclosure_policy() != APPROVED_OPERATIONAL_POLICY
                 or presentation.target is None
                 or facts.event_code != event_code
                 or facts.appointment_id != presentation.target.target_id
@@ -204,8 +213,12 @@ def render_notification_email(
                 raise ValueError("unapproved appointment email facts")
             if "action_url" in context:
                 context["appointment_details"] = facts.rows
-        elif presentation.reason == EmailPresentationReason.RICH_AVAILABLE:
+        elif (
+            presentation.reason == EmailPresentationReason.RICH_AVAILABLE
+            and event_code not in OPERATIONAL_EMAIL_EVENTS
+        ):
             raise ValueError("missing appointment email facts")
+        context.update(operational_email_context(event_code, presentation))
     return render_email(
         definition.email_subject, f"notifications/email/{definition.email_template}", context
     )

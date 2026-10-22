@@ -1,0 +1,18 @@
+COMPASS
+University of Camarines Norte
+Guidance and Counseling Office
+
+Your Group Session registration is confirmed.
+
+Sign in to review the current registration status, session details, and any instructions.
+Session: Group Session
+Status: Registration confirmed
+Current date: Friday, October 23, 2099
+Current time: 9:00 AM–10:00 AM (Philippine Time)
+Delivery mode: Online
+
+View Group Session in COMPASS: https://portal.example/portal/group-sessions/73e6192c-a461-4c88-a5e3-2348e9c98213
+
+Sign in to review the latest record details and available next steps.
+
+This is an automated COMPASS message.

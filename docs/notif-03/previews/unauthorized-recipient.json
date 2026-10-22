@@ -1,0 +1,7 @@
+{
+  "event": "call_slip.issued",
+  "reason": "recipient_denied",
+  "suppressed": false,
+  "synthetic": true,
+  "transport": "not_sent"
+}

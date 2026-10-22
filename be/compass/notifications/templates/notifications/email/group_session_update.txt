@@ -1,5 +1,6 @@
 {% extends "compass/email/base.txt" %}
-{% block content %}An update affects your COMPASS Group Session registration.
+{% block content %}{% if operational_intro %}{{ operational_intro }}{% else %}An update affects your COMPASS Group Session registration.{% endif %}
 
 Sign in to review the current registration status, session details, and any instructions.
-{% endblock %}
+{% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
+{% include "notifications/partials/operational_action.txt" %}{% endblock %}

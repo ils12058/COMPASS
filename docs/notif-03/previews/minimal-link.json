@@ -1,0 +1,7 @@
+{
+  "event": "group_session.registered",
+  "reason": "link_available",
+  "suppressed": false,
+  "synthetic": true,
+  "transport": "not_sent"
+}

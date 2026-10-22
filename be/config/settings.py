@@ -1,6 +1,7 @@
 """Environment-driven Django settings for local-staging and live-staging."""
 
 import base64
+import os
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -14,6 +15,15 @@ from compass.common.redis_config import redis_urls
 from compass.confidential_data.crypto import keyring_reuses_secret, parse_fernet_keyring
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+if any(
+    name in os.environ
+    for name in ("APPOINTMENT_EMAIL_DISCLOSURE_POLICY", "APPOINTMENT_EMAIL_DISCLOSURE_POLICY_FILE")
+):
+    raise ValueError(
+        "APPOINTMENT_EMAIL_DISCLOSURE_POLICY has been removed; "
+        "replace it with COMPASS_EMAIL_DISCLOSURE_POLICY"
+    )
 
 APP_ENV = env("APP_ENV", "local-staging")
 if APP_ENV not in {"local-staging", "live-staging"}:
@@ -467,9 +477,9 @@ NOTIFICATION_EMAIL_MAX_ATTEMPTS = env_int("NOTIFICATION_EMAIL_MAX_ATTEMPTS", 5)
 # Optional and validated at link generation: absent/invalid values keep generic
 # transactional mail working. Never infer this from HTTP Host, CORS or CSRF.
 COMPASS_PORTAL_ORIGIN = env("COMPASS_PORTAL_ORIGIN", "")
-# Only an explicitly approved version enables external Appointment detail fields.
+# Only an approved complete policy version enables external operational detail fields.
 # Unknown values fail closed in the presentation policy, without breaking email.
-APPOINTMENT_EMAIL_DISCLOSURE_POLICY = env("APPOINTMENT_EMAIL_DISCLOSURE_POLICY", "minimal")
+COMPASS_EMAIL_DISCLOSURE_POLICY = env("COMPASS_EMAIL_DISCLOSURE_POLICY", "minimal")
 NOTIFICATION_EMAIL_RETRY_BASE_SECONDS = env_int("NOTIFICATION_EMAIL_RETRY_BASE_SECONDS", 60)
 NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS = env_int(
     "NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS", 60

@@ -1,0 +1,2 @@
+{% autoescape off %}{% for detail in email_details %}{{ detail.label }}: {{ detail.value }}
+{% endfor %}{% endautoescape %}

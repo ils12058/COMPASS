@@ -4,7 +4,6 @@ The NOTIF-01 content-free pilot remains available independently of rich approval
 No Student identity, private reason or confidential source record is projected.
 """
 
-import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
@@ -14,7 +13,15 @@ from django.db.models import Q
 from django.utils import timezone
 
 from compass.accounts.models import User
-from compass.common.institutional_time import institution_timezone_name, to_institution_time
+from compass.common.email_presentation import (
+    email_schedule as appointment_email_schedule,
+)
+from compass.common.email_presentation import (
+    safe_email_display_text as _display_text,
+)
+from compass.common.email_presentation import (
+    valid_email_interval as _valid_interval,
+)
 from compass.notifications.policy import NotificationEvent
 
 from .models import (
@@ -123,24 +130,6 @@ class AppointmentEmailField(StrEnum):
     MODE = "Delivery mode"
 
 
-_UNSAFE_DISPLAY = re.compile(
-    r"(?:[a-z][a-z0-9+.-]*://|\b(?:javascript|data|file|mailto):|www\.|@)", re.I
-)
-
-
-def _display_text(value: object) -> str | None:
-    # Plain str only: SafeString/HTML objects must not bypass Django autoescape.
-    if (
-        type(value) is not str
-        or not value.strip()
-        or len(value) > 600
-        or any(ord(char) < 32 or ord(char) == 127 for char in value)
-        or _UNSAFE_DISPLAY.search(value)
-    ):
-        return None
-    return value.strip()
-
-
 @dataclass(frozen=True, slots=True)
 class AppointmentEmailDetail:
     field: AppointmentEmailField
@@ -174,34 +163,6 @@ class AppointmentEmailResolution:
     recipient_class: AppointmentEmailRecipient | None = None
     link_allowed: bool = False
     facts: AppointmentEmailFacts | None = field(default=None, repr=False)
-
-
-def _valid_interval(start, end) -> bool:
-    return bool(
-        isinstance(start, datetime)
-        and isinstance(end, datetime)
-        and timezone.is_aware(start)
-        and timezone.is_aware(end)
-        and start < end
-    )
-
-
-def appointment_email_schedule(start: datetime, end: datetime) -> tuple[str, str]:
-    if not _valid_interval(start, end):
-        raise ValueError("invalid appointment email interval")
-    first, last = to_institution_time(start), to_institution_time(end)
-
-    def day(value):
-        return f"{value:%A, %B} {value.day}, {value:%Y}"
-
-    def clock(value):
-        return f"{value.hour % 12 or 12}:{value.minute:02d} {'AM' if value.hour < 12 else 'PM'}"
-
-    zone = (
-        "Philippine Time" if institution_timezone_name() == "Asia/Manila" else str(first.tzname())
-    )
-    dates = day(first) if first.date() == last.date() else f"{day(first)} – {day(last)}"
-    return dates, f"{clock(first)}–{clock(last)} ({zone})"
 
 
 def _superseded(event: AppointmentChangeEvent) -> bool:

@@ -1,5 +1,10 @@
 # NOTIF-02: approved rich Appointment emails
 
+> Historical NOTIF-02 configuration: superseded by NOTIF-03. The original
+> `APPOINTMENT_EMAIL_DISCLOSURE_POLICY` name below is retired and now rejected.
+> Current operations must use `COMPASS_EMAIL_DISCLOSURE_POLICY`; approval covers
+> the complete four-family bundle. See [current policy](../notif-03/centralized-disclosure-policy.md).
+
 Audited integration baseline: `6f73efd981023a29fef0b0ea10ecbaacbe16212b`,
 October 22, 2026. PR #310 is merged and its reviewed NOTIF-01 implementation is
 present. Staging remains `0a843dae20c01984d0fb9aa46d5eef34102ab386`; main remains
