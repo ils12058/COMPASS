@@ -129,7 +129,7 @@ export function BackgroundSection({ draft, onChange, validationIssues = [] }: In
                   value={sibling.occupation}
                   onChange={(value) => updateRow(index, { occupation: value })}
                 />
-                <label className="flex min-h-10 items-center gap-3 text-sm font-medium text-ink">
+                <label className="flex min-h-11 items-center gap-3 text-sm font-medium text-ink">
                   <input
                     type="checkbox"
                     className="h-4 w-4 accent-brand"

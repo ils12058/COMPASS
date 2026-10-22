@@ -163,7 +163,7 @@ export function RoutineCounselorEvaluationReadOnly({
 }) {
   const values = normalizeEvaluation(evaluation);
   return (
-    <div className="divide-y divide-border">
+    <div className="divide-y divide-border [overflow-wrap:anywhere]">
       <p className="py-4 text-sm text-muted">
         Source evaluation scale: 1 = Poor · 5 = Average · 10 = Excellent.
       </p>
@@ -262,7 +262,7 @@ export function RoutineCounselorEvaluationWorkspace({
 
   if (evaluationFinalized) {
     return (
-      <Panel aria-labelledby="routine-evaluation-heading">
+      <Panel aria-labelledby="routine-evaluation-heading" className="[overflow-wrap:anywhere]">
         <PanelHeader title="Counselor Evaluation" titleId="routine-evaluation-heading" description="This finalized evaluation is read-only." />
         <div className="px-4 sm:px-5">
           <RoutineCounselorEvaluationReadOnly evaluation={initialEvaluation} />
@@ -272,7 +272,7 @@ export function RoutineCounselorEvaluationWorkspace({
   }
 
   return (
-    <Panel aria-labelledby="routine-evaluation-heading">
+    <Panel aria-labelledby="routine-evaluation-heading" className="[overflow-wrap:anywhere]">
       <PanelHeader
         title="Counselor Evaluation"
         titleId="routine-evaluation-heading"
