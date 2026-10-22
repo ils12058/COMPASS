@@ -4,5 +4,7 @@
 {% block content %}
 <p>A COMPASS Appointment has been scheduled.</p>
 <p>Sign in to review its date, time, and any instructions before the session.</p>
+{% if action_url %}<p><a href="{{ action_url }}" style="color:#6b1f2a;">View Appointment in COMPASS</a></p>
+<p>Sign in to review the latest details. The Appointment may have changed since this notice.</p>{% endif %}
 <p>For assistance, contact the Guidance and Counseling Office through an official university channel.</p>
 {% endblock %}
