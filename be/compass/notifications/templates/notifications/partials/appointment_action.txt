@@ -1,0 +1,3 @@
+{% if action_url %}View Appointment in COMPASS: {{ action_url }}
+
+Sign in to review the latest Appointment details.{% endif %}
