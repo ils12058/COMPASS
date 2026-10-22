@@ -109,6 +109,8 @@ test("professional roles and designations retain their composition without Stude
     const html = renderWorld(state);
     assert.doesNotMatch(html, /student-home-services-heading|View all actions|Book appointment/);
     assert.deepEqual(getStudentHomeDestinations(state.account), []);
+    assert.equal(html.includes("counselor-work-heading"), role === "COUNSELOR", "Only Counselors receive the dedicated Counselor Home composition");
+    if (role === "GUIDANCE_SERVICES_STAFF" || role === "IT_ADMIN") assert.match(html, /overview-attention-heading/);
     if (role === "IT_ADMIN") assert.match(html, /Email delivery|email delivery/);
     if (role === "INSTITUTIONAL_OFFICER") assert.doesNotMatch(html, /overview-summary-heading/);
     assert.equal(getOverviewRoleContext(state.account)?.includes("Head Guidance Counselor") ?? false, role === "COUNSELOR");

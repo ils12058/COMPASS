@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarPlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PageActionLink } from "@/components/ui/page-action";
 import { PageHeader } from "@/components/ui/page-header";
@@ -9,6 +9,7 @@ import { pageSheetWidth } from "@/components/ui/page-width";
 import { OverviewAnnouncements } from "@/features/portal/home/overview-announcements";
 import { OverviewAttention } from "@/features/portal/home/overview-attention";
 import { OverviewSummary } from "@/features/portal/home/overview-summary";
+import { CounselorHome } from "@/features/portal/home/counselor-home";
 import { StudentHome } from "@/features/portal/home/student-home";
 import {
   formatOverviewDate,
@@ -34,11 +35,16 @@ function overviewErrorMessage(error: unknown): string {
   return "The Overview summary could not be loaded. Try again in a moment.";
 }
 
-// Queries and primary commands remain shared. Student composition is presentation only;
-// professional work, summary metrics and email delivery retain their existing composition.
+// Queries and primary commands remain shared. Student and Counselor Home branches change
+// presentation only; source projections, summary metrics, and role access remain authoritative.
 export function PortalHome() {
   const { user } = usePortalSession();
-  const [now] = useState(() => new Date());
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (user.role !== "COUNSELOR") return;
+    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(interval);
+  }, [user.role]);
   const summaryQuery = useOverviewGetSummary({
     query: { retry: false },
   });
@@ -88,6 +94,8 @@ export function PortalHome() {
 
       {user.role === "STUDENT" ? (
         <StudentHome user={user} attention={attention} summary={summaryPanel} />
+      ) : user.role === "COUNSELOR" ? (
+        <CounselorHome user={user} attention={attention} summary={summaryPanel} now={now} />
       ) : (
         <div
           className={
