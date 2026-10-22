@@ -1,0 +1,18 @@
+COMPASS
+University of Camarines Norte
+Guidance and Counseling Office
+
+Your Group Session has been rescheduled. Review the latest schedule in COMPASS.
+
+Sign in to review the current registration status, session details, and any instructions.
+Session: Group Session
+Status: Session rescheduled
+Updated date: Friday, October 23, 2099
+Updated time: 9:00 AM–10:00 AM (Philippine Time)
+Delivery mode: Online
+
+View Group Session in COMPASS: https://portal.example/portal/group-sessions/d2d49b94-8b1a-40d8-afb3-dda1fcaeac9e
+
+Sign in to review the latest record details and available next steps.
+
+This is an automated COMPASS message.

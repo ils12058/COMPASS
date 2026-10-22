@@ -1,0 +1,15 @@
+COMPASS
+University of Camarines Norte
+Guidance and Counseling Office
+
+Your Group Session registration has been cancelled.
+
+Sign in to review the current registration status, session details, and any instructions.
+Session: Group Session
+Status: Registration cancelled
+
+View Group Session in COMPASS: https://portal.example/portal/group-sessions/bf7e97b3-b83c-4aee-96a6-fdff97a1f6b2
+
+Sign in to review the latest record details and available next steps.
+
+This is an automated COMPASS message.

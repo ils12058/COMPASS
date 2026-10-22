@@ -1,0 +1,7 @@
+{
+  "event": "good_moral.request_initiated",
+  "reason": "rich_available",
+  "suppressed": false,
+  "synthetic": true,
+  "transport": "not_sent"
+}

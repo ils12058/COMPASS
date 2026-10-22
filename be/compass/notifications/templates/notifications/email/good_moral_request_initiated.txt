@@ -5,4 +5,5 @@ The Guidance and Counseling Office has started a Good Moral certificate request 
 Sign in to review the request status and any instructions.
 
 If you need help, contact the Guidance and Counseling Office through an official university channel.
-{% endblock %}
+{% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
+{% include "notifications/partials/operational_action.txt" %}{% endblock %}

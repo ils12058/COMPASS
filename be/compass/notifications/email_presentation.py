@@ -3,18 +3,42 @@
 from dataclasses import dataclass, field, replace
 from enum import StrEnum
 
-from django.conf import settings
-
 from compass.appointments.email_presentation import (
     APPOINTMENT_EMAIL_EVENTS,
     AppointmentEmailEligibility,
     AppointmentEmailFacts,
-    AppointmentEmailField,
     AppointmentEmailRecipient,
     resolve_appointment_email_facts,
     scheduled_appointment_email_access,
 )
+from compass.call_slips.email_presentation import (
+    CallSlipEmailFacts,
+    CallSlipEmailRecipient,
+    resolve_call_slip_email_facts,
+)
+from compass.good_moral.email_presentation import (
+    GOOD_MORAL_EMAIL_EVENTS,
+    GoodMoralEmailFacts,
+    GoodMoralEmailRecipient,
+    resolve_good_moral_email_facts,
+)
+from compass.group_sessions.email_presentation import (
+    GROUP_SESSION_EMAIL_EVENTS,
+    GroupSessionEmailFacts,
+    GroupSessionEmailRecipient,
+    resolve_group_session_email_facts,
+)
 
+from .email_disclosure import (
+    APPOINTMENT_EMAIL_FIELD_POLICY,
+    APPROVED_OPERATIONAL_POLICY,
+    CALL_SLIP_EMAIL_FIELD_POLICY,
+    GOOD_MORAL_EMAIL_FIELD_POLICY,
+    GROUP_SESSION_EMAIL_FIELD_POLICY,
+    OPERATIONAL_EMAIL_EVENTS,
+    OPERATIONAL_EMAIL_TARGETS,
+    email_disclosure_policy,
+)
 from .email_links import (
     EmailLinkReason,
     NotificationEmailLink,
@@ -40,50 +64,25 @@ class EmailPresentationReason(StrEnum):
     RECIPIENT_MINIMAL = "recipient_minimal"
 
 
-APPROVED_APPOINTMENT_POLICY = "operational_v1"
-_STUDENT_FIELDS = frozenset(
-    {
-        AppointmentEmailField.REFERENCE,
-        AppointmentEmailField.SERVICE,
-        AppointmentEmailField.DATE,
-        AppointmentEmailField.TIME,
-        AppointmentEmailField.PREVIOUS_DATE,
-        AppointmentEmailField.PREVIOUS_TIME,
-        AppointmentEmailField.UPDATED_DATE,
-        AppointmentEmailField.UPDATED_TIME,
-        AppointmentEmailField.COUNSELOR,
-        AppointmentEmailField.UPDATED_COUNSELOR,
-        AppointmentEmailField.MODE,
-    }
-)
-_COUNSELOR_FIELDS = _STUDENT_FIELDS - {
-    AppointmentEmailField.COUNSELOR,
-    AppointmentEmailField.UPDATED_COUNSELOR,
-}
-APPOINTMENT_EMAIL_FIELD_POLICY = {
-    AppointmentEmailRecipient.STUDENT: _STUDENT_FIELDS,
-    AppointmentEmailRecipient.CURRENT_COUNSELOR: _COUNSELOR_FIELDS,
-}
-
-
-def appointment_email_disclosure_policy() -> str:
-    configured = settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY
-    return (
-        APPROVED_APPOINTMENT_POLICY
-        if type(configured) is str and configured == (APPROVED_APPOINTMENT_POLICY)
-        else "minimal"
-    )
-
-
 @dataclass(frozen=True, slots=True)
 class NotificationEmailPresentation:
     event_code: str
     reason: EmailPresentationReason
-    recipient_class: AppointmentEmailRecipient | None = None
+    recipient_class: (
+        AppointmentEmailRecipient
+        | GroupSessionEmailRecipient
+        | GoodMoralEmailRecipient
+        | CallSlipEmailRecipient
+        | None
+    ) = None
     target: NotificationEmailTarget | None = field(default=None, repr=False)
     appointment_facts: AppointmentEmailFacts | None = field(default=None, repr=False)
     disclosure_policy: str = "minimal"
     validated_link: NotificationEmailLink | None = field(default=None, repr=False)
+
+    group_session_facts: GroupSessionEmailFacts | None = field(default=None, repr=False)
+    good_moral_facts: GoodMoralEmailFacts | None = field(default=None, repr=False)
+    call_slip_facts: CallSlipEmailFacts | None = field(default=None, repr=False)
 
     @property
     def suppress(self) -> bool:
@@ -128,8 +127,10 @@ def _minimal_presentation(notification) -> NotificationEmailPresentation:
 
 def resolve_notification_email_presentation(notification) -> NotificationEmailPresentation:
     event = notification.event_code
+    if event in OPERATIONAL_EMAIL_EVENTS:
+        return _operational_presentation(notification)
     if (
-        appointment_email_disclosure_policy() != APPROVED_APPOINTMENT_POLICY
+        email_disclosure_policy() != APPROVED_OPERATIONAL_POLICY
         or event not in APPOINTMENT_EMAIL_EVENTS
     ):
         return _minimal_presentation(notification)
@@ -176,6 +177,72 @@ def resolve_notification_email_presentation(notification) -> NotificationEmailPr
         result.recipient_class,
         target,
         facts,
-        APPROVED_APPOINTMENT_POLICY,
+        APPROVED_OPERATIONAL_POLICY,
         link,
     )
+
+
+def _operational_presentation(notification) -> NotificationEmailPresentation:
+    event = notification.event_code
+    if (
+        notification.target_type != OPERATIONAL_EMAIL_TARGETS[event]
+        or notification.target_id is None
+    ):
+        return NotificationEmailPresentation(event, EmailPresentationReason.INVALID_TARGET)
+    if event in GROUP_SESSION_EMAIL_EVENTS:
+        result = resolve_group_session_email_facts(
+            event_code=event,
+            source_type=notification.source_type,
+            source_id=notification.source_id,
+            group_session_id=notification.target_id,
+            recipient_id=notification.recipient_id,
+        )
+        fields = GROUP_SESSION_EMAIL_FIELD_POLICY[event]
+    elif event in GOOD_MORAL_EMAIL_EVENTS:
+        result = resolve_good_moral_email_facts(
+            event_code=event,
+            source_type=notification.source_type,
+            source_id=notification.source_id,
+            request_id=notification.target_id,
+            recipient_id=notification.recipient_id,
+        )
+        fields = GOOD_MORAL_EMAIL_FIELD_POLICY[event]
+    else:
+        result = resolve_call_slip_email_facts(
+            event_code=event,
+            source_type=notification.source_type,
+            source_id=notification.source_id,
+            call_slip_id=notification.target_id,
+            recipient_id=notification.recipient_id,
+        )
+        fields = CALL_SLIP_EMAIL_FIELD_POLICY[event]
+    if result.eligibility != "allowed":
+        return NotificationEmailPresentation(event, EmailPresentationReason(result.eligibility))
+    target = NotificationEmailTarget(notification.target_type, notification.target_id)
+    link = build_notification_email_link(target)
+    if link.reason != EmailLinkReason.AVAILABLE:
+        reason = {
+            EmailLinkReason.ORIGIN_MISSING: EmailPresentationReason.ORIGIN_MISSING,
+            EmailLinkReason.ORIGIN_INVALID: EmailPresentationReason.ORIGIN_INVALID,
+        }.get(link.reason, EmailPresentationReason.INVALID_TARGET)
+        return NotificationEmailPresentation(event, reason)
+    policy = email_disclosure_policy()
+    rich = policy == APPROVED_OPERATIONAL_POLICY and result.facts.rich_allowed
+    # Minimal plans retain typed source guards for final equality, but no display rows.
+    facts = replace(
+        result.facts,
+        rows=tuple(row for row in result.facts.rows if row.field in fields) if rich else (),
+    )
+    plan = NotificationEmailPresentation(
+        event,
+        EmailPresentationReason.RICH_AVAILABLE if rich else EmailPresentationReason.LINK_AVAILABLE,
+        facts.recipient_class,
+        target,
+        disclosure_policy=policy,
+        validated_link=link,
+    )
+    if type(facts) is GroupSessionEmailFacts:
+        return replace(plan, group_session_facts=facts)
+    if type(facts) is GoodMoralEmailFacts:
+        return replace(plan, good_moral_facts=facts)
+    return replace(plan, call_slip_facts=facts)

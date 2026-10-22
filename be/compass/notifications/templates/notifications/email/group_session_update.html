@@ -1,5 +1,6 @@
 {% extends "compass/email/base.html" %}
 {% block preheader %}A COMPASS Group Session you registered for has an update.{% endblock %}
-{% block heading %}Group Session Update{% endblock %}
-{% block content %}<p>An update affects your COMPASS Group Session registration.</p>
-<p>Sign in to review the current registration status, session details, and any instructions.</p>{% endblock %}
+{% block heading %}{{ operational_heading|default:"Group Session Update" }}{% endblock %}
+{% block content %}<p>{% if operational_intro %}{{ operational_intro }}{% else %}An update affects your COMPASS Group Session registration.{% endif %}</p>
+<p>Sign in to review the current registration status, session details, and any instructions.</p>{% if email_details %}{% include "notifications/partials/detail_rows.html" %}{% endif %}
+{% include "notifications/partials/operational_action.html" %}{% endblock %}

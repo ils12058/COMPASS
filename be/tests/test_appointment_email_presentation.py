@@ -46,7 +46,7 @@ POLICY = "operational_v1"
 @pytest.fixture(autouse=True)
 def no_external_transport(settings, monkeypatch):
     settings.COMPASS_PORTAL_ORIGIN = "https://portal.example"
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = "minimal"
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = "minimal"
     settings.MAILERS = {"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}}
     monkeypatch.setattr("compass.notifications.services._safe_kick_email_delivery", lambda _: None)
     monkeypatch.setattr("compass.notifications.services._safe_kick_push_delivery", lambda _: None)
@@ -155,7 +155,7 @@ def test_all_seven_events_keep_fixed_copy_without_approval(case, event):
 
 @pytest.mark.parametrize("policy", ["", None, "true", "OPERATIONAL_V1", "unknown", [POLICY]])
 def test_invalid_approval_policy_fails_to_minimal(case, settings, policy):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = policy
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = policy
     plan, message = resolve_render(notice(case, NotificationEvent.APPOINTMENT_SCHEDULED))
     assert plan.appointment_facts is None
     assert "APT-SYNTHETIC-02" not in message.text_body
@@ -164,7 +164,7 @@ def test_invalid_approval_policy_fails_to_minimal(case, settings, policy):
 
 @pytest.mark.parametrize("event", EVENTS)
 def test_approved_student_fields_and_links_for_every_event(case, settings, event):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     plan, message = resolve_render(notice(case, event))
     assert plan.appointment_facts is not None
     assert "APT-SYNTHETIC-02" in message.text_body
@@ -199,7 +199,7 @@ def test_approved_student_fields_and_links_for_every_event(case, settings, event
     ],
 )
 def test_current_counselor_has_no_student_identity_or_provider_names(case, settings, event):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     plan, message = resolve_render(notice(case, event, recipient=case[1]))
     assert plan.appointment_facts is not None
     assert "APT-SYNTHETIC-02" in message.text_body
@@ -213,7 +213,7 @@ def test_current_counselor_has_no_student_identity_or_provider_names(case, setti
 
 
 def test_former_counselor_is_minimal_even_with_other_management_access(case, settings):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification = notice(case, NotificationEvent.APPOINTMENT_REASSIGNED, recipient=case[2])
     plan, message = resolve_render(notification)
     assert plan.appointment_facts is None and plan.target is None
@@ -222,7 +222,7 @@ def test_former_counselor_is_minimal_even_with_other_management_access(case, set
 
 @pytest.mark.parametrize("change", ["reschedule", "reassign"])
 def test_initial_scheduled_event_never_borrows_changed_facts(case, settings, change):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification = notice(case, NotificationEvent.APPOINTMENT_SCHEDULED)
     notice(
         case,
@@ -240,7 +240,7 @@ def test_initial_scheduled_event_never_borrows_changed_facts(case, settings, cha
     "event", [NotificationEvent.APPOINTMENT_RESCHEDULED, NotificationEvent.APPOINTMENT_REASSIGNED]
 )
 def test_superseded_changes_are_suppressed_without_changing_event_identity(case, settings, event):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification = notice(case, event)
     source_id = notification.source_id
     notice(case, NotificationEvent.APPOINTMENT_RESCHEDULED)
@@ -305,7 +305,7 @@ def test_unvalidated_detail_values_fail_with_content_free_error(value):
 
 
 def test_html_escaping_and_plain_text_parity_use_snapshot_not_live_service(case, settings):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     item = case[3]
     snapshot = 'Synthetic <Service> & "support"'
     Appointment.objects.filter(pk=item.pk).update(service_name_snapshot=snapshot)
@@ -321,7 +321,7 @@ def test_html_escaping_and_plain_text_parity_use_snapshot_not_live_service(case,
 
 
 def test_unsafe_optional_labels_are_omitted_not_rendered_as_links(case, settings):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     Appointment.objects.filter(pk=case[3].pk).update(
         service_name_snapshot="https://evil.test/track"
     )
@@ -334,7 +334,7 @@ def test_unsafe_optional_labels_are_omitted_not_rendered_as_links(case, settings
 
 @pytest.mark.parametrize("origin", ["", "http://evil.test", "https://user:secret@evil.test"])
 def test_approved_details_still_require_trusted_link(case, settings, origin):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     settings.COMPASS_PORTAL_ORIGIN = origin
     plan, message = resolve_render(notice(case, NotificationEvent.APPOINTMENT_SCHEDULED))
     assert plan.appointment_facts is None
@@ -348,7 +348,7 @@ def test_only_disclosed_name_changes_affect_final_comparison(
 ):
     from compass.notifications import delivery as worker
 
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification = notice(
         case,
         NotificationEvent.APPOINTMENT_SCHEDULED,
@@ -370,7 +370,7 @@ def test_only_disclosed_name_changes_affect_final_comparison(
 
 @pytest.mark.parametrize("defect", ["kind", "parent", "recipient"])
 def test_reminder_source_binding_prevents_wrong_event_data(case, settings, defect):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification = notice(case, NotificationEvent.APPOINTMENT_REMINDER_24H)
     if defect == "kind":
         notification.event_code = NotificationEvent.APPOINTMENT_REMINDER_3H
@@ -383,7 +383,7 @@ def test_reminder_source_binding_prevents_wrong_event_data(case, settings, defec
 
 
 def test_retry_keeps_exact_event_facts_without_new_intents(case, settings, monkeypatch):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification = notice(case, NotificationEvent.APPOINTMENT_RESCHEDULED)
     delivery = EmailDelivery.objects.get(notification=notification)
     sends = []
@@ -406,7 +406,7 @@ def test_email_supersession_does_not_hide_in_app_or_change_push(case, settings):
     from compass.notifications.push_policy import push_body_for
     from compass.notifications.services import list_my_notifications
 
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     old = notice(case, NotificationEvent.APPOINTMENT_RESCHEDULED)
     notice(case, NotificationEvent.APPOINTMENT_REASSIGNED)
     assert resolve_notification_email_presentation(old).suppress
@@ -420,7 +420,7 @@ def test_email_supersession_does_not_hide_in_app_or_change_push(case, settings):
 def test_committed_concurrent_changes_are_seen_after_render(case, settings, monkeypatch, change):
     from compass.notifications import delivery as worker
 
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     event = (
         NotificationEvent.APPOINTMENT_REMINDER_MANUAL
         if change == "reminder_revision"
@@ -474,7 +474,7 @@ def test_committed_concurrent_changes_are_seen_after_render(case, settings, monk
 
 @pytest.mark.parametrize("defect", ["wrong_type", "wrong_parent", "missing_source"])
 def test_incomplete_or_invalid_change_source_never_projects_facts(case, settings, defect):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification = notice(case, NotificationEvent.APPOINTMENT_RESCHEDULED)
     if defect == "wrong_type":
         notification.event_code = NotificationEvent.APPOINTMENT_REASSIGNED
@@ -490,7 +490,7 @@ def test_incomplete_or_invalid_change_source_never_projects_facts(case, settings
 
 @pytest.mark.parametrize("event", [event for event in EVENTS if "reminder" in event.value])
 def test_reminder_projection_requires_exact_occurrence_revision_and_kind(case, settings, event):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification = notice(case, event)
     Appointment.objects.filter(pk=case[3].pk).update(reminder_revision=2)
     assert resolve_notification_email_presentation(notification).suppress
@@ -503,14 +503,14 @@ def test_reminder_projection_requires_exact_occurrence_revision_and_kind(case, s
 def test_post_render_safety_change_cancels_rich_transport(case, settings, monkeypatch, change):
     from compass.notifications import delivery as worker
 
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification = notice(case, NotificationEvent.APPOINTMENT_SCHEDULED)
     original = worker.render_notification_email
 
     def render_then_change(*args, **kwargs):
         rendered = original(*args, **kwargs)
         if change == "approval":
-            settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = "minimal"
+            settings.COMPASS_EMAIL_DISCLOSURE_POLICY = "minimal"
         elif change == "origin":
             settings.COMPASS_PORTAL_ORIGIN = "https://changed-portal.example"
         elif change == "capability":
@@ -540,13 +540,13 @@ def test_post_render_safety_change_cancels_rich_transport(case, settings, monkey
 
 def test_actual_settings_default_is_minimal():
     environment = dict(os.environ)
-    environment.pop("APPOINTMENT_EMAIL_DISCLOSURE_POLICY", None)
-    environment.pop("APPOINTMENT_EMAIL_DISCLOSURE_POLICY_FILE", None)
+    environment.pop("COMPASS_EMAIL_DISCLOSURE_POLICY", None)
+    environment.pop("COMPASS_EMAIL_DISCLOSURE_POLICY_FILE", None)
     subprocess.run(
         [
             sys.executable,
             "-c",
-            "import tests.settings as s; assert s.APPOINTMENT_EMAIL_DISCLOSURE_POLICY == 'minimal'",
+            "import tests.settings as s; assert s.COMPASS_EMAIL_DISCLOSURE_POLICY == 'minimal'",
         ],
         env=environment,
         capture_output=True,
@@ -565,7 +565,7 @@ def test_actual_settings_default_is_minimal():
     ],
 )
 def test_approved_upcoming_events_suppress_terminal_or_started_source(case, settings, state, event):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification = notice(case, event)
     changes = {"status": state, f"{state.lower()}_at": timezone.now()}
     if state == "PAST":
@@ -579,7 +579,7 @@ def test_approved_upcoming_events_suppress_terminal_or_started_source(case, sett
 
 @pytest.mark.parametrize("event", EVENTS)
 def test_unrelated_recipient_cannot_gain_details_from_intent(case, settings, event):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     unrelated = make_user("unrelated-email@example.test", "COUNSELOR")
     notification = notice(case, event)
     notification.recipient = unrelated
@@ -597,7 +597,7 @@ def test_unrelated_recipient_cannot_gain_details_from_intent(case, settings, eve
     ],
 )
 def test_legacy_absent_sources_remain_deliverable_as_generic(case, settings, event):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification = notice(case, event)
     notification.source_id = uuid4()
     if event != NotificationEvent.APPOINTMENT_RESCHEDULED:
@@ -612,7 +612,7 @@ def test_legacy_absent_sources_remain_deliverable_as_generic(case, settings, eve
 
 
 def test_ambiguous_change_timestamps_suppress_both_events(case, settings):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     first = notice(case, NotificationEvent.APPOINTMENT_RESCHEDULED)
     second = notice(case, NotificationEvent.APPOINTMENT_REASSIGNED)
     timestamp = timezone.now()
@@ -622,7 +622,7 @@ def test_ambiguous_change_timestamps_suppress_both_events(case, settings):
 
 
 def test_superseded_retry_does_not_reinterpret_later_schedule(case, settings, monkeypatch):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     first = notice(case, NotificationEvent.APPOINTMENT_RESCHEDULED)
     delivery = EmailDelivery.objects.get(notification=first)
     sends = []
@@ -637,7 +637,7 @@ def test_superseded_retry_does_not_reinterpret_later_schedule(case, settings, mo
 def test_rich_resolution_failure_never_logs_private_rows(case, settings, monkeypatch, caplog):
     from compass.notifications import email_presentation
 
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification = notice(case, NotificationEvent.APPOINTMENT_SCHEDULED)
 
     def fail(**kwargs):
@@ -657,7 +657,7 @@ def test_rich_resolution_failure_never_logs_private_rows(case, settings, monkeyp
 
 
 def test_nine_to_ten_to_two_preserves_exact_change_identity(case, settings):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     item = case[3]
     ten = datetime(2099, 10, 23, 2, tzinfo=UTC)
     two = datetime(2099, 10, 23, 6, tzinfo=UTC)
@@ -694,7 +694,7 @@ def test_nine_to_ten_to_two_preserves_exact_change_identity(case, settings):
 
 
 def test_a_to_b_to_c_never_grants_former_provider_new_details(case, settings):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     item = case[3]
     first = notice(case, NotificationEvent.APPOINTMENT_REASSIGNED)
     c = make_user("third-counselor@example.test", "COUNSELOR", first_name="Counselor C")
@@ -729,7 +729,7 @@ def test_former_provider_with_independent_domain_scope_still_gets_minimal_email(
     from compass.appointments.services import get_appointment_for_actor
     from tests.test_appointments import create_affiliation
 
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     create_affiliation(case[0], case[2])
     assert get_appointment_for_actor(appointment_id=case[3].pk, actor=case[2]).pk == case[3].pk
     plan, message = resolve_render(
@@ -743,7 +743,7 @@ def test_gss_pilot_link_remains_scoped_and_never_rich(case, settings):
     from compass.organization.models import StaffSupervision
     from tests.test_appointments import create_affiliation
 
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     create_affiliation(case[0], case[1])
     staff = make_user("email-gss@example.test", "GUIDANCE_SERVICES_STAFF")
     supervision = StaffSupervision.objects.create(staff=staff, supervisor=case[1])
@@ -759,15 +759,15 @@ def test_gss_pilot_link_remains_scoped_and_never_rich(case, settings):
     "event",
     [
         NotificationEvent.SECURITY_PASSWORD_RESET,
-        NotificationEvent.GOOD_MORAL_ISSUED,
-        NotificationEvent.GROUP_SESSION_REGISTERED,
-        NotificationEvent.CALL_SLIP_ISSUED,
+        NotificationEvent.FOLLOWUP_ASSIGNED,
+        NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED,
+        NotificationEvent.ECOUNSELING_CONSENT_REQUESTED,
     ],
 )
-def test_appointment_policy_does_not_enable_other_event_details(settings, event):
+def test_operational_policy_keeps_confidential_and_security_events_generic(settings, event):
     from types import SimpleNamespace
 
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = POLICY
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     plan, message = resolve_render(SimpleNamespace(event_code=event))
     assert plan.appointment_facts is None
     assert message == render_notification_email(event)
@@ -792,7 +792,7 @@ EXAMPLES = [
 
 @pytest.mark.parametrize("name,event", EXAMPLES)
 def test_synthetic_preview_examples(case, settings, tmp_path, name, event):
-    settings.APPOINTMENT_EMAIL_DISCLOSURE_POLICY = (
+    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = (
         "minimal" if name == "minimal-no-approval" else POLICY
     )
     if name == "long-labels":

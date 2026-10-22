@@ -1,0 +1,3 @@
+{% if action_url %}{{ action_label }}: {{ action_url }}
+
+Sign in to review the latest record details and available next steps.{% endif %}

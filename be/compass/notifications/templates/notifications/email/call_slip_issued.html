@@ -5,4 +5,5 @@
 <p>A Call Slip has been issued to your COMPASS account.</p>
 <p>Sign in to review the Call Slip and any instructions for the requested office visit.</p>
 <p>For questions, contact the Guidance and Counseling Office through an official university channel.</p>
-{% endblock %}
+{% if email_details %}{% include "notifications/partials/detail_rows.html" %}{% endif %}
+{% include "notifications/partials/operational_action.html" %}{% endblock %}

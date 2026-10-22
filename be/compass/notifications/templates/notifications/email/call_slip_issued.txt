@@ -3,4 +3,5 @@
 
 Sign in to review the Call Slip and any instructions for the requested office visit.
 
-For questions, contact the Guidance and Counseling Office through an official university channel.{% endblock %}
+For questions, contact the Guidance and Counseling Office through an official university channel.{% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
+{% include "notifications/partials/operational_action.txt" %}{% endblock %}
