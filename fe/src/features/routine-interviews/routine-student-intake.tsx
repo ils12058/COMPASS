@@ -3,7 +3,7 @@
 import { studentActionsQueryFamily } from "@/features/student-actions/student-actions-data";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -33,10 +33,12 @@ import {
   getRoutineInterviewsListMineQueryKey,
   getRoutineInterviewsReplaceMyIntakeMutationKey,
   getRoutineInterviewsSubmitMyIntakeMutationKey,
+  routineInterviewsGetMine,
   routineInterviewsReplaceMyIntake,
   routineInterviewsSubmitMyIntake,
 } from "@/lib/api/generated/routine-interviews/routine-interviews";
 import { routineErrorMessage } from "@/features/routine-interviews/routine-interviews-shared";
+import { RoutineWorkflowState } from "@/lib/api/generated/model";
 
 const concernOptions: {
   value: RoutineConcernValue;
@@ -328,6 +330,11 @@ export function RoutineStudentIntakeEditor({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [submissionUncertain, setSubmissionUncertain] = useState(false);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [mustConfirmSubmitted, setMustConfirmSubmitted] = useState(false);
+  const operationRef = useRef(false);
   const [validationAttempted, setValidationAttempted] = useState(false);
   const [confirmSubmit, setConfirmSubmit] = useState(false);
   const save = useMutation({
@@ -339,7 +346,7 @@ export function RoutineStudentIntakeEditor({
     mutationKey: getRoutineInterviewsSubmitMyIntakeMutationKey(),
     mutationFn: () => routineInterviewsSubmitMyIntake(routineInterviewId),
   });
-  const pending = save.isPending || submit.isPending;
+  const pending = save.isPending || submit.isPending || checkingStatus;
   const dirty = JSON.stringify(draft) !== JSON.stringify(saved);
   useUnsavedChangesGuard({
     dirty,
@@ -379,7 +386,7 @@ export function RoutineStudentIntakeEditor({
   }
 
   async function saveProgress(): Promise<boolean> {
-    if (pending || !dirty) return !dirty;
+    if (pending || submissionUncertain || !dirty) return !dirty;
     setSaveError(null);
     setSubmitError(null);
     setNotice(null);
@@ -422,6 +429,7 @@ export function RoutineStudentIntakeEditor({
 
   function requestSubmit() {
     setSubmitError(null);
+    if (submissionUncertain || operationRef.current) return;
     if (dirty) {
       setSubmitError("Save your changes before submitting the Intake.");
       return;
@@ -436,9 +444,11 @@ export function RoutineStudentIntakeEditor({
   }
 
   async function submitIntake() {
-    if (pending) return;
+    if (pending || operationRef.current || submissionUncertain) return;
+    operationRef.current = true;
     setSubmitError(null);
     setNotice(null);
+    setStatusMessage(null);
     try {
       const response = await submit.mutateAsync();
       const nextDraft = normalizeRoutineIntake(response.data.intake);
@@ -449,6 +459,7 @@ export function RoutineStudentIntakeEditor({
         response,
       );
       setConfirmSubmit(false);
+      setSubmissionUncertain(false);
       setNotice("Intake submitted. Your responses are now read-only.");
       void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
       await Promise.all([
@@ -464,20 +475,119 @@ export function RoutineStudentIntakeEditor({
         error instanceof CompassApiError
           ? readApiErrorCode(error.body)
           : undefined;
-      if (code === "routine_interview_intake_already_submitted") {
-        void queryClient.invalidateQueries({
-          queryKey: getRoutineInterviewsGetMineQueryKey(routineInterviewId),
-        });
-        void queryClient.invalidateQueries({
-          queryKey: getRoutineInterviewsListMineQueryKey(),
-        });
+      const alreadySubmitted = code === "routine_interview_intake_already_submitted";
+      const uncertain = alreadySubmitted || !(error instanceof CompassApiError)
+        || error.status === 408 || error.status >= 500;
+      if (uncertain) {
+        setSubmissionUncertain(true);
+        setMustConfirmSubmitted(alreadySubmitted);
+        setConfirmSubmit(false);
+        setStatusMessage("Checking your Intake submission…");
+        setCheckingStatus(true);
+        try {
+          const canonicalResponse = await routineInterviewsGetMine(routineInterviewId, { cache: "no-store" });
+          const canonicalDetail = canonicalResponse.data;
+          if (canonicalDetail.id !== routineInterviewId) {
+            throw new Error("The canonical Routine Interview did not match this page.");
+          }
+          queryClient.setQueryData(
+            getRoutineInterviewsGetMineQueryKey(routineInterviewId),
+            canonicalResponse,
+          );
+          if (canonicalDetail.intake_status === "SUBMITTED") {
+            setSubmissionUncertain(false);
+            setSubmitError(null);
+            setStatusMessage("Your Intake was submitted successfully. Your responses are now read-only.");
+            void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
+            await Promise.all([
+              queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetMineQueryKey(routineInterviewId) }),
+              queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListMineQueryKey() }),
+            ]);
+          } else if (canonicalDetail.workflow_state !== RoutineWorkflowState.ACTIVE) {
+            setSubmissionUncertain(false);
+            setStatusMessage("Your Intake is still a draft, but this Routine Interview is no longer active and cannot be submitted.");
+            void queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListMineQueryKey() });
+          } else {
+            const canonicalIntake = normalizeRoutineIntake(canonicalDetail.intake);
+            const localMatchesCanonical = JSON.stringify(canonicalIntake) === JSON.stringify(saved);
+            setSaved(canonicalIntake);
+            if (alreadySubmitted) {
+              // The backend's submitted conflict and the canonical draft disagree. Preserve the
+              // answers and block another POST until a later canonical read resolves the conflict.
+              setSubmissionUncertain(true);
+              setStatusMessage("The submission result still needs confirmation. The latest status says draft, but the server reported it was already submitted. Check status again before continuing.");
+            } else {
+              setSubmissionUncertain(false);
+              setSubmitError(null);
+              setStatusMessage(localMatchesCanonical
+                ? "Your Intake is still a draft. Review the confirmation before submitting again."
+                : "Your Intake is still a draft. Your answers are preserved; save them before submitting again.");
+              void queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListMineQueryKey() });
+            }
+          }
+        } catch {
+          setSubmissionUncertain(true);
+          setStatusMessage("We couldn't confirm your Intake status. Your answers are still on this page. Check status again before submitting.");
+        } finally {
+          setCheckingStatus(false);
+        }
+      } else {
+        setSubmitError(
+          routineErrorMessage(
+            error,
+            "Your Intake could not be submitted. Review the message and try again.",
+          ),
+        );
       }
-      setSubmitError(
-        routineErrorMessage(
-          error,
-          "Your Intake submission could not be confirmed. Refresh this page to check its status before trying again.",
-        ),
+    } finally {
+      operationRef.current = false;
+    }
+  }
+
+  async function checkSubmissionStatus() {
+    if (!submissionUncertain || operationRef.current) return;
+    operationRef.current = true;
+    setCheckingStatus(true);
+    setStatusMessage("Checking your Intake submission…");
+    setSubmitError(null);
+    try {
+      const canonicalResponse = await routineInterviewsGetMine(routineInterviewId, { cache: "no-store" });
+      const canonicalDetail = canonicalResponse.data;
+      if (canonicalDetail.id !== routineInterviewId) {
+        throw new Error("The canonical Routine Interview did not match this page.");
+      }
+      queryClient.setQueryData(
+        getRoutineInterviewsGetMineQueryKey(routineInterviewId),
+        canonicalResponse,
       );
+      if (canonicalDetail.intake_status === "SUBMITTED") {
+        setSubmissionUncertain(false);
+        setStatusMessage("Your Intake was submitted successfully. Your responses are now read-only.");
+        void queryClient.invalidateQueries({ queryKey: studentActionsQueryFamily() });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: getRoutineInterviewsGetMineQueryKey(routineInterviewId) }),
+          queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListMineQueryKey() }),
+        ]);
+      } else if (canonicalDetail.workflow_state !== RoutineWorkflowState.ACTIVE) {
+        setSubmissionUncertain(false);
+        setStatusMessage("Your Intake is still a draft, but this Routine Interview is no longer active and cannot be submitted.");
+      } else if (mustConfirmSubmitted) {
+        setStatusMessage("The submission result still needs confirmation. The latest status says draft, but the server reported it was already submitted. Check status again before continuing.");
+      } else {
+        const canonicalIntake = normalizeRoutineIntake(canonicalDetail.intake);
+        const localMatchesCanonical = JSON.stringify(canonicalIntake) === JSON.stringify(saved);
+        setSaved(canonicalIntake);
+        setSubmissionUncertain(false);
+        setStatusMessage(localMatchesCanonical
+          ? "Your Intake is still a draft. Review the confirmation before submitting again."
+          : "Your Intake is still a draft. Your answers are preserved; save them before submitting again.");
+        void queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListMineQueryKey() });
+      }
+    } catch {
+      setStatusMessage("We couldn't confirm your Intake status. Your answers are still on this page. Check status again before submitting.");
+    } finally {
+      setCheckingStatus(false);
+      operationRef.current = false;
     }
   }
 
@@ -506,6 +616,20 @@ export function RoutineStudentIntakeEditor({
         />
       </PanelBody>
 
+      {statusMessage ? (
+        <PanelMessage
+          role={submissionUncertain ? "alert" : "status"}
+          tone={submissionUncertain ? "muted" : undefined}
+          action={submissionUncertain ? (
+            <Button variant="secondary" className="min-h-11" disabled={checkingStatus || submit.isPending} onClick={() => void checkSubmissionStatus()}>
+              {checkingStatus ? "Checking status…" : "Check status"}
+            </Button>
+          ) : undefined}
+        >
+          {statusMessage}
+        </PanelMessage>
+      ) : null}
+
       <form
         aria-busy={pending}
         className="min-w-0 [overflow-wrap:anywhere]"
@@ -533,7 +657,7 @@ export function RoutineStudentIntakeEditor({
           level={3}
           className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <fieldset disabled={pending} className="min-w-0">
+          <fieldset disabled={pending || submissionUncertain} className="min-w-0">
             <legend className="sr-only">1. Coping with college</legend>
             <TextField
               id="routine-coping"
@@ -560,7 +684,7 @@ export function RoutineStudentIntakeEditor({
           level={3}
           className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <fieldset disabled={pending} className="min-w-0">
+          <fieldset disabled={pending || submissionUncertain} className="min-w-0">
             <legend className="sr-only">2. College experience</legend>
             <TextField
               id="routine-college-experience"
@@ -607,7 +731,7 @@ export function RoutineStudentIntakeEditor({
           level={3}
           className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <fieldset disabled={pending} className="min-w-0">
+          <fieldset disabled={pending || submissionUncertain} className="min-w-0">
             <legend className="sr-only">3. Family</legend>
             <TextField
               id="routine-family"
@@ -626,7 +750,7 @@ export function RoutineStudentIntakeEditor({
           level={3}
           className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <fieldset disabled={pending} className="min-w-0">
+          <fieldset disabled={pending || submissionUncertain} className="min-w-0">
             <legend className="sr-only">4. Current concerns</legend>
             <fieldset className="min-w-0">
               <legend className="text-sm font-medium leading-6 text-ink">
@@ -710,7 +834,7 @@ export function RoutineStudentIntakeEditor({
           level={3}
           className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <fieldset disabled={pending} className="min-w-0">
+          <fieldset disabled={pending || submissionUncertain} className="min-w-0">
             <legend className="sr-only">5. College adjustment</legend>
             <TextField
               id="routine-adjustment"
@@ -731,7 +855,7 @@ export function RoutineStudentIntakeEditor({
           level={3}
           className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <fieldset disabled={pending} className="min-w-0">
+          <fieldset disabled={pending || submissionUncertain} className="min-w-0">
             <legend className="sr-only">6. Academic goals</legend>
             <TextField
               id="routine-academic-goals"
@@ -750,7 +874,7 @@ export function RoutineStudentIntakeEditor({
           level={3}
           className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus"
         >
-          <fieldset disabled={pending} className="min-w-0">
+          <fieldset disabled={pending || submissionUncertain} className="min-w-0">
             <legend className="sr-only">7. Career goals</legend>
             <TextField
               id="routine-career-goals"
@@ -807,14 +931,14 @@ export function RoutineStudentIntakeEditor({
               type="submit"
               variant="secondary"
               className="w-full sm:w-auto"
-              disabled={pending || !dirty}
+              disabled={pending || submissionUncertain || !dirty}
             >
               {save.isPending ? "Saving…" : "Save Progress"}
             </Button>
             <Button
               type="button"
               className="w-full sm:w-auto"
-              disabled={pending || dirty}
+              disabled={pending || submissionUncertain || dirty}
               onClick={requestSubmit}
             >
               {submit.isPending ? "Submitting…" : "Submit Intake"}

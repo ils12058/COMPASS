@@ -90,6 +90,9 @@ export function routineIntakeFixture({
     : blankRoutineIntake(),
   workflowState = "ACTIVE",
   counselorDraft = false,
+  statusReadFailures = [],
+  conflictSubmit = false,
+  commitThenLoseSubmitResponse = false,
 } = {}) {
   const state = {
     account,
@@ -101,19 +104,30 @@ export function routineIntakeFixture({
     reads: 0,
     writes: [],
     submissions: 0,
+    statusChecks: 0,
     failSave: false,
     failSubmit: false,
+    statusReadFailures: [...statusReadFailures],
+    conflictSubmit,
+    commitThenLoseSubmitResponse,
     holdSave: null,
     holdSubmit: null,
   };
 
-  state.handler = async ({ pathname, method, request, reply }) => {
+  state.handler = async ({ pathname, method, request, reply, route }) => {
     if (pathname === "/api/v1/auth/session") {
       await reply(sessionFor(account));
       return true;
     }
     if (pathname === `/api/v1/routine-interviews/me/${routineIntakeId}` && method === "GET") {
       state.reads += 1;
+      if (state.submissions > 0) state.statusChecks += 1;
+      if (state.statusReadFailures.length && state.submissions > 0) {
+        const failure = state.statusReadFailures.shift();
+        await reply({ error: { code: failure.code ?? "synthetic_failure" } }, failure.status ?? 503);
+        return true;
+      }
+      if (state.submissions > 0 && state.holdStatusRead) await state.holdStatusRead;
       await reply(state.detail);
       return true;
     }
@@ -144,6 +158,24 @@ export function routineIntakeFixture({
     ) {
       state.submissions += 1;
       if (state.holdSubmit) await state.holdSubmit;
+      if (state.conflictSubmit) {
+        state.detail = {
+          ...state.detail,
+          intake_status: "SUBMITTED",
+          intake_submitted_at: "2026-10-21T02:00:00Z",
+        };
+        await reply({ error: { code: "routine_interview_intake_already_submitted" } }, 409);
+        return true;
+      }
+      if (state.commitThenLoseSubmitResponse) {
+        state.detail = {
+          ...state.detail,
+          intake_status: "SUBMITTED",
+          intake_submitted_at: "2026-10-21T02:00:00Z",
+        };
+        await route.abort("connectionreset");
+        return true;
+      }
       if (state.failSubmit) {
         await reply({ error: { code: "synthetic_failure" } }, 503);
         return true;
