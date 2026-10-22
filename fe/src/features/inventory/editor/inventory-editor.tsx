@@ -281,8 +281,9 @@ export function InventoryEditor({
         </div>
       ) : null}
 
-      <div className="mt-5 md:grid md:grid-cols-[13rem_minmax(0,1fr)] md:items-start md:gap-6">
-        <div className="mb-4 md:sticky md:top-5 md:mb-0">
+      <div data-inventory-workspace="" className="@container/inventory-workspace mt-5 min-w-0">
+        <div className="grid min-w-0 items-start gap-4 @[42rem]/inventory-workspace:grid-cols-[13rem_minmax(0,1fr)] @[42rem]/inventory-workspace:gap-6">
+        <div data-inventory-navigation="" className="min-w-0 mb-0 @[42rem]/inventory-workspace:sticky @[42rem]/inventory-workspace:top-5">
           <FormSectionNavigation
             id="inventory-section-select"
             label="Inventory section"
@@ -296,7 +297,7 @@ export function InventoryEditor({
           />
         </div>
 
-        <Panel as="div" className="min-w-0">
+        <Panel as="div" data-inventory-panel="" className="min-w-0">
           {/* Where focus lands when a requested answer cannot take it, such as while saving. */}
           <div id={INVENTORY_SECTION_START_ID} tabIndex={-1} className="rounded-t-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus">
             <PanelHeader
@@ -393,6 +394,7 @@ export function InventoryEditor({
             </div>
           </PanelFooter>
         </Panel>
+        </div>
       </div>
 
       <ConsequentialActionDialog

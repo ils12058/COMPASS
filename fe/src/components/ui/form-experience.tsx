@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 
 // Presentation only. The form owns section order, validation, persistence and focus destinations.
+// Inventory places this component in a named container so it can choose the native selector when
+// the actual workspace is narrow, even if the browser viewport itself is wide.
 export function FormSectionNavigation<Id extends string>({
   id,
   label,
@@ -22,10 +24,10 @@ export function FormSectionNavigation<Id extends string>({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-2 block text-sm font-semibold text-ink md:sr-only">
+      <label htmlFor={id} className="mb-2 block text-sm font-semibold text-ink @[42rem]/inventory-workspace:sr-only">
         {label}
       </label>
-      <Select id={id} className="min-h-11 md:hidden" value={current} onChange={(event) => {
+      <Select id={id} className="min-h-11 @[42rem]/inventory-workspace:hidden" value={current} onChange={(event) => {
         const next = sections.find((section) => section.id === event.target.value);
         if (next) onSelect(next.id, false);
       }}>
@@ -35,7 +37,7 @@ export function FormSectionNavigation<Id extends string>({
           </option>
         ))}
       </Select>
-      <nav aria-label={navigationLabel} className="hidden md:block">
+      <nav aria-label={navigationLabel} className="hidden @[42rem]/inventory-workspace:block">
         <ol className="space-y-1">
           {sections.map((section, index) => (
             <li key={section.id}>

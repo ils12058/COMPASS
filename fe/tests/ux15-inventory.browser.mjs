@@ -1,17 +1,19 @@
 // Real Next UI; every API response and write is synthetic and local.
 import assert from "node:assert/strict";
+import { writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { user } from "./support/ui-hierarchy-fixtures.mjs";
 import { sessionFor } from "./support/guidance-messages-fixtures.mjs";
 
 const phase = process.env.COMPASS_UX15_SCREENSHOTS ?? "after";
-const { check, shown, hidden, screenshot, noHorizontalOverflow, finish } = await createBrowserHarness(`ux15-inventory-${phase}`);
+const { check, shown, hidden, screenshot, noHorizontalOverflow, finish, artifacts } = await createBrowserHarness(`ux15-inventory-${phase}`);
 const student = { ...user("STUDENT"), capabilities: ["inventory.view_self", "inventory.manage_self"] };
 const revision = { id: "revision", family_key: "individual_inventory", internal_schema_version: 1, official_code: "UCN-OP-GCO-01F5", official_revision: "1" };
-function fixture({ incomplete = false } = {}) {
+function fixture({ incomplete = false, submitted = false } = {}) {
   let current = {
-    id: "synthetic-inventory", academic_year: { id: "year", label: "2026–2027" }, status: "DRAFT", program: null, form_revision: revision,
-    correction_pending: false, latest_correction: null, submitted_at: null, first_submitted_at: null, last_submitted_at: null,
+    id: "synthetic-inventory", academic_year: { id: "year", label: "2026–2027" }, status: submitted ? "SUBMITTED" : "DRAFT", program: null, form_revision: revision,
+    correction_pending: false, latest_correction: null, submitted_at: submitted ? "2026-10-21T03:00:00Z" : null, first_submitted_at: submitted ? "2026-10-21T03:00:00Z" : null, last_submitted_at: submitted ? "2026-10-21T03:00:00Z" : null,
     full_name: "Synthetic Student", student_number: "SYNTHETIC-01", sex: incomplete ? null : "FEMALE", date_of_birth: "2005-01-15",
     civil_status_category: "SINGLE", current_religion_category: "NONE", contact_number: "0917 000 0000",
     geographic_locations: [{ kind: "CURRENT", not_specified: true }], parent_status_category: "MARRIED",
@@ -42,6 +44,140 @@ function fixture({ incomplete = false } = {}) {
     return false;
   };
   return state;
+}
+
+if (phase === "before" || phase === "after") {
+  const state = fixture();
+  await check(`Inventory constrained-content geometry ${phase}`, "/portal/inventory/current", {
+    handler: state.handler,
+    viewport: { width: 1440, height: 1000 },
+  }, async (page) => {
+    await shown(page.locator("#inventory-full-name"));
+    if (phase === "before") {
+      // Recreate the audited viewport-triggered two-column rule against current markup so the
+      // baseline visual can be recaptured with the workspace in view. The original measured
+      // baseline was captured from the unmodified source before the fix.
+      await page.addStyleTag({ content: "@media (min-width: 768px) { [data-inventory-workspace] > div { display: grid !important; grid-template-columns: 13rem minmax(0, 1fr) !important; gap: 1.5rem !important; } [data-inventory-navigation] { position: sticky; top: 1.25rem; } [data-inventory-navigation] label, [data-inventory-navigation] select { display: none !important; } [data-inventory-navigation] nav { display: block !important; } }" });
+    }
+    const measurements = [];
+
+    async function setDock(expanded) {
+      const target = expanded ? "expanded" : "collapsed";
+      const dock = page.locator("[data-dock]");
+      const current = await dock.getAttribute("data-dock");
+      if (current !== target) {
+        await page.getByRole("button", { name: current === "expanded" ? "Collapse navigation" : "Expand navigation" }).click();
+        await page.waitForFunction((value) => document.querySelector("[data-dock]")?.getAttribute("data-dock") === value, target);
+      }
+    }
+
+    async function measure({ width, text, dock, capture }) {
+      await page.setViewportSize({ width, height: 1000 });
+      if (dock) await setDock(dock === "expanded");
+      await page.evaluate((value) => {
+        if (value === 200) document.documentElement.style.setProperty("font-size", "200%", "important");
+        else document.documentElement.style.removeProperty("font-size");
+      }, text);
+      await page.waitForTimeout(250);
+      const metrics = await page.evaluate(({ width: viewportWidth, textSize, dockState }) => {
+        const main = document.querySelector("main#main-content");
+        const editor = main?.querySelector('section[aria-labelledby="inventory-editor-heading"]');
+        const workspace = editor?.querySelector("[data-inventory-workspace]");
+        const layout = workspace?.firstElementChild;
+        const nav = workspace?.querySelector("[data-inventory-navigation]");
+        const panel = workspace?.querySelector("[data-inventory-panel]");
+        const rect = (element) => {
+          const value = element?.getBoundingClientRect();
+          return value ? { x: Math.round(value.x), width: Math.round(value.width), right: Math.round(value.right) } : null;
+        };
+        const offenders = [...(editor?.querySelectorAll("*") ?? [])]
+          .map((element) => ({
+            tag: element.tagName.toLowerCase(),
+            id: element.id || null,
+            className: typeof element.className === "string" ? element.className : "",
+            ...rect(element),
+          }))
+          .filter((element) => element.right !== null && element.right > document.documentElement.clientWidth + 1)
+          .sort((a, b) => b.right - a.right)
+          .slice(0, 8);
+        return {
+          viewport: viewportWidth,
+          text: textSize,
+          dock: dockState,
+          document: { clientWidth: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth },
+          main: rect(main),
+          editor: rect(editor),
+          workspace: rect(workspace),
+          layout: layout ? { ...rect(layout), scrollWidth: layout.scrollWidth, gridColumns: getComputedStyle(layout).gridTemplateColumns } : null,
+          navigation: { ...rect(nav), scrollWidth: nav?.scrollWidth ?? null, clientWidth: nav?.clientWidth ?? null },
+          panel: rect(panel),
+          offenders,
+        };
+      }, { width, textSize: text, dockState: dock ?? "narrow-screen" });
+      measurements.push(metrics);
+      if (capture) {
+        await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+        await page.locator("[data-inventory-workspace]").evaluate((element) => element.scrollIntoView({ block: "start" }));
+        await page.screenshot({ path: join(artifacts, `${capture}.png`), fullPage: false, animations: "disabled" });
+      }
+      return metrics;
+    }
+
+    const cases = [];
+    for (const width of [320, 360, 390, 768]) {
+      for (const text of [100, 200]) cases.push({ width, text, dock: null, capture: width === 320 && text === 200 ? `${phase}-320-200-editable` : width === 390 && text === 100 ? `${phase}-390-normal-editable` : undefined });
+    }
+    for (const width of [1024, 1440]) {
+      for (const dock of ["expanded", "collapsed"]) {
+        for (const text of [100, 200]) cases.push({
+          width,
+          text,
+          dock,
+          capture: width === 1024 && text === 200 ? `${phase}-1024-200-${dock}-editable` : width === 1440 && text === 100 && dock === "expanded" ? `${phase}-1440-normal-expanded-editable` : undefined,
+        });
+      }
+    }
+    for (const scenario of cases) await measure(scenario);
+
+    const failures = measurements.filter((item) => item.document.scrollWidth > item.document.clientWidth + 1);
+    const reproduced = measurements.find((item) => item.viewport === 1024 && item.text === 200 && item.dock === "expanded");
+    assert.ok(reproduced, "The required 1024px/200% expanded-dock case was measured");
+    if (phase === "before") {
+      assert.ok(reproduced.document.scrollWidth > reproduced.document.clientWidth, "Baseline reproduces the 1024px/200% Inventory overflow");
+    } else {
+      assert.deepEqual(failures, [], "Inventory content reflows at every measured viewport and text size");
+    }
+    await writeFile(join(artifacts, "geometry.json"), `${JSON.stringify({ phase, measurements }, null, 2)}\n`);
+    console.log(`Inventory geometry ${phase}: ${JSON.stringify({ reproduced, failures: failures.map(({ viewport, text, dock, document }) => ({ viewport, text, dock, document })) })}`);
+  });
+}
+
+if (phase === "before" || phase === "after") {
+  for (const [dock, label] of [["expanded", "expanded"], ["collapsed", "collapsed"]]) {
+    const state = fixture({ submitted: true });
+    await check(`Submitted Inventory reflow ${phase} at 1024px/200%, ${label} dock`, "/portal/inventory/current", {
+      handler: state.handler,
+      viewport: { width: 1024, height: 1000 },
+    }, async (page) => {
+      await shown(page.getByRole("heading", { name: "Individual Inventory", exact: true }));
+      if (dock === "collapsed") await page.getByRole("button", { name: "Collapse navigation" }).click();
+      await page.waitForFunction((value) => document.querySelector("[data-dock]")?.getAttribute("data-dock") === value, dock);
+      await page.evaluate(() => document.documentElement.style.setProperty("font-size", "200%", "important"));
+      await page.waitForTimeout(250);
+      const metrics = await page.evaluate(() => ({
+        viewport: document.documentElement.clientWidth,
+        document: document.documentElement.scrollWidth,
+        main: document.querySelector("main#main-content")?.clientWidth ?? null,
+        workspace: document.querySelector("[data-inventory-workspace]")?.getBoundingClientRect().width ?? null,
+        inventory: document.querySelector("[aria-label='Current Individual Inventory']")?.getBoundingClientRect().width ?? null,
+      }));
+      await page.addStyleTag({ content: "nextjs-portal { display: none !important; }" });
+      await page.locator("[aria-label='Current Individual Inventory']").evaluate((element) => element.scrollIntoView({ block: "start" }));
+      await page.screenshot({ path: join(artifacts, `${phase}-1024-200-${label}-read-only.png`), fullPage: false, animations: "disabled" });
+      if (phase === "after") assert.ok(metrics.document <= metrics.viewport + 1, `Read-only Inventory fits at ${dock} dock: ${JSON.stringify(metrics)}`);
+      await writeFile(join(artifacts, `${phase}-1024-200-${label}-read-only-geometry.json`), `${JSON.stringify(metrics, null, 2)}\n`);
+    });
+  }
 }
 const go = async (page, id, mobile = false) => (mobile || await page.locator("#inventory-section-select").isVisible())
   ? page.locator("#inventory-section-select").selectOption(id)

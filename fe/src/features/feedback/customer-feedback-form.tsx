@@ -2,7 +2,7 @@
 
 import { useSearchParams } from "next/navigation";
 import { useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -14,9 +14,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Notice } from "@/components/ui/notice";
 import { Panel, PanelFooter } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
-import { FeedbackFormSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackSubmissionErrorMessage, feedbackOpportunityId, feedbackSectionHeadingId } from "@/features/feedback/feedback-shared";
+import { FeedbackFormSkeleton, FeedbackAccessUnavailable, FeedbackDate, FeedbackFieldLabel, FeedbackPageHeading, FeedbackQueryError, FeedbackRadioGroup, FeedbackSection, feedbackErrorCode, feedbackErrorMessage, feedbackSubmissionErrorMessage, feedbackSubmissionOutcomeIsUncertain, feedbackOpportunityId, feedbackSectionHeadingId } from "@/features/feedback/feedback-shared";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
-import { feedbackSubmitCustomerFeedback, useFeedbackGetMyOpportunity } from "@/lib/api/generated/feedback/feedback";
+import { feedbackGetMyOpportunity, feedbackSubmitCustomerFeedback, getFeedbackGetMyOpportunityQueryKey, useFeedbackGetMyOpportunity } from "@/lib/api/generated/feedback/feedback";
 import { CustomerFeedbackAccommodatedByValue, CustomerFeedbackRatingValue, CustomerFeedbackServiceValue, type CustomerFeedbackSubmitRequest } from "@/lib/api/generated/model";
 
 const serviceChoices: { value: CustomerFeedbackServiceValue; label: string }[] = [
@@ -115,6 +115,7 @@ export function CustomerFeedbackForm() {
   const { user } = usePortalSession();
   const access = getFeedbackAccess(user);
   const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const opportunityParam = searchParams.get("opportunity");
   const opportunityId = feedbackOpportunityId(opportunityParam);
   const opportunity = useFeedbackGetMyOpportunity(opportunityId ?? "", {
@@ -130,9 +131,14 @@ export function CustomerFeedbackForm() {
   const [preparedBody, setPreparedBody] = useState<CustomerFeedbackSubmitRequest | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [uncertainIntent, setUncertainIntent] = useState<SubmissionIntent | null>(null);
-  const [success, setSuccess] = useState<{ submittedAt: string } | null>(null);
+  const [success, setSuccess] = useState<{ kind: "confirmed" | "already-submitted"; submittedAt?: string } | null>(null);
   const [serviceError, setServiceError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const [retryAllowed, setRetryAllowed] = useState(false);
+  const [resolutionMode, setResolutionMode] = useState<"ambiguous" | "already-submitted" | "key-conflict" | "authorization">("ambiguous");
   const intentRef = useRef<SubmissionIntent | null>(null);
+  const operationRef = useRef(false);
   const isUncertain = uncertainIntent !== null;
   const opportunityData = opportunity.data?.data;
   const requiredService = opportunityData?.service_kind;
@@ -186,7 +192,7 @@ export function CustomerFeedbackForm() {
   if (!opportunityData) {
     return <FeedbackAccessUnavailable title="Customer Feedback unavailable" />;
   }
-  if (opportunityData.customer_feedback_submitted) {
+  if (opportunityData.customer_feedback_submitted && !success) {
     return (
       <FeedbackAccessUnavailable
         title="Customer Feedback submitted"
@@ -194,11 +200,89 @@ export function CustomerFeedbackForm() {
       />
     );
   }
-  if (!opportunityData.can_submit_customer_feedback) {
+  if (!opportunityData.can_submit_customer_feedback && !isUncertain && !success) {
     return <FeedbackAccessUnavailable title="Customer Feedback unavailable" />;
   }
   const submissionOpportunityId = opportunityData.id;
   const requiredServiceLabel = opportunityData.service_label;
+
+  async function reconcileSubmission(intent: SubmissionIntent, mode: typeof resolutionMode) {
+    setCheckingStatus(true);
+    setStatusMessage("Checking whether your response was received…");
+    try {
+      const response = await feedbackGetMyOpportunity(submissionOpportunityId, { cache: "no-store" });
+      const canonical = response.data;
+      if (canonical.id !== submissionOpportunityId) throw new Error("Feedback opportunity did not match this form.");
+      if (canonical.customer_feedback_submitted) {
+        setSuccess({ kind: "already-submitted" });
+        setUncertainIntent(null);
+        setRetryAllowed(false);
+        setError(null);
+        setStatusMessage(null);
+        intentRef.current = null;
+        queryClient.setQueryData(getFeedbackGetMyOpportunityQueryKey(submissionOpportunityId), response);
+        return;
+      }
+
+      queryClient.setQueryData(getFeedbackGetMyOpportunityQueryKey(submissionOpportunityId), response);
+      if (mode === "key-conflict") {
+        // This exact request was rejected because its key belongs to another fingerprint. A
+        // canonical unsubmitted opportunity resolves the old intent; a new attempt needs fresh
+        // review and confirmation so it receives a new key deliberately.
+        intentRef.current = null;
+        setUncertainIntent(null);
+        setRetryAllowed(false);
+        setPreparedBody(null);
+        setError("This submission attempt was rejected. Your opportunity is still unsubmitted; review your response and confirm a new attempt.");
+        setStatusMessage(null);
+        return;
+      }
+
+      if (mode === "already-submitted") {
+        setUncertainIntent(intent);
+        setRetryAllowed(false);
+        setStatusMessage("The submission response conflicted with the latest status. Check again before continuing; do not submit another response yet.");
+        return;
+      }
+
+      if (mode === "authorization") {
+        setUncertainIntent(intent);
+        setRetryAllowed(false);
+        setStatusMessage("Your response is still unsubmitted, but the latest attempt was not authorized. Check status again when your access is available.");
+        return;
+      }
+
+      if (!canonical.can_submit_customer_feedback) {
+        setUncertainIntent(intent);
+        setRetryAllowed(false);
+        setStatusMessage("This opportunity is not currently accepting Customer Feedback. Your response is preserved; check status again or contact the Guidance and Counseling Office.");
+        return;
+      }
+
+      setUncertainIntent(intent);
+      setRetryAllowed(true);
+      setStatusMessage("Your response is still unsubmitted. You can safely retry this same submission.");
+    } catch (caught) {
+      const accessBlocked = caught instanceof Error && "status" in caught && [401, 403, 404].includes(Number(caught.status));
+      setUncertainIntent(intent);
+      setRetryAllowed(mode === "ambiguous" && !accessBlocked);
+      setStatusMessage(accessBlocked
+        ? "We couldn't check this opportunity with your current access. Your response is preserved; check status again when access is available."
+        : "We couldn't confirm whether your response was received. Your response is preserved; check status again or retry the same submission when available.");
+    } finally {
+      setCheckingStatus(false);
+    }
+  }
+
+  async function checkSubmissionStatus() {
+    if (operationRef.current || !uncertainIntent) return;
+    operationRef.current = true;
+    try {
+      await reconcileSubmission(uncertainIntent, resolutionMode);
+    } finally {
+      operationRef.current = false;
+    }
+  }
 
 
   function changeService(value: CustomerFeedbackServiceValue, checked: boolean) {
@@ -255,38 +339,57 @@ export function CustomerFeedbackForm() {
     setConfirmationOpen(true);
   }
 
-  async function send(body: CustomerFeedbackSubmitRequest) {
+  async function send(body: CustomerFeedbackSubmitRequest, retryIntent?: SubmissionIntent) {
+    if (operationRef.current) return;
+    operationRef.current = true;
     setError(null);
-    if (!globalThis.crypto?.randomUUID) {
+    if (!retryIntent && !globalThis.crypto?.randomUUID) {
       setError("This browser cannot create a secure submission request. Update the browser and try again.");
+      operationRef.current = false;
       return;
     }
     const fingerprint = JSON.stringify(body);
-    const key = intentRef.current?.fingerprint === fingerprint ? intentRef.current.key : globalThis.crypto.randomUUID();
-    const intent = { fingerprint, key, body };
+    if (retryIntent && (retryIntent.fingerprint !== fingerprint || intentRef.current?.key !== retryIntent.key)) {
+      operationRef.current = false;
+      return;
+    }
+    const key = retryIntent?.key ?? globalThis.crypto.randomUUID();
+    const intent = retryIntent ?? { fingerprint, key, body };
     intentRef.current = intent;
     try {
       const result = await create.mutateAsync({ body, key });
       intentRef.current = null;
       setUncertainIntent(null);
-      setSuccess({ submittedAt: result.data.submitted_at });
+      setRetryAllowed(false);
+      setSuccess({ kind: "confirmed", submittedAt: result.data.submitted_at });
     } catch (caught) {
       const code = feedbackErrorCode(caught);
-      if (code === "idempotency_unavailable" || code === "idempotency_in_progress" || !(caught instanceof Error && "status" in caught)) {
+      const alreadySubmitted = code === "feedback_already_submitted";
+      const keyConflict = code === "idempotency_key_conflict";
+      const authorizationFailure = caught instanceof Error && "status" in caught && [401, 403].includes(Number(caught.status));
+      if (feedbackSubmissionOutcomeIsUncertain(caught) || code === "idempotency_unavailable" || code === "idempotency_in_progress" || alreadySubmitted || keyConflict || (authorizationFailure && retryIntent)) {
+        const mode = alreadySubmitted ? "already-submitted" : keyConflict ? "key-conflict" : authorizationFailure ? "authorization" : "ambiguous";
+        setResolutionMode(mode);
         setUncertainIntent(intent);
+        setRetryAllowed(mode === "ambiguous");
         setConfirmationOpen(false);
-        setError(feedbackErrorMessage(caught, "The submission result could not be confirmed. Retry the same submission to check whether it was received."));
-      } else if (code === "idempotency_key_conflict" || code === "invalid_idempotency_key") {
+        setError(null);
+        await reconcileSubmission(intent, mode);
+      } else if (code === "invalid_idempotency_key") {
         intentRef.current = null;
         setUncertainIntent(null);
+        setRetryAllowed(false);
         setConfirmationOpen(false);
         setPreparedBody(null);
         setError(feedbackErrorMessage(caught, "Review the response and submit again."));
       } else {
         intentRef.current = null;
         setUncertainIntent(null);
+        setRetryAllowed(false);
         setError(feedbackSubmissionErrorMessage(caught, "Customer Feedback could not be submitted."));
       }
+    } finally {
+      operationRef.current = false;
     }
   }
 
@@ -295,12 +398,14 @@ export function CustomerFeedbackForm() {
       <section aria-labelledby="customer-feedback-success" className="max-w-2xl">
         <Notice
           role="status"
-          tone="success"
+          tone={success.kind === "confirmed" ? "success" : "info"}
           className="px-5 py-6 sm:px-6"
-          title={<h1 id="customer-feedback-success" className="font-heading text-2xl font-bold text-ink">Customer Feedback submitted</h1>}
+          title={<h1 id="customer-feedback-success" className="font-heading text-2xl font-bold text-ink">{success.kind === "confirmed" ? "Customer Feedback submitted" : "Customer Feedback already submitted"}</h1>}
           action={<GuardedPortalLink href="/portal/feedback" className={buttonVariants({ variant: "primary" })}>Back to Feedback</GuardedPortalLink>}
         >
-          <span className="text-muted">Your response was received{success.submittedAt ? <> on <FeedbackDate value={success.submittedAt} /></> : null}.</span>
+          <span className="text-muted">{success.kind === "confirmed"
+            ? <>Your response was received{success.submittedAt ? <> on <FeedbackDate value={success.submittedAt} /></> : null}.</>
+            : "This Feedback opportunity is submitted. We couldn't verify which attempt was received."}</span>
         </Notice>
       </section>
     );
@@ -321,9 +426,20 @@ export function CustomerFeedbackForm() {
             tone="warning"
             className="mb-5"
             title={<p>Submission result not confirmed</p>}
-            action={<Button className="min-h-11" disabled={create.isPending} onClick={() => void send(uncertainIntent.body)}>{create.isPending ? "Checking submission…" : "Retry same submission"}</Button>}
+            action={(
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" variant="secondary" className="min-h-11" disabled={create.isPending || checkingStatus} onClick={() => void checkSubmissionStatus()}>
+                  {checkingStatus ? "Checking status…" : "Check status"}
+                </Button>
+                {retryAllowed && uncertainIntent ? (
+                  <Button type="button" className="min-h-11" disabled={create.isPending || checkingStatus} onClick={() => void send(uncertainIntent.body, uncertainIntent)}>
+                    {create.isPending ? "Submitting…" : "Retry same submission"}
+                  </Button>
+                ) : null}
+              </div>
+            )}
           >
-            {error ?? "Your response is still on this page. Retry the same submission to safely check whether it was received."}
+            {statusMessage ?? "Your response is preserved. Check its status before continuing."}
           </Notice>
         ) : null}
         <Panel as="div">

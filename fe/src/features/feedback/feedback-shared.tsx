@@ -49,8 +49,14 @@ export function feedbackErrorCode(error: unknown): string | undefined {
   return error instanceof CompassApiError ? readApiErrorCode(error.body) : undefined;
 }
 
-// Submission-specific wording: generic server errors don't prove that no response was saved.
-// Existing form recovery clears its intent on this branch, so don't promise same-identity Retry.
+// Network failures can happen after the server commits, and a gateway timeout/server error
+// doesn't establish whether the one-time submission reached its transaction boundary.
+export function feedbackSubmissionOutcomeIsUncertain(error: unknown): boolean {
+  return !(error instanceof CompassApiError) || error.status === 408 || error.status >= 500;
+}
+
+// Submission-specific wording for deterministic errors. Ambiguous network/HTTP outcomes are
+// reconciled by the owning form before it chooses a next action.
 export function feedbackSubmissionErrorMessage(error: unknown, fallback: string): string {
   const code = feedbackErrorCode(error);
   // Keep authoritative known-code guidance, including the same-response recovery paths.

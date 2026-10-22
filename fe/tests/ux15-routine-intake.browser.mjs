@@ -342,7 +342,8 @@ if (phase === "before") {
       const dialog = page.getByRole("alertdialog");
       await shown(dialog);
       await dialog.getByRole("button", { name: "Submit Intake", exact: true }).click();
-      await shown(dialog.getByRole("alert").filter({ hasText: "could not be confirmed" }));
+      await hidden(dialog);
+      await shown(page.getByRole("status").filter({ hasText: "Your Intake is still a draft" }));
       if (state.submissions !== 1) throw new Error(`The failed action must not replay; got ${state.submissions} submissions.`);
       const retainedAnswer = await page.locator("#routine-coping").inputValue();
       if (retainedAnswer !== answer) throw new Error("The saved response must remain available after submission failure.");
@@ -350,6 +351,90 @@ if (phase === "before") {
       if (staleSavedMessages !== 0) throw new Error("A prior save confirmation must clear when submission starts.");
       const formSubmitButtons = await page.locator("form button[type='button']").count();
       if (formSubmitButtons !== 1) throw new Error(`The form should remain available after failure; found ${formSubmitButtons} submit actions.`);
+      assert.equal(await getSubmitButton(page).isEnabled(), true, "a canonical draft read returns control to the existing confirmation flow");
+    });
+  }
+
+  {
+    const state = routineIntakeFixture({ commitThenLoseSubmitResponse: true });
+    await check("committed submission with lost response reconciles from a fresh canonical read", routineIntakePath, studentOptions(state, "desktop"), async (page) => {
+      const answer = "Synthetic response committed before the connection was lost.";
+      await page.locator("#routine-coping").fill(answer);
+      await getSaveButton(page).click();
+      await shown(page.getByRole("status").filter({ hasText: "Progress saved." }));
+      await getSubmitButton(page).click();
+      await page.getByRole("alertdialog").getByRole("button", { name: "Submit Intake", exact: true }).click();
+      await shown(page.getByText("Submitted responses are read-only."));
+      await shown(page.getByText(answer, { exact: true }));
+      assert.ok(state.reads >= 2, "the status check performs a fresh authorized GET rather than trusting cached DRAFT data");
+      assert.equal(state.submissions, 1, "the uncertain POST is never repeated automatically");
+      assert.equal(await getSubmitButton(page).count(), 0);
+    });
+  }
+
+  {
+    const state = routineIntakeFixture({ conflictSubmit: true });
+    await check("already-submitted conflict confirms canonical submitted state without replay", routineIntakePath, studentOptions(state, "desktop"), async (page) => {
+      await page.locator("#routine-coping").fill("Synthetic answer saved before an already-submitted conflict.");
+      await getSaveButton(page).click();
+      await shown(page.getByRole("status").filter({ hasText: "Progress saved." }));
+      await getSubmitButton(page).click();
+      await page.getByRole("alertdialog").getByRole("button", { name: "Submit Intake", exact: true }).click();
+      await shown(page.getByText("Submitted responses are read-only."));
+      assert.ok(state.reads >= 2, "the already-submitted conflict is checked against canonical status");
+      assert.equal(state.submissions, 1);
+    });
+  }
+
+  {
+    const state = routineIntakeFixture({ statusReadFailures: [{ status: 403 }, { status: 404 }] });
+    state.failSubmit = true;
+    await check("failed or unauthorized status reads preserve answers and require a deliberate status check", routineIntakePath, studentOptions(state, "desktop"), async (page) => {
+      const answer = "Synthetic answer preserved while status access is unavailable.";
+      await shown(page.getByRole("heading", { name: "Student Intake", exact: true }));
+      await page.locator("#routine-coping").fill(answer);
+      await getSaveButton(page).click();
+      await shown(page.getByRole("status").filter({ hasText: "Progress saved." }));
+      await getSubmitButton(page).click();
+      await page.getByRole("alertdialog").getByRole("button", { name: "Submit Intake", exact: true }).click();
+      await shown(page.getByText("We couldn't confirm your Intake status."));
+      assert.equal(await page.locator("#routine-coping").inputValue(), answer);
+      assert.equal(await getSubmitButton(page).isDisabled(), true);
+      await page.getByRole("button", { name: "Check status", exact: true }).click();
+      await shown(page.getByText("We couldn't confirm your Intake status."));
+      assert.equal(await page.locator("#routine-coping").inputValue(), answer);
+      await page.getByRole("button", { name: "Check status", exact: true }).click();
+      await shown(page.getByRole("status").filter({ hasText: "Your Intake is still a draft" }));
+      assert.equal(await page.locator("#routine-coping").inputValue(), answer);
+      assert.equal(state.submissions, 1, "checking status and recovering from GET errors never resubmits");
+      assert.equal(await getSubmitButton(page).isEnabled(), true);
+    });
+  }
+
+  {
+    const state = routineIntakeFixture({ statusReadFailures: [{ status: 503 }] });
+    state.failSubmit = true;
+    let releaseStatusRead;
+    state.holdStatusRead = new Promise((resolve) => { releaseStatusRead = resolve; });
+    await check("status check excludes simultaneous submit and duplicate status requests", routineIntakePath, studentOptions(state, "desktop"), async (page) => {
+      await shown(page.getByRole("heading", { name: "Student Intake", exact: true }));
+      await page.locator("#routine-coping").fill("Synthetic answer for concurrent status check.");
+      await getSaveButton(page).click();
+      await shown(page.getByRole("status").filter({ hasText: "Progress saved." }));
+      await getSubmitButton(page).click();
+      await page.getByRole("alertdialog").getByRole("button", { name: "Submit Intake", exact: true }).click();
+      await shown(page.getByText("We couldn't confirm your Intake status."));
+      const checkStatus = page.getByRole("button", { name: "Check status", exact: true });
+      const checksBeforeClick = state.statusChecks;
+      await checkStatus.click();
+      const checkingStatus = page.getByRole("button", { name: "Checking status…", exact: true });
+      await shown(checkingStatus);
+      assert.equal(await getSubmitButton(page).isDisabled(), true);
+      assert.equal(await checkingStatus.isDisabled(), true);
+      assert.equal(state.statusChecks - checksBeforeClick, 1, "only one fresh status GET runs at a time");
+      releaseStatusRead();
+      await shown(page.getByRole("status").filter({ hasText: "Your Intake is still a draft" }));
+      assert.equal(state.submissions, 1);
     });
   }
 
