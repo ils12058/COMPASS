@@ -1,0 +1,66 @@
+[
+  {
+    "name": "desktop-pending",
+    "phase": "before",
+    "viewport": 1440,
+    "document": 1440,
+    "header": 1184,
+    "rootText": "16px"
+  },
+  {
+    "name": "desktop-empty",
+    "phase": "before",
+    "viewport": 1440,
+    "document": 1440,
+    "header": 1184,
+    "rootText": "16px"
+  },
+  {
+    "name": "mobile-pending",
+    "phase": "before",
+    "viewport": 390,
+    "document": 390,
+    "header": 390,
+    "rootText": "16px"
+  },
+  {
+    "name": "narrow-enlarged",
+    "phase": "before",
+    "viewport": 320,
+    "document": 328,
+    "header": 320,
+    "rootText": "32px"
+  },
+  {
+    "name": "join-now",
+    "phase": "before",
+    "viewport": 1440,
+    "document": 1440,
+    "header": 1184,
+    "rootText": "16px"
+  },
+  {
+    "name": "failed-actions",
+    "phase": "before",
+    "viewport": 1440,
+    "document": 1440,
+    "header": 1184,
+    "rootText": "16px"
+  },
+  {
+    "name": "graduated",
+    "phase": "before",
+    "viewport": 1440,
+    "document": 1440,
+    "header": 1184,
+    "rootText": "16px"
+  },
+  {
+    "name": "professional",
+    "phase": "before",
+    "viewport": 1440,
+    "document": 1440,
+    "header": 1184,
+    "rootText": "16px"
+  }
+]

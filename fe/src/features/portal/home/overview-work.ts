@@ -19,6 +19,7 @@ export type OverviewAttentionItem = {
   actionLabel: string;
   onRetry?: () => void;
   isError?: boolean;
+  priorityLabel?: string | null;
   // Internal ranking facts; never shown (ADR-090).
   rank: AttentionRank;
 };
@@ -31,6 +32,7 @@ export type OverviewAttentionData = {
   viewAllWork?: boolean;
   viewAllActions?: boolean;
   isCaughtUp?: boolean;
+  retryActions?: () => void;
 };
 
 export function shouldShowOverviewAttention(
@@ -182,5 +184,6 @@ export function useOverviewAttention(
     viewAllActions: studentEnabled,
     isCaughtUp: (workEnabled && work.isSuccess && workData?.items.length === 0) || (studentEnabled && studentActions.isSuccess && studentData?.items.length === 0),
     staleNotices: Array.from(new Set(staleNotices)),
+    retryActions: studentEnabled && studentActions.isError ? () => void studentActions.refetch() : undefined,
   };
 }
