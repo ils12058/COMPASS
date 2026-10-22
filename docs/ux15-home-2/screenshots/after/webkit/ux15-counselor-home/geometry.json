@@ -1,0 +1,134 @@
+[
+  {
+    "width": 320,
+    "enlarged": false,
+    "document": 320,
+    "rootText": "16px",
+    "panelsFit": true,
+    "linksInBounds": true,
+    "overlappingLinks": 0,
+    "smallestAgendaOrWorkTarget": 44,
+    "minimumTarget": 44
+  },
+  {
+    "width": 320,
+    "enlarged": true,
+    "document": 320,
+    "rootText": "32px",
+    "panelsFit": true,
+    "linksInBounds": true,
+    "overlappingLinks": 0,
+    "smallestAgendaOrWorkTarget": 88,
+    "minimumTarget": 88
+  },
+  {
+    "width": 360,
+    "enlarged": false,
+    "document": 360,
+    "rootText": "16px",
+    "panelsFit": true,
+    "linksInBounds": true,
+    "overlappingLinks": 0,
+    "smallestAgendaOrWorkTarget": 44,
+    "minimumTarget": 44
+  },
+  {
+    "width": 360,
+    "enlarged": true,
+    "document": 360,
+    "rootText": "32px",
+    "panelsFit": true,
+    "linksInBounds": true,
+    "overlappingLinks": 0,
+    "smallestAgendaOrWorkTarget": 88,
+    "minimumTarget": 88
+  },
+  {
+    "width": 390,
+    "enlarged": false,
+    "document": 390,
+    "rootText": "16px",
+    "panelsFit": true,
+    "linksInBounds": true,
+    "overlappingLinks": 0,
+    "smallestAgendaOrWorkTarget": 44,
+    "minimumTarget": 44
+  },
+  {
+    "width": 390,
+    "enlarged": true,
+    "document": 390,
+    "rootText": "32px",
+    "panelsFit": true,
+    "linksInBounds": true,
+    "overlappingLinks": 0,
+    "smallestAgendaOrWorkTarget": 88,
+    "minimumTarget": 88
+  },
+  {
+    "width": 768,
+    "enlarged": false,
+    "document": 768,
+    "rootText": "16px",
+    "panelsFit": true,
+    "linksInBounds": true,
+    "overlappingLinks": 0,
+    "smallestAgendaOrWorkTarget": 44,
+    "minimumTarget": 44
+  },
+  {
+    "width": 768,
+    "enlarged": true,
+    "document": 768,
+    "rootText": "32px",
+    "panelsFit": true,
+    "linksInBounds": true,
+    "overlappingLinks": 0,
+    "smallestAgendaOrWorkTarget": 88,
+    "minimumTarget": 88
+  },
+  {
+    "width": 1024,
+    "enlarged": false,
+    "document": 1024,
+    "rootText": "16px",
+    "panelsFit": true,
+    "linksInBounds": true,
+    "overlappingLinks": 0,
+    "smallestAgendaOrWorkTarget": 44,
+    "minimumTarget": 44
+  },
+  {
+    "width": 1024,
+    "enlarged": true,
+    "document": 1024,
+    "rootText": "32px",
+    "panelsFit": true,
+    "linksInBounds": true,
+    "overlappingLinks": 0,
+    "smallestAgendaOrWorkTarget": 88,
+    "minimumTarget": 88
+  },
+  {
+    "width": 1440,
+    "enlarged": false,
+    "document": 1440,
+    "rootText": "16px",
+    "panelsFit": true,
+    "linksInBounds": true,
+    "overlappingLinks": 0,
+    "smallestAgendaOrWorkTarget": 44,
+    "minimumTarget": 44
+  },
+  {
+    "width": 1440,
+    "enlarged": true,
+    "document": 1440,
+    "rootText": "32px",
+    "panelsFit": true,
+    "linksInBounds": true,
+    "overlappingLinks": 0,
+    "smallestAgendaOrWorkTarget": 88,
+    "minimumTarget": 88
+  }
+]

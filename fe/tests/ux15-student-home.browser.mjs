@@ -26,10 +26,15 @@ for (const [name, setup, width, enlarged] of visualScenarios) {
   await check(`visual-${name}`, "/portal", state.options({ viewport: { width, height: 1000 } }), async (page) => {
     await shown(page.locator("#overview-announcements-heading"));
     await shown(page.getByText("Guidance Office schedule for October", { exact: true }));
-    await shown(attention(page));
-    if (setup.failure) await shown(page.getByText("My actions could not be loaded", { exact: true }));
-    else if (setup.items?.length === 0) await shown(attention(page).getByText(/caught up|No current actions/));
-    else await shown(attention(page).locator("li").first());
+    if (setup.role === "COUNSELOR") {
+      await shown(page.locator("#counselor-work-heading"));
+      await shown(page.locator('section[aria-labelledby="counselor-work-heading"] li').first());
+    } else {
+      await shown(attention(page));
+      if (setup.failure) await shown(page.getByText("My actions could not be loaded", { exact: true }));
+      else if (setup.items?.length === 0) await shown(attention(page).getByText(/caught up|No current actions/));
+      else await shown(attention(page).locator("li").first());
+    }
     if (enlarged) await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
     await page.evaluate(() => document.fonts.ready);
     const measurement = await page.evaluate(() => ({ viewport: innerWidth, document: document.documentElement.scrollWidth,
@@ -264,7 +269,14 @@ if (!baseline) {
       assert.equal(requests.filter((r) => r.pathname === "/api/v1/student-actions").length, 0);
       if (["COUNSELOR", "GUIDANCE_SERVICES_STAFF"].includes(role)) {
         await shown(page.getByRole("link", { name: "View all work", exact: true }));
-        await shown(attention(page).getByText("Review Routine Interview", { exact: true }).first());
+        if (role === "COUNSELOR") {
+          await shown(page.locator("#counselor-work-heading"));
+          await shown(page.locator('section[aria-labelledby="counselor-work-heading"]').getByText("Review Routine Interview", { exact: true }));
+          assert.equal(await page.locator("#overview-attention-heading").count(), 0);
+        } else {
+          await shown(attention(page).getByText("Review Routine Interview", { exact: true }).first());
+          assert.equal(await page.locator("#counselor-work-heading").count(), 0);
+        }
       } else if (role === "IT_ADMIN") {
         await shown(page.getByText("Email delivery", { exact: true }));
         await shown(page.getByText("2 failed", { exact: true }));

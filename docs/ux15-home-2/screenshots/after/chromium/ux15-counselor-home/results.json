@@ -1,0 +1,62 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "desktop-agenda-and-canonical-work",
+      "passed": true
+    },
+    {
+      "name": "confirmed-empty-agenda-keeps-work-visible",
+      "passed": true
+    },
+    {
+      "name": "confirmed-empty-work-keeps-agenda-and-destinations",
+      "passed": true
+    },
+    {
+      "name": "head-oversight-links-require-real-capabilities",
+      "passed": true
+    },
+    {
+      "name": "head-designation-alone-adds-no-oversight-destination",
+      "passed": true
+    },
+    {
+      "name": "unauthorized-self-agenda-is-not-presented-as-empty",
+      "passed": true
+    },
+    {
+      "name": "partial-failure-keeps-independent-projection-usable",
+      "passed": true
+    },
+    {
+      "name": "stale-agenda-retains-confirmed-items-and-denial-hides-them",
+      "passed": true
+    },
+    {
+      "name": "cancelled-or-rescheduled-appointments-disappear-after-authoritative-refresh",
+      "passed": true
+    },
+    {
+      "name": "account-switch-removes-counselor-private-projections",
+      "passed": true
+    },
+    {
+      "name": "keyboard-order-follows-agenda-before-work",
+      "passed": true
+    },
+    {
+      "name": "responsive-home-reflows-at-requested-widths-and-enlarged-text",
+      "passed": true
+    },
+    {
+      "name": "non-counselor-GUIDANCE_SERVICES_STAFF-keeps-existing-overview",
+      "passed": true
+    },
+    {
+      "name": "non-counselor-IT_ADMIN-keeps-existing-overview",
+      "passed": true
+    }
+  ]
+}
