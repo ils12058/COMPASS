@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { appointment, user } from "./support/ui-hierarchy-fixtures.mjs";
 
-const { check, shown, hidden, finish } = await createBrowserHarness("notification-email-auth");
+const { check, shown, hidden, navigate, settleFetches, finish } = await createBrowserHarness("notification-email-auth");
 const id = "12345678-1234-4234-8234-123456789abc";
 const destination = `/portal/appointments/${id}`;
 const record = { ...appointment, id };
@@ -41,6 +41,10 @@ function world({ authenticated = false, mfa = false, denied = false, mandatorySe
     }
     if (pathname === "/api/v1/auth/mfa/verify" && method === "POST") {
       state.mfaCalls++;
+      if (state.rejectMfa) {
+        await reply({ error: { code: "mfa_failed", message: "Expired challenge." } }, 400);
+        return true;
+      }
       state.authenticated = true;
       await reply({ authenticated: true, mfa_required: false, mfa_methods: [] });
       return true;
@@ -144,6 +148,100 @@ for (const next of ["https://evil.test", "//evil.test", "%2f%2fevil.test", "/log
       await signIn(page);
       await page.waitForURL(url => url.pathname === "/portal");
       assert.equal(new URL(page.url()).hostname, "localhost");
+      assert.equal(fixture.state.recordReads, 0);
+    });
+}
+
+for (const mandatorySetup of [false, true]) {
+  const fixture = world({ mfa: true, mandatorySetup });
+  await check(`reload ${mandatorySetup ? "mandatory setup" : "MFA"} restarts with the email destination`, destination,
+    { role: "STUDENT", handler: fixture.handler }, async page => {
+      await shown(page.getByRole("heading", { name: "Sign in to COMPASS", exact: true }));
+      await signIn(page);
+      await shown(page.getByRole("heading", { name: mandatorySetup ? "Set up an authenticator app" : "Verify your identity", exact: true }));
+      if (mandatorySetup) {
+        await page.getByRole("button", { name: "Start authenticator setup", exact: true }).click();
+        await shown(page.getByLabel("Authenticator code", { exact: true }));
+      }
+      await settleFetches(page);
+      await page.reload();
+      await shown(page.getByRole("heading", { name: "Restart sign in", exact: true }));
+      assert.equal(fixture.state.recordReads, 0);
+      await page.getByRole("link", { name: "Return to sign in", exact: true }).click();
+      await shown(page.getByRole("heading", { name: "Sign in to COMPASS", exact: true }));
+      assert.equal(new URL(page.url()).searchParams.get("next"), destination);
+      // A new password challenge is required; reload never restores credentials or MFA state.
+      assert.equal(fixture.state.loginCalls, 1);
+      assert.equal(fixture.state.mfaCalls, 0);
+      await signIn(page);
+      if (!mandatorySetup) {
+        await shown(page.getByRole("heading", { name: "Verify your identity", exact: true }));
+        await page.getByLabel("Authenticator code", { exact: true }).fill("123456");
+        await page.getByRole("button", { name: "Verify", exact: true }).click();
+        await shown(page.getByText(record.reference_code, { exact: true }));
+      } else {
+        await shown(page.getByRole("heading", { name: "Set up an authenticator app", exact: true }));
+        await page.getByRole("button", { name: "Start authenticator setup", exact: true }).click();
+        await page.getByLabel("Authenticator code", { exact: true }).fill("123456");
+        await page.getByRole("button", { name: "Confirm authenticator", exact: true }).click();
+        await page.getByLabel("I have saved my recovery codes.", { exact: true }).check();
+        await page.getByRole("button", { name: "Return to sign in", exact: true }).click();
+        await signIn(page);
+        await shown(page.getByRole("heading", { name: "Verify your identity", exact: true }));
+        await page.getByLabel("Authenticator code", { exact: true }).fill("123456");
+        await page.getByRole("button", { name: "Verify", exact: true }).click();
+        await shown(page.getByText(record.reference_code, { exact: true }));
+      }
+    });
+}
+
+{
+  const fixture = world({ mfa: true });
+  fixture.state.rejectMfa = true;
+  await check("expired MFA denies resource; original email link supports deliberate restart", destination,
+    { role: "STUDENT", handler: fixture.handler }, async page => {
+      await signIn(page);
+      await shown(page.getByRole("heading", { name: "Verify your identity", exact: true }));
+      await page.getByLabel("Authenticator code", { exact: true }).fill("123456");
+      await page.getByRole("button", { name: "Verify", exact: true }).click();
+      await shown(page.getByRole("alert"));
+      assert.equal(fixture.state.recordReads, 0);
+      fixture.state.rejectMfa = false;
+      await navigate(page, destination);
+      await signIn(page);
+      await shown(page.getByRole("heading", { name: "Verify your identity", exact: true }));
+      await page.getByLabel("Authenticator code", { exact: true }).fill("123456");
+      await page.getByRole("button", { name: "Verify", exact: true }).click();
+      await shown(page.getByText(record.reference_code, { exact: true }));
+    });
+}
+
+for (const path of ["verify", "setup-authenticator"]) {
+  for (const next of ["https://evil.test", "//evil.test", "/portal/%2e%2e/login"]) {
+    await check(`reloaded ${path} sanitizes return ${next}`, `/login/${path}?next=${encodeURIComponent(next)}`,
+      { role: "STUDENT", handler: world().handler }, async page => {
+        await shown(page.getByRole("heading", { name: "Restart sign in", exact: true }));
+        const restart = page.getByRole("link", { name: "Return to sign in", exact: true });
+        assert.equal(new URL(await restart.getAttribute("href"), page.url()).searchParams.get("next"), "/portal");
+      });
+  }
+}
+
+for (const mandatorySetup of [false, true]) {
+  const fixture = world({ mfa: true, mandatorySetup });
+  await check(`Back during ${mandatorySetup ? "required setup" : "MFA"} permits only deliberate fresh login`, "/",
+    { role: "STUDENT", handler: fixture.handler }, async page => {
+      await navigate(page, destination);
+      await signIn(page);
+      await shown(page.getByRole("heading", { name: mandatorySetup ? "Set up an authenticator app" : "Verify your identity", exact: true }));
+      await settleFetches(page);
+      await page.goBack();
+      await page.waitForURL(url => url.pathname === "/");
+      assert.equal(fixture.state.recordReads, 0);
+      await navigate(page, destination);
+      await signIn(page);
+      await shown(page.getByRole("heading", { name: mandatorySetup ? "Set up an authenticator app" : "Verify your identity", exact: true }));
+      assert.equal(fixture.state.loginCalls, 2);
       assert.equal(fixture.state.recordReads, 0);
     });
 }

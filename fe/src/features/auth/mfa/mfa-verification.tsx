@@ -11,13 +11,14 @@ import { Label } from "@/components/ui/label";
 import { useAuthFlow } from "@/features/auth/components/auth-flow-context";
 import { FormError } from "@/features/auth/components/auth-states";
 import { authErrorMessage } from "@/features/auth/utils/errors";
+import { loginPathForPortal } from "@/features/auth/utils/redirect";
 import {
   getAuthGetSessionQueryKey,
   useAuthVerifyLoginMfa,
 } from "@/lib/api/generated/auth/auth";
 import { LoginMFAMethod } from "@/lib/api/generated/model";
 
-export function MfaVerification() {
+export function MfaVerification({ restartDestination = "/portal" }: { restartDestination?: string }) {
   const flow = useAuthFlow();
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -36,7 +37,7 @@ export function MfaVerification() {
         <p className="mt-3 text-sm leading-6 text-muted">
           The sign-in verification details are no longer available.
         </p>
-        <Link className="mt-6 inline-flex min-h-10 items-center font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href="/login">
+        <Link className="mt-6 inline-flex min-h-10 items-center font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href={loginPathForPortal(restartDestination)}>
           Return to sign in
         </Link>
       </section>

@@ -1,0 +1,69 @@
+{
+  "baseline": "f0b05dcf6a2a80e22193144891d23fee5865bdad",
+  "backend": {
+    "coordinated": {
+      "tests": 1403,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "time": 1048.47
+    },
+    "focused_final": {
+      "tests": 49,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "time": 29.12
+    },
+    "overlap": 47,
+    "unique_cases": 1405,
+    "coordinated_warning": "One existing Ninja tuple-response DeprecationWarning"
+  },
+  "frontend_node": {
+    "passed": 111,
+    "failed": 0,
+    "skipped": 0
+  },
+  "browser": {
+    "chromium": {
+      "auth": 21,
+      "center": 22,
+      "realtime": 12,
+      "auth-expired-400": 1
+    },
+    "webkit": {
+      "auth": 21,
+      "center": 22,
+      "realtime": 12,
+      "auth-expired-400": 1
+    },
+    "distinct_ui_scenarios": 110
+  },
+  "email_layouts": {
+    "chromium": 50,
+    "webkit": 50
+  },
+  "static": {
+    "ruff": "passed",
+    "python_format": "passed",
+    "django_check": "passed",
+    "migration_drift": "none",
+    "openapi": "current",
+    "api_generation": "passed",
+    "frontend_lint": "passed",
+    "frontend_typecheck": "passed",
+    "ordinary_production_build": "passed, 95 pages",
+    "synthetic_production_build": "passed, 95 pages",
+    "planner": "174 files exactly once, six shards; 38 self-tests passed"
+  },
+  "hosted_ci": "Relevant workflows exclude integration target; exact PR-head status recorded in manifest",
+  "not_executed": [
+    "SMTP",
+    "Gmail/Outlook/phone mail acceptance",
+    "physical devices",
+    "screen readers",
+    "stakeholder manual UAT",
+    "deployment/live configuration verification"
+  ],
+  "approval": "Whole four-family operational_v1 bundle requires GCO/UCN authorization"
+}
