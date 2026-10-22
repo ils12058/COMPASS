@@ -13,6 +13,11 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from compass.appointments.email_presentation import (
+    APPOINTMENT_EMAIL_EVENTS,
+    AppointmentEmailDetail,
+    AppointmentEmailFacts,
+)
 from compass.common.correlation import get_current_request_id
 from compass.common.email import RenderedEmail, render_email
 from compass.integrations.mail import Mailer
@@ -20,8 +25,11 @@ from compass.integrations.mail import Mailer
 from .current import notification_is_current
 from .email_links import NotificationEmailTarget, build_notification_email_link
 from .email_presentation import (
+    APPOINTMENT_EMAIL_FIELD_POLICY,
+    APPROVED_APPOINTMENT_POLICY,
     EmailPresentationReason,
     NotificationEmailPresentation,
+    appointment_email_disclosure_policy,
     resolve_notification_email_presentation,
 )
 from .models import EmailDelivery, EmailDeliveryStatus, Notification
@@ -137,10 +145,11 @@ def claim_email_delivery(
 def render_notification_email(
     event_code: str, *, presentation: NotificationEmailPresentation | None = None
 ) -> RenderedEmail:
-    """Fixed-copy previews remain context-free; only an approved plan adds a link.
+    """Fixed-copy previews remain context-free; approved plans add controlled values.
 
     Subjects, templates, action wording and all body text stay code-owned. The
-    only optional template value is rebuilt from a closed target and settings.
+    URL is rebuilt from a closed target. Detail rows are typed, allowlisted and
+    institutionally gated; raw models and arbitrary mappings are never accepted.
     """
 
     definition = get_event_definition(event_code)
@@ -151,19 +160,52 @@ def render_notification_email(
         if presentation.event_code != event_code or presentation.suppress:
             raise ValueError("ineligible notification email presentation")
         if (presentation.target is not None) != (
-            presentation.reason == EmailPresentationReason.LINK_AVAILABLE
+            presentation.reason
+            in {EmailPresentationReason.LINK_AVAILABLE, EmailPresentationReason.RICH_AVAILABLE}
         ):
             raise ValueError("inconsistent notification email action")
         if presentation.target is not None:
             if (
-                event_code != NotificationEvent.APPOINTMENT_SCHEDULED
+                event_code not in APPOINTMENT_EMAIL_EVENTS
+                or (
+                    presentation.reason == EmailPresentationReason.LINK_AVAILABLE
+                    and event_code != NotificationEvent.APPOINTMENT_SCHEDULED
+                )
                 or not isinstance(presentation.target, NotificationEmailTarget)
                 or presentation.target.target_type != NotificationTargetType.APPOINTMENT
             ):
                 raise ValueError("unsupported notification email action")
             link = build_notification_email_link(presentation.target)
+            if presentation.validated_link is not None and presentation.validated_link != link:
+                raise ValueError("notification email link changed")
             if link.url is not None:
                 context["action_url"] = link.url
+        if presentation.appointment_facts is not None:
+            facts = presentation.appointment_facts
+            fields = APPOINTMENT_EMAIL_FIELD_POLICY.get(presentation.recipient_class, frozenset())
+            if (
+                type(facts) is not AppointmentEmailFacts
+                or presentation.reason != EmailPresentationReason.RICH_AVAILABLE
+                or presentation.disclosure_policy != APPROVED_APPOINTMENT_POLICY
+                or presentation.validated_link is None
+                or appointment_email_disclosure_policy() != APPROVED_APPOINTMENT_POLICY
+                or presentation.target is None
+                or facts.event_code != event_code
+                or facts.appointment_id != presentation.target.target_id
+                or facts.recipient_class != presentation.recipient_class
+                or not facts.rows
+                or type(facts.rows) is not tuple
+                or any(
+                    type(row) is not AppointmentEmailDetail or row.field not in fields
+                    for row in facts.rows
+                )
+                or len({row.field for row in facts.rows}) != len(facts.rows)
+            ):
+                raise ValueError("unapproved appointment email facts")
+            if "action_url" in context:
+                context["appointment_details"] = facts.rows
+        elif presentation.reason == EmailPresentationReason.RICH_AVAILABLE:
+            raise ValueError("missing appointment email facts")
     return render_email(
         definition.email_subject, f"notifications/email/{definition.email_template}", context
     )

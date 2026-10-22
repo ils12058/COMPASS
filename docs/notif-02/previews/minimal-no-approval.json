@@ -1,0 +1,7 @@
+{
+  "event": "appointment.scheduled",
+  "reason": "link_available",
+  "suppressed": false,
+  "synthetic": true,
+  "transport": "not_sent"
+}

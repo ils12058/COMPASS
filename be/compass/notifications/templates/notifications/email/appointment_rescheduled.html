@@ -3,5 +3,5 @@
 {% block heading %}Appointment rescheduled{% endblock %}
 {% block content %}
 <p>A COMPASS Appointment has been rescheduled.</p>
-<p>Sign in to review the revised schedule and any updated instructions.</p>
+{% if appointment_details %}{% include "notifications/partials/appointment_details.html" %}{% include "notifications/partials/appointment_action.html" %}{% else %}<p>Sign in to review the revised schedule and any updated instructions.</p>{% endif %}
 {% endblock %}

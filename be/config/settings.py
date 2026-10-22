@@ -467,6 +467,9 @@ NOTIFICATION_EMAIL_MAX_ATTEMPTS = env_int("NOTIFICATION_EMAIL_MAX_ATTEMPTS", 5)
 # Optional and validated at link generation: absent/invalid values keep generic
 # transactional mail working. Never infer this from HTTP Host, CORS or CSRF.
 COMPASS_PORTAL_ORIGIN = env("COMPASS_PORTAL_ORIGIN", "")
+# Only an explicitly approved version enables external Appointment detail fields.
+# Unknown values fail closed in the presentation policy, without breaking email.
+APPOINTMENT_EMAIL_DISCLOSURE_POLICY = env("APPOINTMENT_EMAIL_DISCLOSURE_POLICY", "minimal")
 NOTIFICATION_EMAIL_RETRY_BASE_SECONDS = env_int("NOTIFICATION_EMAIL_RETRY_BASE_SECONDS", 60)
 NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS = env_int(
     "NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS", 60

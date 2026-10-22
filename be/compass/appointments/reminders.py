@@ -494,13 +494,21 @@ def reminder_notification_is_current(notification, *, now=None) -> bool:
     )
     if occurrence is None:
         return False
+    return reminder_occurrence_is_current(
+        occurrence, recipient_id=notification.recipient_id, now=at
+    )
+
+
+def reminder_occurrence_is_current(occurrence, *, recipient_id, now=None) -> bool:
+    """Canonical content-free occurrence predicate shared with email projections."""
+    at = now or timezone.now()
     item = occurrence.appointment
     return bool(
         item.status == AppointmentStatus.SCHEDULED
         and item.starts_at > at
         and item.starts_at == occurrence.starts_at
         and item.reminder_revision == occurrence.revision
-        and item.student_id == occurrence.recipient_id == notification.recipient_id
+        and item.student_id == occurrence.recipient_id == recipient_id
         and occurrence.recipient.is_active
         and occurrence.recipient.role.code == "STUDENT"
     )

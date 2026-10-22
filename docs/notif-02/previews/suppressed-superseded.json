@@ -1,0 +1,7 @@
+{
+  "event": "appointment.rescheduled",
+  "reason": "source_superseded",
+  "suppressed": true,
+  "synthetic": true,
+  "transport": "not_sent"
+}
