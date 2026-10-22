@@ -1,0 +1,198 @@
+{
+  "baseURL": "http://localhost:3114",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "reload MFA restarts with the email destination",
+      "passed": false,
+      "assertion": "Expected values to be strictly equal:",
+      "currentURL": "http://localhost:3114/login",
+      "readyState": "complete",
+      "navigation": [
+        "http://localhost:3114/portal/appointments/12345678-1234-4234-8234-123456789abc",
+        "http://localhost:3114/portal/appointments/12345678-1234-4234-8234-123456789abc",
+        "http://localhost:3114/portal/appointments/12345678-1234-4234-8234-123456789abc",
+        "http://localhost:3114/portal/appointments/12345678-1234-4234-8234-123456789abc",
+        "http://localhost:3114/login",
+        "http://localhost:3114/login/verify",
+        "http://localhost:3114/login/verify",
+        "http://localhost:3114/login/verify",
+        "http://localhost:3114/login"
+      ],
+      "errors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3114/api/v1/auth/session",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3114/api/v1/platform/status",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3114/api/v1/auth/session",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3114/api/v1/platform/status",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3114/api/v1/auth/session",
+          "failure": "net"
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/platform/status"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/platform/status"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/csrf"
+        },
+        {
+          "method": "POST",
+          "pathname": "/api/v1/auth/login"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/platform/status"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/platform/status"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        }
+      ]
+    },
+    {
+      "name": "reload mandatory setup restarts with the email destination",
+      "passed": false,
+      "assertion": "Expected values to be strictly equal:",
+      "currentURL": "http://localhost:3114/login",
+      "readyState": "complete",
+      "navigation": [
+        "http://localhost:3114/portal/appointments/12345678-1234-4234-8234-123456789abc",
+        "http://localhost:3114/portal/appointments/12345678-1234-4234-8234-123456789abc",
+        "http://localhost:3114/portal/appointments/12345678-1234-4234-8234-123456789abc",
+        "http://localhost:3114/portal/appointments/12345678-1234-4234-8234-123456789abc",
+        "http://localhost:3114/login",
+        "http://localhost:3114/login/setup-authenticator",
+        "http://localhost:3114/login/setup-authenticator",
+        "http://localhost:3114/login/setup-authenticator",
+        "http://localhost:3114/login"
+      ],
+      "errors": [],
+      "failedRequests": [
+        {
+          "method": "GET",
+          "url": "http://localhost:3114/api/v1/auth/session",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3114/api/v1/platform/status",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3114/api/v1/auth/session",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3114/api/v1/platform/status",
+          "failure": "net"
+        },
+        {
+          "method": "GET",
+          "url": "http://localhost:3114/api/v1/auth/session",
+          "failure": "net"
+        }
+      ],
+      "requests": [
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/platform/status"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/platform/status"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/csrf"
+        },
+        {
+          "method": "POST",
+          "pathname": "/api/v1/auth/login"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/platform/status"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/platform/status"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/v1/auth/session"
+        }
+      ]
+    }
+  ]
+}
