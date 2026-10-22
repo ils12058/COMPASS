@@ -298,14 +298,13 @@ if (responsiveMeasurements.length > 0) {
   await writeFile(join(artifactsRoot, "ux15-counselor-home", "geometry.json"), `${JSON.stringify(responsiveMeasurements, null, 2)}\n`);
 }
 
-for (const role of ["GUIDANCE_SERVICES_STAFF", "IT_ADMIN"]) {
+for (const role of ["IT_ADMIN"]) {
   const state = homeWorld({ role, items: [] });
   await check(`non-counselor-${role}-keeps-existing-overview`, "/portal", state.options(), async (page) => {
     await shown(page.getByRole("heading", { name: "Needs your attention", exact: true }));
     await shown(page.getByRole("heading", { name: "At a glance", exact: true }));
     await shown(page.locator("#overview-announcements-heading"));
     assert.equal(await page.locator("#counselor-agenda-heading, #counselor-work-heading, #head-guidance-oversight-heading").count(), 0);
-    if (role === "GUIDANCE_SERVICES_STAFF") await screenshot(page, "after-guidance-services-staff-existing-overview");
   });
 }
 

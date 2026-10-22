@@ -1,0 +1,37 @@
+[
+  {
+    "viewport": 320,
+    "document": 320,
+    "rootFontSize": "16px"
+  },
+  {
+    "viewport": 360,
+    "document": 360,
+    "rootFontSize": "16px"
+  },
+  {
+    "viewport": 390,
+    "document": 390,
+    "rootFontSize": "16px"
+  },
+  {
+    "viewport": 768,
+    "document": 768,
+    "rootFontSize": "16px"
+  },
+  {
+    "viewport": 1024,
+    "document": 1024,
+    "rootFontSize": "16px"
+  },
+  {
+    "viewport": 1440,
+    "document": 1440,
+    "rootFontSize": "16px"
+  },
+  {
+    "viewport": 320,
+    "document": 320,
+    "rootFontSize": "32px"
+  }
+]

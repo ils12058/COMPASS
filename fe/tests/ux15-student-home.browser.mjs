@@ -273,8 +273,13 @@ if (!baseline) {
           await shown(page.locator("#counselor-work-heading"));
           await shown(page.locator('section[aria-labelledby="counselor-work-heading"]').getByText("Review Routine Interview", { exact: true }));
           assert.equal(await page.locator("#overview-attention-heading").count(), 0);
+        } else if (role === "GUIDANCE_SERVICES_STAFF") {
+          await shown(page.getByRole("heading", { name: "Guidance Services Home", exact: true }));
+          await shown(page.locator("#gss-work-heading"));
+          await shown(page.locator("#gss-operations-heading"));
+          assert.equal(await page.getByText("Review Routine Interview", { exact: true }).count(), 0, "Counselor evaluation work stays out of GSS Home");
+          assert.equal(await page.locator("#overview-attention-heading, #overview-summary-heading, #counselor-work-heading").count(), 0);
         } else {
-          await shown(attention(page).getByText("Review Routine Interview", { exact: true }).first());
           assert.equal(await page.locator("#counselor-work-heading").count(), 0);
         }
       } else if (role === "IT_ADMIN") {

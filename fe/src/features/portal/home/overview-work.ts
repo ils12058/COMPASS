@@ -9,6 +9,7 @@ import { presentWork } from "@/features/work-queue/work-queue-presentation";
 import { hasStudentActions } from "@/features/student-actions/student-actions-access";
 import { useStudentActions } from "@/features/student-actions/student-actions-data";
 import { presentStudentAction } from "@/features/student-actions/student-actions-presentation";
+import type { WorkItem } from "@/lib/api/generated/model";
 
 export type OverviewAttentionItem = {
   id: string;
@@ -26,6 +27,15 @@ export type OverviewAttentionItem = {
 
 export type OverviewAttentionData = {
   items: OverviewAttentionItem[];
+  // The GSS Home needs the canonical projection in its backend order. The ranked attention list
+  // below remains the presentation used by the other overview compositions.
+  canonicalWorkItems: WorkItem[];
+  workGeneratedAt?: string;
+  workPageSize?: number;
+  workHasConfirmedData: boolean;
+  workIsPending: boolean;
+  workIsError: boolean;
+  workError: unknown;
   isPending: boolean;
   isVisible: boolean;
   staleNotices: string[];
@@ -181,6 +191,13 @@ export function useOverviewAttention(
 
   return {
     items: workEnabled || studentEnabled ? items : rankAttention(items),
+    canonicalWorkItems: workData?.items ?? [],
+    workGeneratedAt: workData?.generated_at,
+    workPageSize: workData?.page_size,
+    workHasConfirmedData: workData !== undefined,
+    workIsPending: workEnabled && work.isPending,
+    workIsError: workEnabled && work.isError,
+    workError: work.error,
     isPending,
     isVisible: workEnabled || studentEnabled || isVisible,
     viewAllWork: workEnabled,
