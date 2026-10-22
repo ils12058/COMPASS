@@ -1,0 +1,98 @@
+{
+  "viewportWidth": 320,
+  "viewportHeight": 844,
+  "documentWidth": 328,
+  "header": {
+    "left": 0,
+    "top": 0,
+    "right": 320,
+    "bottom": 393,
+    "width": 320,
+    "height": 393,
+    "scrollWidth": 320,
+    "clientWidth": 320
+  },
+  "mainTop": 393,
+  "actions": [
+    {
+      "selector": "button[aria-label=\"Open portal navigation\"]",
+      "name": "Open portal navigation",
+      "rect": {
+        "left": 32,
+        "top": 8,
+        "right": 120,
+        "bottom": 96,
+        "width": 88,
+        "height": 88
+      }
+    },
+    {
+      "selector": "a[aria-label=\"COMPASS Portal Overview\"]",
+      "name": "COMPASS Portal Overview",
+      "rect": {
+        "left": 136,
+        "top": 8,
+        "right": 224,
+        "bottom": 96,
+        "width": 88,
+        "height": 88
+      }
+    },
+    {
+      "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+      "name": "Go to a COMPASS feature",
+      "rect": {
+        "left": 32,
+        "top": 104,
+        "right": 120,
+        "bottom": 192,
+        "width": 88,
+        "height": 88
+      }
+    },
+    {
+      "selector": "button[aria-label=\"Accessibility settings\"]",
+      "name": "Accessibility settings",
+      "rect": {
+        "left": 104,
+        "top": 200,
+        "right": 192,
+        "bottom": 288,
+        "width": 88,
+        "height": 88
+      }
+    },
+    {
+      "selector": "a[aria-label^=\"Notifications\"]",
+      "name": "Notifications, 123 unread",
+      "rect": {
+        "left": 200,
+        "top": 200,
+        "right": 288,
+        "bottom": 288,
+        "width": 88,
+        "height": 88
+      }
+    },
+    {
+      "selector": "button[aria-label^=\"Open user menu for \"]",
+      "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+      "rect": {
+        "left": 143,
+        "top": 296,
+        "right": 288,
+        "bottom": 384,
+        "width": 145,
+        "height": 88
+      }
+    }
+  ],
+  "badge": {
+    "left": 256,
+    "top": 192,
+    "right": 296,
+    "bottom": 232,
+    "width": 40,
+    "height": 40
+  }
+}

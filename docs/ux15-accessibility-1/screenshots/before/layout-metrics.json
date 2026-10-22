@@ -1,0 +1,290 @@
+[
+  {
+    "viewportWidth": 320,
+    "viewportHeight": 844,
+    "documentWidth": 417,
+    "header": {
+      "left": 0,
+      "top": 0,
+      "right": 320,
+      "bottom": 112,
+      "width": 320,
+      "height": 112,
+      "scrollWidth": 417,
+      "clientWidth": 320
+    },
+    "mainTop": 112,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Open portal navigation\"]",
+        "name": "Open portal navigation",
+        "rect": {
+          "left": 32,
+          "top": 11.5,
+          "right": 120,
+          "bottom": 99.5,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "a[aria-label=\"COMPASS Portal Overview\"]",
+        "name": "COMPASS Portal Overview",
+        "rect": {
+          "left": 136,
+          "top": 11.5,
+          "right": 152,
+          "bottom": 99.5,
+          "width": 16,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 56,
+          "top": 11.5,
+          "right": 144,
+          "bottom": 99.5,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 80,
+          "top": 11.5,
+          "right": 168,
+          "bottom": 99.5,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 176,
+          "top": 11.5,
+          "right": 264,
+          "bottom": 99.5,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 272,
+          "top": 11.5,
+          "right": 417,
+          "bottom": 99.5,
+          "width": 145,
+          "height": 88
+        }
+      }
+    ],
+    "badge": {
+      "left": 232,
+      "top": 3.5,
+      "right": 272,
+      "bottom": 43.5,
+      "width": 40,
+      "height": 40
+    },
+    "textSize": "200%",
+    "offenders": [
+      {
+        "tag": "DIV",
+        "id": "",
+        "className": "flex shrink-0 items-center gap-1 sm:gap-2",
+        "text": "99+\nAJ",
+        "left": 80,
+        "right": 417,
+        "width": 337,
+        "scrollWidth": 337,
+        "clientWidth": 337
+      },
+      {
+        "tag": "DIV",
+        "id": "",
+        "className": "flex flex-col items-end",
+        "text": "AJ",
+        "left": 272,
+        "right": 417,
+        "width": 145,
+        "scrollWidth": 145,
+        "clientWidth": 145
+      },
+      {
+        "tag": "BUTTON",
+        "id": "radix-_r_d_",
+        "className": "inline-flex min-h-11 items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-surface-muted focus-visible:outline-none focus-visible:ri",
+        "text": "AJ",
+        "left": 272,
+        "right": 417,
+        "width": 145,
+        "scrollWidth": 145,
+        "clientWidth": 145
+      },
+      {
+        "tag": "svg",
+        "id": "",
+        "className": "",
+        "text": "",
+        "left": 384,
+        "right": 401,
+        "width": 17,
+        "scrollWidth": 17,
+        "clientWidth": 17
+      },
+      {
+        "tag": "path",
+        "id": "",
+        "className": "",
+        "text": "",
+        "left": 388,
+        "right": 397,
+        "width": 9,
+        "scrollWidth": 0,
+        "clientWidth": 0
+      },
+      {
+        "tag": "SPAN",
+        "id": "",
+        "className": "relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-support-soft font-heading font-bold text-support-s",
+        "text": "AJ",
+        "left": 288,
+        "right": 368,
+        "width": 80,
+        "scrollWidth": 80,
+        "clientWidth": 80
+      },
+      {
+        "tag": "HTML",
+        "id": "",
+        "className": "plusjakarta_bc84561a-module__6ZfzbW__variable outfit_f69e66a8-module__k-8fqq__variable",
+        "text": "Skip to main content\nCOMPASS\n99+\nAJ\nIndividual Inventory\n\n2026–2027 · ",
+        "left": 0,
+        "right": 320,
+        "width": 320,
+        "scrollWidth": 417,
+        "clientWidth": 320
+      },
+      {
+        "tag": "BODY",
+        "id": "",
+        "className": "",
+        "text": "Skip to main content\nCOMPASS\n99+\nAJ\nIndividual Inventory\n\n2026–2027 · ",
+        "left": 0,
+        "right": 320,
+        "width": 320,
+        "scrollWidth": 417,
+        "clientWidth": 320
+      },
+      {
+        "tag": "DIV",
+        "id": "",
+        "className": "min-h-dvh bg-body lg:flex [--portal-content-inset:0px] [--portal-dock-width:4.75rem] data-[dock=expanded]:[--portal-dock-width:16rem] lg:[--",
+        "text": "Skip to main content\nCOMPASS\n99+\nAJ\nIndividual Inventory\n\n2026–2027 · ",
+        "left": 0,
+        "right": 320,
+        "width": 320,
+        "scrollWidth": 417,
+        "clientWidth": 320
+      },
+      {
+        "tag": "DIV",
+        "id": "",
+        "className": "min-w-0 flex-1",
+        "text": "COMPASS\n99+\nAJ\nIndividual Inventory\n\n2026–2027 · UCN-OP-GCO-01F5 · Rev",
+        "left": 0,
+        "right": 320,
+        "width": 320,
+        "scrollWidth": 417,
+        "clientWidth": 320
+      },
+      {
+        "tag": "HEADER",
+        "id": "",
+        "className": "flex min-h-14 items-center justify-between gap-3 border-b border-border bg-surface-raised px-4 sm:px-6 lg:px-8",
+        "text": "COMPASS\n99+\nAJ",
+        "left": 0,
+        "right": 320,
+        "width": 320,
+        "scrollWidth": 417,
+        "clientWidth": 320
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "className": "relative inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-md text-ink hover:bg-surface-muted focus-visible:outline",
+        "text": "99+",
+        "left": 176,
+        "right": 264,
+        "width": 88,
+        "scrollWidth": 96,
+        "clientWidth": 88
+      },
+      {
+        "tag": "INPUT",
+        "id": "inventory-full-name",
+        "className": "min-h-10 w-full rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink outline-none placeholder:text-muted focu",
+        "text": "",
+        "left": 65,
+        "right": 255,
+        "width": 190,
+        "scrollWidth": 288,
+        "clientWidth": 188
+      },
+      {
+        "tag": "INPUT",
+        "id": "inventory-student-number",
+        "className": "min-h-10 w-full rounded-md border border-border-strong px-3 py-2 text-sm text-ink outline-none placeholder:text-muted focus:border-focus foc",
+        "text": "",
+        "left": 65,
+        "right": 255,
+        "width": 190,
+        "scrollWidth": 244,
+        "clientWidth": 188
+      },
+      {
+        "tag": "INPUT",
+        "id": "inventory-contact-number",
+        "className": "min-h-10 w-full rounded-md border border-border-strong bg-surface-raised px-3 py-2 text-sm text-ink outline-none placeholder:text-muted focu",
+        "text": "",
+        "left": 65,
+        "right": 255,
+        "width": 190,
+        "scrollWidth": 264,
+        "clientWidth": 188
+      },
+      {
+        "tag": "SPAN",
+        "id": "",
+        "className": "font-heading text-base font-bold tracking-[0.08em] text-brand-strong max-sm:sr-only",
+        "text": "COMPASS",
+        "left": 143,
+        "right": 144,
+        "width": 1,
+        "scrollWidth": 170,
+        "clientWidth": 1
+      },
+      {
+        "tag": "A",
+        "id": "",
+        "className": "sr-only text-sm font-semibold text-brand focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:border foc",
+        "text": "Skip to main content",
+        "left": -1,
+        "right": 0,
+        "width": 1,
+        "scrollWidth": 276,
+        "clientWidth": 1
+      }
+    ]
+  }
+]
