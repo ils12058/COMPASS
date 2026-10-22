@@ -8,7 +8,16 @@ import { homeWorld } from "./support/ux15-home-fixtures.mjs";
 import { counselorWorld, counselorAppointment, workItem } from "./support/ux15-counselor-home-fixtures.mjs";
 import { gssHomeDate, gssWorld, managedAppointment } from "./support/ux15-gss-home-fixtures.mjs";
 
-const { check, shown, hidden, screenshot, noHorizontalOverflow, finish, artifacts } = await createBrowserHarness("ux15-gss-home");
+const {
+  check,
+  shown,
+  hidden,
+  screenshot,
+  noHorizontalOverflow,
+  settleFetches,
+  finish,
+  artifacts,
+} = await createBrowserHarness("ux15-gss-home");
 const workPanel = (page) => page.locator('section[aria-labelledby="gss-work-heading"]');
 const schedulePanel = (page) => page.locator('section[aria-labelledby="gss-schedule-heading"]');
 const operationsPanel = (page) => page.locator('section[aria-labelledby="gss-operations-heading"]');
@@ -185,6 +194,9 @@ await check("switching from GSS to Student removes GSS work and destinations", "
   await shown(page.getByText("Synthetic Work Student 1", { exact: true }));
   const requestCount = requests.length;
   switching.account = homeWorld({ role: "STUDENT" }).account;
+  // Let Next's route prefetches finish before the full reload; WebKit reports canceled RSC fetches
+  // as page errors even though the account switch itself succeeds.
+  await settleFetches(page);
   await page.reload({ waitUntil: "domcontentloaded" });
   await hidden(page.getByRole("heading", { name: "Guidance Services Home", exact: true }));
   await hidden(page.getByText("Synthetic Work Student 1", { exact: true }));
