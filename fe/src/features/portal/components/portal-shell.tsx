@@ -58,7 +58,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="min-w-0 flex-1">
-        <header className="flex min-h-14 items-center justify-between gap-3 border-b border-border bg-surface-raised px-4 sm:px-6 lg:px-8">
+        <header className="relative flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border bg-surface-raised px-4 py-1 sm:px-6 lg:px-8">
           {/* The dock's own control stays outside its list of destinations. */}
           <button
             type="button"
@@ -71,7 +71,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
           >
             {dockExpanded ? <PanelLeftClose size={20} aria-hidden="true" /> : <PanelLeftOpen size={20} aria-hidden="true" />}
           </button>
-          <div className="flex min-w-0 items-center gap-2 lg:hidden">
+          <div className="flex shrink-0 items-center gap-2 lg:hidden">
             <Dialog open={mobileOpen} onOpenChange={setMobileOpen}>
               <DialogTrigger asChild>
                 <button
@@ -94,7 +94,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
             {/* Without the dock, the mark here keeps COMPASS and the way back to Overview in view. */}
             <GuardedPortalLink
               href="/portal"
-              className="inline-flex min-h-11 items-center gap-2 rounded-md px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+              className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-md px-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
               aria-label="COMPASS Portal Overview"
             >
               <Image src="/brand/compass-mark.svg" width={28} height={28} alt="" aria-hidden="true" />
@@ -103,10 +103,10 @@ export function PortalShell({ children }: { children: ReactNode }) {
               </span>
             </GuardedPortalLink>
           </div>
-          <div className="flex min-w-0 flex-1 justify-start">
+          <div className="flex min-w-11 flex-1 justify-start">
             <PortalCommandPalette />
           </div>
-          <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+          <div className="flex min-w-0 max-w-full basis-full flex-wrap items-center justify-end gap-1 sm:gap-2 lg:basis-auto">
             <AccessibilityControl placement="header" />
             <NotificationBell />
             <NotificationHeadsUp key={user.id} />
