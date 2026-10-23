@@ -7,7 +7,15 @@ from django.core.management import call_command
 from django.test import Client
 from django.utils import timezone
 
-from compass.accounts.models import Designation, Role, User, UserDesignation
+from compass.accounts.models import (
+    Capability,
+    Designation,
+    Role,
+    RoleCapability,
+    User,
+    UserCapabilityOverride,
+    UserDesignation,
+)
 from compass.appointments.models import Appointment, AppointmentStatus
 from compass.audit.context import AuditContext
 from compass.authentication.sessions import create_auth_session
@@ -20,7 +28,6 @@ from compass.counseling.context_services import (
     get_context_inventory,
     get_context_support_indicators,
     list_context_history,
-    list_context_shared_summaries,
 )
 from compass.counseling.models import (
     CounselingEncounter,
@@ -765,26 +772,21 @@ def test_context_history_is_minimized_and_private_encounters_stay_hidden(world):
 
 
 @pytest.mark.django_db
-def test_context_shared_summaries_are_published_only(world):
-    now = timezone.now().replace(microsecond=0)
-    appointment = make_appointment(
-        student=world["anna"],
-        counselor=world["b"],
-        service=world["service"],
-        starts_at=now + timedelta(hours=2),
-    )
-    access = resolve_counseling_context(
-        actor=world["b"],
-        anchor_type="APPOINTMENT",
-        anchor_id=appointment.pk,
-        now=now,
-    )
+@pytest.mark.parametrize(
+    "anchor", ["APPOINTMENT", "HEAD_APPOINTMENT", "WALK_IN", "CALLED_IN", "REFERRED"]
+)
+@pytest.mark.parametrize("summary_capability", ["baseline", "absent", "revoked"])
+def test_context_never_discloses_another_authors_summaries(
+    world, monkeypatch, anchor, summary_capability
+):
+    from compass.counseling import shared_summary_content
 
+    now = timezone.now().replace(microsecond=0)
+    actor = world["head"] if anchor == "HEAD_APPOINTMENT" else world["b"]
     published_encounter = CounselingEncounter.objects.create(
         student=world["anna"],
         counselor=world["a"],
         service=world["service"],
-        appointment=None,
         entry_mode="WALK_IN",
         delivery_mode="IN_PERSON",
         started_at=now - timedelta(days=5, hours=1),
@@ -795,7 +797,6 @@ def test_context_shared_summaries_are_published_only(world):
         student=world["anna"],
         counselor=world["a"],
         service=world["service"],
-        appointment=None,
         entry_mode="REFERRED",
         delivery_mode="IN_PERSON",
         started_at=now - timedelta(days=4, hours=1),
@@ -805,15 +806,117 @@ def test_context_shared_summaries_are_published_only(world):
     published = CounselingSharedSummary(
         encounter=published_encounter, published_at=now - timedelta(days=4)
     )
-    write_shared_summary_content(published, "Published context-safe summary.")
+    write_shared_summary_content(published, "CONT-1A-PRIVATE-PUBLISHED-SENTINEL")
     published.save()
     draft = CounselingSharedSummary(encounter=draft_encounter)
-    write_shared_summary_content(draft, "UNPUBLISHED-PRIVATE-SENTINEL")
+    write_shared_summary_content(draft, "CONT-1A-PRIVATE-DRAFT-SENTINEL")
     draft.save()
+    original_rows = list(CounselingSharedSummary.objects.order_by("pk").values())
 
-    summaries = list_context_shared_summaries(access)
-    assert [item.id for item in summaries] == [published.pk]
-    assert "UNPUBLISHED-PRIVATE-SENTINEL" not in " ".join(item.content for item in summaries)
+    if anchor in {"APPOINTMENT", "HEAD_APPOINTMENT"}:
+        appointment = make_appointment(
+            student=world["anna"],
+            counselor=actor,
+            service=world["service"],
+            starts_at=now + timedelta(hours=2),
+        )
+        anchor_type, anchor_id = "APPOINTMENT", appointment.pk
+    else:
+        routine = create_direct(
+            counselor=actor,
+            student_id=world["anna"].pk,
+            entry_mode=anchor,
+            delivery_mode="IN_PERSON",
+            idempotency_key="cont-1a-direct",
+            request_fingerprint="c" * 64,
+            context=audit_context(actor),
+        )
+        replace_my_intake(
+            student=world["anna"],
+            routine_interview_id=routine.pk,
+            values={"concerns_explanation": "Synthetic submitted intake."},
+        )
+        submit_my_intake(
+            student=world["anna"],
+            routine_interview_id=routine.pk,
+            context=audit_context(world["anna"]),
+        )
+        anchor_type, anchor_id = "ROUTINE_INTERVIEW", routine.pk
+
+    capability = Capability.objects.get(code="shared_summaries.view_assigned")
+    if summary_capability == "absent":
+        RoleCapability.objects.filter(role=actor.role, capability=capability).delete()
+    elif summary_capability == "revoked":
+        UserCapabilityOverride.objects.create(
+            user=actor, capability=capability, effect="REVOKE", reason="Synthetic regression"
+        )
+    assert actor.has_capability("shared_summaries.view_assigned") == (
+        summary_capability == "baseline"
+    )
+    assert actor.has_capability("counseling.view_assigned")
+    if actor == world["b"]:
+        assert not CounselorResponsibility.objects.filter(
+            counselor=actor, college=world["cas"]
+        ).exists()
+    access = resolve_counseling_context(actor=actor, anchor_type=anchor_type, anchor_id=anchor_id)
+    assert access.student_id == world["anna"].pk
+    client = auth_client(actor)
+
+    def forbidden_decryption(*args, **kwargs):
+        pytest.fail("Counseling Context must never decrypt Student summaries.")
+
+    monkeypatch.setattr(
+        shared_summary_content, "decrypt_shared_summary_content", forbidden_decryption
+    )
+    root = f"/api/v1/counseling/context/{anchor_type}/{anchor_id}"
+    for suffix in (
+        "/shared-summaries",
+        "/shared-summaries?limit=50",
+        "/shared-summaries/",
+        f"/shared-summaries/{published.pk}",
+        "/shared-summary",
+        "/shared-summaries?include=published&author=all",
+    ):
+        response = client.get(root + suffix)
+        assert response.status_code == 404
+        for secret in (
+            str(published.pk),
+            str(draft.pk),
+            "CONT-1A-PRIVATE-",
+            published.content_ciphertext,
+            draft.content_ciphertext,
+            world["a"].get_full_name(),
+            "published_at",
+        ):
+            # A guessed ID in the requested path is input, not a discovered record.
+            if secret not in suffix:
+                assert secret not in response.content.decode()
+
+    for suffix in (
+        "",
+        "/inventory",
+        "/support-indicators",
+        "/history",
+        "?include=shared-summaries",
+    ):
+        response = client.get(root + suffix)
+        assert response.status_code == 200
+        body = response.content.decode()
+        assert "CONT-1A-PRIVATE-" not in body
+        assert str(published.pk) not in body
+        assert str(draft.pk) not in body
+        assert "published_at" not in body
+    assert client.get(root).json()["available_sections"] == [
+        "SUPPORT_INDICATORS",
+        "INVENTORY",
+        "HISTORY",
+    ]
+    # Ordinary author APIs remain independent; another provider/capability cannot claim authorship.
+    author_route = f"/api/v1/counseling/encounters/{published_encounter.pk}/shared-summary"
+    assert client.get(author_route).status_code == (
+        404 if summary_capability == "baseline" else 403
+    )
+    assert list(CounselingSharedSummary.objects.order_by("pk").values()) == original_rows
 
 
 @pytest.mark.django_db

@@ -256,7 +256,6 @@ EXPECTED_OPERATION_IDS = {
     "counselingContextGetSupportIndicators",
     "counselingContextGetInventory",
     "counselingContextListHistory",
-    "counselingContextListSharedSummaries",
     "academicYearsList",
     "academicYearsCreate",
     "academicYearsSetCurrent",
@@ -1007,6 +1006,24 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
 
 def test_counseling_context_contract_is_anchor_based_and_read_only() -> None:
     schema = _generated_schema()
+    assert (
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/shared-summaries"
+        not in schema["paths"]
+    )
+    assert not {"ContextSharedSummaryResponse", "CounselingContextSharedSummariesResponse"} & set(
+        schema["components"]["schemas"]
+    )
+    assert schema["components"]["schemas"]["CounselingContextSection"]["enum"] == [
+        "SUPPORT_INDICATORS",
+        "INVENTORY",
+        "HISTORY",
+    ]
+    assert not any(
+        operation.get("operationId") == "counselingContextListSharedSummaries"
+        for path in schema["paths"].values()
+        for operation in path.values()
+        if isinstance(operation, dict)
+    )
     expected = {
         "/api/v1/counseling/context/{anchor_type}/{anchor_id}": "counselingContextGetOverview",
         "/api/v1/counseling/context/{anchor_type}/{anchor_id}/support-indicators": (
@@ -1017,9 +1034,6 @@ def test_counseling_context_contract_is_anchor_based_and_read_only() -> None:
         ),
         "/api/v1/counseling/context/{anchor_type}/{anchor_id}/history": (
             "counselingContextListHistory"
-        ),
-        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/shared-summaries": (
-            "counselingContextListSharedSummaries"
         ),
     }
 

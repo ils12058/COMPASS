@@ -166,7 +166,7 @@ test("embedded Counseling retains the access deadline; a standalone Interaction 
   };
   const panel = (showInteractionFacts) => render(h(PortalSessionProvider, { value: { user: user() } },
     h(CounselingContextPanel, { overview, anchorType: "APPOINTMENT", anchorId: appointmentId,
-      access: { canViewAssigned: true }, ...(showInteractionFacts === undefined ? {} : { showInteractionFacts }) })));
+      ...(showInteractionFacts === undefined ? {} : { showInteractionFacts }) })));
   assert.match(panel(), /<dt[^>]*>Available until<\/dt>/);
   assert.match(panel(), /<dt[^>]*>Origin<\/dt>/);
   assert.doesNotMatch(panel(false), /<dt[^>]*>Available until<\/dt>/);

@@ -432,9 +432,6 @@ function EncounterSection({ workspace, canManage, defaultOpen }: { workspace: Co
 }
 
 function StudentInformation({ appointmentId, available, defaultOpen }: { appointmentId: string; available: boolean; defaultOpen: boolean }) {
-  const { user } = usePortalSession();
-  const queryClient = useQueryClient();
-  const counselingAccess = getCounselingAccess(user);
   const context = useCounselingContextGetOverview(CounselingContextAnchorType.APPOINTMENT, appointmentId, {
     query: { enabled: available, retry: false, staleTime: 0, refetchOnWindowFocus: true },
   });
@@ -460,9 +457,7 @@ function StudentInformation({ appointmentId, available, defaultOpen }: { appoint
             anchorType={CounselingContextAnchorType.APPOINTMENT}
             anchorId={appointmentId}
             overview={data}
-            access={counselingAccess}
             showHeading={false}
-            onPublished={() => void queryClient.invalidateQueries({ queryKey: getCounselingContextGetOverviewQueryKey(CounselingContextAnchorType.APPOINTMENT, appointmentId) })}
           />
         </>
       )}
