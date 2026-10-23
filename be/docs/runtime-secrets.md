@@ -42,6 +42,7 @@ remain trusted. A compromised authorized process can read its own grants.
 | `AUTH_TOTP_ENCRYPTION_KEY` | `auth_totp_encryption_key` | yes |
 | `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` | `routine_interview_encryption_keys` | yes |
 | `STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS` | `student_session_summary_encryption_keys` | yes |
+| `COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS` | `counselor_handoff_summary_encryption_keys` | optional contents; web only |
 | `REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `referral_confidential_content_encryption_keys` | yes |
 | `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `exit_interview_confidential_content_encryption_keys` | yes |
 | `INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `inventory_confidential_content_encryption_keys` | yes |
@@ -707,3 +708,9 @@ prerequisites remain independently verifiable release prerequisites.
 Missing keys continue to fail protected reads/writes closed; no existing domain key or plaintext
 fallback may be used. This repository audit did not inspect or establish the current host file's
 presence. See [the Follow-Up activation runbook](guidance-followups-operations.md).
+
+## CONT-3 confidential Counselor Handoff
+
+The independent `COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS_FILE` points to `/run/secrets/counselor_handoff_summary_encryption_keys`. Staging Compose mounts it only in web; worker/Beat clear both direct and file settings. The inventory validator requires the declared protected source file and pointer even when optional contents are empty. Absent keys deny Handoff content operations; configured keys must be valid, nonduplicate and independent of every existing encryption purpose. All institutional policy providers remain denied by default.
+
+Preparing this contract does not provision a secret or authorize deployment. Before using the changed staging manifest, separately authorize file preparation/custody/recovery, the additive Handoff migration, exact consumer coordination and verified institutional policies. No live key operation has been performed. See [CONT-3 encryption](../../docs/cont-3/handoff-encryption.md).

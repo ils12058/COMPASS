@@ -4531,6 +4531,8 @@
           "counseling.continuity.request",
           "counseling.continuity.revoke",
           "counseling.continuity.view",
+          "counseling.handoff.manage_own",
+          "counseling.handoff.read_received",
           "counseling.manage_assigned",
           "counseling.view_assigned",
           "ecounseling.access_media_assigned",
@@ -8353,6 +8355,63 @@
         "title": "CourseChoiceReasonValue",
         "type": "string"
       },
+      "CoverageConfiguration": {
+        "additionalProperties": false,
+        "properties": {
+          "can_approve": {
+            "title": "Can Approve",
+            "type": "boolean"
+          },
+          "can_request": {
+            "title": "Can Request",
+            "type": "boolean"
+          },
+          "maximum_advance_seconds": {
+            "title": "Maximum Advance Seconds",
+            "type": "integer"
+          },
+          "maximum_duration_seconds": {
+            "title": "Maximum Duration Seconds",
+            "type": "integer"
+          },
+          "office_cases": {
+            "items": {
+              "$ref": "#/components/schemas/OfficeCaseReference"
+            },
+            "title": "Office Cases",
+            "type": "array"
+          },
+          "reason_categories": {
+            "items": {
+              "$ref": "#/components/schemas/ContinuityReason"
+            },
+            "title": "Reason Categories",
+            "type": "array"
+          },
+          "server_now": {
+            "format": "date-time",
+            "title": "Server Now",
+            "type": "string"
+          },
+          "valid_until": {
+            "format": "date-time",
+            "title": "Valid Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_now",
+          "valid_until",
+          "maximum_duration_seconds",
+          "maximum_advance_seconds",
+          "reason_categories",
+          "office_cases",
+          "can_request",
+          "can_approve"
+        ],
+        "title": "CoverageConfiguration",
+        "type": "object"
+      },
       "CoverageKind": {
         "enum": [
           "PLANNED_HANDOFF",
@@ -8368,6 +8427,102 @@
         ],
         "title": "CoverageModeValue",
         "type": "string"
+      },
+      "CoverageReceiverOption": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "CoverageReceiverOption",
+        "type": "object"
+      },
+      "CoverageSelectionPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageSourceOption"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "receivers": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageReceiverOption"
+            },
+            "title": "Receivers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "receivers",
+          "page",
+          "has_next"
+        ],
+        "title": "CoverageSelectionPage",
+        "type": "object"
+      },
+      "CoverageSourceOption": {
+        "additionalProperties": false,
+        "properties": {
+          "counselor_id": {
+            "format": "uuid",
+            "title": "Counselor Id",
+            "type": "string"
+          },
+          "eligible": {
+            "const": true,
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "projection": {
+            "$ref": "#/components/schemas/ContinuityProjection"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "resource_kind": {
+            "$ref": "#/components/schemas/ContinuitySourceKind"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_kind",
+          "source_id",
+          "projection",
+          "counselor_id",
+          "recorded_at",
+          "eligible"
+        ],
+        "title": "CoverageSourceOption",
+        "type": "object"
       },
       "CsvImportResponse": {
         "additionalProperties": false,
@@ -17698,6 +17853,235 @@
         "title": "HandednessValue",
         "type": "string"
       },
+      "HandoffBody": {
+        "additionalProperties": false,
+        "properties": {
+          "author_id": {
+            "format": "uuid",
+            "title": "Author Id",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "grant_id": {
+            "format": "uuid",
+            "title": "Grant Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "receiving_counselor_id": {
+            "format": "uuid",
+            "title": "Receiving Counselor Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "DRAFT",
+              "SUBMITTED"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "grant_id",
+          "student_id",
+          "author_id",
+          "receiving_counselor_id",
+          "state",
+          "submitted_at",
+          "version",
+          "created_at",
+          "updated_at",
+          "content"
+        ],
+        "title": "HandoffBody",
+        "type": "object"
+      },
+      "HandoffDraftInput": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "maxLength": 12000,
+            "title": "Content",
+            "type": "string"
+          },
+          "expected_grant_version": {
+            "minimum": 1,
+            "title": "Expected Grant Version",
+            "type": "integer"
+          },
+          "expected_version": {
+            "minimum": 0,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_grant_version",
+          "expected_version",
+          "content"
+        ],
+        "title": "HandoffDraftInput",
+        "type": "object"
+      },
+      "HandoffMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "author_id": {
+            "format": "uuid",
+            "title": "Author Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "grant_id": {
+            "format": "uuid",
+            "title": "Grant Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "receiving_counselor_id": {
+            "format": "uuid",
+            "title": "Receiving Counselor Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "DRAFT",
+              "SUBMITTED"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "grant_id",
+          "student_id",
+          "author_id",
+          "receiving_counselor_id",
+          "state",
+          "submitted_at",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "HandoffMetadata",
+        "type": "object"
+      },
+      "HandoffPresence": {
+        "additionalProperties": false,
+        "properties": {
+          "handoff": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandoffMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "handoff"
+        ],
+        "title": "HandoffPresence",
+        "type": "object"
+      },
+      "HandoffVersionInput": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_grant_version": {
+            "minimum": 1,
+            "title": "Expected Grant Version",
+            "type": "integer"
+          },
+          "expected_version": {
+            "minimum": 0,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_grant_version",
+          "expected_version"
+        ],
+        "title": "HandoffVersionInput",
+        "type": "object"
+      },
       "HealthCheckResponse": {
         "additionalProperties": false,
         "properties": {
@@ -21227,6 +21611,27 @@
         ],
         "title": "OccupationCategoryValue",
         "type": "string"
+      },
+      "OfficeCaseReference": {
+        "additionalProperties": false,
+        "properties": {
+          "original_counselor_id": {
+            "format": "uuid",
+            "title": "Original Counselor Id",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student_id",
+          "original_counselor_id"
+        ],
+        "title": "OfficeCaseReference",
+        "type": "object"
       },
       "OfficeExceptionListResponse": {
         "additionalProperties": false,
@@ -29873,6 +30278,8 @@
                 "counseling.continuity.request",
                 "counseling.continuity.revoke",
                 "counseling.continuity.view",
+                "counseling.handoff.manage_own",
+                "counseling.handoff.read_received",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
                 "ecounseling.access_media_assigned",
@@ -30055,6 +30462,8 @@
                 "counseling.continuity.request",
                 "counseling.continuity.revoke",
                 "counseling.continuity.view",
+                "counseling.handoff.manage_own",
+                "counseling.handoff.read_received",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
                 "ecounseling.access_media_assigned",
@@ -39805,6 +40214,182 @@
         ]
       }
     },
+    "/api/v1/counseling/continuity-grants/workflow/configuration": {
+      "get": {
+        "operationId": "counselingCoverageGetConfiguration",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageConfiguration"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Configuration",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/workflow/selection": {
+      "get": {
+        "operationId": "counselingCoverageSelectSources",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "original_counselor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Original Counselor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageSelectionPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Selection",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
     "/api/v1/counseling/continuity-grants/{grant_id}": {
       "get": {
         "operationId": "counselingContinuityGetGrant",
@@ -40300,6 +40885,536 @@
           }
         ],
         "summary": "Get Selected Encounter Metadata",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/author": {
+      "get": {
+        "operationId": "counselingHandoffGetAuthorDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_grant_version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Expected Grant Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Author Body",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/draft": {
+      "put": {
+        "operationId": "counselingHandoffSaveDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoffDraftInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffMetadata"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Save Draft",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/metadata": {
+      "get": {
+        "operationId": "counselingHandoffGetMetadata",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_grant_version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Expected Grant Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffPresence"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Metadata",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/submit": {
+      "post": {
+        "operationId": "counselingHandoffSubmit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoffVersionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffMetadata"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Submit",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/submitted": {
+      "get": {
+        "operationId": "counselingHandoffReadSubmitted",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_grant_version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Expected Grant Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Receiver Body",
         "tags": [
           "counseling"
         ]

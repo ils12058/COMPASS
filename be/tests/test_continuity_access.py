@@ -659,6 +659,7 @@ def test_old_metadata_policy_digest_is_preserved_and_cannot_disclose(metadata_ca
     c = metadata_case
     values = asdict(c.policy)
     values.pop("disclosure_policy_digest")
+    values.pop("workflow_policy_digest")
     for key, value in values.items():
         if isinstance(value, frozenset):
             values[key] = sorted(str(i) for i in value)

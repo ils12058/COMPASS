@@ -6,6 +6,7 @@ import stat
 from pathlib import Path
 
 SECRET_FILES = {
+    "COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS": "counselor_handoff_summary_encryption_keys",
     "GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS": "guidance_followup_encryption_keys",
     "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
         "assessment_record_confidential_content_encryption_keys"

@@ -70,6 +70,7 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
         {correctionOpen && access.canManageAssigned ? <EncounterCorrectionForm encounter={encounter} onClose={() => setCorrectionOpen(false)} /> : null}
       </Panel>
 
+      {user.capabilities.includes("counseling.continuity.request") && encounter.counselor.id === user.id ? <div className="mt-5"><Link className="inline-flex min-h-11 items-center font-semibold text-brand underline" href={`/portal/counseling/coverage?student=${encounter.student.id}&original=${user.id}`}>Request coverage</Link></div> : null}
       <FollowupsContext kind="COUNSELING_ENCOUNTER" id={encounter.id} />
       {access.canViewAssignedStudentSessionSummaries ? <div className="mt-5"><StudentSessionSummarySection encounterId={encounter.id} access={access} /></div> : null}
     </article>

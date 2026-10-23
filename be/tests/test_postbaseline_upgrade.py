@@ -28,9 +28,17 @@ def test_postbaseline_upgrade_preserves_canonical_records_and_reverses_only_addi
         config.label for config in apps.get_app_configs() if config.name.startswith("compass.")
     }
     baseline = []
+    # CONT-1B is an irreversible empty-resource cutover, not a reversible addition.
+    # Keep its capability/schema dependency unit while rehearsing later additions.
+    protected_floor = {
+        "accounts": "0002_student_session_summary_capabilities",
+        "counseling": "0002_student_session_summary_contract",
+    }
     for label, leaf in full:
         if label not in compass_labels:
             baseline.append((label, leaf))
+        elif label in protected_floor:
+            baseline.append((label, protected_floor[label]))
         elif (label, "0001_canonical_baseline") in executor.loader.disk_migrations:
             baseline.append((label, "0001_canonical_baseline"))
         else:

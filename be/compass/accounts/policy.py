@@ -72,6 +72,16 @@ DESIGNATION_DEFINITIONS = (
 
 CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
+        code="counseling.handoff.manage_own",
+        name="Author own confidential Counselor Handoff",
+        description="Requires current original-author relationship and approved Handoff policy.",
+    ),
+    CapabilityDefinition(
+        code="counseling.handoff.read_received",
+        name="Read intended submitted Counselor Handoff",
+        description="Requires exact recipient and effective approved coverage and Handoff policy.",
+    ),
+    CapabilityDefinition(
         code="counseling.continuity.view",
         name="View authorized continuity metadata",
         description="Continuity foundation; institutional policy and actor checks also required.",
@@ -722,6 +732,10 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 # Dependencies constrain whether already-granted authority is effective. They never
 # create prerequisite authority or rewrite persisted grants/overrides.
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
+    "counseling.handoff.manage_own": frozenset(
+        {"counseling.continuity.view", "counseling.view_assigned"}
+    ),
+    "counseling.handoff.read_received": frozenset({"counseling.continuity.read_selected"}),
     "counseling.continuity.request": frozenset({"counseling.continuity.view"}),
     "counseling.continuity.approve": frozenset({"counseling.continuity.view"}),
     "counseling.continuity.revoke": frozenset({"counseling.continuity.view"}),

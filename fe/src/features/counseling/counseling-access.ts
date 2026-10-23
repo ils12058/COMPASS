@@ -4,6 +4,7 @@ export type CounselingAccess = {
   isCounselor: boolean;
   isStudent: boolean;
   canViewAssigned: boolean;
+  canViewCoverage: boolean;
   canManageAssigned: boolean;
   canViewAssignedStudentSessionSummaries: boolean;
   canManageAssignedStudentSessionSummaries: boolean;
@@ -27,13 +28,15 @@ export function getCounselingAccess(user: UserSummary): CounselingAccess {
     isCounselor && capabilities.has("student_session_summaries.manage_assigned");
   const canViewOwnStudentSessionSummaries =
     isStudent && capabilities.has("student_session_summaries.view_self");
-  const hasCounselorWorkspace = canViewAssigned;
+  const canViewCoverage = isCounselor && capabilities.has("counseling.continuity.view");
+  const hasCounselorWorkspace = canViewAssigned || canViewCoverage;
   const hasStudentWorkspace = canViewOwnStudentSessionSummaries;
 
   return {
     isCounselor,
     isStudent,
     canViewAssigned,
+    canViewCoverage,
     canManageAssigned,
     canViewAssignedStudentSessionSummaries,
     canManageAssignedStudentSessionSummaries,

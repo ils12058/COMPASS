@@ -287,3 +287,8 @@ def get_selected_routine_evaluation(
         routine_interview_id=routine_interview_id,
         expected_version=expected_version,
     )
+
+
+from compass.counseling.coverage_api import router as coverage_router  # noqa: E402
+
+router.add_router("", coverage_router)

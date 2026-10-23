@@ -446,3 +446,10 @@ CONTINUITY_CANCELLED = "counseling.continuity.cancelled"
 CONTINUITY_REVOKED = "counseling.continuity.revoked"
 
 CONTINUITY_SOURCE_READ = "counseling.continuity.source_read"
+
+# CONT-3 professional Handoff and structural selection; no content in event metadata.
+HANDOFF_DRAFT_CREATED = "counseling.handoff.draft_created"
+HANDOFF_DRAFT_UPDATED = "counseling.handoff.draft_updated"
+HANDOFF_SUBMITTED = "counseling.handoff.submitted"
+HANDOFF_READ = "counseling.handoff.read"
+CONTINUITY_SELECTION_READ = "counseling.continuity.selection_read"

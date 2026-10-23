@@ -120,3 +120,4 @@ from compass.counseling.continuity_models import (  # noqa: E402, F401
     CounselorCaseContinuityGrant,
     CounselorCaseContinuityScope,
 )
+from compass.counseling.handoff_models import CounselorHandoffSummary  # noqa: E402, F401

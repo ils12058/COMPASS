@@ -270,7 +270,7 @@ def test_missing_or_unrepresentable_effective_values_fail_before_export(
 @pytest.mark.parametrize("fault", ["empty", "missing", "wrong-pointer", "direct"])
 def test_new_summary_secret_required_and_pointer_only(runtime, fault):
     checker, directory, env_file = runtime
-    assert len(checker.SECRET_FILES) == 25
+    assert len(checker.SECRET_FILES) == 26
     setting = "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS"
     filename = "student_session_summary_encryption_keys"
     assert checker.SECRET_FILES[setting] == filename
@@ -307,7 +307,7 @@ def test_export_cannot_generate_absent_new_summary_key(migration, monkeypatch):
 @pytest.mark.parametrize("fault", ["empty", "missing", "wrong-pointer", "direct"])
 def test_new_referral_secret_required_and_pointer_only(runtime, fault):
     checker, directory, env_file = runtime
-    assert len(checker.SECRET_FILES) == 25
+    assert len(checker.SECRET_FILES) == 26
     setting = "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"
     filename = "referral_confidential_content_encryption_keys"
     assert checker.SECRET_FILES[setting] == filename
@@ -344,7 +344,7 @@ def test_export_cannot_generate_absent_new_referral_key(migration, monkeypatch):
 @pytest.mark.parametrize("fault", ["empty", "missing", "wrong-pointer", "direct"])
 def test_new_exit_interview_secret_required_and_pointer_only(runtime, fault):
     checker, directory, env_file = runtime
-    assert len(checker.SECRET_FILES) == 25
+    assert len(checker.SECRET_FILES) == 26
     setting = "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"
     filename = "exit_interview_confidential_content_encryption_keys"
     assert checker.SECRET_FILES[setting] == filename
@@ -381,7 +381,7 @@ def test_export_cannot_generate_absent_new_exit_interview_key(migration, monkeyp
 @pytest.mark.parametrize("fault", ["empty", "missing", "wrong-pointer", "direct"])
 def test_new_inventory_secret_required_and_pointer_only(runtime, fault):
     checker, directory, env_file = runtime
-    assert len(checker.SECRET_FILES) == 25
+    assert len(checker.SECRET_FILES) == 26
     setting = "INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"
     filename = "inventory_confidential_content_encryption_keys"
     assert checker.SECRET_FILES[setting] == filename
@@ -418,7 +418,7 @@ def test_export_cannot_generate_absent_new_inventory_key(migration, monkeypatch)
 @pytest.mark.parametrize("fault", ["empty", "missing", "wrong-pointer", "direct"])
 def test_new_graduate_tracer_secret_required_and_pointer_only(runtime, fault):
     checker, directory, env_file = runtime
-    assert len(checker.SECRET_FILES) == 25
+    assert len(checker.SECRET_FILES) == 26
     setting = "GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"
     filename = "graduate_tracer_confidential_content_encryption_keys"
     assert checker.SECRET_FILES[setting] == filename
@@ -455,7 +455,7 @@ def test_export_cannot_generate_absent_new_graduate_tracer_key(migration, monkey
 @pytest.mark.parametrize("fault", ["empty", "missing", "wrong-pointer", "direct"])
 def test_new_account_profile_secret_required_and_pointer_only(runtime, fault):
     checker, directory, env_file = runtime
-    assert len(checker.SECRET_FILES) == 25
+    assert len(checker.SECRET_FILES) == 26
     setting = "ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"
     filename = "account_profile_confidential_content_encryption_keys"
     assert checker.SECRET_FILES[setting] == filename
@@ -492,7 +492,7 @@ def test_export_cannot_generate_absent_new_account_profile_key(migration, monkey
 @pytest.mark.parametrize("fault", ["empty", "missing", "wrong-pointer", "direct"])
 def test_new_feedback_secret_required_and_pointer_only(runtime, fault):
     checker, directory, env_file = runtime
-    assert len(checker.SECRET_FILES) == 25
+    assert len(checker.SECRET_FILES) == 26
     setting = "FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS"
     filename = "feedback_confidential_content_encryption_keys"
     assert checker.SECRET_FILES[setting] == filename

@@ -1,4 +1,4 @@
-"""PostgreSQL release synchronization limited to the two selected-source reads.
+"""PostgreSQL fences for selected-source reads, Handoffs and scoped coverage selection.
 
 Authority relation SHARE locks prevent phantoms/updates/deletes without changing the
 capability engine or every writer. All acquisition after sorted User locks is NOWAIT.
