@@ -55,6 +55,38 @@ def test_deployed_policy_provider_has_no_approved_policy():
     assert get_approved_policy() is None
 
 
+def test_handoff_wire_contract_keeps_identity_and_body_audiences_separate():
+    contract = json.loads(CONTRACT.read_text())
+    schemas = contract["components"]["schemas"]
+    metadata = set(schemas["HandoffMetadata"]["properties"])
+    assert metadata == {
+        "id",
+        "grant_id",
+        "student_id",
+        "author_id",
+        "receiving_counselor_id",
+        "state",
+        "submitted_at",
+        "version",
+        "created_at",
+        "updated_at",
+    }
+    assert set(schemas["HandoffBody"]["properties"]) == metadata | {"content"}
+    for name in ("HandoffDraftInput", "HandoffVersionInput"):
+        assert schemas[name]["additionalProperties"] is False
+        assert not set(schemas[name]["properties"]) & {
+            "student_id",
+            "author_id",
+            "receiving_counselor_id",
+            "grant_id",
+            "published_at",
+        }
+    paths = {p: route for p, route in contract["paths"].items() if "/handoff/" in p}
+    assert len(paths) == 5
+    assert all("/continuity-grants/{grant_id}/handoff/" in p for p in paths)
+    assert not any("/me/" in p for p in paths)
+
+
 def test_selected_read_contract_has_fixed_typed_fields_and_default_denial():
     from compass.counseling.continuity_disclosure import get_approved_disclosure_policy
 

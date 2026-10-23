@@ -1,0 +1,181 @@
+{
+  "base_sha": "33d645db7fb5599fb916bac36c691539ec5aa675",
+  "postgresql": "psql (PostgreSQL) 17.11 (Homebrew)",
+  "openapi_sha256": "a697d6ab73234f35a315b317d039a8405ea10590e8e45451a71209c386196bd2",
+  "baseline_hashes_verified": 26,
+  "preserved_migration_and_historical_files": 113,
+  "migration_leaves": [
+    [
+      "accounts",
+      "0002_student_session_summary_capabilities"
+    ],
+    [
+      "announcements",
+      "0001_canonical_baseline"
+    ],
+    [
+      "appointments",
+      "0002_appointment_reminders"
+    ],
+    [
+      "assessment_records",
+      "0001_canonical_baseline"
+    ],
+    [
+      "audit",
+      "0001_canonical_baseline"
+    ],
+    [
+      "auth",
+      "0012_alter_user_first_name_max_length"
+    ],
+    [
+      "authentication",
+      "0001_canonical_baseline"
+    ],
+    [
+      "availability",
+      "0001_canonical_baseline"
+    ],
+    [
+      "call_slips",
+      "0001_canonical_baseline"
+    ],
+    [
+      "contenttypes",
+      "0002_remove_content_type_name"
+    ],
+    [
+      "counseling",
+      "0004_counselor_handoff_summary"
+    ],
+    [
+      "ecounseling",
+      "0001_canonical_baseline"
+    ],
+    [
+      "exit_interviews",
+      "0001_canonical_baseline"
+    ],
+    [
+      "feedback",
+      "0001_canonical_baseline"
+    ],
+    [
+      "good_moral",
+      "0001_canonical_baseline"
+    ],
+    [
+      "graduate_tracer",
+      "0001_canonical_baseline"
+    ],
+    [
+      "group_sessions",
+      "0003_group_session_scheduling_and_external_facilitators"
+    ],
+    [
+      "guidance_followups",
+      "0002_guidancefollowupmutation"
+    ],
+    [
+      "guidance_messages",
+      "0001_canonical_baseline"
+    ],
+    [
+      "institutional_forms",
+      "0001_canonical_baseline"
+    ],
+    [
+      "inventory",
+      "0001_canonical_baseline"
+    ],
+    [
+      "notifications",
+      "0001_canonical_baseline"
+    ],
+    [
+      "organization",
+      "0001_canonical_baseline"
+    ],
+    [
+      "platform_ops",
+      "0001_canonical_baseline"
+    ],
+    [
+      "privacy_governance",
+      "0001_canonical_baseline"
+    ],
+    [
+      "referrals",
+      "0001_canonical_baseline"
+    ],
+    [
+      "resources",
+      "0001_canonical_baseline"
+    ],
+    [
+      "routine_interviews",
+      "0001_canonical_baseline"
+    ],
+    [
+      "service_catalog",
+      "0004_serviceappointmentslot_withdrawn_at_and_more"
+    ],
+    [
+      "sessions",
+      "0001_initial"
+    ],
+    [
+      "student_support",
+      "0001_canonical_baseline"
+    ]
+  ],
+  "continuity_api": {
+    "/api/v1/counseling/continuity-grants": {
+      "get": "counselingContinuityListGrants",
+      "post": "counselingContinuityRequestCoverage"
+    },
+    "/api/v1/counseling/continuity-grants/workflow/configuration": {
+      "get": "counselingCoverageGetConfiguration"
+    },
+    "/api/v1/counseling/continuity-grants/workflow/selection": {
+      "get": "counselingCoverageSelectSources"
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}": {
+      "get": "counselingContinuityGetGrant"
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/approve": {
+      "post": "counselingContinuityApproveGrant"
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/cancel": {
+      "post": "counselingContinuityCancelGrant"
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/decline": {
+      "post": "counselingContinuityDeclineGrant"
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/encounters/{encounter_id}/metadata": {
+      "get": "counselingContinuityGetSelectedEncounterMetadata"
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/author": {
+      "get": "counselingHandoffGetAuthorDraft"
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/draft": {
+      "put": "counselingHandoffSaveDraft"
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/metadata": {
+      "get": "counselingHandoffGetMetadata"
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/submit": {
+      "post": "counselingHandoffSubmit"
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/submitted": {
+      "get": "counselingHandoffReadSubmitted"
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/revoke": {
+      "post": "counselingContinuityRevokeGrant"
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/routine-evaluations/{routine_interview_id}": {
+      "get": "counselingContinuityGetSelectedRoutineEvaluation"
+    }
+  }
+}

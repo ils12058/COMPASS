@@ -1,0 +1,86 @@
+{
+  "engine": "chromium",
+  "suite": "cont1a-summary-confidentiality",
+  "results": [
+    {
+      "name": "APPOINTMENT-no-summary-tab-or-background-query-capabilities-true",
+      "passed": true
+    },
+    {
+      "name": "APPOINTMENT-no-summary-tab-or-background-query-capabilities-false",
+      "passed": true
+    },
+    {
+      "name": "WALK_IN-no-summary-tab-or-background-query-capabilities-true",
+      "passed": true
+    },
+    {
+      "name": "WALK_IN-no-summary-tab-or-background-query-capabilities-false",
+      "passed": true
+    },
+    {
+      "name": "CALLED_IN-no-summary-tab-or-background-query-capabilities-true",
+      "passed": true
+    },
+    {
+      "name": "CALLED_IN-no-summary-tab-or-background-query-capabilities-false",
+      "passed": true
+    },
+    {
+      "name": "REFERRED-no-summary-tab-or-background-query-capabilities-true",
+      "passed": true
+    },
+    {
+      "name": "REFERRED-no-summary-tab-or-background-query-capabilities-false",
+      "passed": true
+    },
+    {
+      "name": "denied-section-clears-protected-context-desktop",
+      "passed": true
+    },
+    {
+      "name": "denied-section-clears-protected-context-phone",
+      "passed": true
+    },
+    {
+      "name": "unconfirmed-ownership-hides-authoring-link-denied",
+      "passed": true
+    },
+    {
+      "name": "unconfirmed-ownership-hides-authoring-link-other",
+      "passed": true
+    },
+    {
+      "name": "own-encounter-editor-save-publish-remains-functional",
+      "passed": true
+    },
+    {
+      "name": "student-published-detail-own",
+      "passed": true
+    },
+    {
+      "name": "student-published-detail-unavailable-draft-or-other-student",
+      "passed": true
+    },
+    {
+      "name": "canonical-student-list-detail-back-desktop",
+      "passed": true
+    },
+    {
+      "name": "canonical-student-list-detail-back-phone",
+      "passed": true
+    },
+    {
+      "name": "canonical-notification-destination-true",
+      "passed": true
+    },
+    {
+      "name": "canonical-notification-destination-false",
+      "passed": true
+    },
+    {
+      "name": "old-frontend-route-has-no-redirect-or-confidential-body",
+      "passed": true
+    }
+  ]
+}

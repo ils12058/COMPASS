@@ -1,0 +1,30 @@
+{
+  "engine": "chromium",
+  "suite": "cont4-final-security",
+  "results": [
+    {
+      "name": "role-clears-selected-and-handoff",
+      "passed": true
+    },
+    {
+      "name": "capability-clears-selected-and-handoff",
+      "passed": true
+    },
+    {
+      "name": "student-affiliation-clears-selected-and-handoff",
+      "passed": true
+    },
+    {
+      "name": "grant-revocation-clears-selected-and-handoff",
+      "passed": true
+    },
+    {
+      "name": "independent-approval-dialog-keyboard-focus-trap",
+      "passed": true
+    },
+    {
+      "name": "two-real-tabs-content-free-invalidation",
+      "passed": true
+    }
+  ]
+}
