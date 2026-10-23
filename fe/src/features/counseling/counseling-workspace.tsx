@@ -23,7 +23,6 @@ import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { routineEvaluationStatusLabel, routineIntakeStatusLabel } from "@/features/routine-interviews/routine-interviews-shared";
 import type { EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
 import { RecordEncounterDialog } from "@/features/counseling/record-encounter-dialog";
-import { SharedSummarySection } from "@/features/counseling/shared-summary-section";
 import {
   counselingDeliveryModeLabel,
   counselingEntryModeLabel,
@@ -47,7 +46,6 @@ import type {
   CounselingContextHistoryResponse,
   CounselingContextInventoryResponse,
   CounselingContextOverviewResponse,
-  CounselingContextSharedSummariesResponse,
   CounselingContextSupportResponse,
   CounselorRoutineDetailResponse,
 } from "@/lib/api/generated/model";
@@ -57,13 +55,12 @@ import {
   getCounselingContextGetInventoryQueryKey,
   getCounselingContextGetSupportIndicatorsQueryKey,
   getCounselingContextListHistoryQueryKey,
-  getCounselingContextListSharedSummariesQueryKey,
   getCounselingListMyEncountersQueryKey,
   useCounselingContextGetInventory,
   useCounselingContextGetOverview,
   useCounselingContextGetSupportIndicators,
   useCounselingContextListHistory,
-  useCounselingContextListSharedSummaries,
+  useCounselingGetEncounter,
 } from "@/lib/api/generated/counseling/counseling";
 import {
   getRoutineInterviewsGetAssignedQueryKey,
@@ -72,7 +69,7 @@ import {
   useRoutineInterviewsGetAssigned,
 } from "@/lib/api/generated/routine-interviews/routine-interviews";
 
-type ContextTabId = "OVERVIEW" | "ROUTINE" | "INVENTORY" | "SUPPORT_INDICATORS" | "HISTORY" | "SHARED_SUMMARIES";
+type ContextTabId = "OVERVIEW" | "ROUTINE" | "INVENTORY" | "SUPPORT_INDICATORS" | "HISTORY";
 type ContextTab = { id: ContextTabId; label: string };
 type QueryResultWithData<T> = {
   data?: { data: T };
@@ -147,7 +144,6 @@ export function CounselingWorkspace({
       getCounselingContextGetInventoryQueryKey(anchorType, anchorId),
       getCounselingContextGetSupportIndicatorsQueryKey(anchorType, anchorId),
       getCounselingContextListHistoryQueryKey(anchorType, anchorId, { limit: 20 }),
-      getCounselingContextListSharedSummariesQueryKey(anchorType, anchorId, { limit: 20 }),
     ]) queryClient.removeQueries({ queryKey, exact: true });
   };
 
@@ -266,6 +262,13 @@ function CounselingWorkspaceContent({
         }
       : undefined;
   const encounterState = contextEncounterState(overview);
+  const assignedEncounter = useCounselingGetEncounter(overview.matching_encounter?.id ?? "", {
+    query: { enabled: access.canViewAssigned && Boolean(overview.matching_encounter), retry: false },
+  });
+  const canOpenEncounter = !assignedEncounter.isError &&
+    assignedEncounter.data?.data.id === overview.matching_encounter?.id &&
+    assignedEncounter.data?.data.counselor.id === user?.id &&
+    assignedEncounter.data?.data.student.id === overview.student.id;
   // Linking changes the Routine Interview, so recording here also needs Routine management.
   const canRecord = access.canManageAssigned && (
     anchorType !== CounselingContextAnchorType.ROUTINE_INTERVIEW || getRoutineInterviewAccess(user).canManageAssigned
@@ -308,10 +311,6 @@ function CounselingWorkspaceContent({
     }
   }
 
-  async function handlePublished() {
-    await queryClient.invalidateQueries({ queryKey: getCounselingContextListSharedSummariesQueryKey(anchorType, anchorId, { limit: 20 }) });
-  }
-
   useEffect(() => {
     if (contextExpired) onContextInvalidated(true);
   }, [contextExpired, onContextInvalidated]);
@@ -342,9 +341,9 @@ function CounselingWorkspaceContent({
             </dl>
             <div ref={encounterActionsRef}>
             {overview.matching_encounter && encounterState === "RECORDED" ? (
-              <div className="border-t border-brand-line px-4 py-4 sm:px-5">{recordNotice ? <p role="status" className="mb-2 text-sm text-ink">{recordNotice}</p> : null}<p className="text-sm text-muted">Completed interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)}.</p><Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link></div>
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5">{recordNotice ? <p role="status" className="mb-2 text-sm text-ink">{recordNotice}</p> : null}<p className="text-sm text-muted">Completed interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)}.</p>{canOpenEncounter ? <Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link> : null}</div>
             ) : overview.matching_encounter ? (
-              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A matching interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)} is not linked to this Routine Interview. If it is this interaction, choose it when finalizing the Counselor Evaluation.</p><Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link></div>
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A matching interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)} is not linked to this Routine Interview. If it is this interaction, choose it when finalizing the Counselor Evaluation.</p>{canOpenEncounter ? <Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link> : null}</div>
             ) : canRecord && recordUncertain ? (
               // An unconfirmed save is checked, never retried here.
               <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-ink">{unconfirmedEncounterMessage}</p><div className="mt-3 flex flex-wrap gap-2"><Button variant="secondary" aria-busy={checkingRecord} onClick={() => void checkRecordAgain()}>{checkingRecord ? "Checking…" : "Check again"}</Button><Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "quiet" })}>View encounters</Link></div></div>
@@ -377,8 +376,6 @@ function CounselingWorkspaceContent({
             anchorId={anchorId}
             overview={overview}
             showInteractionFacts={false}
-            access={access}
-            onPublished={handlePublished}
             onContextExpiredChange={setContextExpired}
           />
         </div></div>
@@ -393,8 +390,6 @@ export function CounselingContextPanel({
   overview,
   showInteractionFacts = true,
   showHeading = true,
-  access,
-  onPublished,
   onContextExpiredChange,
 }: {
   anchorType: CounselingContextAnchorType;
@@ -406,8 +401,6 @@ export function CounselingContextPanel({
   // False where a surrounding section already names it, such as E-Counseling's collapsible
   // Student information.
   showHeading?: boolean;
-  access: ReturnType<typeof getCounselingAccess>;
-  onPublished?: () => unknown;
   onContextExpiredChange?: (expired: boolean) => void;
 }) {
   const { user } = usePortalSession();
@@ -420,16 +413,14 @@ export function CounselingContextPanel({
     ...(available.has("INVENTORY") ? [{ id: "INVENTORY" as const, label: "Inventory" }] : []),
     ...(available.has("SUPPORT_INDICATORS") ? [{ id: "SUPPORT_INDICATORS" as const, label: "Support" }] : []),
     ...(available.has("HISTORY") ? [{ id: "HISTORY" as const, label: "History" }] : []),
-    ...(available.has("SHARED_SUMMARIES") ? [{ id: "SHARED_SUMMARIES" as const, label: "Shared Summaries" }] : []),
   ];
   const tabIs = (tab: ContextTabId) => activeTab === tab;
   const inventory = useCounselingContextGetInventory(anchorType, anchorId, { query: { enabled: tabIs("INVENTORY") && available.has("INVENTORY"), retry: false } });
   const support = useCounselingContextGetSupportIndicators(anchorType, anchorId, { query: { enabled: tabIs("SUPPORT_INDICATORS") && available.has("SUPPORT_INDICATORS"), retry: false } });
   const history = useCounselingContextListHistory(anchorType, anchorId, { limit: 20 }, { query: { enabled: tabIs("HISTORY") && available.has("HISTORY"), retry: false } });
-  const previousSummaries = useCounselingContextListSharedSummaries(anchorType, anchorId, { limit: 20 }, { query: { enabled: tabIs("SHARED_SUMMARIES") && available.has("SHARED_SUMMARIES") && access.canViewAssignedSummaries, retry: false } });
   const routine = useRoutineInterviewsGetAssigned(overview.routine_interview?.id ?? "", { query: { enabled: tabIs("ROUTINE") && Boolean(overview.routine_interview), retry: false } });
-  const contextExpired = [inventory.error, support.error, history.error, previousSummaries.error].some((error) => counselingErrorCode(error) === "counseling_context_not_found" || shouldHideProtectedData(error));
-  const activeQuery = activeTab === "INVENTORY" ? inventory : activeTab === "SUPPORT_INDICATORS" ? support : activeTab === "HISTORY" ? history : activeTab === "SHARED_SUMMARIES" ? previousSummaries : activeTab === "ROUTINE" ? routine : null;
+  const contextExpired = [inventory.error, support.error, history.error].some((error) => counselingErrorCode(error) === "counseling_context_not_found" || shouldHideProtectedData(error));
+  const activeQuery = activeTab === "INVENTORY" ? inventory : activeTab === "SUPPORT_INDICATORS" ? support : activeTab === "HISTORY" ? history : activeTab === "ROUTINE" ? routine : null;
 
   useEffect(() => {
     onContextExpiredChange?.(contextExpired);
@@ -468,7 +459,6 @@ export function CounselingContextPanel({
             {activeTab === "INVENTORY" ? <InventoryContext query={inventory} overview={overview} /> : null}
             {activeTab === "SUPPORT_INDICATORS" ? <SupportContext query={support} /> : null}
             {activeTab === "HISTORY" ? <HistoryContext query={history} /> : null}
-            {activeTab === "SHARED_SUMMARIES" ? <SharedSummariesContext query={previousSummaries} overview={overview} access={access} onPublished={() => void onPublished?.()} /> : null}
           </div>
         </>
       )}
@@ -554,30 +544,4 @@ function HistoryContext({ query }: { query: QueryResultWithData<CounselingContex
   const items = query.data?.data.items ?? [];
   if (!items.length) return <Panel as="div"><PanelMessage>No contextual history is available.</PanelMessage></Panel>;
   return <Panel as="div"><ol className="divide-y divide-border">{items.map((item) => <li key={`${item.kind}-${item.id}`} className="px-4 py-3.5 sm:px-5"><p className="font-semibold text-ink">{historyKindLabels[item.kind]} · {item.title}</p><p className="mt-1 text-sm text-muted">{formatCounselingDateTime(item.occurred_at)} · {historyStatusLabels[item.status]}{item.reference_code ? ` · ${item.reference_code}` : ""}{item.delivery_mode ? ` · ${counselingDeliveryModeLabel(item.delivery_mode)}` : ""}</p>{item.provider ? <p className="mt-1 text-sm text-muted">Provider: {item.provider.display_name}</p> : null}</li>)}</ol></Panel>;
-}
-
-function SharedSummariesContext({
-  query,
-  overview,
-  access,
-  onPublished,
-}: {
-  query: QueryResultWithData<CounselingContextSharedSummariesResponse>;
-  overview: CounselingContextOverviewResponse;
-  access: ReturnType<typeof getCounselingAccess>;
-  onPublished: () => void;
-}) {
-  if (query.isPending && access.canViewAssignedSummaries) return <div aria-busy="true"><span className="sr-only">Loading published Shared Summaries…</span><Skeleton className="h-20 w-full" /><Skeleton className="mt-2 h-20 w-full" /></div>;
-  if (query.isError && !canShowLastKnownData(query) && access.canViewAssignedSummaries) return <CounselingQueryError message={counselingErrorMessage(query.error, "Previously published Shared Summaries could not be loaded.")} onRetry={() => void query.refetch()} />;
-  const items = query.data?.data.items ?? [];
-  const encounterId = overview.matching_encounter?.id;
-  return (
-    <div className="space-y-5">
-      <Panel aria-labelledby="previous-shared-summaries-heading">
-        <PanelHeader title="Previous published summaries" titleId="previous-shared-summaries-heading" level={3} />
-        {!access.canViewAssignedSummaries ? <PanelMessage>Published shared summaries are unavailable to this account.</PanelMessage> : items.length ? <ul className="divide-y divide-border">{items.map((item) => <li key={item.id} className="px-4 py-3.5 sm:px-5"><p className="font-semibold text-ink">Counselor: {item.counselor.display_name}</p><p className="mt-1 text-sm text-muted">Counseling ended {formatCounselingDateTime(item.counseling_ended_at)} · Published {formatCounselingDateTime(item.published_at)}</p><p className="mt-3 whitespace-pre-wrap break-words text-sm leading-6 text-ink">{item.content}</p></li>)}</ul> : <PanelMessage>No previous shared summaries are available.</PanelMessage>}
-      </Panel>
-      {encounterId && access.canViewAssignedSummaries ? <section aria-labelledby="current-shared-summary-heading"><h3 id="current-shared-summary-heading" className="sr-only">This encounter’s Shared Summary</h3><SharedSummarySection encounterId={encounterId} access={access} onPublished={onPublished} /></section> : null}
-    </div>
-  );
 }

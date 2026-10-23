@@ -381,51 +381,45 @@ def test_corrupt_draft_cannot_publish_or_emit_side_effects(world):
     ).exists()
 
 
-def test_context_filters_and_authorizes_before_decryption(world, monkeypatch):
+def test_removed_context_endpoint_never_decrypts_even_corrupt_summaries(world, monkeypatch):
     item = draft(world)
     publish(world)
-    new_encounter = make_encounter(counselor=world[1], student=world[2])
+    hidden_encounter = make_encounter(counselor=world[1], student=world[2])
     hidden = put_assigned_shared_summary(
-        encounter_id=new_encounter.pk, counselor=world[1], content="draft-only"
+        encounter_id=hidden_encounter.pk, counselor=world[1], content="draft-only"
     )
     other_student = make_user("context-other-summary@example.edu", "STUDENT")
     other_encounter = make_encounter(counselor=world[1], student=other_student)
     other = put_assigned_shared_summary(
         encounter_id=other_encounter.pk, counselor=world[1], content="other-only"
     )
-    CounselingSharedSummary.objects.filter(pk__in=[hidden.pk, other.pk]).update(
+    CounselingSharedSummary.objects.filter(pk__in=[item.pk, hidden.pk, other.pk]).update(
         content_ciphertext="broken"
     )
     CounselingSharedSummary.objects.filter(pk=other.pk).update(published_at=timezone.now())
+    original_rows = list(CounselingSharedSummary.objects.order_by("pk").values())
     appointment = make_appointment(student=world[2], provider=world[1], service=world[3])
-    path = f"/api/v1/counseling/context/APPOINTMENT/{appointment.pk}/shared-summaries"
-    seen = []
-    original = content.decrypt_shared_summary_content
+    root = f"/api/v1/counseling/context/APPOINTMENT/{appointment.pk}"
+    monkeypatch.setattr(content, "decrypt_shared_summary_content", forbid_decrypt)
 
-    def track(token, **kwargs):
-        seen.append(kwargs["summary_id"])
-        return original(token, **kwargs)
+    for actor in (world[1], world[2], make_user("context-denied@example.edu", "COUNSELOR")):
+        client = auth_client(actor)
+        for suffix in ("/shared-summaries", "/shared-summaries?limit=50", "/shared-summary"):
+            response = client.get(root + suffix)
+            assert response.status_code == 404
+            for secret in (SENTINEL, str(item.pk), str(hidden.pk), str(other.pk), "published_at"):
+                assert secret not in response.content.decode()
 
-    monkeypatch.setattr(content, "decrypt_shared_summary_content", track)
-    response = auth_client(world[1]).get(path)
-    assert response.status_code == 200 and response.json()["items"][0]["content"] == SENTINEL
-    assert seen == [item.pk]
-    seen.clear()
-    assert (
-        auth_client(make_user("context-denied@example.edu", "COUNSELOR")).get(path).status_code
-        == 404
-    )
+    # A valid Context still reads its other projections, without touching any Summary token.
+    client = auth_client(world[1])
+    assert client.get(root).status_code == 200
+    assert client.get(root + "/history").status_code == 200
     type(appointment).objects.filter(pk=appointment.pk).update(
         starts_at=timezone.now() - timedelta(days=10), ends_at=timezone.now() - timedelta(days=9)
     )
-    assert auth_client(world[1]).get(path).status_code == 404 and not seen
-    type(appointment).objects.filter(pk=appointment.pk).update(
-        starts_at=timezone.now() - timedelta(hours=2), ends_at=timezone.now() - timedelta(hours=1)
-    )
-    CounselingSharedSummary.objects.filter(pk=item.pk).update(content_ciphertext="broken")
-    response = auth_client(world[1]).get(path)
-    assert response.status_code == 500
-    assert response.json()["error"]["code"] == "counseling_shared_summary_content_unavailable"
+    assert client.get(root).status_code == 404
+    assert client.get(root + "/shared-summaries").status_code == 404
+    assert list(CounselingSharedSummary.objects.order_by("pk").values()) == original_rows
 
 
 def test_metadata_queries_encounter_search_and_context_history_do_not_decrypt(world, monkeypatch):

@@ -22,7 +22,7 @@ from compass.routine_interviews.api import RoutineEvaluationStatus, RoutineIntak
 from compass.service_catalog.api import DeliveryMode
 from compass.student_support.services import StudentSupportConfigurationConflict
 
-from .api import CounselingEntryMode, _raise
+from .api import CounselingEntryMode
 from .context_access import (
     CounselingContextNotFound,
     CounselingContextSource,
@@ -33,9 +33,7 @@ from .context_services import (
     get_context_overview,
     get_context_support_indicators,
     list_context_history,
-    list_context_shared_summaries,
 )
-from .shared_summary_content import CounselingSharedSummaryContentUnavailable
 
 router = Router(tags=["counseling"])
 
@@ -59,7 +57,6 @@ class CounselingContextSection(StrEnum):
     SUPPORT_INDICATORS = "SUPPORT_INDICATORS"
     INVENTORY = "INVENTORY"
     HISTORY = "HISTORY"
-    SHARED_SUMMARIES = "SHARED_SUMMARIES"
 
 
 class ContextHistoryKind(StrEnum):
@@ -179,19 +176,6 @@ class ContextHistoryItemResponse(StrictSchema):
 
 class CounselingContextHistoryResponse(StrictSchema):
     items: list[ContextHistoryItemResponse]
-    limit: int
-
-
-class ContextSharedSummaryResponse(StrictSchema):
-    id: UUID
-    content: str
-    published_at: datetime
-    counseling_ended_at: datetime
-    counselor: ContextIdentityResponse
-
-
-class CounselingContextSharedSummariesResponse(StrictSchema):
-    items: list[ContextSharedSummaryResponse]
     limit: int
 
 
@@ -387,48 +371,6 @@ def counseling_context_list_history(
                     if item.provider_id is not None and item.provider_display_name is not None
                     else None
                 ),
-            }
-            for item in items
-        ],
-        "limit": bounded_limit,
-    }
-
-
-@router.get(
-    "/{anchor_type}/{anchor_id}/shared-summaries",
-    response=response_with_errors(
-        CounselingContextSharedSummariesResponse,
-        401,
-        403,
-        404,
-        422,
-    ),
-    auth=session_auth,
-    operation_id="counselingContextListSharedSummaries",
-)
-def counseling_context_list_shared_summaries(
-    request,
-    anchor_type: CounselingContextAnchorType,
-    anchor_id: UUID,
-    limit: int = 20,
-):
-    bounded_limit = _validate_limit(limit)
-    access = _resolve(request, anchor_type, anchor_id)
-    try:
-        items = list_context_shared_summaries(access, limit=bounded_limit)
-    except CounselingSharedSummaryContentUnavailable as exc:
-        _raise(exc)
-    return {
-        "items": [
-            {
-                "id": item.id,
-                "content": item.content,
-                "published_at": item.published_at,
-                "counseling_ended_at": item.counseling_ended_at,
-                "counselor": {
-                    "id": item.counselor_id,
-                    "display_name": item.counselor_display_name,
-                },
             }
             for item in items
         ],

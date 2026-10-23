@@ -5271,42 +5271,6 @@
         "title": "ContextRoutineInterviewResponse",
         "type": "object"
       },
-      "ContextSharedSummaryResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "content": {
-            "title": "Content",
-            "type": "string"
-          },
-          "counseling_ended_at": {
-            "format": "date-time",
-            "title": "Counseling Ended At",
-            "type": "string"
-          },
-          "counselor": {
-            "$ref": "#/components/schemas/ContextIdentityResponse"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "published_at": {
-            "format": "date-time",
-            "title": "Published At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "content",
-          "published_at",
-          "counseling_ended_at",
-          "counselor"
-        ],
-        "title": "ContextSharedSummaryResponse",
-        "type": "object"
-      },
       "ContextStudentOverviewResponse": {
         "additionalProperties": false,
         "properties": {
@@ -5757,33 +5721,10 @@
         "enum": [
           "SUPPORT_INDICATORS",
           "INVENTORY",
-          "HISTORY",
-          "SHARED_SUMMARIES"
+          "HISTORY"
         ],
         "title": "CounselingContextSection",
         "type": "string"
-      },
-      "CounselingContextSharedSummariesResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/ContextSharedSummaryResponse"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "limit"
-        ],
-        "title": "CounselingContextSharedSummariesResponse",
-        "type": "object"
       },
       "CounselingContextSupportResponse": {
         "additionalProperties": false,
@@ -38893,107 +38834,6 @@
           }
         ],
         "summary": "Counseling Context Get Inventory",
-        "tags": [
-          "counseling"
-        ]
-      }
-    },
-    "/api/v1/counseling/context/{anchor_type}/{anchor_id}/shared-summaries": {
-      "get": {
-        "operationId": "counselingContextListSharedSummaries",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "anchor_type",
-            "required": true,
-            "schema": {
-              "enum": [
-                "APPOINTMENT",
-                "ROUTINE_INTERVIEW"
-              ],
-              "title": "CounselingContextAnchorType",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "anchor_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Anchor Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 20,
-              "title": "Limit",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CounselingContextSharedSummariesResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Counseling Context List Shared Summaries",
         "tags": [
           "counseling"
         ]

@@ -22,8 +22,6 @@ from compass.routine_interviews.models import RoutineInterview
 from compass.student_support.services import StudentSupportContext, build_student_support_context
 
 from .context_access import CounselingContextAccess
-from .models import CounselingSharedSummary
-from .shared_summary_content import read_shared_summary_content
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,16 +95,6 @@ class CounselingContextHistoryItem:
     delivery_mode: str | None = None
     provider_id: UUID | None = None
     provider_display_name: str | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class CounselingContextSharedSummary:
-    id: UUID
-    content: str
-    published_at: datetime
-    counseling_ended_at: datetime
-    counselor_id: UUID
-    counselor_display_name: str
 
 
 def _student(access: CounselingContextAccess) -> User:
@@ -266,7 +254,6 @@ def get_context_overview(access: CounselingContextAccess) -> CounselingContextOv
             "SUPPORT_INDICATORS",
             "INVENTORY",
             "HISTORY",
-            "SHARED_SUMMARIES",
         ),
     )
 
@@ -391,33 +378,6 @@ def list_context_history(
     return tuple(rows[:bounded_limit])
 
 
-def list_context_shared_summaries(
-    access: CounselingContextAccess,
-    *,
-    limit: int = 20,
-) -> tuple[CounselingContextSharedSummary, ...]:
-    bounded_limit = max(1, min(int(limit), 50))
-    rows = (
-        CounselingSharedSummary.objects.select_related("encounter__counselor")
-        .filter(
-            encounter__student_id=access.student_id,
-            published_at__isnull=False,
-        )
-        .order_by("-published_at", "-id")[:bounded_limit]
-    )
-    return tuple(
-        CounselingContextSharedSummary(
-            id=item.pk,
-            content=read_shared_summary_content(item),
-            published_at=item.published_at,
-            counseling_ended_at=item.encounter.ended_at,
-            counselor_id=item.encounter.counselor_id,
-            counselor_display_name=item.encounter.counselor.get_full_name(),
-        )
-        for item in rows
-    )
-
-
 __all__ = [
     "ContextEncounterSummary",
     "ContextOrganizationReference",
@@ -426,10 +386,8 @@ __all__ = [
     "CounselingContextHistoryItem",
     "CounselingContextInventoryResult",
     "CounselingContextOverview",
-    "CounselingContextSharedSummary",
     "get_context_inventory",
     "get_context_overview",
     "get_context_support_indicators",
     "list_context_history",
-    "list_context_shared_summaries",
 ]
