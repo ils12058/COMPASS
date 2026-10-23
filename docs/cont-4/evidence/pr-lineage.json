@@ -1,0 +1,68 @@
+[
+  {
+    "number": 314,
+    "url": "https://github.com/ils12058/COMPASS/pull/314",
+    "title": "docs(cont): audit counselor case continuity and confidential access architecture",
+    "merged": true,
+    "base": "integration/ux15-modernization",
+    "base_sha": "5fddafec9e72ec987f6605533825e65795818b81",
+    "head_sha": "06e8c7913c58c143790fbf9f4caac648366436be",
+    "merge_commit_sha": "5fcc3fe7ce2f9b07486c353fd662cc765c1f6f4f",
+    "merged_at": "2026-10-23T02:24:00Z"
+  },
+  {
+    "number": 315,
+    "url": "https://github.com/ils12058/COMPASS/pull/315",
+    "title": "fix(counseling): remove cross-counselor student summary disclosure from context",
+    "merged": true,
+    "base": "integration/ux15-modernization",
+    "base_sha": "5fcc3fe7ce2f9b07486c353fd662cc765c1f6f4f",
+    "head_sha": "44e7eb6f50c9965b0a401959df31facdf61a56ec",
+    "merge_commit_sha": "0ba5024a8468b3e27b2b1b3723cf431bf0390f61",
+    "merged_at": "2026-10-23T04:25:21Z"
+  },
+  {
+    "number": 316,
+    "url": "https://github.com/ils12058/COMPASS/pull/316",
+    "title": "refactor(counseling): complete Student Session Summary contract and encryption cutover",
+    "merged": true,
+    "base": "integration/ux15-modernization",
+    "base_sha": "0ba5024a8468b3e27b2b1b3723cf431bf0390f61",
+    "head_sha": "44a7790a7bc29517efc1a3bdd49433a2cbf3a322",
+    "merge_commit_sha": "1cdad9dd9378b1307140ba92a1023ed0e68a720f",
+    "merged_at": "2026-10-23T08:44:15Z"
+  },
+  {
+    "number": 317,
+    "url": "https://github.com/ils12058/COMPASS/pull/317",
+    "title": "feat(counseling): establish scoped case continuity grants and approval lifecycle",
+    "merged": true,
+    "base": "integration/ux15-modernization",
+    "base_sha": "1cdad9dd9378b1307140ba92a1023ed0e68a720f",
+    "head_sha": "5c39292c342e84d3f8ecdd4f2143f9111d4471d3",
+    "merge_commit_sha": "7afd4a41fe0a02b9723b5b4d22036beaef86f514",
+    "merged_at": "2026-10-23T09:32:38Z"
+  },
+  {
+    "number": 318,
+    "url": "https://github.com/ils12058/COMPASS/pull/318",
+    "title": "feat(counseling): enforce scoped continuity reads for selected professional records",
+    "merged": true,
+    "base": "integration/ux15-modernization",
+    "base_sha": "7afd4a41fe0a02b9723b5b4d22036beaef86f514",
+    "head_sha": "2d2e9ad6642c61a2df4463fd1fdc11eaa34f1e37",
+    "merge_commit_sha": "dedf1a649c8adb4f8a5508a513d8bf0dd994fa1d",
+    "merged_at": "2026-10-23T10:49:18Z"
+  },
+  {
+    "number": 319,
+    "url": "https://github.com/ils12058/COMPASS/pull/319",
+    "title": "feat(counseling): implement case coverage and encrypted counselor handoff workflows",
+    "merged": true,
+    "base": "integration/ux15-modernization",
+    "base_sha": "dedf1a649c8adb4f8a5508a513d8bf0dd994fa1d",
+    "head_sha": "c88b2331f0c506230c8413fb938e9e0454aebaeb",
+    "merge_commit_sha": "33d645db7fb5599fb916bac36c691539ec5aa675",
+    "merged_at": "2026-10-23T22:34:52Z"
+  }
+]

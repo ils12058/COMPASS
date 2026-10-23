@@ -1,0 +1,73 @@
+{
+  "distinct_backend_cases": 1001,
+  "final_results": {
+    "PASS": 1001
+  },
+  "runs": [
+    {
+      "report": "backend.xml",
+      "cases": 975,
+      "failed": 2
+    },
+    {
+      "report": "integration.xml",
+      "cases": 11,
+      "failed": 0
+    },
+    {
+      "report": "affected-final.xml",
+      "cases": 55,
+      "failed": 0
+    },
+    {
+      "report": "adjacent.xml",
+      "cases": 13,
+      "failed": 0
+    }
+  ],
+  "by_class": {
+    "tests.test_account_management": 25,
+    "tests.test_appointment_management_scope": 13,
+    "tests.test_canonical_baseline": 5,
+    "tests.test_capability_dependencies": 12,
+    "tests.test_cont4_final_security": 12,
+    "tests.test_continuity": 116,
+    "tests.test_continuity_access": 106,
+    "tests.test_continuity_contract": 4,
+    "tests.test_continuity_migrations": 1,
+    "tests.test_continuity_release_concurrency": 32,
+    "tests.test_counseling": 23,
+    "tests.test_counseling_context": 30,
+    "tests.test_counseling_frontend_readiness": 5,
+    "tests.test_ecounseling": 2,
+    "tests.test_guidance_followups": 4,
+    "tests.test_handoff": 101,
+    "tests.test_handoff_concurrency": 14,
+    "tests.test_handoff_configuration": 19,
+    "tests.test_handoff_migrations": 5,
+    "tests.test_notification_email_links": 98,
+    "tests.test_notification_email_presentation": 39,
+    "tests.test_openapi_contract": 39,
+    "tests.test_postbaseline_upgrade": 1,
+    "tests.test_routine_interview_encryption": 36,
+    "tests.test_routine_interviews": 24,
+    "tests.test_runtime_secrets": 89,
+    "tests.test_runtime_secrets_compose": 2,
+    "tests.test_staging_seed": 31,
+    "tests.test_staging_seed.IncrementalParticipantExpansionTests": 1,
+    "tests.test_staging_seed.SeededDatasetTests": 17,
+    "tests.test_student_session_summaries": 7,
+    "tests.test_student_session_summary_contract": 5,
+    "tests.test_student_session_summary_cutover": 10,
+    "tests.test_student_session_summary_encryption": 73
+  },
+  "source_handoff_concurrency_cases": 48,
+  "foundation_postgresql_cases": 11,
+  "frontend_unit_cases": 47,
+  "browser_registration_cases": 4,
+  "ci_planner_unittest_cases": 60,
+  "browser_scenarios_per_engine": 67,
+  "browser_engine_outcomes": 134,
+  "coverage_scenarios_per_engine": 47,
+  "summary_scenarios_per_engine": 20
+}

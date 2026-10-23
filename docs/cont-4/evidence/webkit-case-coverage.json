@@ -1,0 +1,170 @@
+{
+  "engine": "webkit",
+  "suite": "case-coverage",
+  "results": [
+    {
+      "name": "counseling-navigation",
+      "passed": true
+    },
+    {
+      "name": "empty-coverage",
+      "passed": true
+    },
+    {
+      "name": "default-policy-unavailable",
+      "passed": true
+    },
+    {
+      "name": "no-eligible-source-records",
+      "passed": true
+    },
+    {
+      "name": "planned-request-exact-selection-confirmation",
+      "passed": true
+    },
+    {
+      "name": "request-form-invalid-expiry",
+      "passed": true
+    },
+    {
+      "name": "approve-coverage",
+      "passed": true
+    },
+    {
+      "name": "decline-request",
+      "passed": true
+    },
+    {
+      "name": "revoke-coverage",
+      "passed": true
+    },
+    {
+      "name": "self-approval-action-hidden",
+      "passed": true
+    },
+    {
+      "name": "unauthorized-approval-hidden",
+      "passed": true
+    },
+    {
+      "name": "cancellation",
+      "passed": true
+    },
+    {
+      "name": "stale-conflict-no-automatic-replay",
+      "passed": true
+    },
+    {
+      "name": "expired-no-protected-record",
+      "passed": true
+    },
+    {
+      "name": "revoked-no-protected-record",
+      "passed": true
+    },
+    {
+      "name": "scheduled-no-protected-record",
+      "passed": true
+    },
+    {
+      "name": "scheduled-to-active-server-status",
+      "passed": true
+    },
+    {
+      "name": "selected-encounter-read-only",
+      "passed": true
+    },
+    {
+      "name": "evaluation-allowlist-omission-null-empty",
+      "passed": true
+    },
+    {
+      "name": "no-handoff-required",
+      "passed": true
+    },
+    {
+      "name": "author-draft-save-submit-readonly",
+      "passed": true
+    },
+    {
+      "name": "unsaved-draft-close-confirmation-and-escape-focus",
+      "passed": true
+    },
+    {
+      "name": "receiver-submitted-handoff-only",
+      "passed": true
+    },
+    {
+      "name": "approver-never-fetches-body",
+      "passed": true
+    },
+    {
+      "name": "unexpected-absence-exact-policy-case",
+      "passed": true
+    },
+    {
+      "name": "revocation-hint-clears-open-view",
+      "passed": true
+    },
+    {
+      "name": "late-response-does-not-repopulate-after-revocation",
+      "passed": true
+    },
+    {
+      "name": "backend-denial-clears-previous-view",
+      "passed": true
+    },
+    {
+      "name": "offline-reconnect-requires-deliberate-check",
+      "passed": true
+    },
+    {
+      "name": "hidden-background-clears-view",
+      "passed": true
+    },
+    {
+      "name": "policy-loss-after-success",
+      "passed": true
+    },
+    {
+      "name": "expiry-clears-evaluation-and-handoff",
+      "passed": true
+    },
+    {
+      "name": "no-persistent-protected-browser-storage",
+      "passed": true
+    },
+    {
+      "name": "phone-layout-keyboard-help-long-text-zoom",
+      "passed": true
+    },
+    {
+      "name": "desktop-layout-keyboard-help-long-text-zoom",
+      "passed": true
+    },
+    {
+      "name": "account-switch-clears-owned-view",
+      "passed": true
+    },
+    {
+      "name": "session-logout-another-tab-clears-view",
+      "passed": true
+    },
+    {
+      "name": "expired-handoff-no-new-read",
+      "passed": true
+    },
+    {
+      "name": "phone-confirmation-exact-scope-and-expiry",
+      "passed": true
+    },
+    {
+      "name": "open-confirmation-closes-on-server-version-change",
+      "passed": true
+    },
+    {
+      "name": "stale-own-draft-preserves-unsaved-text-for-deliberate-review",
+      "passed": true
+    }
+  ]
+}
