@@ -444,3 +444,5 @@ CONTINUITY_APPROVED = "counseling.continuity.approved"
 CONTINUITY_DECLINED = "counseling.continuity.declined"
 CONTINUITY_CANCELLED = "counseling.continuity.cancelled"
 CONTINUITY_REVOKED = "counseling.continuity.revoked"
+
+CONTINUITY_SOURCE_READ = "counseling.continuity.source_read"
