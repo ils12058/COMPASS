@@ -363,6 +363,7 @@ schemas, bindings, and rotation stay with each domain.
 | Domain | Keyring setting | Decision | Rotation command |
 | --- | --- | --- | --- |
 | Routine Interview | `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` | ADR-066 | `rotate_routine_interview_encryption` |
+| Counselor Handoff Summary | `COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS` | [CONT-3](../docs/cont-3/handoff-encryption.md) | `rotate_counselor_handoff_summary_encryption` |
 | Student Session Summary | `STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS` | [CONT-1B](../docs/cont-1b/encryption-contract.md) | `rotate_student_session_summary_encryption` |
 | Referral | `REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-081 | `rotate_referral_confidential_content` |
 | Exit Interview | `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-082 | `rotate_exit_interview_confidential_content` |

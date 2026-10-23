@@ -58,6 +58,7 @@ services:
       - guidance_followup_encryption_keys
       - guidance_message_encryption_keys
       - assessment_record_confidential_content_encryption_keys
+      - counselor_handoff_summary_encryption_keys
     pull_policy: never
     command:
       [
@@ -96,6 +97,8 @@ services:
   worker:
     <<: *app
     environment:
+      COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS_FILE: ""
+      COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS: ""
       GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS_FILE: ""
       GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS: ""
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE: ""
@@ -121,6 +124,8 @@ services:
   beat:
     <<: *app
     environment:
+      COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS_FILE: ""
+      COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS: ""
       GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS_FILE: ""
       GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS: ""
       GUIDANCE_MESSAGE_ENCRYPTION_KEYS_FILE: ""
@@ -329,6 +334,9 @@ secrets:
 
   guidance_message_encryption_keys:
     file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/guidance_message_encryption_keys
+
+  counselor_handoff_summary_encryption_keys:
+    file: ${COMPASS_SECRETS_DIR:-/opt/compass/secrets}/counselor_handoff_summary_encryption_keys
 
 # Existing canonical live-staging resources. These suffixes identify the reset lineage,
 # not the candidate image SHA. External resources MUST exist; Compose must never create them.

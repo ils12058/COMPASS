@@ -17,14 +17,18 @@ def test_continuity_contract_preserves_seven_metadata_operations():
         prefix + "/{grant_id}/routine-evaluations/{routine_interview_id}",
     }
     assert selected <= set(paths)
-    metadata_paths = {k: v for k, v in paths.items() if k not in selected}
+    metadata_paths = {
+        k: v
+        for k, v in paths.items()
+        if k not in selected and "/handoff/" not in k and "/workflow/" not in k
+    }
     assert set(metadata_paths) == {
         prefix,
         prefix + "/{grant_id}",
         *[prefix + "/{grant_id}/" + a for a in ["approve", "decline", "cancel", "revoke"]],
     }
     assert sum(len(v) for v in metadata_paths.values()) == 7
-    assert sum(len(v) for v in paths.values()) == 9
+    assert sum(len(v) for v in paths.values()) == 16
     schemas = contract["components"]["schemas"]
     assert schemas["ContinuitySourceKind"]["enum"] == ["ENCOUNTER", "ROUTINE_EVALUATION"]
     assert set(schemas["ContinuityProjection"]["enum"]) == {

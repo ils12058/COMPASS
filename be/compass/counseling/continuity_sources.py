@@ -62,6 +62,20 @@ def _resolve_source(*, selection, student_id, requester, policy, original_counse
         raise ContinuityError("source_not_found", 404)
     if original_counselor_id is not None and source.counselor_id != original_counselor_id:
         raise ContinuityError("source_not_found", 404)
+    if policy.workflow_policy_digest:
+        from django.utils import timezone
+
+        from compass.counseling.coverage_policy import ApprovedOfficeCase, require_workflow_policy
+
+        workflow = require_workflow_policy(policy, timezone.now())
+        if selection.resource_kind not in workflow.source_kinds or original_counselor_id is None:
+            raise ContinuityError("source_not_found", 404)
+        if (
+            requester.pk != source.counselor_id
+            and ApprovedOfficeCase(requester.pk, student_id, source.counselor_id)
+            not in workflow.office_cases
+        ):
+            raise ContinuityError("source_not_found", 404)
     if requester.pk not in policy.office_requester_ids:
         capability = (
             "counseling.view_assigned"

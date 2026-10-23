@@ -293,6 +293,20 @@ def _ids(grant, actor_id):
 def _visible(grant, actor, policy, now):
     if actor.pk in {grant.requested_by_id, grant.receiving_counselor_id}:
         return
+    # Original-author metadata participation is new only for a sealed workflow policy.
+    if policy.workflow_policy_digest and actor.pk == grant.original_counselor_id:
+        from compass.counseling.coverage_policy import require_workflow_policy
+
+        workflow = require_workflow_policy(policy, now)
+        if (
+            grant.policy_digest == policy.digest
+            and actor.has_capability("counseling.handoff.manage_own", at=now)
+            and StudentAffiliation.objects.filter(
+                student_id=grant.student_id,
+                college_id__in=workflow.college_ids.intersection(policy.college_ids),
+            ).exists()
+        ):
+            return
     # Head status alone gives no office-wide enumeration; exact policy office scope applies.
     try:
         _head(actor, policy, now)
@@ -526,6 +540,19 @@ def list_grant_metadata(*, actor, page=1, page_size=20):
     if not 1 <= page or not 1 <= page_size <= 50:
         raise ContinuityError("invalid_pagination", 422)
     scope = Q(requested_by=actor) | Q(receiving_counselor=actor)
+    if policy.workflow_policy_digest and actor.has_capability(
+        "counseling.handoff.manage_own", at=now
+    ):
+        from compass.counseling.coverage_policy import require_workflow_policy
+
+        workflow = require_workflow_policy(policy, now)
+        scope |= Q(
+            original_counselor=actor,
+            policy_digest=policy.digest,
+            student__organization_student_affiliation__college_id__in=workflow.college_ids.intersection(
+                policy.college_ids
+            ),
+        )
     try:
         _head(actor, policy, now)
         scope |= Q(student__organization_student_affiliation__college_id__in=policy.college_ids)

@@ -40,6 +40,7 @@ class ApprovedContinuityPolicy:
     student_transfer_rule: str
     metadata_review_approved: bool
     disclosure_policy_digest: str = ""
+    workflow_policy_digest: str = ""
 
     @property
     def digest(self):
@@ -47,6 +48,8 @@ class ApprovedContinuityPolicy:
         # Preserve every pre-CONT-2B metadata-only policy digest byte-for-byte.
         if not self.disclosure_policy_digest:
             values.pop("disclosure_policy_digest")
+        if not self.workflow_policy_digest:
+            values.pop("workflow_policy_digest")
         for k, v in values.items():
             if isinstance(v, frozenset):
                 values[k] = sorted(str(x) for x in v)
@@ -79,6 +82,13 @@ class ApprovedContinuityPolicy:
                 and (
                     not isinstance(self.disclosure_policy_digest, str)
                     or not re.fullmatch(r"[0-9a-f]{64}", self.disclosure_policy_digest)
+                )
+            )
+            or (
+                self.workflow_policy_digest != ""
+                and (
+                    not isinstance(self.workflow_policy_digest, str)
+                    or not re.fullmatch(r"[0-9a-f]{64}", self.workflow_policy_digest)
                 )
             )
             or self.metadata_review_approved is not True

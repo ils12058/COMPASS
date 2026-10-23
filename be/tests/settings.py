@@ -39,6 +39,7 @@ _TEST_ENV = {
     "ROUTINE_INTERVIEW_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
     "GUIDANCE_MESSAGE_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
     "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
+    "COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
     "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
     "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
     "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": Fernet.generate_key().decode("ascii"),
