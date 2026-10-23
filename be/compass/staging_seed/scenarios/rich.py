@@ -124,7 +124,8 @@ def current_regular(session: SeedSession) -> None:
 
 def academic_adjustment(session: SeedSession) -> None:
     """Second-year Psychology Student: booked session, submitted intake, completed Counseling
-    Encounter, finalized evaluation, published Shared Summary, and a scheduled follow-up."""
+    Encounter, finalized evaluation, published Student Session Summary, and a scheduled
+    follow-up."""
 
     t = session.timeline
     seed_annual_inventory(session, SECOND_YEAR, CURRENT_ACADEMIC_YEAR)
@@ -181,11 +182,11 @@ def academic_adjustment(session: SeedSession) -> None:
     wf.finalize_evaluation(
         session, COUNSELOR_A.key, routine, narratives.ADJUSTMENT_EVALUATION, at=t.past(10, 16, 30)
     )
-    wf.shared_summary(
+    wf.student_session_summary(
         session,
         COUNSELOR_A.key,
         encounter,
-        narratives.ADJUSTMENT_SHARED_SUMMARY,
+        narratives.ADJUSTMENT_STUDENT_SESSION_SUMMARY,
         drafted=t.past(9, 10, 50),
         published=t.past(9, 11),
     )
@@ -197,7 +198,7 @@ def academic_adjustment(session: SeedSession) -> None:
         booked_at=max(t.past(9, 11, 5), encounter.created_at + timedelta(minutes=45)),
     )
 
-    # Read and unread Notifications: the earlier ones were opened, the Shared Summary was not.
+    # Earlier Notifications were opened; the Student Session Summary was not.
     wf.mark_read(
         session,
         SECOND_YEAR,
@@ -220,7 +221,8 @@ def academic_adjustment(session: SeedSession) -> None:
 def referred_student(session: SeedSession) -> None:
     """Third-year HM Student referred by a Program Chair: Referral (plus a voided duplicate),
     Call Slip action, completed interview recorded as a Counseling Encounter, a direct Routine
-    Interview awaiting evaluation, and a completed follow-up with a published Shared Summary."""
+    Interview awaiting evaluation, and a completed follow-up with a published
+    Student Session Summary."""
 
     t = session.timeline
     seed_annual_inventory(session, REFERRED, CURRENT_ACADEMIC_YEAR)
@@ -302,7 +304,7 @@ def referred_student(session: SeedSession) -> None:
         recorded=t.past(5, 14, 10),
         appointment=follow_up,
     )
-    wf.shared_summary(
+    wf.student_session_summary(
         session,
         COUNSELOR_B.key,
         follow_up_encounter,
@@ -315,7 +317,7 @@ def referred_student(session: SeedSession) -> None:
 def completed_counseling(session: SeedSession) -> None:
     """Fourth-year IS Student: last year's Referral and Call Slip recorded by staff who have
     since left, a no-show, a walk-in Counseling Encounter with a finalized direct Routine
-    Interview and an unpublished Shared Summary draft, and a scheduled follow-up."""
+    Interview and an unpublished Student Session Summary draft, and a scheduled follow-up."""
 
     t = session.timeline
     seed_annual_inventory(session, FOURTH_YEAR, CURRENT_ACADEMIC_YEAR)
@@ -387,7 +389,7 @@ def completed_counseling(session: SeedSession) -> None:
         narratives.WALK_IN_EVALUATION,
         at=t.past(8, 16, 20),
     )
-    wf.shared_summary(
+    wf.student_session_summary(
         session,
         COUNSELOR_A.key,
         walk_in,

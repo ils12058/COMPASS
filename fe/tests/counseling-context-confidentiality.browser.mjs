@@ -1,4 +1,4 @@
-// CONT-1A: synthetic API responses only; real authorization/decryption is covered by Django tests.
+// CONT-1A/1B: synthetic API responses only; real authorization/decryption is covered by Django tests.
 import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { appointmentId, encounterId, summaryId, counselor, session, overview, encounter, recorded, summary, priorSummary, privateBody } from "./support/cont1a-summary-fixtures.mjs";
@@ -8,7 +8,7 @@ const harness = await createBrowserHarness("cont1a-summary-confidentiality");
 const { check, shown, hidden, finish, settleFetches } = harness;
 const contextPath = `/portal/counseling/workspace/appointment/${appointmentId}`;
 const encounterAPI = `/api/v1/counseling/encounters/${encounterId}`;
-const oldReads = (requests) => requests.filter(({ pathname }) => /\/counseling\/context\/.*\/shared-summar/.test(pathname));
+const oldReads = (requests) => requests.filter(({ pathname }) => /\/counseling\/context\/.*\/(?:shared-summar|student-session-summar)/.test(pathname));
 const error = { error: { code: "counseling_context_not_found", message: "Counseling information unavailable." } };
 
 // The shared harness requires a true result when its custom handler answered a route.
@@ -30,7 +30,7 @@ function contextFixture({ anchor = "APPOINTMENT", summaries = true, hasEncounter
       const reply = handledReply(respond);
       // If an old/background query is accidentally reintroduced, it returns a sentinel and
       // the test fails both its no-request and no-render assertions.
-      if (pathname.startsWith(root) && pathname.includes("shared-summar")) {
+      if (pathname.startsWith(root) && /shared-summar|student-session-summar/.test(pathname)) {
         return reply({ items: [priorSummary] });
       }
       if (pathname === root) return reply(overview({
@@ -113,12 +113,12 @@ await check("own-encounter-editor-save-publish-remains-functional", contextPath,
   const contextHandler = fixture.handler;
   return { ...fixture, handler(args) {
     const reply = handledReply(args.reply);
-    if (args.pathname === encounterAPI + "/shared-summary" && args.method === "GET") return reply(saved);
-    if (args.pathname === encounterAPI + "/shared-summary" && args.method === "PUT") {
+    if (args.pathname === encounterAPI + "/student-session-summary" && args.method === "GET") return reply(saved);
+    if (args.pathname === encounterAPI + "/student-session-summary" && args.method === "PUT") {
       saved = { ...saved, content: JSON.parse(args.request.postData()).content };
       return reply(saved);
     }
-    if (args.pathname === encounterAPI + "/shared-summary/publish" && args.method === "POST") {
+    if (args.pathname === encounterAPI + "/student-session-summary/publish" && args.method === "POST") {
       saved = { ...saved, published_at: new Date().toISOString() };
       return reply(saved);
     }
@@ -128,14 +128,14 @@ await check("own-encounter-editor-save-publish-remains-functional", contextPath,
   const link = page.getByRole("link", { name: "View encounter", exact: true });
   await shown(link);
   await link.click();
-  const draft = page.getByRole("textbox", { name: "Shared Summary draft", exact: true });
+  const draft = page.getByRole("textbox", { name: "Student Session Summary draft", exact: true });
   await shown(draft);
   await draft.fill("Synthetic takeaways deliberately published to the Student.");
   await page.getByRole("button", { name: "Save draft", exact: true }).click();
   const publish = page.getByRole("button", { name: "Publish to Student", exact: true });
   await page.waitForFunction(() => [...document.querySelectorAll("button")].some((button) => button.textContent === "Publish to Student" && !button.disabled));
   await publish.click();
-  const dialog = page.getByRole("alertdialog", { name: "Publish this Shared Summary to the Student?", exact: true });
+  const dialog = page.getByRole("alertdialog", { name: "Publish this Student Session Summary to the Student?", exact: true });
   await shown(dialog);
   await dialog.getByRole("button", { name: "Publish summary", exact: true }).click();
   await hidden(dialog);
@@ -147,31 +147,81 @@ await check("own-encounter-editor-save-publish-remains-functional", contextPath,
   await page.reload({ waitUntil: "domcontentloaded" });
   await shown(page.getByText(/^Published to Student/));
   assert.equal(await page.getByRole("button", { name: "Publish to Student", exact: true }).count(), 0);
-  assert.equal(requests.filter(({ pathname, method }) => pathname === encounterAPI + "/shared-summary" && method === "PUT").length, 1);
-  assert.equal(requests.filter(({ pathname, method }) => pathname === encounterAPI + "/shared-summary/publish" && method === "POST").length, 1);
+  assert.equal(requests.filter(({ pathname, method }) => pathname === encounterAPI + "/student-session-summary" && method === "PUT").length, 1);
+  assert.equal(requests.filter(({ pathname, method }) => pathname === encounterAPI + "/student-session-summary/publish" && method === "POST").length, 1);
   assert.equal(oldReads(requests).length, 0);
 });
 
 for (const allowed of [true, false]) {
-  const studentActor = { ...user("STUDENT"), capabilities: [...user("STUDENT").capabilities, "shared_summaries.view_self"] };
-  await check(`student-published-detail-${allowed ? "own" : "unavailable-draft-or-other-student"}`, `/portal/counseling/summaries/${summaryId}`, {
+  const studentActor = { ...user("STUDENT"), capabilities: [...user("STUDENT").capabilities, "student_session_summaries.view_self"] };
+  await check(`student-published-detail-${allowed ? "own" : "unavailable-draft-or-other-student"}`, `/portal/counseling/student-session-summaries/${summaryId}`, {
     role: "STUDENT",
     overrides: {
       "/api/v1/auth/session": session(studentActor),
-      [`/api/v1/counseling/me/shared-summaries/${summaryId}`]: ({ reply }) => allowed
+      [`/api/v1/counseling/me/student-session-summaries/${summaryId}`]: ({ reply }) => allowed
         ? reply({ id: summaryId, content: "Synthetic Student-visible published takeaways.", published_at: "2026-01-06T02:00:00Z", counseling_ended_at: encounter().ended_at, delivery_mode: "IN_PERSON" })
-        : reply({ error: { code: "shared_summary_not_found", message: "This summary is unavailable." } }, 404),
+        : reply({ error: { code: "student_session_summary_not_found", message: "This summary is unavailable." } }, 404),
     },
   }, async (page, { requests }) => {
     if (allowed) await shown(page.getByText("Synthetic Student-visible published takeaways.", { exact: true }));
     else {
       // Existing ordinary API error-code copy remains unchanged in CONT-1A.
-      await shown(page.getByText("No Shared Summary has been drafted yet.", { exact: true }));
+      await shown(page.getByText("No Student Session Summary has been drafted yet.", { exact: true }));
       assert.ok(!(await page.locator("body").innerText()).includes("Synthetic Student-visible published takeaways."));
     }
     assert.ok(!(await page.locator("body").innerText()).includes(privateBody));
     assert.equal(oldReads(requests).length, 0);
   });
 }
+
+
+const studentActor = { ...user("STUDENT"), capabilities: [...user("STUDENT").capabilities, "student_session_summaries.view_self"] };
+const ownPublication = { id: summaryId, content: "Synthetic Student-visible published takeaways.", published_at: "2026-01-06T02:00:00Z", counseling_ended_at: encounter().ended_at, delivery_mode: "IN_PERSON" };
+for (const device of ["desktop", "phone"]) {
+  await check(`canonical-student-list-detail-back-${device}`, "/portal/counseling", {
+    role: "STUDENT", device, overrides: {
+      "/api/v1/auth/session": session(studentActor),
+      "/api/v1/counseling/me/student-session-summaries": { items: [ownPublication], page: 1, page_size: 20, has_next: false },
+      [`/api/v1/counseling/me/student-session-summaries/${summaryId}`]: ownPublication,
+    },
+  }, async (page) => {
+    await shown(page.getByRole("heading", { name: "Student Session Summaries", exact: true }));
+    await page.getByRole("link").filter({ hasText: "Counseling on" }).click();
+    await shown(page.getByRole("heading", { name: "Student Session Summary", exact: true }));
+    assert.equal(new URL(page.url()).pathname, `/portal/counseling/student-session-summaries/${summaryId}`);
+    await shown(page.getByText(ownPublication.content, { exact: true }));
+    await harness.noHorizontalOverflow(page);
+    const back = page.getByRole("link", { name: "Back to Student Session Summaries", exact: true });
+    await back.focus(); await page.keyboard.press("Enter");
+    await shown(page.getByRole("heading", { name: "Student Session Summaries", exact: true }));
+  });
+}
+for (const allowed of [true, false]) {
+  const notice = { id: "cont1b-notice", event_code: "counseling.student_session_summary.published", policy: "OPTIONAL_INFORMATIONAL", title: "Student Session Summary published", message: "Review the current record in COMPASS.", target_type: "STUDENT_SESSION_SUMMARY", target_id: summaryId, created_at: "2026-10-23T00:00:00Z", read_at: null, is_read: false, is_current: true };
+  await check(`canonical-notification-destination-${allowed}`, "/portal/notifications", {
+    role: "STUDENT", overrides: { "/api/v1/auth/session": session(studentActor) },
+    handler({ pathname, method, reply: respond }) {
+      const reply = handledReply(respond);
+      if (pathname === "/api/v1/notifications") return reply({ items: [notice], page: 1, page_size: 20, has_next: false });
+      if (pathname === "/api/v1/notifications/unread-count") return reply({ unread_count: 1 });
+      if (method === "PATCH" && pathname.startsWith("/api/v1/notifications/")) return reply({ ...notice, is_read: true, read_at: "2026-10-23T00:00:00Z" });
+      if (pathname === `/api/v1/counseling/me/student-session-summaries/${summaryId}`) return allowed ? reply(ownPublication) : reply({ error: { code: "student_session_summary_not_found", message: "Unavailable." } }, 404);
+      return false;
+    },
+  }, async (page) => {
+    const action = page.getByRole("button", { name: "Open Student Session Summary", exact: true });
+    await action.focus(); await page.keyboard.press("Enter");
+    await page.waitForURL(`**/portal/counseling/student-session-summaries/${summaryId}`);
+    assert.equal(new URL(page.url()).pathname, `/portal/counseling/student-session-summaries/${summaryId}`);
+    if (allowed) await shown(page.getByText(ownPublication.content, { exact: true }));
+    else await hidden(page.getByText(ownPublication.content, { exact: true }));
+    assert.ok(!(await page.locator("body").innerText()).includes(privateBody));
+  });
+}
+await check("old-frontend-route-has-no-redirect-or-confidential-body", `/portal/counseling/summaries/${summaryId}`, {}, async (page) => {
+  await shown(page.getByRole("heading", { name: "Page not found", exact: true }));
+  assert.equal(new URL(page.url()).pathname, `/portal/counseling/summaries/${summaryId}`);
+  assert.ok(!(await page.locator("body").innerText()).includes(ownPublication.content));
+});
 
 await finish();

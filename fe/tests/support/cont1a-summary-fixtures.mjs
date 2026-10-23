@@ -8,7 +8,7 @@ export const privateBody = "CONT-1A-OTHER-COUNSELOR-PRIVATE-SUMMARY";
 export const student = { id: "cont1a-student", display_name: "Synthetic CONT-1A Student", institutional_id: "CONT-1A-001" };
 export const counselor = (summaries = true) => ({
   ...user(),
-  capabilities: [...user().capabilities, "routine_interviews.view_assigned", ...(summaries ? ["shared_summaries.view_assigned", "shared_summaries.manage_assigned"] : [])],
+  capabilities: [...user().capabilities, "routine_interviews.view_assigned", ...(summaries ? ["student_session_summaries.view_assigned", "student_session_summaries.manage_assigned"] : [])],
 });
 export const session = (actor = counselor()) => ({
   user: actor, session: { id: "cont1a-session", expires_at: "2099-01-01T00:00:00Z", is_current: true },

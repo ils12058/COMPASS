@@ -22,9 +22,9 @@ from compass.call_slips.services import (
 )
 from compass.counseling.models import CounselingEncounter
 from compass.counseling.services import create_encounter
-from compass.counseling.shared_summaries import (
-    publish_assigned_shared_summary,
-    put_assigned_shared_summary,
+from compass.counseling.student_session_summaries import (
+    publish_assigned_student_session_summary,
+    put_assigned_student_session_summary,
 )
 from compass.feedback.models import FeedbackOpportunity, FeedbackOpportunitySourceType
 from compass.inventory.models import StudentInventory
@@ -154,7 +154,7 @@ def encounter(
     return encounter
 
 
-def shared_summary(
+def student_session_summary(
     session: SeedSession,
     counselor_key: str,
     encounter: CounselingEncounter,
@@ -167,20 +167,20 @@ def shared_summary(
     if published is not None:
         published = max(published, drafted + timedelta(minutes=15))
     counselor = session.user(counselor_key)
-    item = put_assigned_shared_summary(
+    item = put_assigned_student_session_summary(
         encounter_id=encounter.pk, counselor=counselor, content=content
     )
     if published is None:
         align_timestamps(item, created_at=drafted, updated_at=drafted)
     else:
-        publish_assigned_shared_summary(
+        publish_assigned_student_session_summary(
             encounter_id=encounter.pk,
             counselor=counselor,
             context=session.as_user(counselor_key),
         )
         align_timestamps(item, created_at=drafted, updated_at=published, published_at=published)
         settle_notifications(source_id=item.pk, occurred_at=published)
-    session.record("Shared Summaries", created=True)
+    session.record("Student Session Summaries", created=True)
 
 
 def student_intake(

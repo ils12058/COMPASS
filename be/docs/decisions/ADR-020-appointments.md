@@ -1,5 +1,7 @@
 # ADR-020: Appointment foundation
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 > **Backend Slice 2 appointment authorization alignment (2026-10-11).** Head Guidance
 > has institution-wide eligible College visibility for **general Guidance / Office Messages**
 > (Backend Slice 1), but **managed Appointment access is assigned-provider-only**, for

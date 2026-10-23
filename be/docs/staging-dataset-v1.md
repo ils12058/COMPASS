@@ -302,7 +302,7 @@ send email to the dataset addresses; starting or joining E-Counseling provisions
 ## Encryption keyrings
 
 All are operator-supplied and probed before any write; none is generated:
-`ACCOUNT_PROFILE_…`, `FEEDBACK_…`, `ROUTINE_INTERVIEW_…`, `COUNSELING_SHARED_SUMMARY_…`,
+`ACCOUNT_PROFILE_…`, `FEEDBACK_…`, `ROUTINE_INTERVIEW_…`, `STUDENT_SESSION_SUMMARY_…`,
 `REFERRAL_…`, `EXIT_INTERVIEW_…`, `INVENTORY_…`, `GRADUATE_TRACER_…` and
 `GUIDANCE_MESSAGE_ENCRYPTION_KEYS`.
 
@@ -311,7 +311,7 @@ All are operator-supplied and probed before any write; none is generated:
 | Class | Domains |
 | --- | --- |
 | SYNC | Identity policy; Organization catalog; Institutional Forms; canonical Counseling Service |
-| SEED (domain services) | Academic Years; accounts, designations, profiles; responsibility, supervision, affiliation; ONLINE Counseling delivery; office and provider Availability; Inventories; Appointments; Encounters; Shared Summaries; Routine Interviews; Referrals; Call Slips; Good Moral; Exit Interviews and opportunities; Graduate Tracer; Guidance Messages; Customer Feedback; CSM; Announcements; Resources; Privacy Notices |
+| SEED (domain services) | Academic Years; accounts, designations, profiles; responsibility, supervision, affiliation; ONLINE Counseling delivery; office and provider Availability; Inventories; Appointments; Encounters; Student Session Summaries; Routine Interviews; Referrals; Call Slips; Good Moral; Exit Interviews and opportunities; Graduate Tracer; Guidance Messages; Customer Feedback; CSM; Announcements; Resources; Privacy Notices |
 | DERIVED | Overview; Work Queue; Student Support; reports; My Activity; Notifications; documents |
 | RUNTIME-ONLY | Sessions, MFA, challenges, email-change requests; Daily rooms, tokens, recordings, transcripts, webhooks; PSGC cache; Platform Operations state; email/push deliveries; worker state |
 | INTENTIONALLY EMPTY | PSGC geography (answered "not specified"); Resource files; E-Counseling rooms and media; Inventory and Exit Interview reopen events |

@@ -507,7 +507,7 @@ def test_call_slip_reconciliation_compares_plaintext_and_never_rewraps(world):
 def settings_env(monkeypatch):
     for name, value in (
         (SETTING, K1),
-        ("COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS", K2),
+        ("STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS", K2),
         ("ROUTINE_INTERVIEW_ENCRYPTION_KEYS", K3),
         ("SECRET_KEY", "test-django"),
         ("AUTH_TOTP_ENCRYPTION_KEY", K4),
@@ -540,7 +540,7 @@ def test_required_keyring_startup_validation(settings_env, monkeypatch, value):
         "AUTH_TOTP_ENCRYPTION_KEY",
         "WEB_PUSH_STORAGE_KEY",
         "ROUTINE_INTERVIEW_ENCRYPTION_KEYS",
-        "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS",
+        "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS",
     ],
 )
 def test_all_other_key_entries_cannot_be_reused(settings_env, monkeypatch, other):
@@ -556,7 +556,7 @@ def test_pointer_loaded_order_preserved(settings_env, monkeypatch, tmp_path):
     monkeypatch.delenv(SETTING)
     monkeypatch.setenv(f"{SETTING}_FILE", str(pointer))
     # Avoid intentionally reusing the existing summary key for this pointer-read case.
-    monkeypatch.setenv("COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS", K6)
+    monkeypatch.setenv("STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS", K6)
     assert load_settings()[SETTING] == (K2, K1)
 
 

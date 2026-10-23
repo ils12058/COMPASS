@@ -111,7 +111,7 @@ SECOND_YEAR = StudentSpec(
     year_levels=((PREVIOUS_YEAR, 1), (CURRENT_YEAR, 2)),
     summary=(
         "Two annual Inventories; completed session with finalized Routine evaluation and a "
-        "published Shared Summary; scheduled follow-up; a withdrawn Call Slip; feedback."
+        "published Student Session Summary; scheduled follow-up; a withdrawn Call Slip; feedback."
     ),
 )
 REFERRED = StudentSpec(
@@ -153,7 +153,7 @@ FOURTH_YEAR = StudentSpec(
     year_levels=(("2024-2025", 2), (PREVIOUS_YEAR, 3), (CURRENT_YEAR, 4)),
     summary=(
         "Last year's referral by departed staff, a no-show, a walk-in Encounter with a "
-        "finalized Routine Interview and an unpublished Shared Summary draft, a follow-up."
+        "finalized Routine Interview and an unpublished Student Session Summary draft, a follow-up."
     ),
 )
 GRADUATING = StudentSpec(
@@ -495,8 +495,11 @@ ACTION_READY_ROWS = (
         "SUBMITTED",
         "ordinary",
         Lifecycle.CURRENT,
-        "Published Shared Summary to read",
-        "Completed session with counselor_b; published Shared Summary and feedback invitation.",
+        "Published Student Session Summary to read",
+        (
+            "Completed session with counselor_b; published Student Session Summary "
+            "and feedback invitation."
+        ),
     ),
     (
         "Wendy",

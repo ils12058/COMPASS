@@ -28,7 +28,7 @@ SECRET_NAMES = {
     "psgc_api_token",
     "auth_totp_encryption_key",
     "routine_interview_encryption_keys",
-    "counseling_shared_summary_encryption_keys",
+    "student_session_summary_encryption_keys",
     "referral_confidential_content_encryption_keys",
     "exit_interview_confidential_content_encryption_keys",
     "inventory_confidential_content_encryption_keys",
@@ -152,9 +152,9 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
             grant["target"] in {grant["source"], f"/run/secrets/{grant['source']}"}
             for grant in app["secrets"]
         )
-        assert "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS" not in app["environment"]
-        assert app["environment"]["COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS_FILE"] == (
-            "/run/secrets/counseling_shared_summary_encryption_keys"
+        assert "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS" not in app["environment"]
+        assert app["environment"]["STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS_FILE"] == (
+            "/run/secrets/student_session_summary_encryption_keys"
         )
         assert "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS" not in app["environment"]
         assert app["environment"]["REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE"] == (

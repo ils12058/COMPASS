@@ -80,7 +80,7 @@ APPOINTMENT_REMINDER_ISSUED = "appointment.reminder.issued"
 APPOINTMENT_REMINDERS_BULK = "appointment.reminders.bulk"
 COUNSELING_ENCOUNTER_CREATED = "counseling.encounter.created"
 COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
-COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
+STUDENT_SESSION_SUMMARY_PUBLISHED = "counseling.student_session_summary.published"
 INVENTORY_CREATED = "inventory.created"
 INVENTORY_SUBMITTED = "inventory.submitted"
 INVENTORY_REOPENED = "inventory.reopened"
@@ -348,7 +348,7 @@ __all__ = [
     "APPOINTMENT_REMINDERS_BULK",
     "COUNSELING_ENCOUNTER_CREATED",
     "COUNSELING_ENCOUNTER_UPDATED",
-    "COUNSELING_SHARED_SUMMARY_PUBLISHED",
+    "STUDENT_SESSION_SUMMARY_PUBLISHED",
     "INVENTORY_CREATED",
     "INVENTORY_SUBMITTED",
     "GOOD_MORAL_REQUEST_CREATED",

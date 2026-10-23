@@ -116,7 +116,7 @@ def test_unknown_environment_fails_closed():
         ("GUIDANCE_FOLLOW_UP", "follow-ups"),
         ("ROUTINE_INTERVIEW", "routine-interviews"),
         ("EXIT_INTERVIEW", "exit-interviews"),
-        ("COUNSELING_SHARED_SUMMARY", "counseling/summaries"),
+        ("STUDENT_SESSION_SUMMARY", "counseling/student-session-summaries"),
         ("E_COUNSELING", "e-counseling"),
     ],
 )

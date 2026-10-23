@@ -1,5 +1,7 @@
 # ADR-046: Notification Domain Integrations
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 - Status: Accepted
 - Date: 2026-09-19
 - Scope: backend-only integration of the ADR-041 Notification and EmailDelivery foundation with selected COMPASS domain and account-security workflows

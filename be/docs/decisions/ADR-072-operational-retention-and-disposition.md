@@ -1,5 +1,7 @@
 # ADR-072: Operational retention and disposition governance
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 - Status: Proposed
 - Date: 2026-10-04
 - Refines/supersedes: ADR-069's live retention boundary for the explicitly supported operational treatments below

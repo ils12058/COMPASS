@@ -1,5 +1,7 @@
 # ADR-080: Counseling Shared Summary content encryption
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 - Status: Accepted
 - Date: 2026-10-06
 - Scope: Only the existing Counseling Shared Summary body

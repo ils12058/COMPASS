@@ -1,4 +1,4 @@
-"""Thin Django Ninja API for assigned Counseling and Shared Summary workflows."""
+"""Thin Django Ninja API for assigned Counseling and Student Session Summary workflows."""
 
 from __future__ import annotations
 
@@ -45,19 +45,19 @@ from .services import (
     list_students,
     update_encounter,
 )
-from .shared_summaries import (
-    CounselingSharedSummaryAlreadyPublished,
-    CounselingSharedSummaryEmpty,
-    CounselingSharedSummaryNotFound,
-    get_assigned_shared_summary,
-    get_my_shared_summary,
-    list_my_shared_summaries,
-    publish_assigned_shared_summary,
-    put_assigned_shared_summary,
+from .student_session_summaries import (
+    StudentSessionSummaryAlreadyPublished,
+    StudentSessionSummaryEmpty,
+    StudentSessionSummaryNotFound,
+    get_assigned_student_session_summary,
+    get_my_student_session_summary,
+    list_my_student_session_summaries,
+    publish_assigned_student_session_summary,
+    put_assigned_student_session_summary,
 )
-from .shared_summary_content import (
-    CounselingSharedSummaryContentUnavailable,
-    read_shared_summary_content,
+from .student_session_summary_content import (
+    StudentSessionSummaryContentUnavailable,
+    read_student_session_summary_content,
 )
 
 router = Router(tags=["counseling"])
@@ -94,7 +94,7 @@ class CounselingUpdateRequest(StrictSchema):
     ended_at: datetime | None = None
 
 
-class CounselingSharedSummaryPutRequest(StrictSchema):
+class StudentSessionSummaryPutRequest(StrictSchema):
     content: str
 
 
@@ -208,7 +208,7 @@ class CounselingStudentPageResponse(StrictSchema):
     has_next: bool
 
 
-class CounselingAssignedSharedSummaryResponse(StrictSchema):
+class CounselingAssignedStudentSessionSummaryResponse(StrictSchema):
     id: UUID
     encounter_id: UUID
     content: str
@@ -217,7 +217,7 @@ class CounselingAssignedSharedSummaryResponse(StrictSchema):
     updated_at: datetime
 
 
-class CounselingStudentSharedSummaryResponse(StrictSchema):
+class CounselingStudentSessionSummaryResponse(StrictSchema):
     id: UUID
     content: str
     published_at: datetime
@@ -225,8 +225,8 @@ class CounselingStudentSharedSummaryResponse(StrictSchema):
     delivery_mode: DeliveryMode
 
 
-class CounselingStudentSharedSummaryPageResponse(StrictSchema):
-    items: list[CounselingStudentSharedSummaryResponse]
+class CounselingStudentSessionSummaryPageResponse(StrictSchema):
+    items: list[CounselingStudentSessionSummaryResponse]
     page: int
     page_size: int
     has_next: bool
@@ -253,14 +253,14 @@ def _require_student(request, capability: str) -> None:
 
 
 def _raise(exc: CounselingError) -> NoReturn:
-    if isinstance(exc, CounselingSharedSummaryContentUnavailable):
-        raise APIError(500, "counseling_shared_summary_content_unavailable", str(exc)) from None
-    if isinstance(exc, CounselingSharedSummaryNotFound):
-        raise APIError(404, "shared_summary_not_found", str(exc)) from exc
-    if isinstance(exc, CounselingSharedSummaryAlreadyPublished):
-        raise APIError(409, "shared_summary_already_published", str(exc)) from exc
-    if isinstance(exc, CounselingSharedSummaryEmpty):
-        raise APIError(409, "shared_summary_empty", str(exc)) from exc
+    if isinstance(exc, StudentSessionSummaryContentUnavailable):
+        raise APIError(500, "student_session_summary_content_unavailable", str(exc)) from None
+    if isinstance(exc, StudentSessionSummaryNotFound):
+        raise APIError(404, "student_session_summary_not_found", str(exc)) from exc
+    if isinstance(exc, StudentSessionSummaryAlreadyPublished):
+        raise APIError(409, "student_session_summary_already_published", str(exc)) from exc
+    if isinstance(exc, StudentSessionSummaryEmpty):
+        raise APIError(409, "student_session_summary_empty", str(exc)) from exc
     if isinstance(exc, CounselingNotFound):
         raise APIError(404, "counseling_resource_not_found", str(exc)) from exc
     if isinstance(exc, InvalidCounselingInput):
@@ -359,32 +359,32 @@ def _encounter_appointment_candidate(item) -> dict[str, object]:
     }
 
 
-def _assigned_shared_summary(item) -> dict[str, object]:
+def _assigned_student_session_summary(item) -> dict[str, object]:
     return {
         "id": item.pk,
         "encounter_id": item.encounter_id,
-        "content": _shared_summary_content(item),
+        "content": _student_session_summary_content(item),
         "published_at": _institutional(item.published_at) if item.published_at else None,
         "created_at": _institutional(item.created_at),
         "updated_at": _institutional(item.updated_at),
     }
 
 
-def _student_shared_summary(item) -> dict[str, object]:
+def _student_session_summary_response(item) -> dict[str, object]:
     return {
         "id": item.pk,
-        "content": _shared_summary_content(item),
+        "content": _student_session_summary_content(item),
         "published_at": _institutional(item.published_at),
         "counseling_ended_at": _institutional(item.encounter.ended_at),
         "delivery_mode": item.encounter.delivery_mode,
     }
 
 
-def _shared_summary_content(item) -> str:
+def _student_session_summary_content(item) -> str:
     # Both projections receive only relationship-authorized resources from the service layer.
     try:
-        return read_shared_summary_content(item)
-    except CounselingSharedSummaryContentUnavailable as exc:
+        return read_student_session_summary_content(item)
+    except StudentSessionSummaryContentUnavailable as exc:
         _raise(exc)
 
 
@@ -528,19 +528,19 @@ def counseling_list_my_encounters(
 
 
 @router.get(
-    "/me/shared-summaries",
-    response=response_with_errors(CounselingStudentSharedSummaryPageResponse, 401, 403, 422),
+    "/me/student-session-summaries",
+    response=response_with_errors(CounselingStudentSessionSummaryPageResponse, 401, 403, 422),
     auth=session_auth,
-    operation_id="counselingListMySharedSummaries",
+    operation_id="counselingListMyStudentSessionSummaries",
 )
-def counseling_list_my_shared_summaries(
+def counseling_list_my_student_session_summaries(
     request,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
-    _require_student(request, "shared_summaries.view_self")
+    _require_student(request, "student_session_summaries.view_self")
     try:
-        result = list_my_shared_summaries(
+        result = list_my_student_session_summaries(
             student=request.auth_user,
             page=page,
             page_size=page_size,
@@ -548,7 +548,7 @@ def counseling_list_my_shared_summaries(
     except CounselingError as exc:
         _raise(exc)
     return {
-        "items": [_student_shared_summary(item) for item in result.items],
+        "items": [_student_session_summary_response(item) for item in result.items],
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,
@@ -556,18 +556,18 @@ def counseling_list_my_shared_summaries(
 
 
 @router.get(
-    "/me/shared-summaries/{summary_id}",
-    response=response_with_errors(CounselingStudentSharedSummaryResponse, 401, 403, 404, 422),
+    "/me/student-session-summaries/{summary_id}",
+    response=response_with_errors(CounselingStudentSessionSummaryResponse, 401, 403, 404, 422),
     auth=session_auth,
-    operation_id="counselingGetMySharedSummary",
+    operation_id="counselingGetMyStudentSessionSummary",
 )
-def counseling_get_my_shared_summary(request, summary_id: UUID):
-    _require_student(request, "shared_summaries.view_self")
+def counseling_get_my_student_session_summary(request, summary_id: UUID):
+    _require_student(request, "student_session_summaries.view_self")
     try:
-        item = get_my_shared_summary(student=request.auth_user, summary_id=summary_id)
+        item = get_my_student_session_summary(student=request.auth_user, summary_id=summary_id)
     except CounselingError as exc:
         _raise(exc)
-    return _student_shared_summary(item)
+    return _student_session_summary_response(item)
 
 
 @router.post(
@@ -683,27 +683,29 @@ def counseling_update_encounter(
 
 
 @router.get(
-    "/encounters/{encounter_id}/shared-summary",
-    response=response_with_errors(CounselingAssignedSharedSummaryResponse, 401, 403, 404, 422),
+    "/encounters/{encounter_id}/student-session-summary",
+    response=response_with_errors(
+        CounselingAssignedStudentSessionSummaryResponse, 401, 403, 404, 422
+    ),
     auth=session_auth,
-    operation_id="counselingGetAssignedSharedSummary",
+    operation_id="counselingGetAssignedStudentSessionSummary",
 )
-def counseling_get_assigned_shared_summary(request, encounter_id: UUID):
-    _require_counselor(request, "shared_summaries.view_assigned")
+def counseling_get_assigned_student_session_summary(request, encounter_id: UUID):
+    _require_counselor(request, "student_session_summaries.view_assigned")
     try:
-        item = get_assigned_shared_summary(
+        item = get_assigned_student_session_summary(
             encounter_id=encounter_id,
             counselor=request.auth_user,
         )
     except CounselingError as exc:
         _raise(exc)
-    return _assigned_shared_summary(item)
+    return _assigned_student_session_summary(item)
 
 
 @router.put(
-    "/encounters/{encounter_id}/shared-summary",
+    "/encounters/{encounter_id}/student-session-summary",
     response=response_with_errors(
-        CounselingAssignedSharedSummaryResponse,
+        CounselingAssignedStudentSessionSummaryResponse,
         401,
         403,
         404,
@@ -711,29 +713,29 @@ def counseling_get_assigned_shared_summary(request, encounter_id: UUID):
         422,
     ),
     auth=session_auth,
-    operation_id="counselingPutAssignedSharedSummary",
+    operation_id="counselingPutAssignedStudentSessionSummary",
 )
-def counseling_put_assigned_shared_summary(
+def counseling_put_assigned_student_session_summary(
     request,
     encounter_id: UUID,
-    payload: CounselingSharedSummaryPutRequest,
+    payload: StudentSessionSummaryPutRequest,
 ):
-    _require_counselor(request, "shared_summaries.manage_assigned")
+    _require_counselor(request, "student_session_summaries.manage_assigned")
     try:
-        item = put_assigned_shared_summary(
+        item = put_assigned_student_session_summary(
             encounter_id=encounter_id,
             counselor=request.auth_user,
             content=payload.content,
         )
     except CounselingError as exc:
         _raise(exc)
-    return _assigned_shared_summary(item)
+    return _assigned_student_session_summary(item)
 
 
 @router.post(
-    "/encounters/{encounter_id}/shared-summary/publish",
+    "/encounters/{encounter_id}/student-session-summary/publish",
     response=response_with_errors(
-        CounselingAssignedSharedSummaryResponse,
+        CounselingAssignedStudentSessionSummaryResponse,
         401,
         403,
         404,
@@ -741,16 +743,16 @@ def counseling_put_assigned_shared_summary(
         422,
     ),
     auth=session_auth,
-    operation_id="counselingPublishAssignedSharedSummary",
+    operation_id="counselingPublishAssignedStudentSessionSummary",
 )
-def counseling_publish_assigned_shared_summary(request, encounter_id: UUID):
-    _require_counselor(request, "shared_summaries.manage_assigned")
+def counseling_publish_assigned_student_session_summary(request, encounter_id: UUID):
+    _require_counselor(request, "student_session_summaries.manage_assigned")
     try:
-        item = publish_assigned_shared_summary(
+        item = publish_assigned_student_session_summary(
             encounter_id=encounter_id,
             counselor=request.auth_user,
             context=_context(request),
         )
     except CounselingError as exc:
         _raise(exc)
-    return _assigned_shared_summary(item)
+    return _assigned_student_session_summary(item)

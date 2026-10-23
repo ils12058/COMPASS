@@ -760,7 +760,7 @@ def test_gss_pilot_link_remains_scoped_and_never_rich(case, settings):
     [
         NotificationEvent.SECURITY_PASSWORD_RESET,
         NotificationEvent.FOLLOWUP_ASSIGNED,
-        NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED,
+        NotificationEvent.STUDENT_SESSION_SUMMARY_PUBLISHED,
         NotificationEvent.ECOUNSELING_CONSENT_REQUESTED,
     ],
 )

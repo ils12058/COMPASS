@@ -95,7 +95,7 @@ PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
     ),
     NotificationEvent.EXIT_INTERVIEW_REOPENED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.INVENTORY_REOPENED: (PushDecision.IN_APP_ONLY, ""),
-    NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED: (PushDecision.IN_APP_ONLY, ""),
+    NotificationEvent.STUDENT_SESSION_SUMMARY_PUBLISHED: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.ROUTINE_INTERVIEW_INTAKE_READY: (PushDecision.IN_APP_ONLY, ""),
     NotificationEvent.FEEDBACK_INVITATION: (PushDecision.IN_APP_ONLY, ""),
 }

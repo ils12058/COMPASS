@@ -682,7 +682,7 @@ def _summary(result) -> str:
         *_dict_table("Current-year Individual Inventory", counts["current_inventory"]),
         *_dict_table("Appointments", counts["appointments"]),
         *_dict_table("Appointment delivery modes", counts["appointment_modes"]),
-        *_dict_table("Shared Summaries", counts["shared_summaries"]),
+        *_dict_table("Student Session Summaries", counts["student_session_summaries"]),
         *_dict_table("Routine Interviews", counts["routine_interviews"]),
         *_dict_table("Referrals", counts["referrals"]),
         *_dict_table("Call Slips", counts["call_slips"]),

@@ -253,19 +253,23 @@ CAPABILITY_DEFINITIONS = (
         ),
     ),
     CapabilityDefinition(
-        code="shared_summaries.view_self",
-        name="View own shared counseling summaries",
-        description="View published Counseling Shared Summaries belonging to the Student.",
+        code="student_session_summaries.view_self",
+        name="View own Student Session Summaries",
+        description="View published Student Session Summaries belonging to the Student.",
     ),
     CapabilityDefinition(
-        code="shared_summaries.view_assigned",
-        name="View assigned shared counseling summaries",
-        description="View Shared Summaries for Counseling Encounters assigned to the Counselor.",
+        code="student_session_summaries.view_assigned",
+        name="View assigned Student Session Summaries",
+        description=(
+            "View Student Session Summaries for Counseling Encounters assigned to the Counselor."
+        ),
     ),
     CapabilityDefinition(
-        code="shared_summaries.manage_assigned",
-        name="Manage assigned shared counseling summaries",
-        description="Draft and publish Shared Summaries for assigned Counseling Encounters.",
+        code="student_session_summaries.manage_assigned",
+        name="Manage assigned Student Session Summaries",
+        description=(
+            "Draft and publish Student Session Summaries for assigned Counseling Encounters."
+        ),
     ),
     CapabilityDefinition(
         code="inventory.view_self",
@@ -568,8 +572,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "counseling.manage_assigned",
             "student_support.view",
             "reports.view",
-            "shared_summaries.view_assigned",
-            "shared_summaries.manage_assigned",
+            "student_session_summaries.view_assigned",
+            "student_session_summaries.manage_assigned",
             "routine_interviews.view_assigned",
             "routine_interviews.manage_assigned",
             "referrals.view",
@@ -635,7 +639,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "ecounseling.view_self",
             "ecounseling.join_self",
             "ecounseling.consent_self",
-            "shared_summaries.view_self",
+            "student_session_summaries.view_self",
             "call_slips.view_self",
             "good_moral.view_self",
             "good_moral.request_self",

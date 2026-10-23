@@ -1,5 +1,7 @@
 # ADR-025: Counseling Shared Summary
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 ## Context
 
 COMPASS needs a narrow post-session communication that an assigned Counselor deliberately chooses

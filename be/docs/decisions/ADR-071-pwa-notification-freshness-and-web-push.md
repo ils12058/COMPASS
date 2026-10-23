@@ -1,5 +1,7 @@
 # ADR-071: PWA, notification freshness, and Web Push
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 ## Status
 
 Accepted for this implementation slice. This decision extends, and does not rewrite, [ADR-041](ADR-041-notifications-email-delivery-foundation.md) and [ADR-046](ADR-046-notification-domain-integrations.md).

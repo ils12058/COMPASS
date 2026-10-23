@@ -45,7 +45,7 @@ _RECORD_ROUTES = {
     NotificationTargetType.GUIDANCE_FOLLOW_UP: "follow-ups",
     NotificationTargetType.ROUTINE_INTERVIEW: "routine-interviews",
     NotificationTargetType.EXIT_INTERVIEW: "exit-interviews",
-    NotificationTargetType.COUNSELING_SHARED_SUMMARY: "counseling/summaries",
+    NotificationTargetType.STUDENT_SESSION_SUMMARY: "counseling/student-session-summaries",
     # Appointment UUID, never a room URL or join credential.
     NotificationTargetType.E_COUNSELING: "e-counseling",
 }

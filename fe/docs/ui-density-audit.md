@@ -1,5 +1,7 @@
 # UI information hierarchy audit and delivery (ADR-091)
 
+> Historical implementation evidence. Summary terminology below records that delivery; the current canonical resource is [Student Session Summary](../../docs/cont-1b/README.md).
+
 Baseline: `origin/staging` **7640f63ad45ff4710a9cba866c314d8710c92483**, fetched October 7, 2026 (Asia/Manila). PR #187 / ADR-090 was already merged. Implementation branch: `codex/ui-information-hierarchy`. The final Git commit/PR identifies the delivered head; this document does not invent a self-referential commit SHA.
 
 ## Audit scope and method

@@ -29,10 +29,10 @@ export function notificationDestination(
     return { href: "/portal/exit-interviews/" + notification.target_id, label: "Open Exit Interview" };
   }
   if (
-    notification.target_type === NotificationTargetType.COUNSELING_SHARED_SUMMARY &&
+    notification.target_type === NotificationTargetType.STUDENT_SESSION_SUMMARY &&
     notification.target_id
   ) {
-    return { href: "/portal/counseling/summaries/" + notification.target_id, label: "Open Counseling summary" };
+    return { href: "/portal/counseling/student-session-summaries/" + notification.target_id, label: "Open Student Session Summary" };
   }
   if (notification.target_type === NotificationTargetType.E_COUNSELING && notification.target_id) {
     return { href: "/portal/e-counseling/" + notification.target_id, label: "Open E-Counseling" };

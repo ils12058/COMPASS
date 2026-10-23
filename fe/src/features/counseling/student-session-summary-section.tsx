@@ -11,13 +11,13 @@ import { Panel, PanelHeader } from "@/components/ui/panel";
 import type { CounselingAccess } from "@/features/counseling/counseling-access";
 import { counselingErrorCode, counselingErrorMessage, formatCounselingDateTime } from "@/features/counseling/counseling-shared";
 import {
-  getCounselingGetAssignedSharedSummaryQueryKey,
-  useCounselingGetAssignedSharedSummary,
-  useCounselingPublishAssignedSharedSummary,
-  useCounselingPutAssignedSharedSummary,
+  getCounselingGetAssignedStudentSessionSummaryQueryKey,
+  useCounselingGetAssignedStudentSessionSummary,
+  useCounselingPublishAssignedStudentSessionSummary,
+  useCounselingPutAssignedStudentSessionSummary,
 } from "@/lib/api/generated/counseling/counseling";
 
-export function SharedSummarySection({
+export function StudentSessionSummarySection({
   encounterId,
   access,
   onPublished,
@@ -31,22 +31,22 @@ export function SharedSummarySection({
   const [saveError, setSaveError] = useState<string | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
   const [publishOpen, setPublishOpen] = useState(false);
-  const summaryQuery = useCounselingGetAssignedSharedSummary(encounterId, {
+  const summaryQuery = useCounselingGetAssignedStudentSessionSummary(encounterId, {
     query: {
-      enabled: access.canViewAssignedSummaries,
+      enabled: access.canViewAssignedStudentSessionSummaries,
       retry: false,
     },
   });
-  const save = useCounselingPutAssignedSharedSummary({ mutation: { retry: false } });
-  const publish = useCounselingPublishAssignedSharedSummary({ mutation: { retry: false } });
+  const save = useCounselingPutAssignedStudentSessionSummary({ mutation: { retry: false } });
+  const publish = useCounselingPublishAssignedStudentSessionSummary({ mutation: { retry: false } });
   const summary = summaryQuery.data?.data;
   const absent = summaryQuery.isError &&
-    counselingErrorCode(summaryQuery.error) === "shared_summary_not_found";
-  const canManage = access.canManageAssignedSummaries;
+    counselingErrorCode(summaryQuery.error) === "student_session_summary_not_found";
+  const canManage = access.canManageAssignedStudentSessionSummaries;
   const value = draft ?? summary?.content ?? "";
   const dirty = value !== (summary?.content ?? "");
 
-  if (!access.canViewAssignedSummaries) return null;
+  if (!access.canViewAssignedStudentSessionSummaries) return null;
 
   async function saveDraft() {
     if (save.isPending || !canManage || !dirty) return;
@@ -54,10 +54,10 @@ export function SharedSummarySection({
     try {
       const response = await save.mutateAsync({ encounterId, data: { content: value } });
       setDraft(response.data.content);
-      queryClient.setQueryData(getCounselingGetAssignedSharedSummaryQueryKey(encounterId), response);
+      queryClient.setQueryData(getCounselingGetAssignedStudentSessionSummaryQueryKey(encounterId), response);
     } catch (caught) {
-      setSaveError(counselingErrorMessage(caught, "The Shared Summary draft could not be saved."));
-      if (counselingErrorCode(caught) === "shared_summary_already_published") {
+      setSaveError(counselingErrorMessage(caught, "The Student Session Summary draft could not be saved."));
+      if (counselingErrorCode(caught) === "student_session_summary_already_published") {
         void summaryQuery.refetch();
       }
     }
@@ -70,21 +70,21 @@ export function SharedSummarySection({
       const response = await publish.mutateAsync({ encounterId });
       setPublishOpen(false);
       setDraft(response.data.content);
-      queryClient.setQueryData(getCounselingGetAssignedSharedSummaryQueryKey(encounterId), response);
+      queryClient.setQueryData(getCounselingGetAssignedStudentSessionSummaryQueryKey(encounterId), response);
       onPublished?.();
     } catch (caught) {
-      setPublishError(counselingErrorMessage(caught, "The Shared Summary could not be published."));
-      if (counselingErrorCode(caught) === "shared_summary_already_published") {
+      setPublishError(counselingErrorMessage(caught, "The Student Session Summary could not be published."));
+      if (counselingErrorCode(caught) === "student_session_summary_already_published") {
         void summaryQuery.refetch();
       }
     }
   }
 
   return (
-    <Panel aria-labelledby="shared-summary-heading">
-      <PanelHeader title="Shared Summary" titleId="shared-summary-heading" />
+    <Panel aria-labelledby="student-session-summary-heading">
+      <PanelHeader title="Student Session Summary" titleId="student-session-summary-heading" />
       <div className="px-4 py-4 *:first:mt-0 sm:px-5">
-      {summaryQuery.isPending ? <p aria-busy="true" className="mt-3 text-sm text-muted">Loading shared summary…</p> : summaryQuery.isError && !absent ? <p role="alert" className="mt-3 text-sm text-danger">{counselingErrorMessage(summaryQuery.error, "Shared Summary could not be loaded.")}</p> : summary?.published_at ? (
+      {summaryQuery.isPending ? <p aria-busy="true" className="mt-3 text-sm text-muted">Loading student session summary…</p> : summaryQuery.isError && !absent ? <p role="alert" className="mt-3 text-sm text-danger">{counselingErrorMessage(summaryQuery.error, "Student Session Summary could not be loaded.")}</p> : summary?.published_at ? (
         <div className="mt-4">
           <p className="text-sm font-semibold text-success">Published to Student · {formatCounselingDateTime(summary.published_at)}</p>
           <div className="mt-4 whitespace-pre-wrap break-words text-sm leading-7 text-ink">{summary.content}</div>
@@ -93,8 +93,8 @@ export function SharedSummarySection({
         <div className="mt-4 max-w-4xl">
           <p className="text-sm text-muted">This draft is private to you until you publish it to the Student.</p>
           <div className="mt-4 grid gap-2">
-            <Label htmlFor={`shared-summary-${encounterId}`}>Shared Summary draft</Label>
-            <Textarea id={`shared-summary-${encounterId}`} value={value} disabled={save.isPending || publish.isPending} onChange={(event) => { setDraft(event.target.value); setSaveError(null); setPublishError(null); }} rows={9} />
+            <Label htmlFor={`student-session-summary-${encounterId}`}>Student Session Summary draft</Label>
+            <Textarea id={`student-session-summary-${encounterId}`} value={value} disabled={save.isPending || publish.isPending} onChange={(event) => { setDraft(event.target.value); setSaveError(null); setPublishError(null); }} rows={9} />
           </div>
           {saveError ? <p role="alert" className="mt-3 text-sm text-danger">{saveError}</p> : null}
           {publishError && !publishOpen ? <p role="alert" className="mt-3 text-sm text-danger">{publishError}</p> : null}
@@ -104,7 +104,7 @@ export function SharedSummarySection({
           </div>
           <ConsequentialActionDialog
             open={publishOpen}
-            title="Publish this Shared Summary to the Student?"
+            title="Publish this Student Session Summary to the Student?"
             confirmLabel="Publish summary"
             cancelLabel="Keep draft"
             pendingLabel="Publishing…"
@@ -121,7 +121,7 @@ export function SharedSummarySection({
           </ConsequentialActionDialog>
         </div>
       ) : absent ? (
-        <p className="mt-3 text-sm text-muted">No Shared Summary has been drafted yet.</p>
+        <p className="mt-3 text-sm text-muted">No Student Session Summary has been drafted yet.</p>
       ) : (
         <div className="mt-3">
           <p className="text-sm text-muted">Shared with the student.</p>

@@ -30,12 +30,12 @@
     "route": null
   },
   {
-    "target_type": "COUNSELING_SHARED_SUMMARY",
+    "target_type": "STUDENT_SESSION_SUMMARY",
     "target_id": "12345678-1234-4234-8234-123456789abc",
-    "route": "/portal/counseling/summaries/12345678-1234-4234-8234-123456789abc"
+    "route": "/portal/counseling/student-session-summaries/12345678-1234-4234-8234-123456789abc"
   },
   {
-    "target_type": "COUNSELING_SHARED_SUMMARY",
+    "target_type": "STUDENT_SESSION_SUMMARY",
     "target_id": null,
     "route": null
   },

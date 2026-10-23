@@ -95,7 +95,7 @@ GSS_A = AccountSpec(
     last_name="Ocampo",
     role="GUIDANCE_SERVICES_STAFF",
     summary="Operational assistance within counselor_a's caseload: referrals, Call Slips, queue.",
-    limitations="No counseling, Routine Interview or Shared Summary content.",
+    limitations="No counseling, Routine Interview or Student Session Summary content.",
 )
 GSS_B = AccountSpec(
     key="gss_b",
@@ -107,7 +107,7 @@ GSS_B = AccountSpec(
     last_name="Galvez",
     role="GUIDANCE_SERVICES_STAFF",
     summary="Operational assistance within counselor_b's caseload: referrals, Call Slips, queue.",
-    limitations="No counseling, Routine Interview or Shared Summary content.",
+    limitations="No counseling, Routine Interview or Student Session Summary content.",
 )
 DPO = AccountSpec(
     key="dpo",

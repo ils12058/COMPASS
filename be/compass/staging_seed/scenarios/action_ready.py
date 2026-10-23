@@ -162,11 +162,11 @@ def _published_summary(session: SeedSession) -> None:
         recorded=t.past(6, 11, 15),
         appointment=appointment,
     )
-    wf.shared_summary(
+    wf.student_session_summary(
         session,
         COUNSELOR_B.key,
         encounter,
-        narratives.ADJUSTMENT_SHARED_SUMMARY,
+        narratives.ADJUSTMENT_STUDENT_SESSION_SUMMARY,
         drafted=t.past(5, 9, 10),
         published=t.past(5, 9, 30),
     )

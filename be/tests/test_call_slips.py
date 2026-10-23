@@ -37,7 +37,7 @@ from compass.call_slips.services import (
     render_call_slip_pdf,
     void_call_slip,
 )
-from compass.counseling.models import CounselingEncounter, CounselingSharedSummary
+from compass.counseling.models import CounselingEncounter, StudentSessionSummary
 from compass.documents.rendering import render_document_html
 from compass.ecounseling.models import ECounselingRoom
 from compass.institutional_forms.canonical import supported_schema_versions
@@ -628,7 +628,7 @@ def test_call_slip_creation_never_creates_downstream_clinical_or_scheduling_reco
 
     assert Appointment.objects.count() == 0
     assert CounselingEncounter.objects.count() == 0
-    assert CounselingSharedSummary.objects.count() == 0
+    assert StudentSessionSummary.objects.count() == 0
     assert RoutineInterview.objects.count() == 0
     assert ECounselingRoom.objects.count() == 0
 
@@ -1482,7 +1482,7 @@ def test_atomic_referral_call_slip_live_issue_exact_retry_is_single_transactiona
 
     assert Appointment.objects.count() == 0
     assert CounselingEncounter.objects.count() == 0
-    assert CounselingSharedSummary.objects.count() == 0
+    assert StudentSessionSummary.objects.count() == 0
     assert RoutineInterview.objects.count() == 0
     assert ECounselingRoom.objects.count() == 0
 
