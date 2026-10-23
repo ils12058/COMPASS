@@ -4585,9 +4585,9 @@
           "routine_interviews.view_self",
           "services.catalog.view",
           "services.manage",
-          "shared_summaries.manage_assigned",
-          "shared_summaries.view_assigned",
-          "shared_summaries.view_self",
+          "student_session_summaries.manage_assigned",
+          "student_session_summaries.view_assigned",
+          "student_session_summaries.view_self",
           "student_support.view"
         ],
         "title": "CapabilityCode",
@@ -5525,7 +5525,7 @@
         "title": "CounselingAppointmentCandidateStudent",
         "type": "object"
       },
-      "CounselingAssignedSharedSummaryResponse": {
+      "CounselingAssignedStudentSessionSummaryResponse": {
         "additionalProperties": false,
         "properties": {
           "content": {
@@ -5573,7 +5573,7 @@
           "created_at",
           "updated_at"
         ],
-        "title": "CounselingAssignedSharedSummaryResponse",
+        "title": "CounselingAssignedStudentSessionSummaryResponse",
         "type": "object"
       },
       "CounselingContextAnchorType": {
@@ -6137,20 +6137,6 @@
         "title": "CounselingEntryMode",
         "type": "string"
       },
-      "CounselingSharedSummaryPutRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "content": {
-            "title": "Content",
-            "type": "string"
-          }
-        },
-        "required": [
-          "content"
-        ],
-        "title": "CounselingSharedSummaryPutRequest",
-        "type": "object"
-      },
       "CounselingStudentPageResponse": {
         "additionalProperties": false,
         "properties": {
@@ -6240,7 +6226,7 @@
         "title": "CounselingStudentResponse",
         "type": "object"
       },
-      "CounselingStudentSharedSummaryPageResponse": {
+      "CounselingStudentSessionSummaryPageResponse": {
         "additionalProperties": false,
         "properties": {
           "has_next": {
@@ -6249,7 +6235,7 @@
           },
           "items": {
             "items": {
-              "$ref": "#/components/schemas/CounselingStudentSharedSummaryResponse"
+              "$ref": "#/components/schemas/CounselingStudentSessionSummaryResponse"
             },
             "title": "Items",
             "type": "array"
@@ -6269,10 +6255,10 @@
           "page_size",
           "has_next"
         ],
-        "title": "CounselingStudentSharedSummaryPageResponse",
+        "title": "CounselingStudentSessionSummaryPageResponse",
         "type": "object"
       },
-      "CounselingStudentSharedSummaryResponse": {
+      "CounselingStudentSessionSummaryResponse": {
         "additionalProperties": false,
         "properties": {
           "content": {
@@ -6305,7 +6291,7 @@
           "counseling_ended_at",
           "delivery_mode"
         ],
-        "title": "CounselingStudentSharedSummaryResponse",
+        "title": "CounselingStudentSessionSummaryResponse",
         "type": "object"
       },
       "CounselingUpdateRequest": {
@@ -20692,7 +20678,7 @@
           "ACCOUNT_SECURITY",
           "APPOINTMENT",
           "CALL_SLIP",
-          "COUNSELING_SHARED_SUMMARY",
+          "STUDENT_SESSION_SUMMARY",
           "E_COUNSELING",
           "EXIT_INTERVIEW",
           "FEEDBACK",
@@ -27081,6 +27067,20 @@
         "title": "StudentRoutineWorkspaceSummary",
         "type": "object"
       },
+      "StudentSessionSummaryPutRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "StudentSessionSummaryPutRequest",
+        "type": "object"
+      },
       "StudentSummary": {
         "additionalProperties": false,
         "properties": {
@@ -29245,9 +29245,9 @@
                 "routine_interviews.view_self",
                 "services.catalog.view",
                 "services.manage",
-                "shared_summaries.manage_assigned",
-                "shared_summaries.view_assigned",
-                "shared_summaries.view_self",
+                "student_session_summaries.manage_assigned",
+                "student_session_summaries.view_assigned",
+                "student_session_summaries.view_self",
                 "student_support.view"
               ],
               "title": "CapabilityCode",
@@ -29422,9 +29422,9 @@
                 "routine_interviews.view_self",
                 "services.catalog.view",
                 "services.manage",
-                "shared_summaries.manage_assigned",
-                "shared_summaries.view_assigned",
-                "shared_summaries.view_self",
+                "student_session_summaries.manage_assigned",
+                "student_session_summaries.view_assigned",
+                "student_session_summaries.view_self",
                 "student_support.view"
               ],
               "title": "CapabilityCode",
@@ -39346,9 +39346,9 @@
         ]
       }
     },
-    "/api/v1/counseling/encounters/{encounter_id}/shared-summary": {
+    "/api/v1/counseling/encounters/{encounter_id}/student-session-summary": {
       "get": {
-        "operationId": "counselingGetAssignedSharedSummary",
+        "operationId": "counselingGetAssignedStudentSessionSummary",
         "parameters": [
           {
             "in": "path",
@@ -39366,7 +39366,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CounselingAssignedSharedSummaryResponse"
+                  "$ref": "#/components/schemas/CounselingAssignedStudentSessionSummaryResponse"
                 }
               }
             },
@@ -39418,13 +39418,13 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "Counseling Get Assigned Shared Summary",
+        "summary": "Counseling Get Assigned Student Session Summary",
         "tags": [
           "counseling"
         ]
       },
       "put": {
-        "operationId": "counselingPutAssignedSharedSummary",
+        "operationId": "counselingPutAssignedStudentSessionSummary",
         "parameters": [
           {
             "in": "path",
@@ -39441,7 +39441,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CounselingSharedSummaryPutRequest"
+                "$ref": "#/components/schemas/StudentSessionSummaryPutRequest"
               }
             }
           },
@@ -39452,7 +39452,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CounselingAssignedSharedSummaryResponse"
+                  "$ref": "#/components/schemas/CounselingAssignedStudentSessionSummaryResponse"
                 }
               }
             },
@@ -39514,15 +39514,15 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "Counseling Put Assigned Shared Summary",
+        "summary": "Counseling Put Assigned Student Session Summary",
         "tags": [
           "counseling"
         ]
       }
     },
-    "/api/v1/counseling/encounters/{encounter_id}/shared-summary/publish": {
+    "/api/v1/counseling/encounters/{encounter_id}/student-session-summary/publish": {
       "post": {
-        "operationId": "counselingPublishAssignedSharedSummary",
+        "operationId": "counselingPublishAssignedStudentSessionSummary",
         "parameters": [
           {
             "in": "path",
@@ -39540,7 +39540,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CounselingAssignedSharedSummaryResponse"
+                  "$ref": "#/components/schemas/CounselingAssignedStudentSessionSummaryResponse"
                 }
               }
             },
@@ -39602,7 +39602,7 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "Counseling Publish Assigned Shared Summary",
+        "summary": "Counseling Publish Assigned Student Session Summary",
         "tags": [
           "counseling"
         ]
@@ -39798,9 +39798,9 @@
         ]
       }
     },
-    "/api/v1/counseling/me/shared-summaries": {
+    "/api/v1/counseling/me/student-session-summaries": {
       "get": {
-        "operationId": "counselingListMySharedSummaries",
+        "operationId": "counselingListMyStudentSessionSummaries",
         "parameters": [
           {
             "in": "query",
@@ -39828,7 +39828,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CounselingStudentSharedSummaryPageResponse"
+                  "$ref": "#/components/schemas/CounselingStudentSessionSummaryPageResponse"
                 }
               }
             },
@@ -39870,15 +39870,15 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "Counseling List My Shared Summaries",
+        "summary": "Counseling List My Student Session Summaries",
         "tags": [
           "counseling"
         ]
       }
     },
-    "/api/v1/counseling/me/shared-summaries/{summary_id}": {
+    "/api/v1/counseling/me/student-session-summaries/{summary_id}": {
       "get": {
-        "operationId": "counselingGetMySharedSummary",
+        "operationId": "counselingGetMyStudentSessionSummary",
         "parameters": [
           {
             "in": "path",
@@ -39896,7 +39896,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CounselingStudentSharedSummaryResponse"
+                  "$ref": "#/components/schemas/CounselingStudentSessionSummaryResponse"
                 }
               }
             },
@@ -39948,7 +39948,7 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "Counseling Get My Shared Summary",
+        "summary": "Counseling Get My Student Session Summary",
         "tags": [
           "counseling"
         ]

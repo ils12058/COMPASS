@@ -1,5 +1,7 @@
 # ADR-024: Appointment-backed E-Counseling with Daily.co
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 ## Status
 
 Accepted. [ADR-089](ADR-089-service-catalog-consolidation-and-counselor-qualification.md): an existing ONLINE Counseling Appointment stays eligible even if ONLINE, the Counselor's coverage, or booking is later removed from the Service; current account, relationship, lifecycle, and Daily readiness rules still apply.

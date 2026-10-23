@@ -307,7 +307,7 @@ def test_notification_templates_receive_no_record_or_domain_context():
         (NotificationEvent.APPOINTMENT_SCHEDULED, ("purpose", "concern", "counselor", "online")),
         (NotificationEvent.APPOINTMENT_REASSIGNED, ("purpose", "concern", "counselor")),
         (
-            NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED,
+            NotificationEvent.STUDENT_SESSION_SUMMARY_PUBLISHED,
             ("concern", "notes", "session", "diagnos", "summary:"),
         ),
         (
@@ -325,6 +325,10 @@ def test_sensitive_domain_email_keeps_protected_detail_inside_compass(event, pro
         (rendered.subject, rendered.text_body, visible_text(rendered.html_body))
     ).lower()
     assert "sign in" in combined or "in compass" in combined
+    if event == NotificationEvent.STUDENT_SESSION_SUMMARY_PUBLISHED:
+        # The approved resource name includes "session"; session details remain forbidden.
+        assert "student session summary" in combined
+        combined = combined.replace("student session summary", "student-facing resource")
     for term in protected_terms:
         assert term not in combined
 

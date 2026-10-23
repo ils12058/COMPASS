@@ -1,5 +1,7 @@
 # ADR-083: Individual Inventory confidential-content encryption
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 - Status: Accepted
 - Date: 2026-10-06
 - Scope: selected Inventory source-form private content; repository implementation, live cutover deferred

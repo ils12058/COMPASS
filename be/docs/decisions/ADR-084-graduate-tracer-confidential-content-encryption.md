@@ -1,5 +1,7 @@
 # ADR-084 — Selective Graduate Tracer identifiable confidential content encryption
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 Status: Accepted for repository implementation; live cutover deferred.
 
 ## Decision and threat boundary

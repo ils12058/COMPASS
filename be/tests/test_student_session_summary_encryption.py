@@ -1,4 +1,4 @@
-"""Synthetic storage, authorization, rotation and migration evidence for ADR-080."""
+"""Synthetic CONT-1B storage, authorization, rotation and frozen ADR-080 rejection evidence."""
 
 from __future__ import annotations
 
@@ -20,24 +20,24 @@ from django.utils import timezone
 
 from compass.accounts.models import Capability, Designation, UserCapabilityOverride, UserDesignation
 from compass.audit.models import AuditEvent
-from compass.counseling import shared_summary_content as content
+from compass.counseling import student_session_summary_content as content
 from compass.counseling.context_access import resolve_counseling_context
 from compass.counseling.context_services import list_context_history
 from compass.counseling.management.commands import (
-    rotate_counseling_shared_summary_encryption as rotation,
+    rotate_student_session_summary_encryption as rotation,
 )
-from compass.counseling.models import CounselingSharedSummary
-from compass.counseling.shared_summaries import (
-    CounselingSharedSummaryEmpty,
-    get_assigned_shared_summary,
-    publish_assigned_shared_summary,
-    put_assigned_shared_summary,
+from compass.counseling.models import StudentSessionSummary
+from compass.counseling.student_session_summaries import (
+    StudentSessionSummaryEmpty,
+    get_assigned_student_session_summary,
+    publish_assigned_student_session_summary,
+    put_assigned_student_session_summary,
 )
 from compass.notifications.delivery import render_notification_email
 from compass.notifications.models import EmailDelivery, Notification
 from tests.encryption_oracles import shared_summary_content_v1 as frozen
 from tests.test_counseling import make_appointment
-from tests.test_shared_summaries import (
+from tests.test_student_session_summaries import (
     auth_client,
     context,
     create_counseling_service,
@@ -52,13 +52,13 @@ K1, K2, K3, K4, K5 = [
     base64.urlsafe_b64encode(c * 32).decode() for c in (b"s", b"t", b"u", b"v", b"w")
 ]
 SETTING = content.KEYRING_SETTING
-TABLE = CounselingSharedSummary._meta.db_table
+TABLE = StudentSessionSummary._meta.db_table
 SENTINEL = 'ULTRA-PRIVATE-SHARED-SUMMARY-SENTINEL\n  café 🌱 雪 "quoted" \\  '
 
 
 @pytest.fixture(autouse=True)
 def synthetic_ring(settings):
-    settings.COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS = (K1,)
+    settings.STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS = (K1,)
 
 
 @pytest.fixture
@@ -73,11 +73,13 @@ def world(db):
 
 
 def draft(world, body=SENTINEL):
-    return put_assigned_shared_summary(encounter_id=world[4].pk, counselor=world[1], content=body)
+    return put_assigned_student_session_summary(
+        encounter_id=world[4].pk, counselor=world[1], content=body
+    )
 
 
 def publish(world):
-    return publish_assigned_shared_summary(
+    return publish_assigned_student_session_summary(
         encounter_id=world[4].pk, counselor=world[1], context=context(world[1])
     )
 
@@ -91,7 +93,7 @@ def raw_row(pk):
 def envelope(summary_id, encounter_id, body=SENTINEL):
     return dict(
         schema_version=1,
-        counseling_shared_summary_id=str(summary_id),
+        student_session_summary_id=str(summary_id),
         encounter_id=str(encounter_id),
         payload={"content": body},
     )
@@ -110,23 +112,37 @@ def assert_safe(error, *private):
 
 
 @pytest.mark.parametrize("body", ["", " \n\t ", "normal", SENTINEL])
-def test_exact_text_round_trip_and_frozen_compatibility(body):
+def test_exact_text_round_trip_and_legacy_binding_rejected(body):
     sid, eid = uuid4(), uuid4()
-    token = content.encrypt_shared_summary_content(summary_id=sid, encounter_id=eid, content=body)
-    assert content.decrypt_shared_summary_content(token, summary_id=sid, encounter_id=eid) == body
-    ring = frozen.keyring()
-    assert frozen.decrypt(ring, token, sid, eid) == body
-    migrated = frozen.encrypt(ring, sid, eid, body)
-    assert (
-        content.decrypt_shared_summary_content(migrated, summary_id=sid, encounter_id=eid) == body
+    token = content.encrypt_student_session_summary_content(
+        summary_id=sid, encounter_id=eid, content=body
     )
-    assert Fernet(K1).decrypt(token.encode()) == Fernet(K1).decrypt(migrated.encode())
+    assert (
+        content.decrypt_student_session_summary_content(token, summary_id=sid, encounter_id=eid)
+        == body
+    )
+    # The frozen ADR-080 oracle remains unchanged and is deliberately incompatible.
+    from cryptography.fernet import MultiFernet
+
+    ring = MultiFernet([Fernet(K1)])
+    old_token = frozen.encrypt(ring, sid, eid, body)
+    with pytest.raises(content.StudentSessionSummaryContentUnavailable):
+        content.decrypt_student_session_summary_content(old_token, summary_id=sid, encounter_id=eid)
+    with pytest.raises(RuntimeError):
+        frozen.decrypt(ring, token, sid, eid)
+    # Key rotation cannot convert an authenticated binding.
+    rotated = MultiFernet([Fernet(K2), Fernet(K1)]).rotate(old_token.encode()).decode()
+    with override_settings(STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS=(K2, K1)):
+        with pytest.raises(content.StudentSessionSummaryContentUnavailable):
+            content.decrypt_student_session_summary_content(
+                rotated, summary_id=sid, encounter_id=eid
+            )
 
 
 @pytest.mark.parametrize("body", [None, 42, [], "private-NUL\x00", "private-surrogate\ud800"])
 def test_invalid_text_rejected_without_exposing_input(body):
-    with pytest.raises(content.InvalidSharedSummaryContent) as caught:
-        content.encrypt_shared_summary_content(
+    with pytest.raises(content.InvalidStudentSessionSummaryContent) as caught:
+        content.encrypt_student_session_summary_content(
             summary_id=uuid4(), encounter_id=uuid4(), content=body
         )
     assert_safe(caught.value, "private-NUL", "private-surrogate")
@@ -138,8 +154,8 @@ def test_invalid_text_rejected_without_exposing_input(body):
 def test_token_cannot_be_transplanted(binding):
     sid, eid = uuid4(), uuid4()
     token = authentic(envelope(sid, eid))
-    with pytest.raises(content.CounselingSharedSummaryContentUnavailable) as caught:
-        content.decrypt_shared_summary_content(
+    with pytest.raises(content.StudentSessionSummaryContentUnavailable) as caught:
+        content.decrypt_student_session_summary_content(
             token,
             summary_id=uuid4() if binding == "summary" else sid,
             encounter_id=uuid4() if binding == "encounter" else eid,
@@ -160,8 +176,8 @@ def test_damaged_tokens_fail_closed(damage, caplog):
         "non-ascii": "untrusted-🔒",
         "missing": None,
     }[damage]
-    with pytest.raises(content.CounselingSharedSummaryContentUnavailable) as caught:
-        content.decrypt_shared_summary_content(token, summary_id=sid, encounter_id=eid)
+    with pytest.raises(content.StudentSessionSummaryContentUnavailable) as caught:
+        content.decrypt_student_session_summary_content(token, summary_id=sid, encounter_id=eid)
     assert caught.value.reason == ("missing" if damage == "missing" else "undecryptable")
     assert_safe(caught.value, "untrusted-private", valid)
     assert not caplog.records
@@ -194,17 +210,15 @@ def test_exact_envelope_and_payload_schema(change, reason):
         values.pop(removed)
     values.update(changed)
     token = authentic(values)
-    with pytest.raises(content.CounselingSharedSummaryContentUnavailable) as caught:
-        content.decrypt_shared_summary_content(token, summary_id=sid, encounter_id=eid)
+    with pytest.raises(content.StudentSessionSummaryContentUnavailable) as caught:
+        content.decrypt_student_session_summary_content(token, summary_id=sid, encounter_id=eid)
     assert caught.value.reason == reason
     assert_safe(caught.value, token, "private-extra")
-    with pytest.raises(RuntimeError, match=reason):
-        frozen.decrypt(frozen.keyring(), token, sid, eid)
 
 
 def test_unbounded_failure_reason_rejected():
     with pytest.raises(ValueError) as caught:
-        content.CounselingSharedSummaryContentUnavailable(
+        content.StudentSessionSummaryContentUnavailable(
             summary_id=uuid4(), encounter_id=uuid4(), reason="private-reason"
         )
     assert_safe(caught.value, "private-reason")
@@ -219,24 +233,28 @@ def test_raw_storage_edit_publication_and_generic_side_effects(world):
     assert "content" not in stored and stored["content_ciphertext"]
     assert "ULTRA-PRIVATE-SHARED-SUMMARY-SENTINEL" not in json.dumps(stored, default=str)
     assert "old-private-body" not in json.dumps(stored, default=str)
-    assert content.read_shared_summary_content(item) == SENTINEL
+    assert content.read_student_session_summary_content(item) == SENTINEL
     published = publish(world)
     assert published.content_ciphertext == item.content_ciphertext
     assert publish(world).published_at == published.published_at
     assert (
-        content.read_shared_summary_content(
-            get_assigned_shared_summary(encounter_id=world[4].pk, counselor=world[1])
+        content.read_student_session_summary_content(
+            get_assigned_student_session_summary(encounter_id=world[4].pk, counselor=world[1])
         )
         == SENTINEL
     )
     counselor = auth_client(world[1]).get(
-        f"/api/v1/counseling/encounters/{world[4].pk}/shared-summary"
+        f"/api/v1/counseling/encounters/{world[4].pk}/student-session-summary"
     )
-    student = auth_client(world[2]).get(f"/api/v1/counseling/me/shared-summaries/{item.pk}")
+    student = auth_client(world[2]).get(
+        f"/api/v1/counseling/me/student-session-summaries/{item.pk}"
+    )
     assert counselor.json()["content"] == student.json()["content"] == SENTINEL
     assert "content_ciphertext" not in student.json()
-    event = AuditEvent.objects.get(action="counseling.shared_summary.published")
-    notification = Notification.objects.get(event_code="counseling.shared_summary.published")
+    event = AuditEvent.objects.get(action="counseling.student_session_summary.published")
+    notification = Notification.objects.get(
+        event_code="counseling.student_session_summary.published"
+    )
     rendered = render_notification_email(notification.event_code)
     exposed = json.dumps(event.metadata) + notification.title + notification.message
     exposed += rendered.text_body + rendered.html_body
@@ -250,47 +268,54 @@ def test_raw_storage_edit_publication_and_generic_side_effects(world):
 @pytest.mark.parametrize("body", ["", " \n\t "])
 def test_empty_drafts_encrypted_and_cannot_publish(world, body):
     item = draft(world, body)
-    assert item.content_ciphertext and content.read_shared_summary_content(item) == body
-    with pytest.raises(CounselingSharedSummaryEmpty):
+    assert item.content_ciphertext and content.read_student_session_summary_content(item) == body
+    with pytest.raises(StudentSessionSummaryEmpty):
         publish(world)
     for value in ("", None):
         with pytest.raises(IntegrityError), transaction.atomic():
-            CounselingSharedSummary.objects.filter(pk=item.pk).update(content_ciphertext=value)
+            StudentSessionSummary.objects.filter(pk=item.pk).update(content_ciphertext=value)
 
 
 @pytest.mark.parametrize("body", ["PRIVATE-INPUT-SENTINEL\x00", "PRIVATE-INPUT-SENTINEL\ud800"])
 def test_api_rejects_unrepresentable_text_safely(world, body):
     client = auth_client(world[1])
     response = client.put(
-        f"/api/v1/counseling/encounters/{world[4].pk}/shared-summary",
+        f"/api/v1/counseling/encounters/{world[4].pk}/student-session-summary",
         data=json.dumps({"content": body}),
         content_type="application/json",
         **csrf(client),
     )
     assert response.status_code == 422
     assert "PRIVATE-INPUT-SENTINEL" not in response.content.decode()
-    assert not CounselingSharedSummary.objects.exists()
+    assert not StudentSessionSummary.objects.exists()
 
 
 def forbid_decrypt(*args, **kwargs):
-    pytest.fail("Unauthorized or metadata-only path decrypted a Shared Summary")
+    pytest.fail("Unauthorized or metadata-only path decrypted a Student Session Summary")
 
 
 def test_student_drafts_and_other_students_filtered_before_decryption(world, monkeypatch):
     item = draft(world)
-    monkeypatch.setattr(content, "decrypt_shared_summary_content", forbid_decrypt)
+    monkeypatch.setattr(content, "decrypt_student_session_summary_content", forbid_decrypt)
     owner = auth_client(world[2])
-    assert owner.get("/api/v1/counseling/me/shared-summaries").json()["items"] == []
-    assert owner.get(f"/api/v1/counseling/me/shared-summaries/{item.pk}").status_code == 404
-    CounselingSharedSummary.objects.filter(pk=item.pk).update(published_at=timezone.now())
+    assert owner.get("/api/v1/counseling/me/student-session-summaries").json()["items"] == []
+    assert (
+        owner.get(f"/api/v1/counseling/me/student-session-summaries/{item.pk}").status_code == 404
+    )
+    StudentSessionSummary.objects.filter(pk=item.pk).update(published_at=timezone.now())
     other = make_user("other-summary-student@example.edu", "STUDENT")
     assert (
-        auth_client(other).get(f"/api/v1/counseling/me/shared-summaries/{item.pk}").status_code
+        auth_client(other)
+        .get(f"/api/v1/counseling/me/student-session-summaries/{item.pk}")
+        .status_code
         == 404
     )
     world[2].is_active = False
     world[2].save(update_fields=["is_active"])
-    assert owner.get(f"/api/v1/counseling/me/shared-summaries/{item.pk}").status_code in {401, 403}
+    assert owner.get(f"/api/v1/counseling/me/student-session-summaries/{item.pk}").status_code in {
+        401,
+        403,
+    }
 
 
 @pytest.mark.parametrize(
@@ -323,9 +348,9 @@ def test_denied_actors_never_decrypt(world, monkeypatch, kind):
             ),
         )
     capability = (
-        "shared_summaries.view_self"
+        "student_session_summaries.view_self"
         if kind == "student-revoked"
-        else "shared_summaries.view_assigned"
+        else "student_session_summaries.view_assigned"
     )
     if kind in {"revoked", "student-revoked"}:
         UserCapabilityOverride.objects.create(
@@ -338,11 +363,11 @@ def test_denied_actors_never_decrypt(world, monkeypatch, kind):
     if kind == "inactive":
         actor.is_active = False
         actor.save(update_fields=["is_active"])
-    monkeypatch.setattr(content, "decrypt_shared_summary_content", forbid_decrypt)
+    monkeypatch.setattr(content, "decrypt_student_session_summary_content", forbid_decrypt)
     path = (
-        f"/api/v1/counseling/me/shared-summaries/{item.pk}"
+        f"/api/v1/counseling/me/student-session-summaries/{item.pk}"
         if role == "STUDENT"
-        else f"/api/v1/counseling/encounters/{world[4].pk}/shared-summary"
+        else f"/api/v1/counseling/encounters/{world[4].pk}/student-session-summary"
     )
     assert client.get(path).status_code in {401, 403, 404}
 
@@ -351,15 +376,15 @@ def test_authorized_corruption_stable_error_without_partial_content(world, caplo
     item = draft(world)
     publish(world)
     damaged = "untrusted-private-ciphertext"
-    CounselingSharedSummary.objects.filter(pk=item.pk).update(content_ciphertext=damaged)
+    StudentSessionSummary.objects.filter(pk=item.pk).update(content_ciphertext=damaged)
     for actor, path in (
-        (world[1], f"/api/v1/counseling/encounters/{world[4].pk}/shared-summary"),
-        (world[2], f"/api/v1/counseling/me/shared-summaries/{item.pk}"),
-        (world[2], "/api/v1/counseling/me/shared-summaries"),
+        (world[1], f"/api/v1/counseling/encounters/{world[4].pk}/student-session-summary"),
+        (world[2], f"/api/v1/counseling/me/student-session-summaries/{item.pk}"),
+        (world[2], "/api/v1/counseling/me/student-session-summaries"),
     ):
         response = auth_client(actor).get(path)
         assert response.status_code == 500
-        assert response.json()["error"]["code"] == "counseling_shared_summary_content_unavailable"
+        assert response.json()["error"]["code"] == "student_session_summary_content_unavailable"
         assert (
             SENTINEL not in response.content.decode() and damaged not in response.content.decode()
         )
@@ -370,14 +395,16 @@ def test_authorized_corruption_stable_error_without_partial_content(world, caplo
 
 def test_corrupt_draft_cannot_publish_or_emit_side_effects(world):
     item = draft(world)
-    CounselingSharedSummary.objects.filter(pk=item.pk).update(content_ciphertext="broken")
-    with pytest.raises(content.CounselingSharedSummaryContentUnavailable):
+    StudentSessionSummary.objects.filter(pk=item.pk).update(content_ciphertext="broken")
+    with pytest.raises(content.StudentSessionSummaryContentUnavailable):
         publish(world)
     item.refresh_from_db()
     assert item.published_at is None
-    assert not AuditEvent.objects.filter(action="counseling.shared_summary.published").exists()
+    assert not AuditEvent.objects.filter(
+        action="counseling.student_session_summary.published"
+    ).exists()
     assert not Notification.objects.filter(
-        event_code="counseling.shared_summary.published"
+        event_code="counseling.student_session_summary.published"
     ).exists()
 
 
@@ -385,26 +412,30 @@ def test_removed_context_endpoint_never_decrypts_even_corrupt_summaries(world, m
     item = draft(world)
     publish(world)
     hidden_encounter = make_encounter(counselor=world[1], student=world[2])
-    hidden = put_assigned_shared_summary(
+    hidden = put_assigned_student_session_summary(
         encounter_id=hidden_encounter.pk, counselor=world[1], content="draft-only"
     )
     other_student = make_user("context-other-summary@example.edu", "STUDENT")
     other_encounter = make_encounter(counselor=world[1], student=other_student)
-    other = put_assigned_shared_summary(
+    other = put_assigned_student_session_summary(
         encounter_id=other_encounter.pk, counselor=world[1], content="other-only"
     )
-    CounselingSharedSummary.objects.filter(pk__in=[item.pk, hidden.pk, other.pk]).update(
+    StudentSessionSummary.objects.filter(pk__in=[item.pk, hidden.pk, other.pk]).update(
         content_ciphertext="broken"
     )
-    CounselingSharedSummary.objects.filter(pk=other.pk).update(published_at=timezone.now())
-    original_rows = list(CounselingSharedSummary.objects.order_by("pk").values())
+    StudentSessionSummary.objects.filter(pk=other.pk).update(published_at=timezone.now())
+    original_rows = list(StudentSessionSummary.objects.order_by("pk").values())
     appointment = make_appointment(student=world[2], provider=world[1], service=world[3])
     root = f"/api/v1/counseling/context/APPOINTMENT/{appointment.pk}"
-    monkeypatch.setattr(content, "decrypt_shared_summary_content", forbid_decrypt)
+    monkeypatch.setattr(content, "decrypt_student_session_summary_content", forbid_decrypt)
 
     for actor in (world[1], world[2], make_user("context-denied@example.edu", "COUNSELOR")):
         client = auth_client(actor)
-        for suffix in ("/shared-summaries", "/shared-summaries?limit=50", "/shared-summary"):
+        for suffix in (
+            "/student-session-summaries",
+            "/student-session-summaries?limit=50",
+            "/student-session-summary",
+        ):
             response = client.get(root + suffix)
             assert response.status_code == 404
             for secret in (SENTINEL, str(item.pk), str(hidden.pk), str(other.pk), "published_at"):
@@ -418,8 +449,8 @@ def test_removed_context_endpoint_never_decrypts_even_corrupt_summaries(world, m
         starts_at=timezone.now() - timedelta(days=10), ends_at=timezone.now() - timedelta(days=9)
     )
     assert client.get(root).status_code == 404
-    assert client.get(root + "/shared-summaries").status_code == 404
-    assert list(CounselingSharedSummary.objects.order_by("pk").values()) == original_rows
+    assert client.get(root + "/student-session-summaries").status_code == 404
+    assert list(StudentSessionSummary.objects.order_by("pk").values()) == original_rows
 
 
 def test_metadata_queries_encounter_search_and_context_history_do_not_decrypt(world, monkeypatch):
@@ -429,8 +460,8 @@ def test_metadata_queries_encounter_search_and_context_history_do_not_decrypt(wo
     access = resolve_counseling_context(
         actor=world[1], anchor_type="APPOINTMENT", anchor_id=appointment.pk
     )
-    monkeypatch.setattr(content, "decrypt_shared_summary_content", forbid_decrypt)
-    assert list(CounselingSharedSummary.objects.filter(published_at__isnull=False))[0].pk == item.pk
+    monkeypatch.setattr(content, "decrypt_student_session_summary_content", forbid_decrypt)
+    assert list(StudentSessionSummary.objects.filter(published_at__isnull=False))[0].pk == item.pk
     client = auth_client(world[1])
     assert client.get("/api/v1/counseling/me/encounters?search=summary").status_code == 200
     assert client.get(f"/api/v1/counseling/encounters/{world[4].pk}").status_code == 200
@@ -445,12 +476,12 @@ def test_routine_and_feedback_lifecycle_do_not_decrypt_summaries(db, monkeypatch
     from compass.counseling.services import update_encounter
     from tests.test_counseling_downstream_lifecycle import finalize_direct
 
-    monkeypatch.setattr(content, "decrypt_shared_summary_content", forbid_decrypt)
+    monkeypatch.setattr(content, "decrypt_student_session_summary_content", forbid_decrypt)
     _, counselor, _, encounter, opportunity = finalize_direct("summary-no-implicit")
-    summary = put_assigned_shared_summary(
+    summary = put_assigned_student_session_summary(
         encounter_id=encounter.pk, counselor=counselor, content=SENTINEL
     )
-    CounselingSharedSummary.objects.filter(pk=summary.pk).update(content_ciphertext="broken")
+    StudentSessionSummary.objects.filter(pk=summary.pk).update(content_ciphertext="broken")
     update_encounter(
         encounter_id=encounter.pk,
         counselor=counselor,
@@ -527,7 +558,7 @@ def test_settings_preserve_order_and_file_keyring(settings_env, monkeypatch, tmp
 
 def rotate(*args):
     out, err = StringIO(), StringIO()
-    call_command("rotate_counseling_shared_summary_encryption", *args, stdout=out, stderr=err)
+    call_command("rotate_student_session_summary_encryption", *args, stdout=out, stderr=err)
     return out.getvalue(), err.getvalue()
 
 
@@ -543,13 +574,13 @@ def test_rotation_dry_run_rewrap_timestamp_and_idempotence(world):
         Notification.objects.count(),
         EmailDelivery.objects.count(),
     )
-    with override_settings(COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS=(K2, K1)):
+    with override_settings(STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS=(K2, K1)):
         output, _ = rotate("--dry-run", "--batch-size", "1")
         assert "payloads verified: 1" in output and "to re-encrypt: 1" in output
         assert raw_row(item.pk) == before
         assert "re-encrypted: 1" in rotate("--batch-size", "1")[0]
         item.refresh_from_db()
-        assert content.read_shared_summary_content(item) == SENTINEL
+        assert content.read_student_session_summary_content(item) == SENTINEL
         assert content.encrypted_with_primary_key(item.content_ciphertext)
         assert Fernet(K2).extract_timestamp(item.content_ciphertext.encode()) == timestamp
         assert Fernet(K2).decrypt(item.content_ciphertext.encode()) == Fernet(K1).decrypt(
@@ -575,12 +606,12 @@ def test_interrupted_rotation_commits_completed_batch_and_resumes(world, monkeyp
     for _ in range(2):
         encounter = make_encounter(counselor=world[1], student=world[2])
         items.append(
-            put_assigned_shared_summary(
+            put_assigned_student_session_summary(
                 encounter_id=encounter.pk, counselor=world[1], content=SENTINEL
             )
         )
     originals = {item.pk: item.content_ciphertext for item in items}
-    original = rotation.read_shared_summary_content
+    original = rotation.read_student_session_summary_content
     calls = 0
 
     def interrupt(item):
@@ -590,17 +621,17 @@ def test_interrupted_rotation_commits_completed_batch_and_resumes(world, monkeyp
             raise KeyboardInterrupt
         return original(item)
 
-    with override_settings(COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS=(K2, K1)):
+    with override_settings(STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS=(K2, K1)):
         with monkeypatch.context() as patch:
-            patch.setattr(rotation, "read_shared_summary_content", interrupt)
+            patch.setattr(rotation, "read_student_session_summary_content", interrupt)
             with pytest.raises(KeyboardInterrupt):
                 rotate("--batch-size", "1")
-        ordered = list(CounselingSharedSummary.objects.order_by("pk"))
+        ordered = list(StudentSessionSummary.objects.order_by("pk"))
         assert content.encrypted_with_primary_key(ordered[0].content_ciphertext)
         for item in ordered[1:]:
             assert item.content_ciphertext == originals[item.pk]
             assert not content.encrypted_with_primary_key(item.content_ciphertext)
-            assert content.read_shared_summary_content(item) == SENTINEL
+            assert content.read_student_session_summary_content(item) == SENTINEL
         assert "re-encrypted: 2" in rotate("--batch-size", "1")[0]
         assert "re-encrypted: 0" in rotate()[0]
 
@@ -608,16 +639,55 @@ def test_interrupted_rotation_commits_completed_batch_and_resumes(world, monkeyp
 def test_rotation_corruption_unchanged_and_non_success(world):
     item = draft(world)
     broken = "private-broken-token"
-    CounselingSharedSummary.objects.filter(pk=item.pk).update(content_ciphertext=broken)
+    StudentSessionSummary.objects.filter(pk=item.pk).update(content_ciphertext=broken)
     for args in ((), ("--dry-run",)):
         out, err = StringIO(), StringIO()
         with pytest.raises(CommandError):
-            call_command(
-                "rotate_counseling_shared_summary_encryption", *args, stdout=out, stderr=err
-            )
+            call_command("rotate_student_session_summary_encryption", *args, stdout=out, stderr=err)
         assert "Unreadable payloads: 1" in out.getvalue()
         assert str(item.pk) in err.getvalue() and str(item.encounter_id) in err.getvalue()
         assert broken not in out.getvalue() + err.getvalue()
         assert raw_row(item.pk)["content_ciphertext"] == broken
     with pytest.raises(CommandError, match="batch-size"):
         rotate("--batch-size", "1001")
+
+
+def test_old_key_setting_is_not_a_runtime_fallback(settings_env, monkeypatch):
+    monkeypatch.delenv(SETTING)
+    monkeypatch.setenv("COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS", K1)
+    with pytest.raises(ValueError, match=SETTING):
+        load_settings()
+
+
+def test_wrong_purpose_keyring_cannot_decrypt_new_binding():
+    sid, eid = uuid4(), uuid4()
+    token = content.encrypt_student_session_summary_content(
+        summary_id=sid, encounter_id=eid, content=SENTINEL
+    )
+    with override_settings(STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS=(K2,)):
+        with pytest.raises(content.StudentSessionSummaryContentUnavailable) as caught:
+            content.decrypt_student_session_summary_content(token, summary_id=sid, encounter_id=eid)
+    assert caught.value.reason == "undecryptable"
+    assert_safe(caught.value, token)
+
+
+@pytest.mark.parametrize(
+    "other",
+    [
+        "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+        "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+        "INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+        "GRADUATE_TRACER_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+        "ACCOUNT_PROFILE_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+        "FEEDBACK_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+        "GUIDANCE_MESSAGE_ENCRYPTION_KEYS",
+        "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
+        "GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS",
+    ],
+)
+def test_every_later_purpose_ring_rejects_summary_key_reuse(settings_env, monkeypatch, other):
+    monkeypatch.delenv(other + "_FILE", raising=False)
+    monkeypatch.setenv(other, K1)
+    with pytest.raises(ValueError, match=other) as caught:
+        load_settings()
+    assert_safe(caught.value)

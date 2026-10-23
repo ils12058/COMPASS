@@ -1,14 +1,14 @@
-"""Verify and rewrap Shared Summary bodies only; preserve all business metadata (ADR-080)."""
+"Verify and rewrap Student Session Summary bodies only; preserve all business metadata (ADR-080)."
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import connection, transaction
 
-from compass.counseling.models import CounselingSharedSummary
-from compass.counseling.shared_summary_content import (
-    CounselingSharedSummaryContentUnavailable,
+from compass.counseling.models import StudentSessionSummary
+from compass.counseling.student_session_summary_content import (
+    StudentSessionSummaryContentUnavailable,
     encrypted_with_primary_key,
-    read_shared_summary_content,
-    reencrypt_shared_summary_content,
+    read_student_session_summary_content,
+    reencrypt_student_session_summary_content,
 )
 
 MAX_LISTED_FAILURES = 20
@@ -17,13 +17,16 @@ MAX_LISTED_FAILURES = 20
 def _legacy_plaintext_exists() -> bool:
     with connection.cursor() as cursor:
         columns = connection.introspection.get_table_description(
-            cursor, CounselingSharedSummary._meta.db_table
+            cursor, StudentSessionSummary._meta.db_table
         )
     return any(column.name == "content" for column in columns)
 
 
 class Command(BaseCommand):
-    help = "Verify Shared Summary bodies and rewrap previous-key tokens. Safe to interrupt/resume."
+    help = (
+        "Verify Student Session Summary bodies and rewrap previous-key tokens. "
+        "Safe to interrupt/resume."
+    )
 
     def add_arguments(self, parser):
         parser.add_argument("--batch-size", type=int, default=100, help="Between 1 and 1000.")
@@ -34,7 +37,7 @@ class Command(BaseCommand):
             raise CommandError("--batch-size must be between 1 and 1000.")
         if _legacy_plaintext_exists():
             raise CommandError(
-                "Legacy plaintext Shared Summary column remains; apply migrations first."
+                "Legacy plaintext Student Session Summary column remains; apply migrations first."
             )
 
         scanned = verified = current = rotated = failed = 0
@@ -42,7 +45,7 @@ class Command(BaseCommand):
         last_pk = None
         while True:
             with transaction.atomic():
-                rows = CounselingSharedSummary.objects.order_by("pk").only(
+                rows = StudentSessionSummary.objects.order_by("pk").only(
                     "pk", "encounter_id", "content_ciphertext"
                 )
                 if not dry_run:
@@ -52,8 +55,8 @@ class Command(BaseCommand):
                 batch = list(rows[:batch_size])
                 for item in batch:
                     try:
-                        read_shared_summary_content(item)
-                    except CounselingSharedSummaryContentUnavailable as exc:
+                        read_student_session_summary_content(item)
+                    except StudentSessionSummaryContentUnavailable as exc:
                         failed += 1
                         if len(failures) < MAX_LISTED_FAILURES:
                             failures.append((item.pk, item.encounter_id, exc.reason))
@@ -65,8 +68,8 @@ class Command(BaseCommand):
                     rotated += 1
                     if not dry_run:
                         # Never touches auto_now timestamps, publication, Audit or notifications.
-                        CounselingSharedSummary.objects.filter(pk=item.pk).update(
-                            content_ciphertext=reencrypt_shared_summary_content(item)
+                        StudentSessionSummary.objects.filter(pk=item.pk).update(
+                            content_ciphertext=reencrypt_student_session_summary_content(item)
                         )
             if not batch:
                 break
@@ -75,7 +78,8 @@ class Command(BaseCommand):
 
         action = "to re-encrypt" if dry_run else "re-encrypted"
         self.stdout.write(
-            "Shared Summary encryption" + (" (dry run; nothing written)." if dry_run else ".")
+            "Student Session Summary encryption"
+            + (" (dry run; nothing written)." if dry_run else ".")
         )
         self.stdout.write(f"Records scanned: {scanned}; payloads verified: {verified}")
         self.stdout.write(f"Payloads already under the primary key: {current}; {action}: {rotated}")
@@ -88,5 +92,6 @@ class Command(BaseCommand):
             self.stderr.write(f"... and {failed - len(failures)} more")
         if failed:
             raise CommandError(
-                f"{failed} Shared Summary payload(s) could not be verified; left unchanged."
+                f"{failed} Student Session Summary payload(s) could not be verified; "
+                "left unchanged."
             )

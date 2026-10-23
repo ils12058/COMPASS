@@ -31,9 +31,9 @@ Role abbreviations: IT = IT Admin, C = Counselor, GSS = Guidance Services Staff,
 | `appointments.manage` | Manage appointments | Scoped operational | C, GSS, Head | appointments | appointments | Retained |
 | `counseling.view_assigned` | View assigned counseling encounters | Scoped operational | C | counseling | counseling | Retained |
 | `counseling.manage_assigned` | Manage assigned counseling encounters | Scoped operational | C | counseling | counseling | Retained |
-| `shared_summaries.view_self` | View own shared counseling summaries | Self-service | S | counseling | counseling | Retained |
-| `shared_summaries.view_assigned` | View assigned shared counseling summaries | Scoped operational | C | counseling | counseling | Retained |
-| `shared_summaries.manage_assigned` | Manage assigned shared counseling summaries | Scoped operational | C | counseling | counseling | Retained |
+| `student_session_summaries.view_self` | View own Student Session Summaries | Self-service | S | counseling | counseling | Retained |
+| `student_session_summaries.view_assigned` | View assigned Student Session Summaries | Scoped operational | C | counseling | counseling | Retained |
+| `student_session_summaries.manage_assigned` | Manage assigned Student Session Summaries | Scoped operational | C | counseling | counseling | Retained |
 | `inventory.view_self` | View own individual inventory | Self-service | S | inventory | inventory | Retained |
 | `inventory.manage_self` | Manage own individual inventory | Self-service | S | inventory | inventory | Retained |
 | `inventory.view` | View submitted individual inventories | Scoped operational | C | inventory | inventory | Retained |

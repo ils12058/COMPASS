@@ -1,5 +1,7 @@
 # ADR-099: Operational responsibility and domain-owned Head oversight
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 ## Status
 
 Accepted, 2026-10-09. Refines the responsibility and supervision wording in ADR-017,

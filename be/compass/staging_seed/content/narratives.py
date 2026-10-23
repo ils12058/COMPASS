@@ -76,7 +76,7 @@ ADJUSTMENT_EVALUATION = {
         "session in about two weeks."
     ),
 }
-ADJUSTMENT_SHARED_SUMMARY = (
+ADJUSTMENT_STUDENT_SESSION_SUMMARY = (
     "Thank you for meeting with the Guidance and Counseling Office.\n\n"
     "We talked about balancing your major subjects with your organization work. Next steps we "
     "agreed on:\n\n"
@@ -615,7 +615,7 @@ __all__ = [
     "ACTIVE_REFERRAL",
     "ADJUSTMENT_EVALUATION",
     "ADJUSTMENT_INTAKE",
-    "ADJUSTMENT_SHARED_SUMMARY",
+    "ADJUSTMENT_STUDENT_SESSION_SUMMARY",
     "ALUMNI_EXIT_INTERVIEW",
     "ALUMNI_GOOD_MORAL",
     "ALUMNI_TRACER",

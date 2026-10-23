@@ -307,7 +307,7 @@ def test_missing_legacy_sources_have_generic_projection_without_data_or_links(
 def test_wrong_source_type_is_never_a_domain_reader(world, settings, event):
     settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, event)
-    notification.source_type = "counseling_shared_summary"
+    notification.source_type = "student_session_summary"
     plan, message = resolve_render(notification)
     assert plan.reason == "invalid_source"
     assert "https://" not in message.text_body and "PRIVATE" not in message.text_body

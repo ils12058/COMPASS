@@ -28,7 +28,7 @@ class NotificationTargetType(StrEnum):
     ACCOUNT_SECURITY = "ACCOUNT_SECURITY"
     APPOINTMENT = "APPOINTMENT"
     CALL_SLIP = "CALL_SLIP"
-    COUNSELING_SHARED_SUMMARY = "COUNSELING_SHARED_SUMMARY"
+    STUDENT_SESSION_SUMMARY = "STUDENT_SESSION_SUMMARY"
     E_COUNSELING = "E_COUNSELING"
     EXIT_INTERVIEW = "EXIT_INTERVIEW"
     FEEDBACK = "FEEDBACK"
@@ -59,7 +59,7 @@ class NotificationEvent(StrEnum):
     GOOD_MORAL_ISSUED = "good_moral.issued"
     EXIT_INTERVIEW_REOPENED = "exit_interview.reopened"
     INVENTORY_REOPENED = "inventory.reopened"
-    COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
+    STUDENT_SESSION_SUMMARY_PUBLISHED = "counseling.student_session_summary.published"
     ROUTINE_INTERVIEW_INTAKE_READY = "routine_interview.intake_ready"
     ECOUNSELING_CONSENT_REQUESTED = "ecounseling.consent.requested"
     FEEDBACK_INVITATION = "feedback.invitation"
@@ -295,14 +295,14 @@ _EVENT_CATALOG = {
         email_subject="COMPASS Individual Inventory Reopened",
         email_template="inventory_reopened",
     ),
-    NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED: NotificationEventDefinition(
-        event=NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED,
+    NotificationEvent.STUDENT_SESSION_SUMMARY_PUBLISHED: NotificationEventDefinition(
+        event=NotificationEvent.STUDENT_SESSION_SUMMARY_PUBLISHED,
         policy=NotificationPolicy.MANDATORY_OPERATIONAL,
         channels=_EMAIL_CHANNELS,
-        title="Counseling Shared Summary Available",
-        message="A Counseling Shared Summary is now available in COMPASS. Sign in to review it.",
-        email_subject="COMPASS Counseling Shared Summary Available",
-        email_template="counseling_shared_summary_published",
+        title="Student Session Summary Available",
+        message="A Student Session Summary is now available in COMPASS. Sign in to review it.",
+        email_subject="COMPASS Student Session Summary Available",
+        email_template="student_session_summary_published",
     ),
     NotificationEvent.ROUTINE_INTERVIEW_INTAKE_READY: NotificationEventDefinition(
         event=NotificationEvent.ROUTINE_INTERVIEW_INTAKE_READY,

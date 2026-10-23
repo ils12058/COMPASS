@@ -247,11 +247,11 @@ EXPECTED_OPERATION_IDS = {
     "counselingGetEncounter",
     "counselingUpdateEncounter",
     "counselingListStudents",
-    "counselingGetAssignedSharedSummary",
-    "counselingPutAssignedSharedSummary",
-    "counselingPublishAssignedSharedSummary",
-    "counselingListMySharedSummaries",
-    "counselingGetMySharedSummary",
+    "counselingGetAssignedStudentSessionSummary",
+    "counselingPutAssignedStudentSessionSummary",
+    "counselingPublishAssignedStudentSessionSummary",
+    "counselingListMyStudentSessionSummaries",
+    "counselingGetMyStudentSessionSummary",
     "counselingContextGetOverview",
     "counselingContextGetSupportIndicators",
     "counselingContextGetInventory",
@@ -1007,19 +1007,20 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
 def test_counseling_context_contract_is_anchor_based_and_read_only() -> None:
     schema = _generated_schema()
     assert (
-        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/shared-summaries"
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/student-session-summaries"
         not in schema["paths"]
     )
-    assert not {"ContextSharedSummaryResponse", "CounselingContextSharedSummariesResponse"} & set(
-        schema["components"]["schemas"]
-    )
+    assert not {
+        "ContextStudentSessionSummaryResponse",
+        "CounselingContextStudentSessionSummariesResponse",
+    } & set(schema["components"]["schemas"])
     assert schema["components"]["schemas"]["CounselingContextSection"]["enum"] == [
         "SUPPORT_INDICATORS",
         "INVENTORY",
         "HISTORY",
     ]
     assert not any(
-        operation.get("operationId") == "counselingContextListSharedSummaries"
+        operation.get("operationId") == "counselingContextListStudentSessionSummaries"
         for path in schema["paths"].values()
         for operation in path.values()
         if isinstance(operation, dict)
@@ -1128,8 +1129,8 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "SessionListResponse",
         "CounselingEncounterResponse",
         "CounselingStudentPageResponse",
-        "CounselingAssignedSharedSummaryResponse",
-        "CounselingStudentSharedSummaryPageResponse",
+        "CounselingAssignedStudentSessionSummaryResponse",
+        "CounselingStudentSessionSummaryPageResponse",
         "StudentWorkspaceResponse",
         "CounselorWorkspaceResponse",
         "MediaWorkspaceState",
@@ -1907,12 +1908,14 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         _operation(schema, "/api/v1/counseling/encounters/{encounter_id}", "patch")
     ) >= {200, 401, 403, 404, 409, 422}
     assert _response_statuses(
-        _operation(schema, "/api/v1/counseling/encounters/{encounter_id}/shared-summary", "put")
+        _operation(
+            schema, "/api/v1/counseling/encounters/{encounter_id}/student-session-summary", "put"
+        )
     ) >= {200, 401, 403, 404, 409, 422}
     assert _response_statuses(
         _operation(
             schema,
-            "/api/v1/counseling/encounters/{encounter_id}/shared-summary/publish",
+            "/api/v1/counseling/encounters/{encounter_id}/student-session-summary/publish",
             "post",
         )
     ) >= {200, 401, 403, 404, 409, 422}
@@ -2083,9 +2086,9 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "routine_interviews.view_self",
             "services.manage",
             "services.catalog.view",
-            "shared_summaries.manage_assigned",
-            "shared_summaries.view_assigned",
-            "shared_summaries.view_self",
+            "student_session_summaries.manage_assigned",
+            "student_session_summaries.view_assigned",
+            "student_session_summaries.view_self",
             "student_support.view",
         ]
     )
@@ -2146,8 +2149,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "TrustedSessionSummary",
         "CounselingEncounterResponse",
         "CounselingStudentResponse",
-        "CounselingAssignedSharedSummaryResponse",
-        "CounselingStudentSharedSummaryResponse",
+        "CounselingAssignedStudentSessionSummaryResponse",
+        "CounselingStudentSessionSummaryResponse",
         "StudentWorkspaceResponse",
         "CounselorWorkspaceResponse",
         "ConsentResponse",
@@ -2706,7 +2709,7 @@ def test_routine_interview_candidate_discovery_openapi_contract() -> None:
         "suicidal",
         "special_concern",
         "recommendations",
-        "shared_summary",
+        "student_session_summary",
         "audit",
     ):
         assert forbidden not in serialized
@@ -2824,7 +2827,7 @@ def test_counseling_frontend_readiness_openapi_contract() -> None:
         "reason",
         "audit",
         "support_profile",
-        "shared_summary",
+        "student_session_summary",
     ):
         assert forbidden not in serialized
 

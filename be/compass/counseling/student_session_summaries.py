@@ -1,4 +1,4 @@
-"""Transactional Shared Summary workflows with strict Counseling resource boundaries."""
+"""Transactional Student Session Summary workflows with strict Counseling resource boundaries."""
 
 from __future__ import annotations
 
@@ -9,40 +9,43 @@ from django.db import transaction
 from django.utils import timezone
 
 from compass.accounts.models import User
-from compass.audit.actions import COUNSELING_SHARED_SUMMARY_PUBLISHED
+from compass.audit.actions import STUDENT_SESSION_SUMMARY_PUBLISHED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 
-from .models import CounselingEncounter, CounselingSharedSummary
+from .models import CounselingEncounter, StudentSessionSummary
 from .services import DEFAULT_PAGE_SIZE, CounselingError, _validate_page
-from .shared_summary_content import read_shared_summary_content, write_shared_summary_content
+from .student_session_summary_content import (
+    read_student_session_summary_content,
+    write_student_session_summary_content,
+)
 
 
-class CounselingSharedSummaryNotFound(CounselingError):
+class StudentSessionSummaryNotFound(CounselingError):
     pass
 
 
-class CounselingSharedSummaryAlreadyPublished(CounselingError):
+class StudentSessionSummaryAlreadyPublished(CounselingError):
     pass
 
 
-class CounselingSharedSummaryEmpty(CounselingError):
+class StudentSessionSummaryEmpty(CounselingError):
     pass
 
 
 @dataclass(frozen=True, slots=True)
-class CounselingSharedSummaryPage:
-    items: tuple[CounselingSharedSummary, ...]
+class StudentSessionSummaryPage:
+    items: tuple[StudentSessionSummary, ...]
     page: int
     page_size: int
     has_next: bool
 
 
 def _summary_queryset():
-    return CounselingSharedSummary.objects.select_related(
+    return StudentSessionSummary.objects.select_related(
         "encounter",
         "encounter__student",
         "encounter__student__role",
@@ -53,16 +56,12 @@ def _summary_queryset():
 
 def _validate_counselor(counselor: User) -> None:
     if not counselor.is_active or counselor.role.code != "COUNSELOR":
-        raise CounselingSharedSummaryNotFound(
-            "The requested Counseling Shared Summary was not found."
-        )
+        raise StudentSessionSummaryNotFound("The requested Student Session Summary was not found.")
 
 
 def _validate_student(student: User) -> None:
     if not student.is_active or student.role.code != "STUDENT":
-        raise CounselingSharedSummaryNotFound(
-            "The requested Counseling Shared Summary was not found."
-        )
+        raise StudentSessionSummaryNotFound("The requested Student Session Summary was not found.")
 
 
 def _lock_assigned_encounter(*, encounter_id: UUID, counselor: User) -> CounselingEncounter:
@@ -73,13 +72,13 @@ def _lock_assigned_encounter(*, encounter_id: UUID, counselor: User) -> Counseli
         .first()
     )
     if encounter is None:
-        raise CounselingSharedSummaryNotFound(
-            "The requested Counseling Shared Summary was not found."
-        )
+        raise StudentSessionSummaryNotFound("The requested Student Session Summary was not found.")
     return encounter
 
 
-def get_assigned_shared_summary(*, encounter_id: UUID, counselor: User) -> CounselingSharedSummary:
+def get_assigned_student_session_summary(
+    *, encounter_id: UUID, counselor: User
+) -> StudentSessionSummary:
     _validate_counselor(counselor)
     item = (
         _summary_queryset()
@@ -87,85 +86,83 @@ def get_assigned_shared_summary(*, encounter_id: UUID, counselor: User) -> Couns
         .first()
     )
     if item is None:
-        raise CounselingSharedSummaryNotFound(
-            "The requested Counseling Shared Summary was not found."
-        )
+        raise StudentSessionSummaryNotFound("The requested Student Session Summary was not found.")
     return item
 
 
-def put_assigned_shared_summary(
+def put_assigned_student_session_summary(
     *, encounter_id: UUID, counselor: User, content: str
-) -> CounselingSharedSummary:
+) -> StudentSessionSummary:
     with transaction.atomic():
         encounter = _lock_assigned_encounter(encounter_id=encounter_id, counselor=counselor)
         item = (
-            CounselingSharedSummary.objects.select_for_update()
+            StudentSessionSummary.objects.select_for_update()
             .filter(encounter_id=encounter.pk)
             .first()
         )
         if item is None:
-            item = CounselingSharedSummary(encounter=encounter)
+            item = StudentSessionSummary(encounter=encounter)
             # The model allocates its final UUID before authenticated context binding.
-            write_shared_summary_content(item, content)
+            write_student_session_summary_content(item, content)
             item.save(force_insert=True)
         else:
             if item.published_at is not None:
-                raise CounselingSharedSummaryAlreadyPublished(
-                    "A published Counseling Shared Summary is locked from ordinary editing."
+                raise StudentSessionSummaryAlreadyPublished(
+                    "A published Student Session Summary is locked from ordinary editing."
                 )
-            write_shared_summary_content(item, content)
+            write_student_session_summary_content(item, content)
             item.save(update_fields=["content_ciphertext", "updated_at"])
         return _summary_queryset().get(pk=item.pk)
 
 
-def publish_assigned_shared_summary(
+def publish_assigned_student_session_summary(
     *, encounter_id: UUID, counselor: User, context: AuditContext
-) -> CounselingSharedSummary:
+) -> StudentSessionSummary:
     with transaction.atomic():
         encounter = _lock_assigned_encounter(encounter_id=encounter_id, counselor=counselor)
         item = (
-            CounselingSharedSummary.objects.select_for_update()
+            StudentSessionSummary.objects.select_for_update()
             .filter(encounter_id=encounter.pk)
             .first()
         )
         if item is None:
-            raise CounselingSharedSummaryNotFound(
-                "The requested Counseling Shared Summary was not found."
+            raise StudentSessionSummaryNotFound(
+                "The requested Student Session Summary was not found."
             )
         if item.published_at is not None:
             return _summary_queryset().get(pk=item.pk)
-        if not read_shared_summary_content(item).strip():
-            raise CounselingSharedSummaryEmpty(
-                "Counseling Shared Summary content must not be empty when published."
+        if not read_student_session_summary_content(item).strip():
+            raise StudentSessionSummaryEmpty(
+                "Student Session Summary content must not be empty when published."
             )
 
         item.published_at = timezone.now()
         item.save(update_fields=["published_at", "updated_at"])
         record_event(
             context=context,
-            action=COUNSELING_SHARED_SUMMARY_PUBLISHED,
+            action=STUDENT_SESSION_SUMMARY_PUBLISHED,
             outcome=AuditOutcome.SUCCESS,
-            target_type="counseling.sharedsummary",
+            target_type="counseling.studentsessionsummary",
             target_id=item.pk,
             metadata={"counseling_encounter_id": str(encounter.pk)},
         )
         create_notification_for_event(
             recipient=encounter.student,
-            event=NotificationEvent.COUNSELING_SHARED_SUMMARY_PUBLISHED,
-            source_type="counseling_shared_summary",
+            event=NotificationEvent.STUDENT_SESSION_SUMMARY_PUBLISHED,
+            source_type="student_session_summary",
             source_id=item.pk,
-            target_type="COUNSELING_SHARED_SUMMARY",
+            target_type="STUDENT_SESSION_SUMMARY",
             target_id=item.pk,
         )
         return _summary_queryset().get(pk=item.pk)
 
 
-def list_my_shared_summaries(
+def list_my_student_session_summaries(
     *,
     student: User,
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
-) -> CounselingSharedSummaryPage:
+) -> StudentSessionSummaryPage:
     _validate_student(student)
     page, page_size = _validate_page(page, page_size)
     queryset = _summary_queryset().filter(
@@ -174,7 +171,7 @@ def list_my_shared_summaries(
     )
     offset = (page - 1) * page_size
     rows = list(queryset.order_by("-published_at", "id")[offset : offset + page_size + 1])
-    return CounselingSharedSummaryPage(
+    return StudentSessionSummaryPage(
         items=tuple(rows[:page_size]),
         page=page,
         page_size=page_size,
@@ -182,7 +179,7 @@ def list_my_shared_summaries(
     )
 
 
-def get_my_shared_summary(*, student: User, summary_id: UUID) -> CounselingSharedSummary:
+def get_my_student_session_summary(*, student: User, summary_id: UUID) -> StudentSessionSummary:
     _validate_student(student)
     item = (
         _summary_queryset()
@@ -194,7 +191,5 @@ def get_my_shared_summary(*, student: User, summary_id: UUID) -> CounselingShare
         .first()
     )
     if item is None:
-        raise CounselingSharedSummaryNotFound(
-            "The requested Counseling Shared Summary was not found."
-        )
+        raise StudentSessionSummaryNotFound("The requested Student Session Summary was not found.")
     return item

@@ -92,7 +92,7 @@ provider signature and timestamp against the exact raw request body before accep
 A Daily setup/test callback is acknowledged only after signature verification. Duplicate supported
 events are idempotently acknowledged. Meeting events for unknown rooms remain minimal provider
 telemetry. Media events never create a local room, consent, Counseling Encounter, Routine Interview
-state, or Shared Summary.
+state, or Student Session Summary.
 
 Manual local webhook testing requires an externally reachable HTTPS endpoint or tunnel because Daily
 must call the webhook URL. Automated tests do not need a tunnel and must never contact Daily.
@@ -103,7 +103,7 @@ COMPASS sends Daily only what is needed for meeting/media operations: an opaque 
 participant's COMPASS UUID as `user_id`, a minimal display name, and provider media-control parameters
 that do not contain counseling content. A display name is personal information, so do not describe
 the integration as sending "no PII" to Daily. No Inventory answers, Routine answers, Counselor
-Evaluation content, Shared Summary text, clinical notes, diagnosis, or transcript text is sent by
+Evaluation content, Student Session Summary text, clinical notes, diagnosis, or transcript text is sent by
 this foundation.
 
 Private room URLs are provider metadata, not authorization. The browser receives the room URL and a
@@ -161,7 +161,7 @@ provider output already produced; retention/deletion requires a separate institu
 
 Daily meeting and media callbacks are provider telemetry only. They do not mark the Appointment
 complete, create a `CounselingEncounter`, finalize a Routine Interview, infer attendance, populate or
-publish a Shared Summary, or create a Case Record.
+publish a Student Session Summary, or create a Case Record.
 
 ## Media governance V2 rollout (ADR-092)
 

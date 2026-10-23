@@ -32,10 +32,10 @@ from compass.counseling.context_services import (
 from compass.counseling.models import (
     CounselingEncounter,
     CounselingEntryMode,
-    CounselingSharedSummary,
+    StudentSessionSummary,
 )
 from compass.counseling.services import CounselingNotFound, get_encounter_for_actor
-from compass.counseling.shared_summary_content import write_shared_summary_content
+from compass.counseling.student_session_summary_content import write_student_session_summary_content
 from compass.inventory.models import StudentInventory
 from compass.inventory.services import (
     ensure_current_inventory,
@@ -779,7 +779,7 @@ def test_context_history_is_minimized_and_private_encounters_stay_hidden(world):
 def test_context_never_discloses_another_authors_summaries(
     world, monkeypatch, anchor, summary_capability
 ):
-    from compass.counseling import shared_summary_content
+    from compass.counseling import student_session_summary_content
 
     now = timezone.now().replace(microsecond=0)
     actor = world["head"] if anchor == "HEAD_APPOINTMENT" else world["b"]
@@ -803,15 +803,15 @@ def test_context_never_discloses_another_authors_summaries(
         ended_at=now - timedelta(days=4),
         created_by=world["a"],
     )
-    published = CounselingSharedSummary(
+    published = StudentSessionSummary(
         encounter=published_encounter, published_at=now - timedelta(days=4)
     )
-    write_shared_summary_content(published, "CONT-1A-PRIVATE-PUBLISHED-SENTINEL")
+    write_student_session_summary_content(published, "CONT-1A-PRIVATE-PUBLISHED-SENTINEL")
     published.save()
-    draft = CounselingSharedSummary(encounter=draft_encounter)
-    write_shared_summary_content(draft, "CONT-1A-PRIVATE-DRAFT-SENTINEL")
+    draft = StudentSessionSummary(encounter=draft_encounter)
+    write_student_session_summary_content(draft, "CONT-1A-PRIVATE-DRAFT-SENTINEL")
     draft.save()
-    original_rows = list(CounselingSharedSummary.objects.order_by("pk").values())
+    original_rows = list(StudentSessionSummary.objects.order_by("pk").values())
 
     if anchor in {"APPOINTMENT", "HEAD_APPOINTMENT"}:
         appointment = make_appointment(
@@ -843,14 +843,14 @@ def test_context_never_discloses_another_authors_summaries(
         )
         anchor_type, anchor_id = "ROUTINE_INTERVIEW", routine.pk
 
-    capability = Capability.objects.get(code="shared_summaries.view_assigned")
+    capability = Capability.objects.get(code="student_session_summaries.view_assigned")
     if summary_capability == "absent":
         RoleCapability.objects.filter(role=actor.role, capability=capability).delete()
     elif summary_capability == "revoked":
         UserCapabilityOverride.objects.create(
             user=actor, capability=capability, effect="REVOKE", reason="Synthetic regression"
         )
-    assert actor.has_capability("shared_summaries.view_assigned") == (
+    assert actor.has_capability("student_session_summaries.view_assigned") == (
         summary_capability == "baseline"
     )
     assert actor.has_capability("counseling.view_assigned")
@@ -866,16 +866,18 @@ def test_context_never_discloses_another_authors_summaries(
         pytest.fail("Counseling Context must never decrypt Student summaries.")
 
     monkeypatch.setattr(
-        shared_summary_content, "decrypt_shared_summary_content", forbidden_decryption
+        student_session_summary_content,
+        "decrypt_student_session_summary_content",
+        forbidden_decryption,
     )
     root = f"/api/v1/counseling/context/{anchor_type}/{anchor_id}"
     for suffix in (
-        "/shared-summaries",
-        "/shared-summaries?limit=50",
-        "/shared-summaries/",
-        f"/shared-summaries/{published.pk}",
-        "/shared-summary",
-        "/shared-summaries?include=published&author=all",
+        "/student-session-summaries",
+        "/student-session-summaries?limit=50",
+        "/student-session-summaries/",
+        f"/student-session-summaries/{published.pk}",
+        "/student-session-summary",
+        "/student-session-summaries?include=published&author=all",
     ):
         response = client.get(root + suffix)
         assert response.status_code == 404
@@ -897,7 +899,7 @@ def test_context_never_discloses_another_authors_summaries(
         "/inventory",
         "/support-indicators",
         "/history",
-        "?include=shared-summaries",
+        "?include=student-session-summaries",
     ):
         response = client.get(root + suffix)
         assert response.status_code == 200
@@ -912,11 +914,11 @@ def test_context_never_discloses_another_authors_summaries(
         "HISTORY",
     ]
     # Ordinary author APIs remain independent; another provider/capability cannot claim authorship.
-    author_route = f"/api/v1/counseling/encounters/{published_encounter.pk}/shared-summary"
+    author_route = f"/api/v1/counseling/encounters/{published_encounter.pk}/student-session-summary"
     assert client.get(author_route).status_code == (
         404 if summary_capability == "baseline" else 403
     )
-    assert list(CounselingSharedSummary.objects.order_by("pk").values()) == original_rows
+    assert list(StudentSessionSummary.objects.order_by("pk").values()) == original_rows
 
 
 @pytest.mark.django_db

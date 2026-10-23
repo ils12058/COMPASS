@@ -1,0 +1,128 @@
+baseline_file,current_file,disposition,reason
+.github/scripts/backend_ci.py,.github/scripts/backend_ci.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+.github/scripts/backend_test_durations.json,.github/scripts/backend_test_durations.json,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/.env.example,be/.env.example,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/README.md,be/README.md,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/accounts/policy.py,be/compass/accounts/policy.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/audit/actions.py,be/compass/audit/actions.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/counseling/api.py,be/compass/counseling/api.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/counseling/context_api.py,be/compass/counseling/context_api.py,already removed by CONT-1A / preserved,Context summary projection stays absent; independent Encounter authorization link remains.
+be/compass/counseling/context_services.py,be/compass/counseling/context_services.py,already removed by CONT-1A / preserved,Context summary projection stays absent; independent Encounter authorization link remains.
+be/compass/counseling/management/commands/rotate_counseling_shared_summary_encryption.py,be/compass/counseling/management/commands/rotate_student_session_summary_encryption.py,renamed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/counseling/migrations/0001_canonical_baseline.py,be/compass/counseling/migrations/0001_canonical_baseline.py,preserved,Immutable canonical migration hash and reconstruction.
+be/compass/counseling/models.py,be/compass/counseling/models.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/counseling/shared_summaries.py,be/compass/counseling/student_session_summaries.py,renamed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/counseling/shared_summary_content.py,be/compass/counseling/student_session_summary_content.py,renamed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/notifications/email_links.py,be/compass/notifications/email_links.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/notifications/policy.py,be/compass/notifications/policy.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/notifications/push_policy.py,be/compass/notifications/push_policy.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/notifications/templates/notifications/email/counseling_shared_summary_published.html,be/compass/notifications/templates/notifications/email/student_session_summary_published.html,renamed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/notifications/templates/notifications/email/counseling_shared_summary_published.txt,be/compass/notifications/templates/notifications/email/student_session_summary_published.txt,renamed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/staging_seed/content/narratives.py,be/compass/staging_seed/content/narratives.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/staging_seed/encryption.py,be/compass/staging_seed/encryption.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/staging_seed/manifest.py,be/compass/staging_seed/manifest.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/staging_seed/reports.py,be/compass/staging_seed/reports.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/staging_seed/scenarios/action_ready.py,be/compass/staging_seed/scenarios/action_ready.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/staging_seed/scenarios/background.py,be/compass/staging_seed/scenarios/background.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/staging_seed/scenarios/rich.py,be/compass/staging_seed/scenarios/rich.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/staging_seed/staff.py,be/compass/staging_seed/staff.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/staging_seed/students.py,be/compass/staging_seed/students.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/staging_seed/support.py,be/compass/staging_seed/support.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/staging_seed/verify.py,be/compass/staging_seed/verify.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compass/staging_seed/workflows.py,be/compass/staging_seed/workflows.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/compose.staging.yaml,be/compose.staging.yaml,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/config/settings.py,be/config/settings.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/deploy/runtime-secrets/runtime.env.example,be/deploy/runtime-secrets/runtime.env.example,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/deploy/runtime-secrets/runtime_secrets.py,be/deploy/runtime-secrets/runtime_secrets.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/docs/capability-catalog-audit.md,be/docs/capability-catalog-audit.md,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/docs/decisions/ADR-020-appointments.md,be/docs/decisions/ADR-020-appointments.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-023-routine-interview.md,be/docs/decisions/ADR-023-routine-interview.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-024-ecounseling-daily.md,be/docs/decisions/ADR-024-ecounseling-daily.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-025-counseling-shared-summary.md,be/docs/decisions/ADR-025-counseling-shared-summary.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-026-ecounseling-media-consent.md,be/docs/decisions/ADR-026-ecounseling-media-consent.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-028-call-slip-interview-permit-foundation.md,be/docs/decisions/ADR-028-call-slip-interview-permit-foundation.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-046-notification-domain-integrations.md,be/docs/decisions/ADR-046-notification-domain-integrations.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-071-pwa-notification-freshness-and-web-push.md,be/docs/decisions/ADR-071-pwa-notification-freshness-and-web-push.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-072-operational-retention-and-disposition.md,be/docs/decisions/ADR-072-operational-retention-and-disposition.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-076-guidance-staff-good-moral-preparation.md,be/docs/decisions/ADR-076-guidance-staff-good-moral-preparation.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-080-counseling-shared-summary-content-encryption.md,be/docs/decisions/ADR-080-counseling-shared-summary-content-encryption.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-081-referral-confidential-source-content-encryption.md,be/docs/decisions/ADR-081-referral-confidential-source-content-encryption.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-082-exit-interview-confidential-content-encryption.md,be/docs/decisions/ADR-082-exit-interview-confidential-content-encryption.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-083-inventory-confidential-content-encryption.md,be/docs/decisions/ADR-083-inventory-confidential-content-encryption.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-084-graduate-tracer-confidential-content-encryption.md,be/docs/decisions/ADR-084-graduate-tracer-confidential-content-encryption.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-092-ecounseling-media-governance-v2.md,be/docs/decisions/ADR-092-ecounseling-media-governance-v2.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-099-operational-responsibility-and-domain-head-oversight.md,be/docs/decisions/ADR-099-operational-responsibility-and-domain-head-oversight.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/decisions/ADR-106-student-action-center.md,be/docs/decisions/ADR-106-student-action-center.md,annotated history,Historical ADR text retained with CONT-1B supersession link.
+be/docs/ecounseling-daily-deployment.md,be/docs/ecounseling-daily-deployment.md,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/docs/historical/demo-dataset-v2-validation-report.md,be/docs/historical/demo-dataset-v2-validation-report.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+be/docs/historical/staging-demo-seeding.md,be/docs/historical/staging-demo-seeding.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+be/docs/retention-disposition-validation.md,be/docs/retention-disposition-validation.md,preserved,"Explicitly historical ADR-072/114 validation report, retained byte-for-byte."
+be/docs/runtime-secrets.md,be/docs/runtime-secrets.md,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/docs/staging-dataset-v1.md,be/docs/staging-dataset-v1.md,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/encryption_oracles/shared_summary_content_v1.py,be/tests/encryption_oracles/shared_summary_content_v1.py,preserved,Frozen old binding oracle; new runtime deliberately rejects its tokens.
+be/tests/settings.py,be/tests/settings.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_account_profile_confidential_content_encryption.py,be/tests/test_account_profile_confidential_content_encryption.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_accounts.py,be/tests/test_accounts.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_appointment_email_presentation.py,be/tests/test_appointment_email_presentation.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_assessment_records_configuration.py,be/tests/test_assessment_records_configuration.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_call_slips.py,be/tests/test_call_slips.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_counseling_context.py,be/tests/test_counseling_context.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_counseling_shared_summary_encryption.py,be/tests/test_student_session_summary_encryption.py,renamed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_exit_interview_confidential_content_encryption.py,be/tests/test_exit_interview_confidential_content_encryption.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_good_moral_preparation.py,be/tests/test_good_moral_preparation.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_graduate_tracer_confidential_content_encryption.py,be/tests/test_graduate_tracer_confidential_content_encryption.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_guidance_messages.py,be/tests/test_guidance_messages.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_inventory_confidential_content_encryption.py,be/tests/test_inventory_confidential_content_encryption.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_notification_email_links.py,be/tests/test_notification_email_links.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_openapi_contract.py,be/tests/test_openapi_contract.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_operational_email_presentation.py,be/tests/test_operational_email_presentation.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_referral_confidential_content_encryption.py,be/tests/test_referral_confidential_content_encryption.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_routine_interviews.py,be/tests/test_routine_interviews.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_runtime_secrets.py,be/tests/test_runtime_secrets.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_runtime_secrets_compose.py,be/tests/test_runtime_secrets_compose.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_shared_summaries.py,be/tests/test_student_session_summaries.py,renamed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_staging_seed.py,be/tests/test_staging_seed.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+be/tests/test_transactional_email.py,be/tests/test_transactional_email.py,transformed,Canonical active resource contract or current test/configuration/consumer.
+contracts/openapi.json,contracts/openapi.json,transformed,Canonical active resource contract or current test/configuration/consumer.
+docs/notif-01/deep-link-contract.md,docs/notif-01/deep-link-contract.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+docs/notif-01/event-recipient-matrix.md,docs/notif-01/event-recipient-matrix.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+docs/notif-04/event-channel-matrix.md,docs/notif-04/event-channel-matrix.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+docs/notif-04/evidence/backend-coordinated.json,docs/notif-04/evidence/backend-coordinated.json,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+docs/notif-04/evidence/backend-selection.txt,docs/notif-04/evidence/backend-selection.txt,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+docs/notif-04/validation.md,docs/notif-04/validation.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+docs/ux15-exit-interview/README.md,docs/ux15-exit-interview/README.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+docs/ux15-exit-interview/validation.md,docs/ux15-exit-interview/validation.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+fe/docs/frontend-consistency-slice1.md,fe/docs/frontend-consistency-slice1.md,annotated history,Historical frontend implementation evidence retained with current resource link.
+fe/docs/portal-command-palette.md,fe/docs/portal-command-palette.md,annotated history,Historical frontend implementation evidence retained with current resource link.
+fe/docs/ui-density-audit.md,fe/docs/ui-density-audit.md,annotated history,Historical frontend implementation evidence retained with current resource link.
+fe/src/app/(portal)/portal/counseling/summaries/[summaryId]/page.tsx,fe/src/app/(portal)/portal/counseling/student-session-summaries/[summaryId]/page.tsx,renamed,Canonical active resource contract or current test/configuration/consumer.
+fe/src/features/counseling/counseling-access.ts,fe/src/features/counseling/counseling-access.ts,transformed,Canonical active resource contract or current test/configuration/consumer.
+fe/src/features/counseling/counseling-entry-page.tsx,fe/src/features/counseling/counseling-entry-page.tsx,transformed,Canonical active resource contract or current test/configuration/consumer.
+fe/src/features/counseling/counseling-help.tsx,fe/src/features/counseling/counseling-help.tsx,transformed,Canonical active resource contract or current test/configuration/consumer.
+fe/src/features/counseling/counseling-shared.tsx,fe/src/features/counseling/counseling-shared.tsx,transformed,Canonical active resource contract or current test/configuration/consumer.
+fe/src/features/counseling/counseling-workspace.tsx,fe/src/features/counseling/counseling-workspace.tsx,already removed by CONT-1A / preserved,Context summary projection stays absent; independent Encounter authorization link remains.
+fe/src/features/counseling/encounter-detail-page.tsx,fe/src/features/counseling/encounter-detail-page.tsx,transformed,Canonical active resource contract or current test/configuration/consumer.
+fe/src/features/counseling/shared-summary-section.tsx,fe/src/features/counseling/student-session-summary-section.tsx,renamed,Canonical active resource contract or current test/configuration/consumer.
+fe/src/features/counseling/student-shared-summaries.tsx,fe/src/features/counseling/student-session-summaries.tsx,renamed,Canonical active resource contract or current test/configuration/consumer.
+fe/src/features/notifications/notification-targets.ts,fe/src/features/notifications/notification-targets.ts,transformed,Canonical active resource contract or current test/configuration/consumer.
+fe/tests/portal-command-palette.test.mjs,fe/tests/portal-command-palette.test.mjs,transformed,Canonical active resource contract or current test/configuration/consumer.
+fe/tests/support/notification-route-contract.json,fe/tests/support/notification-route-contract.json,transformed,Canonical active resource contract or current test/configuration/consumer.
+outputs/FORM-ID-1-Test-Evidence.json,outputs/FORM-ID-1-Test-Evidence.json,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1/CANON-1-Migration-Graph.md,outputs/canon-1/CANON-1-Migration-Graph.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1/CANON-1-Removal-Matrix.csv,outputs/canon-1/CANON-1-Removal-Matrix.csv,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1/evidence/backend-shard-plan.txt,outputs/canon-1/evidence/backend-shard-plan.txt,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1/evidence/ci-backend-full-8cff975e.json,outputs/canon-1/evidence/ci-backend-full-8cff975e.json,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1/evidence/contract-inventory.json,outputs/canon-1/evidence/contract-inventory.json,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1/evidence/existing-schema.json,outputs/canon-1/evidence/existing-schema.json,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1/evidence/frontend-build.txt,outputs/canon-1/evidence/frontend-build.txt,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1/evidence/migration-inventory.json,outputs/canon-1/evidence/migration-inventory.json,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1c/CANON-1C-Canonical-Schema-Comparison.md,outputs/canon-1c/CANON-1C-Canonical-Schema-Comparison.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1c/CANON-1C-Staging-Dataset-v1-Design.md,outputs/canon-1c/CANON-1C-Staging-Dataset-v1-Design.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1c/evidence/rehearsal-clean.txt,outputs/canon-1c/evidence/rehearsal-clean.txt,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1c/evidence/schema-reference-a.json,outputs/canon-1c/evidence/schema-reference-a.json,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1c/evidence/schema-reference-b.json,outputs/canon-1c/evidence/schema-reference-b.json,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1c/uat/STAGING-DATASET-v1-ACCOUNT-CATALOG.md,outputs/canon-1c/uat/STAGING-DATASET-v1-ACCOUNT-CATALOG.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1c/uat/STAGING-DATASET-v1-SUMMARY.md,outputs/canon-1c/uat/STAGING-DATASET-v1-SUMMARY.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1c/uat/UAT-ACCOUNT-SELECTION-GUIDE.md,outputs/canon-1c/uat/UAT-ACCOUNT-SELECTION-GUIDE.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1c/uat/UAT-SCENARIO-MATRIX.md,outputs/canon-1c/uat/UAT-SCENARIO-MATRIX.md,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."
+outputs/canon-1c/uat/staging-accounts.csv,outputs/canon-1c/uat/staging-accounts.csv,preserved,"Recorded audit, validation or historical dataset artifact; no runtime contract."

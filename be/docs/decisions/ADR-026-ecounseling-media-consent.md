@@ -1,5 +1,7 @@
 # ADR-026: E-Counseling Media Consent and Provider Capture
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 ## Context
 
 COMPASS already provides Appointment-backed ONLINE Counseling through Daily.co while preserving

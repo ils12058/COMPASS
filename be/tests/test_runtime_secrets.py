@@ -38,7 +38,7 @@ def runtime(tmp_path, monkeypatch):
                 "GUIDANCE_MESSAGE_ENCRYPTION_KEYS",
                 "GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS",
                 "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
-                "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS",
+                "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS",
                 "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
                 "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
                 "INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
@@ -48,7 +48,7 @@ def runtime(tmp_path, monkeypatch):
             }
             else ""
         )
-        if setting == "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS":
+        if setting == "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS":
             value = base64.urlsafe_b64encode(b"s" * 32).decode("ascii")
         path = directory / filename
         path.write_text(value)
@@ -125,7 +125,7 @@ def test_file_metadata(runtime, fault):
         "SMTP_PASSWORD",
         "GUIDANCE_MESSAGE_ENCRYPTION_KEYS",
         "GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS",
-        "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS",
+        "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS",
         "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
         "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
         "INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
@@ -271,8 +271,8 @@ def test_missing_or_unrepresentable_effective_values_fail_before_export(
 def test_new_summary_secret_required_and_pointer_only(runtime, fault):
     checker, directory, env_file = runtime
     assert len(checker.SECRET_FILES) == 25
-    setting = "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS"
-    filename = "counseling_shared_summary_encryption_keys"
+    setting = "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS"
+    filename = "student_session_summary_encryption_keys"
     assert checker.SECRET_FILES[setting] == filename
     path = directory / filename
     if fault == "empty":
@@ -298,8 +298,8 @@ def test_new_summary_secret_required_and_pointer_only(runtime, fault):
 
 def test_export_cannot_generate_absent_new_summary_key(migration, monkeypatch):
     module, directory = migration
-    monkeypatch.delenv("COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS")
-    with pytest.raises(ValueError, match="COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS"):
+    monkeypatch.delenv("STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS")
+    with pytest.raises(ValueError, match="STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS"):
         module.effective_values()
     assert not list(directory.iterdir())
 

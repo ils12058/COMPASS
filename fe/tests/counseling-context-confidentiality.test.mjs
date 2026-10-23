@@ -28,11 +28,11 @@ function seedOverview(client) {
 }
 
 test("generated Context contract has no Summary operation, query key, hook or section", () => {
-  for (const name of ["counselingContextListSharedSummaries", "getCounselingContextListSharedSummariesQueryKey", "useCounselingContextListSharedSummaries"]) {
+  for (const name of ["counselingContextListStudentSessionSummaries", "getCounselingContextListStudentSessionSummariesQueryKey", "useCounselingContextListStudentSessionSummaries"]) {
     assert.equal(name in counselingApi, false, name);
   }
   assert.equal("SHARED_SUMMARIES" in CounselingContextSection, false);
-  for (const name of ["useCounselingGetAssignedSharedSummary", "useCounselingPutAssignedSharedSummary", "useCounselingPublishAssignedSharedSummary", "useCounselingGetMySharedSummary", "useCounselingListMySharedSummaries"]) {
+  for (const name of ["useCounselingGetAssignedStudentSessionSummary", "useCounselingPutAssignedStudentSessionSummary", "useCounselingPublishAssignedStudentSessionSummary", "useCounselingGetMyStudentSessionSummary", "useCounselingListMyStudentSessionSummaries"]) {
     assert.equal(typeof counselingApi[name], "function", `${name} remains available`);
   }
 });
@@ -40,9 +40,9 @@ test("generated Context contract has no Summary operation, query key, hook or se
 for (const summaries of [true, false]) {
   test(`Context ignores legacy section and cached prior publication with summary capabilities=${summaries}`, () => {
     const html = render(h(CounselingContextPanel, { anchorType: "APPOINTMENT", anchorId: appointmentId, overview: overview() }), (client) => {
-      client.setQueryData([`/api/v1/counseling/context/APPOINTMENT/${appointmentId}/shared-summaries`, { limit: 20 }], response({ items: [priorSummary] }));
+      client.setQueryData([`/api/v1/counseling/context/APPOINTMENT/${appointmentId}/student-session-summaries`, { limit: 20 }], response({ items: [priorSummary] }));
     }, counselor(summaries));
-    assert.doesNotMatch(html, /Shared Summaries|Previous published summaries|shared-summary-heading/);
+    assert.doesNotMatch(html, /Student Session Summaries|Previous published summaries|student-session-summary-heading/);
     assert.ok(!html.includes(privateBody));
     for (const label of ["Overview", "Inventory", "Support", "History"]) assert.ok(html.includes(`>${label}</button>`), label);
   });
@@ -60,7 +60,7 @@ test("the independently authorized own Encounter retains its existing authoring 
   });
   assert.match(html, /View encounter/);
   assert.ok(html.includes(`/portal/counseling/encounters/${encounterId}`));
-  assert.doesNotMatch(html, /Shared Summary draft|Previous published summaries/);
+  assert.doesNotMatch(html, /Student Session Summary draft|Previous published summaries/);
 });
 
 for (const [name, record] of [
@@ -91,12 +91,12 @@ for (const status of [401, 403, 404]) {
   test(`denied Context refresh ${status} hides cached protected presentation`, () => {
     const html = render(workspace(), (client) => {
       seedOverview(client);
-      client.setQueryData([`/api/v1/counseling/context/APPOINTMENT/${appointmentId}/shared-summaries`, { limit: 20 }], response({ items: [priorSummary] }));
+      client.setQueryData([`/api/v1/counseling/context/APPOINTMENT/${appointmentId}/student-session-summaries`, { limit: 20 }], response({ items: [priorSummary] }));
       const key = counselingApi.getCounselingContextGetOverviewQueryKey("APPOINTMENT", appointmentId);
       client.getQueryCache().find({ queryKey: key, exact: true }).setState({ status: "error", error: new CompassApiError({ status, body: { error: { code: status === 404 ? "counseling_context_not_found" : "permission_denied", message: "Unavailable" } }, headers: {}, method: "GET", url: key[0] }) });
     });
     assert.match(html, /Counseling information unavailable/);
-    assert.doesNotMatch(html, /Synthetic CONT-1A Student|Shared Summaries|Previous published summaries|View encounter/);
+    assert.doesNotMatch(html, /Synthetic CONT-1A Student|Student Session Summaries|Previous published summaries|View encounter/);
     assert.ok(!html.includes(privateBody));
   });
 }
@@ -105,10 +105,20 @@ for (const published of [false, true]) {
   test(`Encounter Detail keeps the ordinary author summary ${published ? "publication" : "editor"}`, () => {
     const html = render(h(EncounterDetailPage, { encounterId }), (client) => {
       client.setQueryData(counselingApi.getCounselingGetEncounterQueryKey(encounterId), response(encounter()));
-      client.setQueryData(counselingApi.getCounselingGetAssignedSharedSummaryQueryKey(encounterId), response(summary({ published_at: published ? "2026-01-06T02:00:00Z" : null })));
+      client.setQueryData(counselingApi.getCounselingGetAssignedStudentSessionSummaryQueryKey(encounterId), response(summary({ published_at: published ? "2026-01-06T02:00:00Z" : null })));
     });
-    assert.match(html, published ? /Published to Student/ : /Shared Summary draft/);
+    assert.match(html, published ? /Published to Student/ : /Student Session Summary draft/);
     assert.match(html, /Synthetic author draft/);
     assert.ok(!html.includes(privateBody));
   });
 }
+
+
+test("retired ordinary operations and frontend route are removed", async () => {
+  for (const name of ["useCounselingGetAssignedSharedSummary", "useCounselingPutAssignedSharedSummary", "useCounselingPublishAssignedSharedSummary", "useCounselingGetMySharedSummary", "useCounselingListMySharedSummaries", "counselingContextListSharedSummaries"]) {
+    assert.equal(name in counselingApi, false, name);
+  }
+  const { existsSync } = await import("node:fs");
+  assert.equal(existsSync(new URL("../src/app/(portal)/portal/counseling/summaries/[summaryId]/page.tsx", import.meta.url)), false);
+  assert.equal(existsSync(new URL("../src/app/(portal)/portal/counseling/student-session-summaries/[summaryId]/page.tsx", import.meta.url)), true);
+});

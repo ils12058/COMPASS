@@ -1,5 +1,7 @@
 # Frontend consistency — Slice 1 audit
 
+> Historical implementation evidence. Summary terminology below records that delivery; the current canonical resource is [Student Session Summary](../../docs/cont-1b/README.md).
+
 ## Authority and scope
 
 Initial audit completed before production edits on 2026-10-10, against `origin/staging` at

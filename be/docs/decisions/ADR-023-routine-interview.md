@@ -1,5 +1,7 @@
 # ADR-023: Interaction-specific Routine Interview
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 ## Status
 
 Accepted. [ADR-087](ADR-087-deterministic-routine-encounter-linking.md) refines "Encounter matching

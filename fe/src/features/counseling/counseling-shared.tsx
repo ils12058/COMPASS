@@ -49,9 +49,9 @@ const counselingErrors: Record<string, string> = {
   counseling_not_permitted: "You can't perform this counseling action.",
   counseling_context_not_found: "This counseling view is no longer available.",
   current_academic_year_not_configured: "Counseling cannot be recorded until the current academic year is set up.",
-  shared_summary_not_found: "No Shared Summary has been drafted yet.",
-  shared_summary_already_published: "This shared summary has already been published and can no longer be edited.",
-  shared_summary_empty: "Add content before publishing this Shared Summary.",
+  student_session_summary_not_found: "No Student Session Summary has been drafted yet.",
+  student_session_summary_already_published: "This student session summary has already been published and can no longer be edited.",
+  student_session_summary_empty: "Add content before publishing this Student Session Summary.",
 };
 
 // A failed connection doesn't prove the save failed, so an unconfirmed result is never shown as
@@ -156,9 +156,9 @@ export function CounselingWorkspaceSkeleton() {
   );
 }
 
-export function SharedSummaryDetailSkeleton() {
+export function StudentSessionSummaryDetailSkeleton() {
   return (
-    <LoadingRegion label="Loading published Shared Summary…">
+    <LoadingRegion label="Loading published Student Session Summary…">
       <Skeleton className="h-10 w-2/3" />
       <Skeleton className="mt-4 h-32 w-full" />
     </LoadingRegion>

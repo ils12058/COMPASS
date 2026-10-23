@@ -409,12 +409,18 @@ SCENARIOS: tuple[Scenario, ...] = (
     _s(
         "STU-SUM-01",
         "Counseling",
-        "Read a published Shared Summary and give feedback",
+        "Read a published Student Session Summary and give feedback",
         "Student",
         "ar_15",
         "/portal/notifications",
-        "Completed session with counselor_b; published Shared Summary; feedback invitation.",
-        "Open the Shared Summary from the notification, then submit the Customer Feedback form.",
+        (
+            "Completed session with counselor_b; published Student Session Summary;"
+            " feedback invitation."
+        ),
+        (
+            "Open the Student Session Summary from the notification, then submit "
+            "the Customer Feedback form."
+        ),
         "The summary is readable by the Student only; feedback is recorded once.",
         related=("counselor_b",),
         checks=(("ar_15", "summary:published"),),
@@ -441,7 +447,10 @@ SCENARIOS: tuple[Scenario, ...] = (
         "Student",
         "second_year",
         "/portal/notifications",
-        "Read Appointment and feedback notifications; an unread Shared Summary notification.",
+        (
+            "Read Appointment and feedback notifications; an unread Student Session"
+            " Summary notification."
+        ),
         "Open Notifications, then mark the unread item as read.",
         "Unread and read items are distinguished; the unread count updates.",
         fresh_state=False,
@@ -509,11 +518,14 @@ SCENARIOS: tuple[Scenario, ...] = (
     _s(
         "STU-SUM-02",
         "Counseling",
-        "An unpublished Shared Summary stays hidden",
+        "An unpublished Student Session Summary stays hidden",
         "Student",
         "fourth_year",
         "/portal/appointments/my",
-        "A walk-in Encounter with an unpublished Shared Summary draft; an upcoming follow-up.",
+        (
+            "A walk-in Encounter with an unpublished Student Session Summary draft;"
+            " an upcoming follow-up."
+        ),
         "Open Appointments and notifications; look for the walk-in summary.",
         "The upcoming follow-up is listed; the draft summary is not visible until counselor_a "
         "publishes it (CNS-ENC-01).",
@@ -528,8 +540,8 @@ SCENARIOS: tuple[Scenario, ...] = (
         "Student",
         "referred",
         "/portal/call-slips",
-        "A completed Call Slip interview and a published follow-up Shared Summary.",
-        "Open Call Slips and the published Shared Summary.",
+        "A completed Call Slip interview and a published follow-up Student Session Summary.",
+        "Open Call Slips and the published Student Session Summary.",
         "The completed Call Slip and the summary are readable; referral reasons and the "
         "Counselor's evaluation are not shown.",
         mutating=False,
@@ -725,11 +737,11 @@ SCENARIOS: tuple[Scenario, ...] = (
     _s(
         "CNS-ENC-01",
         "Counseling",
-        "Publish an unpublished Shared Summary draft",
+        "Publish an unpublished Student Session Summary draft",
         "Guidance Counselor",
         "counselor_a",
         "/portal/counseling",
-        "fourth_year has a walk-in Encounter with an unpublished Shared Summary draft.",
+        "fourth_year has a walk-in Encounter with an unpublished Student Session Summary draft.",
         "Open the Encounter, edit the draft and publish it.",
         "The summary is published and fourth_year receives an in-app notification.",
         related=("fourth_year",),
@@ -1033,8 +1045,8 @@ SCENARIOS: tuple[Scenario, ...] = (
         "Guidance Services Staff",
         "gss_a",
         "/portal/routine-interviews",
-        "Routine Interviews and Shared Summaries exist in counselor_a's caseload.",
-        "Try to open Routine Interviews, Counseling and Shared Summaries.",
+        "Routine Interviews and Student Session Summaries exist in counselor_a's caseload.",
+        "Try to open Routine Interviews, Counseling and Student Session Summaries.",
         "The workspaces are unavailable to Guidance Services Staff.",
         mutating=False,
         fresh_state=False,

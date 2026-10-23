@@ -1,4 +1,4 @@
-"""Explicit Shared Summary content policy and accessors (ADR-080).
+"""Explicit Student Session Summary content policy and accessors (CONT-1B).
 
 Select an authorized Summary before reading. ORM access never decrypts implicitly. This
 dedicated keyring protects student-disclosable summaries, not future private Counseling notes.
@@ -14,22 +14,22 @@ from django.core.exceptions import ImproperlyConfigured
 from compass.confidential_data import crypto
 from compass.confidential_data.errors import ConfidentialDataUnavailable, UnavailableReason
 
-from .models import CounselingSharedSummary
+from .models import StudentSessionSummary
 from .services import CounselingError, InvalidCounselingInput
 
-KEYRING_SETTING = "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS"
+KEYRING_SETTING = "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS"
 PAYLOAD_SCHEMA_VERSION = 1
 
 
-class InvalidSharedSummaryContent(InvalidCounselingInput):
+class InvalidStudentSessionSummaryContent(InvalidCounselingInput):
     """Invalid input; messages never include submitted text."""
 
 
-class CounselingSharedSummaryContentUnavailable(CounselingError):
+class StudentSessionSummaryContentUnavailable(CounselingError):
     def __init__(self, *, summary_id: UUID, encounter_id: UUID, reason: UnavailableReason) -> None:
         # Validate the bounded reason without retaining any confidential exception input.
         safe = ConfidentialDataUnavailable(reason=reason)
-        super().__init__("The Counseling Shared Summary content is unavailable.")
+        super().__init__("The Student Session Summary content is unavailable.")
         self.summary_id = summary_id
         self.encounter_id = encounter_id
         self.reason = safe.reason
@@ -37,16 +37,16 @@ class CounselingSharedSummaryContentUnavailable(CounselingError):
 
 def validate_content(content: object) -> str:
     if not isinstance(content, str):
-        raise InvalidSharedSummaryContent("Shared Summary content must be text.")
+        raise InvalidStudentSessionSummaryContent("Student Session Summary content must be text.")
     if "\x00" in content:
-        raise InvalidSharedSummaryContent(
-            "Shared Summary content contains an unsupported character."
+        raise InvalidStudentSessionSummaryContent(
+            "Student Session Summary content contains an unsupported character."
         )
     try:
         content.encode("utf-8")
     except UnicodeEncodeError:
-        raise InvalidSharedSummaryContent(
-            "Shared Summary content contains an unsupported character."
+        raise InvalidStudentSessionSummaryContent(
+            "Student Session Summary content contains an unsupported character."
         ) from None
     return str(content)
 
@@ -61,10 +61,12 @@ def _configured_keyring() -> tuple[str, ...]:
 
 
 def _binding(summary_id: UUID, encounter_id: UUID) -> dict[str, str]:
-    return {"counseling_shared_summary_id": str(summary_id), "encounter_id": str(encounter_id)}
+    return {"student_session_summary_id": str(summary_id), "encounter_id": str(encounter_id)}
 
 
-def encrypt_shared_summary_content(*, summary_id: UUID, encounter_id: UUID, content: str) -> str:
+def encrypt_student_session_summary_content(
+    *, summary_id: UUID, encounter_id: UUID, content: str
+) -> str:
     return crypto.encrypt_bound_json(
         keyring=_configured_keyring(),
         schema_version=PAYLOAD_SCHEMA_VERSION,
@@ -73,7 +75,7 @@ def encrypt_shared_summary_content(*, summary_id: UUID, encounter_id: UUID, cont
     )
 
 
-def decrypt_shared_summary_content(
+def decrypt_student_session_summary_content(
     token: str | None, *, summary_id: UUID, encounter_id: UUID
 ) -> str:
     try:
@@ -89,24 +91,24 @@ def decrypt_shared_summary_content(
             raise ConfidentialDataUnavailable(reason="malformed")
         try:
             return validate_content(payload["content"])
-        except InvalidSharedSummaryContent:
+        except InvalidStudentSessionSummaryContent:
             raise ConfidentialDataUnavailable(reason="malformed") from None
     except ConfidentialDataUnavailable as exc:
-        raise CounselingSharedSummaryContentUnavailable(
+        raise StudentSessionSummaryContentUnavailable(
             summary_id=summary_id, encounter_id=encounter_id, reason=exc.reason
         ) from None
 
 
-def read_shared_summary_content(summary: CounselingSharedSummary) -> str:
+def read_student_session_summary_content(summary: StudentSessionSummary) -> str:
     """Read the complete body of an already authorized Summary, or fail closed."""
-    return decrypt_shared_summary_content(
+    return decrypt_student_session_summary_content(
         summary.content_ciphertext, summary_id=summary.pk, encounter_id=summary.encounter_id
     )
 
 
-def write_shared_summary_content(summary: CounselingSharedSummary, content: str) -> None:
+def write_student_session_summary_content(summary: StudentSessionSummary, content: str) -> None:
     """Replace the complete encrypted body in memory; the caller owns authorization/save."""
-    summary.content_ciphertext = encrypt_shared_summary_content(
+    summary.content_ciphertext = encrypt_student_session_summary_content(
         summary_id=summary.pk, encounter_id=summary.encounter_id, content=content
     )
 
@@ -115,9 +117,9 @@ def encrypted_with_primary_key(token: str) -> bool:
     return crypto.encrypted_with_primary_key(token, keyring=_configured_keyring())
 
 
-def reencrypt_shared_summary_content(summary: CounselingSharedSummary) -> str:
+def reencrypt_student_session_summary_content(summary: StudentSessionSummary) -> str:
     """Verify context/payload before rewrapping; preserve the original Fernet timestamp."""
-    read_shared_summary_content(summary)
+    read_student_session_summary_content(summary)
     return crypto.reencrypt_with_primary_key(
         summary.content_ciphertext, keyring=_configured_keyring()
     )

@@ -14,15 +14,15 @@ from compass.accounts.models import Designation, Role, User, UserDesignation
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
-from compass.counseling.models import CounselingSharedSummary
+from compass.counseling.models import StudentSessionSummary
 from compass.counseling.services import create_encounter
-from compass.counseling.shared_summaries import (
-    CounselingSharedSummaryAlreadyPublished,
-    CounselingSharedSummaryEmpty,
-    publish_assigned_shared_summary,
-    put_assigned_shared_summary,
+from compass.counseling.student_session_summaries import (
+    StudentSessionSummaryAlreadyPublished,
+    StudentSessionSummaryEmpty,
+    publish_assigned_student_session_summary,
+    put_assigned_student_session_summary,
 )
-from compass.counseling.shared_summary_content import read_shared_summary_content
+from compass.counseling.student_session_summary_content import read_student_session_summary_content
 from compass.inventory.services import (
     ensure_current_inventory,
     replace_current_inventory,
@@ -102,7 +102,7 @@ def make_encounter(*, counselor: User, student: User, mode: str = "IN_PERSON"):
 
 
 @pytest.mark.django_db
-def test_shared_summary_model_one_per_encounter_protect_and_draft_put_is_stable():
+def test_student_session_summary_model_one_per_encounter_protect_and_draft_put_is_stable():
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
@@ -110,25 +110,25 @@ def test_shared_summary_model_one_per_encounter_protect_and_draft_put_is_stable(
     create_counseling_service(admin)
     encounter = make_encounter(counselor=counselor, student=student)
 
-    first = put_assigned_shared_summary(
+    first = put_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         content="First draft",
     )
-    second = put_assigned_shared_summary(
+    second = put_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         content="Revised draft",
     )
 
     assert first.pk == second.pk
-    assert read_shared_summary_content(second) == "Revised draft"
+    assert read_student_session_summary_content(second) == "Revised draft"
     assert second.published_at is None
-    assert CounselingSharedSummary.objects.filter(encounter=encounter).count() == 1
+    assert StudentSessionSummary.objects.filter(encounter=encounter).count() == 1
 
     with pytest.raises(IntegrityError):
         with transaction.atomic():
-            CounselingSharedSummary.objects.create(
+            StudentSessionSummary.objects.create(
                 encounter=encounter, content_ciphertext=second.content_ciphertext
             )
 
@@ -145,13 +145,13 @@ def test_publish_is_explicit_idempotent_immutable_and_audit_content_free():
     create_counseling_service(admin)
     encounter = make_encounter(counselor=counselor, student=student)
 
-    empty = put_assigned_shared_summary(
+    empty = put_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         content="   \n",
     )
-    with pytest.raises(CounselingSharedSummaryEmpty):
-        publish_assigned_shared_summary(
+    with pytest.raises(StudentSessionSummaryEmpty):
+        publish_assigned_student_session_summary(
             encounter_id=encounter.pk,
             counselor=counselor,
             context=context(counselor),
@@ -160,17 +160,17 @@ def test_publish_is_explicit_idempotent_immutable_and_audit_content_free():
     assert empty.published_at is None
 
     marker = "STUDENT-VISIBLE-UNIQUE-SENSITIVE-MARKER"
-    draft = put_assigned_shared_summary(
+    draft = put_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         content=marker,
     )
-    published = publish_assigned_shared_summary(
+    published = publish_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         context=context(counselor),
     )
-    repeated = publish_assigned_shared_summary(
+    repeated = publish_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         context=context(counselor),
@@ -178,22 +178,22 @@ def test_publish_is_explicit_idempotent_immutable_and_audit_content_free():
 
     assert published.pk == draft.pk == repeated.pk
     assert published.published_at is not None
-    events = AuditEvent.objects.filter(action="counseling.shared_summary.published")
+    events = AuditEvent.objects.filter(action="counseling.student_session_summary.published")
     assert events.count() == 1
     event = events.get()
-    assert event.target_type == "counseling.sharedsummary"
+    assert event.target_type == "counseling.studentsessionsummary"
     assert event.target_id == str(published.pk)
     assert event.metadata == {"counseling_encounter_id": str(encounter.pk)}
     assert marker not in json.dumps(event.metadata)
 
     notification = Notification.objects.get(
         recipient=student,
-        event_code="counseling.shared_summary.published",
-        source_type="counseling_shared_summary",
+        event_code="counseling.student_session_summary.published",
+        source_type="student_session_summary",
         source_id=published.pk,
     )
     assert notification.policy == "MANDATORY_OPERATIONAL"
-    assert notification.target_type == "COUNSELING_SHARED_SUMMARY"
+    assert notification.target_type == "STUDENT_SESSION_SUMMARY"
     assert notification.target_id == published.pk
     assert marker not in notification.message
     assert EmailDelivery.objects.filter(notification=notification).exists()
@@ -203,14 +203,14 @@ def test_publish_is_explicit_idempotent_immutable_and_audit_content_free():
     assert (
         Notification.objects.filter(
             recipient=student,
-            event_code="counseling.shared_summary.published",
+            event_code="counseling.student_session_summary.published",
             source_id=published.pk,
         ).count()
         == 1
     )
 
-    with pytest.raises(CounselingSharedSummaryAlreadyPublished):
-        put_assigned_shared_summary(
+    with pytest.raises(StudentSessionSummaryAlreadyPublished):
+        put_assigned_student_session_summary(
             encounter_id=encounter.pk,
             counselor=counselor,
             content="Silent rewrite attempt",
@@ -226,25 +226,31 @@ def test_student_visibility_is_published_only_paginated_and_historical():
     other_student = make_user("other-student@example.edu", "STUDENT")
     create_counseling_service(admin)
     encounter = make_encounter(counselor=counselor, student=student)
-    summary = put_assigned_shared_summary(
+    summary = put_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         content="Student-visible message",
     )
 
     student_client = auth_client(student)
-    draft_list = student_client.get("/api/v1/counseling/me/shared-summaries?page=1&page_size=1")
+    draft_list = student_client.get(
+        "/api/v1/counseling/me/student-session-summaries?page=1&page_size=1"
+    )
     assert draft_list.status_code == 200
     assert draft_list.json() == {"items": [], "page": 1, "page_size": 1, "has_next": False}
-    draft_detail = student_client.get(f"/api/v1/counseling/me/shared-summaries/{summary.pk}")
+    draft_detail = student_client.get(
+        f"/api/v1/counseling/me/student-session-summaries/{summary.pk}"
+    )
     assert draft_detail.status_code == 404
 
-    publish_assigned_shared_summary(
+    publish_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         context=context(counselor),
     )
-    published_list = student_client.get("/api/v1/counseling/me/shared-summaries?page=1&page_size=1")
+    published_list = student_client.get(
+        "/api/v1/counseling/me/student-session-summaries?page=1&page_size=1"
+    )
     assert published_list.status_code == 200
     body = published_list.json()
     assert body["page"] == 1
@@ -254,12 +260,12 @@ def test_student_visibility_is_published_only_paginated_and_historical():
     assert body["items"][0]["content"] == "Student-visible message"
 
     other_client = auth_client(other_student)
-    other_detail = other_client.get(f"/api/v1/counseling/me/shared-summaries/{summary.pk}")
+    other_detail = other_client.get(f"/api/v1/counseling/me/student-session-summaries/{summary.pk}")
     assert other_detail.status_code == 404
 
     counselor.is_active = False
     counselor.save(update_fields=["is_active", "updated_at"])
-    historical = student_client.get(f"/api/v1/counseling/me/shared-summaries/{summary.pk}")
+    historical = student_client.get(f"/api/v1/counseling/me/student-session-summaries/{summary.pk}")
     assert historical.status_code == 200
     assert historical.json()["content"] == "Student-visible message"
 
@@ -284,35 +290,35 @@ def test_authorization_requires_capability_and_actual_encounter_relationship():
     )
     create_counseling_service(admin)
     encounter = make_encounter(counselor=counselor, student=student)
-    summary = put_assigned_shared_summary(
+    summary = put_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         content="Assigned only",
     )
 
-    assert student.has_capability("shared_summaries.view_self")
-    assert counselor.has_capability("shared_summaries.view_assigned")
-    assert counselor.has_capability("shared_summaries.manage_assigned")
-    assert head.has_capability("shared_summaries.view_assigned")
-    assert not gss.has_capability("shared_summaries.view_assigned")
-    assert not admin.has_capability("shared_summaries.view_assigned")
-    assert not dpo.has_capability("shared_summaries.view_assigned")
+    assert student.has_capability("student_session_summaries.view_self")
+    assert counselor.has_capability("student_session_summaries.view_assigned")
+    assert counselor.has_capability("student_session_summaries.manage_assigned")
+    assert head.has_capability("student_session_summaries.view_assigned")
+    assert not gss.has_capability("student_session_summaries.view_assigned")
+    assert not admin.has_capability("student_session_summaries.view_assigned")
+    assert not dpo.has_capability("student_session_summaries.view_assigned")
 
     for actor in (other, head):
         response = auth_client(actor).get(
-            f"/api/v1/counseling/encounters/{encounter.pk}/shared-summary"
+            f"/api/v1/counseling/encounters/{encounter.pk}/student-session-summary"
         )
         assert response.status_code == 404
 
     for actor in (gss, admin, dpo):
         response = auth_client(actor).get(
-            f"/api/v1/counseling/encounters/{encounter.pk}/shared-summary"
+            f"/api/v1/counseling/encounters/{encounter.pk}/student-session-summary"
         )
         assert response.status_code == 403
 
     student_client = auth_client(student)
     student_response = student_client.put(
-        f"/api/v1/counseling/encounters/{encounter.pk}/shared-summary",
+        f"/api/v1/counseling/encounters/{encounter.pk}/student-session-summary",
         data=json.dumps({"content": "not allowed"}),
         content_type="application/json",
         **csrf(student_client),
@@ -320,25 +326,27 @@ def test_authorization_requires_capability_and_actual_encounter_relationship():
     assert student_response.status_code == 403
 
     counselor_client = auth_client(counselor)
-    assigned = counselor_client.get(f"/api/v1/counseling/encounters/{encounter.pk}/shared-summary")
+    assigned = counselor_client.get(
+        f"/api/v1/counseling/encounters/{encounter.pk}/student-session-summary"
+    )
     assert assigned.status_code == 200
     assert assigned.json()["id"] == str(summary.pk)
 
     head_encounter = make_encounter(counselor=head, student=student)
-    put_assigned_shared_summary(
+    put_assigned_student_session_summary(
         encounter_id=head_encounter.pk,
         counselor=head,
         content="Head as assigned counselor",
     )
     head_assigned = auth_client(head).get(
-        f"/api/v1/counseling/encounters/{head_encounter.pk}/shared-summary"
+        f"/api/v1/counseling/encounters/{head_encounter.pk}/student-session-summary"
     )
     assert head_assigned.status_code == 200
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("delivery_mode", ["IN_PERSON", "ONLINE"])
-def test_shared_summary_supports_both_delivery_modes_without_daily(delivery_mode):
+def test_student_session_summary_supports_both_delivery_modes_without_daily(delivery_mode):
     sync_policy()
     admin = make_user(f"admin-{delivery_mode.lower()}@example.edu", "IT_ADMIN")
     counselor = make_user(f"counselor-{delivery_mode.lower()}@example.edu", "COUNSELOR")
@@ -350,12 +358,12 @@ def test_shared_summary_supports_both_delivery_modes_without_daily(delivery_mode
         mode=delivery_mode,
     )
 
-    draft = put_assigned_shared_summary(
+    draft = put_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         content=f"Visible after {delivery_mode} counseling",
     )
-    published = publish_assigned_shared_summary(
+    published = publish_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         context=context(counselor),
@@ -394,7 +402,7 @@ def test_student_response_never_copies_routine_private_content():
         student_id=student.pk,
         entry_mode="WALK_IN",
         delivery_mode="IN_PERSON",
-        idempotency_key="shared-summary-privacy-test",
+        idempotency_key="student-session-summary-privacy-test",
         request_fingerprint="a" * 64,
         context=context(counselor),
     )
@@ -419,18 +427,20 @@ def test_student_response_never_copies_routine_private_content():
     )
 
     encounter = make_encounter(counselor=counselor, student=student)
-    summary = put_assigned_shared_summary(
+    summary = put_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         content="Student-visible message",
     )
-    publish_assigned_shared_summary(
+    publish_assigned_student_session_summary(
         encounter_id=encounter.pk,
         counselor=counselor,
         context=context(counselor),
     )
 
-    response = auth_client(student).get(f"/api/v1/counseling/me/shared-summaries/{summary.pk}")
+    response = auth_client(student).get(
+        f"/api/v1/counseling/me/student-session-summaries/{summary.pk}"
+    )
     assert response.status_code == 200
     payload = response.json()
     assert set(payload) == {
