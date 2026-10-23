@@ -184,6 +184,8 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Counseling encounters, context, student session summaries, continuity, and downstream lifecycle.",
         (
             "test_continuity.py",
+            "test_continuity_access.py",
+            "test_continuity_release_concurrency.py",
             "test_continuity_contract.py",
             "test_continuity_migrations.py",
             "test_counseling.py",

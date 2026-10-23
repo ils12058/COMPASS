@@ -229,6 +229,8 @@ class SelectionTests(unittest.TestCase):
         for name in (
             "test_counseling.py",
             "test_continuity.py",
+            "test_continuity_access.py",
+            "test_continuity_release_concurrency.py",
             "test_continuity_contract.py",
             "test_continuity_migrations.py",
             "test_counseling_context.py",

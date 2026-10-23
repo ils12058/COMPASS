@@ -1,18 +1,20 @@
 """Exact structural selectors. Never load ciphertext or enumerate Student history.
 
 These reviewed selectors are policy-gated by their caller. Ordinary assigned getters
-and content services remain unchanged. There is intentionally no read adapter.
+and content services remain unchanged. Source-owned read adapters are separate from
+these metadata selectors.
 """
 
-import hashlib
 from dataclasses import dataclass
 from uuid import UUID
 
 from django.db import OperationalError, transaction
 
+from compass.counseling.continuity_encounters import encounter_revision
 from compass.counseling.continuity_models import ContinuitySourceKind
 from compass.counseling.continuity_policy import ContinuityError
 from compass.counseling.models import CounselingEncounter
+from compass.routine_interviews.continuity import evaluation_revision
 from compass.routine_interviews.models import RoutineInterview
 
 PROJECTIONS = {
@@ -87,9 +89,8 @@ def _resolve_source(*, selection, student_id, requester, policy, original_counse
         )
         if linked is None:
             raise ContinuityError("source_not_found", 404)
-        marker = source.updated_at.isoformat() + ":" + linked.updated_at.isoformat()
-        return hashlib.sha256(marker.encode()).hexdigest()
-    return source.updated_at.isoformat()
+        return evaluation_revision(source, linked)
+    return encounter_revision(source)
 
 
 def resolve_source(**kwargs):

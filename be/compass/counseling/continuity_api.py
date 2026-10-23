@@ -1,10 +1,10 @@
-"""Explicit metadata-only routes. No professional source-read operation."""
+"""Continuity metadata and independently policy-gated selected source reads."""
 
 from datetime import datetime
 from enum import StrEnum
 from uuid import UUID
 
-from ninja import Router, Schema, Status
+from ninja import Query, Router, Schema, Status
 from pydantic import ConfigDict, Field
 
 from compass.audit.context import AuditContext
@@ -12,6 +12,11 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.counseling import continuity_services as services
+
+# Source-specific read operations, independently gated by approved field disclosure.
+from compass.counseling.continuity_encounters import (
+    read_selected_encounter_for_continuity,
+)
 from compass.counseling.continuity_models import (
     ContinuityDecision,
     ContinuityProjection,
@@ -21,7 +26,14 @@ from compass.counseling.continuity_models import (
     CoverageKind,
 )
 from compass.counseling.continuity_policy import ContinuityError
+from compass.counseling.continuity_read_schemas import (
+    ContinuitySelectedEncounterResponse,
+    ContinuitySelectedEvaluationResponse,
+)
 from compass.counseling.continuity_sources import SelectedSource
+from compass.routine_interviews.continuity import (
+    read_selected_evaluation_for_continuity,
+)
 
 router = Router(tags=["counseling"])
 
@@ -221,4 +233,57 @@ def revoke_grant(request, grant_id: UUID, payload: ContinuityRevokeInput):
         decision="REVOKED",
         expected_version=payload.expected_version,
         revocation_reason=payload.reason_code,
+    )
+
+
+def _selected_request_context(request):
+    if set(request.GET) - {"expected_version"}:
+        raise APIError(422, "continuity_invalid_query", "Unsupported selected-source query.")
+    return dict(
+        actor=request.auth_user,
+        context=AuditContext.from_request(request, actor=request.auth_user),
+        actor_session_id=request.auth_session.pk,
+        actor_session_digest=request.auth_session.token_digest,
+    )
+
+
+@router.get(
+    "/{grant_id}/encounters/{encounter_id}/metadata",
+    response=response_with_errors(
+        ContinuitySelectedEncounterResponse, 401, 403, 404, 409, 422, 503
+    ),
+    exclude_unset=True,
+    auth=session_auth,
+    operation_id="counselingContinuityGetSelectedEncounterMetadata",
+)
+def get_selected_encounter_metadata(
+    request, grant_id: UUID, encounter_id: UUID, expected_version: int = Query(..., ge=1)
+):
+    return _call(
+        read_selected_encounter_for_continuity,
+        **_selected_request_context(request),
+        grant_id=grant_id,
+        encounter_id=encounter_id,
+        expected_version=expected_version,
+    )
+
+
+@router.get(
+    "/{grant_id}/routine-evaluations/{routine_interview_id}",
+    response=response_with_errors(
+        ContinuitySelectedEvaluationResponse, 401, 403, 404, 409, 422, 503
+    ),
+    exclude_unset=True,
+    auth=session_auth,
+    operation_id="counselingContinuityGetSelectedRoutineEvaluation",
+)
+def get_selected_routine_evaluation(
+    request, grant_id: UUID, routine_interview_id: UUID, expected_version: int = Query(..., ge=1)
+):
+    return _call(
+        read_selected_evaluation_for_continuity,
+        **_selected_request_context(request),
+        grant_id=grant_id,
+        routine_interview_id=routine_interview_id,
+        expected_version=expected_version,
     )

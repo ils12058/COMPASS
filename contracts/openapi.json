@@ -5784,6 +5784,92 @@
         "title": "ContinuityScopeMetadata",
         "type": "object"
       },
+      "ContinuitySelectedEncounterResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "disclosure_policy_version": {
+            "title": "Disclosure Policy Version",
+            "type": "string"
+          },
+          "encounter": {
+            "$ref": "#/components/schemas/SelectedEncounterFields"
+          },
+          "grant_id": {
+            "format": "uuid",
+            "title": "Grant Id",
+            "type": "string"
+          },
+          "grant_version": {
+            "title": "Grant Version",
+            "type": "integer"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "projection": {
+            "const": "ENCOUNTER_METADATA_V1",
+            "title": "Projection",
+            "type": "string"
+          }
+        },
+        "required": [
+          "grant_id",
+          "grant_version",
+          "policy_version",
+          "disclosure_policy_version",
+          "projection",
+          "encounter"
+        ],
+        "title": "ContinuitySelectedEncounterResponse",
+        "type": "object"
+      },
+      "ContinuitySelectedEvaluationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "disclosure_policy_version": {
+            "title": "Disclosure Policy Version",
+            "type": "string"
+          },
+          "evaluation": {
+            "$ref": "#/components/schemas/SelectedEvaluationFields"
+          },
+          "grant_id": {
+            "format": "uuid",
+            "title": "Grant Id",
+            "type": "string"
+          },
+          "grant_version": {
+            "title": "Grant Version",
+            "type": "integer"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "projection": {
+            "const": "FINALIZED_EVALUATION_V1",
+            "title": "Projection",
+            "type": "string"
+          },
+          "routine_interview_id": {
+            "format": "uuid",
+            "title": "Routine Interview Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "grant_id",
+          "grant_version",
+          "policy_version",
+          "disclosure_policy_version",
+          "projection",
+          "routine_interview_id",
+          "evaluation"
+        ],
+        "title": "ContinuitySelectedEvaluationResponse",
+        "type": "object"
+      },
       "ContinuitySourceKind": {
         "enum": [
           "ENCOUNTER",
@@ -25366,6 +25452,165 @@
         "title": "RoutineWorkflowState",
         "type": "string"
       },
+      "SelectedEncounterFields": {
+        "additionalProperties": false,
+        "properties": {
+          "counselor_id": {
+            "format": "uuid",
+            "title": "Counselor Id",
+            "type": "string"
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "entry_mode": {
+            "$ref": "#/components/schemas/CounselingEntryMode"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "started_at",
+          "ended_at",
+          "entry_mode",
+          "delivery_mode",
+          "counselor_id"
+        ],
+        "title": "SelectedEncounterFields",
+        "type": "object"
+      },
+      "SelectedEvaluationFields": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Adjustment Rating"
+          },
+          "emotional_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emotional Adjustment Rating"
+          },
+          "financial_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Financial Adjustment Rating"
+          },
+          "other_adjustment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Other Adjustment"
+          },
+          "physical_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Physical Adjustment Rating"
+          },
+          "recommendations": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendations"
+          },
+          "social_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Social Adjustment Rating"
+          },
+          "special_concern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Special Concern"
+          },
+          "spiritual_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spiritual Adjustment Rating"
+          }
+        },
+        "title": "SelectedEvaluationFields",
+        "type": "object"
+      },
       "SelfAssessmentItemValue": {
         "enum": [
           "PRIDE_CONFIDENCE_CNSC",
@@ -39942,6 +40187,124 @@
         ]
       }
     },
+    "/api/v1/counseling/continuity-grants/{grant_id}/encounters/{encounter_id}/metadata": {
+      "get": {
+        "operationId": "counselingContinuityGetSelectedEncounterMetadata",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "encounter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Encounter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Expected Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContinuitySelectedEncounterResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Get Selected Encounter Metadata",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
     "/api/v1/counseling/continuity-grants/{grant_id}/revoke": {
       "post": {
         "operationId": "counselingContinuityRevokeGrant",
@@ -40035,6 +40398,124 @@
           }
         ],
         "summary": "Revoke Grant",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/routine-evaluations/{routine_interview_id}": {
+      "get": {
+        "operationId": "counselingContinuityGetSelectedRoutineEvaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "routine_interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Routine Interview Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Expected Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContinuitySelectedEvaluationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Get Selected Routine Evaluation",
         "tags": [
           "counseling"
         ]

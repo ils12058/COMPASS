@@ -739,7 +739,7 @@ def race(*operations):
         except ContinuityError as exc:
             return ("error", exc.code)
         finally:
-            close_old_connections()
+            connection.close()
 
     with ThreadPoolExecutor(max_workers=len(operations)) as pool:
         futures = [pool.submit(run, op) for op in operations]
@@ -933,7 +933,7 @@ def test_postgresql_busy_source_fails_without_deadlock(case):
                 locked.set()
                 assert release.wait(timeout=10)
         finally:
-            close_old_connections()
+            connection.close()
 
     with ThreadPoolExecutor(max_workers=1) as pool:
         future = pool.submit(source_writer)
