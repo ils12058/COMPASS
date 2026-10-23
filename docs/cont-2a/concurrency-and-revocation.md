@@ -1,0 +1,27 @@
+# Concurrency, effective status and authority changes
+
+Every mutation carries `expected_version`. Creation uses zero for the absent resource; persisted grants start at one. Decisions lock and compare the current version, then increment once for a material transition. Stale versions always return `continuity_stale_version` (409), including an old successful intent replay. An identical decision from the same actor at the **current** version returns canonical state without another increment/event. Revocation also requires the same bounded reason. A conflicting or terminal transition returns 409. Renewal creates a new request.
+
+The client request UUID is an actor-scoped idempotency intent, not a credential. Exact request retries return the existing sealed snapshot without a second Audit event. A changed intent with the same UUID returns `continuity_request_conflict`; sources/eligibility/policy must still pass. Equivalent timezone offsets do not create false snapshot conflicts.
+
+## Lock ordering and overlapping intervals
+
+Services use deterministic ascending-UUID User row locks for actor, Student, receiver, requester, nullable original and known decision/revocation identities, then Grant, Scope and exact source rows. The stable Student row serializes request/approval overlap checks even when the matching grant set is empty. REQUESTED and APPROVED rows reserve their explicit intervals; terminal requests do not. Half-open overlap is `other.start < end AND other.end > start`; adjacent intervals are allowed. Same Student/receiver/kind overlaps are always rejected. Different receivers/kinds require an explicit approved policy choice; no default is activated.
+
+Existing Counseling/Routine writers sometimes lock Routine → Encounter → User (for example `update_encounter` and finalized linking). Waiting on their sources while holding User would reverse that order. Therefore structural selectors use PostgreSQL `SELECT FOR UPDATE NOWAIT`, inside a savepoint; SQLSTATE 55P03 becomes a bounded `continuity_source_busy` 409 with no retry or partial mutation. Linked Routine Encounter identity/revision is also locked this way. Account management takes its existing capability mutex before sorted User locks; continuity does not acquire that mutex after User locks. The low-level override writer now takes its User lock before writing overrides. Ordinary source mutation predicates remain unchanged.
+
+Real PostgreSQL tests race duplicate/overlapping requests, approval/approval, approval/decline, approval/cancel, stale approval/revoke, revoke/metadata, override revocation, account deactivation and real administrative account mutations. A source-lock contention case verifies controlled conflict and rollback. No SQLite or mocked lock claim is used.
+
+## Time, revocation and invalidation
+
+APPROVED state derives SCHEDULED / ACTIVE / EXPIRED at backend time with `start <= now < expiry`; exact expiry denies effectiveness. Other decision states remain PENDING / DECLINED / CANCELLED / REVOKED. Invalid current receiver, Student lifecycle/affiliation, approval authority or sealed policy gives UNAVAILABLE or a policy denial. Policy expiry/withdrawal/changed digest cannot leave an effective approval. No Celery/cron status updater exists. Original Counselor deactivation after approval does not rewrite or invalidate historical provenance by itself.
+
+Approval rechecks current role, capabilities, current Head assignment, policy evidence, separation, receiver, Student/affiliation, source revisions, interval and overlap while holding locks. Expiring capability/policy bounds are rechecked after source validation immediately before persistence. Revocation records actor/time/reason/version/Audit atomically and remains terminal. No stored allow decision or grant token can satisfy a source authorization.
+
+Metadata and revocation share identity/Grant locks: a read may observe the legitimate pre-revocation state if it serializes first, or REVOKED if revocation wins. A completed response cannot be recalled and may arrive after transaction commit. A list first scopes IDs before pagination under a short transaction, then independently reauthorizes each item's metadata in its own transaction. It is not a cross-page snapshot; concurrent concealed disappearance is omitted, authority errors abort safely.
+
+## Explicit synchronization limits
+
+The tests prove the supported User-locking account-management paths and low-level override setter. Direct ORM/SQL updates/deletes to overrides, UserDesignation, RoleCapability/DesignationCapability, shared role definitions or organizational Campus/College activation do not all take this new synchronization boundary. Canonical policy synchronization is deployment-owned; it does not add continuity role defaults. A future institutional policy provider must define transactional policy invalidation, including any shared office/authority lock or generation fence. Current checks reload authoritative state; a Grant row lock alone does **not** serialize every identity/policy writer.
+
+No professional-content read exists, and the default policy denies operation. These unresolved global-writer/provider synchronization contracts block real-world activation and CONT-2B disclosure claims. Do not extrapolate the tested metadata lifecycle into a strict universal post-commit content-release guarantee. CONT-2B must audit and coordinate every relevant writer, establish its disclosure linearization point, recheck source lifecycle/revision/time and audit authorized reads before returning a body.

@@ -72,6 +72,31 @@ DESIGNATION_DEFINITIONS = (
 
 CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
+        code="counseling.continuity.view",
+        name="View authorized continuity metadata",
+        description="Continuity foundation; institutional policy and actor checks also required.",
+    ),
+    CapabilityDefinition(
+        code="counseling.continuity.request",
+        name="Request scoped case coverage",
+        description="Continuity foundation; institutional policy and actor checks also required.",
+    ),
+    CapabilityDefinition(
+        code="counseling.continuity.approve",
+        name="Decide scoped case coverage",
+        description="Continuity foundation; institutional policy and actor checks also required.",
+    ),
+    CapabilityDefinition(
+        code="counseling.continuity.revoke",
+        name="Revoke scoped case coverage",
+        description="Continuity foundation; institutional policy and actor checks also required.",
+    ),
+    CapabilityDefinition(
+        code="counseling.continuity.read_selected",
+        name="Future selected-source eligibility",
+        description="Continuity foundation; institutional policy and actor checks also required.",
+    ),
+    CapabilityDefinition(
         code="guidance_followups.view",
         name="View assigned Guidance Follow-Ups",
         description="View authorized assigned Follow-Ups without access to their source records.",
@@ -697,6 +722,10 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 # Dependencies constrain whether already-granted authority is effective. They never
 # create prerequisite authority or rewrite persisted grants/overrides.
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
+    "counseling.continuity.request": frozenset({"counseling.continuity.view"}),
+    "counseling.continuity.approve": frozenset({"counseling.continuity.view"}),
+    "counseling.continuity.revoke": frozenset({"counseling.continuity.view"}),
+    "counseling.continuity.read_selected": frozenset({"counseling.continuity.view"}),
     "guidance_followups.manage": frozenset({"guidance_followups.view"}),
     "assessment_records.manage": frozenset({"assessment_records.view"}),
     "guidance_messages.manage_self": frozenset({"guidance_messages.view_self"}),

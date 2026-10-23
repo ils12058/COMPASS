@@ -31,6 +31,7 @@
     "accounts/migrations/0002_student_session_summary_capabilities.py",
     "appointments/migrations/0002_appointment_reminders.py",
     "counseling/migrations/0002_student_session_summary_contract.py",
+    "counseling/migrations/0003_case_continuity_foundation.py",
     "group_sessions/migrations/0001_initial.py",
     "group_sessions/migrations/0002_alter_groupsessionfacilitator_group_session.py",
     "group_sessions/migrations/0003_group_session_scheduling_and_external_facilitators.py",
