@@ -113,3 +113,10 @@ class StudentSessionSummary(models.Model):
                 name="student_session_summary_ciphertext_present",
             ),
         ]
+
+
+# Register the focused continuity models in the existing Counseling app.
+from compass.counseling.continuity_models import (  # noqa: E402, F401
+    CounselorCaseContinuityGrant,
+    CounselorCaseContinuityScope,
+)

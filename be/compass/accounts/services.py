@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import datetime
 
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -123,6 +124,7 @@ def user_has_capability(
     return capability_code in effective_capabilities(user, at=at)
 
 
+@transaction.atomic
 def set_user_capability_override(
     *,
     user: User,
@@ -153,6 +155,8 @@ def set_user_capability_override(
     if created_by is not None and not getattr(created_by, "pk", None):
         raise ValueError("created_by must be saved when provided")
 
+    # Share the account-management identity lock with continuity decisions.
+    User.objects.select_for_update().get(pk=user.pk)
     override, _created = UserCapabilityOverride.objects.update_or_create(
         user=user,
         capability=capability,

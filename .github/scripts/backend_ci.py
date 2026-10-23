@@ -181,8 +181,11 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         ),
     ),
     "counseling": (
-        "Counseling encounters, context, student session summaries, and downstream lifecycle.",
+        "Counseling encounters, context, student session summaries, continuity, and downstream lifecycle.",
         (
+            "test_continuity.py",
+            "test_continuity_contract.py",
+            "test_continuity_migrations.py",
             "test_counseling.py",
             "test_counseling_context.py",
             "test_counseling_downstream_lifecycle.py",
