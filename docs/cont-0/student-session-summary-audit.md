@@ -1,0 +1,61 @@
+# Student Session Summary audience and complete rename
+
+## Verified lifecycle and audience issue
+
+[`CounselingSharedSummary`](../../be/compass/counseling/models.py) is optional, one per completed Encounter, with `content_ciphertext`, nullable `published_at`, creation/update timestamps and `PROTECT` Encounter ownership. Author identity is derived from `encounter.counselor`; there is no separate author field. Draft PUT creates once or replaces content under row locks. Publication requires nonblank decrypted content, sets server time, and emits one content-free Audit event and Student Notification. Repeated publication is idempotent. Ordinary published edits are refused; correction/versioning is not implemented.
+
+[Ordinary services](../../be/compass/counseling/shared_summaries.py) enforce author or owning Student/publication relationships. [Routes](../../be/compass/counseling/api.py) add `shared_summaries.view_assigned/manage_assigned/view_self`. Head, GSS, IT Admin and another Counselor have no ordinary designation/College-wide Summary rights.
+
+In contrast, `list_context_shared_summaries` in [Context services](../../be/compass/counseling/context_services.py) filters only `encounter__student_id` and non-null publication, then decrypts. [Context API](../../be/compass/counseling/context_api.py) gates only active Counselor + `counseling.view_assigned` + valid exact-relationship window. Another author is not excluded. `test_context_shared_summaries_are_published_only` explicitly expects B to read A's published Summary. This is current tested intent that must change under the newly selected audience meaning; it is not an accidental SQL omission inferred without checking tests.
+
+The frontend [workspace](../../fe/src/features/counseling/counseling-workspace.tsx) displays “Previous published summaries” with Counselor identity and body. The UI additionally checks `canViewAssignedSummaries`, but direct API access does not. Its current Shared Summaries tab also hosts the current Encounter's author editor. [Encounter detail](../../fe/src/features/counseling/encounter-detail-page.tsx) independently hosts the same author tools, and [Student pages](../../fe/src/features/counseling/student-shared-summaries.tsx) use self APIs. Therefore removing the Context tab need not remove authoring capability.
+
+## CONT-1A precise change contract
+
+Adopt: Student reads only own published communication; original author reads/manages their own record with current active identity/capabilities and publication rules. Another Counselor has no automatic access through Appointment, College, Context or future continuity. Exceptional sharing is a separate institutional decision, excluded here.
+
+1. Remove `list_context_shared_summaries`, its Context-only result type/imports and export; remove `SHARED_SUMMARIES` from available sections and API enum. Remove the Context `/shared-summaries` route, response schemas and operation `counselingContextListSharedSummaries` entirely. Missing old route must fail without decrypting. Keep ordinary summary routes under existing names until CONT-1B.
+2. Remove Context frontend tab, previous-publication query, list renderer, publication invalidation and query-key dependencies. Retain author tools on Encounter detail. For the current Context interaction, provide a bounded **link to its assigned Encounter page** when the canonical own Encounter is available; do not retain a tab that implies access to historical publications. If existing inline author tools are retained contextually, render only the ordinary author-scoped component, with no history query. Preferred simplest result is the link and existing detail form.
+3. Regenerate/check `contracts/openapi.json` using the backend exporter; regenerate Orval clients locally according to `fe/AGENTS.md` (generated files are not committed). Remove all consumers of the deleted operation/schema/section. Keep Student list/detail, encounter author GET/PUT/publish, content encryption, UUIDs, notification targets and publication times unchanged in this slice.
+4. Replace the cross-author positive Context expectation with negative API assertions for exact provider B, Head-as-current-provider, cross-College provider and direct anchors. Test direct old URL denial and absence of sections/body/decrypt calls. Preserve independent A author and Student published-only positives, Student/other-Student/draft negatives, denied actor and idempotent publication tests. Test B with summary capabilities present and absent: neither combination discloses A's body. Test expired/cancelled Context and stale UI data loss.
+5. Test Context Overview/Inventory/Support/History still work, and original Encounter/Routine access survives Context expiry. Run focused backend authorization and frontend workspace tests; check generated contract, typecheck and affected UI/browser scenarios. Add a synthetic test proving revoked summary capability has no alternate cross-author Context body path.
+
+No database migration, keyring rename, content conversion, endpoint alias, new continuity capability, or new grant is needed for CONT-1A. Removing the entire Context projection is simpler and clearer than an author-filtered Student-wide publication list with a professional-sharing label.
+
+## CONT-1B canonical naming contract
+
+Keep ownership in `compass.counseling`. Recommended exact names:
+
+| Old identifier | Single target | Impact / treatment |
+| --- | --- | --- |
+| `CounselingSharedSummary` / reverse `shared_summary` | `StudentSessionSummary` / `student_session_summary` | `RenameModel` + field relation alteration; table becomes `counseling_studentsessionsummary`; retain Encounter ownership |
+| `counseling_counselingsharedsummary` | `counseling_studentsessionsummary` | Derived current/target Django table names; preserve or explicitly purge scoped rows before renaming |
+| `counseling_summary_ciphertext_present` | `student_session_summary_ciphertext_present` | Named DB check constraint; remove/add constraint as needed, plus model-state alignment |
+| `shared_summaries.py`, `shared_summary_content.py` | `student_session_summaries.py`, `student_session_summary_content.py` | Rename import callers, functions, exceptions, pages, DTOs; no forwarding modules |
+| `get/put/publish_assigned_shared_summary`, `get/list_my_shared_summar*` | Corresponding `*_student_session_summary` / `*_student_session_summaries` names | Author and Student relationship semantics preserved |
+| `shared_summaries.view_self/view_assigned/manage_assigned` | `student_session_summaries.view_self/view_assigned/manage_assigned` | Migrate stored Capability identifiers and grants/overrides; explicitly retire old codes, no fallback capability checks |
+| `.../me/shared-summaries[/{summary_id}]` | `.../me/student-session-summaries[/{summary_id}]` | Student endpoints, one canonical route |
+| `.../encounters/{encounter_id}/shared-summary[/publish]` | `.../encounters/{encounter_id}/student-session-summary[/publish]` | Author endpoints, one canonical route |
+| `counseling*SharedSummary/SharedSummaries` operation IDs and schema classes | `counseling*StudentSessionSummary/StudentSessionSummaries` | Backend OpenAPI → generated hooks/query keys/models → all consumers |
+| `shared_summary_not_found/already_published/empty`, `counseling_shared_summary_content_unavailable` | Corresponding `student_session_summary_*` errors | Stable safe errors under the new contract; update client error handling |
+| `SharedSummarySection`, `StudentSharedSummaries`, `StudentSharedSummaryDetail`, summary skeleton/type names | `StudentSessionSummarySection`, `StudentSessionSummaries`, `StudentSessionSummaryDetail`, matching names | File/import/copy/tests; do not rename unrelated `counseling-shared.tsx` common UI solely because its filename says shared |
+| `/portal/counseling/summaries/[summaryId]` | `/portal/counseling/student-session-summaries/[summaryId]` | App route, Student cards, email links, notification routes and route fixture; old URL removed after cutover |
+| `COUNSELING_SHARED_SUMMARY_PUBLISHED` / `counseling.shared_summary.published` | `STUDENT_SESSION_SUMMARY_PUBLISHED` / `counseling.student_session_summary.published` | New notification producer and active Audit constant; old Audit rows remain immutable evidence |
+| `counseling_shared_summary` source / `COUNSELING_SHARED_SUMMARY` target / `counseling.sharedsummary` Audit target | `student_session_summary` / `STUDENT_SESSION_SUMMARY` / `counseling.studentsessionsummary` | Notification rows transform or scoped reset; historical Audit target strings remain intact |
+| `counseling_shared_summary_published.html/.txt` | `student_session_summary_published.html/.txt` | Paired templates and render selection; no body disclosure |
+| `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS[_FILE]` | `STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS[_FILE]` | Settings + every cross-key separation check, inventory/provisioner, source secret/file mount, examples, tests, seed verification |
+| `counseling_shared_summary_encryption_keys` | `student_session_summary_encryption_keys` | Future runtime manifest/source-file contract; change only in separately authorized implementation/cutover |
+| authenticated `counseling_shared_summary_id` | authenticated `student_session_summary_id` | **Cannot be a string/setting-only rename**; reset/regenerate or verified envelope conversion |
+| `rotate_counseling_shared_summary_encryption` | `rotate_student_session_summary_encryption` | Rotation command/import/tests/CI selection; rotation alone cannot change envelope binding |
+
+The path prefix above is `/api/v1/counseling`; exact baseline spellings and all occurrences are in [rename-inventory.csv](rename-inventory.csv). Removed Context-only summary symbols are **delete**, not renamed into a new continuity path. The CSV includes exact line locations, file dependency, data/API impact, strategy and test ownership for every tracked matched file, including hidden CI/config paths. It separates active code/contracts, tests/fixtures, immutable migrations/oracles, and historical evidence.
+
+## Persisted contracts beyond the model
+
+`sync_identity_policy` retains unknown database rows. Merely adding new capability definitions leaves old Capability/RoleCapability/DesignationCapability/UserCapabilityOverride rows behind. CONT-1B must transform existing canonical capability row codes while preserving IDs/REVOKE/expiry, or explicitly remove retired rows under the approved disposable-data route; detect collisions and preserve deny semantics. Do not infer old code removal from a fresh sync. Revoke/recheck affected sessions/caches using existing account authority-change conventions.
+
+Notification has a logical-event unique key `(recipient,event_code,source_type,source_id)` and paired EmailDelivery (CASCADE). A conversion must preflight collisions, preserve recipient/read/publication/delivery history, transform target/source/event/copy and resolve pending delivery tasks under one stopped-consumer boundary. Regeneration must not send old or newly seeded publication emails. Already sent external mail cannot be rewritten; final runtime may return 404 for an obsolete old URL after the approved clean cutover. If institutional retention requires permanent old-link support, that conflicts with this mandate and must be resolved before CONT-1B, not hidden behind aliases.
+
+AuditEvent is append-only by application design. Never rewrite/delete old action/target evidence to normalize names. New emitters use the new name. A historical action label/presenter, if needed, is evidence interpretation, not a legacy resource endpoint or active authorization path. Old ADRs, immutable migrations, test oracles and audit fixtures may accurately retain former terms; current operational docs must identify the new canonical resource and mark historical passages clearly.
+
+Feasibility: complete active-contract cutover is bounded and practical. Main risks are authenticated binding, secret inventory, stored capabilities, notifications/queues, seeder counters/UUID identities, migration registration and mixed-version clients. Execute only after [cutover gates](encryption-and-cutover.md); do not ship permanent old modules, old settings fallbacks, dual models or dual endpoints.
