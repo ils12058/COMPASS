@@ -1,7 +1,7 @@
 "use client";
 
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
-import { useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -96,13 +96,21 @@ export function GoodMoralCorrectionForm({
   onRefresh,
   open,
   onClose,
+  confirmed = true,
+  onSaved,
 }: {
   item: GoodMoralOperationalDetailResponse;
   onRefresh: () => Promise<GoodMoralOperationalDetailResponse | undefined>;
   open: boolean;
+  confirmed?: boolean;
+  onSaved?: (message: string) => void;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
+  const sending = useRef(false);
+  const alive = useRef(false);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const [working, setWorking] = useState(false);
   const [draft, setDraft] = useState(() => draftFrom(item));
   const [reviewedItem, setReviewedItem] = useState(item);
   const [reviewRequired, setReviewRequired] = useState(false);
@@ -119,6 +127,8 @@ export function GoodMoralCorrectionForm({
     retry: false,
   });
 
+  const busy = update.isPending || working;
+
   function setField<K extends keyof CorrectionDraft>(field: K, value: CorrectionDraft[K]) {
     setDraft((current) => ({ ...current, [field]: value }));
     setError(null);
@@ -127,6 +137,7 @@ export function GoodMoralCorrectionForm({
 
   async function refreshCanonical(preserveDraft = false): Promise<GoodMoralOperationalDetailResponse | undefined> {
     const refreshed = await onRefresh();
+    if (!alive.current) return undefined;
     if (!refreshed) {
       setBlockedUntilRefresh(true);
       setError("The request could not be refreshed. Do not submit another correction until its current values can be checked.");
@@ -143,7 +154,7 @@ export function GoodMoralCorrectionForm({
     event.preventDefault();
     setError(null);
     setNotice(null);
-    if (!hasChanges || reviewRequired) return;
+    if (!confirmed || !hasChanges || reviewRequired || sending.current) return;
     let changes = payload;
     if (ledgerActive && ["official_receipt_number", "official_receipt_date", "official_receipt_amount"].some((name) => name in payload)) {
       const reviewed = {
@@ -161,8 +172,11 @@ export function GoodMoralCorrectionForm({
       }
       changes = { ...reviewed, receipt_operation_id: operation.current.id };
     }
+    sending.current = true;
+    setWorking(true);
     try {
       await update.mutateAsync(changes);
+      if (!alive.current) return;
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getGoodMoralGetRequestQueryKey(item.id) }),
         queryClient.invalidateQueries({ queryKey: getGoodMoralListRequestsQueryKey() }),
@@ -170,8 +184,18 @@ export function GoodMoralCorrectionForm({
       ]);
       setNotice("Certificate details saved.");
       const refreshed = await refreshCanonical();
-      if (refreshed) onClose();
+      if (refreshed) {
+        const before = reviewedItem.receipt_inspection;
+        const changedReceipt = reviewedItem.receipt_identity?.revision_id !== refreshed.receipt_identity?.revision_id;
+        const retained = before?.status === "VERIFIED" && refreshed.receipt_inspection?.status === "VERIFIED" && before.verification_id === refreshed.receipt_inspection.verification_id;
+        onSaved?.(changedReceipt && before?.status === "VERIFIED"
+          ? "Certificate details saved. The updated receipt needs a new physical inspection before preparation."
+          : retained ? `Certificate details saved. Receipt inspection retained.${reviewedItem.status === "READY_FOR_ISSUANCE" && refreshed.status === "REQUESTED" ? " Prepare this request again." : ""}`
+          : "Certificate details saved.");
+        onClose();
+      }
     } catch (caught) {
+      if (!alive.current) return;
       if (ledgerActive && (uncertainGoodMoralMutation(caught) || goodMoralErrorCode(caught) === "good_moral_receipt_changed")) {
         const refreshed = await refreshCanonical(true);
         if (refreshed) setReviewRequired(true);
@@ -186,11 +210,14 @@ export function GoodMoralCorrectionForm({
         return;
       }
       setError(goodMoralErrorMessage(caught, "Certificate details could not be corrected."));
+    } finally {
+      sending.current = false;
+      if (alive.current) setWorking(false);
     }
   }
 
   function requestClose() {
-    if (update.isPending) return;
+    if (busy) return;
     if (hasChanges) {
       setDiscardOpen(true);
       return;
@@ -218,8 +245,8 @@ export function GoodMoralCorrectionForm({
         title="Correct certificate details"
         description="Changes apply only to this certificate. Saving a change returns a ready request to preparation."
       >
-        <form onSubmit={submit} aria-busy={update.isPending} className="max-w-4xl space-y-6">
-          <fieldset disabled={update.isPending || blockedUntilRefresh} className="space-y-5 disabled:opacity-80">
+        <form onSubmit={submit} aria-busy={busy} className="max-w-4xl space-y-6">
+          <fieldset disabled={busy || blockedUntilRefresh || !confirmed} className="space-y-5 disabled:opacity-80">
             <section aria-labelledby="good-moral-correction-certificate-heading">
               <h3 id="good-moral-correction-certificate-heading" className="text-sm font-semibold text-ink">Certificate details</h3>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
@@ -293,19 +320,21 @@ export function GoodMoralCorrectionForm({
             </section>
 
             <section aria-labelledby="good-moral-correction-receipt-heading" className="border-t border-border pt-5">
-              <h3 id="good-moral-correction-receipt-heading" className="text-sm font-semibold text-ink">Official Receipt <span className="font-normal text-muted">(optional)</span></h3>
+              {item.receipt_identity?.ledger_mode === "ACTIVE" ? <p className="mb-3 text-sm text-muted">Complete the receipt before inspection and preparation. Changing its number, date or amount requires inspection again.</p> : null}
+              <h3 id="good-moral-correction-receipt-heading" className="text-sm font-semibold text-ink">Official Receipt {item.receipt_identity?.ledger_mode !== "ACTIVE" ? <span className="font-normal text-muted">(optional)</span> : null}</h3>
               <div className="mt-4 grid gap-4 sm:grid-cols-2">
                 <div>{correctionFieldLabel("receipt-number", "Receipt number")}<Input id="good-moral-correction-receipt-number" className="mt-2" maxLength={96} value={draft.receiptNumber} onChange={(event) => setField("receiptNumber", event.target.value)} /></div>
                 <div>{correctionFieldLabel("receipt-date", "Receipt date")}<Input id="good-moral-correction-receipt-date" className="mt-2" type="date" max={today} value={draft.receiptDate} onChange={(event) => setField("receiptDate", event.target.value)} /></div>
                 <div>
                   {correctionFieldLabel("receipt-amount", "Receipt amount")}
                   <Input id="good-moral-correction-receipt-amount" className="mt-2" type="number" min="0" max="9999999999.99" step="0.01" inputMode="decimal" value={draft.receiptAmount} onChange={(event) => setField("receiptAmount", event.target.value)} />
-                  <p className="mt-1 text-xs text-muted">Optional; nonnegative, up to two decimal places. No currency is specified here.</p>
+                  <p className="mt-1 text-xs text-muted">Enter the actual amount printed on the receipt, up to two decimal places. Saving these details does not record a physical inspection.</p>
                 </div>
               </div>
             </section>
           </fieldset>
 
+          {!confirmed ? <p role="status" className="text-sm text-muted">Your draft is kept. Confirm the current request before saving another correction.</p> : null}
           {reviewRequired ? <div className="space-y-3" role="status">
             <p className="text-sm">Latest saved receipt: {reviewedItem.official_receipt_number || "No number"} · {reviewedItem.official_receipt_date || "No date"} · {reviewedItem.official_receipt_amount ?? "No amount"}. Your draft remains above.</p>
             <Button type="button" variant="secondary" onClick={() => { setReviewRequired(false); setError(null); }}>Continue with my reviewed draft</Button>
@@ -314,8 +343,8 @@ export function GoodMoralCorrectionForm({
           {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
           {blockedUntilRefresh ? <Button type="button" variant="secondary" onClick={() => void refreshCanonical(ledgerActive)}>Refresh current request</Button> : null}
           <div className="flex flex-wrap gap-3">
-            <Button type="submit" disabled={update.isPending || blockedUntilRefresh || reviewRequired || !hasChanges}>{update.isPending ? "Saving changes…" : "Save changes"}</Button>
-            <Button type="button" variant="secondary" onClick={requestClose} disabled={update.isPending}>Close editor</Button>
+            <Button type="submit" disabled={busy || blockedUntilRefresh || reviewRequired || !hasChanges || !confirmed}>{busy ? "Saving changes…" : "Save changes"}</Button>
+            <Button type="button" variant="secondary" onClick={requestClose} disabled={busy}>Close editor</Button>
           </div>
         </form>
       </GoodMoralSection>

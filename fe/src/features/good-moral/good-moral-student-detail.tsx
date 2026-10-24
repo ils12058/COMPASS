@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { GoodMoralStudentNextSteps } from "./good-moral-student-next-steps";
 import { goodMoralInitiationLabel } from "./good-moral-shared";
 
 import { Notice } from "@/components/ui/notice";
@@ -112,6 +113,8 @@ export function GoodMoralStudentDetail({
           </PanelSection>
         ) : null}
       </Panel>
+
+      {(item.status === "REQUESTED" || item.status === "READY_FOR_ISSUANCE") ? <GoodMoralStudentNextSteps /> : null}
 
       {item.status === "ISSUED" ? (
         <GoodMoralSection title="Certificate issuance">
