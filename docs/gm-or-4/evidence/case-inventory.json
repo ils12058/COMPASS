@@ -1,0 +1,4776 @@
+{
+  "date": "2026-10-24 Asia/Manila",
+  "baseline": "8872db0a7325239ccab6d6f0ca3f68ffd312de8c",
+  "implementation_candidate": "9ab9cb414c41d886e6b3d78d70a5c2213ba033e6",
+  "backend_cases": [
+    {
+      "id": "tests.test_good_moral::test_f4_creation_uses_locked_current_student_inventory_year_and_local_text_snapshots",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_year_level_is_derived_from_inventory_and_explicit_mismatch_is_rejected",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_rejects_postgraduate_unclassified_and_unsupported_inventory_facts[MIT-CCMS-1-POSTGRADUATE_PROGRAM]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_rejects_postgraduate_unclassified_and_unsupported_inventory_facts[MBA-GS-None-POSTGRADUATE_PROGRAM]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_rejects_postgraduate_unclassified_and_unsupported_inventory_facts[DBA-GS-None-POSTGRADUATE_PROGRAM]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_rejects_postgraduate_unclassified_and_unsupported_inventory_facts[None-CCMS-4-UNCLASSIFIED_PROGRAM]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_rejects_postgraduate_unclassified_and_unsupported_inventory_facts[BSIS-CCMS-5-UNSUPPORTED_YEAR_LEVEL]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_degree_suggestions_are_bachelor_only_and_capability_scoped",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_academic_context_is_student_self_service_only",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_uses_submitted_inventory_for_current_academic_year",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_inventory_prerequisite_failures_are_controlled_good_moral_409[no_current_year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_inventory_prerequisite_failures_are_controlled_good_moral_409[missing]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_inventory_prerequisite_failures_are_controlled_good_moral_409[draft]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_inventory_prerequisite_failures_are_controlled_good_moral_409[prior_only]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_rejects_noncurrent_lifecycle_before_inventory_lookup[GRADUATED]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_rejects_noncurrent_lifecycle_before_inventory_lookup[FORMER]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_student_creation_schemas_do_not_accept_server_owned_good_moral_fields",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_graduate_f6_uses_same_student_account_without_current_context",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f6_claim_submission_is_not_blocked_by_lifecycle_alone[CURRENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f6_claim_submission_is_not_blocked_by_lifecycle_alone[FORMER]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f6_ucn_undergraduate_claim_remains_available_during_local_postgraduate_reenrollment",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_ucn_postgraduate_record_does_not_verify_reported_external_bachelor_qualification",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_ucn_bachelor_alumnus_can_request_f6_while_pursuing_postgraduate_studies_elsewhere",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_historical_self_access_survives_lifecycle_changes_and_remains_owner_only",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_structural_database_constraints_do_not_replace_issuance_completeness",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_counselor_corrections_are_variant_local_private_and_locked_after_issue",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_graduation_date_on_request_creation_may_be_historical_but_not_future",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_corrections_reject_future_graduation_and_receipt_dates_but_keep_historical_ones",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_issuance_refuses_a_legacy_future_graduation_date_until_corrected",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_issuance_accepts_historical_dates_and_refuses_a_future_receipt_date",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_issue_rechecks_current_lifecycle_and_duplicate_issue_is_idempotent",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_feedback_invitation_email_respects_optional_preference_but_issuance_email_does_not",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_good_moral_issuance_requires_active_supported_variant_revision",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_issue_api_requires_counselor_capability_but_not_step_up",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_saved_render_provenance_drives_html_after_current_data_and_revision_change",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_render_uses_full_labels_and_fragments_without_changing_snapshots[3rd Year-College of Computing and Multimedia Studies-First Semester-3rd-Computing and Multimedia Studies-First]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_render_uses_full_labels_and_fragments_without_changing_snapshots[Fourth-Computing and Multimedia Studies-First-Fourth-Computing and Multimedia Studies-First]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_render_uses_full_labels_and_fragments_without_changing_snapshots[ third YEAR - cOLLeGe of Visual Arts - 1st semester -third-Visual Arts-1st]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_pdf_endpoints_require_issued_state_and_use_safe_pdf_response",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_saved_missing_template_fails_closed_instead_of_switching_versions",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_real_chromium_smoke_renders_issued_graduate_certificate",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_good_moral_operational_list_supports_student_filter_and_safe_identity_search",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f4_persistent_replay_precedes_lifecycle_inventory_affiliation_and_snapshot_refresh",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_f6_persistent_replay_precedes_lifecycle_and_profile_refresh",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_same_good_moral_key_changed_body_and_cross_variant_conflict",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_same_raw_key_is_actor_scoped_and_new_key_preserves_multiple_legitimate_requests",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_create_replay_returns_current_cancelled_and_issued_resource_state",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_good_moral_idempotency_key_validation_missing_header_and_privacy",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_historical_null_creation_identity_rows_keep_existing_workflows",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_unique_creation_digest_race_recovers_existing_resource_without_raw_integrity_error",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_legacy_certificate_reprint_preserves_saved_form_and_template[False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_legacy_certificate_reprint_preserves_saved_form_and_template[True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_accepts_inventory_derived_bachelors_year_levels[1st Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_accepts_inventory_derived_bachelors_year_levels[2nd Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_accepts_inventory_derived_bachelors_year_levels[3rd Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_accepts_inventory_derived_bachelors_year_levels[4th Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_accepts_both_canonical_semesters[First Semester]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_accepts_both_canonical_semesters[Second Semester]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_year_level[Fourth]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_year_level[1st]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_year_level[11th Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_year_level[0 Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_year_level[First Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_year_level[Fifth]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_year_level[Senior]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_year_level[Grade 12]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_year_level[random string]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_semester[Summer]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_semester[Midyear]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_semester[Summer/Midyear]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_semester[Third Semester]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_semester[First]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_semester[Second]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_semester[1st Semester]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_semester[Special Term]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_creation_rejects_unsupported_semester[random term]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_idempotent_replay_preserves_older_accepted_fifth_year_requests",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_counselor_and_gss_corrections_match_the_linked_inventory",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_operational_correction_preserves_untouched_legacy_values[5th Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_operational_correction_preserves_untouched_legacy_values[6th Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_operational_correction_preserves_untouched_legacy_values[7th Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_operational_correction_preserves_untouched_legacy_values[8th Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_operational_correction_preserves_untouched_legacy_values[9th Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_operational_correction_preserves_untouched_legacy_values[10th Year]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_operational_correction_rejects_unsupported_values_when_changed",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_operational_correction_issued_remains_locked",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_operational_correction_cancelled_remains_locked",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_official_f4_pdf_rendering_scenarios[canonical_1st-1st Year-First Semester-1st year student-First semester-2]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_official_f4_pdf_rendering_scenarios[canonical_2nd-2nd Year-Second Semester-2nd year student-Second semester-2]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_official_f4_pdf_rendering_scenarios[canonical_10th-10th Year-First Semester-10th year student-First semester-2]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_official_f4_pdf_rendering_scenarios[legacy_year-3rd Year-First Semester-3rd year student-First semester-2]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_official_f4_pdf_rendering_scenarios[legacy_sem-4th Year-1st semester-4th year student-1st semester-2]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_official_f4_pdf_rendering_scenarios[legacy_renderer_v1-3rd Year-First Semester-3rd year student-First semester-1]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_official_f4_pdf_rendering_scenarios[current_ucn_v2-4th Year-Second Semester-4th year student-Second semester-2]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral::test_form_input_1a_graduate_f6_strict_non_regression",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_operational_creation_and_student_ownership[staff]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_operational_creation_and_student_ownership[gss]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_non_operational_roles_cannot_initiate_even_with_override[False-student]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_non_operational_roles_cannot_initiate_even_with_override[False-graduate]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_non_operational_roles_cannot_initiate_even_with_override[False-it]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_non_operational_roles_cannot_initiate_even_with_override[False-dpo]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_non_operational_roles_cannot_initiate_even_with_override[True-student]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_non_operational_roles_cannot_initiate_even_with_override[True-graduate]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_non_operational_roles_cannot_initiate_even_with_override[True-it]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_non_operational_roles_cannot_initiate_even_with_override[True-dpo]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_capability_and_dependency_revocation[good_moral.initiate]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_capability_and_dependency_revocation[good_moral.view]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_inactive_actor_rejected",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_graduate_creation_and_current_lifecycle_claim",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_assisted_f6_is_available_for_a_current_student_reenrolled_in_local_postgraduate_program",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_target_source_eligibility[inactive]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_target_source_eligibility[former]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_target_source_eligibility[graduate]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_target_source_eligibility[not_student]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_prerequisites_cannot_be_overridden[inventory]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_prerequisites_cannot_be_overridden[college]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_prerequisites_cannot_be_overridden[exit_interview]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_canonical_current_inputs[payload0]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_canonical_current_inputs[payload1]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_future_graduation_and_unknown_student",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_strict_payload_rejects_server_owned_fields[initiated_by-78fe6cf6-1bc1-4f90-942d-057964ac3e61]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_strict_payload_rejects_server_owned_fields[status-ISSUED]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_strict_payload_rejects_server_owned_fields[issued_by-8fc8819c-c78d-4aeb-87c8-d13cd2f716bf]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_strict_payload_rejects_server_owned_fields[trusted_eligible-True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_idempotency_replay_payload_target_variant_and_actor_binding",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_assisted_duplicate_against_existing_self_service_and_future_request",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_provenance_survives_existing_workflows[prepare]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_provenance_survives_existing_workflows[issue]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_provenance_survives_existing_workflows[cancel]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_provenance_survives_existing_workflows[correct]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_notification_mandatory_safe_unique_and_transactional",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_notification_failure_rolls_back_creation_and_audit",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_email_retry_uses_durable_delivery_without_creating_a_request",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_activity_relationships_and_current_authority[staff]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_activity_relationships_and_current_authority[gss]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_options_bound_minimized_office_wide_and_revalidated",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_legacy_defaults_allow_old_writer_insert_and_read",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_stale_staff_source_and_mismatched_audit_actor_fail_closed",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_gss_baseline_is_clerical_and_reference_only",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_staff_prepares_counselor_issues_and_provenance_remains_real[False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_staff_prepares_counselor_issues_and_provenance_remains_real[True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_safe_corrections_preserve_sources_and_ready_requires_reconfirmation",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_gss_cannot_change_protected_fields[student_id]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_gss_cannot_change_protected_fields[variant]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_gss_cannot_change_protected_fields[inventory_id]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_gss_cannot_change_protected_fields[academic_year_id]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_gss_cannot_change_protected_fields[applicant_name_snapshot]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_gss_cannot_change_protected_fields[college_snapshot]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_gss_cannot_rewrite_graduation_facts_but_counselor_can_correct_them",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_it_admin_revoke_and_expiry_control_preparation_without_removing_view",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_issue_override_does_not_qualify_staff_or_admin_as_counselor",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_prepare_validates_completeness_and_rejects_stale_review",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_ready_request_can_be_cancelled_and_terminal_records_remain_immutable",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_preparation::test_gss_keeps_denial_for_exit_interview_answers_and_reopen",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_default_remains_dormant_and_old_corrections_remain_compatible",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_shared_namespace_and_safe_duplicate[GRADUATE-GRADUATE-False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_shared_namespace_and_safe_duplicate[CURRENT_STUDENT-CURRENT_STUDENT-False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_shared_namespace_and_safe_duplicate[CURRENT_STUDENT-GRADUATE-False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_shared_namespace_and_safe_duplicate[GRADUATE-GRADUATE-True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_revisions_clearing_replacement_and_cancellation_never_release",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_exact_replay_and_noop_are_durable_and_stale_state_is_rejected",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_no_new_role_authority[STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_no_new_role_authority[IT_ADMIN]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_no_new_role_authority[INSTITUTIONAL_OFFICER]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_actor_context_and_inactive_actor_are_not_fabricated",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_audit_failure_rolls_back_all_receipt_facts",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_other_integrity_errors_are_not_hidden_as_identity_conflicts",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_legacy_ambiguity_quarantine_and_resumable_observations",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_unique_legacy_anomaly_can_be_corrected_without_reassigning_identity",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_synthetic_command_dryrun_resume_and_privacy",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_api_requires_active_receipt_tokens_preserves_projection_and_replay",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_active_draft_does_not_inspect_and_missing_policy_blocks_preparation",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_new_self_and_assisted_requests_still_start_without_receipts_after_cutover[False-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_new_self_and_assisted_requests_still_start_without_receipts_after_cutover[False-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_new_self_and_assisted_requests_still_start_without_receipts_after_cutover[True-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_new_self_and_assisted_requests_still_start_without_receipts_after_cutover[True-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_import_transaction_error_does_not_expose_database_detail",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_new_operation_rows_must_reference_the_current_result",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_canonical_baseline::test_the_graph_has_one_leaf_per_app_and_no_model_drift",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_canonical_baseline::test_every_declared_constraint_and_index_exists_in_postgresql",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_canonical_baseline::test_a_fresh_database_passes_the_history_guard",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_canonical_baseline::test_pre_canonical_history_is_refused_by_check_and_migrate",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_record_event_supports_user_system_and_anonymous_actors",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_audit_model_invariants_reject_invalid_actor_and_target_combinations",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_valid_outcomes_are_accepted[SUCCESS]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_valid_outcomes_are_accepted[DENIED]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_valid_outcomes_are_accepted[FAILED]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_action_and_outcome_are_validated_by_recording_service",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_metadata_is_explicit_small_json_and_does_not_serialize_models_or_secrets",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_audit_events_are_append_only_at_model_and_queryset_boundaries",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_actor_user_is_protected_so_disabling_is_preferred_to_deletion",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_success_audit_event_rolls_back_with_surrounding_transaction",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_state_change_and_success_audit_event_commit_together",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_create_it_admin_records_system_audit_event_without_password_data",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_create_it_admin_does_not_leave_success_audit_event_on_failure_or_repeat",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_policy_sync_records_one_event_only_when_it_changes_policy",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_policy_sync_rolls_back_if_audit_recording_fails",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_audit_read_api_is_not_exposed",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_custom_user_uses_uuid_email_identity_and_no_django_permission_fields",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_postgresql_expression_constraint_rejects_case_only_email_collision",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_user_manager_requires_a_known_primary_role",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_policy_sync_removes_all_retired_capability_state",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_reference_reads_do_not_grant_management_to_students_or_staff",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_policy_sync_rejects_legacy_rows_before_creating_new_capabilities",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_stray_legacy_row_and_grant_cannot_restore_old_authority",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_counselor_baseline_adds_scoped_authority_without_admin_expansion",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_user_has_one_primary_role_and_designation_assignment_is_non_duplicate",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_effective_capabilities_combine_role_designation_and_overrides",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_student_media_consent_capability_is_explicit",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_override_requires_a_reason_and_known_capability",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_create_it_admin_bootstraps_hashed_password_and_is_safe_on_repeat",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_create_it_admin_requires_policy_sync",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_student_lifecycle_defaults_constraint_and_current_student_predicate",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_institutional_officer_is_neutral_and_dpo_adds_only_privacy_capabilities",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_privacy_release_audit::test_student_profiling_successful_release_records_safe_audit_event[/api/v1/reports/student-profile/pdf-compass.reports.api.render_student_profiling_pdf-result0-PDF]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_privacy_release_audit::test_student_profiling_successful_release_records_safe_audit_event[/api/v1/reports/student-profile/xlsx-compass.reports.api.render_student_profiling_xlsx-result1-XLSX]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_privacy_release_audit::test_student_profiling_failed_authorization_or_render_does_not_log_release",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_privacy_release_audit::test_student_profiling_audit_failure_prevents_file_response",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_privacy_release_audit::test_good_moral_successful_pdf_release_records_safe_metadata[SELF-self]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_privacy_release_audit::test_good_moral_successful_pdf_release_records_safe_metadata[GCO-gco]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_privacy_release_audit::test_good_moral_render_or_audit_failure_does_not_create_successful_release",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_privacy_release_audit::test_graduate_tracer_xlsx_release_records_only_safe_report_context",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_privacy_release_audit::test_graduate_tracer_denial_or_render_failure_creates_no_release_event",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_privacy_release_audit::test_graduate_tracer_audit_failure_blocks_workbook_bytes",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_notifications::test_notification_model_has_uuid_identity_safe_source_target_and_durable_dedupe",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_notifications::test_optional_email_preference_defaults_true_and_policy_classes_are_code_owned",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_notifications::test_notification_self_service_list_unread_mark_read_and_ownership",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_notifications::test_notification_list_pagination_is_bounded",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_notifications::test_preference_api_is_self_only_and_does_not_mutate_mandatory_delivery",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_customer_feedback_form_is_controlled_but_csm_is_not_registered_as_f14",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_all_student_lifecycles_can_submit_both_feedback_instruments_for_completed_services[CURRENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_all_student_lifecycles_can_submit_both_feedback_instruments_for_completed_services[GRADUATED]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_all_student_lifecycles_can_submit_both_feedback_instruments_for_completed_services[FORMER]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_inactive_student_and_non_student_cannot_submit",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_uses_only_submitted_values[optional0]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_uses_only_submitted_values[optional1]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_uses_only_submitted_values[optional2]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_uses_only_submitted_values[optional3]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_uses_only_submitted_values[optional4]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_uses_only_submitted_values[optional5]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_uses_only_submitted_values[optional6]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_uses_only_submitted_values[optional7]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_uses_only_submitted_values[optional8]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_uses_only_submitted_values[optional9]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_supplied_snapshots_and_existing_rows_survive_later_profile_changes",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[None-respondent_name-200]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[None-address-2000]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[None-mobile_number-64]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[12-respondent_name-200]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[12-address-2000]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[12-mobile_number-64]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[invalid2-respondent_name-200]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[invalid2-address-2000]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[invalid2-mobile_number-64]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[nul-respondent_name-200]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[nul-address-2000]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[nul-mobile_number-64]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[utf8-respondent_name-200]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[utf8-address-2000]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[utf8-mobile_number-64]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[oversized-respondent_name-200]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[oversized-address-2000]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_optional_identity_rejects_invalid_text[oversized-mobile_number-64]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_course_year_still_required_with_optional_identity_absent[None]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_course_year_still_required_with_optional_identity_absent[]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_course_year_still_required_with_optional_identity_absent[ \\t ]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_unnamed_submission_rolls_back_if_audit_fails",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_other_service_and_counselor_contact_conditionals_are_enforced",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_f14_requires_active_supported_controlled_revision",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_csm_is_data_minimized_and_does_not_copy_account_identity",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_csm_cc_conditional_rules_are_enforced",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_csm_sqd_scale_accepts_every_source_value_including_na[0]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_csm_sqd_scale_accepts_every_source_value_including_na[1]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_csm_sqd_scale_accepts_every_source_value_including_na[2]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_csm_sqd_scale_accepts_every_source_value_including_na[3]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_csm_sqd_scale_accepts_every_source_value_including_na[4]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_csm_sqd_scale_accepts_every_source_value_including_na[5]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_csm_rejects_unsupported_source_values_and_server_owned_fields",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_csm_optional_email_is_voluntary_and_validated_when_supplied",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_different_feedback_opportunities_allow_multiple_responses_without_human_reference",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_audit_metadata_excludes_response_answers_and_identity_values",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_only_head_guidance_has_raw_feedback_review_by_default",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_operational_lists_are_paginated_and_csm_list_omits_raw_free_text_and_email",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_has_no_normal_update_or_delete_endpoints",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_customer_feedback_review_filters_name_service_dates_and_pagination",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_csm_review_filters_service_dates_and_preserves_client_type_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_submission_requires_idempotency_key[/api/v1/feedback/customer-feedback-valid_f14_payload]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_submission_requires_idempotency_key[/api/v1/feedback/csm-valid_csm_payload]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_exact_replay_returns_original_success_once[customer_feedback]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_exact_replay_returns_original_success_once[csm]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_same_key_different_body_conflicts_without_second_mutation[customer_feedback]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_same_key_different_body_conflicts_without_second_mutation[csm]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_same_key_is_independent_across_actors",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_same_key_is_independent_across_feedback_routes",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_new_key_cannot_repeat_same_opportunity_instrument[customer_feedback]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_new_key_cannot_repeat_same_opportunity_instrument[csm]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_in_progress_request_does_not_mutate[/api/v1/feedback/customer-feedback-valid_f14_payload]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_in_progress_request_does_not_mutate[/api/v1/feedback/csm-valid_csm_payload]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_idempotency_unavailable_before_execution_fails_closed[/api/v1/feedback/customer-feedback-valid_f14_payload]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_idempotency_unavailable_before_execution_fails_closed[/api/v1/feedback/csm-valid_csm_payload]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_invalid_idempotency_key_does_not_mutate[/api/v1/feedback/customer-feedback-valid_f14_payload]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_invalid_idempotency_key_does_not_mutate[/api/v1/feedback/csm-valid_csm_payload]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_customer_feedback_domain_failure_abandons_key_for_retry",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_csm_domain_validation_abandons_key_for_corrected_retry",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_complete_failure_returns_uncertain_503_without_rollback[customer_feedback]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_complete_failure_returns_uncertain_503_without_rollback[csm]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_abandon_failure_returns_idempotency_unavailable",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_replay_storage_contains_only_submission_response_and_digests",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_unexpected_failure_releases_reservation_so_same_intent_can_retry[/api/v1/feedback/customer-feedback-valid_f14_payload-create_customer_feedback]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_unexpected_failure_releases_reservation_so_same_intent_can_retry[/api/v1/feedback/csm-valid_csm_payload-create_csm_response]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_opportunity_ensure_is_idempotent_for_same_source",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_student_opportunity_api_is_owned_and_reports_instrument_availability",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_opportunity_list_uses_current_instrument_capabilities",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_same_opportunity_supports_each_feedback_instrument_once_independently",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_customer_feedback_requires_opportunity_service_but_keeps_multi_service_source_field",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_feedback_submission_requires_explicit_owned_opportunity_id",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_different_opportunities_allow_new_submission_for_same_instrument",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_feedback::test_raw_feedback_models_remain_unlinked_from_student_and_opportunity",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_concurrent_creation_uses_student_fence[True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_concurrent_creation_uses_student_fence[False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_assisted::test_target_change_committed_while_waiting_for_student_fence",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_guards_reject_alternative_writers[rekey]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_guards_reject_alternative_writers[identity_delete]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_guards_reject_alternative_writers[fact_update]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_guards_reject_alternative_writers[claim_delete]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_guards_reject_alternative_writers[reactivate]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_guards_reject_alternative_writers[projection]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_guards_reject_alternative_writers[control_downgrade]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_guards_reject_alternative_writers[operation_update]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_guards_reject_alternative_writers[closure_without_successor]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_claim_and_identity_shapes[owner]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_claim_and_identity_shapes[predecessor]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_claim_and_identity_shapes[sequence]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_claim_and_identity_shapes[null_current]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_claim_and_identity_shapes[two_current]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_claim_and_identity_shapes[noncanonical]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_database_claim_and_identity_shapes[null_owner]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_real_postgresql_same_absent_key_has_exactly_one_winner[False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_real_postgresql_same_absent_key_has_exactly_one_winner[True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_real_postgresql_same_request_edits_and_replays_serialize[False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_real_postgresql_same_request_edits_and_replays_serialize[True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_simultaneous_replacement_reserves_only_winning_new_number",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_lifecycle_competition_keeps_one_serial_history[False-cancel]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_lifecycle_competition_keeps_one_serial_history[False-prepare]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_lifecycle_competition_keeps_one_serial_history[False-issue]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_lifecycle_competition_keeps_one_serial_history[True-cancel]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_lifecycle_competition_keeps_one_serial_history[True-prepare]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_lifecycle_competition_keeps_one_serial_history[True-issue]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_receipt_lock_timeout_rolls_back_and_deliberate_retry_recovers",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_fence_waits_for_old_writer_and_captures_its_committed_projection",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_unclaimed_ordinary_reservation_cannot_commit",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_concurrent_operation_uuid_reuse_cannot_leave_losing_identity",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_active_assignment_and_import_never_form_a_dual_writer_interval",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_receipt_migration::test_populated_canonical_upgrade_and_empty_history_reverse_reapply",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipt_migration::test_nonempty_import_history_refuses_destructive_migration_reverse",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipt_migration::test_issued_snapshots_and_rendered_html_are_unchanged_by_import[False-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipt_migration::test_issued_snapshots_and_rendered_html_are_unchanged_by_import[False-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipt_migration::test_issued_snapshots_and_rendered_html_are_unchanged_by_import[True-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipt_migration::test_issued_snapshots_and_rendered_html_are_unchanged_by_import[True-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_full_workflow_and_issued_replay_preserve_provenance_and_effects[CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_full_workflow_and_issued_replay_preserve_provenance_and_effects[GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts0-missing-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts0-missing-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts1-incomplete-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts1-incomplete-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts2-incomplete-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts2-incomplete-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts3-fee_mismatch-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts3-fee_mismatch-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts4-fee_mismatch-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts4-fee_mismatch-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts5-fee_mismatch-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts5-fee_mismatch-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts6-conflict-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts6-conflict-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts7-incomplete-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_ineligible_imported_receipts_are_preserved_and_blocked[facts7-incomplete-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_invalid_amount_input_rejected_before_revision[value0]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_invalid_amount_input_rejected_before_revision[value1]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_invalid_amount_input_rejected_before_revision[value2]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_invalid_amount_input_rejected_before_revision[value3]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_explicit_capability_and_role_required[COUNSELOR-True-True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_explicit_capability_and_role_required[GUIDANCE_SERVICES_STAFF-True-True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_explicit_capability_and_role_required[COUNSELOR-False-False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_explicit_capability_and_role_required[GUIDANCE_SERVICES_STAFF-False-False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_explicit_capability_and_role_required[STUDENT-True-False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_explicit_capability_and_role_required[IT_ADMIN-True-False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fresh_authority_dependencies_expiry_and_attribution[dependency]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fresh_authority_dependencies_expiry_and_attribution[revoked]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fresh_authority_dependencies_expiry_and_attribution[expired]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fresh_authority_dependencies_expiry_and_attribution[inactive]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fresh_authority_dependencies_expiry_and_attribution[audit_actor]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_head_designation_does_not_imply_inspection",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_issue_role_fence_survives_unusual_override[GUIDANCE_SERVICES_STAFF]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_issue_role_fence_survives_unusual_override[IT_ADMIN]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_issue_role_fence_survives_unusual_override[STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fee_provider_fail_closed[absent]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fee_provider_fail_closed[not_approved]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fee_provider_fail_closed[wrong_variant]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fee_provider_fail_closed[unknown_range]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fee_provider_fail_closed[missing_range]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fee_provider_fail_closed[wrong_reference]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fee_provider_fail_closed[invalid_rule]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_fee_provider_fail_closed[missing_authority]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_receipt_revision_invalidates_exact_attestation[number]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_receipt_revision_invalidates_exact_attestation[date]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_receipt_revision_invalidates_exact_attestation[amount]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_receipt_revision_invalidates_exact_attestation[display]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_receipt_revision_invalidates_exact_attestation[remove]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_unrelated_correction_retains_inspection_but_requires_repreparation",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_cancellation_invalidates_without_releasing_and_retry_cannot_revive",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_review_tokens_and_operation_intent_are_exact[request]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_review_tokens_and_operation_intent_are_exact[revision]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_review_tokens_and_operation_intent_are_exact[operation]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_review_tokens_and_operation_intent_are_exact[actor]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_review_tokens_and_operation_intent_are_exact[method]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_identical_replay_and_different_inspector_preserve_original",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_policy_change_before_issue_blocks_then_requires_deliberate_review[unavailable]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_policy_change_before_issue_blocks_then_requires_deliberate_review[version]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_policy_change_before_issue_blocks_then_requires_deliberate_review[applicability]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_policy_change_before_issue_blocks_then_requires_deliberate_review[amount]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_active_issue_requires_each_review_token[expected_resource_version]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_active_issue_requires_each_review_token[expected_receipt_revision]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_active_issue_requires_each_review_token[expected_receipt_verification]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_active_issue_requires_each_review_token[expected_preparation_version]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_audit_failure_rolls_back_attestation_transition_and_side_effects[verification]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_audit_failure_rolls_back_attestation_transition_and_side_effects[invalidation]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_audit_failure_rolls_back_attestation_transition_and_side_effects[preparation]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_audit_failure_rolls_back_attestation_transition_and_side_effects[issuance]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_no_inspection_bypasses_writer_state[DORMANT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_no_inspection_bypasses_writer_state[FENCED]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_default_provider_has_no_approval_or_invented_effective_date",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_database_rewrite_and_reference_bypass_refused[delete]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_database_rewrite_and_reference_bypass_refused[actor]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_database_rewrite_and_reference_bypass_refused[timestamp]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_database_rewrite_and_reference_bypass_refused[assignment]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_database_rewrite_and_reference_bypass_refused[method]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_database_rewrite_and_reference_bypass_refused[policy]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_database_rewrite_and_reference_bypass_refused[fake_invalidation]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_database_rewrite_and_reference_bypass_refused[prepared_owner]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_database_rewrite_and_reference_bypass_refused[issued_pair]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_api_explicit_action_and_student_projection",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_legacy_ready_requires_real_inspection_and_deliberate_repreparation[CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_legacy_ready_requires_real_inspection_and_deliberate_repreparation[GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_new_revision_can_be_reinspected_and_prepared[CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_new_revision_can_be_reinspected_and_prepared[GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_identity_eligibility_cannot_be_bypassed[ambiguous]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_identity_eligibility_cannot_be_bypassed[disputed]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_identity_eligibility_cannot_be_bypassed[wrong_owner]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_identity_eligibility_cannot_be_bypassed[superseded]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_actual_legacy_duplicate_identity_remains_ambiguous",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_insert_inspection_guards[duplicate]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_insert_inspection_guards[wrong_revision]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_insert_inspection_guards[no_approval]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_insert_inspection_guards[invalid_method]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_insert_inspection_guards[invalid_actor]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_direct_insert_inspection_guards[fee_mismatch]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification::test_issued_evidence_remains_historical_when_policy_unavailable",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_inspection_competes_with_request_lifecycle[True-correction]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_inspection_competes_with_request_lifecycle[True-prepare]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_inspection_competes_with_request_lifecycle[True-cancel]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_inspection_competes_with_request_lifecycle[True-issue]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_inspection_competes_with_request_lifecycle[False-correction]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_inspection_competes_with_request_lifecycle[False-prepare]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_inspection_competes_with_request_lifecycle[False-cancel]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_inspection_competes_with_request_lifecycle[False-issue]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_simultaneous_inspection_and_exact_replay_have_single_attestation[False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_simultaneous_inspection_and_exact_replay_have_single_attestation[True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_concurrent_global_operation_reuse_rolls_back_loser",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_account_change_before_authority_fence_is_rechecked[revocation]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_account_change_before_authority_fence_is_rechecked[deactivation]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_account_change_after_authority_fence_serializes_after_inspection[revocation]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_account_change_after_authority_fence_serializes_after_inspection[deactivation]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_final_issue_and_late_correction_keep_one_committed_history[issue]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_final_issue_and_late_correction_keep_one_committed_history[correction]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_policy_changes_during_transaction_roll_back_every_effect[verify]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_policy_changes_during_transaction_roll_back_every_effect[prepare]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_policy_changes_during_transaction_roll_back_every_effect[issue]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_inspection_waits_for_real_dormant_to_fenced_transition",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_active_f4_issue_and_account_lifecycle_share_ordered_identity_fence[True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_concurrency::test_active_f4_issue_and_account_lifecycle_share_ordered_identity_fence[False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_verification_migration::test_populated_upgrade_preserves_all_source_and_legacy_claims_and_reapply",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_verification_migration::test_inspection_evidence_prevents_destructive_reverse",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_authenticated_api_full_workflow_exact_provenance_and_owned_pdf[CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_authenticated_api_full_workflow_exact_provenance_and_owned_pdf[GRADUATE]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[student-correction]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[student-verify]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[student-prepare]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[student-issue]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[ungranted-gss]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[gss-issue]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[ungranted-counselor]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[it-verify]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[it-issue]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[head-without-grant]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[revoked]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[expired]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[inactive]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[missing-dependency]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[forged-fields]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[cross-request]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[missing-csrf]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[invalid-csrf]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged[missing-session]",
+      "status": "PASS",
+      "evidence": "API-PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_issuance_outcome_failure_is_atomic_and_deliberate_retry_is_exactly_once[feedback]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_issuance_outcome_failure_is_atomic_and_deliberate_retry_is_exactly_once[issuance-notification]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_issuance_outcome_failure_is_atomic_and_deliberate_retry_is_exactly_once[invitation]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_postgresql_cancellation_and_preparation_preserve_one_terminal_history[False]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_postgresql_cancellation_and_preparation_preserve_one_terminal_history[True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_postgresql_replacement_racing_old_number_reuse_keeps_reservation",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": true
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_browser_next_django_postgres_workflow[CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "REAL-BROWSER",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_authenticated_integration::test_real_browser_next_django_postgres_workflow[GRADUATE]",
+      "status": "PASS",
+      "evidence": "REAL-BROWSER",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_recovery_rehearsal::test_disposable_backup_restore_preserves_evidence_but_loses_later_claims",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_final_preservation::test_historical_issued_pdf_and_source_facts_survive_upgrade_and_import[blank-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_final_preservation::test_historical_issued_pdf_and_source_facts_survive_upgrade_and_import[blank-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_final_preservation::test_historical_issued_pdf_and_source_facts_survive_upgrade_and_import[non80-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_final_preservation::test_historical_issued_pdf_and_source_facts_survive_upgrade_and_import[non80-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_final_preservation::test_historical_issued_pdf_and_source_facts_survive_upgrade_and_import[duplicate-CURRENT_STUDENT]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_final_preservation::test_historical_issued_pdf_and_source_facts_survive_upgrade_and_import[duplicate-GRADUATE]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_preserves_printed_distinctions[  or-00042  -or-00042-OR-00042]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_preserves_printed_distinctions[OR00042-OR00042-OR00042]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_preserves_printed_distinctions[OR-42-OR-42-OR-42]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_preserves_printed_distinctions[OR  00042-OR  00042-OR  00042]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_preserves_printed_distinctions[pre/00042.A-pre/00042.A-PRE/00042.A]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_preserves_printed_distinctions[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[None]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[42]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[True]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[   ]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[\\tOR]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[OR\\n]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[OR\\x00]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[OR\\x7f]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[\\uff2f\\uff32-42]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[OR\\u201342]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[OR\\u200b42]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_good_moral_receipts::test_normalization_rejects_unsupported_input[OR\\u202e42]",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_canonical_baseline::test_registered_migrations_preserve_immutable_schema_only_baselines",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_sortable_collections_use_closed_orderings_and_report_the_applied_one",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_publication_update_contract_exposes_consequence_acknowledgement",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_good_moral_preparation_contract_has_explicit_actions_and_exact_versions",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_institutional_forms_contract_is_read_only_and_projects_support",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_overview_summary_contract_is_typed_and_nullable_by_domain",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_exit_interview_head_review_contract_protects_drafts_and_reopen_response",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_reduced_product_surfaces_are_absent_from_openapi",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_binary_download_success_responses_are_explicitly_typed",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_binary_download_contracts_preserve_typed_error_responses",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_success_response_bodies_are_explicitly_documented",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_organization_person_projection_schema_is_dedicated_and_complete",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_generated_schema_matches_committed_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_contract_command_exports_and_checks_normalized_schema",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_all_public_operations_have_stable_unique_ids_and_approved_tags",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_service_operational_and_group_facilitator_contracts_are_explicit",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_review_list_query_parameters_match_backend_consistency_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_counseling_context_contract_is_anchor_based_and_read_only",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_cookie_auth_and_public_csrf_contract_are_explicit",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_core_schemas_and_realistic_error_responses_are_typed",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_policy_enums_and_sensitive_model_fields_are_contract_safe",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_platform_operations_openapi_runtime_surface_and_secret_safety",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_privacy_governance_openapi_is_reduced_to_retained_system_controls",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_availability_provider_discovery_openapi_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_appointment_frontend_readiness_openapi_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_appointment_list_ordering_openapi_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_inventory_frontend_readiness_openapi_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_routine_interview_candidate_discovery_openapi_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_counseling_frontend_readiness_openapi_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_ecounseling_join_and_context_readiness_openapi_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_feedback_submission_idempotency_openapi_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_referral_call_slip_atomic_issuance_openapi_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_good_moral_request_creation_idempotency_openapi_contract",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_privacy_expansion_contract_keeps_notice_boundaries_and_removes_legacy_retention",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_record_retrieval_contracts_are_narrow_and_historical_filters_are_domain_owned",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_guidance_messages_contract_is_private_strict_and_persistent_idempotency",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_work_queue_contract_is_read_only_closed_and_privacy_minimized",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_student_actions_contract_is_closed_read_only_and_structural",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_guidance_operations_contract_is_closed_read_only_and_aggregate_only",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_openapi_contract::test_exit_interview_saved_revision_and_answer_contract_are_read_only",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_audit::test_audit_context_reuses_request_id_trusted_ip_and_safe_user_agent_summary",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_django_admin_route_remains_unavailable",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_accounts::test_designation_role_compatibility_fails_closed_for_unknown_codes",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    },
+    {
+      "id": "tests.test_notifications::test_notification_event_catalog_is_complete_renderable_and_privacy_safe",
+      "status": "PASS",
+      "evidence": "PG",
+      "independent_connection_case": false
+    }
+  ],
+  "node_cases": [
+    {
+      "id": "a session read confirms an account only with a session and a user",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "confirming another account discards the previous account's queries and mutations",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "a refreshed session for the same account keeps the cache",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "a session check that fails or confirms nobody is not an account change",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "a read Account A started cannot fill the cache after Account B is confirmed",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "a mutation Account A started does not succeed after Account B is confirmed",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "COUNSELOR initiation access and queue entry point",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "GUIDANCE_SERVICES_STAFF initiation access and queue entry point",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "STUDENT cannot initiate even with capabilities",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "IT_ADMIN cannot initiate even with capabilities",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "INSTITUTIONAL_OFFICER cannot initiate even with capabilities",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "revoked capability hides the entry point",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "Student history and detail distinguish provenance and preserve cancellation",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "prerequisite and uncertain errors remain safe and actionable",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "GSS gets Good Moral and references while professional destinations stay absent",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "GSS queue shows year, preparation state, and useful status filters",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "GSS direct detail can correct and mark ready but cannot cancel or issue",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "view-only GSS sees the record without preparation controls",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "clerical editor excludes protected identity and graduation facts",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "Counselor sees actual preparation provenance and can issue ready requests",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "issued GSS detail offers certificate download and preserves the issuing Counselor",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "GSS Overview links only the exact preparation and readiness counts",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "CURRENT_STUDENT: only issued authorized records offer print/download with frozen metadata",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "GRADUATE: only issued authorized records offer print/download with frozen metadata",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "Student download stays self-service with no new printing or automatic PDF retrieval",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "print preview opened: direct open and independent URL lifetime",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "print preview blocked: direct open and independent URL lifetime",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "print preview throws: direct open and independent URL lifetime",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "backend MISSING has accurate text",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "backend INCOMPLETE has accurate text",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "backend NEEDS_VERIFICATION has accurate text",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "backend VERIFIED has accurate text",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "backend LEGACY_UNKNOWN has accurate text",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "backend LEGACY_CONFLICT has accurate text",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "backend DISPUTED has accurate text",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "backend POLICY_UNAVAILABLE has accurate text",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "DORMANT offers no inspection and no invented approved amount",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "FENCED offers no inspection and no invented approved amount",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "backend can_verify=false wins even for an otherwise complete receipt",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "inspection blocked for {\"confirmed\":false}",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "inspection blocked for {\"editorOpen\":true}",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "provenance retains backend inspector ID and institutional time",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "metadata history is a disclosure and never invents old receipt contents",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "expected fee is displayed only from the approved backend projection",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "fee mismatch gives a review blocker without suggesting editing away the printed amount",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "inspection intent contains only the exact generated mutation fields",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "same intent remains stable while a stale resource or revision requires review",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "no success for invalidated or replaced inspection evidence",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "Student next steps contain no approved amount, inspection authority or online payment",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "active correction avoids an unconditional optional receipt label and never attests to inspection",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "GM-UX-2: Shared constants and type guards match approved undergraduate domain",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "GM-UX-2: Student F4 shows Inventory-derived Year Level and Semester selection",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "GM-UX-2: Operational correction form offers only 1st\u20134th Year values",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "GM-UX-2: Operational correction form displays and preserves historical non-canonical values",
+      "status": "PASS",
+      "evidence": "NODE"
+    },
+    {
+      "id": "GM-UX-2: F6 suggestions preserve historical fallback and disclose the verification limit",
+      "status": "PASS",
+      "evidence": "NODE"
+    }
+  ],
+  "browser_cases": [
+    {
+      "id": "chromium/receipt/blocker-MISSING",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/blocker-INCOMPLETE",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/blocker-POLICY_UNAVAILABLE",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/blocker-LEGACY_CONFLICT",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/blocker-DISPUTED",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/availability-DORMANT",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/availability-FENCED",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/fee-mismatch-keeps-actual-and-approved-expected",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/backend-refusal-hides-verification-despite-capability",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/gss-intentional-inspection-pins-payload-and-refreshes-provenance",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/inspection-recovery-stale",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/inspection-recovery-already",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/inspection-recovery-conflict",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/inspection-recovery-policy",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/inspection-recovery-fenced",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/inspection-recovery-cancelled",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/inspection-recovery-revoked",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/inspection-recovery-deactivated",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/inspection-recovery-account-changed",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/inspection-recovery-late-invalidated",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/uncertain-before-commit-retries-same-operation-after-new-review",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/uncertain-after-commit-refreshes-without-replay",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/failed-refresh-blocks-other-mutations-until-current-outcome-checked",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/pending-dialog-traps-keyboard-and-rejects-dismissal-or-double-submit",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/receipt-correction-needs-reinspection-and-preparation",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/unrelated-correction-retains-inspection-and-resets-preparation",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/counselor-verifies-prepares-and-issues-without-printing-on-inspection",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/receipt-keyboard-responsive-320",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/receipt-keyboard-responsive-768",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/receipt-keyboard-responsive-1440",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/concurrent-request-prepared-elsewhere",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/concurrent-request-issued-elsewhere",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/concurrent-request-session-changed",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/uncertain-correction-with-failed-refresh-keeps-unsaved-draft",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/student-CURRENT_STUDENT-requests-without-receipt-and-sees-next-steps",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/student-GRADUATE-requests-without-receipt-and-sees-next-steps",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/receipt/own-request-history-is-labeled-metadata-with-no-global-lookup",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/issue-confirm-verify-preview-download-reprint-CURRENT_STUDENT-320",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/issue-confirm-verify-preview-download-reprint-CURRENT_STUDENT-1440",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/issue-confirm-verify-preview-download-reprint-GRADUATE-320",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/issue-confirm-verify-preview-download-reprint-GRADUATE-1440",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/native-print-unavailable-opens-authorized-pdf-preview",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/popup-blocked-download-fallback",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/popup-throws-download-fallback",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/issued-then-pdf-failure-and-retry-without-reissue",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/unauthorized-pdf-has-no-preview-and-retry-never-issues",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/uncertain-issuance-verified-issued",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/uncertain-issuance-verified-ready",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/issuance-successful-refresh-fails-no-print-until-verified",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/issuance-uncertain-refresh-fails-no-print-until-verified",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/issuance-rejection-good_moral_preparation_changed",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/issuance-rejection-current_student_required",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/unissued-REQUESTED-has-no-print-flow",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/unissued-READY_FOR_ISSUANCE-has-no-print-flow",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/unissued-CANCELLED-has-no-print-flow",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/permission-loss-during-pdf-read-discards-response-before-authorized-remount",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/existing-authorized-gss-can-reprint-without-issue-authority",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/student-original-download-remains-unchanged",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/direct-print-requests-browser-print-from-finalized-pdf-click",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/active-issue-sends-exact-reviewed-receipt-evidence",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/print/changed-receipt-closes-confirmation-without-resubmission",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/correction/DORMANT preserves correction contract",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/correction/ACTIVE preserves correction contract",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/correction/stale receipt preserves draft and requires deliberate review",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/correction/uncertain committed correction refreshes without automatic replay",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/correction/duplicate conflict keeps input and displays safe copy",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/request/current Student re-enrolled in local postgraduate Program retains F6 request access",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/request/former UCN alumnus pursuing postgraduate study elsewhere retains F6 self-service",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/COUNSELOR confirmation, double submit and operational navigation",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/GUIDANCE_SERVICES_STAFF confirmation, double submit and operational navigation",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/Graduate search, pagination, historical date and review",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/local postgraduate lifecycle keeps F6 claim available while F4 stays unavailable",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/good_moral_inventory_required stays on review without false success",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/good_moral_exit_interview_required stays on review without false success",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/good_moral_not_found stays on review without false success",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/good_moral_conflict stays on review without false success",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/uncertain result locks details and retries original identity",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/view-only account has no action or picker",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/changed lifecycle refreshes same search and requires explicit reselection",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/phone layout and keyboard review",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "chromium/assisted/tablet layout and keyboard review",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "chromium"
+    },
+    {
+      "id": "webkit/receipt/blocker-MISSING",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/blocker-INCOMPLETE",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/blocker-POLICY_UNAVAILABLE",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/blocker-LEGACY_CONFLICT",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/blocker-DISPUTED",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/availability-DORMANT",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/availability-FENCED",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/fee-mismatch-keeps-actual-and-approved-expected",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/backend-refusal-hides-verification-despite-capability",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/gss-intentional-inspection-pins-payload-and-refreshes-provenance",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/inspection-recovery-stale",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/inspection-recovery-already",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/inspection-recovery-conflict",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/inspection-recovery-policy",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/inspection-recovery-fenced",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/inspection-recovery-cancelled",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/inspection-recovery-revoked",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/inspection-recovery-deactivated",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/inspection-recovery-account-changed",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/inspection-recovery-late-invalidated",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/uncertain-before-commit-retries-same-operation-after-new-review",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/uncertain-after-commit-refreshes-without-replay",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/failed-refresh-blocks-other-mutations-until-current-outcome-checked",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/pending-dialog-traps-keyboard-and-rejects-dismissal-or-double-submit",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/receipt-correction-needs-reinspection-and-preparation",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/unrelated-correction-retains-inspection-and-resets-preparation",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/counselor-verifies-prepares-and-issues-without-printing-on-inspection",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/receipt-keyboard-responsive-320",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/receipt-keyboard-responsive-768",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/receipt-keyboard-responsive-1440",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/concurrent-request-prepared-elsewhere",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/concurrent-request-issued-elsewhere",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/concurrent-request-session-changed",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/uncertain-correction-with-failed-refresh-keeps-unsaved-draft",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/student-CURRENT_STUDENT-requests-without-receipt-and-sees-next-steps",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/student-GRADUATE-requests-without-receipt-and-sees-next-steps",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/receipt/own-request-history-is-labeled-metadata-with-no-global-lookup",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/issue-confirm-verify-preview-download-reprint-CURRENT_STUDENT-320",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/issue-confirm-verify-preview-download-reprint-CURRENT_STUDENT-1440",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/issue-confirm-verify-preview-download-reprint-GRADUATE-320",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/issue-confirm-verify-preview-download-reprint-GRADUATE-1440",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/native-print-unavailable-opens-authorized-pdf-preview",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/popup-blocked-download-fallback",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/popup-throws-download-fallback",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/issued-then-pdf-failure-and-retry-without-reissue",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/unauthorized-pdf-has-no-preview-and-retry-never-issues",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/uncertain-issuance-verified-issued",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/uncertain-issuance-verified-ready",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/issuance-successful-refresh-fails-no-print-until-verified",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/issuance-uncertain-refresh-fails-no-print-until-verified",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/issuance-rejection-good_moral_preparation_changed",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/issuance-rejection-current_student_required",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/unissued-REQUESTED-has-no-print-flow",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/unissued-READY_FOR_ISSUANCE-has-no-print-flow",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/unissued-CANCELLED-has-no-print-flow",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/permission-loss-during-pdf-read-discards-response-before-authorized-remount",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/existing-authorized-gss-can-reprint-without-issue-authority",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/student-original-download-remains-unchanged",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/direct-print-requests-browser-print-from-finalized-pdf-click",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/active-issue-sends-exact-reviewed-receipt-evidence",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/print/changed-receipt-closes-confirmation-without-resubmission",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/correction/DORMANT preserves correction contract",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/correction/ACTIVE preserves correction contract",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/correction/stale receipt preserves draft and requires deliberate review",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/correction/uncertain committed correction refreshes without automatic replay",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/correction/duplicate conflict keeps input and displays safe copy",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/request/current Student re-enrolled in local postgraduate Program retains F6 request access",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/request/former UCN alumnus pursuing postgraduate study elsewhere retains F6 self-service",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/COUNSELOR confirmation, double submit and operational navigation",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/GUIDANCE_SERVICES_STAFF confirmation, double submit and operational navigation",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/Graduate search, pagination, historical date and review",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/local postgraduate lifecycle keeps F6 claim available while F4 stays unavailable",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/good_moral_inventory_required stays on review without false success",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/good_moral_exit_interview_required stays on review without false success",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/good_moral_not_found stays on review without false success",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/good_moral_conflict stays on review without false success",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/uncertain result locks details and retries original identity",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/view-only account has no action or picker",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/changed lifecycle refreshes same search and requires explicit reselection",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/phone layout and keyboard review",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    },
+    {
+      "id": "webkit/assisted/tablet layout and keyboard review",
+      "status": "PASS",
+      "evidence": "MOCK-UI",
+      "engine": "webkit"
+    }
+  ],
+  "counts": {
+    "backend": 584,
+    "backend_outcomes": {
+      "PASS": 584
+    },
+    "postgresql_independent_connection_cases": 41,
+    "real_browser_cases_in_backend_total": 2,
+    "node": 55,
+    "mocked_browser_by_engine": {
+      "chromium": 81,
+      "webkit": 81
+    }
+  },
+  "count_rule": "Distinct node IDs per execution domain; reruns excluded. Two real browser pytest cases and coordination cases are included in backend total, not additive."
+}

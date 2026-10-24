@@ -1,0 +1,27 @@
+# Institutional decision register
+
+All decisions are **OPEN / NOT APPROVED in this evidence package**. Offices below are proposed responsible authorities to confirm, not invented named approvers, signatures or decision dates. Earlier engineering merges and team-reported practice are not institutional sign-off. Missing authority blocks the stated operational use even if synthetic tests pass.
+
+| # | Decision | Current evidence | Recommended next outcome | Responsible authority to confirm | Required approval artifact | Absence blocks activation? |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | Cashier numbering scope | Global Good Moral namespace implemented; no official sample/register authority | Confirm full printed identifier, including office/book/series | UCN Cashier with GCO | Approved numbering specification | Yes |
+| 2 | Case/character normalization | ASCII GM_OR_V1 synthetic tests only | Approve or revise case, characters and 96-character boundary after samples | Cashier + GCO | Approved grammar and sample/collision review | Yes |
+| 3 | Series/book ambiguity | Bare repeated sequences could collide; scope unknown | Resolve printed prefixes/composite identity before activation | Cashier | Series/book uniqueness decision | Yes |
+| 4 | Private legacy inventory | No deployed population inspected | Authorize bounded read-only counts and protected case review | GCO + data custodian/privacy governance | Purpose/scope/operator/access approval and count report | Yes |
+| 5 | Duplicate/quarantine review | Ambiguous key has no owner; unsupported aliases block cutover | Approve review/disposition with retained observations | GCO + Cashier | Attributable case procedure and decisions | Yes |
+| 6 | Mistaken reservation reconciliation | Ordinary transfer/reactivation unavailable | Keep disabled pending separate approved exceptional design | GCO/Cashier with designated oversight | Exception authority, evidence and independently reviewed design | Yes for affected cases |
+| 7 | Inspector grant matrix | Definition/dependencies exist; no baseline inspection grants | Approve named/delegated GCO inspectors, least necessary scope/expiry | GCO authority + account governance | Signed grant matrix/delegation artifacts | Yes |
+| 8 | Inspection training/accountability | Personal attestation implemented, no physical UAT | Train saved-fact review, receipt authenticity limits and escalation | GCO leadership | Training/accountability acknowledgment and UAT evidence | Yes |
+| 9 | Official PHP 80 authority | Team-reported amount; real provider unavailable | Obtain actual fee authority; preserve entered actual amount | Cashier/authorized institutional fee authority | Official schedule/approval reference | Yes |
+| 10 | Fee reference date | Fixture uses receipt date; real basis undecided | Confirm charging date basis explicitly | Fee authority + GCO | Approved reference-date rule | Yes |
+| 11 | Applicability/historical boundaries | No real effective dates known | Publish bounded known coverage, preserve unresolved history | Fee authority | Versioned approved schedule/transitional coverage | Yes |
+| 12 | Mismatch/excess/waiver | No institutionally approved exception workflow | Keep mismatch unresolved; do not invent waiver/payment overwrite | Cashier/fee authority + GCO | Approved exception/escalation procedure | Yes for affected cases |
+| 13 | Existing READY treatment | ACTIVE requires real inspection and deliberate re-preparation | Approve queue impact, retained history and communications | GCO | Transition acceptance and operational script | Yes |
+| 14 | History retention/access | Durable evidence protected; no legal retention period established | Approve access, retention and privacy handling without silent reuse | Institutional privacy governance + GCO/Cashier | Retention/access decision and custody controls | Yes |
+| 15 | Writer pause/cutover | Database fence tested synthetically; production importer absent | Approve controlled pause and production transition tooling | Release operator + GCO/data custodian | Change window, reviewed tool and reconciliation sign-off | Yes |
+| 16 | Old-binary retirement | Old seed/maintenance/projection writers incompatible with ACTIVE | Inventory and drain all clients/workers/external writers | Release operator/engineering | Compatibility/version and writer-drain evidence | Yes |
+| 17 | Backup/recovery claim gaps | Actual restore loses later claims; ACTIVE state can be restored | Approve RPO/WAL/key custody/pause and protected gap reconciliation | Data custodian/release operator + GCO/Cashier/privacy | Rehearsed recovery runbook and completeness evidence | Yes |
+| 18 | Institutional UAT | Only synthetic technical tests executed | Run scripts with approved participants/devices/print/physical procedures | GCO with Cashier/Registrar and authorized accessibility testers | Recorded UAT results and authorized acceptance | Yes |
+| 19 | Deployment/cutover authority | This task explicitly prohibits execution | Require separately named release and activation authorization | Institutional release authority + named operator | Candidate-specific deployment/cutover sign-off | Yes |
+
+Release implication: do not activate an affected namespace/workflow or expose an unsupported exception while its required decision is absent. Pending-case exceptions do not justify reopening weaker receipt writers. Some decisions may be combined into approved institutional artifacts; none is assumed complete here.
