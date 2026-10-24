@@ -1145,12 +1145,32 @@ def update_request(
     request_id: UUID,
     changes: dict[str, object],
     context: AuditContext,
+    expected_resource_version: str | None = None,
+    expected_receipt_revision: object = ...,
+    operation_id: UUID | None = None,
 ) -> GoodMoralRequest:
+    from . import receipt_identity as receipts
+
     _validate_operational(actor, "good_moral.prepare")
     with transaction.atomic():
         item = GoodMoralRequest.objects.select_for_update().filter(pk=request_id).first()
         if item is None:
             raise GoodMoralNotFound("The requested Good Moral record was not found.")
+        intent = receipts.begin_edit(
+            item=item,
+            actor=actor,
+            changes=changes,
+            context=context,
+            expected_resource_version=expected_resource_version,
+            expected_receipt_revision=receipts.UNSET
+            if expected_receipt_revision is ...
+            else expected_receipt_revision,
+            operation_id=operation_id,
+        )
+        if intent and intent.replay:
+            result = _queryset().get(pk=item.pk)
+            result.receipt_mutation_result = intent.replay
+            return result
         if item.status not in {GoodMoralStatus.REQUESTED, GoodMoralStatus.READY_FOR_ISSUANCE}:
             raise GoodMoralConflict("Issued and cancelled Good Moral requests cannot be corrected.")
 
@@ -1163,10 +1183,24 @@ def update_request(
                 + "."
             )
 
-        normalized = {name: _normalize_update(name, value) for name, value in changes.items()}
+        normalized = {
+            name: (
+                receipts.receipt_display(value)
+                if intent and name == "official_receipt_number"
+                else _normalize_update(name, value)
+            )
+            for name, value in changes.items()
+        }
+        if intent:
+            normalized.setdefault(
+                "official_receipt_number", receipts.receipt_display(item.official_receipt_number)
+            )
         changed = sorted(name for name, value in normalized.items() if getattr(item, name) != value)
         if not changed:
-            return _queryset().get(pk=item.pk)
+            operation = receipts.finish_edit(item=item, actor=actor, intent=intent)
+            result = _queryset().get(pk=item.pk)
+            result.receipt_mutation_result = operation
+            return result
         # Only a changed value is checked, so an unrelated correction never fails on a stored date.
         for name in OCCURRED_DATE_FIELDS.intersection(changed):
             _reject_future_occurred_date(normalized[name], name)
@@ -1219,6 +1253,10 @@ def update_request(
             ):
                 raise InvalidGoodMoralInput("semester is not supported.")
 
+        if intent:
+            receipts.append_revision(
+                item=item, actor=actor, normalized=normalized, intent=intent, context=context
+            )
         for name in changed:
             setattr(item, name, normalized[name])
         returned = item.status == GoodMoralStatus.READY_FOR_ISSUANCE
@@ -1244,7 +1282,10 @@ def update_request(
                 target_id=item.pk,
                 metadata={"variant": item.variant, "transition": "READY_FOR_ISSUANCE -> REQUESTED"},
             )
-        return _queryset().get(pk=item.pk)
+        operation = receipts.finish_edit(item=item, actor=actor, intent=intent)
+        result = _queryset().get(pk=item.pk)
+        result.receipt_mutation_result = operation
+        return result
 
 
 def prepare_request(

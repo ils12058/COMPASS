@@ -13518,6 +13518,29 @@
             ],
             "title": "Degree"
           },
+          "expected_receipt_revision": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Receipt Revision"
+          },
+          "expected_resource_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Resource Version"
+          },
           "graduation_date": {
             "anyOf": [
               {
@@ -13578,6 +13601,18 @@
               }
             ],
             "title": "Official Receipt Number"
+          },
+          "receipt_operation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Operation Id"
           },
           "semester": {
             "anyOf": [
@@ -14219,6 +14254,26 @@
               }
             ]
           },
+          "receipt_identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralReceiptStateResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receipt_mutation_result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralReceiptMutationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "semester": {
             "title": "Semester",
             "type": "string"
@@ -14468,6 +14523,159 @@
           "expected_resource_version"
         ],
         "title": "GoodMoralPreparationPayload",
+        "type": "object"
+      },
+      "GoodMoralReceiptHistoryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "change_kind": {
+            "title": "Change Kind",
+            "type": "string"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "recorded_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded By Id"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "sequence",
+          "change_kind",
+          "origin",
+          "recorded_at",
+          "recorded_by_id",
+          "is_current",
+          "closed_at"
+        ],
+        "title": "GoodMoralReceiptHistoryItem",
+        "type": "object"
+      },
+      "GoodMoralReceiptMutationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "result_request_version": {
+            "title": "Result Request Version",
+            "type": "string"
+          },
+          "result_revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Revision Id"
+          }
+        },
+        "required": [
+          "operation_id",
+          "result_revision_id",
+          "result_request_version"
+        ],
+        "title": "GoodMoralReceiptMutationResponse",
+        "type": "object"
+      },
+      "GoodMoralReceiptStateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/GoodMoralReceiptHistoryItem"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "identity_state": {
+            "enum": [
+              "DORMANT",
+              "ABSENT",
+              "BOUND",
+              "LEGACY_AMBIGUOUS",
+              "DISPUTED",
+              "QUARANTINED"
+            ],
+            "title": "Identity State",
+            "type": "string"
+          },
+          "ledger_mode": {
+            "enum": [
+              "DORMANT",
+              "FENCED",
+              "ACTIVE"
+            ],
+            "title": "Ledger Mode",
+            "type": "string"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          }
+        },
+        "required": [
+          "ledger_mode",
+          "revision_id",
+          "identity_state",
+          "history"
+        ],
+        "title": "GoodMoralReceiptStateResponse",
         "type": "object"
       },
       "GoodMoralStatusValue": {

@@ -1,7 +1,7 @@
 "use client";
 
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -14,6 +14,7 @@ import {
   GOOD_MORAL_SEMESTERS,
   GOOD_MORAL_YEAR_LEVELS,
   GoodMoralSection,
+  goodMoralErrorCode,
   goodMoralErrorMessage,
   isCanonicalSemester,
   isCanonicalYearLevel,
@@ -103,11 +104,15 @@ export function GoodMoralCorrectionForm({
 }) {
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState(() => draftFrom(item));
+  const [reviewedItem, setReviewedItem] = useState(item);
+  const [reviewRequired, setReviewRequired] = useState(false);
+  const operation = useRef<{ fingerprint: string; id: string } | null>(null);
+  const ledgerActive = reviewedItem.receipt_identity?.ledger_mode === "ACTIVE";
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [blockedUntilRefresh, setBlockedUntilRefresh] = useState(false);
   const [discardOpen, setDiscardOpen] = useState(false);
-  const payload = useMemo(() => correctionPayload(item, draft), [item, draft]);
+  const payload = useMemo(() => correctionPayload(ledgerActive ? reviewedItem : item, draft), [item, reviewedItem, ledgerActive, draft]);
   const hasChanges = Object.keys(payload).length > 0;
   const update = useMutation({
     mutationFn: (changes: GoodMoralCorrectionPayload) => goodMoralUpdateRequest(item.id, changes),
@@ -120,14 +125,16 @@ export function GoodMoralCorrectionForm({
     setNotice(null);
   }
 
-  async function refreshCanonical(): Promise<GoodMoralOperationalDetailResponse | undefined> {
+  async function refreshCanonical(preserveDraft = false): Promise<GoodMoralOperationalDetailResponse | undefined> {
     const refreshed = await onRefresh();
     if (!refreshed) {
       setBlockedUntilRefresh(true);
       setError("The request could not be refreshed. Do not submit another correction until its current values can be checked.");
       return undefined;
     }
-    setDraft(draftFrom(refreshed));
+    if (!preserveDraft) setDraft(draftFrom(refreshed));
+    else setReviewRequired(true);
+    setReviewedItem(refreshed);
     setBlockedUntilRefresh(false);
     return refreshed;
   }
@@ -136,9 +143,26 @@ export function GoodMoralCorrectionForm({
     event.preventDefault();
     setError(null);
     setNotice(null);
-    if (!hasChanges) return;
+    if (!hasChanges || reviewRequired) return;
+    let changes = payload;
+    if (ledgerActive && ["official_receipt_number", "official_receipt_date", "official_receipt_amount"].some((name) => name in payload)) {
+      const reviewed = {
+        ...payload,
+        expected_resource_version: reviewedItem.actions.request_version,
+        expected_receipt_revision: reviewedItem.receipt_identity?.revision_id ?? null,
+      };
+      const fingerprint = JSON.stringify(reviewed);
+      if (!operation.current || operation.current.fingerprint !== fingerprint) {
+        if (!globalThis.crypto?.randomUUID) {
+          setError("This browser cannot create a correction identity. Update the browser and try again.");
+          return;
+        }
+        operation.current = { fingerprint, id: globalThis.crypto.randomUUID() };
+      }
+      changes = { ...reviewed, receipt_operation_id: operation.current.id };
+    }
     try {
-      await update.mutateAsync(payload);
+      await update.mutateAsync(changes);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: getGoodMoralGetRequestQueryKey(item.id) }),
         queryClient.invalidateQueries({ queryKey: getGoodMoralListRequestsQueryKey() }),
@@ -148,6 +172,12 @@ export function GoodMoralCorrectionForm({
       const refreshed = await refreshCanonical();
       if (refreshed) onClose();
     } catch (caught) {
+      if (ledgerActive && (uncertainGoodMoralMutation(caught) || goodMoralErrorCode(caught) === "good_moral_receipt_changed")) {
+        const refreshed = await refreshCanonical(true);
+        if (refreshed) setReviewRequired(true);
+        setError("The correction could not be confirmed against the details you reviewed. Your draft is kept; compare it with the latest saved receipt before continuing.");
+        return;
+      }
       if (uncertainGoodMoralMutation(caught)) {
         const refreshed = await refreshCanonical();
         if (refreshed?.status === "REQUESTED") {
@@ -170,6 +200,9 @@ export function GoodMoralCorrectionForm({
 
   function discardChanges() {
     setDraft(draftFrom(item));
+    setReviewedItem(item);
+    setReviewRequired(false);
+    operation.current = null;
     setError(null);
     setNotice(null);
     setDiscardOpen(false);
@@ -273,11 +306,15 @@ export function GoodMoralCorrectionForm({
             </section>
           </fieldset>
 
+          {reviewRequired ? <div className="space-y-3" role="status">
+            <p className="text-sm">Latest saved receipt: {reviewedItem.official_receipt_number || "No number"} · {reviewedItem.official_receipt_date || "No date"} · {reviewedItem.official_receipt_amount ?? "No amount"}. Your draft remains above.</p>
+            <Button type="button" variant="secondary" onClick={() => { setReviewRequired(false); setError(null); }}>Continue with my reviewed draft</Button>
+          </div> : null}
           {error ? <p role="alert" className="text-sm leading-6 text-danger">{error}</p> : null}
           {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
-          {blockedUntilRefresh ? <Button type="button" variant="secondary" onClick={() => void refreshCanonical()}>Refresh current request</Button> : null}
+          {blockedUntilRefresh ? <Button type="button" variant="secondary" onClick={() => void refreshCanonical(ledgerActive)}>Refresh current request</Button> : null}
           <div className="flex flex-wrap gap-3">
-            <Button type="submit" disabled={update.isPending || blockedUntilRefresh || !hasChanges}>{update.isPending ? "Saving changes…" : "Save changes"}</Button>
+            <Button type="submit" disabled={update.isPending || blockedUntilRefresh || reviewRequired || !hasChanges}>{update.isPending ? "Saving changes…" : "Save changes"}</Button>
             <Button type="button" variant="secondary" onClick={requestClose} disabled={update.isPending}>Close editor</Button>
           </div>
         </form>

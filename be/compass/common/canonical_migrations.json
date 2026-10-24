@@ -40,6 +40,7 @@
     "guidance_followups/migrations/0002_guidancefollowupmutation.py",
     "service_catalog/migrations/0002_booking_pathways.py",
     "service_catalog/migrations/0003_fixed_date_slots.py",
-    "service_catalog/migrations/0004_serviceappointmentslot_withdrawn_at_and_more.py"
+    "service_catalog/migrations/0004_serviceappointmentslot_withdrawn_at_and_more.py",
+    "good_moral/migrations/0002_receipt_identity_and_history.py"
   ]
 }
