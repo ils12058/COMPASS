@@ -185,7 +185,7 @@ for (const variant of ['CURRENT_STUDENT', 'GRADUATE']) for (const width of [320,
     assert.equal(resources.calls.length, 1);
     assert.equal(resources.calls[0].active, true, 'Native print is requested within the direct user gesture');
     assert.equal(resources.opened.length, 0, 'Supported direct print does not open an extra tab');
-    assert.match(await page.getByRole('status').last().innerText(), /print request was sent/i);
+    await shown(page.getByRole('status').filter({ hasText: /print request was sent/i }));
     // A cancelled/no-op browser print leaves the issued view and all actions available.
     await prepared(page);
     await page.getByRole('button', { name: 'Print certificate', exact: true }).click();
@@ -383,7 +383,7 @@ for (const status of ['REQUESTED', 'READY_FOR_ISSUANCE', 'CANCELLED']) {
     assert.equal(await page.evaluate(() => window.__gmNativePrintCalls.length), 1);
     assert.equal(context.pages().length, 1);
     await downloaded(page);
-    assert.match(await page.getByRole('status').last().innerText(), /print request was sent/i);
+    await shown(page.getByRole('status').filter({ hasText: /print request was sent/i }));
     assert.equal(data.state.issueBodies.length, 0);
     await safe(page, data);
   });
