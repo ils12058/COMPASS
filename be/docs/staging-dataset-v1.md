@@ -110,14 +110,20 @@ podman compose --profile local run --rm web python manage.py migrate --noinput
 podman compose --profile local run --rm web python manage.py sync_identity_policy
 podman compose --profile local run --rm web python manage.py sync_canonical_services
 podman compose --profile local run --rm web python manage.py sync_institutional_forms
-podman compose --profile local run --rm web python manage.py sync_organization_catalog
+podman compose --profile local run --rm web python manage.py initialize_organization_catalog --seed
 podman compose --profile local run --rm web python manage.py seed_staging_dataset seed
 podman compose --profile local run --rm web python manage.py seed_staging_dataset verify
 ```
 
-`seed` also calls the four synchronizers itself, so the explicit calls only make the order visible.
-The canonical baseline installs only into an empty database; a local database created from the
-old migration history must be rebuilt, not migrated.
+`seed` syncs only identity policy, Institutional Forms and the canonical Counseling Service.
+Organization must first be explicitly initialized (`--seed` only on a fresh empty catalog) or,
+for existing data after the approved migration, deliberately adopted (`--adopt`). Repeated checks
+use `initialize_organization_catalog --check`. The seeder never reconciles catalog names, status or
+Program policy; missing or retired fixture identities fail preflight rather than being repaired.
+ORG-1 deployment/adoption remains separately approval-dependent; see
+[deployment and recovery](../../docs/org-1/deployment-and-recovery.md).
+The canonical baseline installs only into an empty database; a database with pre-canonical migration
+history requires its separately reviewed clean-rebuild procedure, not an ORG-1 in-place conversion.
 
 ### Live staging (separate operator authorization only)
 
@@ -310,7 +316,8 @@ All are operator-supplied and probed before any write; none is generated:
 
 | Class | Domains |
 | --- | --- |
-| SYNC | Identity policy; Organization catalog; Institutional Forms; canonical Counseling Service |
+| SYNC | Identity policy; Institutional Forms; canonical Counseling Service |
+| CHECK (no catalog writes) | Prior Organization initialization/adoption and active fixture identities |
 | SEED (domain services) | Academic Years; accounts, designations, profiles; responsibility, supervision, affiliation; ONLINE Counseling delivery; office and provider Availability; Inventories; Appointments; Encounters; Student Session Summaries; Routine Interviews; Referrals; Call Slips; Good Moral; Exit Interviews and opportunities; Graduate Tracer; Guidance Messages; Customer Feedback; CSM; Announcements; Resources; Privacy Notices |
 | DERIVED | Overview; Work Queue; Student Support; reports; My Activity; Notifications; documents |
 | RUNTIME-ONLY | Sessions, MFA, challenges, email-change requests; Daily rooms, tokens, recordings, transcripts, webhooks; PSGC cache; Platform Operations state; email/push deliveries; worker state |

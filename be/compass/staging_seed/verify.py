@@ -68,11 +68,10 @@ from compass.institutional_forms.services import (
 from compass.inventory.models import StudentInventory
 from compass.notifications.models import EmailDelivery, Notification, PushDelivery
 from compass.organization.academic_years import get_current_academic_year
-from compass.organization.canonical import CANONICAL_CAMPUSES
+from compass.organization.bootstrap import CatalogInitializationError, check_organization_catalog
 from compass.organization.models import (
     College,
     CounselorResponsibility,
-    Program,
     StaffSupervision,
     StudentAffiliation,
 )
@@ -417,18 +416,11 @@ def _configuration(section: Section) -> None:
             )
         )
         section.check(set(grants) <= stored, f"Designation {designation} lacks canonical grants.")
-    for campus in CANONICAL_CAMPUSES:
-        for college in campus.colleges:
-            for program in college.programs:
-                section.check(
-                    Program.objects.filter(
-                        college__campus__code=campus.code,
-                        college__code=college.code,
-                        code=program.code,
-                        is_active=True,
-                    ).exists(),
-                    f"Catalog program {campus.code}/{college.code}/{program.code} is missing.",
-                )
+    try:
+        check_organization_catalog()
+        section.check(True, "")
+    except CatalogInitializationError:
+        section.check(False, "Organization catalog requires explicit initialization/adoption.")
     for family in REQUIRED_FORM_FAMILIES:
         try:
             require_active_supported_form_revision(family)

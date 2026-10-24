@@ -57,8 +57,8 @@ from compass.inventory.models import StudentInventory
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.academic_years import get_current_academic_year
-from compass.organization.canonical import AcademicClassification, canonical_program_metadata
 from compass.organization.models import StudentAffiliation
+from compass.organization.program_policy import AcademicClassification, get_program_policy
 
 from .models import (
     CANONICAL_SEMESTERS,
@@ -432,7 +432,9 @@ def _require_submitted_inventory(student: User):
             "academic_year__label",
             "submitted_at",
             "program_id",
-            "program__code",
+            "program__academic_classification",
+            "program__year_level_policy_status",
+            "program__applicable_year_levels",
             "program__college__code",
             "program__college__campus__code",
             "year_level",
@@ -452,12 +454,8 @@ def _require_submitted_inventory(student: User):
 def _f4_academic_context(*, program, year_level: int | None) -> F4AcademicContext:
     if program is None:
         return F4AcademicContext(F4AcademicEligibility.UNCLASSIFIED_PROGRAM)
-    metadata = canonical_program_metadata(
-        program.college.campus.code,
-        program.college.code,
-        program.code,
-    )
-    if metadata is None:
+    metadata = get_program_policy(program)
+    if metadata.academic_classification is None:
         return F4AcademicContext(F4AcademicEligibility.UNCLASSIFIED_PROGRAM)
     if metadata.academic_classification != AcademicClassification.BACHELORS:
         return F4AcademicContext(
@@ -492,7 +490,9 @@ def get_f4_academic_context(student: User) -> F4AcademicContext:
         .only(
             "submitted_at",
             "program_id",
-            "program__code",
+            "program__academic_classification",
+            "program__year_level_policy_status",
+            "program__applicable_year_levels",
             "program__college__code",
             "program__college__campus__code",
             "year_level",
@@ -1217,7 +1217,9 @@ def update_request(
                     .only(
                         "submitted_at",
                         "program_id",
-                        "program__code",
+                        "program__academic_classification",
+                        "program__year_level_policy_status",
+                        "program__applicable_year_levels",
                         "program__college__code",
                         "program__college__campus__code",
                         "year_level",

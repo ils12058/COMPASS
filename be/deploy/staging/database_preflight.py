@@ -95,6 +95,20 @@ def validate_operations(plan):
             )
 
 
+CATALOG_MIGRATION = ("organization", "0002_program_policy_and_catalog_initialization")
+
+
+def validate_catalog_initialization(action, *, migration_applied, receipt_exists, populated):
+    """Read-only plan guard, not approval or a fence against already-running old binaries."""
+    require(action in {"check", "adopt", "seed"}, "Invalid catalog initialization action")
+    require(not receipt_exists or migration_applied, "Catalog receipt/schema mismatch")
+    if receipt_exists:
+        return
+    require(action != "check", "Catalog requires an explicitly approved seed/adoption procedure")
+    require(action != "seed" or not populated, "Cannot seed a populated institutional catalog")
+    require(action != "adopt" or populated, "Empty adoption is not part of normal deployment")
+
+
 def inspect_database():
     import sys
 
@@ -148,6 +162,31 @@ def inspect_database():
             "Unknown applied migration; rollback/pre-canonical image refused",
         )
         plan = executor.migration_plan(loader.graph.leaf_nodes())
+        require(CATALOG_MIGRATION in loader.disk_migrations, "Candidate lacks DB catalog contract")
+        receipt_table = "organization_cataloginitialization"
+        require(
+            (CATALOG_MIGRATION in applied) == (receipt_table in tables),
+            "Catalog migration/receipt table mismatch",
+        )
+        with connection.cursor() as cursor:
+            receipt_exists = False
+            if receipt_table in tables:
+                cursor.execute(
+                    "SELECT EXISTS(SELECT 1 FROM organization_cataloginitialization WHERE id=1)"
+                )
+                receipt_exists = cursor.fetchone()[0]
+            cursor.execute(
+                "SELECT EXISTS(SELECT 1 FROM organization_campus) "
+                "OR EXISTS(SELECT 1 FROM organization_college) "
+                "OR EXISTS(SELECT 1 FROM organization_program)"
+            )
+            populated = cursor.fetchone()[0]
+        validate_catalog_initialization(
+            os.environ.get("ORG_CATALOG_ACTION", "check"),
+            migration_applied=CATALOG_MIGRATION in applied,
+            receipt_exists=receipt_exists,
+            populated=populated,
+        )
         validate_operations(plan)
         with connection.cursor() as cursor:
             cursor.execute("SELECT count(*) FROM accounts_user")
