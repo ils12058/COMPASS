@@ -161,7 +161,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 85
+    assert Capability.objects.count() == len(CAPABILITY_CODES)
     assert RoleCapability.objects.count() == 99
     assert DesignationCapability.objects.count() == 20
 

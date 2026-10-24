@@ -95,6 +95,12 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
   switch (code) {
+    case "good_moral_receipt_conflict":
+      return "Official Receipt number already recorded. Check the number or ask GCO for review.";
+    case "good_moral_receipt_changed":
+      return "This request or receipt changed. Review the latest saved details before saving again.";
+    case "good_moral_receipt_cutover_required":
+      return "Good Moral changes are temporarily paused. Try again after the Guidance Office confirms work can resume.";
     case "good_moral_not_ready":
       return "Review the certificate details and mark the request ready before issuing.";
     case "good_moral_preparation_changed":

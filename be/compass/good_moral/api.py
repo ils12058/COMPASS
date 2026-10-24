@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from decimal import Decimal
 from enum import StrEnum
-from typing import NoReturn
+from typing import Literal, NoReturn
 from uuid import UUID
 
 from django.http import HttpResponse
@@ -180,6 +180,9 @@ class GoodMoralCorrectionPayload(StrictSchema):
     semester: str | None = None
     degree: str | None = None
     graduation_date: date | None = None
+    expected_resource_version: str | None = None
+    expected_receipt_revision: UUID | None = None
+    receipt_operation_id: UUID | None = None
     official_receipt_number: str | None = None
     official_receipt_date: date | None = None
     official_receipt_amount: Decimal | None = None
@@ -268,6 +271,32 @@ class GoodMoralActionsResponse(StrictSchema):
     correction_fields: list[str]
 
 
+class GoodMoralReceiptHistoryItem(StrictSchema):
+    id: UUID
+    sequence: int
+    change_kind: str
+    origin: str
+    recorded_at: datetime
+    recorded_by_id: UUID | None
+    is_current: bool
+    closed_at: datetime | None
+
+
+class GoodMoralReceiptStateResponse(StrictSchema):
+    ledger_mode: Literal["DORMANT", "FENCED", "ACTIVE"]
+    revision_id: UUID | None
+    identity_state: Literal[
+        "DORMANT", "ABSENT", "BOUND", "LEGACY_AMBIGUOUS", "DISPUTED", "QUARANTINED"
+    ]
+    history: list[GoodMoralReceiptHistoryItem]
+
+
+class GoodMoralReceiptMutationResponse(StrictSchema):
+    operation_id: UUID
+    result_revision_id: UUID | None
+    result_request_version: str
+
+
 class GoodMoralOperationalDetailResponse(GoodMoralDetailResponse):
     initiated_by: PersonSummary | None
     student_institutional_id: str | None
@@ -275,6 +304,8 @@ class GoodMoralOperationalDetailResponse(GoodMoralDetailResponse):
     prepared_by: PersonSummary | None
     prepared_at: datetime | None
     actions: GoodMoralActionsResponse
+    receipt_identity: GoodMoralReceiptStateResponse | None = None
+    receipt_mutation_result: GoodMoralReceiptMutationResponse | None = None
 
 
 class GoodMoralHistoryResponse(StrictSchema):
@@ -318,6 +349,21 @@ def _require_operational(request, capability: str) -> None:
 
 
 def _raise(exc: GoodMoralError) -> NoReturn:
+    from .receipt_identity import (
+        ReceiptChanged,
+        ReceiptConflict,
+        ReceiptCutoverRequired,
+        ReceiptOperationConflict,
+    )
+
+    for cls, code in (
+        (ReceiptConflict, "good_moral_receipt_conflict"),
+        (ReceiptChanged, "good_moral_receipt_changed"),
+        (ReceiptCutoverRequired, "good_moral_receipt_cutover_required"),
+        (ReceiptOperationConflict, "idempotency_key_conflict"),
+    ):
+        if isinstance(exc, cls):
+            raise APIError(409, code, str(exc)) from exc
     if isinstance(exc, GoodMoralNotFound):
         raise APIError(404, "good_moral_not_found", str(exc)) from exc
     if isinstance(exc, GoodMoralNotPermitted):
@@ -385,6 +431,9 @@ def _operational_summary(item) -> dict[str, object]:
 
 
 def _operational_detail(item, actor) -> dict[str, object]:
+    from .receipt_identity import operational_receipt_state
+
+    operation = getattr(item, "receipt_mutation_result", None)
     cancellation = None
     if item.cancelled_at is not None:
         cancellation = {
@@ -399,6 +448,14 @@ def _operational_detail(item, actor) -> dict[str, object]:
         "prepared_by": _person(item.prepared_by) if item.prepared_by_id else None,
         "prepared_at": item.prepared_at,
         "actions": _actions(item, actor),
+        "receipt_identity": operational_receipt_state(item),
+        "receipt_mutation_result": {
+            "operation_id": operation.pk,
+            "result_revision_id": operation.result_revision_id,
+            "result_request_version": operation.result_request_version,
+        }
+        if operation
+        else None,
     }
 
 
@@ -476,7 +533,10 @@ def _detail(item) -> dict[str, object]:
 
 
 def _correction_values(payload: GoodMoralCorrectionPayload) -> dict[str, object]:
-    values = payload.model_dump(exclude_unset=True)
+    values = payload.model_dump(
+        exclude_unset=True,
+        exclude={"expected_resource_version", "expected_receipt_revision", "receipt_operation_id"},
+    )
     mapping = {
         "applicant_name": "applicant_name_snapshot",
         "year_level": "year_level_snapshot",
@@ -980,6 +1040,13 @@ def good_moral_update(request, request_id: UUID, payload: GoodMoralCorrectionPay
             request_id=request_id,
             changes=_correction_values(payload),
             context=_context(request),
+            expected_resource_version=payload.expected_resource_version,
+            expected_receipt_revision=(
+                payload.expected_receipt_revision
+                if "expected_receipt_revision" in payload.model_fields_set
+                else ...
+            ),
+            operation_id=payload.receipt_operation_id,
         )
     except GoodMoralError as exc:
         _raise(exc)
