@@ -25,8 +25,13 @@ const fakePreview = `${instrument}
     return preview;
   };
 `;
-function fixture({ status = 'READY_FOR_ISSUANCE', variant = 'CURRENT_STUDENT', issueCode, commit = true, pdfFailures = 0, pdfStatus = 503, refreshFailures = 0, holdIssue = false, holdVerify = false, holdPdf = false, account = counselor } = {}) {
+function fixture({ status = 'READY_FOR_ISSUANCE', variant = 'CURRENT_STUDENT', issueCode, commit = true, pdfFailures = 0, pdfStatus = 503, refreshFailures = 0, holdIssue = false, holdVerify = false, holdPdf = false, activeReceipt = false, account = counselor } = {}) {
   let item = certificate(status, variant);
+  if (activeReceipt) item = { ...item,
+    official_receipt_amount: '80.00',
+    receipt_identity: { ledger_mode: 'ACTIVE', revision_id: '11111111-1111-4111-8111-111111111117', identity_state: 'BOUND', history: [] },
+    receipt_inspection: { status: 'VERIFIED', blocker: null, can_verify: false, verification_id: '11111111-1111-4111-8111-111111111118', verified_by_id: counselor.id, verified_at: preparedVersion, method: 'PHYSICAL_OR_INSPECTION', expected_amount: '80.00', currency: 'PHP' },
+  };
   let attempts = 0;
   let issuedAttempt = false;
   let releaseIssue;
@@ -161,7 +166,7 @@ for (const variant of ['CURRENT_STUDENT', 'GRADUATE']) for (const width of [320,
     await page.keyboard.press('Escape');
     await shown(page.getByRole('alertdialog'));
     assert.equal(data.state.issueBodies.length, 1);
-    assert.deepEqual(data.state.issueBodies[0], { expected_preparation_version: preparedVersion });
+    assert.deepEqual(data.state.issueBodies[0], { expected_preparation_version: preparedVersion, expected_resource_version: certificate().actions.request_version });
     assert.equal(data.state.pdfReads, 0);
     data.releaseIssue();
     await data.verificationStarted;
@@ -383,4 +388,24 @@ for (const status of ['REQUESTED', 'READY_FOR_ISSUANCE', 'CANCELLED']) {
     await safe(page, data);
   });
 }
+const active = fixture({ activeReceipt: true });
+await check('active-issue-sends-exact-reviewed-receipt-evidence', route, { ...active.options, initScripts: [fakePreview] }, async page => {
+  await issue(page);
+  await active.issueStarted;
+  assert.deepEqual(active.state.issueBodies[0], {
+    expected_preparation_version: preparedVersion,
+    expected_resource_version: certificate().actions.request_version,
+    expected_receipt_revision: '11111111-1111-4111-8111-111111111117',
+    expected_receipt_verification: '11111111-1111-4111-8111-111111111118',
+  });
+});
+const changedReceipt = fixture({ activeReceipt: true, issueCode: 'good_moral_receipt_changed', commit: false });
+await check('changed-receipt-closes-confirmation-without-resubmission', route, changedReceipt.options, async page => {
+  await issue(page);
+  await changedReceipt.issueStarted;
+  await hidden(page.getByRole('alertdialog'));
+  await shown(page.getByRole('alert').filter({ hasText: 'This request or receipt changed.' }));
+  assert.equal(changedReceipt.state.issueBodies.length, 1);
+  assert.ok(!(await page.locator('body').innerText()).includes(diagnostic));
+});
 await finish();

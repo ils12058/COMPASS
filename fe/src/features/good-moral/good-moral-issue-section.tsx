@@ -9,7 +9,7 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Notice } from "@/components/ui/notice";
 import { GoodMoralField, GoodMoralSection, formatGoodMoralDate, goodMoralErrorCode, goodMoralErrorMessage, uncertainGoodMoralMutation } from "@/features/good-moral/good-moral-shared";
 import { goodMoralIssueRequest, getGoodMoralGetRequestQueryKey, getGoodMoralListRequestsQueryKey } from "@/lib/api/generated/good-moral/good-moral";
-import type { GoodMoralOperationalDetailResponse } from "@/lib/api/generated/model";
+import type { GoodMoralIssuePayload, GoodMoralOperationalDetailResponse } from "@/lib/api/generated/model";
 
 export function GoodMoralIssueSection({
   item,
@@ -20,13 +20,14 @@ export function GoodMoralIssueSection({
 }) {
   const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reviewedIntent, setReviewedIntent] = useState<GoodMoralIssuePayload | null>(null);
   const [reviewedPreparedAt, setReviewedPreparedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [blockedUntilRefresh, setBlockedUntilRefresh] = useState(false);
   // Covers the whole confirmation, including the refresh after the request succeeds.
   const [issuing, setIssuing] = useState(false);
-  const issue = useMutation({ mutationFn: () => goodMoralIssueRequest(item.id, { expected_preparation_version: reviewedPreparedAt ?? "" }), retry: false });
+  const issue = useMutation({ mutationFn: () => goodMoralIssueRequest(item.id, reviewedIntent ?? { expected_preparation_version: "" }), retry: false });
   const issuePending = issue.isPending || issuing;
 
   async function invalidate() {
@@ -42,6 +43,12 @@ export function GoodMoralIssueSection({
   function beginIssue() {
     if (!item.actions.preparation_version || !item.actions.can_issue) return;
     setReviewedPreparedAt(item.actions.preparation_version);
+    setReviewedIntent({
+      expected_preparation_version: item.actions.preparation_version,
+      expected_resource_version: item.actions.request_version,
+      expected_receipt_revision: item.receipt_identity?.revision_id,
+      expected_receipt_verification: item.receipt_inspection?.verification_id,
+    });
     setError(null);
     setNotice(null);
     setConfirmOpen(true);
@@ -60,7 +67,7 @@ export function GoodMoralIssueSection({
       setNotice("Good Moral certificate issued.");
     } catch (caught) {
       const code = goodMoralErrorCode(caught);
-      if (code === "good_moral_preparation_changed" || code === "good_moral_not_ready") {
+      if (code === "good_moral_preparation_changed" || code === "good_moral_not_ready" || code?.startsWith("good_moral_receipt_")) {
         setConfirmOpen(false);
         await onRefresh();
         setError(goodMoralErrorMessage(caught, "Review the latest certificate details."));

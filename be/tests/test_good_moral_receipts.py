@@ -657,12 +657,28 @@ def test_simultaneous_replacement_reserves_only_winning_new_number(world):
 @pytest.mark.django_db(transaction=True)
 @pytest.mark.parametrize("action", ["cancel", "prepare", "issue"])
 @pytest.mark.parametrize("correction_first", [False, True])
-def test_lifecycle_competition_keeps_one_serial_history(world, action, correction_first):
+def test_lifecycle_competition_keeps_one_serial_history(
+    world, action, correction_first, monkeypatch
+):
     actor, item = world
     activate()
-    edit(item, actor, {"official_receipt_number": "OR-OLD"})
+    from compass.good_moral import receipt_fee_policy as fees
+    from tests.test_good_moral_verification import grant, prepare, synthetic_fee, verify
+
+    monkeypatch.setattr(fees, "resolve_approved_fee", synthetic_fee)
+    grant(actor)
+    edit(
+        item,
+        actor,
+        {
+            "official_receipt_number": "OR-OLD",
+            "official_receipt_date": date(2020, 1, 1),
+            "official_receipt_amount": Decimal("80.00"),
+        },
+    )
+    verify(item, actor)
     if action == "issue":
-        item = prepare_request(actor=actor, request_id=item.pk, context=AuditContext.user(actor))
+        item = prepare(item, actor)
     item.refresh_from_db()
     version, revision = item.updated_at.isoformat(), receipts.latest_revision(item).pk
     prepared = item.prepared_at.isoformat() if item.prepared_at else None
@@ -698,6 +714,9 @@ def test_lifecycle_competition_keeps_one_serial_history(world, action, correctio
             request_id=item.pk,
             context=AuditContext.user(actor),
             expected_preparation_version=prepared,
+            expected_resource_version=version,
+            expected_receipt_revision=revision,
+            expected_receipt_verification=item.prepared_receipt_verification_id,
         )
 
     first, second = (change, lifecycle) if correction_first else (lifecycle, change)
@@ -869,28 +888,22 @@ def test_api_requires_active_receipt_tokens_preserves_projection_and_replay(worl
 
 
 @pytest.mark.django_db
-def test_no_inspection_fee_or_completeness_gate_is_added(world):
-    from compass.accounts.policy import CAPABILITY_CODES
+def test_active_draft_does_not_inspect_and_missing_policy_blocks_preparation(world):
+    from compass.accounts.policy import CAPABILITY_CODES, ROLE_CAPABILITY_GRANTS
+    from compass.good_moral.receipt_verification import ReceiptBlocked
 
     actor, item = world
     activate()
     staff = person("clerical", "GUIDANCE_SERVICES_STAFF")
     edit(item, staff, {"official_receipt_amount": Decimal("0")})
-    assert not Identity.objects.exists()  # A date/amount draft is not an OR identity.
-    ready = prepare_request(actor=staff, request_id=item.pk, context=AuditContext.user(staff))
-    with pytest.raises(GoodMoralNotPermitted):
-        issue_request(actor=staff, request_id=item.pk, context=AuditContext.user(staff))
-    issued = issue_request(
-        actor=actor,
-        request_id=item.pk,
-        context=AuditContext.user(actor),
-        expected_preparation_version=ready.prepared_at.isoformat(),
+    assert not Identity.objects.exists()
+    with pytest.raises(ReceiptBlocked):
+        prepare_request(actor=staff, request_id=item.pk, context=AuditContext.user(staff))
+    assert "good_moral.verify_receipt" in CAPABILITY_CODES
+    assert all(
+        "good_moral.verify_receipt" not in codes for codes in ROLE_CAPABILITY_GRANTS.values()
     )
-    assert issued.status == "ISSUED" and issued.official_receipt_number == ""
-    assert "good_moral.verify_receipt" not in CAPABILITY_CODES
-    # Exact committed replay after issuance is evidence only; it cannot rewrite terminal facts.
-    operation = Mutation.objects.get(request=item)
-    assert operation.result_revision.amount == 0
+    assert Mutation.objects.get(request=item).result_revision.amount == 0
 
 
 @pytest.mark.django_db(transaction=True)

@@ -54,7 +54,10 @@ export function GoodMoralPreparationSection({ item, onRefresh }: {
     <GoodMoralSection title="Certificate preparation">
       <p className="text-sm text-muted">{item.status === "READY_FOR_ISSUANCE"
         ? "This request is ready for a Counselor's final review and issuance."
-        : "Check the certificate details and optional receipt facts before marking this request ready."}</p>
+        : item.receipt_identity?.ledger_mode === "ACTIVE"
+          ? "Review the certificate details and physical receipt inspection before marking this request ready."
+          : "Check the certificate details and optional receipt facts before marking this request ready."}</p>
+      {item.receipt_inspection?.blocker && item.receipt_identity?.ledger_mode !== "DORMANT" ? <p role="status" className="mt-3 text-sm text-muted">Receipt review must be resolved before preparation or issuance. Authorized GCO personnel can check the saved receipt and inspection through the approved process.</p> : null}
       {item.actions.can_prepare ? <Button className="mt-4" onClick={() => {
         setError(null);
         setCompleted(false);

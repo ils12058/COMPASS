@@ -223,6 +223,9 @@ def append_revision(*, item, actor, normalized, intent, context):
                 "Official Receipt number already recorded. Check the number or ask GCO for review."
             ) from exc
     if previous:
+        from .receipt_verification import invalidate
+
+        invalidate(item=item, actor=actor, context=context, reason="RECEIPT_REVISED")
         # The request fence serializes all revision writers; identities precede revision row locks.
         previous = Assignment.objects.select_for_update().get(pk=previous.pk)
         if previous.is_current:

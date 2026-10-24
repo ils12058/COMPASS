@@ -95,6 +95,17 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
   if (!(error instanceof CompassApiError)) return fallback;
   const code = readApiErrorCode(error.body);
   switch (code) {
+    case "good_moral_receipt_missing":
+    case "good_moral_receipt_incomplete":
+      return "Complete the physical receipt details before inspection and preparation.";
+    case "good_moral_receipt_unverified":
+      return "An authorized GCO employee must inspect the physical receipt before preparation.";
+    case "good_moral_receipt_fee_mismatch":
+      return "The recorded amount does not match the approved expected fee. Ask GCO for review.";
+    case "good_moral_receipt_policy_unresolved":
+      return "The approved receipt fee policy needs review before work can continue.";
+    case "good_moral_receipt_already_verified":
+      return "This receipt already has a recorded physical inspection. Review the latest details.";
     case "good_moral_receipt_conflict":
       return "Official Receipt number already recorded. Check the number or ask GCO for review.";
     case "good_moral_receipt_changed":

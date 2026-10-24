@@ -169,6 +169,16 @@ class GoodMoralPreparationPayload(StrictSchema):
 
 class GoodMoralIssuePayload(StrictSchema):
     expected_preparation_version: str
+    expected_resource_version: str | None = None
+    expected_receipt_revision: UUID | None = None
+    expected_receipt_verification: UUID | None = None
+
+
+class GoodMoralReceiptVerificationPayload(StrictSchema):
+    expected_resource_version: str
+    assignment_id: UUID
+    operation_id: UUID
+    method: Literal["PHYSICAL_OR_INSPECTION"]
 
 
 class GoodMoralCorrectionPayload(StrictSchema):
@@ -297,6 +307,34 @@ class GoodMoralReceiptMutationResponse(StrictSchema):
     result_request_version: str
 
 
+class GoodMoralReceiptInspectionResponse(StrictSchema):
+    status: Literal[
+        "MISSING",
+        "INCOMPLETE",
+        "NEEDS_VERIFICATION",
+        "VERIFIED",
+        "LEGACY_UNKNOWN",
+        "LEGACY_CONFLICT",
+        "DISPUTED",
+        "POLICY_UNAVAILABLE",
+    ]
+    blocker: str | None
+    can_verify: bool
+    verification_id: UUID | None
+    verified_by_id: UUID | None
+    verified_at: datetime | None
+    method: Literal["PHYSICAL_OR_INSPECTION"] | None
+    expected_amount: Decimal | None
+    currency: Literal["PHP"] | None
+
+
+class GoodMoralReceiptVerificationResult(StrictSchema):
+    operation_id: UUID
+    verification_id: UUID
+    assignment_id: UUID
+    invalidated_at: datetime | None
+
+
 class GoodMoralOperationalDetailResponse(GoodMoralDetailResponse):
     initiated_by: PersonSummary | None
     student_institutional_id: str | None
@@ -306,6 +344,8 @@ class GoodMoralOperationalDetailResponse(GoodMoralDetailResponse):
     actions: GoodMoralActionsResponse
     receipt_identity: GoodMoralReceiptStateResponse | None = None
     receipt_mutation_result: GoodMoralReceiptMutationResponse | None = None
+    receipt_inspection: GoodMoralReceiptInspectionResponse | None = None
+    receipt_verification_result: GoodMoralReceiptVerificationResult | None = None
 
 
 class GoodMoralHistoryResponse(StrictSchema):
@@ -349,6 +389,10 @@ def _require_operational(request, capability: str) -> None:
 
 
 def _raise(exc: GoodMoralError) -> NoReturn:
+    from .receipt_verification import ReceiptBlocked
+
+    if isinstance(exc, ReceiptBlocked):
+        raise APIError(409, exc.code, str(exc)) from exc
     from .receipt_identity import (
         ReceiptChanged,
         ReceiptConflict,
@@ -432,7 +476,9 @@ def _operational_summary(item) -> dict[str, object]:
 
 def _operational_detail(item, actor) -> dict[str, object]:
     from .receipt_identity import operational_receipt_state
+    from .receipt_verification import operational_status
 
+    verification = getattr(item, "receipt_verification_result", None)
     operation = getattr(item, "receipt_mutation_result", None)
     cancellation = None
     if item.cancelled_at is not None:
@@ -449,6 +495,15 @@ def _operational_detail(item, actor) -> dict[str, object]:
         "prepared_at": item.prepared_at,
         "actions": _actions(item, actor),
         "receipt_identity": operational_receipt_state(item),
+        "receipt_inspection": operational_status(item, actor),
+        "receipt_verification_result": {
+            "operation_id": verification.operation_id,
+            "verification_id": verification.pk,
+            "assignment_id": verification.assignment_id,
+            "invalidated_at": verification.invalidated_at,
+        }
+        if verification
+        else None,
         "receipt_mutation_result": {
             "operation_id": operation.pk,
             "result_revision_id": operation.result_revision_id,
@@ -460,6 +515,16 @@ def _operational_detail(item, actor) -> dict[str, object]:
 
 
 def _actions(item, actor):
+    from .receipt_identity import ReceiptCutoverRequired
+    from .receipt_verification import ReceiptBlocked, active_mode, gate
+
+    receipt_ready = True
+    try:
+        if active_mode():
+            gate(item)
+            receipt_ready = True
+    except (ReceiptBlocked, ReceiptCutoverRequired):
+        receipt_ready = False
     preparable = item.status in {GoodMoralStatus.REQUESTED, GoodMoralStatus.READY_FOR_ISSUANCE}
     prepare = actor.has_capability("good_moral.prepare")
     counselor = actor.role.code == "COUNSELOR"
@@ -475,9 +540,11 @@ def _actions(item, actor):
     return {
         "request_version": item.updated_at.isoformat(),
         "preparation_version": item.prepared_at.isoformat() if item.prepared_at else None,
-        "can_prepare": prepare and item.status == GoodMoralStatus.REQUESTED,
+        "can_prepare": prepare and receipt_ready and item.status == GoodMoralStatus.REQUESTED,
         "can_correct": prepare and preparable,
-        "can_issue": counselor
+        "can_issue": receipt_ready
+        and (not active_mode() or item.prepared_receipt_verification_id is not None)
+        and counselor
         and actor.has_capability("good_moral.issue")
         and item.status == GoodMoralStatus.READY_FOR_ISSUANCE,
         "can_cancel": counselor and actor.has_capability("good_moral.manage") and preparable,
@@ -1002,6 +1069,9 @@ def good_moral_issue(request, request_id: UUID, payload: GoodMoralIssuePayload):
     try:
         item = issue_request(
             expected_preparation_version=payload.expected_preparation_version,
+            expected_resource_version=payload.expected_resource_version,
+            expected_receipt_revision=payload.expected_receipt_revision,
+            expected_receipt_verification=payload.expected_receipt_verification,
             actor=request.auth_user,
             request_id=request_id,
             context=_context(request),
@@ -1067,6 +1137,30 @@ def good_moral_prepare(request, request_id: UUID, payload: GoodMoralPreparationP
             request_id=request_id,
             context=_context(request),
             expected_resource_version=payload.expected_resource_version,
+        )
+    except GoodMoralError as exc:
+        _raise(exc)
+    return _operational_detail(item, request.auth_user)
+
+
+@router.post(
+    "/requests/{request_id}/receipt/verify",
+    response=response_with_errors(GoodMoralOperationalDetailResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="goodMoralVerifyReceipt",
+)
+def good_moral_verify_receipt(
+    request, request_id: UUID, payload: GoodMoralReceiptVerificationPayload
+):
+    from .receipt_verification import verify_receipt
+
+    _require_operational(request, "good_moral.verify_receipt")
+    try:
+        item = verify_receipt(
+            actor=request.auth_user,
+            request_id=request_id,
+            context=_context(request),
+            **payload.model_dump(),
         )
     except GoodMoralError as exc:
         _raise(exc)

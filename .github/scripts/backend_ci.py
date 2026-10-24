@@ -282,7 +282,9 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Good Moral requests, preparation, issuance, and release audit.",
         ("test_good_moral.py", "test_good_moral_assisted.py",
          "test_good_moral_preparation.py", "test_good_moral_receipts.py",
-         "test_good_moral_receipt_migration.py", "test_privacy_release_audit.py"),
+         "test_good_moral_receipt_migration.py",
+         "test_good_moral_verification.py", "test_good_moral_verification_concurrency.py",
+         "test_good_moral_verification_migration.py", "test_privacy_release_audit.py"),
     ),
     "feedback": (
         "Customer feedback and CSM responses, including encryption.",

@@ -16,7 +16,7 @@ from tests.test_good_moral import sync_policy
 from tests.test_good_moral_receipts import activate, person, request_for
 
 BASE = ("good_moral", "0001_canonical_baseline")
-TARGET = ("good_moral", "0002_receipt_identity_and_history")
+TARGET = ("good_moral", "0003_receipt_verification")
 
 
 @pytest.mark.django_db(transaction=True)
@@ -38,14 +38,14 @@ def test_populated_canonical_upgrade_and_empty_history_reverse_reapply():
         )
         original = historical.objects.filter(pk=item.pk).values().get()
         MigrationExecutor(connection).migrate([TARGET])
-        assert GoodMoralRequest.objects.filter(pk=item.pk).values().get() == original
+        assert GoodMoralRequest.objects.filter(pk=item.pk).values(*original).get() == original
         with connection.cursor() as cursor:
             cursor.execute("SELECT mode FROM good_moral_goodmoralreceiptledger WHERE id=1")
             assert cursor.fetchone()[0] == "DORMANT"
         # No ledger evidence exists; a disposable reversal preserves the source request.
         MigrationExecutor(connection).migrate([BASE])
         MigrationExecutor(connection).migrate([TARGET])
-        assert GoodMoralRequest.objects.filter(pk=item.pk).values().get() == original
+        assert GoodMoralRequest.objects.filter(pk=item.pk).values(*original).get() == original
     finally:
         MigrationExecutor(connection).migrate([TARGET])
 

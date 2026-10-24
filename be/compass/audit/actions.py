@@ -85,6 +85,8 @@ INVENTORY_CREATED = "inventory.created"
 INVENTORY_SUBMITTED = "inventory.submitted"
 INVENTORY_REOPENED = "inventory.reopened"
 INVENTORY_RESUBMITTED = "inventory.resubmitted"
+GOOD_MORAL_RECEIPT_VERIFIED = "good_moral.receipt_verified"
+GOOD_MORAL_RECEIPT_VERIFICATION_INVALIDATED = "good_moral.receipt_verification_invalidated"
 GOOD_MORAL_RECEIPT_ASSIGNED = "good_moral.receipt_assigned"
 GOOD_MORAL_RECEIPT_REVISED = "good_moral.receipt_revised"
 GOOD_MORAL_RECEIPT_REMOVED = "good_moral.receipt_removed"
@@ -355,6 +357,8 @@ __all__ = [
     "STUDENT_SESSION_SUMMARY_PUBLISHED",
     "INVENTORY_CREATED",
     "INVENTORY_SUBMITTED",
+    "GOOD_MORAL_RECEIPT_VERIFIED",
+    "GOOD_MORAL_RECEIPT_VERIFICATION_INVALIDATED",
     "GOOD_MORAL_RECEIPT_ASSIGNED",
     "GOOD_MORAL_RECEIPT_REVISED",
     "GOOD_MORAL_RECEIPT_REMOVED",
