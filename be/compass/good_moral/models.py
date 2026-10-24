@@ -141,6 +141,27 @@ class GoodMoralRequest(models.Model):
         null=True,
         blank=True,
     )
+    prepared_receipt_verification = models.ForeignKey(
+        "GoodMoralReceiptVerification",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="prepared_requests",
+    )
+    issued_receipt_assignment = models.ForeignKey(
+        "GoodMoralReceiptAssignment",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="issued_requests",
+    )
+    issued_receipt_verification = models.ForeignKey(
+        "GoodMoralReceiptVerification",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="issued_requests",
+    )
     issued_at = models.DateTimeField(null=True, blank=True)
     issued_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -523,3 +544,69 @@ class GoodMoralReceiptMutation(models.Model):
 
     class Meta:
         default_permissions = ()
+
+
+class GoodMoralReceiptVerification(models.Model):
+    """Personal physical inspection of one immutable claim; never Cashier reconciliation."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    assignment = models.ForeignKey(
+        GoodMoralReceiptAssignment, on_delete=models.PROTECT, related_name="verifications"
+    )
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="good_moral_receipt_inspections",
+    )
+    method = models.CharField(
+        max_length=32, choices=[("PHYSICAL_OR_INSPECTION", "Physical OR inspection")]
+    )
+    verified_at = models.DateTimeField(auto_now_add=True)
+    policy_id = models.CharField(max_length=100)
+    policy_version = models.CharField(max_length=64)
+    expected_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3)
+    fee_decision = models.JSONField()
+    operation_id = models.UUIDField(unique=True, editable=False)
+    fingerprint = models.CharField(max_length=64)
+    invalidated_at = models.DateTimeField(null=True)
+    invalidated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        related_name="invalidated_good_moral_receipt_inspections",
+    )
+    invalidation_reason = models.CharField(max_length=32, blank=True)
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=["assignment"],
+                condition=models.Q(invalidated_at__isnull=True),
+                name="gm_receipt_one_inspection",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(method="PHYSICAL_OR_INSPECTION"),
+                name="gm_receipt_inspection_method",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(currency="PHP", expected_amount__gt=0),
+                name="gm_receipt_inspection_fee",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        invalidated_at__isnull=True,
+                        invalidated_by__isnull=True,
+                        invalidation_reason="",
+                    )
+                    | models.Q(
+                        invalidated_at__isnull=False,
+                        invalidated_by__isnull=False,
+                        invalidation_reason__in=["RECEIPT_REVISED", "CANCELLED", "POLICY_CHANGED"],
+                    )
+                ),
+                name="gm_receipt_invalidation_shape",
+            ),
+        ]

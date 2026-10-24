@@ -466,6 +466,13 @@ CAPABILITY_DEFINITIONS = (
         description="Correct clerical certificate facts and mark Good Moral requests ready.",
     ),
     CapabilityDefinition(
+        code="good_moral.verify_receipt",
+        name="Inspect Good Moral physical receipts",
+        description=(
+            "Personally inspect a physical Official Receipt for an exact Good Moral revision."
+        ),
+    ),
+    CapabilityDefinition(
         code="good_moral.issue",
         name="Issue Good Moral certificates",
         description="Issue source-controlled Good Moral certificates as an authorized Counselor.",
@@ -757,6 +764,7 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "good_moral.prepare": frozenset({"good_moral.view"}),
     "good_moral.initiate": frozenset({"good_moral.view"}),
     "good_moral.issue": frozenset({"good_moral.view"}),
+    "good_moral.verify_receipt": frozenset({"good_moral.view", "good_moral.prepare"}),
     "ecounseling.access_media_assigned": frozenset({"ecounseling.view_assigned"}),
     "counseling.manage_assigned": frozenset({"counseling.view_assigned"}),
     "referrals.manage": frozenset({"referrals.view"}),

@@ -318,6 +318,7 @@ EXPECTED_OPERATION_IDS = {
     "goodMoralUpdateRequest",
     "goodMoralIssueRequest",
     "goodMoralPrepareRequest",
+    "goodMoralVerifyReceipt",
     "goodMoralCancelRequest",
     "goodMoralDownloadCertificate",
     "feedbackListMyOpportunities",
@@ -532,6 +533,24 @@ def test_good_moral_preparation_contract_has_explicit_actions_and_exact_versions
     assert _response_statuses(prepare) >= {200, 403, 409, 422}
     assert schemas["GoodMoralPreparationPayload"]["required"] == ["expected_resource_version"]
     assert schemas["GoodMoralIssuePayload"]["required"] == ["expected_preparation_version"]
+    assert {
+        "expected_resource_version",
+        "expected_receipt_revision",
+        "expected_receipt_verification",
+    } <= set(schemas["GoodMoralIssuePayload"]["properties"])
+    verify = _operation(schema, "/api/v1/good-moral/requests/{request_id}/receipt/verify", "post")
+    assert verify["operationId"] == "goodMoralVerifyReceipt"
+    assert _response_statuses(verify) >= {200, 401, 403, 404, 409, 422}
+    inspection_payload = schemas["GoodMoralReceiptVerificationPayload"]
+    assert inspection_payload["additionalProperties"] is False
+    assert (
+        set(inspection_payload["properties"])
+        == set(inspection_payload["required"])
+        == {"expected_resource_version", "assignment_id", "operation_id", "method"}
+    )
+    assert inspection_payload["properties"]["method"]["const"] == "PHYSICAL_OR_INSPECTION"
+    assert "receipt_inspection" in schemas["GoodMoralOperationalDetailResponse"]["properties"]
+    assert "receipt_inspection" not in schemas["GoodMoralDetailResponse"]["properties"]
     actions = schemas["GoodMoralActionsResponse"]["properties"]
     assert actions["request_version"]["type"] == "string"
     for name in ("can_prepare", "can_correct", "can_issue", "can_cancel", "can_download"):
@@ -2079,6 +2098,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "good_moral.issue",
             "good_moral.manage",
             "good_moral.prepare",
+            "good_moral.verify_receipt",
             "good_moral.request_self",
             "good_moral.view",
             "good_moral.view_self",

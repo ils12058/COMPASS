@@ -4556,6 +4556,7 @@
           "good_moral.manage",
           "good_moral.prepare",
           "good_moral.request_self",
+          "good_moral.verify_receipt",
           "good_moral.view",
           "good_moral.view_self",
           "graduate_tracer.manage_self",
@@ -13997,6 +13998,41 @@
           "expected_preparation_version": {
             "title": "Expected Preparation Version",
             "type": "string"
+          },
+          "expected_receipt_revision": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Receipt Revision"
+          },
+          "expected_receipt_verification": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Receipt Verification"
+          },
+          "expected_resource_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Resource Version"
           }
         },
         "required": [
@@ -14264,10 +14300,30 @@
               }
             ]
           },
+          "receipt_inspection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralReceiptInspectionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "receipt_mutation_result": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/GoodMoralReceiptMutationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receipt_verification_result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralReceiptVerificationResult"
               },
               {
                 "type": "null"
@@ -14592,6 +14648,125 @@
         "title": "GoodMoralReceiptHistoryItem",
         "type": "object"
       },
+      "GoodMoralReceiptInspectionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocker"
+          },
+          "can_verify": {
+            "title": "Can Verify",
+            "type": "boolean"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "const": "PHP",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "expected_amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Amount"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "const": "PHYSICAL_OR_INSPECTION",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "status": {
+            "enum": [
+              "MISSING",
+              "INCOMPLETE",
+              "NEEDS_VERIFICATION",
+              "VERIFIED",
+              "LEGACY_UNKNOWN",
+              "LEGACY_CONFLICT",
+              "DISPUTED",
+              "POLICY_UNAVAILABLE"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "verification_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Id"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          },
+          "verified_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified By Id"
+          }
+        },
+        "required": [
+          "status",
+          "blocker",
+          "can_verify",
+          "verification_id",
+          "verified_by_id",
+          "verified_at",
+          "method",
+          "expected_amount",
+          "currency"
+        ],
+        "title": "GoodMoralReceiptInspectionResponse",
+        "type": "object"
+      },
       "GoodMoralReceiptMutationResponse": {
         "additionalProperties": false,
         "properties": {
@@ -14676,6 +14851,78 @@
           "history"
         ],
         "title": "GoodMoralReceiptStateResponse",
+        "type": "object"
+      },
+      "GoodMoralReceiptVerificationPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "assignment_id": {
+            "format": "uuid",
+            "title": "Assignment Id",
+            "type": "string"
+          },
+          "expected_resource_version": {
+            "title": "Expected Resource Version",
+            "type": "string"
+          },
+          "method": {
+            "const": "PHYSICAL_OR_INSPECTION",
+            "title": "Method",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_resource_version",
+          "assignment_id",
+          "operation_id",
+          "method"
+        ],
+        "title": "GoodMoralReceiptVerificationPayload",
+        "type": "object"
+      },
+      "GoodMoralReceiptVerificationResult": {
+        "additionalProperties": false,
+        "properties": {
+          "assignment_id": {
+            "format": "uuid",
+            "title": "Assignment Id",
+            "type": "string"
+          },
+          "invalidated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invalidated At"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "verification_id": {
+            "format": "uuid",
+            "title": "Verification Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id",
+          "verification_id",
+          "assignment_id",
+          "invalidated_at"
+        ],
+        "title": "GoodMoralReceiptVerificationResult",
         "type": "object"
       },
       "GoodMoralStatusValue": {
@@ -30511,6 +30758,7 @@
                 "good_moral.manage",
                 "good_moral.prepare",
                 "good_moral.request_self",
+                "good_moral.verify_receipt",
                 "good_moral.view",
                 "good_moral.view_self",
                 "graduate_tracer.manage_self",
@@ -30695,6 +30943,7 @@
                 "good_moral.manage",
                 "good_moral.prepare",
                 "good_moral.request_self",
+                "good_moral.verify_receipt",
                 "good_moral.view",
                 "good_moral.view_self",
                 "graduate_tracer.manage_self",
@@ -48185,6 +48434,104 @@
           }
         ],
         "summary": "Good Moral Prepare",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/requests/{request_id}/receipt/verify": {
+      "post": {
+        "operationId": "goodMoralVerifyReceipt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoodMoralReceiptVerificationPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralOperationalDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral Verify Receipt",
         "tags": [
           "good-moral"
         ]

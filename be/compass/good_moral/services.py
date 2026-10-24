@@ -1264,7 +1264,17 @@ def update_request(
             item.status = GoodMoralStatus.REQUESTED
             item.prepared_at = None
             item.prepared_by = None
-        item.save(update_fields=[*changed, "status", "prepared_at", "prepared_by", "updated_at"])
+            item.prepared_receipt_verification = None
+        item.save(
+            update_fields=[
+                *changed,
+                "status",
+                "prepared_at",
+                "prepared_by",
+                "prepared_receipt_verification",
+                "updated_at",
+            ]
+        )
         record_event(
             context=context,
             action=GOOD_MORAL_REQUEST_UPDATED,
@@ -1296,6 +1306,8 @@ def prepare_request(
     expected_resource_version: str | None = None,
     now: datetime | None = None,
 ) -> GoodMoralRequest:
+    from . import receipt_verification as inspection
+
     _validate_operational(actor, "good_moral.prepare")
     prepared_at = now or timezone.now()
     if timezone.is_naive(prepared_at):
@@ -1311,6 +1323,11 @@ def prepare_request(
             raise GoodMoralPreparationChanged(
                 "This request changed. Review its latest details first."
             )
+        evidence = inspection.gate(
+            item, expected_resource_version=expected_resource_version, lock=True
+        )
+        if evidence:
+            actor = inspection.authority(actor, "good_moral.prepare", context, lock=True)
         if item.status == GoodMoralStatus.READY_FOR_ISSUANCE:
             return _queryset().get(pk=item.pk)
         if item.status != GoodMoralStatus.REQUESTED:
@@ -1319,7 +1336,16 @@ def prepare_request(
         item.status = GoodMoralStatus.READY_FOR_ISSUANCE
         item.prepared_by = actor
         item.prepared_at = prepared_at
-        item.save(update_fields=["status", "prepared_by", "prepared_at", "updated_at"])
+        item.prepared_receipt_verification = evidence[1] if evidence else None
+        item.save(
+            update_fields=[
+                "status",
+                "prepared_by",
+                "prepared_at",
+                "prepared_receipt_verification",
+                "updated_at",
+            ]
+        )
         record_event(
             context=context,
             action=GOOD_MORAL_PREPARED,
@@ -1328,6 +1354,12 @@ def prepare_request(
             target_id=item.pk,
             metadata={"variant": item.variant, "transition": "REQUESTED -> READY_FOR_ISSUANCE"},
         )
+        if evidence:
+            inspection.authority(actor, "good_moral.prepare", context)
+            if inspection.decision_for(item, evidence[0]).snapshot() != evidence[2].snapshot():
+                raise inspection.ReceiptBlocked(
+                    "policy_unresolved", "The approved fee decision changed during preparation."
+                )
         return _queryset().get(pk=item.pk)
 
 
@@ -1394,7 +1426,12 @@ def issue_request(
     context: AuditContext,
     now: datetime | None = None,
     expected_preparation_version: str | None = None,
+    expected_resource_version: str | None = None,
+    expected_receipt_revision: UUID | None = None,
+    expected_receipt_verification: UUID | None = None,
 ) -> GoodMoralRequest:
+    from . import receipt_verification as inspection
+
     _validate_counselor(actor, "good_moral.issue")
     issued_at = now or timezone.now()
     if timezone.is_naive(issued_at):
@@ -1416,6 +1453,27 @@ def issue_request(
         ):
             raise GoodMoralPreparationChanged(
                 "This request was prepared again. Review its latest details before issuing."
+            )
+
+        evidence = inspection.gate(
+            item,
+            expected_resource_version=expected_resource_version,
+            expected_receipt_revision=expected_receipt_revision,
+            expected_verification=expected_receipt_verification,
+            issuing=True,
+            lock=True,
+        )
+        if evidence:
+            if not expected_preparation_version:
+                raise GoodMoralPreparationChanged("Review the current preparation before issuing.")
+            actor = inspection.authority(
+                actor,
+                "good_moral.issue",
+                context,
+                lock=True,
+                student_id=item.student_id
+                if item.variant == GoodMoralVariant.CURRENT_STUDENT
+                else None,
             )
 
         if item.variant == GoodMoralVariant.CURRENT_STUDENT:
@@ -1460,6 +1518,8 @@ def issue_request(
         if not issuer_name:
             raise GoodMoralConflict("Issuer name is required before issuance.")
 
+        item.issued_receipt_assignment = evidence[0] if evidence else None
+        item.issued_receipt_verification = evidence[1] if evidence else None
         item.form_revision = revision
         item.document_template_key = template_key
         item.document_template_version = template_version
@@ -1469,6 +1529,8 @@ def issue_request(
         item.status = GoodMoralStatus.ISSUED
         item.save(
             update_fields=[
+                "issued_receipt_assignment",
+                "issued_receipt_verification",
                 "form_revision",
                 "document_template_key",
                 "document_template_version",
@@ -1522,6 +1584,12 @@ def issue_request(
             target_type="FEEDBACK",
             target_id=opportunity.pk,
         )
+        if evidence:
+            inspection.authority(actor, "good_moral.issue", context)
+            if inspection.decision_for(item, evidence[0]).snapshot() != evidence[2].snapshot():
+                raise inspection.ReceiptBlocked(
+                    "policy_unresolved", "The approved fee decision changed during issuance."
+                )
         return _queryset().get(pk=item.pk)
 
 
@@ -1559,6 +1627,10 @@ def cancel_request(
         if item.status not in {GoodMoralStatus.REQUESTED, GoodMoralStatus.READY_FOR_ISSUANCE}:
             raise GoodMoralConflict("An ISSUED Good Moral request cannot be cancelled.")
 
+        from . import receipt_verification as inspection
+
+        if inspection.active_mode(lock=True):
+            inspection.invalidate(item=item, actor=actor, context=context, reason="CANCELLED")
         previous_status = item.status
         item.status = GoodMoralStatus.CANCELLED
         item.cancelled_at = cancelled_at
