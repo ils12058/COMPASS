@@ -70,7 +70,14 @@ DESIGNATION_DEFINITIONS = (
     ),
 )
 
+CATALOG_ELIGIBLE_ROLES = frozenset({"IT_ADMIN", "COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
+
 CAPABILITY_DEFINITIONS = (
+    CapabilityDefinition(
+        code="organization.catalog.manage",
+        name="Manage organization catalog",
+        description="Explicit delegated catalog definition authority; no default grants.",
+    ),
     CapabilityDefinition(
         code="counseling.handoff.manage_own",
         name="Author own confidential Counselor Handoff",
@@ -739,6 +746,7 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 # Dependencies constrain whether already-granted authority is effective. They never
 # create prerequisite authority or rewrite persisted grants/overrides.
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
+    "organization.catalog.manage": frozenset({"organization.structure.view"}),
     "counseling.handoff.manage_own": frozenset(
         {"counseling.continuity.view", "counseling.view_assigned"}
     ),

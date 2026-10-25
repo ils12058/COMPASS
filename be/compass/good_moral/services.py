@@ -57,6 +57,7 @@ from compass.inventory.models import StudentInventory
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.academic_years import get_current_academic_year
+from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import StudentAffiliation
 from compass.organization.program_policy import AcademicClassification, get_program_policy
 
@@ -653,6 +654,7 @@ def create_my_graduate(
     )
 
 
+@catalog_dependent_write
 def create_assisted_request(
     *,
     actor: User,
@@ -732,6 +734,7 @@ def list_eligible_students(
     return rows[:page_size], len(rows) > page_size
 
 
+@catalog_dependent_write
 def _create_current_student(
     *,
     student: User,
@@ -1139,6 +1142,7 @@ def _normalize_update(field_name: str, value: object) -> object:
     raise InvalidGoodMoralInput(f"{field_name} cannot be changed through Good Moral correction.")
 
 
+@catalog_dependent_write
 def update_request(
     *,
     actor: User,

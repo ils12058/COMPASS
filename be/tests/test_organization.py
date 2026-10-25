@@ -128,11 +128,13 @@ def test_structural_reads_are_available_without_organization_management():
             )
             removed_write = client.post(
                 "/api/v1/organization/campuses",
-                data=json.dumps({"code": "DENIED", "name": "Denied"}),
+                data=json.dumps(
+                    {"code": "DENIED", "name": "Denied", "is_active": False, "basis": "Synthetic"}
+                ),
                 content_type="application/json",
                 **csrf(client),
             )
-            assert removed_write.status_code in {404, 405}
+            assert removed_write.status_code == 403
 
     officer = make_user("read-officer@example.edu", "INSTITUTIONAL_OFFICER")
     assert auth_client(officer).get("/api/v1/organization/campuses").status_code == 403
@@ -499,7 +501,7 @@ def test_role_changes_are_blocked_until_organization_relationship_is_removed():
 
 
 @pytest.mark.django_db
-def test_structural_write_routes_are_removed_instead_of_forbidden():
+def test_legacy_arbitrary_structural_write_routes_remain_removed():
     sync_policy()
     actor = make_user("structure-admin@example.edu", "IT_ADMIN")
     client = auth_client(actor)
@@ -538,7 +540,11 @@ def test_structural_write_routes_are_removed_instead_of_forbidden():
             content_type="application/json",
             **headers,
         )
-        assert response.status_code in {404, 405}
+        assert response.status_code in (
+            {403, 422}
+            if method == "post" and path.endswith(("campuses", "colleges", "programs"))
+            else {404, 405}
+        )
 
 
 @pytest.mark.django_db

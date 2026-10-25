@@ -51,12 +51,19 @@ class Campus(models.Model):
     code = models.CharField(max_length=32, unique=True)
     name = models.CharField(max_length=160)
     is_active = models.BooleanField(default=True)
+    resource_version = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         default_permissions = ()
         ordering = ("code",)
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(resource_version__gte=1),
+                name="organization_campus_version_positive",
+            ),
+        ]
 
     def save(self, *args, **kwargs):
         self.code = normalize_code(self.code)
@@ -73,6 +80,7 @@ class College(models.Model):
     code = models.CharField(max_length=32)
     name = models.CharField(max_length=160)
     is_active = models.BooleanField(default=True)
+    resource_version = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -80,6 +88,10 @@ class College(models.Model):
         default_permissions = ()
         ordering = ("campus__code", "code")
         constraints = [
+            models.CheckConstraint(
+                condition=models.Q(resource_version__gte=1),
+                name="organization_college_version_positive",
+            ),
             models.UniqueConstraint(
                 fields=("campus", "code"), name="organization_college_code_uniq"
             ),
@@ -100,6 +112,7 @@ class Program(models.Model):
     code = models.CharField(max_length=32)
     name = models.CharField(max_length=160)
     is_active = models.BooleanField(default=True)
+    resource_version = models.PositiveIntegerField(default=1)
     academic_classification = models.CharField(
         max_length=16,
         null=True,
@@ -119,6 +132,10 @@ class Program(models.Model):
         default_permissions = ()
         ordering = ("college__campus__code", "college__code", "code")
         constraints = [
+            models.CheckConstraint(
+                condition=models.Q(resource_version__gte=1),
+                name="organization_program_version_positive",
+            ),
             models.CheckConstraint(
                 condition=models.Q(academic_classification__isnull=True)
                 | models.Q(academic_classification__in=[v.value for v in AcademicClassification]),

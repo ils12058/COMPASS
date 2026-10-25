@@ -28,6 +28,7 @@ from compass.organization.bootstrap import (
     CatalogInitializationError,
     check_organization_catalog,
 )
+from compass.organization.integrity import catalog_dependent_write
 from compass.service_catalog.bootstrap import (
     CanonicalIdentityPolicyMissing,
     canonical_counseling_readiness,
@@ -238,6 +239,7 @@ def _run(session: SeedSession, config: StagingSeedConfig) -> None:
     _unit("Account state", lambda: finalize_account_state(session))
 
 
+@catalog_dependent_write
 def seed_staging_dataset(*, anchor: date | None = None) -> SeedReport:
     """Seed or reconcile Staging Dataset v1 and return a secret-free report."""
 

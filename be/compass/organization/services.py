@@ -27,6 +27,7 @@ from compass.organization.access_scope import (
     active_head_guidance_counselors,
     resolve_operational_responsibility_scope,
 )
+from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import (
     Campus,
     College,
@@ -265,6 +266,7 @@ def _lock_active_college(college_id: UUID) -> College:
     return college
 
 
+@catalog_dependent_write
 def set_student_affiliation(
     *, student_id: UUID, college_id: UUID, context: AuditContext
 ) -> StudentAffiliation:
@@ -300,6 +302,7 @@ def set_student_affiliation(
         return current
 
 
+@catalog_dependent_write
 def remove_student_affiliation(*, student_id: UUID, context: AuditContext) -> bool:
     with transaction.atomic():
         _lock_user_with_role(student_id, "STUDENT", "student", require_active=False)
@@ -321,6 +324,7 @@ def remove_student_affiliation(*, student_id: UUID, context: AuditContext) -> bo
         return True
 
 
+@catalog_dependent_write
 def set_counselor_responsibility(
     *, college_id: UUID, counselor_id: UUID, context: AuditContext
 ) -> CounselorResponsibility:
@@ -361,6 +365,7 @@ def set_counselor_responsibility(
         return current
 
 
+@catalog_dependent_write
 def remove_counselor_responsibility(*, college_id: UUID, context: AuditContext) -> bool:
     with transaction.atomic():
         _lock_active_college(college_id)
@@ -520,3 +525,22 @@ def list_student_affiliations(
         page_size,
         len(rows) > page_size,
     )
+
+
+def validate_account_catalog_reactivation(user: User) -> None:
+    """Retained affiliations may not silently become operational beneath retired ancestry."""
+    if (
+        user.role.code == "STUDENT"
+        and StudentAffiliation.objects.filter(student_id=user.pk)
+        .filter(Q(college__is_active=False) | Q(college__campus__is_active=False))
+        .exists()
+    ):
+        raise OrganizationConflict("Repair the retained Student affiliation before reactivation.")
+    if (
+        CounselorResponsibility.objects.filter(counselor_id=user.pk)
+        .filter(Q(college__is_active=False) | Q(college__campus__is_active=False))
+        .exists()
+    ):
+        raise OrganizationConflict(
+            "Repair retained Counselor responsibilities before reactivation."
+        )

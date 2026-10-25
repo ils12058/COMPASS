@@ -14,6 +14,7 @@ from compass.audit.actions import ACCOUNT_CREATED, ACCOUNT_CSV_IMPORTED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.organization.integrity import catalog_dependent_write
 
 from .services import (
     InvalidManagementInput,
@@ -378,6 +379,7 @@ def _report(
     )
 
 
+@catalog_dependent_write
 def provision_accounts_from_csv(
     *,
     actor: User,

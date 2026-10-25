@@ -110,6 +110,9 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Campus/College/Program structure, catalogs, and operational student lookups.",
         (
             "test_organization.py",
+            "test_catalog_services.py",
+            "test_catalog_concurrency.py",
+            "test_catalog_version_migration.py",
             "test_organization_catalog.py",
             "test_organization_policy_migration.py",
             "test_program_policy.py",
