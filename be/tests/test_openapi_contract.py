@@ -21,6 +21,22 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
+    "organizationUpdateProgramPolicy",
+    "organizationCreateCampus",
+    "organizationRenameCampus",
+    "organizationSetCampusActive",
+    "organizationGetCampusImpact",
+    "organizationGetCampusHistory",
+    "organizationCreateCollege",
+    "organizationRenameCollege",
+    "organizationSetCollegeActive",
+    "organizationGetCollegeImpact",
+    "organizationGetCollegeHistory",
+    "organizationCreateProgram",
+    "organizationRenameProgram",
+    "organizationSetProgramActive",
+    "organizationGetProgramImpact",
+    "organizationGetProgramHistory",
     "guidanceFollowupsList",
     "guidanceFollowupsCreate",
     "guidanceFollowupsGet",
@@ -1432,6 +1448,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
 
     program_summary = schemas["ProgramSummary"]["properties"]
     assert {
+        "resource_version",
         "id",
         "code",
         "name",
@@ -1750,7 +1767,10 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         403,
         422,
     }
-    assert "post" not in schema["paths"]["/api/v1/organization/programs"]
+    assert (
+        _operation(schema, "/api/v1/organization/programs", "post")["operationId"]
+        == "organizationCreateProgram"
+    )
     assert _response_statuses(
         _operation(schema, "/api/v1/organization/programs/{program_id}", "get")
     ) >= {200, 401, 403, 404, 422}
@@ -2111,6 +2131,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "inventory.reopen",
             "inventory.view",
             "inventory.view_self",
+            "organization.catalog.manage",
             "organization.manage",
             "organization.structure.view",
             "platform_operations.manage",
@@ -3307,3 +3328,47 @@ def test_exit_interview_saved_revision_and_answer_contract_are_read_only():
     )
     payload = definitions["ExitInterviewDraftPayload"]["properties"]
     assert "form_revision" not in payload and "college_feedback_item_codes" not in payload
+
+
+def test_catalog_mutations_are_focused_versioned_and_strict():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    for entity, plural in (
+        ("Campus", "campuses"),
+        ("College", "colleges"),
+        ("Program", "programs"),
+    ):
+        base = f"/api/v1/organization/{plural}"
+        assert _operation(schema, base, "post")["operationId"] == f"organizationCreate{entity}"
+        for suffix, verb, action in (
+            ("name", "put", f"Rename{entity}"),
+            ("active", "put", f"Set{entity}Active"),
+            ("impact", "get", f"Get{entity}Impact"),
+            ("history", "get", f"Get{entity}History"),
+        ):
+            op = _operation(schema, f"{base}/{{target_id}}/{suffix}", verb)
+            assert op["operationId"] == f"organization{action}"
+            assert _response_statuses(op) >= {200, 401, 403, 404, 422}
+            if verb == "put":
+                assert 409 in _response_statuses(op)
+        summary = schemas[f"{entity}Summary"]
+        assert "resource_version" in summary["required"]
+    assert (
+        _operation(schema, "/api/v1/organization/programs/{target_id}/policy", "put")["operationId"]
+        == "organizationUpdateProgramPolicy"
+    )
+    for name in ("CatalogRenameRequest", "CatalogStatusRequest", "CatalogPolicyRequest"):
+        assert "expected_resource_version" in schemas[name]["required"]
+        assert schemas[name]["properties"]["expected_resource_version"]["minimum"] == 1
+        assert schemas[name]["additionalProperties"] is False
+        assert "code" not in schemas[name]["properties"]
+        assert "college_id" not in schemas[name]["properties"]
+    for name in (
+        "CatalogCreateCampusRequest",
+        "CatalogCreateCollegeRequest",
+        "CatalogCreateProgramRequest",
+    ):
+        assert schemas[name]["additionalProperties"] is False
+    assert schemas["CatalogImpactResponse"]["additionalProperties"] is False
+    assert schemas["CatalogDependentCounts"]["additionalProperties"] is False
+    assert "organization.catalog.manage" in schemas["CapabilityCode"]["enum"]

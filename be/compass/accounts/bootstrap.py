@@ -25,6 +25,7 @@ from compass.audit.actions import IDENTITY_POLICY_SYNCED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.organization.integrity import catalog_dependent_write
 
 RENAMED_LEGACY_CAPABILITY_CODES = ("organization.view", "services.view")
 RETIRED_CAPABILITY_CODES = (
@@ -84,6 +85,7 @@ def _sync_definition(model, definition) -> tuple[object, str]:
     return obj, "unchanged"
 
 
+@catalog_dependent_write
 def sync_identity_policy() -> IdentityPolicySyncResult:
     """Reconcile canonical roles, designations, capabilities, and baseline grants.
 

@@ -25,6 +25,7 @@ from compass.accounts.models import (
 from compass.accounts.policy import (
     CAPABILITY_CODES,
     CAPABILITY_DEFINITIONS,
+    CATALOG_ELIGIBLE_ROLES,
     DESIGNATION_CAPABILITY_GRANTS,
     DESIGNATION_CODES,
     ROLE_CAPABILITY_GRANTS,
@@ -71,6 +72,7 @@ from compass.authentication.sessions import (
 from compass.common.ordering import parse_ordering
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
+from compass.organization.integrity import catalog_gate
 
 ACCOUNT_MANAGE_CAPABILITY = "accounts.manage"
 INSTITUTIONAL_DESIGNATION_MANAGE_CAPABILITY = "institutional_designations.manage"
@@ -386,7 +388,7 @@ def _admin_mutation(
     authority_change: bool = False,
     recent_mfa: bool = True,
 ):
-    with transaction.atomic():
+    with catalog_gate():
         if authority_change:
             _lock_management_mutex()
         locked_actor, locked_target = _lock_users(actor_id=actor.pk, target_id=target_id)
@@ -838,6 +840,16 @@ def set_account_active(
                 )
             return MutationResult(user=target, changed=False)
 
+        if is_active:
+            from compass.organization.services import (
+                OrganizationConflict,
+                validate_account_catalog_reactivation,
+            )
+
+            try:
+                validate_account_catalog_reactivation(target)
+            except OrganizationConflict as exc:
+                raise OrganizationRelationshipConflict(str(exc)) from exc
         target.is_active = is_active
         target.save(update_fields=["is_active", "updated_at"])
         if not is_active:
@@ -921,6 +933,16 @@ def change_role(
 
         from_role = target.role.code
         target.role = role_record
+        if target.is_active:
+            from compass.organization.services import (
+                OrganizationConflict,
+                validate_account_catalog_reactivation,
+            )
+
+            try:
+                validate_account_catalog_reactivation(target)
+            except OrganizationConflict as exc:
+                raise OrganizationRelationshipConflict(str(exc)) from exc
         update_fields = ["role", "updated_at"]
         if role_code == "STUDENT" and target.student_lifecycle_status is None:
             target.student_lifecycle_status = StudentLifecycleStatus.CURRENT
@@ -1149,6 +1171,12 @@ def set_capability_override(
             raise SelfTargetForbidden(
                 "an administrator cannot change their own capability overrides"
             )
+        if (
+            capability_code == "organization.catalog.manage"
+            and effect_value == UserCapabilityOverride.Effect.GRANT
+            and target.role.code not in CATALOG_ELIGIBLE_ROLES
+        ):
+            raise InvalidManagementInput("Catalog authority requires an eligible staff role.")
         capability_record = Capability.objects.filter(code=capability_code).first()
         if capability_record is None:
             raise ManagementConfigurationError(

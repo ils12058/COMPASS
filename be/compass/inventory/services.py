@@ -49,6 +49,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
+from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import AcademicYear, College, Program
 from compass.organization.program_policy import get_program_policy
 from compass.organization.selection import program_has_active_ancestry
@@ -857,6 +858,7 @@ def get_current_inventory(student: User) -> StudentInventory:
     return status.inventory
 
 
+@catalog_dependent_write
 def ensure_current_inventory(*, student: User, context: AuditContext) -> StudentInventory:
     _require_current_student(student)
     with transaction.atomic():
@@ -1162,6 +1164,7 @@ def _replace_children(item: StudentInventory, values: dict[str, object]) -> None
     )
 
 
+@catalog_dependent_write
 def replace_current_inventory(
     *,
     student: User,
@@ -1366,6 +1369,7 @@ def _apply_resolved_geography(
         )
 
 
+@catalog_dependent_write
 def submit_current_inventory(
     *,
     student: User,

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 
 from django.core.exceptions import ValidationError
 from django.db import DatabaseError, connection, transaction
+from django.db.migrations.exceptions import InconsistentMigrationHistory
 from django.db.migrations.loader import MigrationLoader
 
 from compass.audit.actions import ORGANIZATION_CATALOG_ADOPTED, ORGANIZATION_CATALOG_INITIALIZED
@@ -48,7 +49,13 @@ class CatalogInitializationResult:
 def require_catalog_schema() -> None:
     """Reject old/incomplete/unknown Organization migration graphs before bootstrap writes."""
     loader = MigrationLoader(connection)
-    loader.check_consistent_history(connection)
+    try:
+        loader.check_consistent_history(connection)
+    except InconsistentMigrationHistory as exc:
+        raise CatalogInitializationError(
+            "Organization schema is incompatible; repair inconsistent migration history "
+            "through the reviewed recovery procedure before initialization/adoption."
+        ) from exc
     applied = set(loader.applied_migrations)
     if (
         CATALOG_MIGRATION not in applied

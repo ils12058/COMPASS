@@ -4496,13 +4496,18 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "resource_version": {
+            "title": "Resource Version",
+            "type": "integer"
           }
         },
         "required": [
           "id",
           "code",
           "name",
-          "is_active"
+          "is_active",
+          "resource_version"
         ],
         "title": "CampusSummary",
         "type": "object"
@@ -4575,6 +4580,7 @@
           "inventory.reopen",
           "inventory.view",
           "inventory.view_self",
+          "organization.catalog.manage",
           "organization.manage",
           "organization.structure.view",
           "platform_operations.manage",
@@ -4732,6 +4738,630 @@
         ],
         "title": "CareerModeValue",
         "type": "string"
+      },
+      "CatalogCreateCampusRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "is_active",
+          "basis"
+        ],
+        "title": "CatalogCreateCampusRequest",
+        "type": "object"
+      },
+      "CatalogCreateCollegeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "campus_id": {
+            "format": "uuid",
+            "title": "Campus Id",
+            "type": "string"
+          },
+          "code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "is_active",
+          "basis",
+          "campus_id"
+        ],
+        "title": "CatalogCreateCollegeRequest",
+        "type": "object"
+      },
+      "CatalogCreateProgramRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_classification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicClassification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applicable_year_levels": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicable Year Levels"
+          },
+          "basis": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "college_id": {
+            "format": "uuid",
+            "title": "College Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "year_level_policy_status": {
+            "$ref": "#/components/schemas/YearLevelPolicyStatus"
+          }
+        },
+        "required": [
+          "academic_classification",
+          "year_level_policy_status",
+          "applicable_year_levels",
+          "code",
+          "name",
+          "is_active",
+          "basis",
+          "college_id"
+        ],
+        "title": "CatalogCreateProgramRequest",
+        "type": "object"
+      },
+      "CatalogDependentCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "active_child_colleges": {
+            "title": "Active Child Colleges",
+            "type": "integer"
+          },
+          "active_child_programs": {
+            "title": "Active Child Programs",
+            "type": "integer"
+          },
+          "active_student_affiliations": {
+            "title": "Active Student Affiliations",
+            "type": "integer"
+          },
+          "child_colleges": {
+            "title": "Child Colleges",
+            "type": "integer"
+          },
+          "child_programs": {
+            "title": "Child Programs",
+            "type": "integer"
+          },
+          "counselor_responsibilities": {
+            "title": "Counselor Responsibilities",
+            "type": "integer"
+          },
+          "draft_inventories": {
+            "title": "Draft Inventories",
+            "type": "integer"
+          },
+          "graduate_tracer_references": {
+            "title": "Graduate Tracer References",
+            "type": "integer"
+          },
+          "inactive_account_affiliations": {
+            "title": "Inactive Account Affiliations",
+            "type": "integer"
+          },
+          "issued_good_moral": {
+            "title": "Issued Good Moral",
+            "type": "integer"
+          },
+          "open_office_threads": {
+            "title": "Open Office Threads",
+            "type": "integer"
+          },
+          "pending_f4": {
+            "title": "Pending F4",
+            "type": "integer"
+          },
+          "pending_good_moral": {
+            "title": "Pending Good Moral",
+            "type": "integer"
+          },
+          "pending_operational_followups": {
+            "title": "Pending Operational Followups",
+            "type": "integer"
+          },
+          "resolved_threads": {
+            "title": "Resolved Threads",
+            "type": "integer"
+          },
+          "student_affiliations": {
+            "title": "Student Affiliations",
+            "type": "integer"
+          },
+          "submitted_inventories": {
+            "title": "Submitted Inventories",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "child_colleges",
+          "active_child_colleges",
+          "child_programs",
+          "active_child_programs",
+          "student_affiliations",
+          "active_student_affiliations",
+          "inactive_account_affiliations",
+          "counselor_responsibilities",
+          "draft_inventories",
+          "submitted_inventories",
+          "graduate_tracer_references",
+          "open_office_threads",
+          "resolved_threads",
+          "pending_good_moral",
+          "pending_f4",
+          "issued_good_moral",
+          "pending_operational_followups"
+        ],
+        "title": "CatalogDependentCounts",
+        "type": "object"
+      },
+      "CatalogHistoryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_id": {
+            "format": "uuid",
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "after": {
+            "$ref": "#/components/schemas/CatalogHistoryValues"
+          },
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "before": {
+            "$ref": "#/components/schemas/CatalogHistoryValues"
+          },
+          "changed_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed Fields",
+            "type": "array"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "resource_version_after": {
+            "title": "Resource Version After",
+            "type": "integer"
+          },
+          "resource_version_before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Version Before"
+          }
+        },
+        "required": [
+          "id",
+          "occurred_at",
+          "actor_id",
+          "action",
+          "code",
+          "parent_id",
+          "changed_fields",
+          "resource_version_before",
+          "resource_version_after",
+          "before",
+          "after",
+          "basis"
+        ],
+        "title": "CatalogHistoryItem",
+        "type": "object"
+      },
+      "CatalogHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogHistoryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CatalogHistoryResponse",
+        "type": "object"
+      },
+      "CatalogHistoryValues": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_classification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicClassification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applicable_year_levels": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicable Year Levels"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "year_level_policy_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/YearLevelPolicyStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "CatalogHistoryValues",
+        "type": "object"
+      },
+      "CatalogImpactResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogIssueSummary"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "can_deactivate": {
+            "title": "Can Deactivate",
+            "type": "boolean"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/CatalogDependentCounts"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "preserved_categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Preserved Categories",
+            "type": "array"
+          },
+          "resource_version": {
+            "title": "Resource Version",
+            "type": "integer"
+          },
+          "target_id": {
+            "format": "uuid",
+            "title": "Target Id",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogIssueSummary"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "target_id",
+          "resource_version",
+          "observed_at",
+          "can_deactivate",
+          "blockers",
+          "warnings",
+          "counts",
+          "preserved_categories"
+        ],
+        "title": "CatalogImpactResponse",
+        "type": "object"
+      },
+      "CatalogIssueCode": {
+        "enum": [
+          "active_child_colleges",
+          "active_child_programs",
+          "active_student_affiliations",
+          "counselor_responsibilities",
+          "open_office_threads",
+          "pending_operational_followups",
+          "inactive_account_affiliations",
+          "draft_inventories",
+          "pending_good_moral"
+        ],
+        "title": "CatalogIssueCode",
+        "type": "string"
+      },
+      "CatalogIssueSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/CatalogIssueCode"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "count"
+        ],
+        "title": "CatalogIssueSummary",
+        "type": "object"
+      },
+      "CatalogPolicyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_classification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicClassification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applicable_year_levels": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicable Year Levels"
+          },
+          "basis": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "expected_resource_version": {
+            "minimum": 1,
+            "title": "Expected Resource Version",
+            "type": "integer"
+          },
+          "year_level_policy_status": {
+            "$ref": "#/components/schemas/YearLevelPolicyStatus"
+          }
+        },
+        "required": [
+          "academic_classification",
+          "year_level_policy_status",
+          "applicable_year_levels",
+          "expected_resource_version",
+          "basis"
+        ],
+        "title": "CatalogPolicyRequest",
+        "type": "object"
+      },
+      "CatalogRenameRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "expected_resource_version": {
+            "minimum": 1,
+            "title": "Expected Resource Version",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_resource_version",
+          "name",
+          "basis"
+        ],
+        "title": "CatalogRenameRequest",
+        "type": "object"
+      },
+      "CatalogStatusRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "expected_resource_version": {
+            "minimum": 1,
+            "title": "Expected Resource Version",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expected_resource_version",
+          "is_active",
+          "basis"
+        ],
+        "title": "CatalogStatusRequest",
+        "type": "object"
       },
       "Category": {
         "enum": [
@@ -4910,6 +5540,10 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "resource_version": {
+            "title": "Resource Version",
+            "type": "integer"
           }
         },
         "required": [
@@ -4917,7 +5551,8 @@
           "code",
           "name",
           "campus",
-          "is_active"
+          "is_active",
+          "resource_version"
         ],
         "title": "CollegeSummary",
         "type": "object"
@@ -23363,6 +23998,10 @@
             "title": "Name",
             "type": "string"
           },
+          "resource_version": {
+            "title": "Resource Version",
+            "type": "integer"
+          },
           "year_level_policy_status": {
             "$ref": "#/components/schemas/YearLevelPolicyStatus"
           }
@@ -23373,6 +24012,7 @@
           "name",
           "college",
           "is_active",
+          "resource_version",
           "academic_classification",
           "year_level_policy_status",
           "applicable_year_levels"
@@ -30777,6 +31417,7 @@
                 "inventory.reopen",
                 "inventory.view",
                 "inventory.view_self",
+                "organization.catalog.manage",
                 "organization.manage",
                 "organization.structure.view",
                 "platform_operations.manage",
@@ -30962,6 +31603,7 @@
                 "inventory.reopen",
                 "inventory.view",
                 "inventory.view_self",
+                "organization.catalog.manage",
                 "organization.manage",
                 "organization.structure.view",
                 "platform_operations.manage",
@@ -57114,6 +57756,91 @@
         "tags": [
           "organization"
         ]
+      },
+      "post": {
+        "operationId": "organizationCreateCampus",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogCreateCampusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampusSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Create Campus",
+        "tags": [
+          "organization"
+        ]
       }
     },
     "/api/v1/organization/campuses/{campus_id}": {
@@ -57189,6 +57916,378 @@
           }
         ],
         "summary": "Campus Get",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/campuses/{target_id}/active": {
+      "put": {
+        "operationId": "organizationSetCampusActive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampusSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Status Campus",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/campuses/{target_id}/history": {
+      "get": {
+        "operationId": "organizationGetCampusHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog History Campus",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/campuses/{target_id}/impact": {
+      "get": {
+        "operationId": "organizationGetCampusImpact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogImpactResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Impact Campus",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/campuses/{target_id}/name": {
+      "put": {
+        "operationId": "organizationRenameCampus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogRenameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampusSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Rename Campus",
         "tags": [
           "organization"
         ]
@@ -57296,6 +58395,91 @@
           }
         ],
         "summary": "Colleges",
+        "tags": [
+          "organization"
+        ]
+      },
+      "post": {
+        "operationId": "organizationCreateCollege",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogCreateCollegeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollegeSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Create College",
         "tags": [
           "organization"
         ]
@@ -57558,6 +58742,378 @@
           }
         ],
         "summary": "College Counselor Set",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/colleges/{target_id}/active": {
+      "put": {
+        "operationId": "organizationSetCollegeActive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollegeSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Status College",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/colleges/{target_id}/history": {
+      "get": {
+        "operationId": "organizationGetCollegeHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog History College",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/colleges/{target_id}/impact": {
+      "get": {
+        "operationId": "organizationGetCollegeImpact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogImpactResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Impact College",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/colleges/{target_id}/name": {
+      "put": {
+        "operationId": "organizationRenameCollege",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogRenameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollegeSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Rename College",
         "tags": [
           "organization"
         ]
@@ -57875,6 +59431,91 @@
         "tags": [
           "organization"
         ]
+      },
+      "post": {
+        "operationId": "organizationCreateProgram",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogCreateProgramRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Create Program",
+        "tags": [
+          "organization"
+        ]
       }
     },
     "/api/v1/organization/programs/{program_id}": {
@@ -57950,6 +59591,476 @@
           }
         ],
         "summary": "Program Get",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/programs/{target_id}/active": {
+      "put": {
+        "operationId": "organizationSetProgramActive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Status Program",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/programs/{target_id}/history": {
+      "get": {
+        "operationId": "organizationGetProgramHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog History Program",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/programs/{target_id}/impact": {
+      "get": {
+        "operationId": "organizationGetProgramImpact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogImpactResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Impact Program",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/programs/{target_id}/name": {
+      "put": {
+        "operationId": "organizationRenameProgram",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogRenameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Rename Program",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/programs/{target_id}/policy": {
+      "put": {
+        "operationId": "organizationUpdateProgramPolicy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Program Policy",
         "tags": [
           "organization"
         ]

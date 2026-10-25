@@ -24,6 +24,7 @@ from compass.organization.access_scope import (
     resolve_general_guidance_college_scope,
     resolve_operational_responsibility_scope,
 )
+from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import StudentAffiliation
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.realtime.publish import publish_to_user_on_commit
@@ -210,6 +211,7 @@ def send_message(*, actor, thread_id, client_message_id, body, context=None):
     )
 
 
+@catalog_dependent_write
 @transaction.atomic
 def open_office_thread(*, actor, client_message_id, body, student_id=None, context=None):
     actor = policy.current_actor(actor, lock=True)
@@ -377,6 +379,7 @@ def mark_read(*, actor, thread_id, sequence):
     return state
 
 
+@catalog_dependent_write
 @transaction.atomic
 def set_status(*, actor, thread_id, resolved, context=None):
     actor = policy.current_actor(actor, lock=True)

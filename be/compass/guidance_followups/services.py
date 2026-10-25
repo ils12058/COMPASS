@@ -14,6 +14,7 @@ from compass.accounts.models import User
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.organization.integrity import catalog_dependent_write
 
 from . import policy
 from .content import decrypt_text, encrypt_text
@@ -122,6 +123,7 @@ def _audit(context, action, item, *, metadata=None):
     )
 
 
+@catalog_dependent_write
 def create_followup(
     *,
     actor: User,
@@ -281,6 +283,7 @@ def _lock_for_mutation(*, actor, followup_id, expected_version, allow_recovery=F
     return item
 
 
+@catalog_dependent_write
 @durable_mutation
 def update_followup(
     *,
@@ -331,6 +334,7 @@ def update_followup(
         return item
 
 
+@catalog_dependent_write
 @durable_mutation
 def reassign_followup(*, actor, followup_id, expected_version, assigned_to_id, context):
     with transaction.atomic():
@@ -365,6 +369,7 @@ def reassign_followup(*, actor, followup_id, expected_version, assigned_to_id, c
         return item
 
 
+@catalog_dependent_write
 @durable_mutation
 def record_activity(*, actor, followup_id, expected_version, remarks, context):
     with transaction.atomic():
@@ -381,6 +386,7 @@ def record_activity(*, actor, followup_id, expected_version, remarks, context):
         return item, event
 
 
+@catalog_dependent_write
 @durable_mutation
 def complete_followup(*, actor, followup_id, expected_version, outcome, context, now=None):
     at = now or timezone.now()
@@ -411,6 +417,7 @@ def complete_followup(*, actor, followup_id, expected_version, outcome, context,
         return item
 
 
+@catalog_dependent_write
 @durable_mutation
 def cancel_followup(*, actor, followup_id, expected_version, reason, context, now=None):
     at = now or timezone.now()

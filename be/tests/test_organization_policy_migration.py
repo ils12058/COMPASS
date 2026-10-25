@@ -206,7 +206,10 @@ def test_populated_upgrade_is_frozen_and_preserves_all_original_fields(
         )
     executor = MigrationExecutor(db)
     executor.migrate([TARGET])
-    after_apps = executor.loader.project_state().apps
+    after_apps = executor.loader.project_state(
+        [TARGET]
+        + [node for node in executor.loader.graph.leaf_nodes() if node[0] != "organization"]
+    ).apps
     for key, rows in before.items():
         actual = after_apps.get_model(*key).objects.using(db.alias).order_by("pk")
         assert list(actual.values(*rows[0])) == rows
