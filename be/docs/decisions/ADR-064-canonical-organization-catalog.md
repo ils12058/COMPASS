@@ -1,5 +1,9 @@
 # ADR-064: Code-owned UCN organization catalog with synchronized DB projection
 
+> Engineering ownership superseded by [ADR-ORG-1](ADR-ORG-1-database-owned-organization-catalog.md)
+> on 2026-10-25. This document records the previous decision. Actual institutional cutover remains
+> separately approval-dependent; the historical deployment observations below are not current proof.
+
 - Status: Accepted
 - Date: 2026-09-27
 - Scope: Campus, College/top-level academic unit, and Program ownership

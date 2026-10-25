@@ -179,6 +179,9 @@ def forbidden(*_args, **_kwargs):
 
 
 def seed_once():
+    from compass.organization.bootstrap import initialize_organization_catalog
+
+    initialize_organization_catalog(action="seed")
     environment = {name: value for name, value in os.environ.items() if name not in SEED_ENV}
     with (
         patch.dict(os.environ, environment, clear=True),
@@ -1119,3 +1122,21 @@ class IncrementalParticipantExpansionTests(TestCase):
             assert len(write_reports(result, Path(directory))) == 7
         again = seed_once()
         assert sum(again.created.values()) == 0
+
+
+@pytest.mark.django_db
+def test_full_seeder_repeat_refuses_retired_fixture_without_repairing_catalog():
+    from compass.organization.models import Program
+
+    seed_once()
+    Program.objects.filter(code="BSIS", college__code="CCMS").update(
+        name="Approved rename and retirement",
+        is_active=False,
+        academic_classification="BACHELORS",
+        year_level_policy_status="CONFIGURED",
+        applicable_year_levels=[1, 3, 5],
+    )
+    before = list(Program.objects.order_by("pk").values())
+    with pytest.raises(Exception, match="synchronized active catalog"):
+        seed_once()
+    assert list(Program.objects.order_by("pk").values()) == before

@@ -14,8 +14,6 @@ import io
 import re
 from pathlib import Path
 
-from compass.organization.canonical import CANONICAL_CAMPUSES
-
 from . import DATASET_NAME, DATASET_VERSION
 from .identities import AccountSpec, AuthPlan, Lifecycle, StudentGroup, StudentSpec, Suitability
 from .manifest import (
@@ -28,6 +26,7 @@ from .manifest import (
     scenarios_for,
     stakeholder,
 )
+from .organization import college_for
 from .staff import COUNSELOR_RESPONSIBILITIES, STAFF_SUPERVISION
 from .students import PROMOTED_BACKGROUND
 from .timeline import EARLIEST_ANCHOR, LATEST_ANCHOR
@@ -92,9 +91,6 @@ UAT_40_COLUMNS = (
     "testing_status",
     "remarks",
 )
-COLLEGE_NAMES = {
-    college.code: college.name for campus in CANONICAL_CAMPUSES for college in campus.colleges
-}
 # Short display labels; Entienza is the Entienza Campus academic unit.
 COLLEGE_LABELS = {"ENTIENZA": "Entienza"}
 SUITABILITY_LABELS = {
@@ -377,7 +373,7 @@ def _guide(result) -> str:
             [
                 (
                     _college_label(college),
-                    COLLEGE_NAMES[college],
+                    college_for(ACCOUNTS_BY_KEY[keys[0]].campus_code, college).name,
                     len(keys),
                     ", ".join(f"`{key}`" for key in keys),
                 )

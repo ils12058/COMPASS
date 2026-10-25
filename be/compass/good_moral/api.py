@@ -22,7 +22,8 @@ from compass.institutional_forms.filter_options import (
     CollectionFilterOptions,
     project_filter_options,
 )
-from compass.organization.canonical import CANONICAL_CAMPUSES, AcademicClassification
+from compass.organization.program_policy import AcademicClassification
+from compass.organization.selection import active_programs
 from compass.privacy_governance.releases import (
     ReleaseAuditUnavailable,
     record_good_moral_release,
@@ -685,14 +686,11 @@ def _require_degree_options_access(request) -> None:
 def good_moral_degree_options(request):
     _require_degree_options_access(request)
     items = sorted(
-        {
-            program.name
-            for campus in CANONICAL_CAMPUSES
-            for college in campus.colleges
-            for program in college.programs
-            if program.active
-            and program.academic_classification == AcademicClassification.BACHELORS
-        }
+        set(
+            active_programs()
+            .filter(academic_classification=AcademicClassification.BACHELORS)
+            .values_list("name", flat=True)
+        )
     )
     return {"items": items}
 

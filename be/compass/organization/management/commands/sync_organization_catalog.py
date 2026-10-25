@@ -1,23 +1,19 @@
-"""Synchronize the code-owned UCN organization catalog."""
+"""Deprecated seed-only alias; never reconcile official database values."""
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
-from compass.organization.bootstrap import sync_organization_catalog
+from compass.organization.bootstrap import CatalogInitializationError, sync_organization_catalog
 
 
 class Command(BaseCommand):
-    help = "Synchronize canonical Campus, College, and Program rows."
+    help = "Deprecated seed-only alias. Existing catalogs must be explicitly adopted."
 
     def handle(self, *args, **options):
-        result = sync_organization_catalog()
-        if result.changed:
-            self.stdout.write(
-                self.style.SUCCESS(
-                    "Synchronized Organization catalog: "
-                    + ", ".join(
-                        f"{key}={value}" for key, value in result.metadata().items() if value
-                    )
-                )
-            )
-        else:
-            self.stdout.write("Organization catalog is already synchronized.")
+        try:
+            result = sync_organization_catalog()
+        except CatalogInitializationError as exc:
+            raise CommandError(str(exc)) from exc
+        self.stdout.write(
+            f"Seed-only compatibility alias: {result.receipt.source}; changed={result.changed}. "
+            "Use initialize_organization_catalog --seed/--adopt/--check."
+        )

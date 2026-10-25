@@ -7,6 +7,12 @@ on:
         description: "Full 40-character SHA currently expected at origin/staging"
         required: true
         type: string
+      organization_catalog_action:
+        description: "Catalog check (default); seed/adopt require separately approved cutover"
+        type: choice
+        options: [check, adopt, seed]
+        default: check
+        required: true
 
 permissions:
   contents: read
@@ -34,6 +40,7 @@ jobs:
       STAGING_DEPLOY_USER: ${{ vars.STAGING_DEPLOY_USER }}
       STAGING_DEPLOY_PORT: ${{ vars.STAGING_DEPLOY_PORT }}
       STAGING_FIREWALL_ID: ${{ vars.STAGING_FIREWALL_ID }}
+      ORG_CATALOG_ACTION: ${{ inputs.organization_catalog_action }}
 
     steps:
       # Dispatch from staging so both the workflow and its source are the reviewed staging revision.

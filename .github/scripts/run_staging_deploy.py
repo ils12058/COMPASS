@@ -132,6 +132,9 @@ def ssh_options():
 
 def deploy():
     sha, image = os.environ["DEPLOY_SHA"], os.environ["IMAGE"]
+    catalog_action = os.environ.get("ORG_CATALOG_ACTION", "check")
+    if catalog_action not in {"check", "adopt", "seed"}:
+        raise RuntimeError("Invalid explicit catalog initialization action")
     if not re.fullmatch("[0-9a-f]{40}", sha) or not re.fullmatch(
         rf"registry.digitalocean.com/compass/compass-backend:{sha}@sha256:[0-9a-f]{{64}}", image
     ):
@@ -197,7 +200,8 @@ def deploy():
                 run(*scp, str(source), f"{target}:{release}/{destination}")
         metadata = (
             f"DEPLOY_SHA={sha} IMAGE={image} "
-            f"APP_VERSION={os.environ['APP_VERSION']} BUILD_TIME={os.environ['BUILD_TIME']}"
+            f"APP_VERSION={os.environ['APP_VERSION']} BUILD_TIME={os.environ['BUILD_TIME']} "
+            f"ORG_CATALOG_ACTION={catalog_action}"
         )
         command = f"{metadata} bash {release}/deploy/staging/deploy.sh"
         result = run(*ssh, command + " preflight", capture_output=True, text=True)

@@ -29,6 +29,7 @@ from compass.organization.models import (
     StaffSupervision,
     StudentAffiliation,
 )
+from compass.organization.selection import active_programs
 from compass.organization.services import (
     remove_staff_supervisor,
     set_counselor_responsibility,
@@ -92,7 +93,7 @@ def college_for(campus_code: str, college_code: str) -> College:
 
 def program_for(persona: StudentSpec) -> Program:
     program = (
-        Program.objects.select_related("college__campus")
+        active_programs()
         .filter(
             college__campus__code=persona.campus_code,
             college__code=persona.college_code,

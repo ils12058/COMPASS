@@ -10,7 +10,9 @@ configuration is synchronized explicitly after migrations; ordinary requests do 
 > database that records any earlier COMPASS migration is refused by `migrate` and by
 > `manage.py check --database default` (`compass.E001`); it is never upgraded, faked or restored
 > in place. Bootstrap order on a fresh database: `migrate`, `sync_identity_policy`,
-> `sync_canonical_services`, `sync_institutional_forms`, `sync_organization_catalog`. Later
+> `sync_canonical_services`, `sync_institutional_forms`, then explicit
+> `initialize_organization_catalog --seed` on a fresh empty catalog. Existing catalogs require
+> separately approved `--adopt`; subsequent bootstraps use `--check`. Later
 > features add ordinary `0002_…` migrations on top of the baseline.
 
 ## Baseline
@@ -66,7 +68,7 @@ podman compose --profile local run --rm web python manage.py migrate
 podman compose --profile local run --rm web python manage.py sync_identity_policy
 podman compose --profile local run --rm web python manage.py sync_canonical_services
 podman compose --profile local run --rm web python manage.py sync_institutional_forms
-podman compose --profile local run --rm web python manage.py sync_organization_catalog
+podman compose --profile local run --rm web python manage.py initialize_organization_catalog --seed
 podman compose --profile local run --rm web python manage.py check
 ```
 
@@ -196,7 +198,7 @@ Synchronize required configuration before creating an initial IT administrator:
 uv run python manage.py sync_identity_policy
 uv run python manage.py sync_canonical_services
 uv run python manage.py sync_institutional_forms
-uv run python manage.py sync_organization_catalog
+uv run python manage.py initialize_organization_catalog --seed
 uv run python manage.py check
 uv run python manage.py create_it_admin \
   --email it-admin@example.edu \
@@ -220,12 +222,18 @@ code-owned supported Form Family and Revision definitions into PostgreSQL while 
 row IDs and historical FormRevision references. It does not contact an external QMS and it is not
 a readiness gate; deployments must still run `sync_institutional_forms` after migrations.
 
-Canonical Organization synchronization is likewise explicit and idempotent. The current UCN Campus,
-College/top-level academic-unit, and base Program catalog is source-controlled and projected into
-PostgreSQL by `sync_organization_catalog`. Canonical rows keep stable UUIDs, drift is repaired, and
-historical/noncanonical rows are retained; unsafe live routing conflicts fail closed for operator
-reconciliation. This synchronization is deployment-owned, not a request-time/startup mutation or a
-readiness gate.
+Organization Catalog is database-owned (ADR-ORG-1). On a fresh empty catalog, explicit
+`initialize_organization_catalog --seed` installs the frozen V1 baseline and persisted Program
+policy. An existing populated catalog requires deliberate `--adopt` after the additive migration;
+ordinary repeated bootstrap uses `--check`. No invocation repairs official names, restores active
+states, or retires additional Programs. The deprecated `sync_organization_catalog` alias is seed-only
+and refuses nonempty unadopted data. The dataset seeder requires prior initialization/adoption and
+fails on unavailable fixture identities rather than fixing institutional records.
+
+Do not apply ORG-1 to a deployed database merely because the source is merged. Its migration is not
+routine-deployment allowlisted. Cutover requires separate approval, backups, all old writers/readers
+retired and a compatible recovery image. An initialization receipt is not an old-binary writer fence.
+See [ORG-1 deployment/recovery](../docs/org-1/deployment-and-recovery.md).
 
 ## Audit Trail development
 

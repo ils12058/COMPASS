@@ -229,7 +229,7 @@ class StudentInventory(models.Model):
         blank=True,
     )
     # Retain the accepted/historical numeric domain; Program-specific new-entry policy is enforced
-    # in services.py from the code-owned Organization catalog.
+    # in services.py from persisted Organization Program policy.
     year_level = models.PositiveSmallIntegerField(
         null=True,
         blank=True,

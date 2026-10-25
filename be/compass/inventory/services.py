@@ -49,8 +49,9 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
-from compass.organization.canonical import canonical_program_metadata
 from compass.organization.models import AcademicYear, College, Program
+from compass.organization.program_policy import get_program_policy
+from compass.organization.selection import program_has_active_ancestry
 from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
@@ -548,11 +549,7 @@ def _require_active_program(program_id: UUID) -> Program:
     )
     if program is None:
         raise InvalidInventoryInput("The selected Program was not found.")
-    if (
-        not program.is_active
-        or not program.college.is_active
-        or not program.college.campus.is_active
-    ):
+    if not program_has_active_ancestry(program):
         raise InventoryConflict("The selected Program, College, and Campus must all be active.")
     return program
 
@@ -563,14 +560,9 @@ def _validate_program_year_level(program: Program, year_level: int | None) -> No
         return
     if type(year_level) is not int or not 1 <= year_level <= 10:
         raise InvalidInventoryInput("year_level must be between 1 and 10.")
-    metadata = canonical_program_metadata(
-        program.college.campus.code,
-        program.college.code,
-        program.code,
-    )
+    metadata = get_program_policy(program)
     if (
-        metadata is not None
-        and metadata.applicable_year_levels is not None
+        metadata.applicable_year_levels is not None
         and year_level not in metadata.applicable_year_levels
     ):
         raise InvalidInventoryInput(
