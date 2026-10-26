@@ -148,6 +148,15 @@
   "staging": "BLOCKED",
   "operational_activation": "NOT AUTHORIZED",
   "runtime_fixes": [],
-  "hosted_ci": "Inspect final PR head; no local run is hosted evidence",
-  "local_evidence_root": "/private/tmp/compass-org4.I9H5cI"
+  "hosted_ci": {
+    "inspected_head": "4323f3a759036621ccfe252321361b9cb8635248",
+    "check_runs": 0,
+    "status_contexts": 0,
+    "pr_workflow_runs": 0,
+    "ci_green_claim": false,
+    "final_head_rechecked_at_delivery": true
+  },
+  "local_evidence_root": "/private/tmp/compass-org4.I9H5cI",
+  "tested_implementation_sha": "4323f3a759036621ccfe252321361b9cb8635248",
+  "pull_request": "https://github.com/ils12058/COMPASS/pull/330"
 }
