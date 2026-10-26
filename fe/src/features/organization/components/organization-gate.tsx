@@ -4,20 +4,19 @@ import type { ReactNode } from "react";
 
 import {
   canManageOrganization,
+  canEnterOrganization,
   canViewOrganizationStructure,
 } from "@/features/institution-configuration/institution-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 
-// Structure reads remain safe reference data for other workflows. The standalone
-// Organization workspace is still entered through operational management authority (ADR-064).
 export function OrganizationGate({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
-  return canManageOrganization(user) ? (
+  return canEnterOrganization(user) ? (
     children
   ) : (
     <WorkspaceUnavailable title="Organization unavailable">
-      You don’t have access to manage organization records.
+      You don’t have access to the Organization workspace.
     </WorkspaceUnavailable>
   );
 }
@@ -29,6 +28,15 @@ export function OrganizationStructureGate({ children }: { children: ReactNode })
   ) : (
     <WorkspaceUnavailable title="Organization structure unavailable">
       You don’t have access to campus, college, and program information.
+    </WorkspaceUnavailable>
+  );
+}
+
+export function OrganizationRelationshipsGate({ children }: { children: ReactNode }) {
+  const { user } = usePortalSession();
+  return canManageOrganization(user) ? children : (
+    <WorkspaceUnavailable title="Organization relationships unavailable">
+      You don’t have access to manage organization relationships.
     </WorkspaceUnavailable>
   );
 }

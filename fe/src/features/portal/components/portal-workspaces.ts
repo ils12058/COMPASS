@@ -46,7 +46,7 @@ import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine
 import { hasGroupSessionsWorkspace } from "@/features/group-sessions/group-sessions-access";
 import { hasServicesWorkspace } from "@/features/services/services-access";
 import {
-  canManageOrganization,
+  canEnterOrganization,
   canViewAcademicYears,
   canViewInstitutionalForms,
   hasInstitutionWorkspace,
@@ -72,7 +72,7 @@ type CandidateLink = PortalWorkspaceLink & { visible: boolean };
 // and the public landing's quick access both read this list, so they never offer different places.
 export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[] {
   const canManageAccounts = user.capabilities.includes("accounts.manage");
-  const hasOrganization = canManageOrganization(user);
+  const hasOrganization = canEnterOrganization(user);
   const hasAcademicYears = canViewAcademicYears(user);
   const hasInstitutionalForms = canViewInstitutionalForms(user);
   const hasInstitution = hasInstitutionWorkspace(user);

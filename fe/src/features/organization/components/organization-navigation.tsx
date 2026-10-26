@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
-import { canViewOrganizationStructure } from "@/features/institution-configuration/institution-access";
+import { canManageOrganization, canViewOrganizationStructure } from "@/features/institution-configuration/institution-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceTabs, workspaceTabClass } from "@/components/ui/workspace-tabs";
 
@@ -22,7 +22,6 @@ function NavLink({ href, children }: { href: string; children: ReactNode }) {
   );
 }
 
-// Rendered inside OrganizationGate: reference structure is read-only, while relationship tabs remain manageable.
 export function OrganizationNavigation() {
   const { user } = usePortalSession();
   const canViewStructure = canViewOrganizationStructure(user);
@@ -32,12 +31,16 @@ export function OrganizationNavigation() {
       {canViewStructure ? (
         <NavLink href="/portal/organization">Structure</NavLink>
       ) : null}
-      <NavLink href="/portal/organization/responsibilities">
-        Responsibilities
-      </NavLink>
-      <NavLink href="/portal/organization/student-affiliations">
-        Student affiliations
-      </NavLink>
+      {canManageOrganization(user) ? (
+        <>
+          <NavLink href="/portal/organization/responsibilities">
+            Responsibilities
+          </NavLink>
+          <NavLink href="/portal/organization/student-affiliations">
+            Student affiliations
+          </NavLink>
+        </>
+      ) : null}
     </WorkspaceTabs>
   );
 }

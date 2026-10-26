@@ -25,7 +25,7 @@ function render(component, records, pathname = "/portal") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity } } });
   for (const [key, data] of records) client.setQueryData(key, ok(data));
   return renderToStaticMarkup(withNextRouter(createElement(QueryClientProvider, { client },
-    createElement(PortalSessionProvider, { value: { user } },
+    createElement(PortalSessionProvider, { value: { user, authenticated: true, session: { id: "composition-session", expires_at: "2099-01-01T00:00:00Z", is_current: true } } },
       createElement(UnsavedChangesProvider, null, component))), { pathname }));
 }
 
@@ -75,7 +75,7 @@ test("Profile confirms a save transiently and keeps a failure, and the typed val
 
 // --- Organization Structure ----------------------------------------------------------------------
 
-const campus = (id, name, active = true) => ({ id, code: id.toUpperCase(), name, is_active: active });
+const campus = (id, name, active = true) => ({ id, code: id.toUpperCase(), name, is_active: active, resource_version: 1 });
 const college = (id, campusId, name, active = true) => ({ id, code: id.toUpperCase(), name, is_active: active, campus: { id: campusId, code: campusId.toUpperCase(), name: "" } });
 const program = (id, collegeId, name, active = true, classification = "BACHELORS", levels = [1, 2, 3, 4]) => ({
   id, code: id.toUpperCase(), name, is_active: active, college: { id: collegeId, code: collegeId.toUpperCase(), name: "" },
@@ -104,7 +104,7 @@ test("Structure reads as a hierarchy: each Campus, its Colleges, and each Colleg
     ],
   });
 
-  assert.match(html, /<section aria-labelledby="organization-structure-heading" class="max-w-4xl">/);
+  assert.match(html, /<section aria-labelledby="organization-structure-heading" class="max-w-4xl[^"]*">/);
   assert.match(html, /id="campus-main"[^>]*>Main Campus</);
   const computing = html.slice(html.indexOf('id="college-ccms"'), html.indexOf('id="college-cba"'));
   assert.match(computing, /aria-label="Programs in College of Computing"/);
@@ -118,8 +118,8 @@ test("Structure reads as a hierarchy: each Campus, its Colleges, and each Colleg
   assert.match(html.slice(html.indexOf('id="campus-north"')), /No colleges are recorded for this campus\./);
   // Programs are indented beneath their College, not boxed inside it.
   assert.doesNotMatch(html, /rounded-sm border border-border/);
-  // Read-only: nothing to type into or press.
-  assert.doesNotMatch(html, /<input|<select|<textarea|<button/);
+  // Reference viewers can browse/search, but have no Catalog mutations.
+  assert.doesNotMatch(html, />Add campus<|>Rename<|>Deactivate<|>Edit academic policy</);
 });
 
 test("a College without Programs says so, and only the Structure page is bounded", () => {

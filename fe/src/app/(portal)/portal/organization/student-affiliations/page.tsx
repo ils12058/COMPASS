@@ -1,3 +1,4 @@
+import { OrganizationRelationshipsGate } from "@/features/organization/components/organization-gate";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Student Affiliations" };
@@ -10,7 +11,7 @@ import { StudentAffiliationsPage } from "@/features/organization/student-affilia
 export default function Page() {
   return (
     <Suspense fallback={<TableSkeleton label="Loading student affiliations…" framed />}>
-      <StudentAffiliationsPage />
+      <OrganizationRelationshipsGate><StudentAffiliationsPage /></OrganizationRelationshipsGate>
     </Suspense>
   );
 }
