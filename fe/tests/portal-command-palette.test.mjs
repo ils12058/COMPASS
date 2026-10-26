@@ -87,7 +87,10 @@ test("GSS, Counselor, and Head Guidance keep their distinct scheduling and opera
   assert.ok(!hrefs(staff).some((path) => path.startsWith("/portal/availability")));
   assert.ok(hrefs(counselor).includes("/portal/availability/me"));
   assert.ok(!hrefs(counselor).includes("/portal/availability/office"));
-  assert.ok(!hrefs(counselor).some((path) => /^\/portal\/(platform|privacy|accounts|organization)/.test(path)));
+  assert.ok(!hrefs(counselor).some((path) => /^\/portal\/(platform|privacy|accounts)/.test(path)));
+  assert.ok(hrefs(counselor).includes("/portal/organization"), "authorized staff can browse Structure");
+  assert.ok(!hrefs(counselor).includes("/portal/organization/responsibilities"));
+  assert.ok(!hrefs(counselor).includes("/portal/organization/student-affiliations"));
   for (const path of ["/portal/organization/responsibilities", "/portal/organization/student-affiliations", "/portal/availability/office", "/portal/availability/providers", "/portal/feedback/csm/responses"]) assert.ok(hrefs(head).includes(path));
   assert.ok(!hrefs(head).some((path) => /^\/portal\/(platform|privacy|accounts)/.test(path)));
 });
