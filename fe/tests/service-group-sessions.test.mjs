@@ -1,3 +1,4 @@
+import { studentSchedulingScope } from "../src/features/appointments/booking-recovery.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement as h } from "react";
@@ -295,10 +296,10 @@ test("Student panel renders discoverable group sessions with registration action
 
   const html = renderWithUser(
     h(ServiceGroupSessionsStudentPanel, { service }),
-    student,
+    { ...student, student_lifecycle_status: "CURRENT" },
     (client) => {
       client.setQueryData(
-        getGroupSessionsDiscoverQueryKey({ service_id: SERVICE_ID }),
+        [...getGroupSessionsDiscoverQueryKey({ service_id: SERVICE_ID }), studentSchedulingScope({ ...student, student_lifecycle_status: "CURRENT" })],
         ok(discoverableSessions)
       );
     }
@@ -319,7 +320,7 @@ test("Student Group Session discovery is available outside the staff-only Servic
     h(GroupSessionsDiscoveryPage),
     studentWithSchedulingView,
     (client) => {
-      client.setQueryData(getGroupSessionsDiscoverQueryKey(), ok(sampleSessions));
+      client.setQueryData([...getGroupSessionsDiscoverQueryKey(), studentSchedulingScope(studentWithSchedulingView)], ok(sampleSessions));
     }
   );
 
@@ -353,7 +354,7 @@ test("Student registration action follows server-derived overlap eligibility", (
     student,
     (client) => {
       client.setQueryData(
-        getGroupSessionsDiscoverQueryKey({ service_id: SERVICE_ID }),
+        [...getGroupSessionsDiscoverQueryKey({ service_id: SERVICE_ID }), studentSchedulingScope(student)],
         ok([unavailable])
       );
     }
@@ -582,7 +583,7 @@ test("attendance entry shows only participant-authorized summaries and no lifecy
 test("discovery failures never become empty sessions, and distinguish access denial", () => {
   for (const status of [403, 500, 503]) {
     const html = renderWithUser(h(ServiceGroupSessionsStudentPanel), student, client => {
-      client.getQueryCache().build(client, { queryKey: getGroupSessionsDiscoverQueryKey() }).setState({ status: "error", fetchStatus: "idle", error: new CompassApiError({ status, body: { error: { code: "test_error", message: "Internal details" } }, headers: {}, method: "GET", url: "/api/v1/group-sessions/discover" }) });
+      client.getQueryCache().build(client, { queryKey: [...getGroupSessionsDiscoverQueryKey(), studentSchedulingScope(student)] }).setState({ status: "error", fetchStatus: "idle", error: new CompassApiError({ status, body: { error: { code: "test_error", message: "Internal details" } }, headers: {}, method: "GET", url: "/api/v1/group-sessions/discover" }) });
     });
     assert.match(html, /role="alert"/);
     assert.match(html, /Retry/);

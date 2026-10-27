@@ -1,0 +1,7 @@
+# Frontend state and safety
+
+The portal session boundary clears the shared query client on sign-out and, before rendering a different confirmed account, cancels and removes protected cached queries while preserving the session query. Booking and discovery subtrees and Student-specific scheduling queries are also scoped by account and relevant capabilities/lifecycle. A same-account revalidation preserves the cache and drafts. No private drafts or booking outcomes are written to browser storage. Existing backend access and lifecycle checks remain authoritative.
+
+Fixed selection revalidates Service state on focus and before booking, rechecks the selected slot, prevents duplicate pending submission, and invalidates Student Appointment and scheduling queries after confirmed success. Group success invalidates discovery queries, the exact session detail, My Registrations, flexible times and the fixed-slot query family; rechecks read only the authenticated Student's registration history. Failed refreshes remain separate from a confirmed save. These operations do not clear the entire application query cache or replay mutations.
+
+An in-memory uncertain fixed-slot or group action is held against resubmission while that page remains mounted. A changed account, permission or lifecycle remounts relevant state. Once a page is left or reloaded, there is no durable uncertain-intent record; the user must consult history. Backend locking, uniqueness and authorization remain the protection against races and unauthorized records.
