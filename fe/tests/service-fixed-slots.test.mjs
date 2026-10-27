@@ -1,3 +1,4 @@
+import { studentSchedulingScope } from "../src/features/appointments/booking-recovery.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement as h } from "react";
@@ -165,7 +166,7 @@ test("Student panel renders available bookable slots with Book action", () => {
     student,
     (client) => {
       client.setQueryData(
-        getServicesListBookableSlotsQueryKey(SERVICE_ID),
+        [...getServicesListBookableSlotsQueryKey(SERVICE_ID), studentSchedulingScope(student)],
         ok(bookableSlots)
       );
     }
@@ -233,7 +234,7 @@ test("fixed-slot pending and failed reads are not presented as no availability",
   assert.match(pending, /Loading appointment slots/);
   assert.doesNotMatch(pending, /No fixed consultation slots/);
   for (const [Panel, key, account] of [
-    [ServiceFixedSlotsStudentPanel, getServicesListBookableSlotsQueryKey(SERVICE_ID), student],
+    [ServiceFixedSlotsStudentPanel, [...getServicesListBookableSlotsQueryKey(SERVICE_ID), studentSchedulingScope(student)], student],
     [ServiceFixedSlotsStaffPanel, getServicesListSlotsQueryKey(SERVICE_ID), manager],
   ]) {
     const html = renderWithUser(h(Panel, { service }), account, client => {

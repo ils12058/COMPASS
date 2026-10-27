@@ -21,9 +21,11 @@ import { RealtimeProvider } from "@/features/realtime/realtime-provider";
 import { realtimeAccount } from "@/features/realtime/realtime-runtime";
 import { hasPlatformView } from "@/features/platform/platform-gate";
 import { CompassApiError } from "@/lib/api/errors";
-import { useAuthGetSession } from "@/lib/api/generated/auth/auth";
+import { getAuthGetSessionQueryKey, useAuthGetSession } from "@/lib/api/generated/auth/auth";
 import type { UserSummary } from "@/lib/api/generated/model";
 import { requestSessionRevalidation, subscribeSessionRevalidation } from "@/lib/auth/session-revalidation";
+
+const queryCacheOwners = new WeakMap<object, string>();
 
 export function PortalBoundary({ children }: { children: ReactNode }) {
   const router = useRouter();
@@ -32,6 +34,7 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const session = useAuthGetSession({ query: { retry: false } });
   const [verificationRequired, setVerificationRequired] = useState(false);
+  const [dataOwner, setDataOwner] = useState<string | null>(() => queryCacheOwners.get(queryClient) ?? null);
   const verifying = useRef(false);
   const cleared = useRef(false);
   const currentSession = session.data?.data?.session;
@@ -47,6 +50,25 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
   const confirmedUser = currentSession ? session.data?.data?.user ?? null : null;
   const [callUser, setCallUser] = useState<UserSummary | null>(null);
   if (confirmedUser && confirmedUser !== callUser) setCallUser(confirmedUser);
+  // Do not render the next account using cached protected data from the previous account.
+  // The session query stays intact while all other account-owned projections are removed.
+  useEffect(() => {
+    if (!confirmedUser || dataOwner === confirmedUser.id) return;
+    let cancelled = false;
+    const userId = confirmedUser.id;
+    const sessionKey = getAuthGetSessionQueryKey()[0];
+    const protectedData = { predicate: (query: { queryKey: readonly unknown[] }) => query.queryKey[0] !== sessionKey };
+    void (async () => {
+      if (dataOwner !== null) {
+        await queryClient.cancelQueries(protectedData);
+        if (cancelled) return;
+        queryClient.removeQueries(protectedData);
+      }
+      if (!cancelled) { queryCacheOwners.set(queryClient, userId); setDataOwner(userId); }
+    })();
+    return () => { cancelled = true; };
+  }, [confirmedUser, dataOwner, queryClient]);
+
   const authState: PortalAuthState = confirmedSignedOut
     ? "signed-out"
     : session.isPending
@@ -88,7 +110,7 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
   }, [confirmedSignedOut, currentPath, queryClient, router]);
 
   let content: ReactNode;
-  if (session.isPending || confirmedSignedOut || (verificationRequired && session.isFetching)) {
+  if (session.isPending || confirmedSignedOut || (verificationRequired && session.isFetching) || (confirmedUser && dataOwner !== confirmedUser.id)) {
     content = <PortalSessionLoading />;
   } else if (session.isError || verificationRequired || invalidProjection || !session.data?.data) {
     content = (

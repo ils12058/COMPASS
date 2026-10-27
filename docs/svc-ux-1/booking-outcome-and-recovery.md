@@ -1,0 +1,9 @@
+# Booking outcomes and recovery
+
+Flexible booking retains the existing intent-specific idempotency key, slot freshness policy, recheck, response classification, confirmed Appointment ID and deliberate retry behavior. No change to that state machine was made.
+
+Fixed booking refreshes the exact Service and slot before the existing mutation. A confirmed response provides its actual Appointment ID and reference, with links to the record and My appointments. Known conflict or unavailable responses are explained and slots refresh. An unread or malformed success response, timeout or server error stays **unconfirmed**: the selected slot cannot be resubmitted from the open panel, a read-only slot refresh and My appointments are offered, and the UI explains that an unavailable slot does not identify its owner. Current authorized Appointment responses do not provide conclusive fixed-slot provenance in this flow; matching time/name is not used as proof. No automatic mutation replay occurs.
+
+Group registration now has an explicit confirmation. A confirmed success links to the exact session and My Registrations. On an unread or malformed success response, timeout or server error, `groupSessionsGetMyRegistrations` is read: an active registration with the exact session UUID confirms the current result; a missing or cancelled row, failed read, or unread response does not prove failure. The UI remains unconfirmed and offers a read-only recheck; no registration is automatically resubmitted. Definite server refusals show their actual response and refresh discovery.
+
+A confirmed mutation is acknowledged before refreshing related data. A refresh failure is a separate message and its retry performs reads only. No fabricated Appointment or registration identifier is used. Response-loss state is in memory; navigation or reload does not preserve an unconfirmed attempt. Users must check their records before making another booking.

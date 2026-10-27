@@ -77,7 +77,7 @@ test("a confirmed booking opens one completion dialog and cannot be submitted tw
   assert.match(source, /function finishBooking\(\) \{\s*setBooked\(null\);\s*changeService\(null\);/);
   assert.match(source, /<DialogTitle>Appointment scheduled<\/DialogTitle>/);
   assert.match(source, /href=\{`\/portal\/appointments\/\$\{booked\.id\}`\}[^>]*>\s*View appointment/);
-  assert.match(source, /onOpenAutoFocus=\{\(event\) => \{\s*event\.preventDefault\(\);\s*viewLink\.current\?\.focus\(\);/);
+  assert.match(source, /onOpenAutoFocus=\{\(event\) => \{\s*if \(viewLink\.current\) \{\s*event\.preventDefault\(\);\s*viewLink\.current\.focus\(\);/);
 });
 
 test("the completion states only the safe facts the review showed", () => {
