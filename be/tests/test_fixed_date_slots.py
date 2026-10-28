@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime, time, timedelta
+from urllib.parse import urlparse
 
 import pytest
 from django.core.management import call_command
@@ -850,6 +852,185 @@ def test_api_staff_fixed_slot_crud_and_student_booking(env):
     )
     assert del_res.status_code in (404, 405)
     assert ServiceAppointmentSlot.objects.filter(pk=slot_id).exists()
+
+
+@pytest.mark.django_db
+def test_api_fixed_slot_inventory_prerequisite_errors_are_authenticated_409_responses(env):
+    from compass.appointments.models import Appointment
+    from compass.organization.academic_years import create_academic_year, set_current_academic_year
+    from compass.service_catalog.services import update_service
+
+    admin = env["admin"]
+    counselor = env["counselor"]
+    student = env["student_1"]
+    service = update_service(
+        service_id=env["service"].pk,
+        changes={"requires_current_inventory": True},
+        context=AuditContext.user(admin),
+    )
+
+    counselor_client = auth_client(counselor, recent_mfa=True)
+    student_client = auth_client(student)
+    starts_at = future_local_start(hour=14)
+    create_response = counselor_client.post(
+        f"/api/v1/services/{service.pk}/slots",
+        data=json.dumps(
+            {
+                "provider_id": str(counselor.pk),
+                "delivery_mode": "IN_PERSON",
+                "starts_at": starts_at.isoformat(),
+                "ends_at": (starts_at + timedelta(minutes=60)).isoformat(),
+                "is_published": True,
+            }
+        ),
+        content_type="application/json",
+        **csrf(counselor_client),
+    )
+    assert create_response.status_code == 200, create_response.content
+    slot_id = create_response.json()["id"]
+    booking_url = f"/api/v1/services/{service.pk}/slots/{slot_id}/book"
+    appointments_before = Appointment.objects.count()
+
+    missing_year = student_client.post(booking_url, **csrf(student_client))
+    assert missing_year.status_code == 409, missing_year.content
+    assert missing_year.json()["error"]["code"] == "current_academic_year_not_configured"
+    assert Appointment.objects.count() == appointments_before
+    slot = ServiceAppointmentSlot.objects.get(pk=slot_id)
+    assert slot.current_appointment_id is None
+
+    year = create_academic_year(label="2026-2027", context=AuditContext.user(admin))
+    set_current_academic_year(academic_year_id=year.pk, context=AuditContext.user(admin))
+
+    missing_inventory = student_client.post(booking_url, **csrf(student_client))
+    assert missing_inventory.status_code == 409, missing_inventory.content
+    assert missing_inventory.json()["error"]["code"] == "current_inventory_required"
+    assert Appointment.objects.count() == appointments_before
+    slot.refresh_from_db()
+    assert slot.current_appointment_id is None
+
+
+@pytest.mark.django_db(transaction=True)
+def test_real_browser_fixed_slot_booking_next_django_postgres_workflow(env, live_server):
+    """Opt-in, real browser-to-API booking check against the disposable test database."""
+    origin = os.environ.get("COMPASS_SVC_REAL_FRONTEND_URL")
+    if not origin:
+        pytest.skip("Opt-in loopback Next build/live-server proxy required")
+    assert urlparse(origin).hostname in {"localhost", "127.0.0.1"}
+    api_port = int(os.environ.get("COMPASS_SVC_REAL_API_PORT", "8200"))
+    assert urlparse(live_server.url).port == api_port
+
+    from django.conf import settings
+    from django.test import override_settings
+    from playwright.sync_api import expect, sync_playwright
+
+    counselor = env["counselor"]
+    student = env["student_1"]
+    service = env["service"]
+    counselor_client = auth_client(counselor, recent_mfa=True)
+    student_client = auth_client(student)
+    starts_at = future_local_start(hour=13)
+    create_response = counselor_client.post(
+        f"/api/v1/services/{service.pk}/slots",
+        data=json.dumps(
+            {
+                "provider_id": str(counselor.pk),
+                "delivery_mode": "IN_PERSON",
+                "starts_at": starts_at.isoformat(),
+                "ends_at": (starts_at + timedelta(minutes=60)).isoformat(),
+                "is_published": True,
+            }
+        ),
+        content_type="application/json",
+        **csrf(counselor_client),
+    )
+    assert create_response.status_code == 200, create_response.content
+    slot_id = create_response.json()["id"]
+    token = student_client.cookies[settings.AUTH_SESSION_COOKIE_NAME].value
+
+    trusted_origins = list(settings.CSRF_TRUSTED_ORIGINS)
+    trusted_origins.append(origin)
+    with override_settings(CSRF_TRUSTED_ORIGINS=trusted_origins):
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch()
+            context = browser.new_context(service_workers="block")
+            try:
+                context.add_cookies(
+                    [
+                        {
+                            "name": settings.AUTH_SESSION_COOKIE_NAME,
+                            "value": token,
+                            "url": origin,
+                            "httpOnly": True,
+                            "sameSite": "Lax",
+                        }
+                    ]
+                )
+                context.route(
+                    "**/*",
+                    lambda route: (
+                        route.continue_()
+                        if urlparse(route.request.url).hostname
+                        in {"localhost", "127.0.0.1"}
+                        else route.abort()
+                    ),
+                )
+                page = context.new_page()
+                page.goto(origin + "/portal/appointments/book?pathway=FIXED_DATE_SLOT")
+                await_service = page.get_by_label("Service", exact=True)
+                expect(await_service).to_be_visible()
+                await_service.select_option(str(service.pk))
+                slot_button = page.get_by_role("button", name="Book this slot", exact=True)
+                expect(slot_button).to_be_visible()
+                slot_button.click()
+                confirm = page.get_by_role("button", name="Confirm booking", exact=True)
+                expect(confirm).to_be_visible()
+                with page.expect_response(
+                    lambda response: response.request.method == "POST"
+                    and response.url.endswith(f"/services/{service.pk}/slots/{slot_id}/book")
+                ) as booking_response:
+                    confirm.click()
+                booking_result = booking_response.value
+                booking_body = booking_result.json()
+                assert booking_result.status == 200, booking_body
+                assert booking_body.get("appointment_id") and booking_body.get("reference_code")
+                saved_link = page.get_by_role(
+                    "link", name="View your confirmed Appointment", exact=True
+                )
+                if not saved_link.is_visible():
+                    raise AssertionError(
+                        "successful fixed booking was not shown in the UI; "
+                        f"API response={booking_body!r}; "
+                        f"dialog={page.get_by_role('alertdialog').inner_text()!r}"
+                    )
+                appointment_path = saved_link.get_attribute("href")
+                assert appointment_path
+                appointment_id = appointment_path.rsplit("/", 1)[-1]
+                reference_code = booking_body["reference_code"]
+                with page.expect_response(
+                    lambda response: response.request.method == "GET"
+                    and response.url.split("?")[0].endswith("/api/v1/appointments/me")
+                ) as history_response:
+                    page.goto(origin + "/portal/appointments/my")
+                history_body = history_response.value.json()
+                assert any(
+                    item["reference_code"] == reference_code
+                    for item in history_body.get("items", [])
+                ), history_body
+                expect(page.get_by_text(reference_code, exact=True).first).to_be_visible()
+            finally:
+                context.close()
+                browser.close()
+
+    from compass.appointments.models import Appointment
+
+    appointment = Appointment.objects.get(pk=appointment_id)
+    slot = ServiceAppointmentSlot.objects.get(pk=slot_id)
+    booking = ServiceAppointmentSlotBooking.objects.get(slot=slot)
+    assert appointment.student_id == student.pk
+    assert appointment.provider_id == counselor.pk
+    assert appointment.service_id == service.pk
+    assert booking.appointment_id == appointment.pk
+    assert slot.current_appointment_id == appointment.pk
 
 
 @pytest.mark.django_db
