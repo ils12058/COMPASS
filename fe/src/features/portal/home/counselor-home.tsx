@@ -182,7 +182,8 @@ function CounselorMyWork({ data }: { data: OverviewAttentionData }) {
 function CounselorDestinations({ user }: { user: UserSummary }) {
   const destinations = getCounselorHomeDestinations(user);
   if (destinations.length === 0) return null;
-  return <HomeShortcuts title="Continue in your workspace" titleId="counselor-continuation-heading" destinations={destinations} />;
+  return <HomeShortcuts title="Continue in your workspace" titleId="counselor-continuation-heading" destinations={destinations}
+    illustration={destinations.some(item => item.href === "/portal/messages") ? "/illustrations/guidance-messages-3d.png" : undefined} />;
 }
 
 function HeadGuidanceDestinations({ user }: { user: UserSummary }) {

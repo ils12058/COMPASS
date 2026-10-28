@@ -6,6 +6,7 @@ import { useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { IllustratedIntroduction } from "@/components/ui/illustrated-introduction";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useExitInterviewsGetMyStatus } from "@/lib/api/generated/exit-interviews/exit-interviews";
@@ -255,7 +256,9 @@ function CurrentStudentRequestChoices() {
 
   return (
     <section className="max-w-3xl space-y-5">
-      <GoodMoralHeading title="Request Good Moral Certificate" description="Choose the request that matches the certificate you need." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
+      <IllustratedIntroduction src={!context.isPending && !context.isError && f4Eligible ? "/illustrations/good-moral-3d.png" : undefined}>
+        <GoodMoralHeading title="Request Good Moral Certificate" description="Choose the request that matches the certificate you need." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
+      </IllustratedIntroduction>
       <Panel as="div">
         <PanelSection title="Certificate type" titleId="good-moral-certificate-type" description="F4 is for current bachelor's students. F6 is for a completed UCN bachelor's degree, even after postgraduate study.">
           {context.isPending ? <LoadingRegion label="Checking F4 availability…"><Skeleton className="h-14 w-full" /></LoadingRegion> : null}

@@ -9,6 +9,7 @@ import { dataTable } from "@/components/ui/data-table";
 import { FilterField } from "@/components/ui/filter-toolbar";
 import { FloatingListTools, ListSearchField } from "@/components/ui/floating-list-tools";
 import { Input } from "@/components/ui/input";
+import { IllustratedEmptyState } from "@/components/ui/illustrated-empty-state";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Select } from "@/components/ui/select";
 import { SortField } from "@/components/ui/sort-field";
@@ -224,6 +225,10 @@ function MyAppointmentsList({ access }: { access: AppointmentAccess }) {
           >
             {appointmentErrorMessage(list.error, "My Appointments could not be loaded.")}
           </PanelMessage>
+        ) : items.length === 0 && !filtering && status === undefined && !upcoming ? (
+          <IllustratedEmptyState src="/illustrations/appointment-calendar-3d.png">
+            No appointments are available.
+          </IllustratedEmptyState>
         ) : items.length === 0 ? (
           <PanelMessage
             action={filtering || status !== undefined || upcoming ? (

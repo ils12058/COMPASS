@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { IllustratedIntroduction } from "@/components/ui/illustrated-introduction";
 import { pageSheetWidth } from "@/components/ui/page-width";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -128,12 +129,12 @@ function StudentInventoryHome() {
                     Only current students can start an Individual Inventory for this year. Your earlier records remain available below.
                   </p>
                 ) : access.canManageSelf ? (
-                  <div className="mt-4">
+                  <div className="mt-4"><IllustratedIntroduction src={!startError && !ensure.isPending && !history.isPending && !history.isError && records.length === 0 ? "/illustrations/individual-inventory-3d.png" : undefined}>
                     {startError ? <div className="mb-3"><InventoryNotice tone="danger" role="alert">{startError}</InventoryNotice></div> : null}
                     <Button disabled={ensure.isPending} onClick={() => void startInventory()}>
                       {ensure.isPending ? "Starting…" : "Start Individual Inventory"}
                     </Button>
-                  </div>
+                  </IllustratedIntroduction></div>
                 ) : (
                   <p className="mt-3 text-sm leading-6 text-muted">
                     Starting a current-year Individual Inventory is not available for this account.

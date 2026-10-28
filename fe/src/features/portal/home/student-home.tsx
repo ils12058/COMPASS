@@ -9,10 +9,12 @@ import { HomeShortcuts } from "./home-shortcuts";
 export function StudentHome({ user, attention, summary }: {
   user: UserSummary; attention: OverviewAttentionData; summary: ReactNode;
 }) {
+  const destinations = getStudentHomeDestinations(user);
   return <div className="@container grid min-w-0 gap-5">
     <StudentHomeAttention data={attention} />
     <div className="grid min-w-0 items-start gap-5 @min-[52rem]:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)]">
-      <HomeShortcuts title="Guidance services" titleId="student-home-services-heading" destinations={getStudentHomeDestinations(user)} />
+      <HomeShortcuts title="Guidance services" titleId="student-home-services-heading" destinations={destinations}
+        illustration={destinations.some(item => item.href === "/portal/appointments/my") ? "/illustrations/appointment-calendar-3d.png" : undefined} />
       {summary}
     </div>
     <OverviewAnnouncements />

@@ -350,7 +350,7 @@ function BookingWorkspace() {
         title="Book appointment"
       />
 
-      <StudentBookingPathways />
+      <StudentBookingPathways illustration={!service && !booked && !serviceError && !bookingServices.isPending && !bookingServices.isError && serviceItems.length > 0 ? "/illustrations/service-catalog-3d.png" : undefined} />
 
 
       {/* One booking sheet: each step opens below the last, and the review closes the sheet with
@@ -424,7 +424,7 @@ function BookingWorkspace() {
               </ul>
               {servicePageData ? (
                 <CanonicalPagination
-                  className="border-t-0 pb-0"
+                  className="flex-wrap border-t-0 pb-0 [&>button]:max-w-full [&>button]:[overflow-wrap:anywhere]"
                   page={servicePageData.page}
                   hasNext={servicePageData.has_next}
                   label="Service pages"
