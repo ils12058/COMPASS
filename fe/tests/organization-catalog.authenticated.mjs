@@ -63,7 +63,10 @@ async function login(actor) {
   return p;
 }
 async function actions(name, action) {
-  const summary = page.locator("summary").filter({ hasText: `Actions for ${name}` });
+  if (["Rename", "Add college", "Add program"].includes(action)) {
+    await page.getByRole("button", { name: action === "Rename" ? `Rename ${name}` : `${action} to ${name}`, exact: true }).click(); return;
+  }
+  const summary = page.locator("summary").filter({ hasText: `More actions for ${name}` });
   await summary.waitFor({ state: "visible" });
   assert.equal(await summary.count(), 1);
   if (await summary.locator("..").getAttribute("open") === null) await summary.click();
@@ -85,7 +88,7 @@ function evidence(item, version, actor = "catalog") {
 }
 async function rename(name, newName) {
   await actions(name, "Rename"); await page.getByLabel("New official name").fill(newName); await basis();
-  await review(); await confirm(name.includes("Campus") ? "Rename campus" : name.includes("College") ? "Rename college" : "Rename program");
+  await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await saved(); await done();
 }
 async function status(kind, name, active) {
@@ -112,8 +115,8 @@ try {
   });
   for (const [kind, code, name, parent] of [
     ["campus", "E2E_CAMPUS", "E2E Campus", null],
-    ["college", "E2E_COLLEGE", "E2E College", "E2E Campus"],
-    ["program", "E2E_PROGRAM", "E2E Program", "E2E College"],
+    ["college", "E2E_COLLEGE", "E2E College", "E2E Campus Renamed"],
+    ["program", "E2E_PROGRAM", "E2E Program", "E2E College Renamed"],
   ]) {
     await check(`Create ${kind} through UI and verify PostgreSQL identity/version/Audit`, async () => {
       if (parent) await actions(parent, `Add ${kind}`); else await page.getByRole("button", { name: "Add campus", exact: true }).click();
@@ -181,16 +184,16 @@ try {
   });
   await check("MFA expiry, concurrent target change during verification, refresh and deliberate reconfirmation", async () => {
     await actions("E2E Program Renamed", "Rename"); await page.getByLabel("New official name").fill("E2E MFA reviewed"); await basis();
-    oracle("expire-mfa"); await review(); await confirm("Rename program");
+    oracle("expire-mfa"); await page.getByRole("button", { name: "Save changes", exact: true }).click();
     await page.getByRole("dialog", { name: "Verify it's you" }).waitFor();
     oracle("competing-rename", "E2E_PROGRAM", "Concurrent during MFA");
     const before = mutationRequests.length;
     await page.getByLabel("Authenticator code", { exact: true }).fill(oracle("totp", "catalog"));
     await page.getByRole("dialog").getByRole("button", { name: "Verify", exact: true }).click();
-    await page.getByText(/Authenticator verified\. Review the latest saved values/).waitFor();
+    await page.getByText(/Authenticator verified\. Check the saved information/).waitFor();
     assert.equal(mutationRequests.length, before); assert.equal(row("program", "E2E_PROGRAM").name, "Concurrent during MFA");
     assert.equal(await page.getByLabel("New official name").inputValue(), "E2E MFA reviewed");
-    await review(); await confirm("Rename program"); await saved(); await done();
+    await page.getByRole("button", { name: "Review latest record", exact: true }).click(); await page.getByRole("button", { name: "Save changes", exact: true }).click(); await saved(); await done();
     assert.equal(row("program", "E2E_PROGRAM").name, "E2E MFA reviewed");
   });
   await check("Lost response after real commit reconciles current state and actor history without second mutation", async () => {
@@ -199,7 +202,7 @@ try {
       const response = await route.fetch(); assert.equal(response.status(), 200); await route.abort("connectionreset");
     }, { times: 1 });
     await actions("E2E MFA reviewed", "Rename"); await page.getByLabel("New official name").fill("E2E recovered"); await basis();
-    await review(); const before = mutationRequests.length; await confirm("Rename program"); await saved();
+    const before = mutationRequests.length; await page.getByRole("button", { name: "Save changes", exact: true }).click(); await saved();
     assert.equal(mutationRequests.length, before + 1); assert.equal(row("program", "E2E_PROGRAM").name, "E2E recovered"); await done();
   });
   await check("Submitted encrypted Inventory unchanged after actual historical Program rename/policy/retirement", async () => {

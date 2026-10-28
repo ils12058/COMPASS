@@ -1,5 +1,12 @@
 # Focused Catalog forms
 
+**SIMPLIFY-1B interaction update:** Routine Campus, College and Program renames use a direct
+Save changes action, with the current name and linked-label consequence in the editor. The required
+Change note remains the `basis` payload. The editor checks the record against the version the person
+reviewed; a change requires explicit review of the latest record before another Save. MFA returns to
+the unsent draft and requires another Save, without replay. Creation, status and Program settings
+retain their review and confirmation. Technical versions are not displayed in normal presentation.
+
 `catalog-model.ts` contains local draft/intent presentation state; payloads use generated request
 interfaces. `catalog-query.ts` dispatches generated operations. `catalog-editor.tsx` owns one local
 intent and review/recovery; `catalog-policy-fields.tsx` and `catalog-review.tsx` bound the field and
@@ -23,14 +30,14 @@ conflicts. No caller permission, approval, MFA or impact flags enter requests.
 | Create Campus | code/name/is_active/basis |
 | Create College | Same plus fixed campus_id |
 | Create Program | Same plus fixed college_id and complete classification/status/levels |
-| Rename | Only name/basis/expected_resource_version; current name/code/parent/version displayed |
+| Rename | Only name/basis/expected_resource_version; current name/code/parent displayed |
 | Status | Only desired is_active/basis/version; deactivation requires fresh impact |
 | Program policy | Entire classification/status/levels plus basis/version; current and proposed values displayed |
 
 Rename compares stripped names and refuses a local no-op honestly. Policy and already-changed
-status no-ops also produce review feedback rather than a fake saved event. Stale versions still
-belong to backend concurrency enforcement. The dialog names the actual target/result and states
-current-label versus saved-history semantics; finalized documents are not regenerated.
+status no-ops also produce feedback rather than a fake saved event. Stale versions still belong to
+backend concurrency enforcement. The rename editor states current-label versus saved-history
+semantics; finalized documents are not regenerated. Other consequential changes retain their dialog.
 
 Program classification uses generated BACHELORS/MASTERS/DOCTORAL enums and an explicit null pending
 option. Policy uses CONFIGURED/PENDING_POLICY. There is no Bachelor's or Years 1–4 default.
