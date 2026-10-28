@@ -1,17 +1,15 @@
 "use client";
 
-import { Pin } from "lucide-react";
+import { Megaphone, Pin } from "lucide-react";
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { SectionLink } from "@/components/ui/section-link";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
 import { formatPublicDate } from "@/features/public/shared/presentation";
 import { CompassApiError } from "@/lib/api/errors";
 import { useAnnouncementsListVisible } from "@/lib/api/generated/announcements/announcements";
-
-const linkClass =
-  "inline-flex min-h-10 items-center text-sm font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus";
 
 // Current Announcements for the signed-in account. The backend decides which
 // audiences the account can read; the full lists live on the reader pages.
@@ -21,12 +19,12 @@ export function OverviewAnnouncements() {
   const items = list.isError ? [] : list.data?.data.items ?? [];
 
   return (
-    <Panel className="@container border-0 bg-transparent [overflow-wrap:anywhere]" aria-labelledby="overview-announcements-heading">
+    <Panel className="@container [overflow-wrap:anywhere]" aria-labelledby="overview-announcements-heading">
       <PanelHeader
-        className="border-border px-0 sm:px-0"
+        className="border-b-0 pb-1"
         title="Announcements"
         titleId="overview-announcements-heading"
-        actions={<Link href="/announcements" className={linkClass}>All announcements</Link>}
+        actions={<SectionLink href="/announcements" label="All announcements" icon={Megaphone} />}
       />
 
       {list.isPending ? (
@@ -51,15 +49,15 @@ export function OverviewAnnouncements() {
       ) : items.length === 0 ? (
         <PanelMessage>No current announcements.</PanelMessage>
       ) : (
-        <ul className="divide-y divide-border">
+        <ul className="grid grid-cols-[minmax(0,1fr)] gap-x-6 divide-y divide-border px-4 pb-2 @min-[42rem]:grid-cols-3 @min-[42rem]:divide-y-0 sm:px-5">
           {items.map((announcement) => (
-            <li key={announcement.id}>
+            <li key={announcement.id} className="min-w-0">
               <Link
                 href={`/announcements/${announcement.id}`}
-                className="group flex min-h-11 min-w-0 flex-wrap items-baseline justify-between gap-x-5 gap-y-1 py-3 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
+                className="group flex min-h-11 min-w-0 flex-col items-start gap-2 rounded-md py-3 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
               >
-                <span className="min-w-0 flex-1 basis-48">
-                  <span className="block break-words font-semibold leading-6 text-ink group-hover:text-brand group-hover:underline">
+                <span className="w-full min-w-0 max-w-full">
+                  <span className="block [overflow-wrap:anywhere] font-semibold leading-6 text-ink group-hover:text-brand group-hover:underline">
                     {announcement.title}
                   </span>
                   {announcement.is_pinned ? (

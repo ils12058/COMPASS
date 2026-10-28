@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { TaskLink } from "@/components/ui/task-link";
 
 import { Button } from "@/components/ui/button";
 import { Panel, PanelHeader } from "@/components/ui/panel";
@@ -27,26 +28,9 @@ export function OverviewAttention({ data }: { data: OverviewAttentionData }) {
             <li
               key={item.id}
               role={item.isError ? "alert" : undefined}
-              className="grid gap-3 px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-5"
             >
-              <div className="min-w-0 [overflow-wrap:anywhere]">
-                <p className="font-semibold text-ink">{item.title}</p>
-                {item.subject ? <p className="mt-0.5 text-sm text-ink">{item.subject}</p> : null}
-                <p className="mt-0.5 text-sm leading-6 text-muted">{item.detail}</p>
-              </div>
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 sm:justify-end">
-                <Link
-                  href={item.href}
-                  className="inline-flex min-h-11 items-center rounded-sm text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-                >
-                  {item.actionLabel} <span aria-hidden="true" className="ml-1">→</span>
-                </Link>
-                {item.onRetry ? (
-                  <Button variant="secondary" onClick={item.onRetry}>
-                    Retry
-                  </Button>
-                ) : null}
-              </div>
+              <TaskLink href={item.href} actionLabel={item.actionLabel} title={item.title} subject={item.subject} detail={item.detail} />
+              {item.onRetry ? <div className="px-4 pb-3 sm:px-5"><Button variant="secondary" onClick={item.onRetry}>Retry</Button></div> : null}
             </li>
           ))}
           {data.isPending ? (

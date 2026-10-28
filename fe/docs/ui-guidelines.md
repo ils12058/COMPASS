@@ -43,7 +43,7 @@ forward these roles; status and submission dates never occupy action slots. Back
 unsaved-change guards remain feature-owned; the arrow is decoration, never part of the text label.
 
 Every standard header command uses `PageAction`/`PageActionLink`, optionally `PageActionGroup`.
-Labels stay visible below the icon on desktop, mobile, keyboard and touch. Links navigate, buttons
+Use a compact icon beside its visible label on desktop, mobile, keyboard and touch. Links navigate, buttons
 act/open a dialog; keep refs, complete accessible names, focus, pending and disabled states. Use
 secondary for supporting commands. Consequential triggers keep explicit labels and their existing
 review dialogs; danger uses the existing danger tokens. Forms, rows, contextual regions and dialog
@@ -69,3 +69,26 @@ The AST header guard in tests/page-header-contract.test.mjs scans actual usage s
 wrappers, following imported action components. It rejects raw/icon-only commands, metadata in
 commands, unlabeled page actions, and misplaced back/help; representative negative fixtures prove
 those rules. See [the Slice 1 audit](frontend-consistency-slice1.md) for evidence and exceptions.
+
+
+## Application composition
+
+Arrange work, schedule and supporting context by priority and actual content length. A short
+work queue should not reserve an entire column above its navigation just to match a tall agenda.
+Use coherent working surfaces and compact destination groups; removing every border does not
+create hierarchy. Supporting counts may use a compact two-column list, without separate metric
+cards or invented statistics. Keep mobile reading and keyboard order aligned with task priority.
+
+`TaskLink` presents a task as one real link with title, subject, timing and a clear accessible
+action name. Retry buttons and other interactions stay outside the link. `SectionLink` provides
+compact icon + label navigation from a named region. Workspace shortcuts reuse their existing
+authorized destination and Lucide icon rather than a second navigation registry.
+
+Contextual Help and conventional low-risk `IconAction` controls may show an icon with a tooltip
+on fine-pointer devices and a visible label for touch. Keep an accessible name, visible keyboard
+focus and a 44px/rem-scaled target. Save, Submit, Book, Issue, consent, capture and security changes
+retain explicit labels and their existing confirmations. Native inputs, selects and ordinary
+buttons also retain a 44px minimum target on coarse-pointer devices.
+
+Viewport-filling workspaces use the shell's measured header and visual-viewport dimensions,
+including call-dock clearance, rather than assuming the header remains one line on phones.

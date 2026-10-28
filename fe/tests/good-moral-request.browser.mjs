@@ -63,6 +63,8 @@ function fixture({ lifecycle, f4Status }) {
     assert.equal(await f4.isDisabled(), true);
     await page.getByRole('button', { name: "F6 · UCN Bachelor's degree", exact: true }).click();
     await page.getByRole('heading', { name: "F6 · UCN Bachelor's degree request", exact: true }).waitFor();
+    assert.equal(await page.locator("main h1").count(), 1);
+    assert.equal(await page.getByRole("link", { name: "Back to Good Moral", exact: true }).count(), 1);
     await page.getByLabel('Degree').fill('Bachelor of Science in Information Systems');
     await page.getByLabel('Graduation date').fill('2020-06-30');
     await screenshot(page, 'student-current-local-postgraduate-f6-request');

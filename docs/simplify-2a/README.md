@@ -17,3 +17,8 @@ The primary work surface remains bounded while contextual links, counts, the Cou
 announcements use lighter divisions. Counselor My work now precedes the agenda in reading order.
 All screenshots use synthetic API fixtures, not authenticated backend integration or UCN acceptance.
 Browser checks with enlarged root text are not native browser zoom or screen-reader testing.
+
+The [product experience follow-up](product-experience-assessment.md) reviews representative feature areas and prioritizes bounded next slices.
+
+The subsequent [composition refinement](composition-refinement.md) records the corrected app-like
+direction, additional role and feature renders, completed work and remaining candidates.

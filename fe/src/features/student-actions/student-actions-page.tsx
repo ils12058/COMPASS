@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
+import { TaskLink } from "@/components/ui/task-link";
 import { useState } from "react";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { PageHeader } from "@/components/ui/page-header";
 import { Panel, PanelMessage } from "@/components/ui/panel";
@@ -42,15 +42,7 @@ function ActionList({ user }: { user: UserSummary }) {
         {data && data.items.length > 0 ? <ul className="divide-y divide-border">
           {data.items.map((item) => {
             const row = presentStudentAction(item);
-            return <li key={item.id} className="grid min-w-0 gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-5">
-              <div className="min-w-0 [overflow-wrap:anywhere]">
-                <p className="font-semibold text-ink">{row.title}</p>
-                {row.priorityLabel ? <p className="mt-1 text-sm font-semibold text-warning">{row.priorityLabel}</p> : null}
-                <p className="mt-1 text-sm leading-6 text-muted">{row.detail}</p>
-                {row.timing ? <p className="mt-1 text-sm leading-6 text-muted">{row.timing}</p> : null}
-              </div>
-              <Link href={row.href} className={buttonVariants({ variant: "secondary", className: "min-h-11 h-auto min-w-0 whitespace-normal text-left [overflow-wrap:anywhere]" })}>{row.actionLabel} <span aria-hidden="true" className="ml-1">→</span></Link>
-            </li>;
+            return <li key={item.id}><TaskLink href={row.href} actionLabel={row.actionLabel} title={row.title} detail={row.detail} timing={row.timing ?? undefined} priority={row.priorityLabel} /></li>;
           })}
         </ul> : null}
         {data && data.page < 100 ? <CanonicalPagination page={data.page} hasNext={data.has_next} disabled={query.isFetching} onPageChange={setPage} label="My actions pages" className="px-4 sm:px-5" /> : null}

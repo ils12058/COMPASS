@@ -310,22 +310,15 @@ export function ServicesListPage() {
                   </div>
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
-                      Booking pathways
+                      Booking
                     </dt>
                     <dd className="mt-1 text-ink">
-                      {pathwaySummary(service.booking_pathways)}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
-                      Flexible appointment booking
-                    </dt>
-                    <dd className="mt-1 text-ink">
-                      {serviceBookingLabel(service.appointment_booking_enabled)}
+                      <p>{pathwaySummary(service.booking_pathways)}</p>
+                      <p className="mt-1 text-muted">{serviceBookingLabel(service.appointment_booking_enabled)}
                       {service.appointment_booking_enabled &&
                       service.default_appointment_duration_minutes !== null
                         ? " · " + service.default_appointment_duration_minutes + " min"
-                        : ""}
+                        : ""}</p>
                     </dd>
                   </div>
                 </dl>

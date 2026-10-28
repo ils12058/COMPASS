@@ -2,7 +2,7 @@
 
 import { Menu, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Image from "next/image";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
@@ -30,12 +30,29 @@ const DOCK_NAVIGATION_ID = "portal-dock-navigation";
 // controls that float over a page (FloatingListTools) center on the workspace, not the window.
 export function PortalShell({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
+  const shell = useRef<HTMLDivElement>(null);
+  const topBar = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const root = shell.current;
+    const header = topBar.current;
+    if (!root || !header) return;
+    const measure = () => {
+      root.style.setProperty("--portal-header-height", `${header.getBoundingClientRect().height}px`);
+      root.style.setProperty("--portal-viewport-height", `${window.visualViewport?.height ?? window.innerHeight}px`);
+    };
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    window.visualViewport?.addEventListener("resize", measure);
+    window.addEventListener("resize", measure);
+    measure();
+    return () => { observer.disconnect(); window.visualViewport?.removeEventListener("resize", measure); window.removeEventListener("resize", measure); };
+  }, []);
   const [mobileOpen, setMobileOpen] = useState(false);
   // Labels show from the start; the reader can fold the dock to an icon rail for more room.
   const [dockExpanded, setDockExpanded] = useState(true);
 
   return (
-    <div
+    <div ref={shell}
       data-dock={dockExpanded ? "expanded" : "collapsed"}
       className={cn(
         "min-h-dvh bg-body lg:flex",
@@ -58,7 +75,7 @@ export function PortalShell({ children }: { children: ReactNode }) {
       </aside>
 
       <div className="min-w-0 flex-1">
-        <header className="relative flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border bg-surface-raised px-4 py-1 sm:px-6 lg:px-8">
+        <header ref={topBar} className="relative flex min-h-14 flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border bg-surface-raised px-4 py-1 sm:px-6 lg:px-8">
           {/* The dock's own control stays outside its list of destinations. */}
           <button
             type="button"

@@ -1,5 +1,7 @@
 "use client";
 
+import { ChevronRight } from "lucide-react";
+
 import { Archive, FileText, ShieldCheck, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 
@@ -61,7 +63,7 @@ export function PrivacyLanding() {
                 </span>
                 <span className="mt-1 block text-sm leading-6 text-muted">{description}</span>
               </span>
-              <span aria-hidden="true" className="mt-0.5 font-semibold text-brand">→</span>
+              <ChevronRight aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
             </Link>
           </li>
         ))}

@@ -18,7 +18,7 @@ export function WorkspaceTabs({
   return (
     <nav
       aria-label={label}
-      className={cn("mb-5 flex flex-wrap gap-x-6 gap-y-1 border-b border-brand-line", className)}
+      className={cn("mb-5 flex w-fit max-w-full flex-wrap gap-1 rounded-lg bg-surface-muted p-1", className)}
     >
       {children}
     </nav>
@@ -27,9 +27,9 @@ export function WorkspaceTabs({
 
 export function workspaceTabClass(current: boolean) {
   return cn(
-    "-mb-px inline-flex min-h-11 items-center border-b-2 px-0.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
+    "inline-flex min-h-11 items-center rounded-md border px-3 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus",
     current
-      ? "border-brand text-brand"
-      : "border-transparent text-muted hover:border-border-strong hover:text-ink",
+      ? "border-border bg-surface-raised text-brand"
+      : "border-transparent text-muted hover:bg-surface-subtle hover:text-ink",
   );
 }

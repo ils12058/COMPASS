@@ -43,8 +43,8 @@ export function PageHeader({
   return (
     <header data-page-header="" className={cn("mb-5", className)}>
       {back && help ? <div className="flex flex-wrap items-start justify-between gap-x-3">{back}{help}</div> : back}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0 flex-1">
+      <div className="flex flex-wrap items-start justify-between gap-x-5 gap-y-3">
+        <div className="min-w-0 flex-1 basis-56">
           {context ? <p className="text-sm font-medium text-muted">{context}</p> : null}
           <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
             <h1 id={headingId} className="min-w-0 break-words font-heading text-2xl font-bold leading-tight text-ink sm:text-3xl">
@@ -60,8 +60,8 @@ export function PageHeader({
         {/* Actions wrap within their share of the row, so a narrowed page (such as one beside an open
             Messages panel) never breaks its title mid-word. */}
         {actions || (!back && help) ? (
-          <div className="flex min-w-0 flex-wrap items-start gap-2 sm:max-w-[65%] sm:justify-end">
-            {actions ? <div data-page-header-actions="" className="flex min-w-0 max-w-full flex-wrap items-start gap-x-4 gap-y-2">{actions}</div> : null}
+          <div className="flex min-w-0 max-w-full flex-wrap items-start gap-2">
+            {actions ? <div data-page-header-actions="" className="flex min-w-0 max-w-full flex-wrap items-start gap-2">{actions}</div> : null}
             {!back ? help : null}
           </div>
         ) : null}

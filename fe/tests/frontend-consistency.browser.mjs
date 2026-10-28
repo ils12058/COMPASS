@@ -28,7 +28,7 @@ async function commands(page, labels) {
     await shown(command);
     const text = command.locator("[data-page-action-label]"); await shown(text);
     assert.ok((await text.innerText()).trim().length > 0);
-    assert.ok(await command.evaluate((el) => { const label = el.querySelector("[data-page-action-label]"); const surface = el.querySelector("[data-page-action-surface]"); const l = label.getBoundingClientRect(); const s = surface.getBoundingClientRect(); return l.top >= s.bottom - 1 && getComputedStyle(label).visibility === "visible"; }), "Visible label sits beneath its icon surface");
+    assert.ok(await command.evaluate((el) => { const label = el.querySelector("[data-page-action-label]"); const surface = el.querySelector("[data-page-action-surface]"); const l = label.getBoundingClientRect(); const s = surface.getBoundingClientRect(); return l.left >= s.right - 1 && getComputedStyle(label).visibility === "visible"; }), "Visible label sits beside its icon");
     await command.focus();
     assert.equal(await command.evaluate((el) => el === document.activeElement), true);
     assert.ok(await command.evaluate((el) => getComputedStyle(el).boxShadow !== "none"), "Keyboard focus has a visible ring");

@@ -98,6 +98,7 @@ for (const collection of collections) {
     await shown(page.getByRole("heading", { level: 1 }));
     if (collection.name === "service-catalog") {
       await shown(page.getByRole("link", { name: "Wellbeing Consultation", exact: true }));
+      await shown(page.getByText(/Enabled for flexible appointments/));
     } else {
       await shown(page.locator("tbody tr").first());
     }

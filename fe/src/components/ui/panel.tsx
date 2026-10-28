@@ -75,7 +75,7 @@ export function PanelHeader({
       )}
     >
       <div className="min-w-0">
-        <Heading level={level} id={titleId} className="font-heading text-lg font-semibold leading-snug text-ink">
+        <Heading level={level} id={titleId} className="font-heading text-lg font-semibold leading-snug text-ink [overflow-wrap:anywhere]">
           {title}
         </Heading>
         {description ? <p className="mt-0.5 text-sm leading-6 text-muted">{description}</p> : null}
@@ -187,7 +187,7 @@ export function PanelMessage({
       className={cn("px-4 sm:px-5", compact ? "py-3.5" : "py-6", className)}
       {...props}
     >
-      <p className={cn("max-w-3xl text-sm leading-6", tone === "danger" ? "text-danger" : "text-muted")}>
+      <p className={cn("max-w-3xl text-sm leading-6 [overflow-wrap:anywhere]", tone === "danger" ? "text-danger" : "text-muted")}>
         {children}
       </p>
       {action ? <div className="mt-3 flex flex-wrap gap-3">{action}</div> : null}

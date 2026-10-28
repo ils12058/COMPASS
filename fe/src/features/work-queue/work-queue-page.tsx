@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import { TaskLink } from "@/components/ui/task-link";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -42,14 +42,7 @@ function WorkList({ user }: { user: UserSummary }) {
         {data && data.items.length > 0 ? <ul className="divide-y divide-border">
           {data.items.map((item) => {
             const row = presentWork(item, data.generated_at);
-            return <li key={item.id} className="grid min-w-0 gap-3 px-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:px-5">
-              <div className="min-w-0 [overflow-wrap:anywhere]">
-                <p className="font-semibold text-ink">{row.title}</p>
-                <p className="mt-1 text-sm text-ink">{item.student.display_name}</p>
-                <p className="mt-1 text-sm leading-6 text-muted">{row.detail}</p>
-              </div>
-              <Link href={row.href} className="inline-flex min-h-11 min-w-0 items-center rounded-sm text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [overflow-wrap:anywhere]">{row.actionLabel} <span aria-hidden="true" className="ml-1">→</span></Link>
-            </li>;
+            return <li key={item.id}><TaskLink href={row.href} actionLabel={row.actionLabel} title={row.title} subject={item.student.display_name} detail={row.detail} /></li>;
           })}
         </ul> : null}
         {data && data.page < 100 ? <CanonicalPagination page={data.page} hasNext={data.has_next} disabled={query.isFetching} onPageChange={setPage} label="My work pages" className="px-4 sm:px-5" /> : null}

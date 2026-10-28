@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { Mail } from "lucide-react";
+import { SectionLink } from "@/components/ui/section-link";
 
 import { Button } from "@/components/ui/button";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -10,7 +12,7 @@ import type {
 
 function EmailDeliveryLine({ status }: { status: EmailDeliveryStatus }) {
   return (
-    <div className="border-t border-border py-3.5 [[data-panel-header]+&]:border-t-0">
+    <div className="border-t border-border px-4 py-3.5 sm:px-5 [[data-panel-header]+&]:border-t-0">
       <p className="text-sm font-semibold text-ink">Email delivery</p>
       <p className="mt-1 text-sm leading-6 text-muted">
         <span className={status.failed > 0 ? "font-semibold text-danger" : undefined}>
@@ -23,12 +25,7 @@ function EmailDeliveryLine({ status }: { status: EmailDeliveryStatus }) {
         {status.sentToday} sent today
       </p>
       {status.href ? (
-        <Link
-          href={status.href}
-          className="mt-1 inline-flex min-h-10 items-center rounded-sm text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-        >
-          Open Email Delivery <span aria-hidden="true" className="ml-1">→</span>
-        </Link>
+        <SectionLink href={status.href} label="Delivery details" accessibleLabel="Open Email Delivery" icon={Mail} />
       ) : null}
     </div>
   );
@@ -36,7 +33,7 @@ function EmailDeliveryLine({ status }: { status: EmailDeliveryStatus }) {
 
 // Counts are context beside the work: one compact list with the number at the end of each line,
 // not a grid of tiles.
-const countRow = "relative flex items-baseline justify-between gap-4 py-2.5";
+const countRow = "relative flex items-baseline justify-between min-h-11 gap-4 py-2.5";
 
 export function OverviewSummary({
   metrics,
@@ -57,11 +54,11 @@ export function OverviewSummary({
   if (!isPending && !isError && !hasContent) return null;
 
   return (
-    <Panel className="overflow-hidden border-0 bg-transparent" aria-labelledby="overview-summary-heading">
-      <PanelHeader className="border-border px-0 sm:px-0" title="At a glance" titleId="overview-summary-heading" />
+    <Panel className="@container overflow-hidden border-border bg-surface-subtle" aria-labelledby="overview-summary-heading">
+      <PanelHeader className="border-b-0 pb-1" title="At a glance" titleId="overview-summary-heading" />
 
       {isPending ? (
-        <div className="divide-y divide-border" aria-busy="true">
+        <div className="divide-y divide-border px-4 sm:px-5" aria-busy="true">
           {[0, 1, 2].map((item) => (
             <div key={item} className={countRow}>
               <Skeleton className="h-4 w-2/3" />
@@ -93,14 +90,14 @@ export function OverviewSummary({
       ) : null}
 
       {!isPending && metrics.length > 0 ? (
-        <dl className="divide-y divide-border">
+        <dl className="grid gap-x-5 px-4 pb-2 @min-[24rem]:grid-cols-2 sm:px-5">
           {metrics.map((metric, index) => (
             // The label link stretches over the whole line, so the count is clickable too.
             <div
               key={metric.label + "-" + index}
               className={`${countRow} transition-colors has-[a:hover]:bg-surface-subtle`}
             >
-              <dt className="min-w-0 text-sm leading-6 text-ink">
+              <dt className="min-w-0 [overflow-wrap:anywhere] text-sm leading-6 text-ink">
                 {metric.href ? (
                   <Link
                     href={metric.href}
@@ -112,7 +109,7 @@ export function OverviewSummary({
                   metric.label
                 )}
               </dt>
-              <dd className="shrink-0 font-heading text-lg font-semibold tabular-nums text-ink">
+              <dd className="shrink-0 font-heading text-xl font-semibold tabular-nums text-ink">
                 {metric.value}
               </dd>
             </div>

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { KeyRound, Mail, Monitor, ShieldCheck } from "lucide-react";
+import { SectionLink } from "@/components/ui/section-link";
 
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
@@ -10,8 +12,8 @@ import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useAuthGetEmailChangeStatus, useAuthGetMfaStatus } from "@/lib/api/generated/auth/auth";
 
 const securityRows = [
-  { title: "Password", detail: "Change your COMPASS sign-in password.", label: "Change password", href: "/portal/account/security/password" },
-  { title: "Sessions", detail: "Review signed-in sessions and trusted browsers.", label: "Manage sessions", href: "/portal/account/security/sessions" },
+  { title: "Password", detail: "Change your COMPASS sign-in password.", icon: KeyRound, label: "Change password", href: "/portal/account/security/password" },
+  { title: "Sessions", detail: "Review signed-in sessions and trusted browsers.", icon: Monitor, label: "Manage sessions", href: "/portal/account/security/sessions" },
 ] as const;
 
 export function SecurityOverview() {
@@ -64,12 +66,12 @@ export function SecurityOverview() {
             <h2 className="font-heading text-base font-semibold text-ink">Sign-in email</h2>
             <p className="mt-1 break-all text-sm text-muted">{user.email}</p>
           </div>
-          <Link href="/portal/account/security/email" className="inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Change email →</Link>
+          <SectionLink href="/portal/account/security/email" label="Change email" icon={Mail} />
         </div>
         {securityRows.slice(0, 1).map((row) => (
           <div key={row.href} className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <div><h2 className="font-heading text-base font-semibold text-ink">{row.title}</h2><p className="mt-1 text-sm text-muted">{row.detail}</p></div>
-            <Link href={row.href} className="inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{row.label} →</Link>
+            <SectionLink href={row.href} label={row.label} icon={row.icon} />
           </div>
         ))}
         <div className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
@@ -79,12 +81,12 @@ export function SecurityOverview() {
             {mfa.isSuccess ? <p className="mt-1 text-sm text-muted">{mfa.data.data.enabled ? "Enabled" : "Not enabled"}</p> : null}
             {mfa.isError ? <p role="alert" className="mt-1 text-sm text-danger">Status unavailable. <Button variant="quiet" className="min-h-0 px-1 py-0" onClick={() => void mfa.refetch()}>Retry</Button></p> : null}
           </div>
-          <Link href="/portal/account/security/authenticator" className="inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">Manage authenticator →</Link>
+          <SectionLink href="/portal/account/security/authenticator" label="Manage authenticator" icon={ShieldCheck} />
         </div>
         {securityRows.slice(1).map((row) => (
           <div key={row.href} className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
             <div><h2 className="font-heading text-base font-semibold text-ink">{row.title}</h2><p className="mt-1 text-sm text-muted">{row.detail}</p></div>
-            <Link href={row.href} className="inline-flex min-h-10 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{row.label} →</Link>
+            <SectionLink href={row.href} label={row.label} icon={row.icon} />
           </div>
         ))}
       </Panel>

@@ -129,12 +129,12 @@ function MessagesFrame({
         <Panel
           as="div"
           className={cn(
-            "grid min-h-[24rem] grid-rows-[minmax(0,1fr)] overflow-hidden @[42rem]/messages:grid-cols-[minmax(15rem,20rem)_minmax(0,1fr)]",
+            "grid min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden @[42rem]/messages:grid-cols-[minmax(15rem,20rem)_minmax(0,1fr)]",
             // The workspace fills the screen below the top bar, so the conversation and its composer
             // stay in view while the history scrolls. A call dock keeps its own clearance.
-            "h-[calc(100dvh-6rem-1px)] lg:h-[calc(100dvh-6.5rem-1px)]",
-            "[:root:has([data-call-dock])_&]:h-[calc(100dvh-4.75rem-1px-var(--call-dock-clearance))]",
-            "lg:[:root:has([data-call-dock])_&]:h-[calc(100dvh-5rem-1px-var(--call-dock-clearance))]",
+            "h-[calc(var(--portal-viewport-height,100dvh)-var(--portal-header-height,6.25rem)-2.5rem)] lg:h-[calc(var(--portal-viewport-height,100dvh)-var(--portal-header-height,3.5rem)-3rem)]",
+            "[:root:has([data-call-dock])_&]:h-[calc(var(--portal-viewport-height,100dvh)-var(--portal-header-height,6.25rem)-1.25rem-var(--call-dock-clearance))]",
+            "lg:[:root:has([data-call-dock])_&]:h-[calc(var(--portal-viewport-height,100dvh)-var(--portal-header-height,3.5rem)-1.5rem-var(--call-dock-clearance))]",
           )}
         >
           <div
