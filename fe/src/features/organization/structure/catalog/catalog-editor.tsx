@@ -33,6 +33,9 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
   const owner = `${user.id}:${session.id}`;
   const queryClient = useQueryClient();
   const [draft, setDraft] = useState(() => initialDraft(intent));
+  // This is the record the person chose to edit, not the latest query result.
+  // A refetch must never silently rebase an unsent rename onto a new version.
+  const [reviewedRename, setReviewedRename] = useState<CatalogTarget | null>(() => intent.mode === "rename" ? intent.target : null);
   const [review, setReview] = useState<CatalogCommand | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
@@ -67,6 +70,7 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
   });
   const confirmedTarget = safeQueryData(target);
   const current = intent.mode !== "create" ? confirmedTarget : undefined;
+  const renameChanged = Boolean(reviewedRename && confirmedTarget && !sameRenameRecord(reviewedRename, confirmedTarget));
   const mutation = useMutation({ mutationFn: executeCatalogCommand, retry: false });
   const busy = reading || saving;
   const dirty = !saved && JSON.stringify(draft) !== JSON.stringify(initialDraft(intent));
@@ -91,17 +95,24 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
   async function prepare(event: FormEvent) {
     event.preventDefault();
     if (busy || running.current || saved || denied || unconfirmed) return;
+    running.current = true;
     setError(null); setCodeError(null); setNotice(null);
-    const invalid = draftError(intent, draft, current);
-    if (invalid) { setError(invalid); return; }
-    setReading(true);
     try {
+      if (intent.mode === "rename" && renameChanged) {
+        setNotice("This record changed. Compare the latest saved information and your draft, then choose Review latest record."); return;
+      }
+      const invalid = draftError(intent, draft, current);
+      if (invalid) { setError(invalid); return; }
+      setReading(true);
       await authority();
       const fresh = context ? (await target.refetch({ throwOnError: true })).data : undefined;
       const preview = retiring ? (await impact.refetch({ throwOnError: true })).data : undefined;
       if (!mounted.current) return;
       if (context && !fresh) throw new Error("Missing current target");
-      if (fresh && target.data && fresh.record.resource_version !== target.data.record.resource_version) {
+      if (intent.mode === "rename" && (!reviewedRename || !fresh || !sameRenameRecord(reviewedRename, fresh))) {
+        setNotice("This record changed. Compare the latest saved information and your draft, then choose Review latest record."); return;
+      }
+      if (intent.mode !== "rename" && fresh && target.data && fresh.record.resource_version !== target.data.record.resource_version) {
         setNotice("This information was updated. Your input is preserved. Compare the latest saved values below, then review again."); return;
       }
       if (retiring && (!preview?.can_deactivate || preview.resource_version !== fresh?.record.resource_version)) {
@@ -109,9 +120,11 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
       }
       const invalidFresh = draftError(intent, draft, intent.mode === "create" ? undefined : fresh);
       if (invalidFresh) { setError(invalidFresh); return; }
-      setReview(makeCommand(intent, draft, fresh));
+      const command = makeCommand(intent, draft, intent.mode === "rename" ? reviewedRename ?? undefined : fresh);
+      if (intent.mode === "rename") await execute(command);
+      else setReview(command);
     } catch (caught) { if (mounted.current) setError(catalogErrorMessage(caught)); }
-    finally { if (mounted.current) setReading(false); }
+    finally { running.current = false; if (mounted.current) setReading(false); }
   }
   async function finishSave(result: CatalogTarget) {
     if (!mounted.current) return;
@@ -138,11 +151,15 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
   async function submit() {
     if (!review || running.current || busy || denied || saved || unconfirmed) return;
     running.current = true;
+    try { await execute(review); }
+    finally { running.current = false; }
+  }
+  async function execute(command: CatalogCommand) {
     setSaving(true);
-    const command = review;
     setError(null);
     try {
       await authority();
+      if (!mounted.current) return;
       const result = await mutation.mutateAsync(command);
       await finishSave(result);
     } catch (caught) {
@@ -163,17 +180,17 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
         if (code === "permission_denied" || code === "invalid_session") { setDenied(true); void queryClient.invalidateQueries({ queryKey: getAuthGetSessionQueryOptions().queryKey }); }
         else { try { await reload(); } catch { setError(`${catalogErrorMessage(caught)} The latest details could not be loaded. Refresh before reviewing again.`); } }
       }
-    } finally { running.current = false; if (mounted.current) setSaving(false); }
+    } finally { if (mounted.current) setSaving(false); }
   }
   async function afterVerification() {
     setReading(true);
-    try { await authority(); await reload(); setNotice("Authenticator verified. Review the latest saved values and your proposed change, then confirm again."); }
+    try { await authority(); await reload(); setNotice(intent.mode === "rename" ? "Authenticator verified. Check the saved information and select Save changes when ready." : "Authenticator verified. Review the latest saved values and your proposed change, then confirm again."); }
     catch { setError("Verification succeeded, but the latest details could not be loaded. Refresh before reviewing again."); }
     finally { setReading(false); }
     // No retained command and no mutation call after MFA.
   }
   return <Panel className="mb-5" aria-labelledby="catalog-editor-heading">
-    <PanelHeader title={<span ref={heading} tabIndex={-1} className="outline-none" id="catalog-editor-heading">{title}</span>} description={intent.mode === "create" ? undefined : "Review the current record before changing it."} />
+    <PanelHeader title={<span ref={heading} tabIndex={-1} className="outline-none" id="catalog-editor-heading">{title}</span>} description={intent.mode === "create" ? undefined : intent.mode === "rename" ? "Edit the selected record below." : "Review the current record before changing it."} />
     <PanelBody>
       {saved ? <Notice tone={refreshFailed ? "warning" : "success"} role="status" action={<>
         {refreshFailed ? <Button variant="secondary" disabled={busy} onClick={() => { setReading(true); void finishSave(saved).finally(() => setReading(false)); }}>Retry refresh</Button> : null}
@@ -189,6 +206,9 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
             <p>{parentLabel(confirmedTarget)} · {confirmedTarget.record.is_active ? "Active" : "Inactive"}</p>
             {confirmedTarget.kind === "program" ? <p>{academicProgramLabel(confirmedTarget.record)}</p> : null}
           </div> : null}
+          {renameChanged && reviewedRename && !target.isError ? <Notice className="mb-4" tone="warning" action={<Button variant="secondary" disabled={busy || target.isFetching} onClick={() => { if (confirmedTarget) { setReviewedRename(confirmedTarget); setNotice(null); setError(null); } }}>Review latest record</Button>}>
+            This record changed since you opened it. Previously reviewed name: {reviewedRename.record.name}. Compare the latest saved record above with your draft before continuing.
+          </Notice> : null}
           <form onSubmit={(event) => void prepare(event)} className="space-y-5" aria-label={title}>
             <fieldset disabled={busy || Boolean(unconfirmed)} className="space-y-5">
               {intent.mode === "create" ? <div className="grid gap-2">
@@ -211,7 +231,7 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
             </fieldset>
             {retiring ? impact.isPending ? <TableSkeleton label="Loading deactivation impact…" /> : impact.isError ? <Notice tone="warning" action={<Button variant="secondary" onClick={() => void impact.refetch()}>Refresh impact</Button>}>The current impact could not be confirmed. Deactivation is unavailable.</Notice> : impact.data ? <><CatalogImpact impact={impact.data} canManageRelationships={canManageRelationships} /><Button variant="secondary" disabled={busy} onClick={() => { setReview(null); void impact.refetch(); }}>Refresh impact</Button></> : null : null}
             {unconfirmed ? <Notice tone="warning" action={<Button variant="secondary" disabled={busy} onClick={() => void reconcile(unconfirmed)}>Check saved state</Button>}>The save is still unconfirmed. Check saved state before making another change.</Notice> : null}
-            <div className="flex flex-wrap justify-end gap-2"><Button variant="secondary" disabled={busy} onClick={close}>Cancel</Button><Button ref={reviewButton} type="submit" disabled={busy || Boolean(unconfirmed) || (Boolean(context) && (!target.data || target.isError || target.isFetching)) || (retiring && (!impact.data?.can_deactivate || impact.isError || impact.isFetching))}>{reading ? "Loading latest details…" : "Review change"}</Button></div>
+            <div className="flex flex-wrap justify-end gap-2"><Button variant="secondary" disabled={busy} onClick={close}>Cancel</Button><Button ref={reviewButton} type="submit" disabled={busy || renameChanged || Boolean(unconfirmed) || (Boolean(context) && (!target.data || target.isError || target.isFetching)) || (retiring && (!impact.data?.can_deactivate || impact.isError || impact.isFetching))}>{saving ? "Saving…" : reading ? "Loading latest details…" : intent.mode === "rename" ? "Save changes" : "Review change"}</Button></div>
           </form>
         </>}
       </>}
@@ -221,4 +241,13 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
     </ConsequentialActionDialog>
     <StepUpDialog setupInNewTab reviewAfterVerification open={Boolean(stepUp)} requirement={stepUp ?? "verify"} onOpenChange={(open) => { if (!open) setStepUp(null); }} onVerified={afterVerification} />
   </Panel>;
+}
+
+function sameRenameRecord(reviewed: CatalogTarget, latest: CatalogTarget) {
+  return reviewed.kind === latest.kind && reviewed.record.id === latest.record.id
+    && reviewed.record.resource_version === latest.record.resource_version
+    && reviewed.record.name === latest.record.name && reviewed.record.code === latest.record.code
+    && reviewed.record.is_active === latest.record.is_active && parentLabel(reviewed) === parentLabel(latest)
+    && (reviewed.kind === "campus" || (reviewed.kind === "college" && latest.kind === "college" && reviewed.record.campus.id === latest.record.campus.id)
+      || (reviewed.kind === "program" && latest.kind === "program" && reviewed.record.college.id === latest.record.college.id && reviewed.record.college.campus.id === latest.record.college.campus.id));
 }
