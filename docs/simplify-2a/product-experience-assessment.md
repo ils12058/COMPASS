@@ -6,9 +6,10 @@ University of Camarines Norte (UCN) · reviewed 28 October 2026 · baseline
 ## Completed and proposed
 
 The Home pilot is **complete and merged** in [PR #338](https://github.com/ils12058/COMPASS/pull/338).
-Its [before/after pairs](README.md) show one stronger work area, quieter destinations, counts and
-announcements, and Counselor My work before the agenda. The assessment below proposes future work;
-it does not implement those recommendations or change other workflows.
+Its [before/after pairs](README.md) show the initial pilot. This follow-up implements the corrected
+[app-like composition](composition-refinement.md), shared interaction patterns and bounded fixes for
+Messages, Good Moral, Graduate Tracer, Service Catalog and the booking roadmap. The observations
+below record the original baseline; remaining candidates are distinguished from completed changes.
 
 ## Representative assessment
 
@@ -37,7 +38,7 @@ fixtures; the remaining observations are source-based and need visual verificati
   and row identity; do not remove framing mechanically.
 - Keep relevant actions beside the task, with visible labels, existing Lucide vocabulary and
   keyboard focus. Retain existing `PageAction`, `FloatingListTools`, dialog and form primitives;
-  no shared primitive change is justified by this sample.
+  shared patterns were subsequently adjusted for the approved icon-and-label composition.
 - Put search, filters and empty/loading/error states where the collection already expects them;
   distinguish filtered-empty, denied, stale and unavailable. Check floating controls against
   pagination and fixed composers at phone widths and enlarged text.
@@ -47,7 +48,11 @@ fixtures; the remaining observations are source-based and need visual verificati
 - On mobile, order work before secondary context and maintain reachable actions, readable long
   names, touch targets and focus. A viewport screenshot is not a native zoom or screen-reader test.
 
-## Prioritized SIMPLIFY-2C candidates
+## Original candidates and disposition
+
+Candidates 1–4 and the duplicate booking roadmap in candidate 5 are implemented in this follow-up.
+The original observations and baseline captures are retained here for traceability. The remaining
+[prioritized follow-on shortlist](composition-refinement.md#follow-on-candidates) is separate.
 
 1. **Messages phone viewport:** reproduce and correct the composer/viewport relationship on
    `/portal/messages`. In Chromium's synthetic 390×844 phone scenario after opening an Office
@@ -88,10 +93,10 @@ fit and mobile behavior. Follow existing illustration guidance until its owner u
 Current source was reviewed at the baseline above. Chromium synthetic captures include the
 appointments list, Service Catalog, Messages, Inventory, Exit Interview, Graduate Tracer, Good
 Moral, Accounts and E-Counseling prejoin; desktop and phone cases were sampled where the fixtures
-supported them. Other entries are source-only. The Service Catalog's existing responsive fixture
-failed twice because its sample lacks the `booking_pathways` value consumed by the current UI;
-a separate synthetic capture with that field supplied rendered at 390 and 1440px. The Messages
-phone containment assertion failed twice as described above. These findings are not UCN acceptance
+supported them. Other entries are source-only. The original Service Catalog responsive fixture failed twice because its sample lacked the
+`booking_pathways` value consumed by the UI; the fixture was corrected. The original Messages
+phone containment assertion failed twice as described above; the follow-up changes the measured
+viewport relationship and rechecks it with synthetic fixtures. These findings are not UCN acceptance
 or proof of a live-system failure.
 
 The production-build E-Counseling active-call fixture could not use the development/test-only fake

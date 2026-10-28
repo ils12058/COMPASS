@@ -2146,8 +2146,8 @@ The composition is structural, never decorative:
 ## Page-level commands
 
 A page's one to three major commands (Create, Record, Issue, Import, Add, Set, Start, Request,
-Book, Refresh, report downloads) use `PageAction` in the `PageHeader`: a square icon surface
-(`size-12`) with the short label always visible below it. A command that navigates is a real link
+Book, Refresh, report downloads) use `PageAction` in the `PageHeader`: one compact control
+with a Lucide icon beside a visible short label and a minimum 44px/rem-scaled target. A command that navigates is a real link
 (`PageActionLink`); one that acts or opens a dialog is a real button (`PageAction`, which forwards
 its ref to a `DialogTrigger`). `labelDetail` completes the accessible name when the page makes the
 object obvious ("Create" + "account"). `primary` is the page's main command; `secondary` the rest.
@@ -2269,12 +2269,14 @@ the session stage and the call dock are views of it. Never create or end a call 
 render a second remote audio element, and never warn that portal navigation ends a call. Only Leave,
 the call ending, sign-out, a server-confirmed lost session and the portal unmounting end it.
 
-Overview is the portal's home, not a dashboard. It greets the reader by name and gives today's date,
-then puts what needs attention first, the reader's primary action (a `PageAction`) beside the greeting, and
-announcements after the work. The summary counts are secondary context: one compact "At a glance"
-list beside the work, never a row of metric tiles. It shows only what the Overview contract
-returns. No metric-card grids, large icon plus number tiles, charts, trends, or dashboard filler,
-and no character illustrations.
+Overview greets the reader and puts actionable work first, followed by the schedule, relevant
+destinations and context, then announcements. Compose these by workflow and content length rather
+than stretching a short work list alongside a taller agenda. Workspace shortcuts use the existing
+capability-derived destination and Lucide icon. Task rows have one clear link with a meaningful
+title, subject and timing; avoid repeating that title as another prominent action.
+Summary counts may form compact rows in a grouped context surface, including two columns when
+readable. Show only what the Overview contract returns. No giant metric tiles, charts, invented
+trends, dashboard filler, or character illustrations.
 
 ## Portal shell
 

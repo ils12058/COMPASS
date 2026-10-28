@@ -55,7 +55,7 @@ test("returned backlog and schedule facts retain semantic labels and oldest asso
   assert.match(html, /Oldest waiting: /);
   assert.match(html, /Oldest due: /);
   assert.match(html, /<time dateTime="2026-10-10T00:00:00Z"/);
-  assert.doesNotMatch(html, /guidance_messages|oldest_due_at|good_moral\.issue|total_backlog|leaderboard|overdue|<svg/);
+  assert.doesNotMatch(html, /guidance_messages|oldest_due_at|good_moral\.issue|total_backlog|leaderboard|overdue/);
 });
 
 test("Head designation never synthesizes null metrics or institution-wide wording", () => {

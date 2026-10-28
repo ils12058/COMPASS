@@ -4,8 +4,7 @@ import { forwardRef, type ButtonHTMLAttributes, type ComponentProps, type Compon
 
 import { cn } from "@/lib/utils/cn";
 
-// A page's major commands — Create, Record, Import, Export, Refresh — drawn as a square icon surface
-// with a short visible label below it, so the page's principal work reads at a glance. Reserve it
+// A page's major commands use a compact icon and visible label in one touch-friendly control. Reserve it
 // for one to three page-level commands near a heading. Saving, cancelling, submitting, retrying, dialog
 // confirmations, row actions, and actions that belong to one region stay ordinary Buttons, and Back
 // stays a text link.
@@ -24,7 +23,7 @@ type PageActionContent = {
 };
 
 const root =
-  "group inline-flex min-w-12 max-w-28 flex-col items-center gap-1.5 rounded-md text-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body";
+  "group inline-flex min-h-11 min-w-11 max-w-full items-center justify-center gap-2 rounded-md border px-3 py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body motion-reduce:transition-none";
 
 const surface: Record<PageActionVariant, string> = {
   primary: "border-brand bg-brand text-on-brand",
@@ -34,9 +33,9 @@ const surface: Record<PageActionVariant, string> = {
 
 // Hover feedback; a disabled button keeps its resting look.
 const hover: Record<PageActionVariant, string> = {
-  primary: "group-hover:border-brand-strong group-hover:bg-brand-strong",
-  secondary: "group-hover:bg-surface-muted",
-  danger: "group-hover:bg-danger/90",
+  primary: "hover:border-brand-strong hover:bg-brand-strong",
+  secondary: "hover:bg-surface-muted",
+  danger: "hover:bg-danger/90",
 };
 
 function PageActionFace({
@@ -44,22 +43,19 @@ function PageActionFace({
   label,
   labelDetail,
   variant = "primary",
-  interactive,
-}: PageActionContent & { interactive: boolean }) {
+}: PageActionContent) {
   return (
     <>
       <span
         aria-hidden="true"
         data-page-action-surface={variant}
         className={cn(
-          "flex size-12 items-center justify-center rounded-md border transition-colors motion-reduce:transition-none",
-          surface[variant],
-          interactive && hover[variant],
+          "flex shrink-0 items-center justify-center",
         )}
       >
-        <Icon size={21} />
+        <Icon size={18} />
       </span>
-      <span data-page-action-label="" className="[overflow-wrap:anywhere] text-sm font-semibold leading-5 text-ink">
+      <span data-page-action-label="" className="[overflow-wrap:anywhere] text-sm font-semibold leading-5">
         {label}
         {labelDetail ? <span className="sr-only"> {labelDetail}</span> : null}
       </span>
@@ -74,8 +70,8 @@ export function PageActionLink({
   ...content
 }: PageActionContent & { href: string; className?: string; as?: ComponentType<ComponentProps<typeof Link>> }) {
   return (
-    <LinkComponent href={href} className={cn(root, className)}>
-      <PageActionFace {...content} interactive />
+    <LinkComponent href={href} className={cn(root, surface[content.variant ?? "primary"], hover[content.variant ?? "primary"], className)}>
+      <PageActionFace {...content} />
     </LinkComponent>
   );
 }
@@ -88,7 +84,7 @@ export const PageAction = forwardRef<
     ref={ref}
     type={type}
     disabled={disabled}
-    className={cn(root, "disabled:cursor-not-allowed disabled:opacity-55", className)}
+    className={cn(root, surface[variant ?? "primary"], !disabled && hover[variant ?? "primary"], "disabled:cursor-not-allowed disabled:opacity-55", className)}
     {...props}
   >
     <PageActionFace
@@ -96,7 +92,6 @@ export const PageAction = forwardRef<
       label={label}
       labelDetail={labelDetail}
       variant={variant}
-      interactive={!disabled}
     />
   </button>
 ));
@@ -107,7 +102,7 @@ PageAction.displayName = "PageAction";
 export function PageActionGroup({ className, children, role, "aria-label": ariaLabel, ...props }: HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex flex-wrap items-start gap-x-4 gap-y-2", className)}
+      className={cn("flex flex-wrap items-start gap-2", className)}
       role={role ?? (ariaLabel ? "group" : undefined)}
       aria-label={ariaLabel}
       {...props}

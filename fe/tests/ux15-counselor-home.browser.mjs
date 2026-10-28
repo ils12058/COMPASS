@@ -73,7 +73,7 @@ await check("confirmed-empty-agenda-keeps-work-visible", "/portal", counselorWor
 });
 
 await check("confirmed-empty-work-keeps-agenda-and-destinations", "/portal", counselorWorld({ appointments: appointmentsToday.slice(0, 2), work: [] }).options(), async (page) => {
-  await shown(agenda(page).getByRole("heading", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
+  await shown(agenda(page).getByRole("link", { name: "Open appointment with AlexandriaMariaCatherineJohnsonWilliams" }));
   await shown(work(page).getByText("No items currently need attention in My work.", { exact: true }));
   await shown(page.locator("#counselor-continuation-heading"));
   await screenshot(page, "after-counselor-desktop-no-work");

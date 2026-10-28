@@ -1,7 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { TaskLink } from "@/components/ui/task-link";
+import { SectionLink } from "@/components/ui/section-link";
+import { HomeShortcuts } from "./home-shortcuts";
+import { HomeAgendaRow } from "./home-agenda-row";
+import { CalendarClock, ListChecks } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
@@ -12,11 +16,6 @@ import { safeQueryData } from "@/features/freshness/query-freshness";
 import { useProjectionFocus } from "@/features/freshness/use-projection-focus";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { useGuidanceOperations } from "@/features/guidance-operations/guidance-operations-data";
-import {
-  AppointmentStatusBadge,
-  deliveryModeLabel,
-  formatAppointmentTime,
-} from "@/features/appointments/appointments-shared";
 import { OverviewAnnouncements } from "@/features/portal/home/overview-announcements";
 import type { OverviewAttentionData } from "@/features/portal/home/overview-work";
 import {
@@ -30,7 +29,6 @@ import { CompassApiError } from "@/lib/api/errors";
 import { formatInstitutionalDateTime, institutionalDateInputValue } from "@/lib/institutional-time";
 import {
   AppointmentStatus,
-  type AppointmentResponse,
   type UserSummary,
 } from "@/lib/api/generated/model";
 import {
@@ -70,12 +68,7 @@ function WorkPreview({ user, data }: { user: UserSummary; data: OverviewAttentio
         title="My work"
         titleId="gss-work-heading"
         actions={!accessDenied ? (
-          <Link
-            href="/portal/work"
-            className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            View all work <span aria-hidden="true" className="ml-1">→</span>
-          </Link>
+          <SectionLink href="/portal/work" label="All work" accessibleLabel="View all work" icon={ListChecks} />
         ) : undefined}
       />
 
@@ -97,20 +90,7 @@ function WorkPreview({ user, data }: { user: UserSummary; data: OverviewAttentio
       {items.length > 0 ? (
         <ul className="divide-y divide-border">
           {items.map(({ item, row }) => (
-            <li key={item.id} className="grid min-w-0 gap-2 px-4 py-3.5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center sm:gap-4 sm:px-5">
-              <div className="min-w-0 [overflow-wrap:anywhere]">
-                <h3 className="font-semibold leading-6 text-ink">{row.title}</h3>
-                <p className="mt-0.5 text-sm text-ink">{item.student.display_name}</p>
-                {item.priority === "TIME_SENSITIVE" ? <p className="mt-0.5 text-xs font-semibold text-muted">Time sensitive</p> : null}
-                <p className="mt-0.5 text-sm leading-6 text-muted">{row.detail}</p>
-              </div>
-              <Link
-                href={row.href}
-                className="inline-flex min-h-11 min-w-0 items-center self-start rounded-sm text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:justify-self-end [overflow-wrap:anywhere]"
-              >
-                {row.actionLabel} <span aria-hidden="true" className="ml-1 shrink-0">→</span>
-              </Link>
-            </li>
+            <li key={item.id}><TaskLink href={row.href} actionLabel={row.actionLabel} title={row.title} subject={item.student.display_name} detail={row.detail} priority={item.priority === "TIME_SENSITIVE" ? "Time sensitive" : undefined} /></li>
           ))}
         </ul>
       ) : data.workIsPending && !data.workHasConfirmedData ? (
@@ -141,37 +121,6 @@ function WorkPreview({ user, data }: { user: UserSummary; data: OverviewAttentio
   );
 }
 
-function ManagedAppointmentRow({ appointment }: { appointment: AppointmentResponse }) {
-  return (
-    <li className="min-w-0 px-4 py-3.5 sm:px-5">
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1">
-        <p className="font-semibold tabular-nums text-ink">
-          <time dateTime={appointment.starts_at}>{formatAppointmentTime(appointment.starts_at)}</time>
-          <span aria-hidden="true">–</span>
-          <time dateTime={appointment.ends_at}>{formatAppointmentTime(appointment.ends_at)}</time>
-          <span className="sr-only"> Philippine Time</span>
-        </p>
-        <AppointmentStatusBadge status={appointment.status} />
-      </div>
-      <h3 className="mt-1 min-w-0 [overflow-wrap:anywhere] text-base font-semibold leading-6">
-        <Link
-          href={`/portal/appointments/${appointment.id}`}
-          aria-label={`Open managed appointment with ${appointment.student.display_name}`}
-          className="flex min-h-11 w-full min-w-0 items-center text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus [overflow-wrap:anywhere]"
-        >
-          {appointment.student.display_name}
-        </Link>
-      </h3>
-      <p className="mt-0.5 min-w-0 [overflow-wrap:anywhere] text-sm leading-6 text-muted">
-        {appointment.service.name} <span aria-hidden="true">·</span> {deliveryModeLabel(appointment.delivery_mode)}
-      </p>
-      <p className="mt-0.5 min-w-0 [overflow-wrap:anywhere] text-sm leading-6 text-muted">
-        Counselor: {appointment.provider.display_name}
-      </p>
-    </li>
-  );
-}
-
 function ManagedSchedule({ user, today }: { user: UserSummary; today: string }) {
   const access = getAppointmentAccess(user);
   const params = getGssManagedAppointmentParams(today);
@@ -195,17 +144,12 @@ function ManagedSchedule({ user, today }: { user: UserSummary; today: string }) 
   const initialError = query.isError && !page;
 
   return (
-    <Panel aria-labelledby="gss-schedule-heading">
+    <Panel className="@container/agenda" aria-labelledby="gss-schedule-heading">
       <PanelHeader
         title="Today's managed Appointments"
         titleId="gss-schedule-heading"
         actions={page || !initialError ? (
-          <Link
-            href={todayHref}
-            className="inline-flex min-h-11 items-center text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
-          >
-            View full schedule <span aria-hidden="true" className="ml-1">→</span>
-          </Link>
+          <SectionLink href={todayHref} label="Schedule" accessibleLabel="View full schedule" icon={CalendarClock} />
         ) : undefined}
       />
 
@@ -222,7 +166,7 @@ function ManagedSchedule({ user, today }: { user: UserSummary; today: string }) 
         </Notice>
       ) : null}
 
-      {items.length > 0 ? <ul className="divide-y divide-border">{items.map((appointment) => <ManagedAppointmentRow key={appointment.id} appointment={appointment} />)}</ul> : null}
+      {items.length > 0 ? <ul className="divide-y divide-border">{items.map((appointment) => <HomeAgendaRow key={appointment.id} appointment={appointment} managed />)}</ul> : null}
       {query.isPending && !page ? (
         <div aria-busy="true" className="space-y-3 px-4 py-4 sm:px-5">
           <Skeleton className="h-4 w-44" />
@@ -250,9 +194,9 @@ function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
   const allZero = Boolean(metrics?.length) && metrics?.every((metric) => metric.count === 0);
 
   return (
-    <Panel className="border-0 bg-transparent" aria-labelledby="gss-operations-heading">
-      <PanelHeader className="border-border px-0 sm:px-0" title="Office workload" titleId="gss-operations-heading" />
-      <p className="py-3 text-sm leading-6 text-muted">Counts reflect office demand within your scope, not individual assignments.</p>
+    <Panel aria-labelledby="gss-operations-heading">
+      <PanelHeader className="border-b-0 pb-1" title="Office workload" titleId="gss-operations-heading" />
+      <p className="px-4 pb-3 text-sm leading-6 text-muted sm:px-5">Counts reflect office demand within your scope, not individual assignments.</p>
 
       {query.isError && data ? (
         <RefreshFailureNotice
@@ -275,7 +219,7 @@ function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
       ) : null}
 
       {metrics && metrics.length > 0 ? (
-        <dl aria-label="Scoped office workload metrics" className="divide-y divide-border">
+        <dl aria-label="Scoped office workload metrics" className="divide-y divide-border px-4 sm:px-5">
           {metrics.map((metric) => (
             <div key={metric.key} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 py-3">
               <dt className="min-w-0 text-sm font-semibold leading-6 [overflow-wrap:anywhere]">
@@ -289,7 +233,7 @@ function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
       ) : null}
       {metrics && metrics.length === 0 ? <PanelMessage>No Guidance Operations metrics are available within the returned scope.</PanelMessage> : null}
       {allZero ? <PanelMessage>{query.isError ? "The last confirmed office workload had no items waiting." : "No work is currently waiting in the returned office metrics."}</PanelMessage> : null}
-      {data ? <p className="border-t border-border py-2.5 text-xs text-muted">Updated <time dateTime={data.generated_at}>{formatInstitutionalDateTime(data.generated_at)}</time></p> : null}
+      {data ? <p className="border-t border-border px-4 py-2.5 text-xs text-muted sm:px-5">Updated <time dateTime={data.generated_at}>{formatInstitutionalDateTime(data.generated_at)}</time></p> : null}
     </Panel>
   );
 }
@@ -297,52 +241,21 @@ function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
 function OfficeDestinations({ user }: { user: UserSummary }) {
   const destinations = getGssHomeDestinations(user);
   if (destinations.length === 0) return null;
-  return (
-    <Panel className="@container border-0 bg-transparent" aria-labelledby="gss-destinations-heading">
-      <PanelHeader className="border-border px-0 sm:px-0" title="Continue in your workspaces" titleId="gss-destinations-heading" />
-      <ul className="grid @min-[32rem]:grid-cols-2">
-        {destinations.map((destination) => {
-          const Icon = destination.icon;
-          return (
-            <li key={destination.href} className="border-b border-border">
-              <Link
-                href={destination.href}
-                className="group flex min-h-11 min-w-0 items-center justify-between gap-3 py-3 pr-4 text-sm transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
-              >
-                <span className="flex min-w-0 items-start gap-3 [overflow-wrap:anywhere]">
-                  <Icon aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-brand" />
-                  <span className="min-w-0">
-                    <span className="block font-semibold text-brand group-hover:underline">{destination.label}</span>
-                  </span>
-                </span>
-                <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </Panel>
-  );
+  return <HomeShortcuts title="Continue in your workspaces" titleId="gss-destinations-heading" destinations={destinations} />;
 }
 
 export function GssHome({ user, attention, now }: { user: UserSummary; attention: OverviewAttentionData; now: Date }) {
   const today = institutionalDateInputValue(now);
   const hasManagedSchedule = getAppointmentAccess(user).canManage;
-  return (
-    <div className="@container grid min-w-0 gap-5">
-      <div className={hasManagedSchedule
-        ? "grid min-w-0 items-start gap-5 @min-[58rem]:grid-cols-[minmax(0,1.3fr)_minmax(19rem,0.7fr)]"
-        : "grid min-w-0 items-start gap-5 @min-[58rem]:grid-cols-[minmax(0,1fr)_minmax(19rem,0.7fr)]"}>
-        <div className="grid min-w-0 gap-5">
-          <WorkPreview user={user} data={attention} />
-          {hasManagedSchedule ? <ManagedSchedule user={user} today={today} /> : null}
-        </div>
-        <div className="grid min-w-0 gap-5">
-          <GuidanceOperationsSnapshot user={user} />
-          <OfficeDestinations user={user} />
-        </div>
+  return <div className="@container grid min-w-0 gap-5">
+    <WorkPreview user={user} data={attention} />
+    <div className={hasManagedSchedule ? "grid min-w-0 items-start gap-5 @min-[52rem]:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]" : "grid min-w-0 gap-5"}>
+      {hasManagedSchedule ? <ManagedSchedule user={user} today={today} /> : null}
+      <div className="grid min-w-0 gap-5">
+        <GuidanceOperationsSnapshot user={user} />
+        <OfficeDestinations user={user} />
       </div>
-      <OverviewAnnouncements />
     </div>
-  );
+    <OverviewAnnouncements />
+  </div>;
 }

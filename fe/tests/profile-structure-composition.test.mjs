@@ -110,7 +110,7 @@ test("Structure reads as a hierarchy: each Campus, its Colleges, and each Colleg
   assert.match(computing, /aria-label="Programs in College of Computing"/);
   assert.match(computing, /BS Information Systems[\s\S]*BS Information Technology/);
   assert.match(computing, /Bachelor&#x27;s · 1st–4th Year/);
-  assert.match(computing, /Master&#x27;s · Year Level policy pending/);
+  assert.match(computing, /Master&#x27;s · Year levels not set/);
   assert.doesNotMatch(computing, /BS Business Administration/);
   const business = html.slice(html.indexOf('id="college-cba"'));
   assert.match(business, /BS Business Administration[\s\S]*Inactive/);

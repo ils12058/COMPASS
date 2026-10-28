@@ -42,7 +42,7 @@ for (const [role, makeState, heading] of cases) {
           assert.ok(box && box.height >= 43, "Primary work links retain a touch-friendly target");
         }
         const summary = page.locator('section[aria-labelledby="overview-announcements-heading"]');
-        assert.equal(await summary.evaluate((node) => getComputedStyle(node).borderTopWidth), "0px", "Supporting announcements use a lighter surface");
+        assert.ok(await summary.getByRole("link", { name: "All announcements", exact: true }).isVisible(), "Announcements retain a discoverable destination");
       }
       assert.equal(requests.filter((r) => r.method !== "GET").length, 0);
       const measures = await page.evaluate(() => {

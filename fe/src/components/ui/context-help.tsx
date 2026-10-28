@@ -4,6 +4,7 @@ import { CircleHelp } from "lucide-react";
 import { type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 export type HelpSection = { heading: string; content: ReactNode };
@@ -22,12 +23,12 @@ export function ContextHelp({
 }) {
   return (
     <Dialog>
-      <DialogTrigger asChild>
+      <Tooltip label={`${label}: ${title}`}><DialogTrigger asChild>
         <Button variant="quiet" className="min-h-11" aria-label={`${label}: ${title}`}>
           <CircleHelp aria-hidden="true" size={18} />
-          {label}
+          <span className="hidden [@media(pointer:coarse)]:inline">{label}</span>
         </Button>
-      </DialogTrigger>
+      </DialogTrigger></Tooltip>
       <DialogContent className="max-w-2xl" closeLabel="Close Help">
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription className="sr-only">Guidance for this workspace.</DialogDescription>

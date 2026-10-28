@@ -180,18 +180,20 @@ function RequestFormFrame({
   title,
   description,
   children,
+  embedded = false,
 }: {
   title: string;
   description?: string;
+  embedded?: boolean;
   children: ReactNode;
 }) {
   return (
     <section className="max-w-3xl space-y-5">
-      <GoodMoralHeading
+      {embedded ? <div><h2 className="font-heading text-xl font-semibold text-ink">{title}</h2>{description ? <p className="mt-1 text-sm text-muted">{description}</p> : null}</div> : <GoodMoralHeading
         title={title}
         description={description}
         back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>}
-      />
+      />}
       {children}
     </section>
   );
@@ -266,7 +268,7 @@ function CurrentStudentRequestChoices() {
         </PanelSection>
       </Panel>
       {variant === "CURRENT_STUDENT" && f4Eligible && academicContext ? <CurrentStudentRequestForm academicContext={academicContext} /> : null}
-      {variant === "GRADUATE" ? <GraduateRequestForm /> : null}
+      {variant === "GRADUATE" ? <GraduateRequestForm embedded /> : null}
     </section>
   );
 }
@@ -288,6 +290,7 @@ function CurrentStudentRequestForm({ academicContext }: { academicContext: GoodM
 
   return (
     <RequestFormFrame
+      embedded
       title="F4 · Current Student request"
       description="For current Bachelor's students."
     >
@@ -338,7 +341,7 @@ function CurrentStudentRequestForm({ academicContext }: { academicContext: GoodM
   );
 }
 
-function GraduateRequestForm() {
+function GraduateRequestForm({ embedded = false }: { embedded?: boolean } = {}) {
   const create = useCreateGoodMoralRequest();
   const [degree, setDegree] = useState("");
   const [major, setMajor] = useState("");
@@ -351,7 +354,7 @@ function GraduateRequestForm() {
   }
 
   return (
-    <RequestFormFrame title="F6 · UCN Bachelor's degree request">
+    <RequestFormFrame embedded={embedded} title="F6 · UCN Bachelor's degree request">
       <CreateFeedback state={create} busy={create.isPending} />
       <Notice>
         F6 is for a completed UCN Bachelor&apos;s degree. COMPASS doesn&apos;t verify your degree or graduation date.

@@ -79,6 +79,14 @@ h6 {
   outline-color: var(--compass-focus);
 }
 
+/* System high-contrast modes may suppress box-shadow focus rings. */
+@media (forced-colors: active) {
+  :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
+
 .public-hero {
   background: var(--compass-entry-gradient);
 }

@@ -1,3 +1,4 @@
+import { CalendarClock, type LucideIcon } from "lucide-react";
 import { canManageAvailability } from "@/features/availability/availability-shared";
 import { getAppointmentAccess } from "@/features/appointments/appointments-access";
 import { portalWorkspaceGroups } from "@/features/portal/components/portal-workspaces";
@@ -88,17 +89,17 @@ export function isHeadGuidanceCounselor(user: UserSummary): boolean {
   return user.role === "COUNSELOR" && user.designations.includes(DesignationCode.HEAD_GUIDANCE_COUNSELOR);
 }
 
-export function getCounselorHomeDestinations(user: UserSummary): CounselorHomeDestination[] {
+export function getCounselorHomeDestinations(user: UserSummary) {
   if (user.role !== "COUNSELOR") return [];
   const visible = visibleWorkspaceHrefs(user);
-  return COUNSELOR_DESTINATIONS.filter((destination) => visible.has(destination.href)).slice(0, 4);
+  return withIcons(user, COUNSELOR_DESTINATIONS.filter((destination) => visible.has(destination.href)).slice(0, 4));
 }
 
-export function getHeadGuidanceHomeDestinations(user: UserSummary): CounselorHomeDestination[] {
+export function getHeadGuidanceHomeDestinations(user: UserSummary) {
   if (!isHeadGuidanceCounselor(user)) return [];
 
   const visible = visibleWorkspaceHrefs(user);
-  return HEAD_OVERSIGHT_DESTINATIONS.filter((destination) => {
+  return withIcons(user, HEAD_OVERSIGHT_DESTINATIONS.filter((destination) => {
     if (destination.href === "/portal/availability" && !canManageAvailability(user)) return false;
     return visible.has(destination.href);
   }).concat(
@@ -109,5 +110,10 @@ export function getHeadGuidanceHomeDestinations(user: UserSummary): CounselorHom
           description: "Open the Appointments you are authorized to manage.",
         }]
       : [],
-  ).slice(0, 5);
+  ).slice(0, 5));
+}
+
+function withIcons(user: UserSummary, destinations: CounselorHomeDestination[]): (CounselorHomeDestination & { icon: LucideIcon })[] {
+  const icons = new Map(portalWorkspaceGroups(user).flatMap((group) => group.links).map((link) => [link.href, link.icon]));
+  return destinations.map((destination) => ({ ...destination, icon: icons.get(destination.href) ?? CalendarClock }));
 }

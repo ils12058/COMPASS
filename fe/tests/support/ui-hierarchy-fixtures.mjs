@@ -38,6 +38,7 @@ export const workspace = (capture = "NOT_STARTED") => ({
 });
 export const service = {
   id: serviceId, code: "COUNSELING", name: "Counseling", description: "",
+  booking_pathways: ["FLEXIBLE_APPOINTMENT"],
   appointment_booking_enabled: true, default_appointment_duration_minutes: 60,
   cancellation_cutoff_minutes: 30, requires_current_inventory: false,
   delivery_modes: ["IN_PERSON", "ONLINE"], provider_coverage: "ALL_COUNSELORS",

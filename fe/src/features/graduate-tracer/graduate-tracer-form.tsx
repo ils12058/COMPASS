@@ -212,7 +212,7 @@ export function GraduateTracerForm({ detail }: { detail: GraduateTracerDetailRes
       <form onSubmit={(event) => event.preventDefault()} aria-busy={pending} className="@container/tracer min-w-0 [overflow-wrap:anywhere]">
         <Panel as="div">
           <PanelHeader
-            title="Graduate Tracer Survey"
+            title="Your response"
             titleId="graduate-tracer-form-heading"
             description="Your draft remains private until you submit it."
           />

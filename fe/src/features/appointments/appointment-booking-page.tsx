@@ -352,9 +352,6 @@ function BookingWorkspace() {
 
       <StudentBookingPathways />
 
-      <p className="-mt-3 mb-5 text-sm text-muted">
-        Service <span aria-hidden="true">→</span> Delivery <span aria-hidden="true">→</span> Counselor <span aria-hidden="true">→</span> Time <span aria-hidden="true">→</span> Review
-      </p>
 
       {/* One booking sheet: each step opens below the last, and the review closes the sheet with
           the booking action. */}

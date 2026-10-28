@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { ListChecks } from "lucide-react";
+import { SectionLink } from "@/components/ui/section-link";
 
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
@@ -66,7 +68,7 @@ function OperationsSummary({ user }: { user: UserSummary }) {
         </Panel> : null}
       </div>
       <div className="mt-4 flex min-w-0 flex-wrap items-center justify-between gap-x-5 gap-y-2">
-        <Link href="/portal/work" className={`${metricLink} text-sm font-semibold`}>Open My work <span aria-hidden="true" className="ml-1">→</span></Link>
+        <SectionLink href="/portal/work" label="My work" accessibleLabel="Open My work" icon={ListChecks} />
         <p className="text-sm leading-6 text-muted">{query.isError ? "Last confirmed" : "As of"} <time dateTime={data.generated_at}>{formatInstitutionalDateTime(data.generated_at)}</time> · Philippine Time</p>
       </div>
     </> : null}
