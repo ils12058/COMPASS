@@ -241,7 +241,8 @@ function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
 function OfficeDestinations({ user }: { user: UserSummary }) {
   const destinations = getGssHomeDestinations(user);
   if (destinations.length === 0) return null;
-  return <HomeShortcuts title="Continue in your workspaces" titleId="gss-destinations-heading" destinations={destinations} />;
+  return <HomeShortcuts title="Continue in your workspaces" titleId="gss-destinations-heading" destinations={destinations}
+    illustration={destinations.some(item => item.href === "/portal/appointments") ? "/illustrations/appointment-calendar-3d.png" : undefined} />;
 }
 
 export function GssHome({ user, attention, now }: { user: UserSummary; attention: OverviewAttentionData; now: Date }) {

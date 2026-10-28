@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { IllustratedIntroduction } from "@/components/ui/illustrated-introduction";
 import { ContextHelp } from "@/components/ui/context-help";
 import { Panel, PanelSection } from "@/components/ui/panel";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { canBrowseGroupSessions } from "@/features/group-sessions/group-sessions-access";
 
-export function StudentBookingPathways() {
+export function StudentBookingPathways({ illustration }: { illustration?: string }) {
   const { user } = usePortalSession();
   const group = canBrowseGroupSessions(user);
   return <Panel className="mb-5">
@@ -15,7 +16,7 @@ export function StudentBookingPathways() {
       { heading: "Group sessions", content: <p>Group activities have their own registration and capacity. A published session may not be open to every student.</p> },
       { heading: "After booking", content: <p>Find individual appointments in My appointments and group activities in My Registrations. If a result cannot be confirmed, check your records before trying again.</p> },
     ]} />}>
-      <p className="mt-2 text-sm text-muted">Choose how you would like to meet. Times and registration depend on current schedules and eligibility.</p>
+      <IllustratedIntroduction src={illustration}><p className="mt-2 text-sm text-muted">Choose how you would like to meet. Times and registration depend on current schedules and eligibility.</p></IllustratedIntroduction>
       <ul className="mt-4 divide-y divide-border">
         <li className="py-3"><h3 className="font-semibold">Individual appointment</h3><p className="text-sm text-muted">Choose a Service, delivery mode, counselor and available time.</p><a href="#booking-service-heading" className="inline-flex min-h-11 items-center font-semibold text-brand underline underline-offset-4">Find an appointment</a></li>
         <li className="py-3"><h3 className="font-semibold">Scheduled appointment slot</h3><p className="text-sm text-muted">Choose a specific individual time published by the office.</p>{user.capabilities.includes("appointments.view_self") && user.capabilities.includes("services.catalog.view") ? <Link href="/portal/appointments/book?pathway=FIXED_DATE_SLOT" className="inline-flex min-h-11 items-center font-semibold text-brand underline underline-offset-4">View scheduled slots</Link> : <p className="mt-2 text-sm text-muted">Scheduled slot browsing is unavailable to this account.</p>}</li>

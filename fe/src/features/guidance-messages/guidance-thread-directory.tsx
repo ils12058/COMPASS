@@ -4,6 +4,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PanelMessage } from "@/components/ui/panel";
+import { IllustratedEmptyState } from "@/components/ui/illustrated-empty-state";
 import { RefreshFailureNotice } from "@/features/freshness/refresh-failure-notice";
 import { isTransientRefreshError } from "@/features/freshness/query-freshness";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
@@ -76,7 +77,7 @@ export function GuidanceThreadDirectory({
     );
   } else if (rows.length === 0) {
     body = (
-      <PanelMessage
+      <IllustratedEmptyState src={viewer === "student" && !activeThreadId && !directory.isError ? "/illustrations/guidance-messages-3d.png" : undefined}
         action={
           canStart ? (
             <GuardedPortalLink href="/portal/messages/new" className={buttonVariants({ variant: "secondary" })}>
@@ -94,7 +95,7 @@ export function GuidanceThreadDirectory({
         ) : (
           "No Guidance conversations are available in your current workload."
         )}
-      </PanelMessage>
+      </IllustratedEmptyState>
     );
   } else {
     body = (

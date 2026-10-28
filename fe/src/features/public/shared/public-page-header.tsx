@@ -1,7 +1,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 
-// A public page's title band. A page may add one approved GCO character, which stands on the
+// A public page's title band. A page may add one approved illustration, which stands on the
 // band's lower edge beside the title and is hidden on phones, where it would crowd the title.
 export function PublicPageHeader({
   illustration,

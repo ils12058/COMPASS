@@ -4,12 +4,17 @@ Use the [user-copy guide](user-copy-guide.md) for language conventions and seman
 
 ## Purposeful illustration accents
 
-Follow the narrow placement rules in [AGENTS.md §2](../AGENTS.md). The approved GCO characters
-retain their public hero and Announcements/Resources title-band placements. The ten matching
-feature objects are available for a later reviewed SIMPLIFY-2C integration into
-selected non-sensitive discovery, onboarding, form introductions or meaningful empty states.
-SIMPLIFY-2B does not change role-based Home components.
+Follow the narrow placement rules in [AGENTS.md §2](../AGENTS.md). The public hero retains the
+GCO group and Resources retains its character; Announcements uses the matching megaphone object.
+SIMPLIFY-2C adds small feature objects to capability-derived Home discovery, available booking
+pathways, first Inventory entry, eligible Exit entry, Tracer before a draft exists, Good Moral
+request orientation and genuinely empty Messages/My Appointments. See the
+[integration note](../../docs/simplify-2c/README.md) for exact conditions.
 
+Use `IllustratedIntroduction` to align an object beside existing introductory content without
+another card or heading. `IllustratedEmptyState` keeps complete state text and existing actions.
+Feature owners decide when artwork is appropriate; these helpers never determine eligibility or
+access. Hide optional accents when enlarged text leaves too little room.
 Keep each accent small and subordinate to its section's content and next action; do not add one to
 every section or repeat nearby illustrations. Exclude confidential Counseling/assessment records,
 security settings, dense administrative tables, consequential dialogs, and error or blocked states. Keep Lucide icons and

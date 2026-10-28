@@ -9,6 +9,7 @@ import { DoorOpen } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { IllustratedEmptyState } from "@/components/ui/illustrated-empty-state";
 import { Notice } from "@/components/ui/notice";
 import { PageAction } from "@/components/ui/page-action";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
@@ -88,11 +89,11 @@ export function ExitInterviewStudentHome({ access }: { access: ExitInterviewAcce
             </Link>
           </div>
         ) : state?.opportunity?.status === "OPEN" && access.canManageSelf ? (
-          <PanelMessage action={!state.inventory_submitted ? <Link href="/portal/inventory" className={buttonVariants({ variant: "secondary" })}>Open Individual Inventory</Link> : undefined}>
+          <IllustratedEmptyState src={canStart && !startError && !start.isPending ? "/illustrations/exit-interview-3d.png" : undefined} action={!state.inventory_submitted ? <Link href="/portal/inventory" className={buttonVariants({ variant: "secondary" })}>Open Individual Inventory</Link> : undefined}>
             The Guidance and Counseling Office has opened an Exit Interview for you.
             {state.opportunity.source === "GRADUATION" ? " Submit it before requesting your graduation Good Moral certificate." : null}
             {!state.inventory_submitted ? " Submit your current Individual Inventory before starting." : null}
-          </PanelMessage>
+          </IllustratedEmptyState>
         ) : (
           <PanelMessage>{state?.opportunity?.status === "REVOKED" ? "The Guidance and Counseling Office has withdrawn your Exit Interview access." : state?.opportunity?.status === "COMPLETED" ? "Your Exit Interview workflow is completed." : "The Guidance and Counseling Office has not opened an Exit Interview for you."}</PanelMessage>
         )}

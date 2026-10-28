@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
+import { IllustratedIntroduction } from "@/components/ui/illustrated-introduction";
 import { LoadingRegion } from "@/components/ui/loading-region";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Notice } from "@/components/ui/notice";
@@ -121,6 +122,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
         description="This survey collects information about graduate education and employment experiences to support graduate employability research and curriculum improvement."
       />
       <div className="max-w-3xl rounded-sm border border-brand-line bg-surface-raised px-4 py-5 sm:px-5">
+        <IllustratedIntroduction src={access.canManageSelf && isNotStarted && !startError && !needsStatusCheck && !start.isPending ? "/illustrations/graduate-tracer-3d.png" : undefined}>
         <p className="text-sm leading-6 text-muted">Your response is confidential and will be available only to authorized Guidance and Counseling Office reviewers after submission. Starting creates a private draft; it does not submit answers.</p>
         {access.canManageSelf ? (
           <>
@@ -133,6 +135,7 @@ export function GraduateTracerStudentWorkspace({ access }: { access: GraduateTra
         ) : (
           <p className="mt-4 text-sm leading-6 text-ink">You cannot start a Graduate Tracer response with this account.</p>
         )}
+        </IllustratedIntroduction>
       </div>
     </section>
   );

@@ -14,13 +14,13 @@ const overrides = {
 };
 const routes = [
   { path: "/", name: "landing", asset: "gco-characters", ratio: 2 },
-  { path: "/announcements", name: "announcements", asset: "gco-character-point-up", ratio: 1 },
+  { path: "/announcements", name: "announcements", asset: "announcements-3d", ratio: 1 },
   { path: "/resources", name: "resources", asset: "gco-character-point-right", ratio: 1 },
 ];
 const intersects = (a, b) => a.x < b.x + b.width - 1 && a.x + a.width > b.x + 1 &&
   a.y < b.y + b.height - 1 && a.y + a.height > b.y + 1;
 
-for (const device of ["desktop", "phone", "narrowPhone"]) {
+for (const device of ["desktop", "tablet", "phone", "narrowPhone"]) {
   for (const route of routes) {
     let release;
     const gate = new Promise((resolve) => { release = resolve; });
@@ -42,12 +42,12 @@ for (const device of ["desktop", "phone", "narrowPhone"]) {
         // image gate. Wait only for fonts currently loading, with a hard timeout.
         await page.waitForFunction(() => [...document.fonts].every((font) => font.status !== "loading"));
         const image = page.locator(`main img[src*="${route.asset}"]`);
-        assert.equal(await image.count(), 1, "Existing public placement renders exactly one character illustration");
+        assert.equal(await image.count(), 1, "Public title and hero placements render exactly one illustration");
         assert.equal(await image.getAttribute("alt"), "", "Nearby content supplies decorative image meaning");
         assert.equal(await image.evaluate((element) => element.tabIndex), -1, "Artwork never receives keyboard focus");
-        assert.equal(await page.locator('main img[src*="-3d"]').count(), 0,
-          "Feature objects remain staged for the separate Home integration");
-        const visible = device === "desktop" || route.name === "landing";
+        assert.equal(await page.locator('main img[src*="-3d"]').count(), route.name === "announcements" ? 1 : 0,
+          "Announcements uses its object in place of the character, without duplication");
+        const visible = ["desktop", "tablet"].includes(device) || route.name === "landing";
         assert.equal(await image.isVisible(), visible, "Title-band artwork remains hidden on narrow phones");
         const headingBefore = await page.locator("main h1").boundingBox();
         const imageBefore = visible ? await image.boundingBox() : null;
