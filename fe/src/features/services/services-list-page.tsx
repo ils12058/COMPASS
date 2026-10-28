@@ -28,7 +28,7 @@ import {
   ServicesStatusBadge,
   ServicesSystemRequiredBadge,
 } from "@/features/services/services-shared";
-import { ServiceOrdering } from "@/lib/api/generated/model";
+import { BookingPathway, ServiceOrdering } from "@/lib/api/generated/model";
 import { useServicesList } from "@/lib/api/generated/services/services";
 
 type BookingFilter = "available" | "not_available";
@@ -41,6 +41,15 @@ function descriptionExcerpt(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) return "";
   return trimmed.length > 180 ? trimmed.slice(0, 177) + "…" : trimmed;
+}
+
+function pathwaySummary(pathways: BookingPathway[]): string {
+  const labels = [
+    pathways.includes(BookingPathway.FLEXIBLE_APPOINTMENT) ? "Flexible appointments" : null,
+    pathways.includes(BookingPathway.FIXED_DATE_SLOT) ? "Scheduled slots" : null,
+    pathways.includes(BookingPathway.GROUP_SESSION) ? "Group Sessions" : null,
+  ].filter((label): label is string => Boolean(label));
+  return labels.length ? labels.join(" · ") : "No booking pathway configured";
 }
 
 export function ServicesListPage() {
@@ -198,15 +207,15 @@ export function ServicesListPage() {
           </Button>
         ) : undefined}
         filters={<>
-          <FilterField label="Appointment booking" htmlFor="services-booking-filter" className="sm:col-span-2">
+          <FilterField label="Flexible appointment booking" htmlFor="services-booking-filter" className="sm:col-span-2">
             <Select
               id="services-booking-filter"
               value={booking ?? ""}
               onChange={(event) => updateBooking(event.target.value)}
             >
               <option value="">All</option>
-              <option value="available">Available</option>
-              <option value="not_available">Not available</option>
+              <option value="available">Enabled</option>
+              <option value="not_available">Disabled</option>
             </Select>
           </FilterField>
         {canManage ? (
@@ -301,7 +310,15 @@ export function ServicesListPage() {
                   </div>
                   <div>
                     <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
-                      Appointment booking
+                      Booking pathways
+                    </dt>
+                    <dd className="mt-1 text-ink">
+                      {pathwaySummary(service.booking_pathways)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs font-semibold uppercase tracking-wide text-muted">
+                      Flexible appointment booking
                     </dt>
                     <dd className="mt-1 text-ink">
                       {serviceBookingLabel(service.appointment_booking_enabled)}

@@ -18,6 +18,8 @@ import { Notice } from "@/components/ui/notice";
 import { Select } from "@/components/ui/select";
 import { PanelSection } from "@/components/ui/panel";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
+import { StepUpDialog } from "@/features/account/security/security-shared";
+import { stepUpRequirement, type StepUpRequirement } from "@/features/account/security/step-up";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import {
@@ -45,6 +47,8 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
   const [withdrawSlot, setWithdrawSlot] = useState<ServiceSlotResponse | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [stepUpOpen, setStepUpOpen] = useState(false);
+  const [stepUpKind, setStepUpKind] = useState<StepUpRequirement>("verify");
 
   // Form states
   const [providerId, setProviderId] = useState(
@@ -79,6 +83,28 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
 
   const slots = slotsQuery.data?.data ?? [];
   const providers = providersQuery.data?.data.items ?? [];
+
+  function handleMutationError(err: unknown, fallback: string): boolean {
+    const requirement = stepUpRequirement(err);
+    if (requirement) {
+      setStepUpKind(requirement);
+      setStepUpOpen(true);
+      setErrorMessage(
+        requirement === "verify"
+          ? "A recent security check is required. Review this action again after verification."
+          : "Set up an authenticator, then review this action again.",
+      );
+      return true;
+    }
+    const apiErr = err as { data?: { error?: { message?: string } }; message?: string };
+    setErrorMessage(apiErr.data?.error?.message ?? apiErr.message ?? fallback);
+    return false;
+  }
+
+  async function refreshAfterStepUp() {
+    await Promise.all([slotsQuery.refetch(), providersQuery.refetch()]);
+    setSuccessMessage("Security check complete. Review the current slot details and confirm the action again.");
+  }
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,10 +143,7 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
       setCreateOpen(false);
       setStartDateTime("");
     } catch (err: unknown) {
-      const apiErr = err as { data?: { error?: { message?: string } }; message?: string };
-      setErrorMessage(
-        apiErr.data?.error?.message ?? apiErr.message ?? "Failed to publish appointment slot."
-      );
+      handleMutationError(err, "Failed to publish appointment slot.");
     }
   };
 
@@ -138,10 +161,7 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
         queryKey: getServicesListSlotsQueryKey(service.id),
       });
     } catch (err: unknown) {
-      const apiErr = err as { data?: { error?: { message?: string } }; message?: string };
-      setErrorMessage(
-        apiErr.data?.error?.message ?? apiErr.message ?? "Failed to update slot publication."
-      );
+      handleMutationError(err, "Failed to update slot publication.");
     }
   };
 
@@ -159,10 +179,7 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
       setWithdrawSlot(null);
       setSuccessMessage("Slot withdrawn from future booking. Its record and appointment history are preserved.");
     } catch (err: unknown) {
-      const apiErr = err as { data?: { error?: { message?: string } }; message?: string };
-      setErrorMessage(
-        apiErr.data?.error?.message ?? apiErr.message ?? "Failed to withdraw slot."
-      );
+      handleMutationError(err, "Failed to withdraw slot.");
     }
   };
 
@@ -434,6 +451,12 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
           from future booking? The slot and any Appointment history will remain on record.
         </p>
       </ConsequentialActionDialog>
+      <StepUpDialog
+        open={stepUpOpen}
+        requirement={stepUpKind}
+        onOpenChange={setStepUpOpen}
+        onVerified={() => refreshAfterStepUp()}
+      />
     </PanelSection>
   );
 }
