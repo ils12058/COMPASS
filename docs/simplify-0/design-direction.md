@@ -1,0 +1,43 @@
+# Design direction: warm minimalism with purposeful illustration
+
+**Product principle:** simplify the workflow while preserving accountability. Keep COMPASS's existing palette, type, tokens, and UI primitives ([frontend rules](../../fe/AGENTS.md), [UI guidelines](../../fe/docs/ui-guidelines.md)). Reduce visual competition through hierarchy and grouping; do not shrink type or hide meaningful states.
+
+## Layout and density
+
+- Put the person's identity, current state, next useful action, and genuine warning first. Keep a page title description to zero or one short sentence.
+- Use one clearly dominant work region. Prefer a simple list with row separators for repeated actions or records; reserve bordered panels for distinct tasks, forms, or stateful workspaces. Avoid wrapping every row in its own card or adding cards within cards.
+- Treat supporting counts, continuation links, and announcements as secondary. Keep them available through the page and existing navigation, but don't give them the same visual weight as time-sensitive work.
+- Preserve page headings and meaningful section labels. Group longer conceptual explanation in the established page-level Help; keep consequences visible at the decision and input guidance beside the field.
+- On mobile, stack regions in a deliberate reading order, let copy and controls wrap, and keep the primary action close to its task. Avoid turning two-column desktop content into a long parade of equally framed cards.
+
+## Language and action patterns
+
+- Use concise, ordinary language tied to the task: “Change note” or “Note about this change” is more approachable than “Institutional basis/reference.” Do not change the current required backend field or its meaning without a separately approved contract and policy decision.
+- Name actions with a clear verb and object. Keep consequential commands explicit; use a focused editor for short changes, then one current-state review and deliberate Save/Confirm when the consequence warrants it.
+- Show setup/verification prompts only when the server requires recent MFA. Preserve the input, explain the next step, then require the person to review and submit again. Never replay a protected mutation automatically.
+- Translate versions, UUIDs, internal error codes, and policy enums into task language. Keep diagnostics in a deliberate technical surface. History should show supported facts (what changed, old/new value, when, safe actor label if available, and change note); do not invent identities.
+
+## Illustrations, 3D direction, and Lucide
+
+At the audited baseline, the four committed GCO PNGs are shaded 2D/chibi illustrations, not converted 3D assets. Use them as restrained accents in public welcome and feature discovery: the group image is in the landing hero and a single character is beside the public Announcements or Resources title. See [public hero](../../fe/src/features/public/home/public-hero.tsx), [title band](../../fe/src/features/public/shared/public-page-header.tsx), and the [Announcements](../../fe/src/app/%28public%29/announcements/page.tsx) / [Resources](../../fe/src/app/%28public%29/resources/page.tsx) placements. Avoid repeated mascots, decorative use in dense Catalog tables or confidential Counseling records, and artwork as a replacement for navigation/action icons. The converted toy-like 3D versions are absent from this baseline. The proposed direction is warm minimalism with playful 3D accents: welcome, feature discovery, selected Home sections, appropriate empty states and occasional contextual illustrations. Review the actual converted files for fidelity, transparency, sizing and placement in a separate bounded asset PR; update the narrow historical public-only/empty-state restrictions to express this brief without encouraging blanket mascot use.
+
+Keep Lucide for navigation, search, edit, save, filter, settings, and security controls. Preserve visible text for page commands and consequential actions; low-risk compact icon controls still need an accessible name and touch-visible label. Treat illustrations as decorative when nearby text carries the same meaning (`alt=""`); if an image conveys unique information, write concise descriptive alt text.
+
+The audited `fe/public/illustrations/` inventory is four PNGs, all with alpha: `gco-characters.png` 721×339, 422,862 bytes; `gco-character-point-right.png` 338×330, 171,483 bytes; `gco-character-point-up.png` 330×330, 115,434 bytes; `gco-character-wave.png` 330×330, 111,643 bytes. Current source placements: group art in `PublicHero` (rendered at 240–304 CSS px, empty alt); point-up on public Announcements and point-right on public Resources (each title-band image hidden below `sm`, empty alt). Wave is present but unused in `fe/src` at this baseline. The committed files are shaded 2D/chibi illustrations, not functional iconography. They are modest in file size and already responsive/transparent; retain proportions and avoid serving them larger than the source supports. Do not describe them as 3D or imply that the converted versions are already in the baseline.
+
+Brand inventory (`fe/public/brand/`): `campus-bg.jpg` 1920×1080 / 78,800 B; `compass-192.png` 192×192 / 5,363 B; `compass-512.png` 512×512 / 14,492 B; `compass-mark.svg` 64×64 / 569 B; `compass-open-graph.jpg` 1200×630 / 27,878 B; `ucn-logo.png` 89×82 / 3,757 B. The PNGs have alpha except the two compass app icons; JPGs are opaque. Keep the existing marks and palette intact. `ucn-logo.png` is present in the audited baseline. No branding mismatch or need for a new approval gate was established in this review.
+
+## Accessibility and responsive checks
+
+For any layout or artwork refinement, verify semantic heading order, keyboard and touch operation, visible focus, focus return from dialogs, accessible names independent of tooltips, and persistent warnings/consequences. Check representative 320/375/390 px phones, 768/1024 px constrained widths, and 1440 px desktop; include long names/copy, enlarged root text, and expanded navigation/dock where relevant. Artwork must not crowd titles, obscure copy, or carry meaning unavailable in text. The inspected UX15 Home captures are historical evidence: [Student desktop](../../docs/ux15-home-1/screenshots/after/ux15-student-home/after-desktop-pending.png), [Student phone](../../docs/ux15-home-1/screenshots/after/ux15-student-home/after-mobile-pending.png), and [Counselor phone](../../docs/ux15-home-2/screenshots/after/chromium/ux15-counselor-home/after-counselor-mobile-390.png). Current Catalog captures at `/tmp/compass-simplify-0-browser/` use synthetic API fixtures and verify layout/copy only, not live integration or UCN user acceptance. The hierarchy stays legible on phone; Program setup and expanded impact counts are longer task surfaces, so simplify wording and visual hierarchy without suppressing policy inputs or material consequences. Home composition sources: [Student](../../fe/src/features/portal/home/student-home.tsx), [Counselor](../../fe/src/features/portal/home/counselor-home.tsx), and [GSS](../../fe/src/features/portal/home/gss-home.tsx).
+
+## Example patterns
+
+| Current tendency | Preferred direction |
+|---|---|
+| Student/Counselor Home stacks work, destinations, metrics, and announcements in separate framed regions ([StudentHome](../../fe/src/features/portal/home/student-home.tsx), [CounselorHome](../../fe/src/features/portal/home/counselor-home.tsx)) | Keep canonical work first; give supporting destinations, metrics, and announcements lighter separators and less equal visual weight |
+| “Institutional basis/reference” on routine rename | “Change note” label; requiredness and backend payload stay as implemented until contract/policy review |
+| “The server recomputes blockers before saving” | “We’ll check linked records again when you save”; retain the real server check |
+| Version, UUID, and backend phrase in ordinary history | Human-readable before/after and date; technical identity available only where authorized and useful |
+| Per-record Catalog action clusters can wrap into multiple button rows on narrow screens ([structure page](../../fe/src/features/organization/structure/organization-structure-page.tsx), [Catalog actions](../../fe/src/features/organization/structure/catalog/catalog-actions.tsx)) | Keep the collapsed per-record Actions disclosure and authorized commands; let visible verb labels wrap cleanly rather than compressing them into icon-only controls |
+| Every action represented by a mascot or custom artwork | Lucide for controls; reserve illustrations for purposeful welcome/discovery and, in the proposed 3D direction, selected Home and appropriate empty-state moments |
