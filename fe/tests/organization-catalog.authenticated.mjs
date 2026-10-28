@@ -69,10 +69,10 @@ async function actions(name, action) {
   if (await summary.locator("..").getAttribute("open") === null) await summary.click();
   await summary.locator("..").getByRole("button", { name: action, exact: true }).click();
 }
-async function basis() { await page.getByLabel("Institutional basis/reference", { exact: true }).fill("Synthetic ORG-4 engineering rehearsal"); }
+async function basis() { await page.getByLabel("Change note", { exact: true }).fill("Synthetic ORG-4 engineering rehearsal"); }
 async function review() { await page.getByRole("button", { name: "Review change", exact: true }).click(); await page.getByRole("alertdialog").waitFor(); }
 async function confirm(label) { await page.getByRole("alertdialog").getByRole("button", { name: label, exact: true }).click(); }
-async function saved() { await page.getByText(/The change was saved\. Latest record:/).waitFor(); }
+async function saved() { await page.getByText(/Changes saved\./).waitFor(); }
 async function done() { await page.getByRole("button", { name: "Done", exact: true }).click(); }
 function row(kind, code) { const rows = snapshot().catalog[kind].filter(r => r.code === code); assert.equal(rows.length, 1); return rows[0]; }
 function evidence(item, version, actor = "catalog") {
@@ -121,8 +121,8 @@ try {
       await page.getByLabel("Official name", { exact: true }).fill(name);
       await page.getByLabel("Initial status").selectOption("active");
       if (kind === "program") {
-        await page.getByLabel("Academic classification", { exact: true }).selectOption("BACHELORS");
-        await page.getByLabel("Year Level policy", { exact: true }).selectOption("CONFIGURED");
+        await page.getByLabel("Classification", { exact: true }).selectOption("BACHELORS");
+        await page.getByLabel("Year levels", { exact: true }).selectOption("CONFIGURED");
         for (const level of ["1st Year", "3rd Year", "5th Year"]) await page.getByLabel(level, { exact: true }).check();
       }
       await basis(); await review(); await confirm(`Add ${kind}`); await saved(); await done();
@@ -147,8 +147,8 @@ try {
   }
   await check("Complete noncontiguous policy update, actual persisted levels and no-op Audit silence", async () => {
     await actions("E2E Program Renamed", "Edit academic policy");
-    await page.getByLabel("Academic classification", { exact: true }).selectOption("MASTERS");
-    await basis(); await review(); await confirm("Save Program policy"); await saved(); await done();
+    await page.getByLabel("Classification", { exact: true }).selectOption("MASTERS");
+    await basis(); await review(); await confirm("Save Program settings"); await saved(); await done();
     const p = row("program", "E2E_PROGRAM"); evidence(p, 3); assert.deepEqual(p.applicable_year_levels, [1, 3, 5]);
     const res = await api(page, `/organization/programs/${p.id}/policy`, { method: "PUT", data: {
       expected_resource_version: 3, academic_classification: "MASTERS", year_level_policy_status: "CONFIGURED",
@@ -206,8 +206,8 @@ try {
     await page.goto(`${base}/portal/organization`);
     await rename("Historical Program", "Historical Program Renamed");
     await actions("Historical Program Renamed", "Edit academic policy");
-    await page.getByLabel("Academic classification", { exact: true }).selectOption("DOCTORAL");
-    await basis(); await review(); await confirm("Save Program policy"); await saved(); await done();
+    await page.getByLabel("Classification", { exact: true }).selectOption("DOCTORAL");
+    await basis(); await review(); await confirm("Save Program settings"); await saved(); await done();
     await status("program", "Historical Program Renamed", false);
     assert.equal(snapshot().historical_inventory_unchanged, true);
   });

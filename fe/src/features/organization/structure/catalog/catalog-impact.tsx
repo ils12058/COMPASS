@@ -33,12 +33,12 @@ export function preservedCategoryLabel(value: string) {
 export function CatalogImpact({ impact, canManageRelationships }: { impact: CatalogImpactResponse; canManageRelationships: boolean }) {
   return <section aria-labelledby="catalog-impact-heading" className="space-y-4 text-sm">
     <h3 id="catalog-impact-heading" className="font-heading text-lg font-semibold">Deactivation impact</h3>
-    <p className="font-semibold">{impact.can_deactivate ? "Deactivation permitted by this preview" : "Deactivation blocked"}</p>
-    <p className="text-muted">Observed {new Date(impact.observed_at).toLocaleString()} · Version {impact.resource_version}. The server checks linked records again when saving.</p>
-    <div>
+    <p className="font-semibold">{impact.can_deactivate ? "No blockers found" : "Deactivation blocked"}</p>
+    <p className="text-muted">Linked records will be checked again when you save.</p>
+    {impact.blockers.length ? <div>
       <h4 className="font-semibold">Blockers</h4>
-      {impact.blockers.length ? <ul className="mt-1 space-y-2">{impact.blockers.map((issue) => <li key={issue.code}>{impactExplanations[issue.code]} <strong>Count: {issue.count}</strong></li>)}</ul> : <p className="mt-1 text-muted">No blockers reported.</p>}
-    </div>
+      <ul className="mt-1 space-y-2">{impact.blockers.map((issue) => <li key={issue.code}>{impactExplanations[issue.code]} <strong>Count: {issue.count}</strong></li>)}</ul>
+    </div> : null}
     {impact.warnings.length ? <div><h4 className="font-semibold">Warnings</h4><ul className="mt-1 space-y-2">{impact.warnings.map((issue) => <li key={issue.code}>{impactExplanations[issue.code]} <strong>Count: {issue.count}</strong></li>)}</ul></div> : null}
     {canManageRelationships && impact.blockers.some((issue) => issue.code === "active_student_affiliations" || issue.code === "counselor_responsibilities") ? <p className="flex flex-wrap gap-3">
       {impact.blockers.some((issue) => issue.code === "active_student_affiliations") ? <Link className="text-brand underline" href="/portal/organization/student-affiliations">Review Student affiliations</Link> : null}

@@ -34,10 +34,10 @@ export type CatalogCommand =
   | { operation: "policy"; target: Extract<CatalogTarget, { kind: "program" }>; data: CatalogPolicyRequest };
 
 export function classificationLabel(value: AcademicClassification | null | undefined) {
-  return value === "BACHELORS" ? "Bachelor's" : value === "MASTERS" ? "Master's" : value === "DOCTORAL" ? "Doctoral" : "Classification pending";
+  return value === "BACHELORS" ? "Bachelor's" : value === "MASTERS" ? "Master's" : value === "DOCTORAL" ? "Doctoral" : "Classification not set";
 }
 export function levelsLabel(levels: readonly number[] | null | undefined, status?: YearLevelPolicyStatus | null) {
-  if (status !== "CONFIGURED" || !levels?.length) return "Year Level policy pending";
+  if (status !== "CONFIGURED" || !levels?.length) return "Year levels not set";
   const labels = levels.map((value) => yearLevelLabel(value).replace(" Year", ""));
   const contiguous = levels.every((value, index) => index === 0 || value === levels[index - 1] + 1);
   if (levels.length > 1 && contiguous) return `${labels[0]}–${labels.at(-1)} Year`;
@@ -71,18 +71,18 @@ export function policyValues(draft: CatalogDraft): Pick<CatalogPolicyRequest, "a
 }
 export function draftError(intent: CatalogIntent, draft: CatalogDraft, current?: CatalogTarget): string | null {
   const plain = (value: string) => value.trim().length > 0 && value.trim().length <= 160 && !/\p{C}/u.test(value);
-  if (!plain(draft.basis)) return "Enter an institutional basis/reference of 1–160 characters without control characters.";
+  if (!plain(draft.basis)) return "Add a change note using 1–160 characters of plain text.";
   if ((intent.mode === "create" || intent.mode === "rename") && !plain(draft.name)) return "Enter an official name of 1–160 characters without control characters.";
   if (intent.mode === "create" && !/^[A-Z0-9][A-Z0-9_-]{0,31}$/.test(draft.code.trim().toUpperCase())) return "Use a code of 1–32 letters, digits, hyphens or underscores, starting with a letter or digit.";
   if (intent.mode === "create" && !draft.active) return "Choose the initial status.";
   if (intent.mode === "rename" && current?.record.name.trim() === draft.name.trim()) return "The official name has not changed.";
   if (intent.mode === "status" && current?.record.is_active === (draft.active === "active")) return "The status has already changed. Close this editor and review the current actions.";
   const policy = intent.mode === "policy" || (intent.mode === "create" && intent.kind === "program");
-  if (policy && draft.policyStatus === "CONFIGURED" && (!draft.classification || !draft.levels.length || draft.levels.some((v) => !Number.isInteger(v) || v < 1 || v > 10))) return "Configured policy needs a known classification and at least one Year Level from 1–10.";
-  if (policy && draft.active === "active" && (draft.policyStatus !== "CONFIGURED" || !draft.classification)) return "An active Program needs a complete configured academic policy. Choose inactive for a pending draft.";
+  if (policy && draft.policyStatus === "CONFIGURED" && (!draft.classification || !draft.levels.length || draft.levels.some((v) => !Number.isInteger(v) || v < 1 || v > 10))) return "Select a classification and at least one year level from 1–10.";
+  if (policy && draft.active === "active" && (draft.policyStatus !== "CONFIGURED" || !draft.classification)) return "An active Program needs a classification and year levels. Choose inactive if the settings are not ready.";
   if (intent.mode === "policy" && current?.kind === "program") {
     const proposed = policyValues(draft);
-    if (current.record.academic_classification === proposed.academic_classification && current.record.year_level_policy_status === proposed.year_level_policy_status && JSON.stringify(current.record.applicable_year_levels) === JSON.stringify(proposed.applicable_year_levels)) return "The academic policy has not changed.";
+    if (current.record.academic_classification === proposed.academic_classification && current.record.year_level_policy_status === proposed.year_level_policy_status && JSON.stringify(current.record.applicable_year_levels) === JSON.stringify(proposed.applicable_year_levels)) return "The Program settings have not changed.";
   }
   return null;
 }
