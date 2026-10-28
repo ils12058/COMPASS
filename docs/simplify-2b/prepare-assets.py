@@ -117,6 +117,7 @@ def export(name, source_path, is_object):
         "source": source_path.name,
         "source_kind": "generated object" if is_object else "approved local 3D character",
         "source_sha256": hashlib.sha256(source_path.read_bytes()).hexdigest(),
+        "source_bytes": source_path.stat().st_size,
         "source_dimensions": list(source.size),
         "dimensions": list(result.size),
         "bytes": path.stat().st_size,

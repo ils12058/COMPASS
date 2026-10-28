@@ -1,0 +1,41 @@
+::group::webkit: first.browser.mjs
+::endgroup::
+::group::webkit: second.browser.mjs
+::endgroup::
+webkit: 0/2 suites passed.
+::group::chromium: passing.browser.mjs
+PASS chromium: passing.browser.mjs
+::endgroup::
+chromium: 1/1 suites passed.
+FAIL webkit: first.browser.mjs (1)
+FAIL webkit: second.browser.mjs (SIGTERM)
+Failed suites:
+first.browser.mjs
+second.browser.mjs
+✔ browser discovery includes future and nested suites without a script edit (2.183667ms)
+✔ all current browser suites run exactly once across the four CI shards (0.955042ms)
+✔ a failing or interrupted suite cannot hide later failures or produce green (0.747542ms)
+✔ CI runs all eight required browser jobs against the isolated production build (0.483125ms)
+✔ search is serialized into every Announcement and Resource list request (0.929459ms)
+✔ different search terms are different queries for every list (0.743666ms)
+✔ public searches write a trimmed canonical URL without a page (0.124584ms)
+✔ managed list changes keep the other filters, reset the page, and clear completely (0.13325ms)
+✔ returning from a record keeps only the list's own context (0.08325ms)
+✔ signed-out Announcement search asks the public list for the term and keeps it in links (11.636667ms)
+✔ signed-in Announcement search asks the visible list, not the public one (0.918125ms)
+✔ an Announcement search with no matches says so, not that nothing exists (0.759375ms)
+✔ signed-out Resource search sends search, category, and type together and keeps them in links (1.884583ms)
+✔ signed-in Resource search uses the visible list with the same criteria (1.381042ms)
+✔ a Resource search with filters and no matches names both (1.132791ms)
+✔ managed Announcement search composes with status and audience and keeps them across pages (3.554375ms)
+✔ managed Announcement search with no matches says so (1.222833ms)
+✔ managed Resource search composes with every structured filter, including folded ones (2.456292ms)
+✔ a failed search shows the failure instead of earlier unfiltered rows (0.930959ms)
+ℹ tests 19
+ℹ suites 0
+ℹ pass 19
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1362.158166

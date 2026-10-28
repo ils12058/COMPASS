@@ -24,7 +24,8 @@
       36
     ],
     "silhouettes": 1,
-    "sha256": "0d8b4a1c010702ef44e65f2a0aebd6da2a99400c3c3a677c38e3c036d7256666"
+    "sha256": "0d8b4a1c010702ef44e65f2a0aebd6da2a99400c3c3a677c38e3c036d7256666",
+    "source_bytes": 1121861
   },
   {
     "file": "fe/public/illustrations/gco-character-point-up.png",
@@ -51,7 +52,8 @@
       36
     ],
     "silhouettes": 1,
-    "sha256": "7a82961bc8ce52d03df667a157bd979d26f4395c1152d6bd6282fc997438d9ab"
+    "sha256": "7a82961bc8ce52d03df667a157bd979d26f4395c1152d6bd6282fc997438d9ab",
+    "source_bytes": 1133786
   },
   {
     "file": "fe/public/illustrations/gco-character-wave.png",
@@ -78,7 +80,8 @@
       29
     ],
     "silhouettes": 1,
-    "sha256": "4a1a2412cf0b3b6c6c752c1f3755564fd6033bdaa021c08438ed8dafc2e309f8"
+    "sha256": "4a1a2412cf0b3b6c6c752c1f3755564fd6033bdaa021c08438ed8dafc2e309f8",
+    "source_bytes": 1123778
   },
   {
     "file": "fe/public/illustrations/gco-characters.png",
@@ -105,7 +108,8 @@
       48
     ],
     "silhouettes": 4,
-    "sha256": "f2a735ae7521d2c8afb8fa1931d5c5156b2d63822b26070cbf84d2e9109ce737"
+    "sha256": "f2a735ae7521d2c8afb8fa1931d5c5156b2d63822b26070cbf84d2e9109ce737",
+    "source_bytes": 1678954
   },
   {
     "file": "fe/public/illustrations/appointment-calendar-3d.png",
@@ -132,7 +136,8 @@
       62
     ],
     "silhouettes": 1,
-    "sha256": "15928f0134888d1792eab6d3a032b11188b79c9ea8fe873830ce28bcf531a4b9"
+    "sha256": "15928f0134888d1792eab6d3a032b11188b79c9ea8fe873830ce28bcf531a4b9",
+    "source_bytes": 1411461
   },
   {
     "file": "fe/public/illustrations/service-catalog-3d.png",
@@ -159,7 +164,8 @@
       52
     ],
     "silhouettes": 1,
-    "sha256": "7d2a120f6dea150bf45baccd2322ff50eb557381465cc89c653d83a7859740d0"
+    "sha256": "7d2a120f6dea150bf45baccd2322ff50eb557381465cc89c653d83a7859740d0",
+    "source_bytes": 1291056
   },
   {
     "file": "fe/public/illustrations/guidance-messages-3d.png",
@@ -186,7 +192,8 @@
       79
     ],
     "silhouettes": 1,
-    "sha256": "95483099b05d2cffb32a763a1b81e73c30af2efecf4c20ab96fbd82578354838"
+    "sha256": "95483099b05d2cffb32a763a1b81e73c30af2efecf4c20ab96fbd82578354838",
+    "source_bytes": 993272
   },
   {
     "file": "fe/public/illustrations/individual-inventory-3d.png",
@@ -213,7 +220,8 @@
       48
     ],
     "silhouettes": 1,
-    "sha256": "ea77cf6db70b543714925f4723c50a2bb1acbd637e734c0c7a2ee29a296be74b"
+    "sha256": "ea77cf6db70b543714925f4723c50a2bb1acbd637e734c0c7a2ee29a296be74b",
+    "source_bytes": 1253968
   },
   {
     "file": "fe/public/illustrations/counseling-3d.png",
@@ -240,7 +248,8 @@
       128
     ],
     "silhouettes": 3,
-    "sha256": "e8ae91bf218dfa4e921a20c2fd329a4a78717ab0f52aa14cedf3a14c9d8e9e23"
+    "sha256": "e8ae91bf218dfa4e921a20c2fd329a4a78717ab0f52aa14cedf3a14c9d8e9e23",
+    "source_bytes": 1047323
   },
   {
     "file": "fe/public/illustrations/guidance-followups-3d.png",
@@ -267,7 +276,8 @@
       48
     ],
     "silhouettes": 1,
-    "sha256": "803fbdf29bcc59f1ef3ade5d63fb8361da77ba5906c08b9a09f5df29d435370d"
+    "sha256": "803fbdf29bcc59f1ef3ade5d63fb8361da77ba5906c08b9a09f5df29d435370d",
+    "source_bytes": 990593
   },
   {
     "file": "fe/public/illustrations/good-moral-3d.png",
@@ -294,7 +304,8 @@
       59
     ],
     "silhouettes": 1,
-    "sha256": "c7cb181c7c2ed9895a5f0b009960b7182061ef86315e4ce904009eb64cd17e49"
+    "sha256": "c7cb181c7c2ed9895a5f0b009960b7182061ef86315e4ce904009eb64cd17e49",
+    "source_bytes": 1199896
   },
   {
     "file": "fe/public/illustrations/exit-interview-3d.png",
@@ -321,7 +332,8 @@
       48
     ],
     "silhouettes": 1,
-    "sha256": "59cf379eaaeff227186117ad6d2f1e860b08a86e62e0f9e0426ca2fbeb865abb"
+    "sha256": "59cf379eaaeff227186117ad6d2f1e860b08a86e62e0f9e0426ca2fbeb865abb",
+    "source_bytes": 893706
   },
   {
     "file": "fe/public/illustrations/graduate-tracer-3d.png",
@@ -348,7 +360,8 @@
       74
     ],
     "silhouettes": 1,
-    "sha256": "4e65fd3d6867a6d732625644bcd893acaaf72caf83567ee7ca9b5ac796509183"
+    "sha256": "4e65fd3d6867a6d732625644bcd893acaaf72caf83567ee7ca9b5ac796509183",
+    "source_bytes": 1062041
   },
   {
     "file": "fe/public/illustrations/announcements-3d.png",
@@ -375,6 +388,7 @@
       60
     ],
     "silhouettes": 1,
-    "sha256": "0cae2e1c028a53ac4517c53e003aca795f64417f5de4d4ec1768ca58b2bca10e"
+    "sha256": "0cae2e1c028a53ac4517c53e003aca795f64417f5de4d4ec1768ca58b2bca10e",
+    "source_bytes": 1033573
   }
 ]

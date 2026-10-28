@@ -1,0 +1,161 @@
+$ orval --config orval.config.ts
+🍻 orval v8.29.0 - A swagger client generator for typescript
+compass Cleaning output folder
+🎉 compass - Your OpenAPI spec has been converted into ready to use orval!
+$ eslint .
+$ tsc --noEmit
+$ next build
+▲ Next.js 16.3.4 (Turbopack)
+✓ Running next.config.ts took 69ms
+
+  Creating an optimized production build ...
+✓ Compiled successfully in 2.1s
+  Running TypeScript ...
+  Finished TypeScript in 2.7s ...
+  Collecting page data using 7 workers ...
+  Generating static pages using 7 workers (0/97) ...
+  Generating static pages using 7 workers (24/97) 
+  Generating static pages using 7 workers (48/97) 
+  Generating static pages using 7 workers (72/97) 
+✓ Generating static pages using 7 workers (97/97) in 482ms
+  Finalizing page optimization ...
+
+Route (app)
+┌ ○ /
+├ ○ /_not-found
+├ ƒ /announcements
+├ ƒ /announcements/[announcementId]
+├ ƒ /login
+├ ƒ /login/setup-authenticator
+├ ƒ /login/verify
+├ ○ /manifest.webmanifest
+├ ○ /password
+├ ○ /portal
+├ ○ /portal/academic-years
+├ ○ /portal/account/activity
+├ ○ /portal/account/preferences
+├ ○ /portal/account/privacy
+├ ○ /portal/account/profile
+├ ○ /portal/account/security
+├ ○ /portal/account/security/authenticator
+├ ○ /portal/account/security/email
+├ ○ /portal/account/security/password
+├ ○ /portal/account/security/sessions
+├ ○ /portal/accounts
+├ ƒ /portal/accounts/[userId]
+├ ƒ /portal/accounts/[userId]/access
+├ ƒ /portal/accounts/[userId]/security
+├ ○ /portal/accounts/import
+├ ○ /portal/accounts/new
+├ ○ /portal/actions
+├ ○ /portal/announcements
+├ ƒ /portal/announcements/[announcementId]
+├ ƒ /portal/announcements/[announcementId]/edit
+├ ○ /portal/announcements/new
+├ ○ /portal/appointments
+├ ƒ /portal/appointments/[appointmentId]
+├ ƒ /portal/appointments/book
+├ ○ /portal/appointments/manage
+├ ○ /portal/appointments/my
+├ ○ /portal/appointments/slots
+├ ○ /portal/assessment-records
+├ ƒ /portal/assessment-records/[recordId]
+├ ƒ /portal/assessment-records/[recordId]/edit
+├ ○ /portal/assessment-records/new
+├ ○ /portal/assessment-records/types
+├ ○ /portal/availability
+├ ○ /portal/availability/me
+├ ○ /portal/availability/office
+├ ○ /portal/availability/providers
+├ ƒ /portal/availability/providers/[providerId]
+├ ƒ /portal/call-slips
+├ ƒ /portal/call-slips/[callSlipId]
+├ ○ /portal/call-slips/new
+├ ○ /portal/counseling
+├ ○ /portal/counseling/coverage
+├ ƒ /portal/counseling/coverage/[grantId]
+├ ƒ /portal/counseling/encounters/[encounterId]
+├ ƒ /portal/counseling/student-session-summaries/[summaryId]
+├ ƒ /portal/counseling/workspace/appointment/[appointmentId]
+├ ƒ /portal/counseling/workspace/routine-interview/[routineInterviewId]
+├ ƒ /portal/e-counseling/[appointmentId]
+├ ƒ /portal/exit-interviews
+├ ƒ /portal/exit-interviews/[exitInterviewId]
+├ ○ /portal/feedback
+├ ○ /portal/feedback/csm
+├ ○ /portal/feedback/csm/responses
+├ ƒ /portal/feedback/csm/responses/[responseId]
+├ ○ /portal/feedback/customer-feedback
+├ ○ /portal/feedback/customer-feedback/responses
+├ ƒ /portal/feedback/customer-feedback/responses/[responseId]
+├ ○ /portal/follow-ups
+├ ƒ /portal/follow-ups/[followupId]
+├ ○ /portal/follow-ups/new
+├ ○ /portal/follow-ups/reassignment
+├ ○ /portal/follow-ups/report
+├ ƒ /portal/good-moral
+├ ƒ /portal/good-moral/[requestId]
+├ ○ /portal/good-moral/request
+├ ○ /portal/good-moral/start
+├ ƒ /portal/graduate-tracer
+├ ƒ /portal/graduate-tracer/responses/[responseId]
+├ ○ /portal/group-sessions
+├ ƒ /portal/group-sessions/[sessionId]
+├ ○ /portal/group-sessions/attendance
+├ ○ /portal/group-sessions/discover
+├ ○ /portal/group-sessions/manage
+├ ○ /portal/group-sessions/my
+├ ƒ /portal/institutional-forms
+├ ○ /portal/inventory
+├ ○ /portal/inventory/current
+├ ƒ /portal/inventory/history/[inventoryId]
+├ ƒ /portal/inventory/records/[inventoryId]
+├ ○ /portal/messages
+├ ƒ /portal/messages/[threadId]
+├ ○ /portal/messages/new
+├ ○ /portal/messages/templates
+├ ƒ /portal/notifications
+├ ○ /portal/operations
+├ ○ /portal/organization
+├ ○ /portal/organization/responsibilities
+├ ○ /portal/organization/student-affiliations
+├ ○ /portal/platform
+├ ○ /portal/platform/activity
+├ ○ /portal/platform/email-delivery
+├ ○ /portal/platform/environment
+├ ○ /portal/platform/health
+├ ○ /portal/platform/maintenance
+├ ○ /portal/privacy
+├ ○ /portal/privacy/activity
+├ ƒ /portal/privacy/notice-revisions/[revisionId]
+├ ○ /portal/privacy/notices
+├ ƒ /portal/privacy/notices/[noticeId]
+├ ○ /portal/privacy/notices/new
+├ ○ /portal/privacy/retention
+├ ƒ /portal/referrals
+├ ƒ /portal/referrals/[referralId]
+├ ƒ /portal/referrals/[referralId]/issue-call-slip
+├ ○ /portal/referrals/new
+├ ○ /portal/reports
+├ ○ /portal/reports/graduate-tracer
+├ ○ /portal/reports/student-profile
+├ ○ /portal/resources
+├ ƒ /portal/resources/[resourceId]
+├ ƒ /portal/resources/[resourceId]/edit
+├ ○ /portal/resources/new
+├ ○ /portal/routine-interviews
+├ ƒ /portal/routine-interviews/[routineInterviewId]
+├ ○ /portal/services
+├ ƒ /portal/services/[serviceId]
+├ ƒ /portal/services/[serviceId]/edit
+├ ○ /portal/services/new
+├ ○ /portal/work
+├ ƒ /privacy
+├ ƒ /resources
+├ ƒ /resources/[resourceId]
+└ ○ /robots.txt
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+
