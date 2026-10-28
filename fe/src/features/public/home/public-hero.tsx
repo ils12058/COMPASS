@@ -13,14 +13,14 @@ export function PublicHero() {
         <div className="self-center lg:py-10">
           <HeroCopy />
         </div>
-        {/* The source art is 721px wide, so it stays at or under ~360px to remain sharp on 2x screens. */}
+        {/* The approved 3D group keeps its 2:1 ratio and ample resolution for the 304px 2x slot. */}
         <Image
           src="/illustrations/gco-characters.png"
           alt=""
-          width={721}
-          height={339}
+          width={1024}
+          height={512}
           sizes="(min-width: 1024px) 304px, (min-width: 640px) 272px, 240px"
-          className="mx-auto w-full max-w-[15rem] sm:max-w-[17rem] lg:mx-0 lg:max-w-none"
+          className="mx-auto h-auto w-full max-w-[15rem] sm:max-w-[17rem] lg:mx-0 lg:max-w-none"
         />
       </div>
     </section>

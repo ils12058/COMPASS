@@ -19,6 +19,7 @@ export function PublicPageHeader({
               src={illustration.src}
               width={illustration.width}
               height={illustration.height}
+              sizes="96px"
               alt=""
               aria-hidden="true"
               className="-mb-8 hidden h-24 w-auto shrink-0 sm:block"

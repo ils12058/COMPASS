@@ -71,6 +71,39 @@ public/illustrations/gco-characters.png
 
 These files are explicit exceptions to the archived-frontend restriction. Their approval does not authorize copying old layouts or other visual architecture.
 
+The four character paths above use the approved premium 3D toy conversions (SIMPLIFY-2B).
+Preserve their identities, outfits, gestures, real transparency and clean silhouettes.
+Legitimate red clothing and sashes remain; decorative outer strokes and scribble backgrounds do not.
+
+The matching object collection is limited to:
+
+```text
+public/illustrations/appointment-calendar-3d.png
+public/illustrations/service-catalog-3d.png
+public/illustrations/guidance-messages-3d.png
+public/illustrations/individual-inventory-3d.png
+public/illustrations/counseling-3d.png
+public/illustrations/guidance-followups-3d.png
+public/illustrations/good-moral-3d.png
+public/illustrations/exit-interview-3d.png
+public/illustrations/graduate-tracer-3d.png
+public/illustrations/announcements-3d.png
+```
+
+Warm minimalism permits a small, purposeful object illustration in a selected non-sensitive
+discovery, onboarding, form introduction or meaningful empty state, including a selected role Home
+section after a separately reviewed integration. Use at most one per chosen section, keep it
+subordinate to content, and do not illustrate every section or repeat nearby artwork. SIMPLIFY-2B
+supplies these objects and a SIMPLIFY-2C placement map; it does not place them in role-based Home components.
+This narrow exception does not authorize character mascots in portal workspaces.
+
+Keep Lucide icons for actions, navigation, search, filters and security controls. These objects are
+illustrations, never replacement control icons. Do not use illustration accents in confidential
+Counseling or assessment records, sensitive case details, security settings, failure/blocked states,
+consequential confirmation dialogs or dense administrative tables. Decorative images use empty alt
+text when nearby content supplies the meaning, never take
+focus, preserve aspect ratio and reserve layout space with correct intrinsic dimensions.
+
 Use approved assets purposefully.
 
 Do not:
@@ -947,8 +980,9 @@ You're all caught up! 🎉
 Do not use fake cheerfulness in administrative or sensitive workflows.
 
 An empty state belongs to the region it describes: inside the results or section panel
-(`PanelMessage`), not as lonely text between two rules. Do not add illustrations, giant icons, or
-celebratory copy.
+(`PanelMessage`), not as lonely text between two rules. Do not add giant icons or celebratory copy.
+Illustrations remain excluded except for the narrow, non-sensitive object-illustration exception
+in §2; ordinary administrative, error and blocked states remain text-led.
 
 ---
 
@@ -2277,6 +2311,8 @@ title, subject and timing; avoid repeating that title as another prominent actio
 Summary counts may form compact rows in a grouped context surface, including two columns when
 readable. Show only what the Overview contract returns. No giant metric tiles, charts, invented
 trends, dashboard filler, or character illustrations.
+A future selected object accent must follow §2 and a separate integration review; it must not
+displace the work or primary action.
 
 ## Portal shell
 
@@ -2348,7 +2384,8 @@ marketing copy.
   itself uses `rounded-lg` or larger.
 * No gradients outside §18's branded surfaces.
 * No glassmorphism, giant icons, colored icon circles, pills for everything, decorative metric
-  cards, or empty-state illustrations.
+  cards, or routine empty-state illustrations. Only §2's selected non-sensitive object accents
+  are permitted; rounded 3D object geometry does not change component border-radius rules.
 
 ## Typography
 

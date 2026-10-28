@@ -2,6 +2,27 @@
 
 Use the [user-copy guide](user-copy-guide.md) for language conventions and semantic safety.
 
+## Purposeful illustration accents
+
+Follow the narrow placement rules in [AGENTS.md §2](../AGENTS.md). The approved GCO characters
+retain their public hero and Announcements/Resources title-band placements. The ten matching
+feature objects are available for a later reviewed SIMPLIFY-2C integration into
+selected non-sensitive discovery, onboarding, form introductions or meaningful empty states.
+SIMPLIFY-2B does not change role-based Home components.
+
+Keep each accent small and subordinate to its section's content and next action; do not add one to
+every section or repeat nearby illustrations. Exclude confidential Counseling/assessment records,
+security settings, dense administrative tables, consequential dialogs, and error or blocked states. Keep Lucide icons and
+visible labels for functional controls. Illustrations must not imply clinical functionality.
+
+Use real alpha transparency and clean edges, preserve aspect ratio, provide correct intrinsic
+dimensions and responsive sizing, and keep artwork clear of text, controls and focus indicators.
+Decorative artwork has empty alt text and never receives keyboard focus. Preserve official logos,
+brand marks and color tokens. The warm, approachable toy materials belong to the artwork; they do
+not authorize extra interface shadows, rounded containers or decoration.
+
+## Information and actions
+
 See [ADR-091](../../be/docs/decisions/ADR-091-ui-information-hierarchy-progressive-disclosure-product-voice.md) and the [page audit](ui-density-audit.md).
 
 Show identity, current state, record content and the next useful action first. Keep warnings and required next steps visible. Classify explanation as state, next action, warning/blocker, consequence, conceptual explanation or input constraint before changing it.

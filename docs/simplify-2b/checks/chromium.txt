@@ -1,0 +1,11 @@
+PASS landing-desktop
+PASS announcements-desktop
+PASS resources-desktop
+PASS landing-phone
+PASS announcements-phone
+PASS resources-phone
+PASS landing-narrowPhone
+PASS announcements-narrowPhone
+PASS resources-narrowPhone
+PASS all-fourteen-production-PNGs-decode
+10/10 browser checks passed; artifacts: ../docs/simplify-2b/screenshots/chromium/public-illustrations
