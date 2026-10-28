@@ -121,7 +121,7 @@ test("the Counselor Home keeps a chronological agenda beside backend-ordered My 
   const html = renderHome(user, agendaItems, attention(workItems));
   const schedule = html.indexOf("counselor-agenda-heading");
   const work = html.indexOf("counselor-work-heading");
-  assert.ok(schedule >= 0 && work > schedule, "Agenda appears before My Work in reading order");
+  assert.ok(work >= 0 && schedule > work, "My Work appears before the agenda in reading order");
   assert.ok(html.indexOf("Synthetic Student 1") < html.indexOf("Synthetic Student 2"));
   assert.match(html, /href="\/portal\/appointments\/c0000000-0000-4000-8000-000000000501"/);
   assert.match(html, /href="\/portal\/follow-ups\/two"/);

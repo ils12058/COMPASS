@@ -200,18 +200,18 @@ await check("account-switch-removes-counselor-private-projections", "/portal", s
   assert.equal(await page.locator("#head-guidance-oversight-heading").count(), 0);
 });
 
-await check("keyboard-order-follows-agenda-before-work", "/portal", counselorWorld({
+await check("keyboard-order-follows-work-before-agenda", "/portal", counselorWorld({
   appointments: appointmentsToday.slice(0, 2),
   work: canonicalWork,
 }).options(), async (page) => {
+  await shown(work(page).getByRole("heading", { name: "Review Guidance follow-up", exact: true }));
   const appointmentLinks = agenda(page).locator("li a");
-  const viewAllWork = page.getByRole("link", { name: "View all work" });
   if (process.env.COMPASS_UI_BROWSER === "webkit") {
     // macOS WebKit does not include links in Tab navigation by default. Match the established
     // Student Home check: verify each authored link's focusability and visible focus treatment.
     await page.locator("main").focus();
     await page.keyboard.press("Tab");
-    for (const link of [appointmentLinks.first(), appointmentLinks.nth(1), viewAllWork]) {
+    for (const link of [work(page).getByRole("link", { name: "View all work" }), appointmentLinks.first(), appointmentLinks.nth(1)]) {
       await link.focus();
       const state = await link.evaluate((node) => ({ active: node === document.activeElement,
         tabIndex: node.tabIndex, ring: getComputedStyle(node).boxShadow !== "none" }));
@@ -220,12 +220,14 @@ await check("keyboard-order-follows-agenda-before-work", "/portal", counselorWor
     }
     return;
   }
-  await appointmentLinks.first().focus();
+  await work(page).locator("a").last().focus();
+  await page.keyboard.press("Tab");
+  assert.equal(await agenda(page).getByRole("link", { name: "View today’s schedule" }).evaluate((node) => node === document.activeElement), true, "The work panel precedes the agenda in the tab sequence");
+  await page.keyboard.press("Tab");
+  assert.equal(await appointmentLinks.first().evaluate((node) => node === document.activeElement), true);
   await page.keyboard.press("Tab");
   assert.equal(await appointmentLinks.nth(1).evaluate((node) => node === document.activeElement), true, "Tab follows chronological agenda order");
   assert.equal(await appointmentLinks.nth(1).evaluate((node) => node.matches(":focus-visible")), true, "Keyboard focus remains visible on the next appointment");
-  await page.keyboard.press("Tab");
-  assert.equal(await viewAllWork.evaluate((node) => node === document.activeElement), true, "The agenda precedes the work panel in the tab sequence");
 });
 
 await check("responsive-home-reflows-at-requested-widths-and-enlarged-text", "/portal", counselorWorld({
@@ -289,7 +291,7 @@ await check("responsive-home-reflows-at-requested-widths-and-enlarged-text", "/p
     }
   }
   assert.deepEqual(await page.locator("main h2").allTextContents(), [
-    "Today's appointments", "My work", "Continue in your workspace", "At a glance", "Announcements",
+    "My work", "Today's appointments", "Continue in your workspace", "At a glance", "Announcements",
   ]);
 });
 

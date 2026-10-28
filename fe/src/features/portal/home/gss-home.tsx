@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
@@ -249,9 +250,9 @@ function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
   const allZero = Boolean(metrics?.length) && metrics?.every((metric) => metric.count === 0);
 
   return (
-    <Panel aria-labelledby="gss-operations-heading">
-      <PanelHeader title="Office workload" titleId="gss-operations-heading" />
-      <p className="px-4 pb-3 text-sm leading-6 text-muted sm:px-5">Scoped Guidance Operations counts describe office demand, not individual assignments.</p>
+    <Panel className="border-0 bg-transparent" aria-labelledby="gss-operations-heading">
+      <PanelHeader className="border-border px-0 sm:px-0" title="Office workload" titleId="gss-operations-heading" />
+      <p className="py-3 text-sm leading-6 text-muted">Counts reflect office demand within your scope, not individual assignments.</p>
 
       {query.isError && data ? (
         <RefreshFailureNotice
@@ -276,7 +277,7 @@ function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
       {metrics && metrics.length > 0 ? (
         <dl aria-label="Scoped office workload metrics" className="divide-y divide-border">
           {metrics.map((metric) => (
-            <div key={metric.key} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 px-4 py-3 sm:px-5">
+            <div key={metric.key} className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 py-3">
               <dt className="min-w-0 text-sm font-semibold leading-6 [overflow-wrap:anywhere]">
                 {metric.href ? <Link className="inline-flex min-h-11 items-center rounded-sm text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" href={metric.href}>{metric.label}</Link> : <span className="block py-2.5">{metric.label}</span>}
                 {metric.oldest ? <span className="mt-0.5 block text-sm font-normal leading-6 text-muted">{metric.oldest.label}: <time dateTime={metric.oldest.instant}>{formatInstitutionalDateTime(metric.oldest.instant)}</time></span> : null}
@@ -288,7 +289,7 @@ function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
       ) : null}
       {metrics && metrics.length === 0 ? <PanelMessage>No Guidance Operations metrics are available within the returned scope.</PanelMessage> : null}
       {allZero ? <PanelMessage>{query.isError ? "The last confirmed office workload had no items waiting." : "No work is currently waiting in the returned office metrics."}</PanelMessage> : null}
-      {data ? <p className="border-t border-border px-4 py-2.5 text-xs text-muted sm:px-5">Updated <time dateTime={data.generated_at}>{formatInstitutionalDateTime(data.generated_at)}</time></p> : null}
+      {data ? <p className="border-t border-border py-2.5 text-xs text-muted">Updated <time dateTime={data.generated_at}>{formatInstitutionalDateTime(data.generated_at)}</time></p> : null}
     </Panel>
   );
 }
@@ -297,25 +298,24 @@ function OfficeDestinations({ user }: { user: UserSummary }) {
   const destinations = getGssHomeDestinations(user);
   if (destinations.length === 0) return null;
   return (
-    <Panel aria-labelledby="gss-destinations-heading">
-      <PanelHeader title="Continue in your workspaces" titleId="gss-destinations-heading" />
-      <ul className="divide-y divide-border">
+    <Panel className="@container border-0 bg-transparent" aria-labelledby="gss-destinations-heading">
+      <PanelHeader className="border-border px-0 sm:px-0" title="Continue in your workspaces" titleId="gss-destinations-heading" />
+      <ul className="grid @min-[32rem]:grid-cols-2">
         {destinations.map((destination) => {
           const Icon = destination.icon;
           return (
-            <li key={destination.href}>
+            <li key={destination.href} className="border-b border-border">
               <Link
                 href={destination.href}
-                className="group flex min-h-11 min-w-0 items-center justify-between gap-3 px-4 py-3 text-sm transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-5"
+                className="group flex min-h-11 min-w-0 items-center justify-between gap-3 py-3 pr-4 text-sm transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
               >
                 <span className="flex min-w-0 items-start gap-3 [overflow-wrap:anywhere]">
                   <Icon aria-hidden="true" className="mt-1 h-4 w-4 shrink-0 text-brand" />
                   <span className="min-w-0">
                     <span className="block font-semibold text-brand group-hover:underline">{destination.label}</span>
-                    <span className="mt-0.5 block leading-6 text-muted">{destination.description}</span>
                   </span>
                 </span>
-                <span aria-hidden="true" className="shrink-0">→</span>
+                <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
               </Link>
             </li>
           );

@@ -82,9 +82,7 @@ export function PortalHome() {
         title={user.role === "GUIDANCE_SERVICES_STAFF" ? "Guidance Services Home" : getOverviewGreeting(user, now)}
         headingId="portal-overview-heading"
         context={user.role === "STUDENT" ? "Overview" : undefined}
-        description={user.role === "GUIDANCE_SERVICES_STAFF"
-          ? [formatOverviewDate(now), "Office work within your authorized scope"].join(" · ")
-          : [formatOverviewDate(now), roleContext].filter(Boolean).join(" · ")}
+        description={[formatOverviewDate(now), user.role === "GUIDANCE_SERVICES_STAFF" ? null : roleContext].filter(Boolean).join(" · ")}
         actions={primaryAction ? (
           <PageActionLink
             href={primaryAction.href}

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AnnouncementDate } from "@/features/announcements/announcement-date";
+import { formatPublicDate } from "@/features/public/shared/presentation";
 import { CompassApiError } from "@/lib/api/errors";
 import { useAnnouncementsListVisible } from "@/lib/api/generated/announcements/announcements";
 
@@ -21,8 +21,9 @@ export function OverviewAnnouncements() {
   const items = list.isError ? [] : list.data?.data.items ?? [];
 
   return (
-    <Panel className="@container [overflow-wrap:anywhere]" aria-labelledby="overview-announcements-heading">
+    <Panel className="@container border-0 bg-transparent [overflow-wrap:anywhere]" aria-labelledby="overview-announcements-heading">
       <PanelHeader
+        className="border-border px-0 sm:px-0"
         title="Announcements"
         titleId="overview-announcements-heading"
         actions={<Link href="/announcements" className={linkClass}>All announcements</Link>}
@@ -55,10 +56,9 @@ export function OverviewAnnouncements() {
             <li key={announcement.id}>
               <Link
                 href={`/announcements/${announcement.id}`}
-                className="group grid min-w-0 gap-3 px-4 py-3 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus @min-[22rem]:grid-cols-[3.5rem_minmax(0,1fr)] @min-[22rem]:items-center @min-[22rem]:gap-x-4 sm:px-5"
+                className="group flex min-h-11 min-w-0 flex-wrap items-baseline justify-between gap-x-5 gap-y-1 py-3 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
               >
-                <AnnouncementDate value={announcement.published_at} />
-                <span className="min-w-0">
+                <span className="min-w-0 flex-1 basis-48">
                   <span className="block break-words font-semibold leading-6 text-ink group-hover:text-brand group-hover:underline">
                     {announcement.title}
                   </span>
@@ -69,6 +69,7 @@ export function OverviewAnnouncements() {
                     </span>
                   ) : null}
                 </span>
+                <time dateTime={announcement.published_at} className="text-sm text-muted">{formatPublicDate(announcement.published_at)}</time>
               </Link>
             </li>
           ))}
