@@ -582,8 +582,10 @@ Caveat (variable)
 --font-caveat
 ```
 
-Caveat is loaded only by the public route layout and used only for the public landing hero quote
-(Tailwind `font-script`). Do not use it in authenticated screens or for body copy.
+Caveat (`font-script`) is used for the public landing hero accent and the Student Overview
+greeting only. Those expressive display treatments remain readable and wrap at narrow widths and
+enlarged text; ordinary functional headings continue to use Outfit. Do not use Caveat for body
+copy, forms, small labels, buttons, navigation, tables, records, or safety-critical instructions.
 
 Do not add additional display fonts merely to make a screen look distinctive.
 
