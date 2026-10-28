@@ -4,6 +4,7 @@ import { createElement as h } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { withNextRouter } from "./support/next-router.mjs";
+import { UnsavedChangesProvider } from "../src/features/form-safety/unsaved-changes-provider.tsx";
 import { contextEncounterState } from "../src/features/counseling/counseling-shared.tsx";
 import { encounterCreatePayload } from "../src/features/counseling/record-encounter-form.tsx";
 import { RoutineCounselorEvaluationWorkspace } from "../src/features/routine-interviews/routine-counselor-evaluation.tsx";
@@ -33,7 +34,9 @@ const candidate = { ...encounter, id: "encounter-2", entry_mode: "WALK_IN", deli
 function render(element, seed = () => {}) {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: Infinity, gcTime: Infinity } } });
   seed(client);
-  const html = renderToStaticMarkup(withNextRouter(h(QueryClientProvider, { client }, element)));
+  const html = renderToStaticMarkup(withNextRouter(
+    h(QueryClientProvider, { client }, h(UnsavedChangesProvider, null, element)),
+  ));
   client.clear();
   return html;
 }
@@ -83,25 +86,46 @@ test("a linked Encounter finalizes without any Encounter selection", () => {
   const html = evaluationPanel({ linkedEncounter: encounter });
   assert.doesNotMatch(html, /name="routine-finalize-encounter"/);
   assert.doesNotMatch(html, /recorded outside this Routine Interview/);
-  assert.match(html, /<dt[^>]*>Counseling Encounter<\/dt>/);
+  assert.match(html, /<dt[^>]*>Encounter already linked<\/dt>/);
   assert.doesNotMatch(finalizeButton(html), / disabled=""/);
+});
+
+test("the Counselor Evaluation keeps six nullable source ratings and all three original narrative fields", () => {
+  const html = evaluationPanel({ candidates: [] });
+  for (const [key, label] of [
+    ["academic_adjustment_rating", "Academically"],
+    ["physical_adjustment_rating", "Physically"],
+    ["social_adjustment_rating", "Socially"],
+    ["spiritual_adjustment_rating", "Spiritually"],
+    ["financial_adjustment_rating", "Financially"],
+    ["emotional_adjustment_rating", "Emotionally"],
+  ]) {
+    assert.match(html, new RegExp('name="routine-evaluation-' + key + '"'));
+    assert.match(html, new RegExp(`${label}:[ ]?10`));
+  }
+  for (const id of ["other_adjustment", "special_concern", "recommendations"]) {
+    assert.match(html, new RegExp(`id="routine-evaluation-${id}"`));
+  }
+  assert.match(html, /<input[^>]*checked=""[^>]*value="null"/);
+  assert.match(html, /1 = Poor, 5 = Average, and 10 = Excellent/);
+  assert.doesNotMatch(html, / required(?:="")?/);
 });
 
 test("an Appointment-backed Routine Interview never asks for a choice", () => {
   const html = evaluationPanel({ entryMode: "APPOINTMENT", candidates: [{ ...candidate, entry_mode: "APPOINTMENT" }] });
   assert.doesNotMatch(html, /name="routine-finalize-encounter"/);
-  assert.match(html, /Finalizing links it to this Routine Interview/);
+  assert.match(html, /Finalization will link it to this Routine Interview/);
 });
 
 test("an unlinked direct Routine Interview points to its workspace and offers recovery only for recorded Encounters", () => {
   const empty = evaluationPanel({ candidates: [], workspaceHref: `/portal/counseling/workspace/routine-interview/${ROUTINE}` });
-  assert.match(empty, /Counseling Encounter not yet recorded/);
+  assert.match(empty, /No eligible completed Encounter is available yet/);
   assert.match(empty, /href="\/portal\/counseling\/workspace\/routine-interview\/routine-1"/);
   assert.doesNotMatch(empty, /name="routine-finalize-encounter"/);
   assert.match(finalizeButton(empty), / disabled=""/);
 
   const recovery = evaluationPanel({ candidates: [candidate] });
-  assert.match(recovery, /Encounters recorded outside this Routine Interview/);
+  assert.match(recovery, /Select the completed Encounter for this interaction/);
   assert.match(recovery, /name="routine-finalize-encounter"/);
   assert.match(finalizeButton(recovery), / disabled=""/);
 });

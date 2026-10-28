@@ -196,7 +196,7 @@ def test_assisted_f6_is_available_for_a_current_student_reenrolled_in_local_post
     mit, _ = Program.objects.get_or_create(
         college=world["inventory"].program.college,
         code="MIT",
-        defaults={"name": "Master in Information Technology"},
+        defaults={"name": "Master in Information Technology", "academic_classification": "MASTERS"},
     )
     world["inventory"].program = mit
     world["inventory"].year_level = None

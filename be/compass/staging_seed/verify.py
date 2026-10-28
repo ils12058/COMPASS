@@ -50,7 +50,7 @@ from compass.authentication.models import AuthSession
 from compass.availability.models import ProviderAvailabilityWindow
 from compass.call_slips.models import CallSlip
 from compass.common.canonical_baseline import pre_canonical_history
-from compass.counseling.models import CounselingSharedSummary
+from compass.counseling.models import StudentSessionSummary
 from compass.ecounseling.models import ECounselingRoom
 from compass.exit_interviews.models import ExitInterview, ExitInterviewOpportunity
 from compass.feedback.models import (
@@ -68,11 +68,10 @@ from compass.institutional_forms.services import (
 from compass.inventory.models import StudentInventory
 from compass.notifications.models import EmailDelivery, Notification, PushDelivery
 from compass.organization.academic_years import get_current_academic_year
-from compass.organization.canonical import CANONICAL_CAMPUSES
+from compass.organization.bootstrap import CatalogInitializationError, check_organization_catalog
 from compass.organization.models import (
     College,
     CounselorResponsibility,
-    Program,
     StaffSupervision,
     StudentAffiliation,
 )
@@ -110,8 +109,8 @@ COUNSELING_CONTENT = frozenset(
     {
         "counseling.view_assigned",
         "counseling.manage_assigned",
-        "shared_summaries.view_assigned",
-        "shared_summaries.manage_assigned",
+        "student_session_summaries.view_assigned",
+        "student_session_summaries.manage_assigned",
         "routine_interviews.view_assigned",
         "routine_interviews.manage_assigned",
         "inventory.view",
@@ -139,7 +138,7 @@ GUIDANCE_RECORD_PREFIXES = (
     "inventory.",
     "referrals.",
     "routine_interviews.",
-    "shared_summaries.",
+    "student_session_summaries.",
     "student_support.",
 )
 
@@ -304,7 +303,7 @@ def _predicate(lookup: Lookup, key: str, name: str) -> bool:
                 return True
         return False
     if kind == "summary":
-        rows = CounselingSharedSummary.objects.filter(encounter__student=user)
+        rows = StudentSessionSummary.objects.filter(encounter__student=user)
         if arg == "draft":
             return rows.filter(published_at__isnull=True).exists()
         return rows.filter(published_at__isnull=False).exists()
@@ -417,18 +416,11 @@ def _configuration(section: Section) -> None:
             )
         )
         section.check(set(grants) <= stored, f"Designation {designation} lacks canonical grants.")
-    for campus in CANONICAL_CAMPUSES:
-        for college in campus.colleges:
-            for program in college.programs:
-                section.check(
-                    Program.objects.filter(
-                        college__campus__code=campus.code,
-                        college__code=college.code,
-                        code=program.code,
-                        is_active=True,
-                    ).exists(),
-                    f"Catalog program {campus.code}/{college.code}/{program.code} is missing.",
-                )
+    try:
+        check_organization_catalog()
+        section.check(True, "")
+    except CatalogInitializationError:
+        section.check(False, "Organization catalog requires explicit initialization/adoption.")
     for family in REQUIRED_FORM_FAMILIES:
         try:
             require_active_supported_form_revision(family)
@@ -636,14 +628,14 @@ def _workflow(section: Section, lookup: Lookup, allow) -> None:
     section.check(
         len(duplicates) == len(set(duplicates)), "A Student has two Inventories in one year."
     )
-    for summary in CounselingSharedSummary.objects.filter(
+    for summary in StudentSessionSummary.objects.filter(
         encounter__student_id__in=ids, published_at__isnull=False
     ).select_related("encounter"):
         section.check(
             Notification.objects.filter(
                 recipient_id=summary.encounter.student_id, source_id=summary.pk
             ).exists(),
-            "A published Shared Summary has no Student notification.",
+            "A published Student Session Summary has no Student notification.",
         )
     for slip in CallSlip.objects.filter(student_id__in=ids, issuance_mode="LIVE"):
         section.check(
@@ -840,11 +832,12 @@ def _preloaded(lookup: Lookup, account: AccountSpec) -> tuple[str, ...]:
         items.append(f"Graduate Tracer: {response.status}")
     if _predicate(lookup, account.key, "messages:unread"):
         items.append("Unread Guidance Message")
-    summaries = CounselingSharedSummary.objects.filter(encounter__student=user)
+    summaries = StudentSessionSummary.objects.filter(encounter__student=user)
     if summaries.exists():
         published = summaries.filter(published_at__isnull=False).count()
         items.append(
-            f"Shared Summaries: {published} published, {summaries.count() - published} draft"
+            f"Student Session Summaries: {published} published, "
+            f"{summaries.count() - published} draft"
         )
     unread = Notification.objects.filter(recipient=user, read_at__isnull=True).count()
     if unread:
@@ -910,9 +903,9 @@ def _counts(lookup: Lookup, facts: dict[str, AccountFacts]) -> dict[str, object]
         "encounters": apps.get_model("counseling", "CounselingEncounter")
         .objects.filter(student_id__in=ids)
         .count(),
-        "shared_summaries": _breakdown(
+        "student_session_summaries": _breakdown(
             "published" if s.published_at else "draft"
-            for s in CounselingSharedSummary.objects.filter(encounter__student_id__in=ids)
+            for s in StudentSessionSummary.objects.filter(encounter__student_id__in=ids)
         ),
         "routine_interviews": _breakdown(
             "intake draft"

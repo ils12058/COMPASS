@@ -1,0 +1,112 @@
+[
+  {
+    "target_type": "GUIDANCE_FOLLOW_UP",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/follow-ups/12345678-1234-4234-8234-123456789abc"
+  },
+  {
+    "target_type": "GUIDANCE_FOLLOW_UP",
+    "target_id": null,
+    "route": null
+  },
+  {
+    "target_type": "APPOINTMENT",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/appointments/12345678-1234-4234-8234-123456789abc"
+  },
+  {
+    "target_type": "APPOINTMENT",
+    "target_id": null,
+    "route": null
+  },
+  {
+    "target_type": "CALL_SLIP",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/call-slips/12345678-1234-4234-8234-123456789abc"
+  },
+  {
+    "target_type": "CALL_SLIP",
+    "target_id": null,
+    "route": null
+  },
+  {
+    "target_type": "STUDENT_SESSION_SUMMARY",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/counseling/student-session-summaries/12345678-1234-4234-8234-123456789abc"
+  },
+  {
+    "target_type": "STUDENT_SESSION_SUMMARY",
+    "target_id": null,
+    "route": null
+  },
+  {
+    "target_type": "E_COUNSELING",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/e-counseling/12345678-1234-4234-8234-123456789abc"
+  },
+  {
+    "target_type": "E_COUNSELING",
+    "target_id": null,
+    "route": null
+  },
+  {
+    "target_type": "EXIT_INTERVIEW",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/exit-interviews/12345678-1234-4234-8234-123456789abc"
+  },
+  {
+    "target_type": "EXIT_INTERVIEW",
+    "target_id": null,
+    "route": null
+  },
+  {
+    "target_type": "FEEDBACK",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/feedback?opportunity=12345678-1234-4234-8234-123456789abc"
+  },
+  {
+    "target_type": "FEEDBACK",
+    "target_id": null,
+    "route": "/portal/feedback"
+  },
+  {
+    "target_type": "GOOD_MORAL",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/good-moral/12345678-1234-4234-8234-123456789abc"
+  },
+  {
+    "target_type": "GOOD_MORAL",
+    "target_id": null,
+    "route": null
+  },
+  {
+    "target_type": "GROUP_SESSION",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/group-sessions/12345678-1234-4234-8234-123456789abc"
+  },
+  {
+    "target_type": "GROUP_SESSION",
+    "target_id": null,
+    "route": "/portal/group-sessions/my"
+  },
+  {
+    "target_type": "INVENTORY",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/inventory/current"
+  },
+  {
+    "target_type": "INVENTORY",
+    "target_id": null,
+    "route": "/portal/inventory/current"
+  },
+  {
+    "target_type": "ROUTINE_INTERVIEW",
+    "target_id": "12345678-1234-4234-8234-123456789abc",
+    "route": "/portal/routine-interviews/12345678-1234-4234-8234-123456789abc"
+  },
+  {
+    "target_type": "ROUTINE_INTERVIEW",
+    "target_id": null,
+    "route": null
+  }
+]

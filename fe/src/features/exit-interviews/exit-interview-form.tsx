@@ -5,10 +5,11 @@ import { studentActionsQueryFamily } from "@/features/student-actions/student-ac
 import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { pageBackLinkClass } from "@/components/ui/page-header";
-import { Panel } from "@/components/ui/panel";
+import { Panel, PanelFooter, PanelSection, PanelMessage } from "@/components/ui/panel";
+import { FormErrorSummary, FormSaveStatus, FormSectionLinks } from "@/components/ui/form-experience";
 import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
 import type { ExitInterviewCorrectionTarget, ExitInterviewDetailResponse } from "@/lib/api/generated/model";
@@ -31,13 +32,13 @@ import {
   type ExitInterviewTextFieldKey,
 } from "@/features/exit-interviews/exit-interview-form-sections";
 import {
-  ExitInterviewError,
   ExitInterviewHeading,
   exitInterviewErrorMessage,
   isUncertainExitInterviewMutation,
 } from "@/features/exit-interviews/exit-interview-shared";
 import { ExitInterviewCorrectionHistory } from "@/features/exit-interviews/exit-interview-correction-history";
 import {
+  exitInterviewCorrectionSections,
   exitInterviewCorrectionFocusOrder,
   exitInterviewReviewHints,
   focusExitInterviewCorrectionTarget,
@@ -308,6 +309,24 @@ export function ExitInterviewForm({
     row?.querySelector<HTMLInputElement>('input[type="radio"]')?.focus({ preventScroll: true });
   }
 
+  const reviewIssues = [
+    ...(extraTermsError ? [{ message: extraTermsError, targetId: "exit-extra-terms" }] : []),
+    ...missingRatings.map((item) => ({ message: `${item.sectionLabel} — ${item.label}`, targetId: item.targetId })),
+  ];
+
+  function selectReviewIssue(issue: { targetId: string }) {
+    if (issue.targetId.startsWith("exit-rating-")) recoverMissingRating(issue.targetId);
+    else focusExitInterviewCorrectionTarget([issue.targetId]);
+  }
+
+  function selectSection(id: string) {
+    const heading = document.getElementById(id);
+    if (!heading) return;
+    heading.setAttribute("tabindex", "-1");
+    heading.focus({ preventScroll: true });
+    heading.scrollIntoView({ block: "start", inline: "nearest" });
+  }
+
   const pending = save.isPending || submit.isPending;
 
   // Every section is on the page, so a requested answer is scrolled to and focused right away.
@@ -332,7 +351,19 @@ export function ExitInterviewForm({
 
       <ExitInterviewCorrectionHistory events={detail.reopen_events} emphasizeLatest onSelectTarget={selectCorrectionTarget} />
 
-      <form onSubmit={handleSubmit} aria-busy={pending}>
+      <p className="max-w-3xl text-sm leading-6 text-muted">
+        Review your university experience and future plans. You can move freely through the sections. Save your draft before leaving.
+      </p>
+      <FormSectionLinks
+        id="exit-interview-section-links"
+        label="Exit Interview sections"
+        sections={[
+          ...exitInterviewCorrectionSections.map((section) => ({ id: section.headingId, label: section.title.replace(/^Section [IV]+ — /, "") })),
+          { id: "exit-interview-review-submit", label: "Review and submit" },
+        ]}
+        onSelect={selectSection}
+      />
+      <form onSubmit={handleSubmit} aria-busy={pending} className="@container/exit min-w-0 [overflow-wrap:anywhere] [&_h2]:scroll-mt-24 [&_h2:focus]:outline-none [&_h2:focus]:ring-2 [&_h2:focus]:ring-focus">
         <Panel as="div">
         <ExitInterviewReviewProvider value={reviewHints}>
         <ExitInterviewFormSections
@@ -357,37 +388,32 @@ export function ExitInterviewForm({
         />
         </ExitInterviewReviewProvider>
 
-        <div className="rounded-b-sm border-t border-brand-line bg-brand-wash px-4 py-5 sm:px-5">
-          <div aria-live="polite" className="space-y-1 text-sm text-muted">
+        <PanelSection title="Review and submit" titleId="exit-interview-review-submit">
+          <div aria-live="polite" aria-atomic="true" className="space-y-1 text-sm text-muted">
             <p>Self-Assessment: {selfAnswered} of {SELF_ASSESSMENT_ITEMS.length} answered</p>
             <p>College Feedback: {collegeAnswered} of {collegeItems.length} answered</p>
           </div>
-          {missingRatings.length ? (
-            <details className="mt-3 max-w-3xl rounded-sm border border-warning/40 bg-surface-raised px-4 py-3">
-              <summary className="cursor-pointer text-sm font-semibold text-ink">
-                {missingRatings.length} required {missingRatings.length === 1 ? "rating still needs" : "ratings still need"} a response.
+          {reviewIssues.length ? (
+            <details open={extraTermsError ? true : undefined} className="mt-3 max-w-3xl">
+              <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-ink">
+                {extraTermsError ? "Review these answers before saving." : `${missingRatings.length} required ${missingRatings.length === 1 ? "rating still needs" : "ratings still need"} a response.`}
               </summary>
-              <ul className="mt-2 space-y-1">
-                {missingRatings.map((item) => (
-                  <li key={item.targetId}>
-                    <Button
-                      type="button"
-                      variant="quiet"
-                      className="h-auto min-h-8 whitespace-normal px-1 py-1 text-left"
-                      onClick={() => recoverMissingRating(item.targetId)}
-                    >
-                      {item.sectionLabel} — {item.label}
-                    </Button>
-                  </li>
-                ))}
-              </ul>
+              <FormErrorSummary
+                id="exit-interview-errors"
+                title="Answers to review"
+                instruction="Select an item to go to its question or rating."
+                issues={reviewIssues}
+                onSelect={selectReviewIssue}
+              />
             </details>
-          ) : null}
-          {isDirty ? <p className="mt-3 text-sm text-warning">Unsaved changes. Save your draft before submitting.</p> : null}
-          {saveMessage ? <p role="status" className="mt-3 text-sm text-success">{saveMessage}</p> : null}
+          ) : <p className="mt-3 text-sm leading-6 text-ink">All required ratings have a response. Review your answers before submitting.</p>}
+        </PanelSection>
+        <PanelFooter className="block space-y-3">
+          <FormSaveStatus dirty={isDirty} saving={save.isPending} savedMessage={submit.isPending ? "Submitting…" : submissionUncertain ? "Submission status unconfirmed" : writesUnavailable ? "Latest draft status unconfirmed" : saveMessage} />
+          {isDirty ? <p className="text-sm text-muted">Save your draft before submitting.</p> : null}
           {saveError ? (
             <div className="mt-4 max-w-2xl">
-              <ExitInterviewError error={saveError} fallback="The draft could not be saved. Your entries are still on this page." />
+              <PanelMessage role="alert" tone="danger" className="px-0 sm:px-0">{exitInterviewErrorMessage(saveError, "The draft could not be saved. Your entries are still on this page.")}</PanelMessage>
             </div>
           ) : null}
           {submitError && !confirmSubmit ? (
@@ -407,15 +433,19 @@ export function ExitInterviewForm({
               ) : null}
             </div>
           ) : null}
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-3 *:max-w-full">
             <Button type="button" variant="secondary" onClick={() => void saveDraft()} disabled={pending || submissionUncertain || writesUnavailable}>
               {save.isPending ? "Saving…" : "Save draft"}
             </Button>
             <Button type="submit" disabled={!allRatingsComplete || isDirty || pending || submissionUncertain || writesUnavailable}>
               Submit Exit Interview
             </Button>
+            <a href="#exit-interview-section-links" className={buttonVariants({ variant: "quiet", className: "min-h-11" })} onClick={(event) => {
+              event.preventDefault();
+              selectSection("exit-interview-section-links");
+            }}>Back to sections</a>
           </div>
-        </div>
+        </PanelFooter>
         </Panel>
       </form>
 

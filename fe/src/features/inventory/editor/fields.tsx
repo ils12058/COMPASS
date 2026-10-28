@@ -244,7 +244,7 @@ export function CheckboxGroupField<T extends string>({
         {options.map(([optionValue, labelText]) => {
           const checked = values.includes(optionValue);
           return (
-            <label key={optionValue} className="flex min-h-8 items-start gap-2.5 text-sm leading-5 text-ink">
+            <label key={optionValue} className="flex min-h-11 items-start gap-2.5 text-sm leading-5 text-ink">
               <input
                 type="checkbox"
                 className="mt-0.5 h-4 w-4 shrink-0 accent-brand"
@@ -306,7 +306,7 @@ export function BooleanField({
       <InventoryReviewHintText hint={review.hint} className="mt-1" />
       <div className="mt-2 flex flex-wrap gap-x-6 gap-y-3">
         {choices.map((choice) => (
-          <label key={choice.id} className="flex min-h-9 items-center gap-2.5 text-sm text-ink">
+          <label key={choice.id} className="flex min-h-11 items-center gap-2.5 text-sm text-ink">
             <input
               type="radio"
               name={id ?? legend}

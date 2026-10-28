@@ -25,7 +25,7 @@ const { createElement: h, isValidElement } = React;
 const user = (role, capabilities, extra = {}) => ({ id: "00000000-0000-4000-8000-000000000001", email: "fixture@example.test", first_name: "Fixture", last_name: "User", role, capabilities, designations: [], student_lifecycle_status: role === "STUDENT" ? "CURRENT" : null, ...extra });
 // Current role/designation authority from accounts/policy.py; unused confidential-domain grants
 // are omitted. Tests below separately exercise overridden effective capabilities.
-const student = user("STUDENT", ["accounts.view", "organization.structure.view", "services.catalog.view", "availability.view", "appointments.view_self", "appointments.manage_self", "inventory.view_self", "inventory.manage_self", "exit_interviews.view_self", "exit_interviews.manage_self", "routine_interviews.view_self", "routine_interviews.manage_self", "shared_summaries.view_self", "call_slips.view_self", "good_moral.view_self", "good_moral.request_self", "feedback.submit_customer_feedback", "feedback.submit_csm", "graduate_tracer.view_self", "graduate_tracer.manage_self"]);
+const student = user("STUDENT", ["accounts.view", "organization.structure.view", "services.catalog.view", "availability.view", "appointments.view_self", "appointments.manage_self", "inventory.view_self", "inventory.manage_self", "exit_interviews.view_self", "exit_interviews.manage_self", "routine_interviews.view_self", "routine_interviews.manage_self", "student_session_summaries.view_self", "call_slips.view_self", "good_moral.view_self", "good_moral.request_self", "feedback.submit_customer_feedback", "feedback.submit_csm", "graduate_tracer.view_self", "graduate_tracer.manage_self"]);
 const staff = user("GUIDANCE_SERVICES_STAFF", ["exit_interviews.manage_opportunities", "academic_years.view", "institutional_forms.view", "good_moral.view", "good_moral.prepare", "accounts.view", "organization.structure.view", "services.catalog.view", "availability.view", "appointments.view_self", "appointments.manage", "referrals.view", "referrals.manage", "call_slips.view", "call_slips.manage", "announcements.manage", "resources.manage"]);
 const counselor = user("COUNSELOR", [...staff.capabilities.filter((code) => code !== "exit_interviews.manage_opportunities"), "academic_years.view", "institutional_forms.view", "availability.manage_self", "inventory.view", "inventory.reopen", "counseling.view_assigned", "counseling.manage_assigned", "routine_interviews.view_assigned", "reports.view", "good_moral.view", "good_moral.manage", "good_moral.issue"]);
 const head = { ...counselor, designations: ["HEAD_GUIDANCE_COUNSELOR"], capabilities: [...counselor.capabilities, "exit_interviews.manage_opportunities", "organization.manage", "services.manage", "availability.manage", "academic_years.manage", "exit_interviews.view", "feedback.view_customer_feedback", "feedback.view_csm", "graduate_tracer.view"] };
@@ -87,7 +87,10 @@ test("GSS, Counselor, and Head Guidance keep their distinct scheduling and opera
   assert.ok(!hrefs(staff).some((path) => path.startsWith("/portal/availability")));
   assert.ok(hrefs(counselor).includes("/portal/availability/me"));
   assert.ok(!hrefs(counselor).includes("/portal/availability/office"));
-  assert.ok(!hrefs(counselor).some((path) => /^\/portal\/(platform|privacy|accounts|organization)/.test(path)));
+  assert.ok(!hrefs(counselor).some((path) => /^\/portal\/(platform|privacy|accounts)/.test(path)));
+  assert.ok(hrefs(counselor).includes("/portal/organization"), "authorized staff can browse Structure");
+  assert.ok(!hrefs(counselor).includes("/portal/organization/responsibilities"));
+  assert.ok(!hrefs(counselor).includes("/portal/organization/student-affiliations"));
   for (const path of ["/portal/organization/responsibilities", "/portal/organization/student-affiliations", "/portal/availability/office", "/portal/availability/providers", "/portal/feedback/csm/responses"]) assert.ok(hrefs(head).includes(path));
   assert.ok(!hrefs(head).some((path) => /^\/portal\/(platform|privacy|accounts)/.test(path)));
 });

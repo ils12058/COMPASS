@@ -34,38 +34,44 @@ export function StepUpDialog({
   onVerified,
   isContinuing = false,
   requirement = "verify",
+  setupInNewTab = false,
+  reviewAfterVerification = false,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onVerified?: () => void | Promise<void>;
   isContinuing?: boolean;
   requirement?: StepUpRequirement;
+  // Catalog drafts stay in their original tab while Security handles setup.
+  setupInNewTab?: boolean;
+  reviewAfterVerification?: boolean;
 }) {
   if (requirement === "setup") {
-    return <AuthenticatorSetupDialog open={open} onOpenChange={onOpenChange} />;
+    return <AuthenticatorSetupDialog open={open} onOpenChange={onOpenChange} inNewTab={setupInNewTab} />;
   }
-  return <AuthenticatorCodeDialog open={open} onOpenChange={onOpenChange} onVerified={onVerified} isContinuing={isContinuing} />;
+  return <AuthenticatorCodeDialog open={open} onOpenChange={onOpenChange} onVerified={onVerified} isContinuing={isContinuing} reviewAfterVerification={reviewAfterVerification} />;
 }
 
 function AuthenticatorSetupDialog({
   open,
   onOpenChange,
+  inNewTab,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  inNewTab: boolean;
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogTitle>Set up an authenticator</DialogTitle>
         <DialogDescription>
-          This action needs an authenticator app on your account. Set one up in Security, then try
-          the action again.
+          {inNewTab ? "This action needs an authenticator. Open Security in a new tab to keep your draft here. After setup, return here and review the change again." : "This action needs an authenticator app on your account. Set one up in Security, then try the action again."}
         </DialogDescription>
         <div className="mt-6 flex flex-wrap justify-end gap-2">
-          <Button variant="secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <GuardedPortalLink href={AUTHENTICATOR_SETUP_HREF} className={buttonVariants({ variant: "primary" })}>
-            Set up authenticator
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>{inNewTab ? "Return to change" : "Cancel"}</Button>
+          <GuardedPortalLink target={inNewTab ? "_blank" : undefined} rel={inNewTab ? "noopener noreferrer" : undefined} href={AUTHENTICATOR_SETUP_HREF} className={buttonVariants({ variant: "primary" })}>
+            Set up authenticator{inNewTab ? <span className="sr-only"> (opens in a new tab)</span> : null}
           </GuardedPortalLink>
         </div>
       </DialogContent>
@@ -78,11 +84,13 @@ function AuthenticatorCodeDialog({
   onOpenChange,
   onVerified,
   isContinuing,
+  reviewAfterVerification,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onVerified?: () => void | Promise<void>;
   isContinuing: boolean;
+  reviewAfterVerification: boolean;
 }) {
   const queryClient = useQueryClient();
   const verify = useAuthVerifyTotp();
@@ -136,7 +144,7 @@ function AuthenticatorCodeDialog({
       <DialogContent dismissible={!busy}>
         <DialogTitle>Verify it&apos;s you</DialogTitle>
         <DialogDescription>
-          {onVerified
+          {reviewAfterVerification ? "Verify your authenticator. You will review the latest details before submitting the change again." : onVerified
             ? "This confirmed action needs a recent security check. Enter the current code from your authenticator app to continue."
             : "Enter the current code from your authenticator app."}
         </DialogDescription>
@@ -146,10 +154,10 @@ function AuthenticatorCodeDialog({
             <Input id="step-up-code" autoComplete="one-time-code" inputMode="numeric" maxLength={6} required disabled={busy} value={code} onChange={(event) => setCode(event.target.value)} aria-describedby={error ? "step-up-error" : undefined} />
           </div>
           {error ? <p id="step-up-error" role="alert" className="text-sm text-danger">{error}</p> : null}
-          {busy && !verify.isPending ? <p role="status" className="text-sm text-muted">Verification succeeded. Completing your action…</p> : null}
+          {busy && !verify.isPending ? <p role="status" className="text-sm text-muted">{reviewAfterVerification ? "Verification succeeded. Loading the latest details…" : "Verification succeeded. Completing your action…"}</p> : null}
           <div className="flex justify-end gap-2">
             <Button variant="secondary" disabled={busy} onClick={close}>Cancel</Button>
-            <Button type="submit" disabled={busy}>{verify.isPending ? "Verifying…" : busy ? "Completing…" : "Verify"}</Button>
+            <Button type="submit" disabled={busy}>{verify.isPending ? "Verifying…" : busy ? (reviewAfterVerification ? "Loading…" : "Completing…") : "Verify"}</Button>
           </div>
         </form>
       </DialogContent>

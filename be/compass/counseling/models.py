@@ -90,14 +90,14 @@ class CounselingEncounter(models.Model):
         ]
 
 
-class CounselingSharedSummary(models.Model):
+class StudentSessionSummary(models.Model):
     """Counselor-authored content deliberately published to the Encounter Student."""
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     encounter = models.OneToOneField(
         CounselingEncounter,
         on_delete=models.PROTECT,
-        related_name="shared_summary",
+        related_name="student_session_summary",
     )
     content_ciphertext = models.TextField(editable=False)
     published_at = models.DateTimeField(null=True, blank=True)
@@ -110,6 +110,14 @@ class CounselingSharedSummary(models.Model):
         constraints = [
             models.CheckConstraint(
                 condition=~models.Q(content_ciphertext=""),
-                name="counseling_summary_ciphertext_present",
+                name="student_session_summary_ciphertext_present",
             ),
         ]
+
+
+# Register the focused continuity models in the existing Counseling app.
+from compass.counseling.continuity_models import (  # noqa: E402, F401
+    CounselorCaseContinuityGrant,
+    CounselorCaseContinuityScope,
+)
+from compass.counseling.handoff_models import CounselorHandoffSummary  # noqa: E402, F401

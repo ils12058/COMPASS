@@ -21,6 +21,22 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
+    "organizationUpdateProgramPolicy",
+    "organizationCreateCampus",
+    "organizationRenameCampus",
+    "organizationSetCampusActive",
+    "organizationGetCampusImpact",
+    "organizationGetCampusHistory",
+    "organizationCreateCollege",
+    "organizationRenameCollege",
+    "organizationSetCollegeActive",
+    "organizationGetCollegeImpact",
+    "organizationGetCollegeHistory",
+    "organizationCreateProgram",
+    "organizationRenameProgram",
+    "organizationSetProgramActive",
+    "organizationGetProgramImpact",
+    "organizationGetProgramHistory",
     "guidanceFollowupsList",
     "guidanceFollowupsCreate",
     "guidanceFollowupsGet",
@@ -247,16 +263,31 @@ EXPECTED_OPERATION_IDS = {
     "counselingGetEncounter",
     "counselingUpdateEncounter",
     "counselingListStudents",
-    "counselingGetAssignedSharedSummary",
-    "counselingPutAssignedSharedSummary",
-    "counselingPublishAssignedSharedSummary",
-    "counselingListMySharedSummaries",
-    "counselingGetMySharedSummary",
+    "counselingGetAssignedStudentSessionSummary",
+    "counselingPutAssignedStudentSessionSummary",
+    "counselingPublishAssignedStudentSessionSummary",
+    "counselingListMyStudentSessionSummaries",
+    "counselingGetMyStudentSessionSummary",
     "counselingContextGetOverview",
     "counselingContextGetSupportIndicators",
     "counselingContextGetInventory",
     "counselingContextListHistory",
-    "counselingContextListSharedSummaries",
+    "counselingContinuityListGrants",
+    "counselingContinuityRequestCoverage",
+    "counselingContinuityGetGrant",
+    "counselingContinuityApproveGrant",
+    "counselingContinuityDeclineGrant",
+    "counselingContinuityCancelGrant",
+    "counselingContinuityRevokeGrant",
+    "counselingContinuityGetSelectedEncounterMetadata",
+    "counselingContinuityGetSelectedRoutineEvaluation",
+    "counselingCoverageGetConfiguration",
+    "counselingCoverageSelectSources",
+    "counselingHandoffGetMetadata",
+    "counselingHandoffGetAuthorDraft",
+    "counselingHandoffSaveDraft",
+    "counselingHandoffSubmit",
+    "counselingHandoffReadSubmitted",
     "academicYearsList",
     "academicYearsCreate",
     "academicYearsSetCurrent",
@@ -303,6 +334,7 @@ EXPECTED_OPERATION_IDS = {
     "goodMoralUpdateRequest",
     "goodMoralIssueRequest",
     "goodMoralPrepareRequest",
+    "goodMoralVerifyReceipt",
     "goodMoralCancelRequest",
     "goodMoralDownloadCertificate",
     "feedbackListMyOpportunities",
@@ -517,6 +549,24 @@ def test_good_moral_preparation_contract_has_explicit_actions_and_exact_versions
     assert _response_statuses(prepare) >= {200, 403, 409, 422}
     assert schemas["GoodMoralPreparationPayload"]["required"] == ["expected_resource_version"]
     assert schemas["GoodMoralIssuePayload"]["required"] == ["expected_preparation_version"]
+    assert {
+        "expected_resource_version",
+        "expected_receipt_revision",
+        "expected_receipt_verification",
+    } <= set(schemas["GoodMoralIssuePayload"]["properties"])
+    verify = _operation(schema, "/api/v1/good-moral/requests/{request_id}/receipt/verify", "post")
+    assert verify["operationId"] == "goodMoralVerifyReceipt"
+    assert _response_statuses(verify) >= {200, 401, 403, 404, 409, 422}
+    inspection_payload = schemas["GoodMoralReceiptVerificationPayload"]
+    assert inspection_payload["additionalProperties"] is False
+    assert (
+        set(inspection_payload["properties"])
+        == set(inspection_payload["required"])
+        == {"expected_resource_version", "assignment_id", "operation_id", "method"}
+    )
+    assert inspection_payload["properties"]["method"]["const"] == "PHYSICAL_OR_INSPECTION"
+    assert "receipt_inspection" in schemas["GoodMoralOperationalDetailResponse"]["properties"]
+    assert "receipt_inspection" not in schemas["GoodMoralDetailResponse"]["properties"]
     actions = schemas["GoodMoralActionsResponse"]["properties"]
     assert actions["request_version"]["type"] == "string"
     for name in ("can_prepare", "can_correct", "can_issue", "can_cancel", "can_download"):
@@ -1007,6 +1057,25 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
 
 def test_counseling_context_contract_is_anchor_based_and_read_only() -> None:
     schema = _generated_schema()
+    assert (
+        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/student-session-summaries"
+        not in schema["paths"]
+    )
+    assert not {
+        "ContextStudentSessionSummaryResponse",
+        "CounselingContextStudentSessionSummariesResponse",
+    } & set(schema["components"]["schemas"])
+    assert schema["components"]["schemas"]["CounselingContextSection"]["enum"] == [
+        "SUPPORT_INDICATORS",
+        "INVENTORY",
+        "HISTORY",
+    ]
+    assert not any(
+        operation.get("operationId") == "counselingContextListStudentSessionSummaries"
+        for path in schema["paths"].values()
+        for operation in path.values()
+        if isinstance(operation, dict)
+    )
     expected = {
         "/api/v1/counseling/context/{anchor_type}/{anchor_id}": "counselingContextGetOverview",
         "/api/v1/counseling/context/{anchor_type}/{anchor_id}/support-indicators": (
@@ -1017,9 +1086,6 @@ def test_counseling_context_contract_is_anchor_based_and_read_only() -> None:
         ),
         "/api/v1/counseling/context/{anchor_type}/{anchor_id}/history": (
             "counselingContextListHistory"
-        ),
-        "/api/v1/counseling/context/{anchor_type}/{anchor_id}/shared-summaries": (
-            "counselingContextListSharedSummaries"
         ),
     }
 
@@ -1114,8 +1180,8 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "SessionListResponse",
         "CounselingEncounterResponse",
         "CounselingStudentPageResponse",
-        "CounselingAssignedSharedSummaryResponse",
-        "CounselingStudentSharedSummaryPageResponse",
+        "CounselingAssignedStudentSessionSummaryResponse",
+        "CounselingStudentSessionSummaryPageResponse",
         "StudentWorkspaceResponse",
         "CounselorWorkspaceResponse",
         "MediaWorkspaceState",
@@ -1382,6 +1448,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
 
     program_summary = schemas["ProgramSummary"]["properties"]
     assert {
+        "resource_version",
         "id",
         "code",
         "name",
@@ -1700,7 +1767,10 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         403,
         422,
     }
-    assert "post" not in schema["paths"]["/api/v1/organization/programs"]
+    assert (
+        _operation(schema, "/api/v1/organization/programs", "post")["operationId"]
+        == "organizationCreateProgram"
+    )
     assert _response_statuses(
         _operation(schema, "/api/v1/organization/programs/{program_id}", "get")
     ) >= {200, 401, 403, 404, 422}
@@ -1893,12 +1963,14 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         _operation(schema, "/api/v1/counseling/encounters/{encounter_id}", "patch")
     ) >= {200, 401, 403, 404, 409, 422}
     assert _response_statuses(
-        _operation(schema, "/api/v1/counseling/encounters/{encounter_id}/shared-summary", "put")
+        _operation(
+            schema, "/api/v1/counseling/encounters/{encounter_id}/student-session-summary", "put"
+        )
     ) >= {200, 401, 403, 404, 409, 422}
     assert _response_statuses(
         _operation(
             schema,
-            "/api/v1/counseling/encounters/{encounter_id}/shared-summary/publish",
+            "/api/v1/counseling/encounters/{encounter_id}/student-session-summary/publish",
             "post",
         )
     ) >= {200, 401, 403, 404, 409, 422}
@@ -2019,6 +2091,13 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "call_slips.view_self",
             "counseling.manage_assigned",
             "counseling.view_assigned",
+            "counseling.continuity.view",
+            "counseling.continuity.request",
+            "counseling.continuity.approve",
+            "counseling.continuity.revoke",
+            "counseling.continuity.read_selected",
+            "counseling.handoff.manage_own",
+            "counseling.handoff.read_received",
             "ecounseling.consent_self",
             "ecounseling.join_assigned",
             "ecounseling.join_self",
@@ -2039,6 +2118,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "good_moral.issue",
             "good_moral.manage",
             "good_moral.prepare",
+            "good_moral.verify_receipt",
             "good_moral.request_self",
             "good_moral.view",
             "good_moral.view_self",
@@ -2051,6 +2131,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "inventory.reopen",
             "inventory.view",
             "inventory.view_self",
+            "organization.catalog.manage",
             "organization.manage",
             "organization.structure.view",
             "platform_operations.manage",
@@ -2069,9 +2150,9 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "routine_interviews.view_self",
             "services.manage",
             "services.catalog.view",
-            "shared_summaries.manage_assigned",
-            "shared_summaries.view_assigned",
-            "shared_summaries.view_self",
+            "student_session_summaries.manage_assigned",
+            "student_session_summaries.view_assigned",
+            "student_session_summaries.view_self",
             "student_support.view",
         ]
     )
@@ -2132,8 +2213,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "TrustedSessionSummary",
         "CounselingEncounterResponse",
         "CounselingStudentResponse",
-        "CounselingAssignedSharedSummaryResponse",
-        "CounselingStudentSharedSummaryResponse",
+        "CounselingAssignedStudentSessionSummaryResponse",
+        "CounselingStudentSessionSummaryResponse",
         "StudentWorkspaceResponse",
         "CounselorWorkspaceResponse",
         "ConsentResponse",
@@ -2148,6 +2229,14 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "GraduateTracerDetailResponse",
         "GraduateTracerSummaryResponse",
         "GraduateTracerPageResponse",
+        "ContinuityGrantMetadata",
+        "CoverageConfiguration",
+        "CoverageSelectionPage",
+        "HandoffMetadata",
+        "HandoffPresence",
+        "HandoffBody",
+        "SelectedEncounterFields",
+        "SelectedEvaluationFields",
     }
     forbidden_fields = {
         "password_hash",
@@ -2692,7 +2781,7 @@ def test_routine_interview_candidate_discovery_openapi_contract() -> None:
         "suicidal",
         "special_concern",
         "recommendations",
-        "shared_summary",
+        "student_session_summary",
         "audit",
     ):
         assert forbidden not in serialized
@@ -2810,7 +2899,7 @@ def test_counseling_frontend_readiness_openapi_contract() -> None:
         "reason",
         "audit",
         "support_profile",
-        "shared_summary",
+        "student_session_summary",
     ):
         assert forbidden not in serialized
 
@@ -3239,3 +3328,47 @@ def test_exit_interview_saved_revision_and_answer_contract_are_read_only():
     )
     payload = definitions["ExitInterviewDraftPayload"]["properties"]
     assert "form_revision" not in payload and "college_feedback_item_codes" not in payload
+
+
+def test_catalog_mutations_are_focused_versioned_and_strict():
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    for entity, plural in (
+        ("Campus", "campuses"),
+        ("College", "colleges"),
+        ("Program", "programs"),
+    ):
+        base = f"/api/v1/organization/{plural}"
+        assert _operation(schema, base, "post")["operationId"] == f"organizationCreate{entity}"
+        for suffix, verb, action in (
+            ("name", "put", f"Rename{entity}"),
+            ("active", "put", f"Set{entity}Active"),
+            ("impact", "get", f"Get{entity}Impact"),
+            ("history", "get", f"Get{entity}History"),
+        ):
+            op = _operation(schema, f"{base}/{{target_id}}/{suffix}", verb)
+            assert op["operationId"] == f"organization{action}"
+            assert _response_statuses(op) >= {200, 401, 403, 404, 422}
+            if verb == "put":
+                assert 409 in _response_statuses(op)
+        summary = schemas[f"{entity}Summary"]
+        assert "resource_version" in summary["required"]
+    assert (
+        _operation(schema, "/api/v1/organization/programs/{target_id}/policy", "put")["operationId"]
+        == "organizationUpdateProgramPolicy"
+    )
+    for name in ("CatalogRenameRequest", "CatalogStatusRequest", "CatalogPolicyRequest"):
+        assert "expected_resource_version" in schemas[name]["required"]
+        assert schemas[name]["properties"]["expected_resource_version"]["minimum"] == 1
+        assert schemas[name]["additionalProperties"] is False
+        assert "code" not in schemas[name]["properties"]
+        assert "college_id" not in schemas[name]["properties"]
+    for name in (
+        "CatalogCreateCampusRequest",
+        "CatalogCreateCollegeRequest",
+        "CatalogCreateProgramRequest",
+    ):
+        assert schemas[name]["additionalProperties"] is False
+    assert schemas["CatalogImpactResponse"]["additionalProperties"] is False
+    assert schemas["CatalogDependentCounts"]["additionalProperties"] is False
+    assert "organization.catalog.manage" in schemas["CapabilityCode"]["enum"]

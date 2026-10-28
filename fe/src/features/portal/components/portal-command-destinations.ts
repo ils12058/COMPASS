@@ -7,7 +7,7 @@ import { getCallSlipAccess } from "@/features/call-slips/call-slips-access";
 import { getFeedbackAccess } from "@/features/feedback/feedback-access";
 import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import { getGuidanceMessagesAccess } from "@/features/guidance-messages/guidance-messages-access";
-import { canViewOrganizationStructure } from "@/features/institution-configuration/institution-access";
+import { canManageOrganization, canViewOrganizationStructure } from "@/features/institution-configuration/institution-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { canManagePrivacyGovernance, canViewPrivacyGovernance, canViewRetention } from "@/features/privacy-governance/privacy-governance-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
@@ -87,8 +87,8 @@ export function portalCommandDestinations(user: UserSummary): PortalCommandDesti
   deep("/portal/reports", "/student-profile", "Student Profiling", true, ["student profile report"]);
   deep("/portal/reports", "/graduate-tracer", "Graduate Tracer", true, ["graduate tracer report"]);
   deep("/portal/organization", "", "Structure", canViewOrganizationStructure(user), ["campus", "college", "program"]);
-  deep("/portal/organization", "/responsibilities", "Responsibilities", true, ["responsibility", "supervision", "staff assignment"]);
-  deep("/portal/organization", "/student-affiliations", "Student affiliations", true, ["student affiliation", "college", "program"]);
+  deep("/portal/organization", "/responsibilities", "Responsibilities", canManageOrganization(user), ["responsibility", "supervision", "staff assignment"]);
+  deep("/portal/organization", "/student-affiliations", "Student affiliations", canManageOrganization(user), ["student affiliation", "college", "program"]);
   deep("/portal/accounts", "/new", "Create account"); // Accounts layout requires accounts.manage.
   deep("/portal/accounts", "/import", "Import accounts");
   const privacyView = canViewPrivacyGovernance(user);

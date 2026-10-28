@@ -1,0 +1,7 @@
+{
+  "event": "good_moral.issued",
+  "reason": "source_missing",
+  "suppressed": false,
+  "synthetic": true,
+  "transport": "not_sent"
+}

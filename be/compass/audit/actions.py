@@ -17,6 +17,8 @@ ACCOUNT_CAPABILITY_OVERRIDE_REMOVED = "account.capability.override.removed"
 ACCOUNT_MFA_RESET = "account.mfa.reset"
 PROFILE_UPDATED = "profile.updated"
 IDENTITY_POLICY_SYNCED = "identity.policy.synced"
+ORGANIZATION_CATALOG_INITIALIZED = "organization.catalog_initialized"
+ORGANIZATION_CATALOG_ADOPTED = "organization.catalog_adopted"
 ORGANIZATION_CATALOG_SYNCED = "organization.catalog_synced"
 ORGANIZATION_CAMPUS_CREATED = "organization.campus.created"
 ORGANIZATION_CAMPUS_UPDATED = "organization.campus.updated"
@@ -27,6 +29,7 @@ ORGANIZATION_COLLEGE_UPDATED = "organization.college.updated"
 ORGANIZATION_COLLEGE_ENABLED = "organization.college.enabled"
 ORGANIZATION_COLLEGE_DISABLED = "organization.college.disabled"
 ORGANIZATION_PROGRAM_CREATED = "organization.program.created"
+ORGANIZATION_PROGRAM_POLICY_CHANGED = "organization.program.policy_changed"
 ORGANIZATION_PROGRAM_UPDATED = "organization.program.updated"
 ORGANIZATION_PROGRAM_ENABLED = "organization.program.enabled"
 ORGANIZATION_PROGRAM_DISABLED = "organization.program.disabled"
@@ -80,11 +83,17 @@ APPOINTMENT_REMINDER_ISSUED = "appointment.reminder.issued"
 APPOINTMENT_REMINDERS_BULK = "appointment.reminders.bulk"
 COUNSELING_ENCOUNTER_CREATED = "counseling.encounter.created"
 COUNSELING_ENCOUNTER_UPDATED = "counseling.encounter.updated"
-COUNSELING_SHARED_SUMMARY_PUBLISHED = "counseling.shared_summary.published"
+STUDENT_SESSION_SUMMARY_PUBLISHED = "counseling.student_session_summary.published"
 INVENTORY_CREATED = "inventory.created"
 INVENTORY_SUBMITTED = "inventory.submitted"
 INVENTORY_REOPENED = "inventory.reopened"
 INVENTORY_RESUBMITTED = "inventory.resubmitted"
+GOOD_MORAL_RECEIPT_VERIFIED = "good_moral.receipt_verified"
+GOOD_MORAL_RECEIPT_VERIFICATION_INVALIDATED = "good_moral.receipt_verification_invalidated"
+GOOD_MORAL_RECEIPT_ASSIGNED = "good_moral.receipt_assigned"
+GOOD_MORAL_RECEIPT_REVISED = "good_moral.receipt_revised"
+GOOD_MORAL_RECEIPT_REMOVED = "good_moral.receipt_removed"
+GOOD_MORAL_RECEIPT_LEGACY_IMPORTED = "good_moral.receipt_legacy_imported"
 GOOD_MORAL_REQUEST_CREATED = "good_moral.request_created"
 GOOD_MORAL_REQUEST_UPDATED = "good_moral.request_updated"
 GOOD_MORAL_REQUEST_CANCELLED = "good_moral.request.cancelled"
@@ -296,6 +305,7 @@ __all__ = [
     "ORGANIZATION_COLLEGE_DISABLED",
     "ORGANIZATION_PROGRAM_CREATED",
     "ORGANIZATION_PROGRAM_UPDATED",
+    "ORGANIZATION_PROGRAM_POLICY_CHANGED",
     "ORGANIZATION_PROGRAM_ENABLED",
     "ORGANIZATION_PROGRAM_DISABLED",
     "ORGANIZATION_COUNSELOR_RESPONSIBILITY_ASSIGNED",
@@ -348,9 +358,15 @@ __all__ = [
     "APPOINTMENT_REMINDERS_BULK",
     "COUNSELING_ENCOUNTER_CREATED",
     "COUNSELING_ENCOUNTER_UPDATED",
-    "COUNSELING_SHARED_SUMMARY_PUBLISHED",
+    "STUDENT_SESSION_SUMMARY_PUBLISHED",
     "INVENTORY_CREATED",
     "INVENTORY_SUBMITTED",
+    "GOOD_MORAL_RECEIPT_VERIFIED",
+    "GOOD_MORAL_RECEIPT_VERIFICATION_INVALIDATED",
+    "GOOD_MORAL_RECEIPT_ASSIGNED",
+    "GOOD_MORAL_RECEIPT_REVISED",
+    "GOOD_MORAL_RECEIPT_REMOVED",
+    "GOOD_MORAL_RECEIPT_LEGACY_IMPORTED",
     "GOOD_MORAL_REQUEST_CREATED",
     "GOOD_MORAL_REQUEST_UPDATED",
     "GOOD_MORAL_REQUEST_CANCELLED",
@@ -437,3 +453,19 @@ ASSESSMENT_TYPE_CREATED = "assessment_type.created"
 ASSESSMENT_TYPE_UPDATED = "assessment_type.updated"
 ASSESSMENT_TYPE_DEACTIVATED = "assessment_type.deactivated"
 ASSESSMENT_TYPE_REACTIVATED = "assessment_type.reactivated"
+
+# Metadata-only case-continuity lifecycle; no source-content release events yet.
+CONTINUITY_REQUESTED = "counseling.continuity.requested"
+CONTINUITY_APPROVED = "counseling.continuity.approved"
+CONTINUITY_DECLINED = "counseling.continuity.declined"
+CONTINUITY_CANCELLED = "counseling.continuity.cancelled"
+CONTINUITY_REVOKED = "counseling.continuity.revoked"
+
+CONTINUITY_SOURCE_READ = "counseling.continuity.source_read"
+
+# CONT-3 professional Handoff and structural selection; no content in event metadata.
+HANDOFF_DRAFT_CREATED = "counseling.handoff.draft_created"
+HANDOFF_DRAFT_UPDATED = "counseling.handoff.draft_updated"
+HANDOFF_SUBMITTED = "counseling.handoff.submitted"
+HANDOFF_READ = "counseling.handoff.read"
+CONTINUITY_SELECTION_READ = "counseling.continuity.selection_read"

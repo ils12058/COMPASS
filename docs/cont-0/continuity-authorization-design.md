@@ -1,0 +1,62 @@
+# Proposed case continuity authorization
+
+**Not implemented and not institutional policy.** Foundation belongs to existing `compass.counseling` in focused `continuity_models`/`continuity_services`/`continuity_access`/`continuity_api` modules (models imported by Django's `models.py` as needed). No new global permission engine, generic case store or duplicate clinical records domain is justified.
+
+## Minimal persistence
+
+| Model / fields | Rules |
+| --- | --- |
+| `CounselorCaseContinuityGrant`: UUID, Student PROTECT, nullable original Counselor PROTECT, receiving Counselor PROTECT, kind, bounded reason category, request actor/time, approval actor/time, start/expiry, decision state, revocation actor/time/reason code, positive version, audit timestamps, policy/evidence reference | Exactly one Student and receiving Counselor; no wildcard. Original Counselor is provenance, not authority and need not remain active. No free-text clinical reason in plaintext metadata. If detailed justification becomes required, separately encrypted content needs a reviewed purpose/binding contract. |
+| `CounselorCaseContinuityScope`: grant FK, allowlisted resource kind, source UUID, read projection identifier, source revision marker where available | Unique `(grant,kind,source_id,projection)`; read only. Typed allowlist, no caller-provided model path/SQL/filter/ALL flag. Every row verified against Student and eligibility on selection, approval and read. Explicit source IDs rather than category-wide professional access. |
+| Optional `CounselorHandoffSummary` (CONT-3) | Separate encrypted document tied to this grant; never a Student Summary visibility mode. See workflows. |
+
+Initial kinds: `PLANNED_HANDOFF`, `TEMPORARY_COVERAGE`; neither means permanent transfer. For grant core, store decision states `REQUESTED`, `APPROVED`, `DECLINED`, `REVOKED`, `CANCELLED`. Derive **scheduled/active/expired** from state and server time. This avoids a worker-maintained ACTIVE/EXPIRED state becoming stale. An expiry audit job may record a one-time event but cannot extend authority.
+
+DB checks: start < expiry; positive version; approval actor/time paired and required on approved/revoked approval; revocation fields paired; valid enumerations; receiver not request/approval exception encoded through service policy (not all cross-row rules fit DB checks). Students/Counselors use protected historical references. Preserve authorship and approval timestamps. Do not rewrite grants when a Student changes College. Default deny reads for inactive/non-Student subject pending approved subject-lifecycle policy; original author departure does not invalidate an already legitimate receiver grant by itself.
+
+Requested payload contains the proposed interval and exact scopes. Approval locks and validates that snapshot; later scope/recipient/Student/purpose/interval changes require a new request/approval, not widening an approved row. Revocation is terminal. Renewal is a new grant linked by provenance if useful. Deny duplicate active/scheduled grants for the same Student+receiver+kind with overlapping time by a transactionally serialized check; different receivers may overlap only after explicit review. Do not infer a permanent primary Counselor from the most recent grant.
+
+No institutional maximum duration is known. Require finite explicit start/end, reject absent/negative/unbounded durations and dates outside confirmed policy. Candidate discussion bounds: coverage aligned to the documented absence, short initial windows with explicit renewal; a 7–30-day ceiling can be considered by GCO but is **not an approved value or existing Context default**. No new disclosure may activate until the institution supplies an enforceable bound and renewal rule.
+
+## Capabilities and approval
+
+Use `accounts` effective capability evaluation and explicit revokes; never hardcode a parallel permission store. Provisional capability names, finalized in CONT-2A: `counseling.continuity.view` (own request/grant metadata), `.request`, `.approve`, `.revoke`, `.read_selected`. The last is content eligibility, not a source override: only allowlisted domain adapters can honor it, with exact record scope and their own restrictions. Ordinary `counseling.view_assigned` is **not** sufficient for any additional confidential source. Existing author routes keep their current meanings.
+
+Proposed defaults after policy sign-off: active Counselors may request and view their own requests/received grants; Head gets approval/revocation authority via a designated capability grant; content reads require receiver identity and `.read_selected`. Approval metadata access is separate from source reads. GSS, IT Admin and unsupported roles are denied even if an unusual override grants a code. Requesters and receivers cannot self-approve under the recommended separation rule; a Head requesting/receiving requires another formally authorized approver.
+
+Current policy has Head and DPO designations but **no Acting Head**. `UserCapabilityOverride` already supports expiring grants/revokes and recorded reason/creator, so do not introduce an Acting Head role. However an override does not encode start time, organizational scope or verified delegation evidence. Acting approval may use approved finite overrides only when the institution defines the actual office scope/evidence and a server predicate can validate it. If constrained delegation needs additional representation, add a narrowly scoped delegation evidence record in CONT-2A; do not pretend the current override proves it. Until that contract is approved, Acting Head approval is a release blocker. Never auto-designate a backup or let IT approve professional access.
+
+At every approval mutation, reload the approver, verify active canonical Counselor, effective approval capability, current Head designation **or validated formal delegation**, applicable organizational scope, separation rule, current receiver qualification, approved source categories and policy/evidence version. Approval does not require raw professional content in the approval screen and must not call decryptors.
+
+## Protected read contract
+
+Proposed `authorize_selected_continuity_read(actor, grant_id, resource_kind, resource_id, projection, now)` is a service decision, not a generic bypass. HTTP status policy: 401 unauthenticated; 403 unsupported/inactive identity or missing capability; concealed 404 for nonexistent/unowned/expired/revoked grant or unselected source; 409 stale mutation version; safe source-specific unavailable errors for authorized corruption. Do not reveal whether a guessed record exists before a valid decision.
+
+Within one short, bounded operation:
+
+1. Reload actor from authoritative DB state; require active canonical Counselor and effective `.read_selected` at backend time, using existing capability engine.
+2. Load and lock grant and selected scope under the documented lock order. Require approved decision, not revoked/cancelled/declined, `starts_at <= now < expires_at`, exact receiving actor and correct Student. Derive time, not cached status.
+3. Require exact allowlisted resource kind+UUID+projection. No selection by arbitrary Student-wide filters. Approval record alone never passes this step.
+4. Owning domain loads source, confirms Student matches grant, checks lifecycle/source visibility, reviewable revision and additional restrictions. No trust in UUID alone. It may deny an otherwise valid grant.
+5. Owning domain builds a fixed read-only projection, decrypting only authorized sections after all checks. No current source mutation route accepts a continuity decision as its existing assigned/manage predicate.
+6. Recheck current backend time and authority at the defined authorization linearization point immediately before release; synchronously append content-free authorized-access Audit event in the same transaction. On audit failure, do not return new protected content. Keep deny auditing safe and bounded without exposing unknown source existence.
+
+Use a small internal typed decision with grant/version, Student, receiver, source and projection for the **current call only**. Never serialize it as a bearer token, put it in a URL, persist it in Redis, reuse it in jobs or construct a fake `CounselingContextAccess`. Metadata/context endpoints use the same current receiver/grant check and independently selected minimal serializers.
+
+Routine needs a new `read_selected_evaluation_for_continuity` adapter: existing `get_assigned` correctly rejects another Counselor. Do not remove its Counselor filter. The new adapter authorizes selected **finalized** Evaluation only, not draft Intake or all Routine detail. Referrals need a similarly explicit projection; calling `get_referral` then swallowing its College denial would be an unauthorized override. Domains decide their sanctioned alternate relationship and still check lifecycle/Student/revision. Initial exclusions remain unrepresentable in the scope enum.
+
+## Revocation, cache and concurrent behavior
+
+Approval/decline/revoke/cancel accept expected version; lock grant and increment once; repeated identical terminal intent may return canonical state, conflicting transitions return 409. Scope writes lock grant first and are prohibited after approval. Serialize same Student+receiver overlap checks using stable existing User rows in a deterministic UUID order (or an equally reviewed PostgreSQL serialization mechanism), followed by grant/scope/source locks. Validate this against source mutation lock orders before coding; avoid deadlocks through nested domain writes. No source writes are needed for grant reads.
+
+Revocation/read serialization: grant reads and revocation take the same grant row lock. If revocation commits first, read denies; if authorized read linearizes first, its completed disclosure remains legitimate and cannot be recalled. Recheck expiry after waiting on locks/decryption. A response can arrive after its transaction committed or after expiry; do not promise network-level recall. No long-lived stream, export or presigned URL may be authorized by this initial mechanism.
+
+Actor deactivation/capability mutation requires an agreed synchronization boundary too. Existing account-management flows lock users and invalidate sessions; the low-level `set_user_capability_override` helper alone does not take a shared actor lock. Audit all mutators, designation/role policy sync and source changes, then establish deterministic shared locking or version fencing for the new read path. Do not claim a grant row lock alone serializes capability changes. At minimum, reload/re-evaluate immediately before return; strict post-commit guarantees require coordinated mutation locks and concurrency tests.
+
+No cached allow decision or decrypted body outside request/TanStack memory. Add `Cache-Control: private, no-store` to success and denial/error responses for continuity and its protected adapters, plus bounded frontend lifetime. Own-grant/source query keys include grant/Student/source/version; clear on expiry, 401/403/404, recipient/account change, revocation hint and failed reauthorization. Use existing server-boundary hook and realtime as content-free invalidation only; bounded polling/refocus rechecks provide fallback. A stale/offline display cannot remain a new authorization source. Test multiple tabs and stale in-flight responses: never repopulate cleared queries after authority generation changes.
+
+## Audit contract
+
+Reuse `audit.record_event` and `AuditContext`. Proposed actions: `counseling.continuity.requested/approved/declined/revoked/cancelled`, `...source_read`, `...expired` if a deduplicated event is needed, and Handoff submission/acknowledgment actions. Metadata: grant ID, Student internal UUID only where needed, receiver/approver internal UUID, scope kind+source UUID+projection, version, effective interval, policy/evidence reference and bounded reason code. No body, raw reason narrative, score, concern category from Intake, email address, token, ciphertext or key.
+
+Reason codes: `NOT_RECEIVER`, `ACTOR_INELIGIBLE`, `CAPABILITY_MISSING`, `NOT_EFFECTIVE`, `EXPIRED`, `REVOKED`, `SCOPE_MISSING`, `SUBJECT_MISMATCH`, `SOURCE_RESTRICTED`, `STALE_VERSION`, `POLICY_UNCONFIRMED`; map external errors without exposing existence. Monitoring/audit-view authority, read-event volume and retention need institutional approval. Audit is accountable evidence, not an assertion that the human actually read/understood the content.

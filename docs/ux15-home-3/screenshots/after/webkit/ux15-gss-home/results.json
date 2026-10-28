@@ -1,0 +1,70 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "GSS desktop canonical work, managed schedule and scoped operations",
+      "passed": true
+    },
+    {
+      "name": "GSS empty work stays separate from available schedule and zero metrics",
+      "passed": true
+    },
+    {
+      "name": "GSS restricted account omits the managed schedule and its request",
+      "passed": true
+    },
+    {
+      "name": "GSS confirmed empty schedule is distinct from restricted access",
+      "passed": true
+    },
+    {
+      "name": "GSS independent initial failures do not become empty states and can retry",
+      "passed": true
+    },
+    {
+      "name": "GSS transient refresh failure retains confirmed data with a freshness notice",
+      "passed": true
+    },
+    {
+      "name": "GSS responsive 320px",
+      "passed": true
+    },
+    {
+      "name": "GSS responsive 360px",
+      "passed": true
+    },
+    {
+      "name": "GSS responsive 390px",
+      "passed": true
+    },
+    {
+      "name": "GSS responsive 768px",
+      "passed": true
+    },
+    {
+      "name": "GSS responsive 1024px",
+      "passed": true
+    },
+    {
+      "name": "GSS responsive 1440px",
+      "passed": true
+    },
+    {
+      "name": "GSS 320px at simulated 200 percent root text reflows without overflow",
+      "passed": true
+    },
+    {
+      "name": "switching from GSS to Student removes GSS work and destinations",
+      "passed": true
+    },
+    {
+      "name": "Counselor Home remains unchanged",
+      "passed": true
+    },
+    {
+      "name": "Student Home remains unchanged",
+      "passed": true
+    }
+  ]
+}

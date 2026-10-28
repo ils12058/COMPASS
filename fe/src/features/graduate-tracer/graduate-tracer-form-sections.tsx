@@ -12,6 +12,7 @@ import {
 } from "@/features/graduate-tracer/graduate-tracer-presentation";
 import {
   CheckboxField,
+  GraduateTracerChoiceMatrix,
   SelectField,
   TextAreaField,
   TextField,
@@ -45,18 +46,18 @@ export function GraduateTracerGeneralSection({
       <p className="max-w-3xl text-sm leading-6 text-muted">
         Changes here apply only to this Graduate Tracer response and do not update your COMPASS account profile.
       </p>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 @2xl/tracer:grid-cols-2">
         <TextField id="gts-name" label="Name" value={draft.name} required error={errorFor("gts-name")} onChange={(value) => onChange("name", value)} />
         <TextField id="gts-email" label="E-mail Address" type="email" inputMode="email" value={draft.email} error={errorFor("gts-email")} onChange={(value) => onChange("email", value)} />
         <TextField id="gts-birth-date" label="Birthday" type="date" max={institutionalDateInputValue()} value={draft.birth_date ?? undefined} required error={errorFor("gts-birth-date")} onChange={(value) => onChange("birth_date", value || null)} />
         <TextField id="gts-province" label="Province" value={draft.province} required error={errorFor("gts-province")} onChange={(value) => onChange("province", value)} />
       </div>
       <TextAreaField id="gts-permanent-address" label="Permanent Address" value={draft.permanent_address} onChange={(value) => onChange("permanent_address", value)} />
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 @2xl/tracer:grid-cols-2">
         <TextField id="gts-telephone" label="Telephone or Contact Number(s)" type="tel" inputMode="tel" value={draft.telephone_contact_numbers} onChange={(value) => onChange("telephone_contact_numbers", value)} />
         <TextField id="gts-mobile" label="Mobile Number" type="tel" inputMode="tel" value={draft.mobile_number} onChange={(value) => onChange("mobile_number", value)} />
       </div>
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-5 @2xl/tracer:grid-cols-2">
         <SelectField id="gts-civil-status" label="Civil Status" value={draft.civil_status} options={CIVIL_STATUS_CHOICES} required error={errorFor("gts-civil-status")} onChange={(value) => onChange("civil_status", value)} />
         <SelectField id="gts-sex" label="Sex" value={draft.sex} options={SEX_CHOICES} required error={errorFor("gts-sex")} onChange={(value) => onChange("sex", value)} />
         <SelectField id="gts-region" label="Region of Origin" value={draft.region_of_origin} options={REGION_CHOICES} required error={errorFor("gts-region")} onChange={(value) => onChange("region_of_origin", value)} />
@@ -105,7 +106,7 @@ export function GraduateTracerEducationSection({
             Select the College and Program you graduated from at UCN, then enter your graduation year.
           </p>
         </div>
-        <div className="grid gap-5 sm:grid-cols-2">
+        <div className="grid gap-5 @2xl/tracer:grid-cols-2">
           <SelectField
             id="gts-graduated-college"
             label="College at Graduation"
@@ -170,17 +171,17 @@ export function GraduateTracerEducationSection({
         <h3 className="font-semibold text-ink">Q12. Educational Attainment (Baccalaureate Degree only) <span aria-hidden="true" className="text-danger">*</span></h3>
         <p className="mt-1 text-sm leading-6 text-muted">Add each baccalaureate degree you completed. At least one is required before submission.</p>
         {draft.education.length ? (
-          <div className="mt-4 divide-y divide-border rounded-sm border border-border">
+          <div className="mt-4 divide-y divide-border">
             {draft.education.map((row, index) => (
-              <fieldset key={row.formKey} className="space-y-4 px-4 py-5">
-                <legend className="font-semibold text-ink">Degree {index + 1}</legend>
-                <div className="grid gap-4 sm:grid-cols-2">
+              <fieldset key={row.formKey} className="min-w-0 space-y-4 py-5">
+                <legend className="max-w-full font-semibold text-ink">Degree {index + 1}</legend>
+                <div className="grid gap-4 @2xl/tracer:grid-cols-2">
                   <TextField id={`degree-${index}-name`} label="Degree(s) & Specialization(s)" value={row.degree_and_specialization} required error={errorFor(`degree-${index}-name`)} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, degree_and_specialization: value } : item))} />
                   <TextField id={`degree-${index}-institution`} label="College or University" value={row.college_or_university} required error={errorFor(`degree-${index}-institution`)} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, college_or_university: value } : item))} />
                   <TextField id={`degree-${index}-year`} label="Year Graduated" type="number" inputMode="numeric" min={1900} max={Number(institutionalDateInputValue().slice(0, 4))} step={1} value={row.year_graduated} required error={errorFor(`degree-${index}-year`)} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, year_graduated: value } : item))} />
                   <TextField id={`degree-${index}-honors`} label="Honor(s) or Award(s) Received" value={row.honors_or_awards} onChange={(value) => onChange("education", draft.education.map((item, itemIndex) => itemIndex === index ? { ...item, honors_or_awards: value } : item))} />
                 </div>
-                <Button type="button" variant="secondary" onClick={() => onChange("education", draft.education.filter((_, itemIndex) => itemIndex !== index))}>Remove degree {index + 1}</Button>
+                <Button type="button" variant="secondary" className="max-w-full whitespace-normal" onClick={() => onChange("education", draft.education.filter((_, itemIndex) => itemIndex !== index))}>Remove degree {index + 1}</Button>
               </fieldset>
             ))}
           </div>
@@ -190,7 +191,7 @@ export function GraduateTracerEducationSection({
             id="gts-add-degree"
             type="button"
             variant="secondary"
-            className="mt-4"
+            className="mt-4 max-w-full whitespace-normal"
             aria-describedby={errorFor("gts-add-degree") ? "gts-add-degree-error" : undefined}
             onClick={() => onChange("education", [...draft.education, { degree_and_specialization: "", college_or_university: "", year_graduated: "", honors_or_awards: "", formKey: globalThis.crypto.randomUUID() }])}
           >
@@ -204,33 +205,32 @@ export function GraduateTracerEducationSection({
         <h3 className="font-semibold text-ink">Q13. Professional Examinations</h3>
         <p className="mt-1 text-sm leading-6 text-muted">Optional. Add an examination name; date taken and rating may be left blank.</p>
         {draft.professional_exams.length ? (
-          <div className="mt-4 divide-y divide-border rounded-sm border border-border">
+          <div className="mt-4 divide-y divide-border">
             {draft.professional_exams.map((row, index) => (
-              <fieldset key={row.formKey} className="space-y-4 px-4 py-5">
-                <legend className="font-semibold text-ink">Examination {index + 1}</legend>
-                <div className="grid gap-4 sm:grid-cols-3">
+              <fieldset key={row.formKey} className="min-w-0 space-y-4 py-5">
+                <legend className="max-w-full font-semibold text-ink">Examination {index + 1}</legend>
+                <div className="grid gap-4 @3xl/tracer:grid-cols-3">
                   <TextField id={`exam-${index}-name`} label="Name of Examination" value={row.examination_name} required error={errorFor(`exam-${index}-name`)} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, examination_name: value } : item))} />
                   <TextField id={`exam-${index}-date`} label="Date Taken" type="date" max={institutionalDateInputValue()} value={row.date_taken ?? ""} error={errorFor(`exam-${index}-date`)} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, date_taken: value || null } : item))} />
                   <TextField id={`exam-${index}-rating`} label="Rating" value={row.rating} onChange={(value) => onChange("professional_exams", draft.professional_exams.map((item, itemIndex) => itemIndex === index ? { ...item, rating: value } : item))} />
                 </div>
-                <Button type="button" variant="secondary" onClick={() => onChange("professional_exams", draft.professional_exams.filter((_, itemIndex) => itemIndex !== index))}>Remove examination {index + 1}</Button>
+                <Button type="button" variant="secondary" className="max-w-full whitespace-normal" onClick={() => onChange("professional_exams", draft.professional_exams.filter((_, itemIndex) => itemIndex !== index))}>Remove examination {index + 1}</Button>
               </fieldset>
             ))}
           </div>
         ) : <p className="mt-3 text-sm text-muted">No professional examinations added.</p>}
-        <Button type="button" variant="secondary" className="mt-4" onClick={() => onChange("professional_exams", [...draft.professional_exams, { examination_name: "", date_taken: null, rating: "", formKey: globalThis.crypto.randomUUID() }])}>Add examination</Button>
+        <Button type="button" variant="secondary" className="mt-4 max-w-full whitespace-normal" onClick={() => onChange("professional_exams", [...draft.professional_exams, { examination_name: "", date_taken: null, rating: "", formKey: globalThis.crypto.randomUUID() }])}>Add examination</Button>
       </div>
 
       <div className="border-t border-border pt-6">
         <h3 className="font-semibold text-ink">Q14. Reasons for taking degree(s)</h3>
         <p id="gts-degree-reasons-help" className="mt-1 text-sm leading-6 text-muted">Select any reasons that apply. The two columns are independent; the shared “Others, please specify” line is below the comparison.</p>
-        {/* On phones the pinned Reason column is narrowed so both answer columns can scroll beside it. */}
-        <div className="relative mt-4 overflow-x-auto rounded-sm border border-border">
-          <table className="w-full border-collapse text-sm sm:min-w-[42rem]">
+        <GraduateTracerChoiceMatrix id="gts-degree-reasons" label="Reasons for taking degrees choices">
+          <table className="w-full table-fixed border-collapse text-sm min-w-[24rem] @2xl/tracer:table-auto @2xl/tracer:min-w-[42rem]">
             <caption className="sr-only">Reasons for taking undergraduate and graduate degree programs</caption>
             <thead className="bg-brand-wash text-left text-xs uppercase tracking-wide text-brand-strong">
               <tr>
-                <th scope="col" className="sticky left-0 z-10 w-36 bg-brand-wash px-3 py-3 font-semibold sm:w-auto sm:min-w-[20rem]">Reason</th>
+                <th scope="col" className="sticky left-0 z-10 w-[min(9rem,40cqi)] min-w-[min(9rem,40cqi)] max-w-[min(9rem,40cqi)] bg-brand-wash px-3 py-3 font-semibold @2xl/tracer:w-auto @2xl/tracer:min-w-[20rem] @2xl/tracer:max-w-none">Reason</th>
                 <th scope="col" className="min-w-28 px-2 py-3 font-semibold sm:min-w-44 sm:px-3">Undergraduate / AB / BS</th>
                 <th scope="col" className="min-w-28 px-2 py-3 font-semibold sm:min-w-44 sm:px-3">Graduate / MS / MA / PhD</th>
               </tr>
@@ -238,18 +238,18 @@ export function GraduateTracerEducationSection({
             <tbody className="divide-y divide-border">
               {DEGREE_REASON_CHOICES.map((choice) => (
                 <tr key={choice.value}>
-                  <th scope="row" className="sticky left-0 z-10 bg-surface-raised px-3 py-3 text-left font-medium text-ink">{choice.label}</th>
+                  <th scope="row" className="sticky left-0 z-10 w-[min(9rem,40cqi)] min-w-[min(9rem,40cqi)] max-w-[min(9rem,40cqi)] @2xl/tracer:w-auto @2xl/tracer:min-w-0 @2xl/tracer:max-w-none bg-surface-raised px-3 py-3 text-left font-medium text-ink">{choice.label}</th>
                   <td className="px-2 py-3 sm:px-3">
-                    <input type="checkbox" aria-label={`${choice.label} — Undergraduate / AB / BS`} checked={draft.undergraduate_degree_reasons?.includes(choice.value) ?? false} onChange={() => onChange("undergraduate_degree_reasons", toggle(draft.undergraduate_degree_reasons, choice.value))} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" />
+                    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-sm focus-within:ring-2 focus-within:ring-focus"><input type="checkbox" aria-label={`${choice.label} — Undergraduate / AB / BS`} checked={draft.undergraduate_degree_reasons?.includes(choice.value) ?? false} onChange={() => onChange("undergraduate_degree_reasons", toggle(draft.undergraduate_degree_reasons, choice.value))} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /></label>
                   </td>
                   <td className="px-2 py-3 sm:px-3">
-                    <input type="checkbox" aria-label={`${choice.label} — Graduate / MS / MA / PhD`} checked={draft.graduate_study_reasons?.includes(choice.value) ?? false} onChange={() => onChange("graduate_study_reasons", toggle(draft.graduate_study_reasons, choice.value))} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" />
+                    <label className="inline-flex min-h-11 min-w-11 cursor-pointer items-center justify-center rounded-sm focus-within:ring-2 focus-within:ring-focus"><input type="checkbox" aria-label={`${choice.label} — Graduate / MS / MA / PhD`} checked={draft.graduate_study_reasons?.includes(choice.value) ?? false} onChange={() => onChange("graduate_study_reasons", toggle(draft.graduate_study_reasons, choice.value))} className="h-4 w-4 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" /></label>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
+        </GraduateTracerChoiceMatrix>
         <div className="mt-4 max-w-2xl">
           <TextAreaField id="gts-degree-other-reason" label="Others, please specify" value={draft.degree_other_reason} onChange={(value) => onChange("degree_other_reason", value)} />
         </div>
@@ -273,21 +273,21 @@ export function GraduateTracerTrainingSection({
         <h3 className="font-semibold text-ink">Q15a. Training(s) / Advance Studies Attended After College</h3>
         <p className="mt-1 text-sm leading-6 text-muted">Optional. Add each training or advance study attended after college.</p>
         {draft.trainings.length ? (
-          <div className="mt-4 divide-y divide-border rounded-sm border border-border">
+          <div className="mt-4 divide-y divide-border">
             {draft.trainings.map((row, index) => (
-              <fieldset key={row.formKey} className="space-y-4 px-4 py-5">
-                <legend className="font-semibold text-ink">Training / advance study {index + 1}</legend>
-                <div className="grid gap-4 sm:grid-cols-2">
+              <fieldset key={row.formKey} className="min-w-0 space-y-4 py-5">
+                <legend className="max-w-full font-semibold text-ink">Training / advance study {index + 1}</legend>
+                <div className="grid gap-4 @2xl/tracer:grid-cols-2">
                   <TextField id={`training-${index}-title`} label="Title of Training or Advance Study" value={row.title} required error={errorFor(`training-${index}-title`)} onChange={(value) => onChange("trainings", draft.trainings.map((item, itemIndex) => itemIndex === index ? { ...item, title: value } : item))} />
                   <TextField id={`training-${index}-duration`} label="Duration and Credits Earned" value={row.duration_and_credits} onChange={(value) => onChange("trainings", draft.trainings.map((item, itemIndex) => itemIndex === index ? { ...item, duration_and_credits: value } : item))} />
                   <TextField id={`training-${index}-institution`} label="Name of Training Institution / College / University" value={row.institution} onChange={(value) => onChange("trainings", draft.trainings.map((item, itemIndex) => itemIndex === index ? { ...item, institution: value } : item))} />
                 </div>
-                <Button type="button" variant="secondary" onClick={() => onChange("trainings", draft.trainings.filter((_, itemIndex) => itemIndex !== index))}>Remove training / advance study {index + 1}</Button>
+                <Button type="button" variant="secondary" className="max-w-full whitespace-normal" onClick={() => onChange("trainings", draft.trainings.filter((_, itemIndex) => itemIndex !== index))}>Remove training / advance study {index + 1}</Button>
               </fieldset>
             ))}
           </div>
         ) : <p className="mt-3 text-sm text-muted">No training or advance study has been added.</p>}
-        <Button type="button" variant="secondary" className="mt-4" onClick={() => onChange("trainings", [...draft.trainings, { title: "", duration_and_credits: "", institution: "", formKey: globalThis.crypto.randomUUID() }])}>Add training / advance study</Button>
+        <Button type="button" variant="secondary" className="mt-4 max-w-full whitespace-normal" onClick={() => onChange("trainings", [...draft.trainings, { title: "", duration_and_credits: "", institution: "", formKey: globalThis.crypto.randomUUID() }])}>Add training / advance study</Button>
       </div>
       <div className="border-t border-border pt-6">
         <CheckboxField

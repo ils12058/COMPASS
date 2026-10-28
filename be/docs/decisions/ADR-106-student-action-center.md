@@ -1,5 +1,7 @@
 # ADR-106: Student Action Center
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 Date: 2026-10-10
 Status: Accepted
 

@@ -5,6 +5,8 @@ umask 077
 : "${DEPLOY_SHA:?}" "${IMAGE:?}" "${APP_VERSION:?}" "${BUILD_TIME:?}"
 [[ "$DEPLOY_SHA" =~ ^[0-9a-f]{40}$ ]]
 [[ "$IMAGE" =~ ^registry.digitalocean.com/compass/compass-backend:$DEPLOY_SHA@sha256:[0-9a-f]{64}$ ]]
+ORG_CATALOG_ACTION=${ORG_CATALOG_ACTION:-check}
+case "$ORG_CATALOG_ACTION" in check|adopt|seed) ;; *) echo "Invalid catalog action" >&2; exit 1 ;; esac
 release=/opt/compass/releases/$DEPLOY_SHA
 cd "$release"
 export COMPASS_IMAGE="$IMAGE" COMPASS_SECRETS_DIR=/opt/compass/secrets
@@ -61,7 +63,7 @@ labels=json.loads(subprocess.check_output(['docker','image','inspect',sys.argv[1
 assert all(labels.get(k)==v for k,v in zip(['org.opencontainers.image.revision','org.opencontainers.image.version','org.opencontainers.image.created'],sys.argv[2:])), 'Image metadata mismatch'
 PY
 # Candidate database/plan probe runs SELECT-only before downtime or migrations.
-"${compose[@]}" run --rm --no-deps --pull never -T web python deploy/staging/database_preflight.py </dev/null
+"${compose[@]}" run --rm --no-deps --pull never -T -e ORG_CATALOG_ACTION="$ORG_CATALOG_ACTION" web python deploy/staging/database_preflight.py </dev/null
 python3 - <<'PY'
 import json,subprocess
 s=json.load(open('.host-preflight.json'));subprocess.run(['docker','image','inspect',s['current_image']],check=True,stdout=subprocess.DEVNULL)
@@ -91,12 +93,15 @@ ids=list(json.load(open('.host-preflight.json'))['app_containers'].values())
 subprocess.run(['docker','update','--restart=no',*ids],check=True)
 FENCE_RESTARTS
 # Recheck the plan after all old consumers have stopped; no stale-plan race.
-"${compose[@]}" run --rm --no-deps --pull never -T web python deploy/staging/database_preflight.py </dev/null
+"${compose[@]}" run --rm --no-deps --pull never -T -e ORG_CATALOG_ACTION="$ORG_CATALOG_ACTION" web python deploy/staging/database_preflight.py </dev/null
 phase=migrating
 "${compose[@]}" run --rm --no-deps --pull never -T web python manage.py migrate --noinput </dev/null
-for command in sync_identity_policy sync_canonical_services sync_institutional_forms sync_organization_catalog; do
+for command in sync_identity_policy sync_canonical_services sync_institutional_forms; do
   "${compose[@]}" run --rm --no-deps --pull never -T web python manage.py "$command" </dev/null
 done
+# Default is read-only check. First adoption/seed requires an explicit reviewed operator choice.
+"${compose[@]}" run --rm --no-deps --pull never -T web python manage.py initialize_organization_catalog "--$ORG_CATALOG_ACTION" --reference "deployment:$DEPLOY_SHA" </dev/null
+"${compose[@]}" run --rm --no-deps --pull never -T web python manage.py initialize_organization_catalog --check </dev/null
 "${compose[@]}" run --rm --no-deps --pull never -T web python manage.py migrate --check </dev/null
 "${compose[@]}" run --rm --no-deps --pull never -T web python manage.py check --deploy --database default </dev/null
 # Preserve whether realtime was active. No --remove-orphans or implicit infrastructure startup.

@@ -62,7 +62,8 @@ function LoginForm({ nextPath, emailChanged }: { nextPath: string; emailChanged:
           response.data.challenge_expires_at ?? null,
           nextPath,
         );
-        router.replace("/login/verify");
+        // Preserve only navigation on reload; verification still needs the in-memory challenge.
+        router.replace(`/login/verify?next=${encodeURIComponent(nextPath)}`);
         return;
       }
 
@@ -74,7 +75,7 @@ function LoginForm({ nextPath, emailChanged }: { nextPath: string; emailChanged:
         readApiErrorCode(caught.body) === "mfa_setup_required"
       ) {
         flow.beginMandatorySetup(nextPath);
-        router.replace("/login/setup-authenticator");
+        router.replace(`/login/setup-authenticator?next=${encodeURIComponent(nextPath)}`);
         return;
       }
 

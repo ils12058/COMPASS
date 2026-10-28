@@ -3,4 +3,5 @@
 
 Sign in to review your certificate and the actions available to you.
 
-If you need help accessing it, contact the Guidance and Counseling Office through an official university channel.{% endblock %}
+If you need help accessing it, contact the Guidance and Counseling Office through an official university channel.{% if email_details %}{% include "notifications/partials/detail_rows.txt" %}{% endif %}
+{% include "notifications/partials/operational_action.txt" %}{% endblock %}

@@ -2,25 +2,35 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
+from datetime import datetime
 from enum import StrEnum
-from typing import NoReturn
+from typing import Annotated, NoReturn
 from uuid import UUID
 
 from ninja import Router, Schema
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field, StrictBool, StrictInt
 
 from compass.accounts.api_codes import RoleCode
 from compass.audit.context import AuditContext
 from compass.authentication.api import session_auth
-from compass.authentication.step_up import require_recent_mfa_for_request
+from compass.authentication.sessions import RecentMFARequired
+from compass.authentication.step_up import require_recent_mfa_for_request, step_up_api_error
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
-from compass.organization.canonical import (
+from compass.organization import catalog_services as catalog
+from compass.organization.models import (
+    Campus,
+    College,
+    CounselorResponsibility,
+    Program,
+    StaffSupervision,
+)
+from compass.organization.program_policy import (
     AcademicClassification,
     YearLevelPolicyStatus,
-    canonical_program_metadata,
+    get_program_policy,
 )
-from compass.organization.models import CounselorResponsibility, StaffSupervision
 from compass.organization.services import (
     DEFAULT_PAGE_SIZE,
     InvalidOrganizationInput,
@@ -55,6 +65,7 @@ class CampusSummary(StrictSchema):
     code: str
     name: str
     is_active: bool
+    resource_version: int
 
 
 class CampusListResponse(StrictSchema):
@@ -67,6 +78,7 @@ class CollegeSummary(StrictSchema):
     name: str
     campus: CampusSummary
     is_active: bool
+    resource_version: int
 
 
 class CollegeListResponse(StrictSchema):
@@ -79,6 +91,7 @@ class ProgramSummary(StrictSchema):
     name: str
     college: CollegeSummary
     is_active: bool
+    resource_version: int
     academic_classification: AcademicClassification | None
     year_level_policy_status: YearLevelPolicyStatus
     applicable_year_levels: list[int] | None
@@ -191,6 +204,7 @@ def _campus(campus) -> dict[str, object]:
         "code": campus.code,
         "name": campus.name,
         "is_active": campus.is_active,
+        "resource_version": campus.resource_version,
     }
 
 
@@ -201,32 +215,24 @@ def _college(college) -> dict[str, object]:
         "name": college.name,
         "campus": _campus(college.campus),
         "is_active": college.is_active,
+        "resource_version": college.resource_version,
     }
 
 
 def _program(program) -> dict[str, object]:
-    metadata = canonical_program_metadata(
-        program.college.campus.code,
-        program.college.code,
-        program.code,
-    )
+    metadata = get_program_policy(program)
     return {
         "id": program.pk,
         "code": program.code,
         "name": program.name,
         "college": _college(program.college),
         "is_active": program.is_active,
-        "academic_classification": (
-            metadata.academic_classification if metadata is not None else None
-        ),
-        "year_level_policy_status": (
-            metadata.year_level_policy_status
-            if metadata is not None
-            else YearLevelPolicyStatus.PENDING_POLICY
-        ),
+        "resource_version": program.resource_version,
+        "academic_classification": (metadata.academic_classification),
+        "year_level_policy_status": (metadata.year_level_policy_status),
         "applicable_year_levels": (
             list(metadata.applicable_year_levels)
-            if metadata is not None and metadata.applicable_year_levels is not None
+            if metadata.applicable_year_levels is not None
             else None
         ),
     }
@@ -565,3 +571,376 @@ def people(
         "page_size": result.page_size,
         "has_next": result.has_next,
     }
+
+
+PositiveVersion = Annotated[StrictInt, Field(ge=1)]
+CatalogText = Annotated[str, Field(min_length=1, max_length=160)]
+
+
+class CatalogCreateCampusRequest(StrictSchema):
+    code: Annotated[str, Field(min_length=1, max_length=32)]
+    name: CatalogText
+    is_active: StrictBool
+    basis: CatalogText
+
+
+class CatalogCreateCollegeRequest(CatalogCreateCampusRequest):
+    campus_id: UUID
+
+
+class CatalogPolicyFields(StrictSchema):
+    academic_classification: AcademicClassification | None
+    year_level_policy_status: YearLevelPolicyStatus
+    applicable_year_levels: list[StrictInt] | None
+
+
+class CatalogCreateProgramRequest(CatalogCreateCampusRequest, CatalogPolicyFields):
+    college_id: UUID
+
+
+class CatalogRenameRequest(StrictSchema):
+    expected_resource_version: PositiveVersion
+    name: CatalogText
+    basis: CatalogText
+
+
+class CatalogStatusRequest(StrictSchema):
+    expected_resource_version: PositiveVersion
+    is_active: StrictBool
+    basis: CatalogText
+
+
+class CatalogPolicyRequest(CatalogPolicyFields):
+    expected_resource_version: PositiveVersion
+    basis: CatalogText
+
+
+class CatalogIssueCode(StrEnum):
+    ACTIVE_CHILD_COLLEGES = "active_child_colleges"
+    ACTIVE_CHILD_PROGRAMS = "active_child_programs"
+    ACTIVE_STUDENT_AFFILIATIONS = "active_student_affiliations"
+    COUNSELOR_RESPONSIBILITIES = "counselor_responsibilities"
+    OPEN_OFFICE_THREADS = "open_office_threads"
+    PENDING_OPERATIONAL_FOLLOWUPS = "pending_operational_followups"
+    INACTIVE_ACCOUNT_AFFILIATIONS = "inactive_account_affiliations"
+    DRAFT_INVENTORIES = "draft_inventories"
+    PENDING_GOOD_MORAL = "pending_good_moral"
+
+
+class CatalogIssueSummary(StrictSchema):
+    code: CatalogIssueCode
+    count: int
+
+
+class CatalogDependentCounts(StrictSchema):
+    child_colleges: int
+    active_child_colleges: int
+    child_programs: int
+    active_child_programs: int
+    student_affiliations: int
+    active_student_affiliations: int
+    inactive_account_affiliations: int
+    counselor_responsibilities: int
+    draft_inventories: int
+    submitted_inventories: int
+    graduate_tracer_references: int
+    open_office_threads: int
+    resolved_threads: int
+    pending_good_moral: int
+    pending_f4: int
+    issued_good_moral: int
+    pending_operational_followups: int
+
+
+class CatalogImpactResponse(StrictSchema):
+    target_id: UUID
+    resource_version: int
+    observed_at: datetime
+    can_deactivate: bool
+    blockers: list[CatalogIssueSummary]
+    warnings: list[CatalogIssueSummary]
+    counts: CatalogDependentCounts
+    preserved_categories: list[str]
+
+
+class CatalogHistoryValues(StrictSchema):
+    name: str | None = None
+    is_active: bool | None = None
+    academic_classification: AcademicClassification | None = None
+    year_level_policy_status: YearLevelPolicyStatus | None = None
+    applicable_year_levels: list[int] | None = None
+
+
+class CatalogHistoryItem(StrictSchema):
+    id: UUID
+    occurred_at: datetime
+    actor_id: UUID
+    action: str
+    code: str
+    parent_id: UUID | None
+    changed_fields: list[str]
+    resource_version_before: int | None
+    resource_version_after: int
+    before: CatalogHistoryValues
+    after: CatalogHistoryValues
+    basis: str
+
+
+class CatalogHistoryResponse(StrictSchema):
+    items: list[CatalogHistoryItem]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+def _catalog_require(request, *, mutation=False):
+    try:
+        catalog.require_catalog_manager(actor=request.auth_user)
+    except catalog.CatalogError as exc:
+        raise APIError(exc.status, exc.code, str(exc), details=exc.details) from exc
+    if mutation:
+        require_recent_mfa_for_request(request)
+
+
+def _catalog_call(request, function, *, mutation=False, **kwargs):
+    _catalog_require(request, mutation=mutation)
+    try:
+        if mutation:
+            return function(
+                actor=request.auth_user,
+                actor_session=request.auth_session,
+                context=_context(request),
+                **kwargs,
+            )
+        return function(actor=request.auth_user, **kwargs)
+    except catalog.CatalogError as exc:
+        raise APIError(exc.status, exc.code, str(exc), details=exc.details) from exc
+    except RecentMFARequired as exc:
+        raise step_up_api_error(exc) from exc
+
+
+@router.post(
+    "/campuses",
+    auth=session_auth,
+    response=response_with_errors(CampusSummary, 401, 403, 404, 409, 422),
+    operation_id="organizationCreateCampus",
+)
+def catalog_create_campus(request, payload: CatalogCreateCampusRequest):
+    item = _catalog_call(request, catalog.create_campus, mutation=True, **payload.model_dump())
+    return _campus(item)
+
+
+@router.put(
+    "/campuses/{target_id}/name",
+    auth=session_auth,
+    response=response_with_errors(CampusSummary, 401, 403, 404, 409, 422),
+    operation_id="organizationRenameCampus",
+)
+def catalog_rename_campus(request, target_id: UUID, payload: CatalogRenameRequest):
+    item = _catalog_call(
+        request, catalog.rename_campus, mutation=True, target_id=target_id, **payload.model_dump()
+    )
+    return _campus(item)
+
+
+@router.put(
+    "/campuses/{target_id}/active",
+    auth=session_auth,
+    response=response_with_errors(CampusSummary, 401, 403, 404, 409, 422),
+    operation_id="organizationSetCampusActive",
+)
+def catalog_status_campus(request, target_id: UUID, payload: CatalogStatusRequest):
+    item = _catalog_call(
+        request,
+        catalog.set_campus_active,
+        mutation=True,
+        target_id=target_id,
+        **payload.model_dump(),
+    )
+    return _campus(item)
+
+
+@router.get(
+    "/campuses/{target_id}/impact",
+    auth=session_auth,
+    response=response_with_errors(CatalogImpactResponse, 401, 403, 404, 422),
+    operation_id="organizationGetCampusImpact",
+)
+def catalog_impact_campus(request, target_id: UUID):
+    return asdict(
+        _catalog_call(request, catalog.get_catalog_impact, model=Campus, target_id=target_id)
+    )
+
+
+@router.get(
+    "/campuses/{target_id}/history",
+    auth=session_auth,
+    response=response_with_errors(CatalogHistoryResponse, 401, 403, 404, 422),
+    operation_id="organizationGetCampusHistory",
+)
+def catalog_history_campus(request, target_id: UUID, page: int = 1, page_size: int = 20):
+    return _catalog_call(
+        request,
+        catalog.get_catalog_history,
+        model=Campus,
+        target_id=target_id,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.post(
+    "/colleges",
+    auth=session_auth,
+    response=response_with_errors(CollegeSummary, 401, 403, 404, 409, 422),
+    operation_id="organizationCreateCollege",
+)
+def catalog_create_college(request, payload: CatalogCreateCollegeRequest):
+    item = _catalog_call(request, catalog.create_college, mutation=True, **payload.model_dump())
+    return _college(item)
+
+
+@router.put(
+    "/colleges/{target_id}/name",
+    auth=session_auth,
+    response=response_with_errors(CollegeSummary, 401, 403, 404, 409, 422),
+    operation_id="organizationRenameCollege",
+)
+def catalog_rename_college(request, target_id: UUID, payload: CatalogRenameRequest):
+    item = _catalog_call(
+        request, catalog.rename_college, mutation=True, target_id=target_id, **payload.model_dump()
+    )
+    return _college(item)
+
+
+@router.put(
+    "/colleges/{target_id}/active",
+    auth=session_auth,
+    response=response_with_errors(CollegeSummary, 401, 403, 404, 409, 422),
+    operation_id="organizationSetCollegeActive",
+)
+def catalog_status_college(request, target_id: UUID, payload: CatalogStatusRequest):
+    item = _catalog_call(
+        request,
+        catalog.set_college_active,
+        mutation=True,
+        target_id=target_id,
+        **payload.model_dump(),
+    )
+    return _college(item)
+
+
+@router.get(
+    "/colleges/{target_id}/impact",
+    auth=session_auth,
+    response=response_with_errors(CatalogImpactResponse, 401, 403, 404, 422),
+    operation_id="organizationGetCollegeImpact",
+)
+def catalog_impact_college(request, target_id: UUID):
+    return asdict(
+        _catalog_call(request, catalog.get_catalog_impact, model=College, target_id=target_id)
+    )
+
+
+@router.get(
+    "/colleges/{target_id}/history",
+    auth=session_auth,
+    response=response_with_errors(CatalogHistoryResponse, 401, 403, 404, 422),
+    operation_id="organizationGetCollegeHistory",
+)
+def catalog_history_college(request, target_id: UUID, page: int = 1, page_size: int = 20):
+    return _catalog_call(
+        request,
+        catalog.get_catalog_history,
+        model=College,
+        target_id=target_id,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.post(
+    "/programs",
+    auth=session_auth,
+    response=response_with_errors(ProgramSummary, 401, 403, 404, 409, 422),
+    operation_id="organizationCreateProgram",
+)
+def catalog_create_program(request, payload: CatalogCreateProgramRequest):
+    item = _catalog_call(request, catalog.create_program, mutation=True, **payload.model_dump())
+    return _program(item)
+
+
+@router.put(
+    "/programs/{target_id}/name",
+    auth=session_auth,
+    response=response_with_errors(ProgramSummary, 401, 403, 404, 409, 422),
+    operation_id="organizationRenameProgram",
+)
+def catalog_rename_program(request, target_id: UUID, payload: CatalogRenameRequest):
+    item = _catalog_call(
+        request, catalog.rename_program, mutation=True, target_id=target_id, **payload.model_dump()
+    )
+    return _program(item)
+
+
+@router.put(
+    "/programs/{target_id}/active",
+    auth=session_auth,
+    response=response_with_errors(ProgramSummary, 401, 403, 404, 409, 422),
+    operation_id="organizationSetProgramActive",
+)
+def catalog_status_program(request, target_id: UUID, payload: CatalogStatusRequest):
+    item = _catalog_call(
+        request,
+        catalog.set_program_active,
+        mutation=True,
+        target_id=target_id,
+        **payload.model_dump(),
+    )
+    return _program(item)
+
+
+@router.get(
+    "/programs/{target_id}/impact",
+    auth=session_auth,
+    response=response_with_errors(CatalogImpactResponse, 401, 403, 404, 422),
+    operation_id="organizationGetProgramImpact",
+)
+def catalog_impact_program(request, target_id: UUID):
+    return asdict(
+        _catalog_call(request, catalog.get_catalog_impact, model=Program, target_id=target_id)
+    )
+
+
+@router.get(
+    "/programs/{target_id}/history",
+    auth=session_auth,
+    response=response_with_errors(CatalogHistoryResponse, 401, 403, 404, 422),
+    operation_id="organizationGetProgramHistory",
+)
+def catalog_history_program(request, target_id: UUID, page: int = 1, page_size: int = 20):
+    return _catalog_call(
+        request,
+        catalog.get_catalog_history,
+        model=Program,
+        target_id=target_id,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.put(
+    "/programs/{target_id}/policy",
+    auth=session_auth,
+    response=response_with_errors(ProgramSummary, 401, 403, 404, 409, 422),
+    operation_id="organizationUpdateProgramPolicy",
+)
+def catalog_program_policy(request, target_id: UUID, payload: CatalogPolicyRequest):
+    item = _catalog_call(
+        request,
+        catalog.update_program_policy,
+        mutation=True,
+        target_id=target_id,
+        **payload.model_dump(),
+    )
+    return _program(item)

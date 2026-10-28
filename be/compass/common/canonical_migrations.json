@@ -28,7 +28,11 @@
     "compass/student_support/migrations/0001_canonical_baseline.py": "8a7277317e119ecff73b42e3373444a99a00f8da504a9967b0eab1ba7295e78c"
   },
   "additive_migrations": [
+    "accounts/migrations/0002_student_session_summary_capabilities.py",
     "appointments/migrations/0002_appointment_reminders.py",
+    "counseling/migrations/0002_student_session_summary_contract.py",
+    "counseling/migrations/0003_case_continuity_foundation.py",
+    "counseling/migrations/0004_counselor_handoff_summary.py",
     "group_sessions/migrations/0001_initial.py",
     "group_sessions/migrations/0002_alter_groupsessionfacilitator_group_session.py",
     "group_sessions/migrations/0003_group_session_scheduling_and_external_facilitators.py",
@@ -36,6 +40,10 @@
     "guidance_followups/migrations/0002_guidancefollowupmutation.py",
     "service_catalog/migrations/0002_booking_pathways.py",
     "service_catalog/migrations/0003_fixed_date_slots.py",
-    "service_catalog/migrations/0004_serviceappointmentslot_withdrawn_at_and_more.py"
+    "service_catalog/migrations/0004_serviceappointmentslot_withdrawn_at_and_more.py",
+    "good_moral/migrations/0002_receipt_identity_and_history.py",
+    "good_moral/migrations/0003_receipt_verification.py",
+    "organization/migrations/0002_program_policy_and_catalog_initialization.py",
+    "organization/migrations/0003_catalog_resource_versions.py"
   ]
 }

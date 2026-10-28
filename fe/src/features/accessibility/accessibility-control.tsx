@@ -50,15 +50,16 @@ const triggerStyles: Record<Placement, string> = {
 };
 
 // Popovers sit in the top layer: the floating panel is fixed above its button, and the header
-// panel is positioned against the page, just below the portal header.
+// panel is positioned against the portal header so it follows the header when it wraps.
 const panelStyles: Record<Placement, string> = {
   floating: "fixed bottom-20 right-4 origin-bottom-right",
-  header: "absolute top-20 right-4 origin-top-right sm:right-6 lg:right-8",
+  header: "fixed inset-auto [position-area:bottom] [position-try-fallbacks:flip-block] origin-top",
 };
 
 export function AccessibilityControl({ placement }: { placement: Placement }) {
   const preferences = useAccessibilityPreferences();
   const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const panelId = useId();
   const titleId = useId();
@@ -77,6 +78,7 @@ export function AccessibilityControl({ placement }: { placement: Placement }) {
   return (
     <>
       <button
+        ref={triggerRef}
         type="button"
         popoverTarget={panelId}
         aria-controls={panelId}
@@ -94,13 +96,16 @@ export function AccessibilityControl({ placement }: { placement: Placement }) {
         popover="auto"
         role="dialog"
         aria-labelledby={titleId}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") window.requestAnimationFrame(() => triggerRef.current?.focus());
+        }}
         onToggle={(event) => {
           const isOpen = event.newState === "open";
           setOpen(isOpen);
           if (isOpen) panelRef.current?.querySelector<HTMLInputElement>("input:checked")?.focus();
         }}
         className={cn(
-          "inset-auto m-0 max-h-[calc(100dvh-7rem)] w-[min(21rem,calc(100vw-2rem))] overflow-y-auto rounded-md border border-border bg-surface-raised p-5 text-ink shadow-dialog",
+          "inset-auto m-0 max-h-[50dvh] w-[min(21rem,calc(100vw-2rem))] overflow-y-auto rounded-md border border-border bg-surface-raised p-5 text-ink shadow-dialog",
           "scale-95 opacity-0 transition-[opacity,scale,overlay,display] transition-discrete duration-150 ease-out open:scale-100 open:opacity-100 starting:open:scale-95 starting:open:opacity-0",
           panelStyles[placement],
         )}
@@ -155,7 +160,11 @@ export function AccessibilityControl({ placement }: { placement: Placement }) {
 
         <button
           type="button"
-          onClick={() => updateAccessibilityPreferences({ ...DEFAULT_ACCESSIBILITY_PREFERENCES })}
+          onClick={() => {
+            updateAccessibilityPreferences({ ...DEFAULT_ACCESSIBILITY_PREFERENCES });
+            // Restoring defaults disables this button; keep keyboard focus inside the open panel.
+            window.requestAnimationFrame(() => panelRef.current?.querySelector<HTMLInputElement>("input[type=radio]:checked")?.focus());
+          }}
           disabled={isDefaultAccessibility(preferences)}
           className="mt-3 inline-flex min-h-10 items-center gap-2 rounded-sm text-sm font-semibold text-brand hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus disabled:cursor-not-allowed disabled:text-muted disabled:no-underline"
         >

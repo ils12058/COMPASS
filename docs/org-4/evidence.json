@@ -1,0 +1,162 @@
+{
+  "base_runtime_sha": "d91d64c2893ac834c6b70c1e00f4a823e11478f7",
+  "date_asia_manila": "2026-10-26",
+  "backend": {
+    "distinct_passed": 1231,
+    "selections": {
+      "backend": {
+        "passed": 1108,
+        "modules": {
+          "tests.test_catalog_services": 88,
+          "tests.test_program_policy": 37,
+          "tests.test_organization_catalog": 10,
+          "tests.test_organization": 18,
+          "tests.test_accounts": 19,
+          "tests.test_account_management": 25,
+          "tests.test_capability_dependencies": 12,
+          "tests.test_institutional_identity": 5,
+          "tests.test_step_up_policy": 8,
+          "tests.test_audit": 17,
+          "tests.test_inventory": 17,
+          "tests.test_program_inventory_academic_context": 8,
+          "tests.test_inventory_documents": 5,
+          "tests.test_inventory_counseling_regression": 2,
+          "tests.test_good_moral": 95,
+          "tests.test_good_moral_preparation": 16,
+          "tests.test_good_moral_assisted": 46,
+          "tests.test_good_moral_receipts": 76,
+          "tests.test_appointments": 26,
+          "tests.test_appointment_management_scope": 13,
+          "tests.test_guidance_messages": 96,
+          "tests.test_guidance_messages_handlers": 29,
+          "tests.test_guidance_followups": 33,
+          "tests.test_graduate_tracer": 26,
+          "tests.test_graduate_tracer_graduation_classification": 6,
+          "tests.test_graduate_tracer_reports": 12,
+          "tests.test_exit_interview_documents": 8,
+          "tests.test_routine_inventory_decoupling": 9,
+          "tests.test_staging_seed": 32,
+          "tests.test_staging_seed.SeededDatasetTests": 17,
+          "tests.test_staging_seed.IncrementalParticipantExpansionTests": 1,
+          "tests.test_canonical_baseline": 5,
+          "tests.test_operational_students": 9,
+          "tests.test_authentication": 26,
+          "tests.test_catalog_concurrency": 26,
+          "tests.test_catalog_version_migration": 1,
+          "tests.test_organization_policy_migration": 2,
+          "tests.test_good_moral_final_preservation": 6,
+          "tests.test_good_moral_verification": 99,
+          "tests.test_good_moral_verification_concurrency": 23,
+          "tests.test_good_moral_receipt_migration": 6,
+          "tests.test_good_moral_verification_migration": 2,
+          "tests.test_guidance_messages_concurrency": 10,
+          "tests.test_staging_deployment": 41,
+          "tests.test_openapi_contract": 40
+        },
+        "artifact_sha256": "77736cc2982c67754a398582ac006371c5ef2b56160004fdeb3cc88a7496bf42"
+      },
+      "final-integration": {
+        "passed": 17,
+        "modules": {
+          "tests.test_catalog_final_integration": 17
+        },
+        "artifact_sha256": "67d62fab13b5b657de048b8d9ac35a82bb85ea2b4c585446d006d4ddbc88d90a"
+      },
+      "historical-neighbors": {
+        "passed": 106,
+        "modules": {
+          "tests.test_student_profiling_reports": 19,
+          "tests.test_student_profiling_report_aggregates": 22,
+          "tests.test_student_profiling_report_coverage": 14,
+          "tests.test_exit_interviews": 27,
+          "tests.test_routine_interviews": 24
+        },
+        "artifact_sha256": "71f735900da562682e0bb53c2f3f9189d5789d7a98634f39a0da00608db75e7b"
+      }
+    },
+    "full_repository_suite": false,
+    "warnings": [
+      "One existing Django Ninja tuple-response DeprecationWarning in test_routine_interviews"
+    ]
+  },
+  "postgres_catalog_races": {
+    "existing": 26,
+    "org4": 12,
+    "initialization": 2,
+    "distinct": 40,
+    "not_added_again_to_backend_total": true
+  },
+  "node": {
+    "distinct_passed": 1021
+  },
+  "mocked_browser": {
+    "catalog": {
+      "chromium": 53,
+      "webkit": 53
+    },
+    "good_moral_print": {
+      "chromium": 24,
+      "webkit": 24
+    },
+    "good_moral_receipt": {
+      "chromium": 37,
+      "webkit": 37
+    },
+    "per_engine": 114
+  },
+  "authenticated_integration": {
+    "engine": "chromium",
+    "passed": 18,
+    "operations_observed": [
+      "campuses:active",
+      "campuses:create",
+      "campuses:history",
+      "campuses:impact",
+      "campuses:name",
+      "colleges:active",
+      "colleges:create",
+      "colleges:history",
+      "colleges:impact",
+      "colleges:name",
+      "programs:active",
+      "programs:create",
+      "programs:history",
+      "programs:impact",
+      "programs:name",
+      "programs:policy"
+    ],
+    "artifact_sha256": "a39891a9a61aa16d6941883da9814acfe4b81c643d1052bf60eeda8818efa7ca",
+    "unmocked_api_bodies": true
+  },
+  "synthetic_recovery": {
+    "tables": 117,
+    "rows": 514,
+    "restored_equal": true,
+    "repeat_initializers_equal": true,
+    "later_edit_detected": true,
+    "tables_different_after_later_edit": [
+      "accounts_user",
+      "accounts_usercapabilityoverride",
+      "audit_auditevent",
+      "authentication_authsession",
+      "authentication_totpfactor",
+      "organization_program"
+    ]
+  },
+  "manual_accessibility": "NOT EXECUTED",
+  "institutional_uat": "NOT EXECUTED",
+  "staging": "BLOCKED",
+  "operational_activation": "NOT AUTHORIZED",
+  "runtime_fixes": [],
+  "hosted_ci": {
+    "inspected_head": "4323f3a759036621ccfe252321361b9cb8635248",
+    "check_runs": 0,
+    "status_contexts": 0,
+    "pr_workflow_runs": 0,
+    "ci_green_claim": false,
+    "final_head_rechecked_at_delivery": true
+  },
+  "local_evidence_root": "/private/tmp/compass-org4.I9H5cI",
+  "tested_implementation_sha": "4323f3a759036621ccfe252321361b9cb8635248",
+  "pull_request": "https://github.com/ils12058/COMPASS/pull/330"
+}

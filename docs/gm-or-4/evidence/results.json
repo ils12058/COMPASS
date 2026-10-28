@@ -1,0 +1,63 @@
+{
+  "recorded_at_utc": "2026-10-24T11:56:10.086678+00:00",
+  "date_asia_manila": "2026-10-24",
+  "base_sha": "8872db0a7325239ccab6d6f0ca3f68ffd312de8c",
+  "implementation_sha": "9ab9cb414c41d886e6b3d78d70a5c2213ba033e6",
+  "coherent_combined_run": {
+    "name": "pytest",
+    "errors": "0",
+    "failures": "0",
+    "skipped": "0",
+    "tests": "584",
+    "time": "328.776",
+    "timestamp": "2026-10-24T11:50:12.505145+00:00",
+    "hostname": "192.168.0.101"
+  },
+  "backend_distinct": 584,
+  "new_pytest_cases": 36,
+  "postgresql_independent_connection_cases_in_backend_total": 41,
+  "real_chromium_backend_scenarios_in_backend_total": 2,
+  "node_cases": 55,
+  "mocked_chromium_scenarios": 81,
+  "mocked_webkit_scenarios": 81,
+  "real_webkit_backend_scenarios": "NOT EXECUTED",
+  "historical_upgrade_pdf_cases_in_backend_total": 6,
+  "actual_disposable_backup_restore_cases_in_backend_total": 1,
+  "ci_planner": {
+    "passed": 38,
+    "subtests_passed": 19
+  },
+  "static_checks": {
+    "Ruff": "PASS",
+    "Ruff format (839 files)": "PASS",
+    "Django check": "PASS",
+    "migration drift": "PASS",
+    "canonical graph/registry/hash checks": "PASS",
+    "OpenAPI check (417 operations)": "PASS",
+    "Orval": "PASS",
+    "ESLint": "PASS",
+    "TypeScript after next-env restoration": "PASS",
+    "optimized production build": "PASS",
+    "Git whitespace": "PASS"
+  },
+  "runtime": {
+    "Python": "3.13.12",
+    "Django": "6.1.1",
+    "pytest": "9.1.1",
+    "psycopg": "3.3.5",
+    "PostgreSQL": "17.11",
+    "Node": "26.7.0",
+    "pnpm_executed": "11.26.0",
+    "pnpm_package_declared": "11.19.0",
+    "Next": "16.3.4",
+    "React": "19.2.8",
+    "Orval": "8.29.0"
+  },
+  "not_a_repository_full_suite": true,
+  "hosted_ci": "Exact final PR HEAD checks/runs reported in PR handoff; workflow base filters unchanged.",
+  "runtime_changes": false,
+  "institutional_uat": "NOT EXECUTED",
+  "staging_deployment": "BLOCKED",
+  "operational_activation": "NOT AUTHORIZED",
+  "count_rule": "No focused rerun is added. Real browser, PDF, restore and independent-connection cases are subsets of 584."
+}

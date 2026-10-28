@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 
 // Presentation only. The form owns section order, validation, persistence and focus destinations.
+// Inventory places this component in a named container so it can choose the native selector when
+// the actual workspace is narrow, even if the browser viewport itself is wide.
 export function FormSectionNavigation<Id extends string>({
   id,
   label,
@@ -22,10 +24,10 @@ export function FormSectionNavigation<Id extends string>({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="mb-2 block text-sm font-semibold text-ink md:sr-only">
+      <label htmlFor={id} className="mb-2 block text-sm font-semibold text-ink @[42rem]/inventory-workspace:sr-only">
         {label}
       </label>
-      <Select id={id} className="min-h-11 md:hidden" value={current} onChange={(event) => {
+      <Select id={id} className="min-h-11 @[42rem]/inventory-workspace:hidden" value={current} onChange={(event) => {
         const next = sections.find((section) => section.id === event.target.value);
         if (next) onSelect(next.id, false);
       }}>
@@ -35,7 +37,7 @@ export function FormSectionNavigation<Id extends string>({
           </option>
         ))}
       </Select>
-      <nav aria-label={navigationLabel} className="hidden md:block">
+      <nav aria-label={navigationLabel} className="hidden @[42rem]/inventory-workspace:block">
         <ol className="space-y-1">
           {sections.map((section, index) => (
             <li key={section.id}>
@@ -73,16 +75,20 @@ export function FormSaveStatus({ dirty, saving, savedMessage }: {
 
 // The domain supplies errors and handles navigation to the original owning field, including
 // conditional/section targets. This component neither validates answers nor collects form data.
-export function FormErrorSummary<Issue extends { message: string }>({ id, issues, onSelect }: {
+export function FormErrorSummary<Issue extends { message: string }>({
+  id, issues, onSelect, title = "Complete these answers", instruction = "Select an item below to go to the question.",
+}: {
   id: string;
   issues: readonly Issue[];
+  title?: string;
+  instruction?: string;
   onSelect: (issue: Issue) => void;
 }) {
   if (!issues.length) return null;
   return (
     <section aria-labelledby={id}>
-      <h3 id={id} className="font-semibold text-ink">Complete these answers</h3>
-      <p className="mt-1 text-sm leading-6 text-muted">Select an item below to go to the question.</p>
+      <h3 id={id} className="font-semibold text-ink">{title}</h3>
+      <p className="mt-1 text-sm leading-6 text-muted">{instruction}</p>
       <ul className="mt-2 space-y-1">
         {issues.map((issue, index) => (
           <li key={index}>
@@ -93,5 +99,30 @@ export function FormErrorSummary<Issue extends { message: string }>({ id, issues
         ))}
       </ul>
     </section>
+  );
+}
+
+// Continuous forms keep all sections mounted. Anchors expose their destinations while the owning
+// form handles explicit scroll/focus; no step state, completion model or scroll observer is needed.
+export function FormSectionLinks({ id, label, sections, onSelect }: {
+  id?: string;
+  label: string;
+  sections: readonly { id: string; label: string }[];
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <nav id={id} tabIndex={id ? -1 : undefined} aria-label={label} className="min-w-0 scroll-mt-24 [overflow-wrap:anywhere] focus:outline-none focus-visible:ring-2 focus-visible:ring-focus">
+      <p className="text-sm font-semibold text-ink">On this page</p>
+      <ul className="mt-1 grid grid-cols-2 gap-x-4 sm:flex sm:flex-wrap sm:gap-x-5">
+        {sections.map((section) => (
+          <li key={section.id} className="min-w-0">
+            <a href={`#${section.id}`} className="inline-flex min-h-11 items-center rounded-sm text-sm font-medium leading-5 text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus" onClick={(event) => {
+              event.preventDefault();
+              onSelect(section.id);
+            }}>{section.label}</a>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }

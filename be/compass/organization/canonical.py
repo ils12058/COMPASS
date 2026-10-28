@@ -1,22 +1,15 @@
-"""Code-owned UCN organization catalog used by this COMPASS version."""
+"""Frozen V1 installation baseline; not a live catalog or policy authority."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from enum import StrEnum
 from types import MappingProxyType
 
+from compass.organization.program_policy import AcademicClassification, YearLevelPolicyStatus
 
-class AcademicClassification(StrEnum):
-    BACHELORS = "BACHELORS"
-    MASTERS = "MASTERS"
-    DOCTORAL = "DOCTORAL"
-
-
-class YearLevelPolicyStatus(StrEnum):
-    CONFIGURED = "CONFIGURED"
-    PENDING_POLICY = "PENDING_POLICY"
+# Frozen installation input only. Never reconcile an adopted catalog against this version.
+BASELINE_VERSION = "ucn-2026-09-27-v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -318,5 +311,5 @@ CANONICAL_PROGRAM_BY_IDENTITY: Mapping[tuple[str, str, str], CanonicalProgram] =
 def canonical_program_metadata(
     campus_code: str, college_code: str, program_code: str
 ) -> CanonicalProgram | None:
-    """Return metadata only for an exact code-owned Program identity."""
+    """Seed/fixture metadata only; live consumers must use get_program_policy."""
     return CANONICAL_PROGRAM_BY_IDENTITY.get((campus_code, college_code, program_code))

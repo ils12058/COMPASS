@@ -1,0 +1,17 @@
+COMPASS
+University of Camarines Norte
+Guidance and Counseling Office
+
+A COMPASS Appointment has been cancelled.
+
+Reference: APT-SYNTHETIC-02
+Service: Appointment Service
+Date: Friday, October 23, 2099
+Time: 9:00 AM–10:00 AM (Philippine Time)
+Delivery mode: In person
+
+View Appointment in COMPASS: https://portal.example/portal/appointments/4c39c46f-9056-4221-a734-5deb111c17ea
+
+Sign in to review the latest Appointment details.
+
+This is an automated COMPASS message.

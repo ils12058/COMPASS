@@ -1,0 +1,12 @@
+# Synthetic screenshot index
+
+All images use synthetic accounts, a synthetic Inventory record, and a synthetic `123 unread` notification count. The baseline and after Inventory images use the same 320×844 viewport and 200% root text setting.
+
+- [Before: Student Inventory, 320px / 200% root text](screenshots/before/before-inventory-320-200-root-text.png) shows the original unwrapped header. Its document and header widths were 417px at a 320px viewport.
+- [After: Student Inventory, 320px / 200% root text](screenshots/after/portal-shell-accessibility/after-inventory-320-200-root-text.png) shows the wrapped utility rows and the full-width page.
+- [After: 390px mobile](screenshots/after/portal-shell-accessibility/after-inventory-390-mobile.png), [768px tablet](screenshots/after/portal-shell-accessibility/after-inventory-768-tablet.png), and [1440px desktop](screenshots/after/portal-shell-accessibility/after-inventory-1440-desktop.png) show normal-root-text layouts across the main breakpoints.
+- [Student Home at 320px / 200% root text](screenshots/after/portal-shell-accessibility/after-student-home-320-200-root-text.png) confirms the shared header above a different workspace.
+- [Utility controls](screenshots/after/portal-shell-accessibility/after-utility-controls-320-200-root-text.png), [Account Menu](screenshots/after/portal-shell-accessibility/after-account-menu-320-200-root-text.png), [Accessibility settings](screenshots/after/portal-shell-accessibility/after-accessibility-popover-320-200-root-text.png), [Command Palette](screenshots/after/portal-shell-accessibility/after-command-palette-320-200-root-text.png), and [mobile drawer](screenshots/after/portal-shell-accessibility/after-mobile-drawer-320-200-root-text.png) show the key controls and overlays at the constrained viewport.
+- [Counselor dock expanded](screenshots/after/portal-shell-accessibility/after-counselor-workspace-1440-dock-expanded.png) and [collapsed](screenshots/after/portal-shell-accessibility/after-counselor-workspace-1440-dock-collapsed.png) document desktop navigation states.
+
+Before measurements are in [screenshots/before/layout-metrics.json](screenshots/before/layout-metrics.json). The after browser matrix and Student Home header data are in [layout-metrics.json](screenshots/after/portal-shell-accessibility/layout-metrics.json) and [student-home-metrics.json](screenshots/after/portal-shell-accessibility/student-home-metrics.json). Chromium’s result file is retained with the images; both engine counts are recorded in [validation.md](validation.md).

@@ -184,7 +184,12 @@ def make_inventory(
         program, _ = Program.objects.get_or_create(
             college=college,
             code=program_code,
-            defaults={"name": metadata.name},
+            defaults={
+                "name": metadata.name,
+                "academic_classification": metadata.academic_classification,
+                "year_level_policy_status": metadata.year_level_policy_status,
+                "applicable_year_levels": metadata.applicable_year_levels,
+            },
         )
     return create_inventory_row(
         StudentInventory,
@@ -341,6 +346,9 @@ def test_f4_rejects_postgraduate_unclassified_and_unsupported_inventory_facts(
 
 @pytest.mark.django_db
 def test_degree_suggestions_are_bachelor_only_and_capability_scoped():
+    from compass.organization.bootstrap import initialize_organization_catalog
+
+    initialize_organization_catalog(action="seed")
     sync_policy()
     student = make_user(
         "degree-suggestions.student@example.edu", lifecycle=StudentLifecycleStatus.CURRENT

@@ -32,6 +32,7 @@ _DIAGNOSTIC_FIELDS = (
     "attempt_number",
     "delivery_status",
     "failure_code",
+    "presentation_reason",
     # PostgreSQL rejection mapped by the API error handlers.
     "sqlstate",
     # Authentication email recovery and audit fallbacks.

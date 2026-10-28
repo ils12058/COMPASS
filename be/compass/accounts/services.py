@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from datetime import datetime
 
+from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
@@ -16,7 +17,12 @@ from compass.accounts.models import (
     User,
     UserCapabilityOverride,
 )
-from compass.accounts.policy import CAPABILITY_CODES, resolve_capability_dependencies
+from compass.accounts.policy import (
+    CAPABILITY_CODES,
+    CATALOG_ELIGIBLE_ROLES,
+    resolve_capability_dependencies,
+)
+from compass.organization.integrity import catalog_dependent_write
 
 
 def _candidate_capabilities(
@@ -68,7 +74,10 @@ def _candidate_capabilities(
     revoked = {
         code for code, effect in effects.items() if effect == UserCapabilityOverride.Effect.REVOKE
     }
-    return frozenset(((capability_codes | granted) & CAPABILITY_CODES) - revoked)
+    candidates = ((capability_codes | granted) & CAPABILITY_CODES) - revoked
+    if user.role.code not in CATALOG_ELIGIBLE_ROLES:
+        candidates.discard("organization.catalog.manage")
+    return frozenset(candidates)
 
 
 def projected_capabilities(
@@ -123,6 +132,8 @@ def user_has_capability(
     return capability_code in effective_capabilities(user, at=at)
 
 
+@catalog_dependent_write
+@transaction.atomic
 def set_user_capability_override(
     *,
     user: User,
@@ -153,6 +164,16 @@ def set_user_capability_override(
     if created_by is not None and not getattr(created_by, "pk", None):
         raise ValueError("created_by must be saved when provided")
 
+    # Share the account-management identity lock with continuity decisions.
+    locked_user = (
+        User.objects.select_for_update(of=("self",)).select_related("role").get(pk=user.pk)
+    )
+    if (
+        capability.code == "organization.catalog.manage"
+        and effect == UserCapabilityOverride.Effect.GRANT
+        and locked_user.role.code not in CATALOG_ELIGIBLE_ROLES
+    ):
+        raise ValueError("Catalog authority requires an eligible staff role.")
     override, _created = UserCapabilityOverride.objects.update_or_create(
         user=user,
         capability=capability,

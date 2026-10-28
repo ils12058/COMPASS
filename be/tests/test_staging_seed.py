@@ -135,6 +135,25 @@ def fingerprint(rows):
     return hashlib.sha256(json.dumps(rows, sort_keys=True, default=str).encode()).hexdigest()
 
 
+def pre_cont1b_catalog_snapshot(value):
+    """Compare frozen historical catalog hashes with only the approved terminology reversed.
+
+    Identity/structure/counts remain byte-sensitive; no hash is replaced to hide a change.
+    """
+    if isinstance(value, dict):
+        return {key: pre_cont1b_catalog_snapshot(item) for key, item in value.items()}
+    if isinstance(value, (tuple, list)):
+        return [pre_cont1b_catalog_snapshot(item) for item in value]
+    if isinstance(value, str):
+        return (
+            value.replace("Student Session Summaries", "Shared Summaries")
+            .replace("Student Session Summary", "Shared Summary")
+            .replace("student session summaries", "shared summaries")
+            .replace("student session summary", "shared summary")
+        )
+    return value
+
+
 def pre_acad_account_snapshot(account):
     """Keep the staged identity snapshot while allowing the approved year-level correction."""
     values = asdict(account)
@@ -144,7 +163,7 @@ def pre_acad_account_snapshot(account):
         assert current_level == 4
         years[-1] = (current_year, 5)
         values["year_levels"] = tuple(years)
-    return values
+    return pre_cont1b_catalog_snapshot(values)
 
 
 def dataset_now() -> datetime:
@@ -160,6 +179,9 @@ def forbidden(*_args, **_kwargs):
 
 
 def seed_once():
+    from compass.organization.bootstrap import initialize_organization_catalog
+
+    initialize_organization_catalog(action="seed")
     environment = {name: value for name, value in os.environ.items() if name not in SEED_ENV}
     with (
         patch.dict(os.environ, environment, clear=True),
@@ -280,7 +302,9 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
     # snapshot here; the dedicated seed regression below verifies the corrected fourth year.
     original_accounts = [a for a in ACCOUNTS if a.key not in EXPANSION_KEYS]
     original_scenarios = [
-        asdict(s) for s in SCENARIOS if s.id not in EXPANSION_SCENARIOS | COLLEGE_SCENARIOS
+        pre_cont1b_catalog_snapshot(asdict(s))
+        for s in SCENARIOS
+        if s.id not in EXPANSION_SCENARIOS | COLLEGE_SCENARIOS
     ]
     assert len(original_accounts) == 113
     assert len(original_scenarios) == 91
@@ -296,9 +320,9 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
     assert fingerprint(original_scenarios) == (
         "1b63b4f8283d740993af7eccdafdc034565e15a5de26263b83b4af6775ddffa8"
     )
-    assert fingerprint([asdict(s) for s in SCENARIOS if s.id not in COLLEGE_SCENARIOS]) == (
-        "604231c50af3d63ec0f4462ea1939756b48b4d35acf18ce78f4d88ae74412b04"
-    )
+    assert fingerprint(
+        [pre_cont1b_catalog_snapshot(asdict(s)) for s in SCENARIOS if s.id not in COLLEGE_SCENARIOS]
+    ) == ("604231c50af3d63ec0f4462ea1939756b48b4d35acf18ce78f4d88ae74412b04")
     assert len(ACCOUNTS) == 116 and len(SCENARIOS) == 102
     for key in PROMOTED_KEYS:
         student = STUDENTS_BY_KEY[key]
@@ -585,6 +609,7 @@ class SeededDatasetTests(TestCase):
             actor=student,
             administrative=False,
             context=AuditContext.user(student),
+            now=dataset_now(),
         )
         other.set_password("an evaluator chose this passphrase")
         other.save(update_fields=["password"])
@@ -600,6 +625,81 @@ class SeededDatasetTests(TestCase):
         active = self.verify(allow_uat_changes=True)
         assert active.passed
         assert any("STU-APT-03" in w for s in active.sections for w in s.warnings)
+
+    def test_cont1b_scoped_summary_regeneration_is_repeatable_and_preserves_dataset(self):
+        import hashlib
+        import json
+        import tempfile
+        from pathlib import Path
+
+        from compass.counseling.models import CounselingEncounter, StudentSessionSummary
+
+        records = list(
+            StudentSessionSummary.objects.order_by("pk").values(
+                "id", "encounter_id", "published_at", "created_at", "updated_at"
+            )
+        )
+        assert len(records) == 4
+        encounter_rows = list(CounselingEncounter.objects.order_by("pk").values())
+        credentials = list(User.objects.order_by("pk").values("pk", "password"))
+        audit_ids = set(AuditEvent.objects.values_list("pk", flat=True))
+        config = connection.settings_dict
+        plan = json.loads(
+            json.dumps(
+                {
+                    "format": "cont-1b-disposable-scope-v1",
+                    "database": {
+                        name.lower(): str(config[name]) for name in ("NAME", "HOST", "PORT")
+                    },
+                    "summary_ids": [str(record["id"]) for record in records],
+                    "summary_records": records,
+                },
+                default=str,
+            )
+        )
+        plan["scope_digest"] = hashlib.sha256(
+            json.dumps(plan, sort_keys=True, separators=(",", ":")).encode()
+        ).hexdigest()
+        # Explicitly disposable local synthetic fixture scope, not a deployed-data operation.
+        Notification.objects.filter(
+            source_type="student_session_summary", source_id__in=plan["summary_ids"]
+        ).delete()
+        StudentSessionSummary.objects.filter(pk__in=plan["summary_ids"]).delete()
+        with tempfile.TemporaryDirectory(prefix="cont1b-regeneration-") as folder:
+            scope, approval = Path(folder) / "scope.json", Path(folder) / "approval.json"
+            scope.write_text(json.dumps(plan))
+            approval.write_text(
+                json.dumps(
+                    {
+                        "scope_digest": plan["scope_digest"],
+                        "disposable_synthetic": True,
+                        "consumers_stopped": True,
+                        "regenerate_known_fixtures": True,
+                        "approved_by": "isolated-dataset-test",
+                    }
+                )
+            )
+            for expected in (4, 0):
+                out = StringIO()
+                with override_settings(STAGING_SEED_ENABLED=True):
+                    call_command(
+                        "regenerate_student_session_summaries",
+                        plan_file=scope,
+                        approval_file=approval,
+                        stdout=out,
+                    )
+                assert f"created: {expected};" in out.getvalue()
+        assert list(CounselingEncounter.objects.order_by("pk").values()) == encounter_rows
+        assert list(User.objects.order_by("pk").values("pk", "password")) == credentials
+        assert audit_ids <= set(AuditEvent.objects.values_list("pk", flat=True))
+        publication = Notification.objects.filter(
+            event_code="counseling.student_session_summary.published"
+        )
+        assert publication.count() == 3
+        assert not EmailDelivery.objects.filter(notification__in=publication).exists()
+        assert not PushDelivery.objects.filter(notification__in=publication).exists()
+        assert self.verify().passed
+        assert sum(seed_once().created.values()) == 0
 
     def test_reports_are_complete_consistent_and_secret_free(self):
         result = self.verify()
@@ -955,6 +1055,7 @@ class IncrementalParticipantExpansionTests(TestCase):
             actor=student,
             administrative=False,
             context=AuditContext.user(student),
+            now=dataset_now(),
         )
         other = dataset_user("ar_02")
         other.set_password("an evaluator retained this passphrase")
@@ -981,7 +1082,7 @@ class IncrementalParticipantExpansionTests(TestCase):
             "good_moral",
             "counseling",
             "routine_interviews",
-            "shared_summaries",
+            "student_session_summaries",
             "referrals",
             "call_slips",
             "guidance_messages",
@@ -1021,3 +1122,21 @@ class IncrementalParticipantExpansionTests(TestCase):
             assert len(write_reports(result, Path(directory))) == 7
         again = seed_once()
         assert sum(again.created.values()) == 0
+
+
+@pytest.mark.django_db
+def test_full_seeder_repeat_refuses_retired_fixture_without_repairing_catalog():
+    from compass.organization.models import Program
+
+    seed_once()
+    Program.objects.filter(code="BSIS", college__code="CCMS").update(
+        name="Approved rename and retirement",
+        is_active=False,
+        academic_classification="BACHELORS",
+        year_level_policy_status="CONFIGURED",
+        applicable_year_levels=[1, 3, 5],
+    )
+    before = list(Program.objects.order_by("pk").values())
+    with pytest.raises(Exception, match="synchronized active catalog"):
+        seed_once()
+    assert list(Program.objects.order_by("pk").values()) == before

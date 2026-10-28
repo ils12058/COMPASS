@@ -10,7 +10,9 @@ configuration is synchronized explicitly after migrations; ordinary requests do 
 > database that records any earlier COMPASS migration is refused by `migrate` and by
 > `manage.py check --database default` (`compass.E001`); it is never upgraded, faked or restored
 > in place. Bootstrap order on a fresh database: `migrate`, `sync_identity_policy`,
-> `sync_canonical_services`, `sync_institutional_forms`, `sync_organization_catalog`. Later
+> `sync_canonical_services`, `sync_institutional_forms`, then explicit
+> `initialize_organization_catalog --seed` on a fresh empty catalog. Existing catalogs require
+> separately approved `--adopt`; subsequent bootstraps use `--check`. Later
 > features add ordinary `0002_…` migrations on top of the baseline.
 
 ## Baseline
@@ -66,7 +68,7 @@ podman compose --profile local run --rm web python manage.py migrate
 podman compose --profile local run --rm web python manage.py sync_identity_policy
 podman compose --profile local run --rm web python manage.py sync_canonical_services
 podman compose --profile local run --rm web python manage.py sync_institutional_forms
-podman compose --profile local run --rm web python manage.py sync_organization_catalog
+podman compose --profile local run --rm web python manage.py initialize_organization_catalog --seed
 podman compose --profile local run --rm web python manage.py check
 ```
 
@@ -196,7 +198,7 @@ Synchronize required configuration before creating an initial IT administrator:
 uv run python manage.py sync_identity_policy
 uv run python manage.py sync_canonical_services
 uv run python manage.py sync_institutional_forms
-uv run python manage.py sync_organization_catalog
+uv run python manage.py initialize_organization_catalog --seed
 uv run python manage.py check
 uv run python manage.py create_it_admin \
   --email it-admin@example.edu \
@@ -220,12 +222,18 @@ code-owned supported Form Family and Revision definitions into PostgreSQL while 
 row IDs and historical FormRevision references. It does not contact an external QMS and it is not
 a readiness gate; deployments must still run `sync_institutional_forms` after migrations.
 
-Canonical Organization synchronization is likewise explicit and idempotent. The current UCN Campus,
-College/top-level academic-unit, and base Program catalog is source-controlled and projected into
-PostgreSQL by `sync_organization_catalog`. Canonical rows keep stable UUIDs, drift is repaired, and
-historical/noncanonical rows are retained; unsafe live routing conflicts fail closed for operator
-reconciliation. This synchronization is deployment-owned, not a request-time/startup mutation or a
-readiness gate.
+Organization Catalog is database-owned (ADR-ORG-1). On a fresh empty catalog, explicit
+`initialize_organization_catalog --seed` installs the frozen V1 baseline and persisted Program
+policy. An existing populated catalog requires deliberate `--adopt` after the additive migration;
+ordinary repeated bootstrap uses `--check`. No invocation repairs official names, restores active
+states, or retires additional Programs. The deprecated `sync_organization_catalog` alias is seed-only
+and refuses nonempty unadopted data. The dataset seeder requires prior initialization/adoption and
+fails on unavailable fixture identities rather than fixing institutional records.
+
+Do not apply ORG-1 to a deployed database merely because the source is merged. Its migration is not
+routine-deployment allowlisted. Cutover requires separate approval, backups, all old writers/readers
+retired and a compatible recovery image. An initialization receipt is not an old-binary writer fence.
+See [ORG-1 deployment/recovery](../docs/org-1/deployment-and-recovery.md).
 
 ## Audit Trail development
 
@@ -363,7 +371,8 @@ schemas, bindings, and rotation stay with each domain.
 | Domain | Keyring setting | Decision | Rotation command |
 | --- | --- | --- | --- |
 | Routine Interview | `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` | ADR-066 | `rotate_routine_interview_encryption` |
-| Counseling Shared Summary | `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS` | ADR-080 | `rotate_counseling_shared_summary_encryption` |
+| Counselor Handoff Summary | `COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS` | [CONT-3](../docs/cont-3/handoff-encryption.md) | `rotate_counselor_handoff_summary_encryption` |
+| Student Session Summary | `STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS` | [CONT-1B](../docs/cont-1b/encryption-contract.md) | `rotate_student_session_summary_encryption` |
 | Referral | `REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-081 | `rotate_referral_confidential_content` |
 | Exit Interview | `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-082 | `rotate_exit_interview_confidential_content` |
 | Individual Inventory | `INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | ADR-083 | `rotate_inventory_confidential_content` |
@@ -409,16 +418,17 @@ interrupt and repeat. To rotate:
 
 ADR-066 has the first-deployment runbook and the threat model.
 
-## Counseling Shared Summary content encryption
+## Student Session Summary content encryption
 
-Shared Summary bodies use `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS`, a required independent
+Student Session Summary bodies use `STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS`, a required independent
 ordered Fernet keyring in every environment, including local-staging. Do not reuse any Routine,
 TOTP, Web Push storage or Django secret key. Keep a protected off-host recovery copy. Drafts and
 published bodies both remain encrypted; authorized responses still expose ordinary `content`.
-Encounter metadata remains queryable. See ADR-080 for the exact binding/schema and migration.
+Encounter metadata remains queryable. The [CONT-1B encryption contract](../docs/cont-1b/encryption-contract.md)
+defines the new binding and explicitly rejects the historical ADR-080 envelope.
 
 ```sh
-uv run python manage.py rotate_counseling_shared_summary_encryption --dry-run --batch-size 100
+uv run python manage.py rotate_student_session_summary_encryption --dry-run --batch-size 100
 ```
 
 The command verifies every selected body and refuses legacy plaintext schema. Real rotation uses
@@ -426,8 +436,9 @@ the primary key in bounded transactions, preserving publication/timestamps/Audit
 and can resume after interruption. Live deployment requires a separate coordinated cutover:
 provision every absent required domain keyring from the current runtime-secret inventory (see
 "Confidential-content keyrings") and stop/drain old web/worker/Beat through the destructive
-migration and candidate activation. Follow [runtime-secrets.md](docs/runtime-secrets.md), including
-verified backups and controlled reverse migration; do not start the normal deployment prematurely.
+migration and candidate activation. Follow the [CONT-1B cutover and recovery runbook](../docs/cont-1b/migration-and-cutover.md);
+recovery requires a compatible application/schema/data/keyring/queue unit. Do not start the normal
+deployment prematurely or apply removed pre-canonical backfill/reverse migrations.
 
 ## API Contract
 
@@ -794,7 +805,7 @@ stay compatible through explicit reads; Context history uses metadata only. See
 [ADR-081](docs/decisions/ADR-081-referral-confidential-source-content-encryption.md).
 
 For local setup, generate a separate local Fernet keyring and set it in `.env`; do not reuse Django,
-TOTP, Web Push, Routine or Shared Summary keys. The example intentionally contains no usable key.
+TOTP, Web Push, Routine or Student Session Summary keys. The example intentionally contains no usable key.
 `python manage.py rotate_referral_confidential_content --dry-run --batch-size 100` verifies both
 Referral and action payloads without writing; real rotation rewraps previous-key tokens and retains
 business metadata. It refuses the legacy schema. Live staging is explicitly deferred: resolve the
@@ -811,7 +822,7 @@ fields remain unchanged; Head DRAFT and GSS response boundaries remain enforced 
 Good Moral graduation eligibility requires metadata only.
 
 For local setup, provision a separate local keyring in `.env`; do not reuse Django, TOTP, Web Push
-storage or any Routine, Shared Summary or Referral entry. The example has no usable key. Preserve
+storage or any Routine, Student Session Summary or Referral entry. The example has no usable key. Preserve
 complete ordered keyrings in protected off-host recovery, including older keys for retained backups.
 
 ```sh

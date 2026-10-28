@@ -1,0 +1,1200 @@
+[
+  {
+    "viewportWidth": 320,
+    "viewportHeight": 844,
+    "documentWidth": 320,
+    "header": {
+      "left": 0,
+      "top": 0,
+      "right": 320,
+      "bottom": 101,
+      "width": 320,
+      "height": 101,
+      "scrollWidth": 320,
+      "clientWidth": 320
+    },
+    "mainTop": 101,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Open portal navigation\"]",
+        "name": "Open portal navigation",
+        "rect": {
+          "left": 16,
+          "top": 4,
+          "right": 60,
+          "bottom": 48,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "a[aria-label=\"COMPASS Portal Overview\"]",
+        "name": "COMPASS Portal Overview",
+        "rect": {
+          "left": 68,
+          "top": 4,
+          "right": 112,
+          "bottom": 48,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 124,
+          "top": 4,
+          "right": 168,
+          "bottom": 48,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 127,
+          "top": 52,
+          "right": 171,
+          "bottom": 96,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 175,
+          "top": 52,
+          "right": 219,
+          "bottom": 96,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 223,
+          "top": 52,
+          "right": 304,
+          "bottom": 96,
+          "width": 81,
+          "height": 44
+        }
+      }
+    ],
+    "badge": {
+      "left": 196.34375,
+      "top": 48,
+      "right": 223,
+      "bottom": 68,
+      "width": 26.65625,
+      "height": 20
+    },
+    "textSize": "100%"
+  },
+  {
+    "viewportWidth": 360,
+    "viewportHeight": 844,
+    "documentWidth": 360,
+    "header": {
+      "left": 0,
+      "top": 0,
+      "right": 360,
+      "bottom": 101,
+      "width": 360,
+      "height": 101,
+      "scrollWidth": 360,
+      "clientWidth": 360
+    },
+    "mainTop": 101,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Open portal navigation\"]",
+        "name": "Open portal navigation",
+        "rect": {
+          "left": 16,
+          "top": 4,
+          "right": 60,
+          "bottom": 48,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "a[aria-label=\"COMPASS Portal Overview\"]",
+        "name": "COMPASS Portal Overview",
+        "rect": {
+          "left": 68,
+          "top": 4,
+          "right": 112,
+          "bottom": 48,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 124,
+          "top": 4,
+          "right": 168,
+          "bottom": 48,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 167,
+          "top": 52,
+          "right": 211,
+          "bottom": 96,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 215,
+          "top": 52,
+          "right": 259,
+          "bottom": 96,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 263,
+          "top": 52,
+          "right": 344,
+          "bottom": 96,
+          "width": 81,
+          "height": 44
+        }
+      }
+    ],
+    "badge": {
+      "left": 236.34375,
+      "top": 48,
+      "right": 263,
+      "bottom": 68,
+      "width": 26.65625,
+      "height": 20
+    },
+    "textSize": "100%"
+  },
+  {
+    "viewportWidth": 390,
+    "viewportHeight": 844,
+    "documentWidth": 390,
+    "header": {
+      "left": 0,
+      "top": 0,
+      "right": 390,
+      "bottom": 101,
+      "width": 390,
+      "height": 101,
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    "mainTop": 101,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Open portal navigation\"]",
+        "name": "Open portal navigation",
+        "rect": {
+          "left": 16,
+          "top": 4,
+          "right": 60,
+          "bottom": 48,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "a[aria-label=\"COMPASS Portal Overview\"]",
+        "name": "COMPASS Portal Overview",
+        "rect": {
+          "left": 68,
+          "top": 4,
+          "right": 112,
+          "bottom": 48,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 124,
+          "top": 4,
+          "right": 168,
+          "bottom": 48,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 197,
+          "top": 52,
+          "right": 241,
+          "bottom": 96,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 245,
+          "top": 52,
+          "right": 289,
+          "bottom": 96,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 293,
+          "top": 52,
+          "right": 374,
+          "bottom": 96,
+          "width": 81,
+          "height": 44
+        }
+      }
+    ],
+    "badge": {
+      "left": 266.34375,
+      "top": 48,
+      "right": 293,
+      "bottom": 68,
+      "width": 26.65625,
+      "height": 20
+    },
+    "textSize": "100%"
+  },
+  {
+    "viewportWidth": 768,
+    "viewportHeight": 844,
+    "documentWidth": 768,
+    "header": {
+      "left": 0,
+      "top": 0,
+      "right": 768,
+      "bottom": 101,
+      "width": 768,
+      "height": 101,
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    "mainTop": 101,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Open portal navigation\"]",
+        "name": "Open portal navigation",
+        "rect": {
+          "left": 24,
+          "top": 4,
+          "right": 68,
+          "bottom": 48,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "a[aria-label=\"COMPASS Portal Overview\"]",
+        "name": "COMPASS Portal Overview",
+        "rect": {
+          "left": 76,
+          "top": 4,
+          "right": 205,
+          "bottom": 48,
+          "width": 129,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 217,
+          "top": 4,
+          "right": 537,
+          "bottom": 48,
+          "width": 320,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 351,
+          "top": 52,
+          "right": 395,
+          "bottom": 96,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 403,
+          "top": 52,
+          "right": 447,
+          "bottom": 96,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 455,
+          "top": 52,
+          "right": 744,
+          "bottom": 96,
+          "width": 289,
+          "height": 44
+        }
+      }
+    ],
+    "badge": {
+      "left": 424.34375,
+      "top": 48,
+      "right": 451,
+      "bottom": 68,
+      "width": 26.65625,
+      "height": 20
+    },
+    "textSize": "100%"
+  },
+  {
+    "viewportWidth": 1024,
+    "viewportHeight": 844,
+    "documentWidth": 1024,
+    "header": {
+      "left": 256,
+      "top": 0,
+      "right": 1024,
+      "bottom": 56,
+      "width": 768,
+      "height": 56,
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    "mainTop": 56,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Collapse navigation\"]",
+        "name": "Collapse navigation",
+        "rect": {
+          "left": 280,
+          "top": 5.5,
+          "right": 324,
+          "bottom": 49.5,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 336,
+          "top": 5.5,
+          "right": 587,
+          "bottom": 49.5,
+          "width": 251,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 599,
+          "top": 5.5,
+          "right": 643,
+          "bottom": 49.5,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 651,
+          "top": 5.5,
+          "right": 695,
+          "bottom": 49.5,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 703,
+          "top": 5.5,
+          "right": 992,
+          "bottom": 49.5,
+          "width": 289,
+          "height": 44
+        }
+      }
+    ],
+    "badge": {
+      "left": 672.34375,
+      "top": 1.5,
+      "right": 699,
+      "bottom": 21.5,
+      "width": 26.65625,
+      "height": 20
+    },
+    "textSize": "100%"
+  },
+  {
+    "viewportWidth": 1440,
+    "viewportHeight": 844,
+    "documentWidth": 1440,
+    "header": {
+      "left": 256,
+      "top": 0,
+      "right": 1440,
+      "bottom": 56,
+      "width": 1184,
+      "height": 56,
+      "scrollWidth": 1184,
+      "clientWidth": 1184
+    },
+    "mainTop": 56,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Collapse navigation\"]",
+        "name": "Collapse navigation",
+        "rect": {
+          "left": 280,
+          "top": 5.5,
+          "right": 324,
+          "bottom": 49.5,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 336,
+          "top": 5.5,
+          "right": 656,
+          "bottom": 49.5,
+          "width": 320,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 1015,
+          "top": 5.5,
+          "right": 1059,
+          "bottom": 49.5,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 1067,
+          "top": 5.5,
+          "right": 1111,
+          "bottom": 49.5,
+          "width": 44,
+          "height": 44
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 1119,
+          "top": 5.5,
+          "right": 1408,
+          "bottom": 49.5,
+          "width": 289,
+          "height": 44
+        }
+      }
+    ],
+    "badge": {
+      "left": 1088.34375,
+      "top": 1.5,
+      "right": 1115,
+      "bottom": 21.5,
+      "width": 26.65625,
+      "height": 20
+    },
+    "textSize": "100%"
+  },
+  {
+    "viewportWidth": 320,
+    "viewportHeight": 844,
+    "documentWidth": 320,
+    "header": {
+      "left": 0,
+      "top": 0,
+      "right": 320,
+      "bottom": 393,
+      "width": 320,
+      "height": 393,
+      "scrollWidth": 320,
+      "clientWidth": 320
+    },
+    "mainTop": 393,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Open portal navigation\"]",
+        "name": "Open portal navigation",
+        "rect": {
+          "left": 32,
+          "top": 8,
+          "right": 120,
+          "bottom": 96,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "a[aria-label=\"COMPASS Portal Overview\"]",
+        "name": "COMPASS Portal Overview",
+        "rect": {
+          "left": 136,
+          "top": 8,
+          "right": 224,
+          "bottom": 96,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 32,
+          "top": 104,
+          "right": 120,
+          "bottom": 192,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 104,
+          "top": 200,
+          "right": 192,
+          "bottom": 288,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 200,
+          "top": 200,
+          "right": 288,
+          "bottom": 288,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 143,
+          "top": 296,
+          "right": 288,
+          "bottom": 384,
+          "width": 145,
+          "height": 88
+        }
+      }
+    ],
+    "badge": {
+      "left": 256,
+      "top": 192,
+      "right": 296,
+      "bottom": 232,
+      "width": 40,
+      "height": 40
+    },
+    "textSize": "200%"
+  },
+  {
+    "viewportWidth": 360,
+    "viewportHeight": 844,
+    "documentWidth": 360,
+    "header": {
+      "left": 0,
+      "top": 0,
+      "right": 360,
+      "bottom": 393,
+      "width": 360,
+      "height": 393,
+      "scrollWidth": 360,
+      "clientWidth": 360
+    },
+    "mainTop": 393,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Open portal navigation\"]",
+        "name": "Open portal navigation",
+        "rect": {
+          "left": 32,
+          "top": 8,
+          "right": 120,
+          "bottom": 96,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "a[aria-label=\"COMPASS Portal Overview\"]",
+        "name": "COMPASS Portal Overview",
+        "rect": {
+          "left": 136,
+          "top": 8,
+          "right": 224,
+          "bottom": 96,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 32,
+          "top": 104,
+          "right": 120,
+          "bottom": 192,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 144,
+          "top": 200,
+          "right": 232,
+          "bottom": 288,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 240,
+          "top": 200,
+          "right": 328,
+          "bottom": 288,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 183,
+          "top": 296,
+          "right": 328,
+          "bottom": 384,
+          "width": 145,
+          "height": 88
+        }
+      }
+    ],
+    "badge": {
+      "left": 296,
+      "top": 192,
+      "right": 336,
+      "bottom": 232,
+      "width": 40,
+      "height": 40
+    },
+    "textSize": "200%"
+  },
+  {
+    "viewportWidth": 390,
+    "viewportHeight": 844,
+    "documentWidth": 390,
+    "header": {
+      "left": 0,
+      "top": 0,
+      "right": 390,
+      "bottom": 297,
+      "width": 390,
+      "height": 297,
+      "scrollWidth": 390,
+      "clientWidth": 390
+    },
+    "mainTop": 297,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Open portal navigation\"]",
+        "name": "Open portal navigation",
+        "rect": {
+          "left": 32,
+          "top": 8,
+          "right": 120,
+          "bottom": 96,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "a[aria-label=\"COMPASS Portal Overview\"]",
+        "name": "COMPASS Portal Overview",
+        "rect": {
+          "left": 136,
+          "top": 8,
+          "right": 224,
+          "bottom": 96,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 248,
+          "top": 8,
+          "right": 336,
+          "bottom": 96,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 174,
+          "top": 104,
+          "right": 262,
+          "bottom": 192,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 270,
+          "top": 104,
+          "right": 358,
+          "bottom": 192,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 213,
+          "top": 200,
+          "right": 358,
+          "bottom": 288,
+          "width": 145,
+          "height": 88
+        }
+      }
+    ],
+    "badge": {
+      "left": 326,
+      "top": 96,
+      "right": 366,
+      "bottom": 136,
+      "width": 40,
+      "height": 40
+    },
+    "textSize": "200%"
+  },
+  {
+    "viewportWidth": 768,
+    "viewportHeight": 844,
+    "documentWidth": 768,
+    "header": {
+      "left": 0,
+      "top": 0,
+      "right": 768,
+      "bottom": 305,
+      "width": 768,
+      "height": 305,
+      "scrollWidth": 768,
+      "clientWidth": 768
+    },
+    "mainTop": 305,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Open portal navigation\"]",
+        "name": "Open portal navigation",
+        "rect": {
+          "left": 48,
+          "top": 8,
+          "right": 136,
+          "bottom": 96,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "a[aria-label=\"COMPASS Portal Overview\"]",
+        "name": "COMPASS Portal Overview",
+        "rect": {
+          "left": 152,
+          "top": 8,
+          "right": 382,
+          "bottom": 96,
+          "width": 230,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 406,
+          "top": 8,
+          "right": 720,
+          "bottom": 96,
+          "width": 314,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 528,
+          "top": 104,
+          "right": 616,
+          "bottom": 192,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 632,
+          "top": 104,
+          "right": 720,
+          "bottom": 192,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 159,
+          "top": 208,
+          "right": 720,
+          "bottom": 296,
+          "width": 561,
+          "height": 88
+        }
+      }
+    ],
+    "badge": {
+      "left": 688,
+      "top": 96,
+      "right": 728,
+      "bottom": 136,
+      "width": 40,
+      "height": 40
+    },
+    "textSize": "200%"
+  },
+  {
+    "viewportWidth": 1024,
+    "viewportHeight": 844,
+    "documentWidth": 1223,
+    "header": {
+      "left": 512,
+      "top": 0,
+      "right": 1024,
+      "bottom": 305,
+      "width": 512,
+      "height": 305,
+      "scrollWidth": 512,
+      "clientWidth": 512
+    },
+    "mainTop": 305,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Collapse navigation\"]",
+        "name": "Collapse navigation",
+        "rect": {
+          "left": 560,
+          "top": 8,
+          "right": 648,
+          "bottom": 96,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 672,
+          "top": 8,
+          "right": 960,
+          "bottom": 96,
+          "width": 288,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 768,
+          "top": 104,
+          "right": 856,
+          "bottom": 192,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 872,
+          "top": 104,
+          "right": 960,
+          "bottom": 192,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 576,
+          "top": 208,
+          "right": 960,
+          "bottom": 296,
+          "width": 384,
+          "height": 88
+        }
+      }
+    ],
+    "badge": {
+      "left": 928,
+      "top": 96,
+      "right": 968,
+      "bottom": 136,
+      "width": 40,
+      "height": 40
+    },
+    "textSize": "200%",
+    "contentOverflowCandidates": [
+      {
+        "tag": "P",
+        "id": "",
+        "text": "Section 1 of 9",
+        "left": 1081,
+        "right": 1185
+      },
+      {
+        "tag": "BUTTON",
+        "id": "inventory-permanent-location-add",
+        "text": "Add permanent location details",
+        "left": 1081,
+        "right": 1173
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Save progress",
+        "left": 1081,
+        "right": 1147
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Save & continue",
+        "left": 1081,
+        "right": 1147
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Back",
+        "left": 1081,
+        "right": 1147
+      },
+      {
+        "tag": "BUTTON",
+        "id": "",
+        "text": "Continue",
+        "left": 1081,
+        "right": 1147
+      },
+      {
+        "tag": "INPUT",
+        "id": "inventory-full-name",
+        "text": "",
+        "left": 1081,
+        "right": 1131
+      },
+      {
+        "tag": "INPUT",
+        "id": "inventory-nickname",
+        "text": "",
+        "left": 1081,
+        "right": 1131
+      }
+    ]
+  },
+  {
+    "viewportWidth": 1440,
+    "viewportHeight": 844,
+    "documentWidth": 1440,
+    "header": {
+      "left": 512,
+      "top": 0,
+      "right": 1440,
+      "bottom": 201,
+      "width": 928,
+      "height": 201,
+      "scrollWidth": 928,
+      "clientWidth": 928
+    },
+    "mainTop": 201,
+    "actions": [
+      {
+        "selector": "button[aria-label=\"Collapse navigation\"]",
+        "name": "Collapse navigation",
+        "rect": {
+          "left": 560,
+          "top": 8,
+          "right": 648,
+          "bottom": 96,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Go to a COMPASS feature\"]",
+        "name": "Go to a COMPASS feature",
+        "rect": {
+          "left": 672,
+          "top": 8,
+          "right": 1312,
+          "bottom": 96,
+          "width": 640,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label=\"Accessibility settings\"]",
+        "name": "Accessibility settings",
+        "rect": {
+          "left": 576,
+          "top": 104,
+          "right": 664,
+          "bottom": 192,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "a[aria-label^=\"Notifications\"]",
+        "name": "Notifications, 123 unread",
+        "rect": {
+          "left": 680,
+          "top": 104,
+          "right": 768,
+          "bottom": 192,
+          "width": 88,
+          "height": 88
+        }
+      },
+      {
+        "selector": "button[aria-label^=\"Open user menu for \"]",
+        "name": "Open user menu for Alexandria Maria Catherine Johnson-Williams Santos de la Cruz, Jr.",
+        "rect": {
+          "left": 784,
+          "top": 104,
+          "right": 1345,
+          "bottom": 192,
+          "width": 561,
+          "height": 88
+        }
+      }
+    ],
+    "badge": {
+      "left": 736,
+      "top": 96,
+      "right": 776,
+      "bottom": 136,
+      "width": 40,
+      "height": 40
+    },
+    "textSize": "200%"
+  }
+]

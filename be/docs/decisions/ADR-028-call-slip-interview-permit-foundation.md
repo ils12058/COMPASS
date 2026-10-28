@@ -1,5 +1,7 @@
 # ADR-028: Interview Permit / Call Slip Foundation
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 > **Scope refinement (2026-10-09):** [ADR-099](ADR-099-operational-responsibility-and-domain-head-oversight.md)
 > separates handled College workload from explicit domain-owned Head oversight. GSS inherits
 > only supervisor workload, including valid unique-Head fallback, never Head designation authority.

@@ -41,7 +41,8 @@ remain trusted. A compromised authorized process can read its own grants.
 | `PSGC_API_TOKEN` | `psgc_api_token` | optional; dependent operations enforce availability |
 | `AUTH_TOTP_ENCRYPTION_KEY` | `auth_totp_encryption_key` | yes |
 | `ROUTINE_INTERVIEW_ENCRYPTION_KEYS` | `routine_interview_encryption_keys` | yes |
-| `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS` | `counseling_shared_summary_encryption_keys` | yes |
+| `STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS` | `student_session_summary_encryption_keys` | yes |
+| `COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS` | `counselor_handoff_summary_encryption_keys` | optional contents; web only |
 | `REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `referral_confidential_content_encryption_keys` | yes |
 | `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `exit_interview_confidential_content_encryption_keys` | yes |
 | `INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS` | `inventory_confidential_content_encryption_keys` | yes |
@@ -213,7 +214,7 @@ Encryption keys require their own transition/readability plan. Follow ADR-066 fo
 keyring; TOTP and Web Push storage keys require their specific migration procedures. Never replace
 one with a newly generated key as routine secret-file maintenance. Keep independently protected
 recovery copies of `AUTH_TOTP_ENCRYPTION_KEY`, the complete ordered
-`ROUTINE_INTERVIEW_ENCRYPTION_KEYS`, `COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS`,
+`ROUTINE_INTERVIEW_ENCRYPTION_KEYS`, `STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS`,
 `REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`,
 `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`, and `WEB_PUSH_STORAGE_KEY`, including older keys while retained
 backups depend on them. Future application encryption keyrings follow the same rule. An approved
@@ -224,6 +225,20 @@ one-off `seed_staging_dataset issue-credentials` run into an operator-mounted, m
 file. `STAGING_SEED_ENABLED` is one-off operator input and is never part of the long-running
 environment; the checker rejects it. See [staging-dataset-v1.md](staging-dataset-v1.md).
 
+
+## Current Student Session Summary cutover
+
+CONT-1B replaces the former summary model, keyring, authenticated binding and persisted policy.
+Use the [current migration/cutover runbook](../../docs/cont-1b/migration-and-cutover.md) and
+[encryption contract](../../docs/cont-1b/encryption-contract.md). The additive canonical migrations
+require an empty reviewed summary scope; old ciphertext cannot be accepted under a renamed
+setting. No deployed execution is authorized here.
+
+> **Historical procedures below:** the remaining ADR cutover sections record pre-canonical
+> deployment plans and migration names. They are preserved as historical evidence, not executable
+> instructions for the current canonical graph. Do not run their removed backfill/reverse
+> migrations or restore their old summary configuration. Follow CONT-1B and the immutable
+> canonical-baseline rules instead.
 
 ## ADR-080: one-time Shared Summary encryption cutover (separate authorization)
 
@@ -693,3 +708,9 @@ prerequisites remain independently verifiable release prerequisites.
 Missing keys continue to fail protected reads/writes closed; no existing domain key or plaintext
 fallback may be used. This repository audit did not inspect or establish the current host file's
 presence. See [the Follow-Up activation runbook](guidance-followups-operations.md).
+
+## CONT-3 confidential Counselor Handoff
+
+The independent `COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS_FILE` points to `/run/secrets/counselor_handoff_summary_encryption_keys`. Staging Compose mounts it only in web; worker/Beat clear both direct and file settings. The inventory validator requires the declared protected source file and pointer even when optional contents are empty. Absent keys deny Handoff content operations; configured keys must be valid, nonduplicate and independent of every existing encryption purpose. All institutional policy providers remain denied by default.
+
+Preparing this contract does not provision a secret or authorize deployment. Before using the changed staging manifest, separately authorize file preparation/custody/recovery, the additive Handoff migration, exact consumer coordination and verified institutional policies. No live key operation has been performed. See [CONT-3 encryption](../../docs/cont-3/handoff-encryption.md).

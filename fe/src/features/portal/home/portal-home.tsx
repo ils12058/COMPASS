@@ -1,7 +1,7 @@
 "use client";
 
 import { CalendarPlus } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { PageActionLink } from "@/components/ui/page-action";
 import { PageHeader } from "@/components/ui/page-header";
@@ -9,6 +9,9 @@ import { pageSheetWidth } from "@/components/ui/page-width";
 import { OverviewAnnouncements } from "@/features/portal/home/overview-announcements";
 import { OverviewAttention } from "@/features/portal/home/overview-attention";
 import { OverviewSummary } from "@/features/portal/home/overview-summary";
+import { CounselorHome } from "@/features/portal/home/counselor-home";
+import { GssHome } from "@/features/portal/home/gss-home";
+import { StudentHome } from "@/features/portal/home/student-home";
 import {
   formatOverviewDate,
   getEmailDeliveryStatus,
@@ -33,64 +36,86 @@ function overviewErrorMessage(error: unknown): string {
   return "The Overview summary could not be loaded. Try again in a moment.";
 }
 
-// The portal's home: a greeting, then what needs doing, then the account's announcements. Counts are
-// context beside the work, not a row of tiles above it.
+// Queries and primary commands remain shared. Student and Counselor Home branches change
+// presentation only; source projections, summary metrics, and role access remain authoritative.
 export function PortalHome() {
   const { user } = usePortalSession();
-  const [now] = useState(() => new Date());
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    if (user.role !== "COUNSELOR" && user.role !== "GUIDANCE_SERVICES_STAFF") return;
+    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(interval);
+  }, [user.role]);
   const summaryQuery = useOverviewGetSummary({
-    query: { retry: false },
+    query: { retry: false, enabled: user.role !== "GUIDANCE_SERVICES_STAFF" },
   });
-  const summary = isAuthorizationFailure(summaryQuery.error)
+  const projectedSummary = isAuthorizationFailure(summaryQuery.error)
     ? undefined
     : summaryQuery.data?.data;
+  // Student Home consumes only its own summary section, even if an unexpected response includes
+  // professional sections. The backend still owns all counts and authorization.
+  const summary = projectedSummary && user.role === "STUDENT"
+    ? { ...projectedSummary, guidance: null, platform: null }
+    : projectedSummary;
   const attention = useOverviewAttention(user, summary);
   const metrics = summary ? getOverviewMetrics(summary, user) : [];
   const emailStatus = summary ? getEmailDeliveryStatus(summary, user) : null;
-  const primaryAction = getOverviewPrimaryAction(user);
+  const primaryAction = user.role === "GUIDANCE_SERVICES_STAFF" ? null : getOverviewPrimaryAction(user);
   // OverviewSummary renders nothing for an account without counts; then the work column is alone.
   const hasSummary =
     summaryQuery.isPending || summaryQuery.isError || metrics.length > 0 || emailStatus !== null;
   const roleContext = getOverviewRoleContext(user);
+  const summaryPanel = (
+    <OverviewSummary
+      metrics={metrics}
+      emailStatus={emailStatus}
+      isPending={summaryQuery.isPending}
+      isError={summaryQuery.isError}
+      errorMessage={overviewErrorMessage(summaryQuery.error)}
+      onRetry={() => void summaryQuery.refetch()}
+    />
+  );
 
   return (
     <section aria-labelledby="portal-overview-heading" className={pageSheetWidth}>
       <PageHeader
-        title={getOverviewGreeting(user, now)}
+        title={user.role === "GUIDANCE_SERVICES_STAFF" ? "Guidance Services Home" : getOverviewGreeting(user, now)}
         headingId="portal-overview-heading"
-        description={[formatOverviewDate(now), roleContext].filter(Boolean).join(" · ")}
+        context={user.role === "STUDENT" ? "Overview" : undefined}
+        description={user.role === "GUIDANCE_SERVICES_STAFF"
+          ? [formatOverviewDate(now), "Office work within your authorized scope"].join(" · ")
+          : [formatOverviewDate(now), roleContext].filter(Boolean).join(" · ")}
         actions={primaryAction ? (
           <PageActionLink
             href={primaryAction.href}
             icon={CalendarPlus}
-            label={primaryAction.shortLabel}
-            labelDetail={primaryAction.labelDetail}
+            label={user.role === "STUDENT" ? "Book appointment" : primaryAction.shortLabel}
+            labelDetail={user.role === "STUDENT" ? undefined : primaryAction.labelDetail}
           />
         ) : undefined}
       />
 
-      {/* What needs doing comes first, then announcements; the counts sit beside them on wide
-          screens and after them on narrow ones. */}
-      <div
-        className={
-          hasSummary
-            ? "grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]"
-            : "grid gap-5"
-        }
-      >
-        <div className="grid min-w-0 gap-5">
-          <OverviewAttention data={attention} />
-          <OverviewAnnouncements />
+      {user.role === "STUDENT" ? (
+        <StudentHome user={user} attention={attention} summary={summaryPanel} />
+      ) : user.role === "COUNSELOR" ? (
+        <CounselorHome user={user} attention={attention} summary={summaryPanel} now={now} />
+      ) : user.role === "GUIDANCE_SERVICES_STAFF" ? (
+        <GssHome user={user} attention={attention} now={now} />
+      ) : (
+        <div
+          className={
+            hasSummary
+              ? "grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,20rem)]"
+              : "grid gap-5"
+          }
+        >
+          <div className="grid min-w-0 gap-5">
+            <OverviewAttention data={attention} />
+            <OverviewAnnouncements />
+          </div>
+          {summaryPanel}
         </div>
-        <OverviewSummary
-          metrics={metrics}
-          emailStatus={emailStatus}
-          isPending={summaryQuery.isPending}
-          isError={summaryQuery.isError}
-          errorMessage={overviewErrorMessage(summaryQuery.error)}
-          onRetry={() => void summaryQuery.refetch()}
-        />
-      </div>
+      )}
     </section>
   );
 }

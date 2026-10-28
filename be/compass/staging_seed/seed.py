@@ -25,9 +25,10 @@ from compass.institutional_forms.services import (
     require_active_supported_form_revision,
 )
 from compass.organization.bootstrap import (
-    CanonicalOrganizationSyncError,
-    sync_organization_catalog,
+    CatalogInitializationError,
+    check_organization_catalog,
 )
+from compass.organization.integrity import catalog_dependent_write
 from compass.service_catalog.bootstrap import (
     CanonicalIdentityPolicyMissing,
     canonical_counseling_readiness,
@@ -130,16 +131,16 @@ def exclusive_dataset_operation():
 
 
 def sync_prerequisites() -> None:
-    """Reuse the source-owned synchronizers; the seeder never restates canonical definitions."""
+    """Verify adopted catalog; sync only unrelated source-owned configuration."""
 
     try:
+        check_organization_catalog()
         sync_identity_policy()
-        sync_organization_catalog()
         sync_institutional_forms()
         sync_canonical_services()
     except (
         IdentityPolicySyncError,
-        CanonicalOrganizationSyncError,
+        CatalogInitializationError,
         CanonicalFormSyncError,
         CanonicalIdentityPolicyMissing,
         ServiceCatalogError,
@@ -238,6 +239,7 @@ def _run(session: SeedSession, config: StagingSeedConfig) -> None:
     _unit("Account state", lambda: finalize_account_state(session))
 
 
+@catalog_dependent_write
 def seed_staging_dataset(*, anchor: date | None = None) -> SeedReport:
     """Seed or reconcile Staging Dataset v1 and return a secret-free report."""
 

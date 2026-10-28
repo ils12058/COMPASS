@@ -1,5 +1,7 @@
 # Portal command palette: implementation and validation
 
+> Historical implementation evidence. Summary terminology below records that delivery; the current canonical resource is [Student Session Summary](../../docs/cont-1b/README.md).
+
 The portal top bar now provides **Go to…**, a local index of authorized, stable COMPASS
 destinations. It opens through the visible Search button or Cmd/Ctrl+K. This is feature
 navigation; existing collection filters and record search remain separate.

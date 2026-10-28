@@ -4,7 +4,9 @@ Every message is a plain-text body plus an HTML alternative rendered from a ``<n
 ``<name>.html`` template pair. Both extend the shared shells in ``compass/email/`` (``base`` or
 ``security``), so branding, header, and footer live in one place. Templates and context are
 code-owned: callers pass fixed wording and transient values, never stored records, user-entered
-text, URLs, or markup. Rendering stays upstream of ``Mailer``, which remains the SMTP transport.
+text or markup. The Notifications adapter may supply a validated portal link and
+approved, typed operational rows projected by the source owner with HTML autoescaping.
+Rendering stays upstream of ``Mailer``, which remains the SMTP transport.
 """
 
 from __future__ import annotations

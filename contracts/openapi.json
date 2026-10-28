@@ -4496,13 +4496,18 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "resource_version": {
+            "title": "Resource Version",
+            "type": "integer"
           }
         },
         "required": [
           "id",
           "code",
           "name",
-          "is_active"
+          "is_active",
+          "resource_version"
         ],
         "title": "CampusSummary",
         "type": "object"
@@ -4526,6 +4531,13 @@
           "call_slips.manage",
           "call_slips.view",
           "call_slips.view_self",
+          "counseling.continuity.approve",
+          "counseling.continuity.read_selected",
+          "counseling.continuity.request",
+          "counseling.continuity.revoke",
+          "counseling.continuity.view",
+          "counseling.handoff.manage_own",
+          "counseling.handoff.read_received",
           "counseling.manage_assigned",
           "counseling.view_assigned",
           "ecounseling.access_media_assigned",
@@ -4549,6 +4561,7 @@
           "good_moral.manage",
           "good_moral.prepare",
           "good_moral.request_self",
+          "good_moral.verify_receipt",
           "good_moral.view",
           "good_moral.view_self",
           "graduate_tracer.manage_self",
@@ -4567,6 +4580,7 @@
           "inventory.reopen",
           "inventory.view",
           "inventory.view_self",
+          "organization.catalog.manage",
           "organization.manage",
           "organization.structure.view",
           "platform_operations.manage",
@@ -4585,9 +4599,9 @@
           "routine_interviews.view_self",
           "services.catalog.view",
           "services.manage",
-          "shared_summaries.manage_assigned",
-          "shared_summaries.view_assigned",
-          "shared_summaries.view_self",
+          "student_session_summaries.manage_assigned",
+          "student_session_summaries.view_assigned",
+          "student_session_summaries.view_self",
           "student_support.view"
         ],
         "title": "CapabilityCode",
@@ -4724,6 +4738,630 @@
         ],
         "title": "CareerModeValue",
         "type": "string"
+      },
+      "CatalogCreateCampusRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "is_active",
+          "basis"
+        ],
+        "title": "CatalogCreateCampusRequest",
+        "type": "object"
+      },
+      "CatalogCreateCollegeRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "campus_id": {
+            "format": "uuid",
+            "title": "Campus Id",
+            "type": "string"
+          },
+          "code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "code",
+          "name",
+          "is_active",
+          "basis",
+          "campus_id"
+        ],
+        "title": "CatalogCreateCollegeRequest",
+        "type": "object"
+      },
+      "CatalogCreateProgramRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_classification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicClassification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applicable_year_levels": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicable Year Levels"
+          },
+          "basis": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "code": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Code",
+            "type": "string"
+          },
+          "college_id": {
+            "format": "uuid",
+            "title": "College Id",
+            "type": "string"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "year_level_policy_status": {
+            "$ref": "#/components/schemas/YearLevelPolicyStatus"
+          }
+        },
+        "required": [
+          "academic_classification",
+          "year_level_policy_status",
+          "applicable_year_levels",
+          "code",
+          "name",
+          "is_active",
+          "basis",
+          "college_id"
+        ],
+        "title": "CatalogCreateProgramRequest",
+        "type": "object"
+      },
+      "CatalogDependentCounts": {
+        "additionalProperties": false,
+        "properties": {
+          "active_child_colleges": {
+            "title": "Active Child Colleges",
+            "type": "integer"
+          },
+          "active_child_programs": {
+            "title": "Active Child Programs",
+            "type": "integer"
+          },
+          "active_student_affiliations": {
+            "title": "Active Student Affiliations",
+            "type": "integer"
+          },
+          "child_colleges": {
+            "title": "Child Colleges",
+            "type": "integer"
+          },
+          "child_programs": {
+            "title": "Child Programs",
+            "type": "integer"
+          },
+          "counselor_responsibilities": {
+            "title": "Counselor Responsibilities",
+            "type": "integer"
+          },
+          "draft_inventories": {
+            "title": "Draft Inventories",
+            "type": "integer"
+          },
+          "graduate_tracer_references": {
+            "title": "Graduate Tracer References",
+            "type": "integer"
+          },
+          "inactive_account_affiliations": {
+            "title": "Inactive Account Affiliations",
+            "type": "integer"
+          },
+          "issued_good_moral": {
+            "title": "Issued Good Moral",
+            "type": "integer"
+          },
+          "open_office_threads": {
+            "title": "Open Office Threads",
+            "type": "integer"
+          },
+          "pending_f4": {
+            "title": "Pending F4",
+            "type": "integer"
+          },
+          "pending_good_moral": {
+            "title": "Pending Good Moral",
+            "type": "integer"
+          },
+          "pending_operational_followups": {
+            "title": "Pending Operational Followups",
+            "type": "integer"
+          },
+          "resolved_threads": {
+            "title": "Resolved Threads",
+            "type": "integer"
+          },
+          "student_affiliations": {
+            "title": "Student Affiliations",
+            "type": "integer"
+          },
+          "submitted_inventories": {
+            "title": "Submitted Inventories",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "child_colleges",
+          "active_child_colleges",
+          "child_programs",
+          "active_child_programs",
+          "student_affiliations",
+          "active_student_affiliations",
+          "inactive_account_affiliations",
+          "counselor_responsibilities",
+          "draft_inventories",
+          "submitted_inventories",
+          "graduate_tracer_references",
+          "open_office_threads",
+          "resolved_threads",
+          "pending_good_moral",
+          "pending_f4",
+          "issued_good_moral",
+          "pending_operational_followups"
+        ],
+        "title": "CatalogDependentCounts",
+        "type": "object"
+      },
+      "CatalogHistoryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "actor_id": {
+            "format": "uuid",
+            "title": "Actor Id",
+            "type": "string"
+          },
+          "after": {
+            "$ref": "#/components/schemas/CatalogHistoryValues"
+          },
+          "basis": {
+            "title": "Basis",
+            "type": "string"
+          },
+          "before": {
+            "$ref": "#/components/schemas/CatalogHistoryValues"
+          },
+          "changed_fields": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Changed Fields",
+            "type": "array"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Parent Id"
+          },
+          "resource_version_after": {
+            "title": "Resource Version After",
+            "type": "integer"
+          },
+          "resource_version_before": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resource Version Before"
+          }
+        },
+        "required": [
+          "id",
+          "occurred_at",
+          "actor_id",
+          "action",
+          "code",
+          "parent_id",
+          "changed_fields",
+          "resource_version_before",
+          "resource_version_after",
+          "before",
+          "after",
+          "basis"
+        ],
+        "title": "CatalogHistoryItem",
+        "type": "object"
+      },
+      "CatalogHistoryResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogHistoryItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CatalogHistoryResponse",
+        "type": "object"
+      },
+      "CatalogHistoryValues": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_classification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicClassification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applicable_year_levels": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicable Year Levels"
+          },
+          "is_active": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Active"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "year_level_policy_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/YearLevelPolicyStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "CatalogHistoryValues",
+        "type": "object"
+      },
+      "CatalogImpactResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "blockers": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogIssueSummary"
+            },
+            "title": "Blockers",
+            "type": "array"
+          },
+          "can_deactivate": {
+            "title": "Can Deactivate",
+            "type": "boolean"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/CatalogDependentCounts"
+          },
+          "observed_at": {
+            "format": "date-time",
+            "title": "Observed At",
+            "type": "string"
+          },
+          "preserved_categories": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Preserved Categories",
+            "type": "array"
+          },
+          "resource_version": {
+            "title": "Resource Version",
+            "type": "integer"
+          },
+          "target_id": {
+            "format": "uuid",
+            "title": "Target Id",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/CatalogIssueSummary"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "target_id",
+          "resource_version",
+          "observed_at",
+          "can_deactivate",
+          "blockers",
+          "warnings",
+          "counts",
+          "preserved_categories"
+        ],
+        "title": "CatalogImpactResponse",
+        "type": "object"
+      },
+      "CatalogIssueCode": {
+        "enum": [
+          "active_child_colleges",
+          "active_child_programs",
+          "active_student_affiliations",
+          "counselor_responsibilities",
+          "open_office_threads",
+          "pending_operational_followups",
+          "inactive_account_affiliations",
+          "draft_inventories",
+          "pending_good_moral"
+        ],
+        "title": "CatalogIssueCode",
+        "type": "string"
+      },
+      "CatalogIssueSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "code": {
+            "$ref": "#/components/schemas/CatalogIssueCode"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "code",
+          "count"
+        ],
+        "title": "CatalogIssueSummary",
+        "type": "object"
+      },
+      "CatalogPolicyRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_classification": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AcademicClassification"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "applicable_year_levels": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Applicable Year Levels"
+          },
+          "basis": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "expected_resource_version": {
+            "minimum": 1,
+            "title": "Expected Resource Version",
+            "type": "integer"
+          },
+          "year_level_policy_status": {
+            "$ref": "#/components/schemas/YearLevelPolicyStatus"
+          }
+        },
+        "required": [
+          "academic_classification",
+          "year_level_policy_status",
+          "applicable_year_levels",
+          "expected_resource_version",
+          "basis"
+        ],
+        "title": "CatalogPolicyRequest",
+        "type": "object"
+      },
+      "CatalogRenameRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "expected_resource_version": {
+            "minimum": 1,
+            "title": "Expected Resource Version",
+            "type": "integer"
+          },
+          "name": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_resource_version",
+          "name",
+          "basis"
+        ],
+        "title": "CatalogRenameRequest",
+        "type": "object"
+      },
+      "CatalogStatusRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "maxLength": 160,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "expected_resource_version": {
+            "minimum": 1,
+            "title": "Expected Resource Version",
+            "type": "integer"
+          },
+          "is_active": {
+            "title": "Is Active",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expected_resource_version",
+          "is_active",
+          "basis"
+        ],
+        "title": "CatalogStatusRequest",
+        "type": "object"
       },
       "Category": {
         "enum": [
@@ -4902,6 +5540,10 @@
           "name": {
             "title": "Name",
             "type": "string"
+          },
+          "resource_version": {
+            "title": "Resource Version",
+            "type": "integer"
           }
         },
         "required": [
@@ -4909,7 +5551,8 @@
           "code",
           "name",
           "campus",
-          "is_active"
+          "is_active",
+          "resource_version"
         ],
         "title": "CollegeSummary",
         "type": "object"
@@ -5271,42 +5914,6 @@
         "title": "ContextRoutineInterviewResponse",
         "type": "object"
       },
-      "ContextSharedSummaryResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "content": {
-            "title": "Content",
-            "type": "string"
-          },
-          "counseling_ended_at": {
-            "format": "date-time",
-            "title": "Counseling Ended At",
-            "type": "string"
-          },
-          "counselor": {
-            "$ref": "#/components/schemas/ContextIdentityResponse"
-          },
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "published_at": {
-            "format": "date-time",
-            "title": "Published At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "content",
-          "published_at",
-          "counseling_ended_at",
-          "counselor"
-        ],
-        "title": "ContextSharedSummaryResponse",
-        "type": "object"
-      },
       "ContextStudentOverviewResponse": {
         "additionalProperties": false,
         "properties": {
@@ -5426,6 +6033,516 @@
           "label"
         ],
         "title": "ContextSupportIndicatorResponse",
+        "type": "object"
+      },
+      "ContinuityDecision": {
+        "enum": [
+          "REQUESTED",
+          "APPROVED",
+          "DECLINED",
+          "CANCELLED",
+          "REVOKED"
+        ],
+        "title": "ContinuityDecision",
+        "type": "string"
+      },
+      "ContinuityGrantMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "coverage_kind": {
+            "$ref": "#/components/schemas/CoverageKind"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/ContinuityDecision"
+          },
+          "decision_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decision By Id"
+          },
+          "effective_status": {
+            "$ref": "#/components/schemas/ContinuityStatus"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "original_counselor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Counselor Id"
+          },
+          "policy_evidence": {
+            "title": "Policy Evidence",
+            "type": "string"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "reason_category": {
+            "$ref": "#/components/schemas/ContinuityReason"
+          },
+          "receiving_counselor_id": {
+            "format": "uuid",
+            "title": "Receiving Counselor Id",
+            "type": "string"
+          },
+          "requested_at": {
+            "format": "date-time",
+            "title": "Requested At",
+            "type": "string"
+          },
+          "requested_by_id": {
+            "format": "uuid",
+            "title": "Requested By Id",
+            "type": "string"
+          },
+          "revocation_reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContinuityRevocationReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revoked_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked At"
+          },
+          "revoked_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revoked By Id"
+          },
+          "scopes": {
+            "items": {
+              "$ref": "#/components/schemas/ContinuityScopeMetadata"
+            },
+            "title": "Scopes",
+            "type": "array"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "student_id",
+          "original_counselor_id",
+          "receiving_counselor_id",
+          "coverage_kind",
+          "reason_category",
+          "requested_by_id",
+          "requested_at",
+          "starts_at",
+          "expires_at",
+          "decision",
+          "effective_status",
+          "decision_by_id",
+          "decided_at",
+          "revoked_by_id",
+          "revoked_at",
+          "revocation_reason",
+          "version",
+          "policy_version",
+          "policy_evidence",
+          "scopes"
+        ],
+        "title": "ContinuityGrantMetadata",
+        "type": "object"
+      },
+      "ContinuityGrantPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ContinuityGrantMetadata"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "ContinuityGrantPage",
+        "type": "object"
+      },
+      "ContinuityProjection": {
+        "enum": [
+          "ENCOUNTER_METADATA_V1",
+          "FINALIZED_EVALUATION_V1"
+        ],
+        "title": "ContinuityProjection",
+        "type": "string"
+      },
+      "ContinuityReason": {
+        "enum": [
+          "PLANNED_ABSENCE",
+          "UNEXPECTED_ABSENCE",
+          "TEMPORARY_SUPPORT"
+        ],
+        "title": "ContinuityReason",
+        "type": "string"
+      },
+      "ContinuityRequestInput": {
+        "additionalProperties": false,
+        "properties": {
+          "coverage_kind": {
+            "$ref": "#/components/schemas/CoverageKind"
+          },
+          "expected_version": {
+            "maximum": 0,
+            "minimum": 0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "expires_at": {
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          },
+          "original_counselor_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Original Counselor Id"
+          },
+          "reason_category": {
+            "$ref": "#/components/schemas/ContinuityReason"
+          },
+          "receiving_counselor_id": {
+            "format": "uuid",
+            "title": "Receiving Counselor Id",
+            "type": "string"
+          },
+          "request_id": {
+            "format": "uuid",
+            "title": "Request Id",
+            "type": "string"
+          },
+          "scopes": {
+            "items": {
+              "$ref": "#/components/schemas/ContinuityScopeInput"
+            },
+            "maxItems": 32,
+            "minItems": 1,
+            "title": "Scopes",
+            "type": "array"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student_id",
+          "receiving_counselor_id",
+          "coverage_kind",
+          "reason_category",
+          "starts_at",
+          "expires_at",
+          "request_id",
+          "expected_version",
+          "scopes"
+        ],
+        "title": "ContinuityRequestInput",
+        "type": "object"
+      },
+      "ContinuityRevocationReason": {
+        "enum": [
+          "COVERAGE_ENDED",
+          "AUTHORITY_CHANGED",
+          "REQUEST_WITHDRAWN"
+        ],
+        "title": "ContinuityRevocationReason",
+        "type": "string"
+      },
+      "ContinuityRevokeInput": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "exclusiveMinimum": 0,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "reason_code": {
+            "$ref": "#/components/schemas/ContinuityRevocationReason"
+          }
+        },
+        "required": [
+          "expected_version",
+          "reason_code"
+        ],
+        "title": "ContinuityRevokeInput",
+        "type": "object"
+      },
+      "ContinuityScopeInput": {
+        "additionalProperties": false,
+        "properties": {
+          "projection": {
+            "$ref": "#/components/schemas/ContinuityProjection"
+          },
+          "resource_kind": {
+            "$ref": "#/components/schemas/ContinuitySourceKind"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_kind",
+          "source_id",
+          "projection"
+        ],
+        "title": "ContinuityScopeInput",
+        "type": "object"
+      },
+      "ContinuityScopeMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "projection": {
+            "$ref": "#/components/schemas/ContinuityProjection"
+          },
+          "resource_kind": {
+            "$ref": "#/components/schemas/ContinuitySourceKind"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          },
+          "source_revision": {
+            "title": "Source Revision",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_kind",
+          "source_id",
+          "projection",
+          "id",
+          "source_revision"
+        ],
+        "title": "ContinuityScopeMetadata",
+        "type": "object"
+      },
+      "ContinuitySelectedEncounterResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "disclosure_policy_version": {
+            "title": "Disclosure Policy Version",
+            "type": "string"
+          },
+          "encounter": {
+            "$ref": "#/components/schemas/SelectedEncounterFields"
+          },
+          "grant_id": {
+            "format": "uuid",
+            "title": "Grant Id",
+            "type": "string"
+          },
+          "grant_version": {
+            "title": "Grant Version",
+            "type": "integer"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "projection": {
+            "const": "ENCOUNTER_METADATA_V1",
+            "title": "Projection",
+            "type": "string"
+          }
+        },
+        "required": [
+          "grant_id",
+          "grant_version",
+          "policy_version",
+          "disclosure_policy_version",
+          "projection",
+          "encounter"
+        ],
+        "title": "ContinuitySelectedEncounterResponse",
+        "type": "object"
+      },
+      "ContinuitySelectedEvaluationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "disclosure_policy_version": {
+            "title": "Disclosure Policy Version",
+            "type": "string"
+          },
+          "evaluation": {
+            "$ref": "#/components/schemas/SelectedEvaluationFields"
+          },
+          "grant_id": {
+            "format": "uuid",
+            "title": "Grant Id",
+            "type": "string"
+          },
+          "grant_version": {
+            "title": "Grant Version",
+            "type": "integer"
+          },
+          "policy_version": {
+            "title": "Policy Version",
+            "type": "string"
+          },
+          "projection": {
+            "const": "FINALIZED_EVALUATION_V1",
+            "title": "Projection",
+            "type": "string"
+          },
+          "routine_interview_id": {
+            "format": "uuid",
+            "title": "Routine Interview Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "grant_id",
+          "grant_version",
+          "policy_version",
+          "disclosure_policy_version",
+          "projection",
+          "routine_interview_id",
+          "evaluation"
+        ],
+        "title": "ContinuitySelectedEvaluationResponse",
+        "type": "object"
+      },
+      "ContinuitySourceKind": {
+        "enum": [
+          "ENCOUNTER",
+          "ROUTINE_EVALUATION"
+        ],
+        "title": "ContinuitySourceKind",
+        "type": "string"
+      },
+      "ContinuityStatus": {
+        "enum": [
+          "PENDING",
+          "SCHEDULED",
+          "ACTIVE",
+          "EXPIRED",
+          "DECLINED",
+          "CANCELLED",
+          "REVOKED",
+          "UNAVAILABLE"
+        ],
+        "title": "ContinuityStatus",
+        "type": "string"
+      },
+      "ContinuityVersionInput": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "exclusiveMinimum": 0,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "ContinuityVersionInput",
         "type": "object"
       },
       "CounselingAppointmentCandidate": {
@@ -5561,7 +6678,7 @@
         "title": "CounselingAppointmentCandidateStudent",
         "type": "object"
       },
-      "CounselingAssignedSharedSummaryResponse": {
+      "CounselingAssignedStudentSessionSummaryResponse": {
         "additionalProperties": false,
         "properties": {
           "content": {
@@ -5609,7 +6726,7 @@
           "created_at",
           "updated_at"
         ],
-        "title": "CounselingAssignedSharedSummaryResponse",
+        "title": "CounselingAssignedStudentSessionSummaryResponse",
         "type": "object"
       },
       "CounselingContextAnchorType": {
@@ -5757,33 +6874,10 @@
         "enum": [
           "SUPPORT_INDICATORS",
           "INVENTORY",
-          "HISTORY",
-          "SHARED_SUMMARIES"
+          "HISTORY"
         ],
         "title": "CounselingContextSection",
         "type": "string"
-      },
-      "CounselingContextSharedSummariesResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/ContextSharedSummaryResponse"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "limit": {
-            "title": "Limit",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "limit"
-        ],
-        "title": "CounselingContextSharedSummariesResponse",
-        "type": "object"
       },
       "CounselingContextSupportResponse": {
         "additionalProperties": false,
@@ -6196,20 +7290,6 @@
         "title": "CounselingEntryMode",
         "type": "string"
       },
-      "CounselingSharedSummaryPutRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "content": {
-            "title": "Content",
-            "type": "string"
-          }
-        },
-        "required": [
-          "content"
-        ],
-        "title": "CounselingSharedSummaryPutRequest",
-        "type": "object"
-      },
       "CounselingStudentPageResponse": {
         "additionalProperties": false,
         "properties": {
@@ -6299,7 +7379,7 @@
         "title": "CounselingStudentResponse",
         "type": "object"
       },
-      "CounselingStudentSharedSummaryPageResponse": {
+      "CounselingStudentSessionSummaryPageResponse": {
         "additionalProperties": false,
         "properties": {
           "has_next": {
@@ -6308,7 +7388,7 @@
           },
           "items": {
             "items": {
-              "$ref": "#/components/schemas/CounselingStudentSharedSummaryResponse"
+              "$ref": "#/components/schemas/CounselingStudentSessionSummaryResponse"
             },
             "title": "Items",
             "type": "array"
@@ -6328,10 +7408,10 @@
           "page_size",
           "has_next"
         ],
-        "title": "CounselingStudentSharedSummaryPageResponse",
+        "title": "CounselingStudentSessionSummaryPageResponse",
         "type": "object"
       },
-      "CounselingStudentSharedSummaryResponse": {
+      "CounselingStudentSessionSummaryResponse": {
         "additionalProperties": false,
         "properties": {
           "content": {
@@ -6364,7 +7444,7 @@
           "counseling_ended_at",
           "delivery_mode"
         ],
-        "title": "CounselingStudentSharedSummaryResponse",
+        "title": "CounselingStudentSessionSummaryResponse",
         "type": "object"
       },
       "CounselingUpdateRequest": {
@@ -7911,6 +8991,71 @@
         "title": "CourseChoiceReasonValue",
         "type": "string"
       },
+      "CoverageConfiguration": {
+        "additionalProperties": false,
+        "properties": {
+          "can_approve": {
+            "title": "Can Approve",
+            "type": "boolean"
+          },
+          "can_request": {
+            "title": "Can Request",
+            "type": "boolean"
+          },
+          "maximum_advance_seconds": {
+            "title": "Maximum Advance Seconds",
+            "type": "integer"
+          },
+          "maximum_duration_seconds": {
+            "title": "Maximum Duration Seconds",
+            "type": "integer"
+          },
+          "office_cases": {
+            "items": {
+              "$ref": "#/components/schemas/OfficeCaseReference"
+            },
+            "title": "Office Cases",
+            "type": "array"
+          },
+          "reason_categories": {
+            "items": {
+              "$ref": "#/components/schemas/ContinuityReason"
+            },
+            "title": "Reason Categories",
+            "type": "array"
+          },
+          "server_now": {
+            "format": "date-time",
+            "title": "Server Now",
+            "type": "string"
+          },
+          "valid_until": {
+            "format": "date-time",
+            "title": "Valid Until",
+            "type": "string"
+          }
+        },
+        "required": [
+          "server_now",
+          "valid_until",
+          "maximum_duration_seconds",
+          "maximum_advance_seconds",
+          "reason_categories",
+          "office_cases",
+          "can_request",
+          "can_approve"
+        ],
+        "title": "CoverageConfiguration",
+        "type": "object"
+      },
+      "CoverageKind": {
+        "enum": [
+          "PLANNED_HANDOFF",
+          "TEMPORARY_COVERAGE"
+        ],
+        "title": "CoverageKind",
+        "type": "string"
+      },
       "CoverageModeValue": {
         "enum": [
           "CURRENT",
@@ -7918,6 +9063,102 @@
         ],
         "title": "CoverageModeValue",
         "type": "string"
+      },
+      "CoverageReceiverOption": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "CoverageReceiverOption",
+        "type": "object"
+      },
+      "CoverageSelectionPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageSourceOption"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "receivers": {
+            "items": {
+              "$ref": "#/components/schemas/CoverageReceiverOption"
+            },
+            "title": "Receivers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "receivers",
+          "page",
+          "has_next"
+        ],
+        "title": "CoverageSelectionPage",
+        "type": "object"
+      },
+      "CoverageSourceOption": {
+        "additionalProperties": false,
+        "properties": {
+          "counselor_id": {
+            "format": "uuid",
+            "title": "Counselor Id",
+            "type": "string"
+          },
+          "eligible": {
+            "const": true,
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "projection": {
+            "$ref": "#/components/schemas/ContinuityProjection"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "resource_kind": {
+            "$ref": "#/components/schemas/ContinuitySourceKind"
+          },
+          "source_id": {
+            "format": "uuid",
+            "title": "Source Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "resource_kind",
+          "source_id",
+          "projection",
+          "counselor_id",
+          "recorded_at",
+          "eligible"
+        ],
+        "title": "CoverageSourceOption",
+        "type": "object"
       },
       "CsvImportResponse": {
         "additionalProperties": false,
@@ -12913,6 +14154,29 @@
             ],
             "title": "Degree"
           },
+          "expected_receipt_revision": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Receipt Revision"
+          },
+          "expected_resource_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Resource Version"
+          },
           "graduation_date": {
             "anyOf": [
               {
@@ -12973,6 +14237,18 @@
               }
             ],
             "title": "Official Receipt Number"
+          },
+          "receipt_operation_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Receipt Operation Id"
           },
           "semester": {
             "anyOf": [
@@ -13357,6 +14633,41 @@
           "expected_preparation_version": {
             "title": "Expected Preparation Version",
             "type": "string"
+          },
+          "expected_receipt_revision": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Receipt Revision"
+          },
+          "expected_receipt_verification": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Receipt Verification"
+          },
+          "expected_resource_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Resource Version"
           }
         },
         "required": [
@@ -13614,6 +14925,46 @@
               }
             ]
           },
+          "receipt_identity": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralReceiptStateResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receipt_inspection": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralReceiptInspectionResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receipt_mutation_result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralReceiptMutationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "receipt_verification_result": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GoodMoralReceiptVerificationResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "semester": {
             "title": "Semester",
             "type": "string"
@@ -13863,6 +15214,350 @@
           "expected_resource_version"
         ],
         "title": "GoodMoralPreparationPayload",
+        "type": "object"
+      },
+      "GoodMoralReceiptHistoryItem": {
+        "additionalProperties": false,
+        "properties": {
+          "change_kind": {
+            "title": "Change Kind",
+            "type": "string"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "is_current": {
+            "title": "Is Current",
+            "type": "boolean"
+          },
+          "origin": {
+            "title": "Origin",
+            "type": "string"
+          },
+          "recorded_at": {
+            "format": "date-time",
+            "title": "Recorded At",
+            "type": "string"
+          },
+          "recorded_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recorded By Id"
+          },
+          "sequence": {
+            "title": "Sequence",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "sequence",
+          "change_kind",
+          "origin",
+          "recorded_at",
+          "recorded_by_id",
+          "is_current",
+          "closed_at"
+        ],
+        "title": "GoodMoralReceiptHistoryItem",
+        "type": "object"
+      },
+      "GoodMoralReceiptInspectionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "blocker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Blocker"
+          },
+          "can_verify": {
+            "title": "Can Verify",
+            "type": "boolean"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "const": "PHP",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "expected_amount": {
+            "anyOf": [
+              {
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expected Amount"
+          },
+          "method": {
+            "anyOf": [
+              {
+                "const": "PHYSICAL_OR_INSPECTION",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Method"
+          },
+          "status": {
+            "enum": [
+              "MISSING",
+              "INCOMPLETE",
+              "NEEDS_VERIFICATION",
+              "VERIFIED",
+              "LEGACY_UNKNOWN",
+              "LEGACY_CONFLICT",
+              "DISPUTED",
+              "POLICY_UNAVAILABLE"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "verification_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verification Id"
+          },
+          "verified_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified At"
+          },
+          "verified_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verified By Id"
+          }
+        },
+        "required": [
+          "status",
+          "blocker",
+          "can_verify",
+          "verification_id",
+          "verified_by_id",
+          "verified_at",
+          "method",
+          "expected_amount",
+          "currency"
+        ],
+        "title": "GoodMoralReceiptInspectionResponse",
+        "type": "object"
+      },
+      "GoodMoralReceiptMutationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "result_request_version": {
+            "title": "Result Request Version",
+            "type": "string"
+          },
+          "result_revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Result Revision Id"
+          }
+        },
+        "required": [
+          "operation_id",
+          "result_revision_id",
+          "result_request_version"
+        ],
+        "title": "GoodMoralReceiptMutationResponse",
+        "type": "object"
+      },
+      "GoodMoralReceiptStateResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/GoodMoralReceiptHistoryItem"
+            },
+            "title": "History",
+            "type": "array"
+          },
+          "identity_state": {
+            "enum": [
+              "DORMANT",
+              "ABSENT",
+              "BOUND",
+              "LEGACY_AMBIGUOUS",
+              "DISPUTED",
+              "QUARANTINED"
+            ],
+            "title": "Identity State",
+            "type": "string"
+          },
+          "ledger_mode": {
+            "enum": [
+              "DORMANT",
+              "FENCED",
+              "ACTIVE"
+            ],
+            "title": "Ledger Mode",
+            "type": "string"
+          },
+          "revision_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revision Id"
+          }
+        },
+        "required": [
+          "ledger_mode",
+          "revision_id",
+          "identity_state",
+          "history"
+        ],
+        "title": "GoodMoralReceiptStateResponse",
+        "type": "object"
+      },
+      "GoodMoralReceiptVerificationPayload": {
+        "additionalProperties": false,
+        "properties": {
+          "assignment_id": {
+            "format": "uuid",
+            "title": "Assignment Id",
+            "type": "string"
+          },
+          "expected_resource_version": {
+            "title": "Expected Resource Version",
+            "type": "string"
+          },
+          "method": {
+            "const": "PHYSICAL_OR_INSPECTION",
+            "title": "Method",
+            "type": "string"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "expected_resource_version",
+          "assignment_id",
+          "operation_id",
+          "method"
+        ],
+        "title": "GoodMoralReceiptVerificationPayload",
+        "type": "object"
+      },
+      "GoodMoralReceiptVerificationResult": {
+        "additionalProperties": false,
+        "properties": {
+          "assignment_id": {
+            "format": "uuid",
+            "title": "Assignment Id",
+            "type": "string"
+          },
+          "invalidated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Invalidated At"
+          },
+          "operation_id": {
+            "format": "uuid",
+            "title": "Operation Id",
+            "type": "string"
+          },
+          "verification_id": {
+            "format": "uuid",
+            "title": "Verification Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "operation_id",
+          "verification_id",
+          "assignment_id",
+          "invalidated_at"
+        ],
+        "title": "GoodMoralReceiptVerificationResult",
         "type": "object"
       },
       "GoodMoralStatusValue": {
@@ -17247,6 +18942,235 @@
         ],
         "title": "HandednessValue",
         "type": "string"
+      },
+      "HandoffBody": {
+        "additionalProperties": false,
+        "properties": {
+          "author_id": {
+            "format": "uuid",
+            "title": "Author Id",
+            "type": "string"
+          },
+          "content": {
+            "title": "Content",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "grant_id": {
+            "format": "uuid",
+            "title": "Grant Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "receiving_counselor_id": {
+            "format": "uuid",
+            "title": "Receiving Counselor Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "DRAFT",
+              "SUBMITTED"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "grant_id",
+          "student_id",
+          "author_id",
+          "receiving_counselor_id",
+          "state",
+          "submitted_at",
+          "version",
+          "created_at",
+          "updated_at",
+          "content"
+        ],
+        "title": "HandoffBody",
+        "type": "object"
+      },
+      "HandoffDraftInput": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "maxLength": 12000,
+            "title": "Content",
+            "type": "string"
+          },
+          "expected_grant_version": {
+            "minimum": 1,
+            "title": "Expected Grant Version",
+            "type": "integer"
+          },
+          "expected_version": {
+            "minimum": 0,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_grant_version",
+          "expected_version",
+          "content"
+        ],
+        "title": "HandoffDraftInput",
+        "type": "object"
+      },
+      "HandoffMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "author_id": {
+            "format": "uuid",
+            "title": "Author Id",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "grant_id": {
+            "format": "uuid",
+            "title": "Grant Id",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "receiving_counselor_id": {
+            "format": "uuid",
+            "title": "Receiving Counselor Id",
+            "type": "string"
+          },
+          "state": {
+            "enum": [
+              "DRAFT",
+              "SUBMITTED"
+            ],
+            "title": "State",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "grant_id",
+          "student_id",
+          "author_id",
+          "receiving_counselor_id",
+          "state",
+          "submitted_at",
+          "version",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "HandoffMetadata",
+        "type": "object"
+      },
+      "HandoffPresence": {
+        "additionalProperties": false,
+        "properties": {
+          "handoff": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HandoffMetadata"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "handoff"
+        ],
+        "title": "HandoffPresence",
+        "type": "object"
+      },
+      "HandoffVersionInput": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_grant_version": {
+            "minimum": 1,
+            "title": "Expected Grant Version",
+            "type": "integer"
+          },
+          "expected_version": {
+            "minimum": 0,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_grant_version",
+          "expected_version"
+        ],
+        "title": "HandoffVersionInput",
+        "type": "object"
       },
       "HealthCheckResponse": {
         "additionalProperties": false,
@@ -20751,7 +22675,7 @@
           "ACCOUNT_SECURITY",
           "APPOINTMENT",
           "CALL_SLIP",
-          "COUNSELING_SHARED_SUMMARY",
+          "STUDENT_SESSION_SUMMARY",
           "E_COUNSELING",
           "EXIT_INTERVIEW",
           "FEEDBACK",
@@ -20777,6 +22701,27 @@
         ],
         "title": "OccupationCategoryValue",
         "type": "string"
+      },
+      "OfficeCaseReference": {
+        "additionalProperties": false,
+        "properties": {
+          "original_counselor_id": {
+            "format": "uuid",
+            "title": "Original Counselor Id",
+            "type": "string"
+          },
+          "student_id": {
+            "format": "uuid",
+            "title": "Student Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "student_id",
+          "original_counselor_id"
+        ],
+        "title": "OfficeCaseReference",
+        "type": "object"
       },
       "OfficeExceptionListResponse": {
         "additionalProperties": false,
@@ -22053,6 +23998,10 @@
             "title": "Name",
             "type": "string"
           },
+          "resource_version": {
+            "title": "Resource Version",
+            "type": "integer"
+          },
           "year_level_policy_status": {
             "$ref": "#/components/schemas/YearLevelPolicyStatus"
           }
@@ -22063,6 +24012,7 @@
           "name",
           "college",
           "is_active",
+          "resource_version",
           "academic_classification",
           "year_level_policy_status",
           "applicable_year_levels"
@@ -25002,6 +26952,165 @@
         "title": "RoutineWorkflowState",
         "type": "string"
       },
+      "SelectedEncounterFields": {
+        "additionalProperties": false,
+        "properties": {
+          "counselor_id": {
+            "format": "uuid",
+            "title": "Counselor Id",
+            "type": "string"
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "ended_at": {
+            "format": "date-time",
+            "title": "Ended At",
+            "type": "string"
+          },
+          "entry_mode": {
+            "$ref": "#/components/schemas/CounselingEntryMode"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "started_at": {
+            "format": "date-time",
+            "title": "Started At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "started_at",
+          "ended_at",
+          "entry_mode",
+          "delivery_mode",
+          "counselor_id"
+        ],
+        "title": "SelectedEncounterFields",
+        "type": "object"
+      },
+      "SelectedEvaluationFields": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Academic Adjustment Rating"
+          },
+          "emotional_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Emotional Adjustment Rating"
+          },
+          "financial_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Financial Adjustment Rating"
+          },
+          "other_adjustment": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Other Adjustment"
+          },
+          "physical_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Physical Adjustment Rating"
+          },
+          "recommendations": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recommendations"
+          },
+          "social_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Social Adjustment Rating"
+          },
+          "special_concern": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Special Concern"
+          },
+          "spiritual_adjustment_rating": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spiritual Adjustment Rating"
+          }
+        },
+        "title": "SelectedEvaluationFields",
+        "type": "object"
+      },
       "SelfAssessmentItemValue": {
         "enum": [
           "PRIDE_CONFIDENCE_CNSC",
@@ -27140,6 +29249,20 @@
         "title": "StudentRoutineWorkspaceSummary",
         "type": "object"
       },
+      "StudentSessionSummaryPutRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "content": {
+            "title": "Content",
+            "type": "string"
+          }
+        },
+        "required": [
+          "content"
+        ],
+        "title": "StudentSessionSummaryPutRequest",
+        "type": "object"
+      },
       "StudentSummary": {
         "additionalProperties": false,
         "properties": {
@@ -29245,6 +31368,13 @@
                 "call_slips.manage",
                 "call_slips.view",
                 "call_slips.view_self",
+                "counseling.continuity.approve",
+                "counseling.continuity.read_selected",
+                "counseling.continuity.request",
+                "counseling.continuity.revoke",
+                "counseling.continuity.view",
+                "counseling.handoff.manage_own",
+                "counseling.handoff.read_received",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
                 "ecounseling.access_media_assigned",
@@ -29268,6 +31398,7 @@
                 "good_moral.manage",
                 "good_moral.prepare",
                 "good_moral.request_self",
+                "good_moral.verify_receipt",
                 "good_moral.view",
                 "good_moral.view_self",
                 "graduate_tracer.manage_self",
@@ -29286,6 +31417,7 @@
                 "inventory.reopen",
                 "inventory.view",
                 "inventory.view_self",
+                "organization.catalog.manage",
                 "organization.manage",
                 "organization.structure.view",
                 "platform_operations.manage",
@@ -29304,9 +31436,9 @@
                 "routine_interviews.view_self",
                 "services.catalog.view",
                 "services.manage",
-                "shared_summaries.manage_assigned",
-                "shared_summaries.view_assigned",
-                "shared_summaries.view_self",
+                "student_session_summaries.manage_assigned",
+                "student_session_summaries.view_assigned",
+                "student_session_summaries.view_self",
                 "student_support.view"
               ],
               "title": "CapabilityCode",
@@ -29422,6 +31554,13 @@
                 "call_slips.manage",
                 "call_slips.view",
                 "call_slips.view_self",
+                "counseling.continuity.approve",
+                "counseling.continuity.read_selected",
+                "counseling.continuity.request",
+                "counseling.continuity.revoke",
+                "counseling.continuity.view",
+                "counseling.handoff.manage_own",
+                "counseling.handoff.read_received",
                 "counseling.manage_assigned",
                 "counseling.view_assigned",
                 "ecounseling.access_media_assigned",
@@ -29445,6 +31584,7 @@
                 "good_moral.manage",
                 "good_moral.prepare",
                 "good_moral.request_self",
+                "good_moral.verify_receipt",
                 "good_moral.view",
                 "good_moral.view_self",
                 "graduate_tracer.manage_self",
@@ -29463,6 +31603,7 @@
                 "inventory.reopen",
                 "inventory.view",
                 "inventory.view_self",
+                "organization.catalog.manage",
                 "organization.manage",
                 "organization.structure.view",
                 "platform_operations.manage",
@@ -29481,9 +31622,9 @@
                 "routine_interviews.view_self",
                 "services.catalog.view",
                 "services.manage",
-                "shared_summaries.manage_assigned",
-                "shared_summaries.view_assigned",
-                "shared_summaries.view_self",
+                "student_session_summaries.manage_assigned",
+                "student_session_summaries.view_assigned",
+                "student_session_summaries.view_self",
                 "student_support.view"
               ],
               "title": "CapabilityCode",
@@ -38898,107 +41039,6 @@
         ]
       }
     },
-    "/api/v1/counseling/context/{anchor_type}/{anchor_id}/shared-summaries": {
-      "get": {
-        "operationId": "counselingContextListSharedSummaries",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "anchor_type",
-            "required": true,
-            "schema": {
-              "enum": [
-                "APPOINTMENT",
-                "ROUTINE_INTERVIEW"
-              ],
-              "title": "CounselingContextAnchorType",
-              "type": "string"
-            }
-          },
-          {
-            "in": "path",
-            "name": "anchor_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Anchor Id",
-              "type": "string"
-            }
-          },
-          {
-            "in": "query",
-            "name": "limit",
-            "required": false,
-            "schema": {
-              "default": 20,
-              "title": "Limit",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CounselingContextSharedSummariesResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Counseling Context List Shared Summaries",
-        "tags": [
-          "counseling"
-        ]
-      }
-    },
     "/api/v1/counseling/context/{anchor_type}/{anchor_id}/support-indicators": {
       "get": {
         "operationId": "counselingContextGetSupportIndicators",
@@ -39085,6 +41125,1611 @@
           }
         ],
         "summary": "Counseling Context Get Support Indicators",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants": {
+      "get": {
+        "operationId": "counselingContinuityListGrants",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContinuityGrantPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "List Grants",
+        "tags": [
+          "counseling"
+        ]
+      },
+      "post": {
+        "operationId": "counselingContinuityRequestCoverage",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContinuityRequestInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContinuityGrantMetadata"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Request Coverage",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/workflow/configuration": {
+      "get": {
+        "operationId": "counselingCoverageGetConfiguration",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageConfiguration"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Configuration",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/workflow/selection": {
+      "get": {
+        "operationId": "counselingCoverageSelectSources",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "original_counselor_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Original Counselor Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverageSelectionPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Selection",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}": {
+      "get": {
+        "operationId": "counselingContinuityGetGrant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContinuityGrantMetadata"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Get Grant",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/approve": {
+      "post": {
+        "operationId": "counselingContinuityApproveGrant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContinuityVersionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContinuityGrantMetadata"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Approve Grant",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/cancel": {
+      "post": {
+        "operationId": "counselingContinuityCancelGrant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContinuityVersionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContinuityGrantMetadata"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Cancel Grant",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/decline": {
+      "post": {
+        "operationId": "counselingContinuityDeclineGrant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContinuityVersionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContinuityGrantMetadata"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Decline Grant",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/encounters/{encounter_id}/metadata": {
+      "get": {
+        "operationId": "counselingContinuityGetSelectedEncounterMetadata",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "encounter_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Encounter Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Expected Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContinuitySelectedEncounterResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Get Selected Encounter Metadata",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/author": {
+      "get": {
+        "operationId": "counselingHandoffGetAuthorDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_grant_version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Expected Grant Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Author Body",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/draft": {
+      "put": {
+        "operationId": "counselingHandoffSaveDraft",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoffDraftInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffMetadata"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Save Draft",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/metadata": {
+      "get": {
+        "operationId": "counselingHandoffGetMetadata",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_grant_version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Expected Grant Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffPresence"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Metadata",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/submit": {
+      "post": {
+        "operationId": "counselingHandoffSubmit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HandoffVersionInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffMetadata"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Submit",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/handoff/submitted": {
+      "get": {
+        "operationId": "counselingHandoffReadSubmitted",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_grant_version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Expected Grant Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HandoffBody"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Receiver Body",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/revoke": {
+      "post": {
+        "operationId": "counselingContinuityRevokeGrant",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContinuityRevokeInput"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContinuityGrantMetadata"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Revoke Grant",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/continuity-grants/{grant_id}/routine-evaluations/{routine_interview_id}": {
+      "get": {
+        "operationId": "counselingContinuityGetSelectedRoutineEvaluation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "routine_interview_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Routine Interview Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "expected_version",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Expected Version",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContinuitySelectedEvaluationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Get Selected Routine Evaluation",
         "tags": [
           "counseling"
         ]
@@ -39506,9 +43151,9 @@
         ]
       }
     },
-    "/api/v1/counseling/encounters/{encounter_id}/shared-summary": {
+    "/api/v1/counseling/encounters/{encounter_id}/student-session-summary": {
       "get": {
-        "operationId": "counselingGetAssignedSharedSummary",
+        "operationId": "counselingGetAssignedStudentSessionSummary",
         "parameters": [
           {
             "in": "path",
@@ -39526,7 +43171,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CounselingAssignedSharedSummaryResponse"
+                  "$ref": "#/components/schemas/CounselingAssignedStudentSessionSummaryResponse"
                 }
               }
             },
@@ -39578,13 +43223,13 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "Counseling Get Assigned Shared Summary",
+        "summary": "Counseling Get Assigned Student Session Summary",
         "tags": [
           "counseling"
         ]
       },
       "put": {
-        "operationId": "counselingPutAssignedSharedSummary",
+        "operationId": "counselingPutAssignedStudentSessionSummary",
         "parameters": [
           {
             "in": "path",
@@ -39601,7 +43246,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CounselingSharedSummaryPutRequest"
+                "$ref": "#/components/schemas/StudentSessionSummaryPutRequest"
               }
             }
           },
@@ -39612,7 +43257,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CounselingAssignedSharedSummaryResponse"
+                  "$ref": "#/components/schemas/CounselingAssignedStudentSessionSummaryResponse"
                 }
               }
             },
@@ -39674,15 +43319,15 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "Counseling Put Assigned Shared Summary",
+        "summary": "Counseling Put Assigned Student Session Summary",
         "tags": [
           "counseling"
         ]
       }
     },
-    "/api/v1/counseling/encounters/{encounter_id}/shared-summary/publish": {
+    "/api/v1/counseling/encounters/{encounter_id}/student-session-summary/publish": {
       "post": {
-        "operationId": "counselingPublishAssignedSharedSummary",
+        "operationId": "counselingPublishAssignedStudentSessionSummary",
         "parameters": [
           {
             "in": "path",
@@ -39700,7 +43345,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CounselingAssignedSharedSummaryResponse"
+                  "$ref": "#/components/schemas/CounselingAssignedStudentSessionSummaryResponse"
                 }
               }
             },
@@ -39762,7 +43407,7 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "Counseling Publish Assigned Shared Summary",
+        "summary": "Counseling Publish Assigned Student Session Summary",
         "tags": [
           "counseling"
         ]
@@ -39958,9 +43603,9 @@
         ]
       }
     },
-    "/api/v1/counseling/me/shared-summaries": {
+    "/api/v1/counseling/me/student-session-summaries": {
       "get": {
-        "operationId": "counselingListMySharedSummaries",
+        "operationId": "counselingListMyStudentSessionSummaries",
         "parameters": [
           {
             "in": "query",
@@ -39988,7 +43633,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CounselingStudentSharedSummaryPageResponse"
+                  "$ref": "#/components/schemas/CounselingStudentSessionSummaryPageResponse"
                 }
               }
             },
@@ -40030,15 +43675,15 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "Counseling List My Shared Summaries",
+        "summary": "Counseling List My Student Session Summaries",
         "tags": [
           "counseling"
         ]
       }
     },
-    "/api/v1/counseling/me/shared-summaries/{summary_id}": {
+    "/api/v1/counseling/me/student-session-summaries/{summary_id}": {
       "get": {
-        "operationId": "counselingGetMySharedSummary",
+        "operationId": "counselingGetMyStudentSessionSummary",
         "parameters": [
           {
             "in": "path",
@@ -40056,7 +43701,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CounselingStudentSharedSummaryResponse"
+                  "$ref": "#/components/schemas/CounselingStudentSessionSummaryResponse"
                 }
               }
             },
@@ -40108,7 +43753,7 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "Counseling Get My Shared Summary",
+        "summary": "Counseling Get My Student Session Summary",
         "tags": [
           "counseling"
         ]
@@ -45431,6 +49076,104 @@
           }
         ],
         "summary": "Good Moral Prepare",
+        "tags": [
+          "good-moral"
+        ]
+      }
+    },
+    "/api/v1/good-moral/requests/{request_id}/receipt/verify": {
+      "post": {
+        "operationId": "goodMoralVerifyReceipt",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "request_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Request Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GoodMoralReceiptVerificationPayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GoodMoralOperationalDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Good Moral Verify Receipt",
         "tags": [
           "good-moral"
         ]
@@ -54013,6 +57756,91 @@
         "tags": [
           "organization"
         ]
+      },
+      "post": {
+        "operationId": "organizationCreateCampus",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogCreateCampusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampusSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Create Campus",
+        "tags": [
+          "organization"
+        ]
       }
     },
     "/api/v1/organization/campuses/{campus_id}": {
@@ -54088,6 +57916,378 @@
           }
         ],
         "summary": "Campus Get",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/campuses/{target_id}/active": {
+      "put": {
+        "operationId": "organizationSetCampusActive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampusSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Status Campus",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/campuses/{target_id}/history": {
+      "get": {
+        "operationId": "organizationGetCampusHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog History Campus",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/campuses/{target_id}/impact": {
+      "get": {
+        "operationId": "organizationGetCampusImpact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogImpactResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Impact Campus",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/campuses/{target_id}/name": {
+      "put": {
+        "operationId": "organizationRenameCampus",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogRenameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampusSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Rename Campus",
         "tags": [
           "organization"
         ]
@@ -54195,6 +58395,91 @@
           }
         ],
         "summary": "Colleges",
+        "tags": [
+          "organization"
+        ]
+      },
+      "post": {
+        "operationId": "organizationCreateCollege",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogCreateCollegeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollegeSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Create College",
         "tags": [
           "organization"
         ]
@@ -54457,6 +58742,378 @@
           }
         ],
         "summary": "College Counselor Set",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/colleges/{target_id}/active": {
+      "put": {
+        "operationId": "organizationSetCollegeActive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollegeSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Status College",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/colleges/{target_id}/history": {
+      "get": {
+        "operationId": "organizationGetCollegeHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog History College",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/colleges/{target_id}/impact": {
+      "get": {
+        "operationId": "organizationGetCollegeImpact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogImpactResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Impact College",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/colleges/{target_id}/name": {
+      "put": {
+        "operationId": "organizationRenameCollege",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogRenameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CollegeSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Rename College",
         "tags": [
           "organization"
         ]
@@ -54774,6 +59431,91 @@
         "tags": [
           "organization"
         ]
+      },
+      "post": {
+        "operationId": "organizationCreateProgram",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogCreateProgramRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Create Program",
+        "tags": [
+          "organization"
+        ]
       }
     },
     "/api/v1/organization/programs/{program_id}": {
@@ -54849,6 +59591,476 @@
           }
         ],
         "summary": "Program Get",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/programs/{target_id}/active": {
+      "put": {
+        "operationId": "organizationSetProgramActive",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogStatusRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Status Program",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/programs/{target_id}/history": {
+      "get": {
+        "operationId": "organizationGetProgramHistory",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogHistoryResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog History Program",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/programs/{target_id}/impact": {
+      "get": {
+        "operationId": "organizationGetProgramImpact",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CatalogImpactResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Impact Program",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/programs/{target_id}/name": {
+      "put": {
+        "operationId": "organizationRenameProgram",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogRenameRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Rename Program",
+        "tags": [
+          "organization"
+        ]
+      }
+    },
+    "/api/v1/organization/programs/{target_id}/policy": {
+      "put": {
+        "operationId": "organizationUpdateProgramPolicy",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "target_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Target Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CatalogPolicyRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProgramSummary"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Catalog Program Policy",
         "tags": [
           "organization"
         ]

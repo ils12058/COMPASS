@@ -4,10 +4,8 @@ import pytest
 from django.core.management import call_command
 
 from compass.accounts.models import Role, User
-from compass.audit.actions import ORGANIZATION_CATALOG_SYNCED
-from compass.audit.models import AuditActorType, AuditEvent
-from compass.institutional_forms.models import FormRevision, FormRevisionStatus
-from compass.inventory.models import StudentInventory
+from compass.audit.actions import ORGANIZATION_CATALOG_INITIALIZED
+from compass.audit.models import AuditEvent
 from compass.organization.bootstrap import (
     CanonicalOrganizationSyncError,
     sync_organization_catalog,
@@ -20,13 +18,10 @@ from compass.organization.canonical import (
     YearLevelPolicyStatus,
 )
 from compass.organization.models import (
-    AcademicYear,
     Campus,
     College,
     Program,
-    StudentAffiliation,
 )
-from tests.inventory_encryption_helpers import create_inventory_row
 
 
 def _sync_policy() -> None:
@@ -118,138 +113,201 @@ def test_canonical_registry_pins_current_ucn_catalog_and_program_major_boundary(
 
 
 @pytest.mark.django_db
-def test_sync_creates_exact_catalog_preserves_ids_and_is_idempotent():
+def test_seed_is_exact_and_repeat_never_reconciles_managed_values():
+    from compass.organization.models import CatalogInitialization
+
     first = sync_organization_catalog()
-
-    assert first.campuses_created == 6
-    assert first.colleges_created == 10
-    assert first.programs_created == 38
-    assert Campus.objects.count() == 6
-    assert College.objects.count() == 10
-    assert Program.objects.count() == 38
-
-    main_id = Campus.objects.get(code="MAIN").pk
-    ccms_id = College.objects.get(campus__code="MAIN", code="CCMS").pk
-    bsis_id = Program.objects.get(
-        college__campus__code="MAIN",
-        college__code="CCMS",
-        code="BSIS",
-    ).pk
-
-    audit = AuditEvent.objects.get(action=ORGANIZATION_CATALOG_SYNCED)
-    assert audit.actor_type == AuditActorType.SYSTEM
-    assert audit.metadata["campuses_created"] == 6
-    assert audit.metadata["colleges_created"] == 10
-    assert audit.metadata["programs_created"] == 38
-
-    second = sync_organization_catalog()
-    assert not second.changed
-    assert Campus.objects.get(code="MAIN").pk == main_id
-    assert College.objects.get(campus__code="MAIN", code="CCMS").pk == ccms_id
-    assert (
-        Program.objects.get(
-            college__campus__code="MAIN",
-            college__code="CCMS",
-            code="BSIS",
-        ).pk
-        == bsis_id
+    assert (first.campuses_created, first.colleges_created, first.programs_created) == (6, 10, 38)
+    before = list(Program.objects.values_list("id", flat=True))
+    Campus.objects.filter(code="ABANO").update(name="Official campus rename", is_active=False)
+    College.objects.filter(code="COED").update(name="Official unit rename", is_active=False)
+    Program.objects.filter(code="BSED").update(name="Official degree rename", is_active=False)
+    college = College.objects.get(code="CCMS")
+    additional = Program.objects.create(
+        college=college,
+        code="NEW",
+        name="New approved degree",
+        academic_classification="BACHELORS",
+        year_level_policy_status="CONFIGURED",
+        applicable_year_levels=[1, 3, 5],
     )
-    assert AuditEvent.objects.filter(action=ORGANIZATION_CATALOG_SYNCED).count() == 1
+    call_command("sync_organization_catalog")
+    call_command("initialize_organization_catalog", "--seed")
+    call_command("initialize_organization_catalog", "--check")
+    assert Campus.objects.get(code="ABANO").name == "Official campus rename"
+    assert not College.objects.get(code="COED").is_active
+    assert not Program.objects.filter(code="BSED", is_active=True).exists()
+    additional.refresh_from_db()
+    assert additional.is_active and additional.applicable_year_levels == [1, 3, 5]
+    assert set(before) < set(Program.objects.values_list("id", flat=True))
+    assert CatalogInitialization.objects.get().source == "SEEDED"
+    assert AuditEvent.objects.filter(action=ORGANIZATION_CATALOG_INITIALIZED).count() == 1
 
 
 @pytest.mark.django_db
-def test_sync_repairs_canonical_name_and_active_state_without_replacing_uuid():
-    sync_organization_catalog()
-    campus = Campus.objects.get(code="ABANO")
-    college = College.objects.get(campus=campus, code="COED")
-    program = Program.objects.get(college=college, code="BSED")
-    ids = (campus.pk, college.pk, program.pk)
+def test_nonempty_catalog_requires_explicit_adoption_without_top_up():
+    from compass.organization.bootstrap import initialize_organization_catalog
+    from compass.organization.models import CatalogInitialization
 
-    Campus.objects.filter(pk=campus.pk).update(name="Abano Drift", is_active=False)
-    College.objects.filter(pk=college.pk).update(name="Education Drift", is_active=False)
-    Program.objects.filter(pk=program.pk).update(name="BSED Drift", is_active=False)
-
-    result = sync_organization_catalog()
-    assert result.campuses_updated == 1
-    assert result.colleges_updated == 1
-    assert result.programs_updated == 1
-
-    campus.refresh_from_db()
-    college.refresh_from_db()
-    program.refresh_from_db()
-    assert (campus.pk, college.pk, program.pk) == ids
-    assert campus.name == "Abaño Campus"
-    assert campus.is_active
-    assert college.name == "College of Education"
-    assert college.is_active
-    assert program.name == "Bachelor of Secondary Education"
-    assert program.is_active
-
-
-@pytest.mark.django_db
-def test_sync_deactivates_legacy_program_but_preserves_inventory_foreign_key():
-    _sync_policy()
-    call_command("sync_institutional_forms", verbosity=0)
-    sync_organization_catalog()
-
-    ccms = College.objects.get(campus__code="MAIN", code="CCMS")
-    legacy = Program.objects.create(
-        college=ccms,
-        code="LEGACY",
-        name="Historical Local Program",
-    )
-    academic_year = AcademicYear.objects.create(label="2025-2026", is_current=True)
-    revision = FormRevision.objects.get(
-        family__key="individual_inventory",
-        status=FormRevisionStatus.ACTIVE,
-    )
-    inventory = create_inventory_row(
-        StudentInventory,
-        student=_student("legacy-program@example.edu"),
-        academic_year=academic_year,
-        form_revision=revision,
-        program=legacy,
-    )
-
-    result = sync_organization_catalog()
-    legacy.refresh_from_db()
-    inventory.refresh_from_db()
-
-    assert result.programs_deactivated == 1
-    assert not legacy.is_active
-    assert inventory.program_id == legacy.pk
-    assert Program.objects.filter(pk=legacy.pk).exists()
-
-
-@pytest.mark.django_db
-def test_sync_fails_instead_of_breaking_live_noncanonical_college_relationships():
-    _sync_policy()
-    sync_organization_catalog()
-    main = Campus.objects.get(code="MAIN")
-    legacy = College.objects.create(
-        campus=main,
-        code="LEGACY",
-        name="Legacy Routing Unit",
-    )
-    student = _student("legacy-affiliation@example.edu")
-    StudentAffiliation.objects.create(student=student, college=legacy)
-
-    with pytest.raises(CanonicalOrganizationSyncError, match="LEGACY"):
+    campus = Campus.objects.create(code="CUSTOM", name="Official", is_active=False)
+    before = Campus.objects.values().get()
+    with pytest.raises(CanonicalOrganizationSyncError, match="Refusing seed"):
         sync_organization_catalog()
-
-    legacy.refresh_from_db()
-    assert legacy.is_active
-    assert StudentAffiliation.objects.filter(student=student, college=legacy).exists()
+    assert not CatalogInitialization.objects.exists()
+    result = initialize_organization_catalog(action="adopt", reference="Synthetic approval")
+    assert result.changed and result.receipt.source == "ADOPTED"
+    assert Campus.objects.values().get() == before
+    assert Campus.objects.get().pk == campus.pk
+    assert not College.objects.exists() and not Program.objects.exists()
+    assert not initialize_organization_catalog(action="adopt").changed
+    assert not sync_organization_catalog().changed
+    assert AuditEvent.objects.filter(action="organization.catalog_adopted").count() == 1
 
 
 @pytest.mark.django_db
-def test_sync_never_merges_by_display_name_alone():
-    legacy = Campus.objects.create(code="OLDMAIN", name="Main Campus")
+def test_empty_adoption_is_deliberate_and_receipt_is_not_a_reseed_switch():
+    from compass.organization.bootstrap import initialize_organization_catalog
+    from compass.organization.models import CatalogInitialization
+
+    with pytest.raises(CanonicalOrganizationSyncError, match="allow-empty"):
+        initialize_organization_catalog(action="adopt")
+    initialize_organization_catalog(action="adopt", allow_empty_adoption=True)
+    assert not sync_organization_catalog().changed
+    assert Campus.objects.count() == 0
+    receipt = CatalogInitialization.objects.get()
+    for operation in (
+        lambda: receipt.delete(),
+        lambda: CatalogInitialization.objects.all().delete(),
+        lambda: CatalogInitialization.objects.update(source="SEEDED"),
+        receipt.save,
+    ):
+        with pytest.raises(TypeError):
+            operation()
+
+
+@pytest.mark.django_db
+def test_failed_audit_rolls_back_seed_and_receipt(monkeypatch):
+    from django.db import DatabaseError
+
+    from compass.organization import bootstrap
+    from compass.organization.models import CatalogInitialization
+
+    def fail(**kwargs):
+        raise DatabaseError("Synthetic failure")
+
+    monkeypatch.setattr(bootstrap, "record_event", fail)
+    with pytest.raises(CanonicalOrganizationSyncError, match="atomically"):
+        sync_organization_catalog()
+    assert not Campus.objects.exists()
+    assert not CatalogInitialization.objects.exists()
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize("action", ["seed", "adopt"])
+def test_concurrent_initialization_has_one_receipt_and_one_audit(action):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+
+    from django.db import connections
+
+    from compass.organization.bootstrap import initialize_organization_catalog
+    from compass.organization.models import CatalogInitialization
+
+    if action == "adopt":
+        Campus.objects.create(code="OFFICIAL", name="Keep this name")
+    barrier = Barrier(2)
+
+    def initialize():
+        try:
+            barrier.wait(timeout=10)
+            return initialize_organization_catalog(action=action).changed
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(initialize) for _ in range(2)]
+        assert sorted(future.result(timeout=30) for future in futures) == [False, True]
+    assert CatalogInitialization.objects.count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action__in=["organization.catalog_initialized", "organization.catalog_adopted"]
+        ).count()
+        == 1
+    )
+    assert Campus.objects.count() == (6 if action == "seed" else 1)
+
+
+@pytest.mark.django_db
+def test_deployment_bootstrap_commands_preserve_adopted_catalog_and_policy():
+    import re
+    import shlex
+    from pathlib import Path
+
+    script = (Path(__file__).parents[1] / "deploy/staging/deploy.sh").read_text()
+    commands = re.findall(
+        r"python manage.py (initialize_organization_catalog.*?)\s*</dev/null", script
+    )
+    assert len(commands) == 2 and "sync_organization_catalog" not in script
+
+    def bootstrap(action):
+        for command in commands:
+            argv = shlex.split(
+                command.replace("$ORG_CATALOG_ACTION", action).replace("$DEPLOY_SHA", "a" * 40)
+            )
+            call_command(*argv)
+
+    bootstrap("seed")
+    Campus.objects.filter(code="MAIN").update(name="Institutionally renamed", is_active=False)
+    College.objects.filter(code="CCMS").update(name="Renamed college", is_active=False)
+    Program.objects.filter(code="BSIS").update(
+        name="Renamed degree", is_active=False, applicable_year_levels=[1, 3, 5]
+    )
+    extra = Program.objects.create(
+        college=College.objects.get(code="CCMS"), code="EXTRA", name="Additional"
+    )
+    before = {
+        model: list(model.objects.order_by("pk").values()) for model in [Campus, College, Program]
+    }
+    bootstrap("check")
+    bootstrap("adopt")
+    call_command("sync_organization_catalog")
+    assert extra.pk in Program.objects.values_list("id", flat=True)
+    for model, rows in before.items():
+        assert list(model.objects.order_by("pk").values()) == rows
+
+
+@pytest.mark.django_db
+def test_seeder_prerequisites_do_not_initialize_or_reconcile_catalog():
+    from compass.organization.models import CatalogInitialization
+    from compass.staging_seed.seed import sync_prerequisites
+    from compass.staging_seed.support import StagingSeedError
+
+    with pytest.raises(StagingSeedError, match="not initialized"):
+        sync_prerequisites()
+    assert not Campus.objects.exists() and not CatalogInitialization.objects.exists()
+    sync_organization_catalog()
+    Program.objects.filter(code="BSIS").update(
+        name="Official renamed degree", is_active=False, applicable_year_levels=[1, 4, 5]
+    )
+    extra = Program.objects.create(
+        college=College.objects.get(code="CCMS"), code="ADDED", name="Added"
+    )
+    before = list(Program.objects.order_by("pk").values())
+    sync_prerequisites()
+    sync_prerequisites()
+    assert list(Program.objects.order_by("pk").values()) == before
+    assert Program.objects.get(pk=extra.pk).is_active
+
+
+@pytest.mark.django_db
+def test_initializer_refuses_an_unapplied_schema_even_with_a_receipt():
+    from django.db.migrations.recorder import MigrationRecorder
+
+    from compass.organization.bootstrap import initialize_organization_catalog
 
     sync_organization_catalog()
-
-    canonical = Campus.objects.get(code="MAIN")
-    legacy.refresh_from_db()
-    assert canonical.pk != legacy.pk
-    assert canonical.name == legacy.name
-    assert not legacy.is_active
+    MigrationRecorder.Migration.objects.filter(
+        app="organization", name="0002_program_policy_and_catalog_initialization"
+    ).delete()
+    with pytest.raises(CanonicalOrganizationSyncError, match="schema is incompatible"):
+        initialize_organization_catalog(action="check")

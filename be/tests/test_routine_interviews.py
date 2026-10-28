@@ -1488,7 +1488,7 @@ def test_direct_encounter_candidates_use_shared_matching_privacy_order_and_final
         "suicidal",
         "special_concern",
         "recommendations",
-        "shared_summary",
+        "student_session_summary",
         "audit",
         student.email.lower(),
     ):

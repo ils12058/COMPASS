@@ -1,0 +1,7 @@
+{
+  "event": "call_slip.voided",
+  "reason": "link_available",
+  "suppressed": false,
+  "synthetic": true,
+  "transport": "not_sent"
+}

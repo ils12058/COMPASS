@@ -21,7 +21,7 @@ import {
   EncounterDetailSkeleton,
   formatCounselingDateTime,
 } from "@/features/counseling/counseling-shared";
-import { SharedSummarySection } from "@/features/counseling/shared-summary-section";
+import { StudentSessionSummarySection } from "@/features/counseling/student-session-summary-section";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useCounselingGetEncounter } from "@/lib/api/generated/counseling/counseling";
 
@@ -70,8 +70,9 @@ export function EncounterDetailPage({ encounterId }: { encounterId: string }) {
         {correctionOpen && access.canManageAssigned ? <EncounterCorrectionForm encounter={encounter} onClose={() => setCorrectionOpen(false)} /> : null}
       </Panel>
 
+      {user.capabilities.includes("counseling.continuity.request") && encounter.counselor.id === user.id ? <div className="mt-5"><Link className="inline-flex min-h-11 items-center font-semibold text-brand underline" href={`/portal/counseling/coverage?student=${encounter.student.id}&original=${user.id}`}>Request coverage</Link></div> : null}
       <FollowupsContext kind="COUNSELING_ENCOUNTER" id={encounter.id} />
-      {access.canViewAssignedSummaries ? <div className="mt-5"><SharedSummarySection encounterId={encounter.id} access={access} /></div> : null}
+      {access.canViewAssignedStudentSessionSummaries ? <div className="mt-5"><StudentSessionSummarySection encounterId={encounter.id} access={access} /></div> : null}
     </article>
   );
 }

@@ -57,8 +57,9 @@ from compass.inventory.models import StudentInventory
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.academic_years import get_current_academic_year
-from compass.organization.canonical import AcademicClassification, canonical_program_metadata
+from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import StudentAffiliation
+from compass.organization.program_policy import AcademicClassification, get_program_policy
 
 from .models import (
     CANONICAL_SEMESTERS,
@@ -432,7 +433,9 @@ def _require_submitted_inventory(student: User):
             "academic_year__label",
             "submitted_at",
             "program_id",
-            "program__code",
+            "program__academic_classification",
+            "program__year_level_policy_status",
+            "program__applicable_year_levels",
             "program__college__code",
             "program__college__campus__code",
             "year_level",
@@ -452,12 +455,8 @@ def _require_submitted_inventory(student: User):
 def _f4_academic_context(*, program, year_level: int | None) -> F4AcademicContext:
     if program is None:
         return F4AcademicContext(F4AcademicEligibility.UNCLASSIFIED_PROGRAM)
-    metadata = canonical_program_metadata(
-        program.college.campus.code,
-        program.college.code,
-        program.code,
-    )
-    if metadata is None:
+    metadata = get_program_policy(program)
+    if metadata.academic_classification is None:
         return F4AcademicContext(F4AcademicEligibility.UNCLASSIFIED_PROGRAM)
     if metadata.academic_classification != AcademicClassification.BACHELORS:
         return F4AcademicContext(
@@ -492,7 +491,9 @@ def get_f4_academic_context(student: User) -> F4AcademicContext:
         .only(
             "submitted_at",
             "program_id",
-            "program__code",
+            "program__academic_classification",
+            "program__year_level_policy_status",
+            "program__applicable_year_levels",
             "program__college__code",
             "program__college__campus__code",
             "year_level",
@@ -653,6 +654,7 @@ def create_my_graduate(
     )
 
 
+@catalog_dependent_write
 def create_assisted_request(
     *,
     actor: User,
@@ -732,6 +734,7 @@ def list_eligible_students(
     return rows[:page_size], len(rows) > page_size
 
 
+@catalog_dependent_write
 def _create_current_student(
     *,
     student: User,
@@ -1139,18 +1142,39 @@ def _normalize_update(field_name: str, value: object) -> object:
     raise InvalidGoodMoralInput(f"{field_name} cannot be changed through Good Moral correction.")
 
 
+@catalog_dependent_write
 def update_request(
     *,
     actor: User,
     request_id: UUID,
     changes: dict[str, object],
     context: AuditContext,
+    expected_resource_version: str | None = None,
+    expected_receipt_revision: object = ...,
+    operation_id: UUID | None = None,
 ) -> GoodMoralRequest:
+    from . import receipt_identity as receipts
+
     _validate_operational(actor, "good_moral.prepare")
     with transaction.atomic():
         item = GoodMoralRequest.objects.select_for_update().filter(pk=request_id).first()
         if item is None:
             raise GoodMoralNotFound("The requested Good Moral record was not found.")
+        intent = receipts.begin_edit(
+            item=item,
+            actor=actor,
+            changes=changes,
+            context=context,
+            expected_resource_version=expected_resource_version,
+            expected_receipt_revision=receipts.UNSET
+            if expected_receipt_revision is ...
+            else expected_receipt_revision,
+            operation_id=operation_id,
+        )
+        if intent and intent.replay:
+            result = _queryset().get(pk=item.pk)
+            result.receipt_mutation_result = intent.replay
+            return result
         if item.status not in {GoodMoralStatus.REQUESTED, GoodMoralStatus.READY_FOR_ISSUANCE}:
             raise GoodMoralConflict("Issued and cancelled Good Moral requests cannot be corrected.")
 
@@ -1163,10 +1187,24 @@ def update_request(
                 + "."
             )
 
-        normalized = {name: _normalize_update(name, value) for name, value in changes.items()}
+        normalized = {
+            name: (
+                receipts.receipt_display(value)
+                if intent and name == "official_receipt_number"
+                else _normalize_update(name, value)
+            )
+            for name, value in changes.items()
+        }
+        if intent:
+            normalized.setdefault(
+                "official_receipt_number", receipts.receipt_display(item.official_receipt_number)
+            )
         changed = sorted(name for name, value in normalized.items() if getattr(item, name) != value)
         if not changed:
-            return _queryset().get(pk=item.pk)
+            operation = receipts.finish_edit(item=item, actor=actor, intent=intent)
+            result = _queryset().get(pk=item.pk)
+            result.receipt_mutation_result = operation
+            return result
         # Only a changed value is checked, so an unrelated correction never fails on a stored date.
         for name in OCCURRED_DATE_FIELDS.intersection(changed):
             _reject_future_occurred_date(normalized[name], name)
@@ -1183,7 +1221,9 @@ def update_request(
                     .only(
                         "submitted_at",
                         "program_id",
-                        "program__code",
+                        "program__academic_classification",
+                        "program__year_level_policy_status",
+                        "program__applicable_year_levels",
                         "program__college__code",
                         "program__college__campus__code",
                         "year_level",
@@ -1219,6 +1259,10 @@ def update_request(
             ):
                 raise InvalidGoodMoralInput("semester is not supported.")
 
+        if intent:
+            receipts.append_revision(
+                item=item, actor=actor, normalized=normalized, intent=intent, context=context
+            )
         for name in changed:
             setattr(item, name, normalized[name])
         returned = item.status == GoodMoralStatus.READY_FOR_ISSUANCE
@@ -1226,7 +1270,17 @@ def update_request(
             item.status = GoodMoralStatus.REQUESTED
             item.prepared_at = None
             item.prepared_by = None
-        item.save(update_fields=[*changed, "status", "prepared_at", "prepared_by", "updated_at"])
+            item.prepared_receipt_verification = None
+        item.save(
+            update_fields=[
+                *changed,
+                "status",
+                "prepared_at",
+                "prepared_by",
+                "prepared_receipt_verification",
+                "updated_at",
+            ]
+        )
         record_event(
             context=context,
             action=GOOD_MORAL_REQUEST_UPDATED,
@@ -1244,7 +1298,10 @@ def update_request(
                 target_id=item.pk,
                 metadata={"variant": item.variant, "transition": "READY_FOR_ISSUANCE -> REQUESTED"},
             )
-        return _queryset().get(pk=item.pk)
+        operation = receipts.finish_edit(item=item, actor=actor, intent=intent)
+        result = _queryset().get(pk=item.pk)
+        result.receipt_mutation_result = operation
+        return result
 
 
 def prepare_request(
@@ -1255,6 +1312,8 @@ def prepare_request(
     expected_resource_version: str | None = None,
     now: datetime | None = None,
 ) -> GoodMoralRequest:
+    from . import receipt_verification as inspection
+
     _validate_operational(actor, "good_moral.prepare")
     prepared_at = now or timezone.now()
     if timezone.is_naive(prepared_at):
@@ -1270,6 +1329,11 @@ def prepare_request(
             raise GoodMoralPreparationChanged(
                 "This request changed. Review its latest details first."
             )
+        evidence = inspection.gate(
+            item, expected_resource_version=expected_resource_version, lock=True
+        )
+        if evidence:
+            actor = inspection.authority(actor, "good_moral.prepare", context, lock=True)
         if item.status == GoodMoralStatus.READY_FOR_ISSUANCE:
             return _queryset().get(pk=item.pk)
         if item.status != GoodMoralStatus.REQUESTED:
@@ -1278,7 +1342,16 @@ def prepare_request(
         item.status = GoodMoralStatus.READY_FOR_ISSUANCE
         item.prepared_by = actor
         item.prepared_at = prepared_at
-        item.save(update_fields=["status", "prepared_by", "prepared_at", "updated_at"])
+        item.prepared_receipt_verification = evidence[1] if evidence else None
+        item.save(
+            update_fields=[
+                "status",
+                "prepared_by",
+                "prepared_at",
+                "prepared_receipt_verification",
+                "updated_at",
+            ]
+        )
         record_event(
             context=context,
             action=GOOD_MORAL_PREPARED,
@@ -1287,6 +1360,12 @@ def prepare_request(
             target_id=item.pk,
             metadata={"variant": item.variant, "transition": "REQUESTED -> READY_FOR_ISSUANCE"},
         )
+        if evidence:
+            inspection.authority(actor, "good_moral.prepare", context)
+            if inspection.decision_for(item, evidence[0]).snapshot() != evidence[2].snapshot():
+                raise inspection.ReceiptBlocked(
+                    "policy_unresolved", "The approved fee decision changed during preparation."
+                )
         return _queryset().get(pk=item.pk)
 
 
@@ -1353,7 +1432,12 @@ def issue_request(
     context: AuditContext,
     now: datetime | None = None,
     expected_preparation_version: str | None = None,
+    expected_resource_version: str | None = None,
+    expected_receipt_revision: UUID | None = None,
+    expected_receipt_verification: UUID | None = None,
 ) -> GoodMoralRequest:
+    from . import receipt_verification as inspection
+
     _validate_counselor(actor, "good_moral.issue")
     issued_at = now or timezone.now()
     if timezone.is_naive(issued_at):
@@ -1375,6 +1459,27 @@ def issue_request(
         ):
             raise GoodMoralPreparationChanged(
                 "This request was prepared again. Review its latest details before issuing."
+            )
+
+        evidence = inspection.gate(
+            item,
+            expected_resource_version=expected_resource_version,
+            expected_receipt_revision=expected_receipt_revision,
+            expected_verification=expected_receipt_verification,
+            issuing=True,
+            lock=True,
+        )
+        if evidence:
+            if not expected_preparation_version:
+                raise GoodMoralPreparationChanged("Review the current preparation before issuing.")
+            actor = inspection.authority(
+                actor,
+                "good_moral.issue",
+                context,
+                lock=True,
+                student_id=item.student_id
+                if item.variant == GoodMoralVariant.CURRENT_STUDENT
+                else None,
             )
 
         if item.variant == GoodMoralVariant.CURRENT_STUDENT:
@@ -1419,6 +1524,8 @@ def issue_request(
         if not issuer_name:
             raise GoodMoralConflict("Issuer name is required before issuance.")
 
+        item.issued_receipt_assignment = evidence[0] if evidence else None
+        item.issued_receipt_verification = evidence[1] if evidence else None
         item.form_revision = revision
         item.document_template_key = template_key
         item.document_template_version = template_version
@@ -1428,6 +1535,8 @@ def issue_request(
         item.status = GoodMoralStatus.ISSUED
         item.save(
             update_fields=[
+                "issued_receipt_assignment",
+                "issued_receipt_verification",
                 "form_revision",
                 "document_template_key",
                 "document_template_version",
@@ -1481,6 +1590,12 @@ def issue_request(
             target_type="FEEDBACK",
             target_id=opportunity.pk,
         )
+        if evidence:
+            inspection.authority(actor, "good_moral.issue", context)
+            if inspection.decision_for(item, evidence[0]).snapshot() != evidence[2].snapshot():
+                raise inspection.ReceiptBlocked(
+                    "policy_unresolved", "The approved fee decision changed during issuance."
+                )
         return _queryset().get(pk=item.pk)
 
 
@@ -1518,6 +1633,10 @@ def cancel_request(
         if item.status not in {GoodMoralStatus.REQUESTED, GoodMoralStatus.READY_FOR_ISSUANCE}:
             raise GoodMoralConflict("An ISSUED Good Moral request cannot be cancelled.")
 
+        from . import receipt_verification as inspection
+
+        if inspection.active_mode(lock=True):
+            inspection.invalidate(item=item, actor=actor, context=context, reason="CANCELLED")
         previous_status = item.status
         item.status = GoodMoralStatus.CANCELLED
         item.cancelled_at = cancelled_at

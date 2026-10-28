@@ -141,6 +141,27 @@ class GoodMoralRequest(models.Model):
         null=True,
         blank=True,
     )
+    prepared_receipt_verification = models.ForeignKey(
+        "GoodMoralReceiptVerification",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="prepared_requests",
+    )
+    issued_receipt_assignment = models.ForeignKey(
+        "GoodMoralReceiptAssignment",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="issued_requests",
+    )
+    issued_receipt_verification = models.ForeignKey(
+        "GoodMoralReceiptVerification",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="issued_requests",
+    )
     issued_at = models.DateTimeField(null=True, blank=True)
     issued_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -304,5 +325,288 @@ class GoodMoralRequest(models.Model):
                     )
                 ),
                 name="good_moral_cancellation_shape",
+            ),
+        ]
+
+
+class ReceiptIdentityState(models.TextChoices):
+    BOUND = "BOUND", "Bound"
+    LEGACY_AMBIGUOUS = "LEGACY_AMBIGUOUS", "Legacy ownership unresolved"
+    DISPUTED = "DISPUTED", "Disputed"
+
+
+class ReceiptOrigin(models.TextChoices):
+    ORDINARY = "ORDINARY", "Operational entry"
+    LEGACY_OBSERVED = "LEGACY_OBSERVED", "Historical observation"
+    RECONCILED = "RECONCILED", "Reserved for future approved reconciliation"
+
+
+class ReceiptLedgerMode(models.TextChoices):
+    DORMANT = "DORMANT", "Existing writer; ledger not active"
+    FENCED = "FENCED", "Good Moral writes fenced for import"
+    ACTIVE = "ACTIVE", "Ledger owns receipt writes"
+
+
+class GoodMoralReceiptImportBatch(models.Model):
+    id = models.UUIDField(primary_key=True, editable=False)
+    source_digest = models.CharField(max_length=64)
+    source_count = models.PositiveIntegerField()
+    evidence_reference = models.CharField(max_length=200)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        default_permissions = ()
+
+
+class GoodMoralReceiptLedger(models.Model):
+    """Database writer fence. No environment flag can activate the ledger."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    mode = models.CharField(max_length=8, choices=ReceiptLedgerMode.choices, default="DORMANT")
+    batch = models.ForeignKey(GoodMoralReceiptImportBatch, on_delete=models.PROTECT, null=True)
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.CheckConstraint(condition=models.Q(id=1), name="gm_receipt_ledger_singleton"),
+            models.CheckConstraint(
+                condition=models.Q(mode="DORMANT", batch__isnull=True)
+                | models.Q(mode__in=("FENCED", "ACTIVE"), batch__isnull=False),
+                name="gm_receipt_ledger_shape",
+            ),
+        ]
+
+
+class GoodMoralReceiptIdentity(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    normalized_key = models.CharField(max_length=96, db_collation="C")
+    normalization_version = models.CharField(max_length=16, default="GM_OR_V1", editable=False)
+    bound_request = models.ForeignKey(
+        GoodMoralRequest, on_delete=models.PROTECT, null=True, related_name="receipt_reservations"
+    )
+    state = models.CharField(max_length=20, choices=ReceiptIdentityState.choices)
+    reserved_at = models.DateTimeField(auto_now_add=True)
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True)
+    origin = models.CharField(max_length=16, choices=ReceiptOrigin.choices)
+    import_batch = models.ForeignKey(
+        GoodMoralReceiptImportBatch, on_delete=models.PROTECT, null=True
+    )
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=("normalized_key",), name="gm_receipt_identity_key_uniq"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(normalized_key__regex=r"^[ -~]{1,96}$"),
+                name="gm_receipt_key_ascii",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(normalization_version="GM_OR_V1"),
+                name="gm_receipt_key_version",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(state="BOUND", bound_request__isnull=False)
+                | models.Q(state="LEGACY_AMBIGUOUS", bound_request__isnull=True)
+                | models.Q(state="DISPUTED"),
+                name="gm_receipt_identity_shape",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    origin="ORDINARY", recorded_by__isnull=False, import_batch__isnull=True
+                )
+                | models.Q(
+                    origin="LEGACY_OBSERVED", recorded_by__isnull=True, import_batch__isnull=False
+                ),
+                name="gm_receipt_reservation_source",
+            ),
+        ]
+
+
+class GoodMoralReceiptAssignment(models.Model):
+    """Immutable facts; only the one-way, attributable closure is writable."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    identity = models.ForeignKey(GoodMoralReceiptIdentity, on_delete=models.PROTECT, null=True)
+    request = models.ForeignKey(
+        GoodMoralRequest, on_delete=models.PROTECT, related_name="receipt_revisions"
+    )
+    display_number = models.CharField(max_length=96, blank=True)
+    receipt_date = models.DateField(null=True)
+    amount = models.DecimalField(max_digits=12, decimal_places=2, null=True)
+    origin = models.CharField(max_length=16, choices=ReceiptOrigin.choices)
+    sequence = models.PositiveIntegerField()
+    previous = models.ForeignKey("self", on_delete=models.PROTECT, null=True)
+    recorded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        related_name="recorded_good_moral_receipt_revisions",
+    )
+    recorded_at = models.DateTimeField(auto_now_add=True)
+    change_kind = models.CharField(
+        max_length=16,
+        choices=[(s, s) for s in ("ASSIGNED", "REVISED", "REPLACED", "REMOVED", "LEGACY")],
+    )
+    reason = models.CharField(max_length=500, blank=True)
+    is_current = models.BooleanField(default=False)
+    closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        related_name="closed_good_moral_receipt_revisions",
+    )
+    closed_at = models.DateTimeField(null=True)
+    closure_reason = models.CharField(max_length=32, blank=True)
+    import_batch = models.ForeignKey(
+        GoodMoralReceiptImportBatch, on_delete=models.PROTECT, null=True
+    )
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("sequence",)
+        constraints = [
+            models.UniqueConstraint(
+                fields=("request", "sequence"), name="gm_receipt_request_seq_uniq"
+            ),
+            models.UniqueConstraint(
+                fields=("request",),
+                condition=models.Q(is_current=True),
+                name="gm_receipt_request_current",
+            ),
+            models.UniqueConstraint(
+                fields=("identity",),
+                condition=models.Q(is_current=True),
+                name="gm_receipt_identity_current",
+            ),
+            models.UniqueConstraint(
+                fields=("request",),
+                condition=models.Q(origin="LEGACY_OBSERVED"),
+                name="gm_receipt_legacy_observation",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(sequence__gte=1), name="gm_receipt_positive_sequence"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(is_current=False) | models.Q(identity__isnull=False),
+                name="gm_receipt_current_identity",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    closed_at__isnull=True, closed_by__isnull=True, closure_reason=""
+                )
+                | (
+                    models.Q(is_current=False, closed_at__isnull=False, closed_by__isnull=False)
+                    & ~models.Q(closure_reason="")
+                ),
+                name="gm_receipt_closure_shape",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(origin="LEGACY_OBSERVED", is_current=False)
+                | models.Q(amount__isnull=True)
+                | (models.Q(amount__gte=0) & models.Q(amount__lt=Decimal("10000000000"))),
+                name="gm_receipt_amount_shape",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    origin="ORDINARY", recorded_by__isnull=False, import_batch__isnull=True
+                )
+                | models.Q(
+                    origin="LEGACY_OBSERVED", recorded_by__isnull=True, import_batch__isnull=False
+                ),
+                name="gm_receipt_claim_source",
+            ),
+        ]
+
+
+class GoodMoralReceiptMutation(models.Model):
+    """A durable receipt of an entire correction, including exact no-ops."""
+
+    operation_id = models.UUIDField(primary_key=True, editable=False)
+    request = models.ForeignKey(GoodMoralRequest, on_delete=models.PROTECT)
+    actor = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT)
+    fingerprint = models.CharField(max_length=64)
+    intended_revision = models.ForeignKey(
+        GoodMoralReceiptAssignment,
+        on_delete=models.PROTECT,
+        null=True,
+        related_name="intended_mutations",
+    )
+    result_revision = models.ForeignKey(
+        GoodMoralReceiptAssignment,
+        on_delete=models.PROTECT,
+        null=True,
+        related_name="result_mutations",
+    )
+    result_request_version = models.CharField(max_length=64)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        default_permissions = ()
+
+
+class GoodMoralReceiptVerification(models.Model):
+    """Personal physical inspection of one immutable claim; never Cashier reconciliation."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    assignment = models.ForeignKey(
+        GoodMoralReceiptAssignment, on_delete=models.PROTECT, related_name="verifications"
+    )
+    verified_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="good_moral_receipt_inspections",
+    )
+    method = models.CharField(
+        max_length=32, choices=[("PHYSICAL_OR_INSPECTION", "Physical OR inspection")]
+    )
+    verified_at = models.DateTimeField(auto_now_add=True)
+    policy_id = models.CharField(max_length=100)
+    policy_version = models.CharField(max_length=64)
+    expected_amount = models.DecimalField(max_digits=12, decimal_places=2)
+    currency = models.CharField(max_length=3)
+    fee_decision = models.JSONField()
+    operation_id = models.UUIDField(unique=True, editable=False)
+    fingerprint = models.CharField(max_length=64)
+    invalidated_at = models.DateTimeField(null=True)
+    invalidated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        related_name="invalidated_good_moral_receipt_inspections",
+    )
+    invalidation_reason = models.CharField(max_length=32, blank=True)
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.UniqueConstraint(
+                fields=["assignment"],
+                condition=models.Q(invalidated_at__isnull=True),
+                name="gm_receipt_one_inspection",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(method="PHYSICAL_OR_INSPECTION"),
+                name="gm_receipt_inspection_method",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(currency="PHP", expected_amount__gt=0),
+                name="gm_receipt_inspection_fee",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        invalidated_at__isnull=True,
+                        invalidated_by__isnull=True,
+                        invalidation_reason="",
+                    )
+                    | models.Q(
+                        invalidated_at__isnull=False,
+                        invalidated_by__isnull=False,
+                        invalidation_reason__in=["RECEIPT_REVISED", "CANCELLED", "POLICY_CHANGED"],
+                    )
+                ),
+                name="gm_receipt_invalidation_shape",
             ),
         ]

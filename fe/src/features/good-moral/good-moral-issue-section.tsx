@@ -1,5 +1,6 @@
 "use client";
 
+import { receiptStatuses } from "./receipt-presentation";
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -9,25 +10,31 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { Notice } from "@/components/ui/notice";
 import { GoodMoralField, GoodMoralSection, formatGoodMoralDate, goodMoralErrorCode, goodMoralErrorMessage, uncertainGoodMoralMutation } from "@/features/good-moral/good-moral-shared";
 import { goodMoralIssueRequest, getGoodMoralGetRequestQueryKey, getGoodMoralListRequestsQueryKey } from "@/lib/api/generated/good-moral/good-moral";
-import type { GoodMoralOperationalDetailResponse } from "@/lib/api/generated/model";
+import type { GoodMoralIssuePayload, GoodMoralOperationalDetailResponse } from "@/lib/api/generated/model";
 
 export function GoodMoralIssueSection({
   item,
   onRefresh,
+  confirmed = true,
 }: {
   item: GoodMoralOperationalDetailResponse;
+  confirmed?: boolean;
   onRefresh: () => Promise<GoodMoralOperationalDetailResponse | undefined>;
 }) {
   const queryClient = useQueryClient();
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [reviewedItem, setReviewedItem] = useState<GoodMoralOperationalDetailResponse | null>(null);
+  const [reviewedIntent, setReviewedIntent] = useState<GoodMoralIssuePayload | null>(null);
   const [reviewedPreparedAt, setReviewedPreparedAt] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [blockedUntilRefresh, setBlockedUntilRefresh] = useState(false);
   // Covers the whole confirmation, including the refresh after the request succeeds.
   const [issuing, setIssuing] = useState(false);
-  const issue = useMutation({ mutationFn: () => goodMoralIssueRequest(item.id, { expected_preparation_version: reviewedPreparedAt ?? "" }), retry: false });
+  const issue = useMutation({ mutationFn: () => goodMoralIssueRequest(item.id, reviewedIntent ?? { expected_preparation_version: "" }), retry: false });
   const issuePending = issue.isPending || issuing;
+  const reviewed = reviewedItem ?? item;
+  const staleReview = Boolean(reviewedIntent && reviewedIntent.expected_resource_version !== item.actions.request_version);
 
   async function invalidate() {
     await Promise.all([
@@ -40,29 +47,38 @@ export function GoodMoralIssueSection({
   // Issuance is protected by the good_moral.issue capability, this confirmation, and the recorded
   // issuer; it does not need an authenticator step-up.
   function beginIssue() {
-    if (!item.actions.preparation_version || !item.actions.can_issue) return;
+    if (!confirmed || !item.actions.preparation_version || !item.actions.can_issue) return;
+    setReviewedItem(structuredClone(item));
     setReviewedPreparedAt(item.actions.preparation_version);
+    setReviewedIntent({
+      expected_preparation_version: item.actions.preparation_version,
+      expected_resource_version: item.actions.request_version,
+      expected_receipt_revision: item.receipt_identity?.revision_id,
+      expected_receipt_verification: item.receipt_inspection?.verification_id,
+    });
     setError(null);
     setNotice(null);
     setConfirmOpen(true);
   }
 
   async function confirmIssue() {
-    if (!reviewedPreparedAt) return;
+    if (!reviewedPreparedAt || !confirmed || staleReview || issuePending || !item.actions.can_issue) return;
     setError(null);
     setNotice(null);
     setIssuing(true);
     try {
       await issue.mutateAsync();
       await invalidate();
-      await onRefresh();
+      const latest = await onRefresh();
+      setBlockedUntilRefresh(!latest);
       setConfirmOpen(false);
-      setNotice("Good Moral certificate issued.");
+      setNotice(latest ? "Good Moral certificate issued." : "Issuance was recorded, but the current request could not be refreshed.");
     } catch (caught) {
       const code = goodMoralErrorCode(caught);
-      if (code === "good_moral_preparation_changed" || code === "good_moral_not_ready") {
+      if (code === "good_moral_preparation_changed" || code === "good_moral_not_ready" || code?.startsWith("good_moral_receipt_")) {
         setConfirmOpen(false);
-        await onRefresh();
+        const latest = await onRefresh();
+        setBlockedUntilRefresh(!latest);
         setError(goodMoralErrorMessage(caught, "Review the latest certificate details."));
         return;
       }
@@ -115,6 +131,7 @@ export function GoodMoralIssueSection({
     }
   }
 
+  if (!item.actions.can_issue && !confirmOpen && !issuePending && !error && !blockedUntilRefresh) return null;
   return (
     <>
       <GoodMoralSection
@@ -145,9 +162,9 @@ export function GoodMoralIssueSection({
           <GoodMoralField label="Official Receipt amount" value={item.official_receipt_amount} />
         </dl>
         <div className="mt-5 flex flex-col items-start gap-3 border-t border-border pt-4">
-          <Button onClick={beginIssue} disabled={issuePending || blockedUntilRefresh}>
+          {item.actions.can_issue ? <Button onClick={beginIssue} disabled={issuePending || blockedUntilRefresh || !confirmed}>
             Issue certificate
-          </Button>
+          </Button> : null}
           {blockedUntilRefresh ? <Button variant="secondary" onClick={() => void refreshRequestState()}>Refresh request state</Button> : null}
           {error && !confirmOpen ? <p role="alert" className="max-w-2xl text-sm leading-6 text-danger">{error}</p> : null}
           {notice ? <p role="status" className="text-sm text-muted">{notice}</p> : null}
@@ -160,8 +177,8 @@ export function GoodMoralIssueSection({
         confirmLabel="Issue certificate"
         pendingLabel="Issuing certificate…"
         pending={issuePending}
-        confirmDisabled={blockedUntilRefresh}
-        error={error}
+        confirmDisabled={blockedUntilRefresh || !confirmed || staleReview || !item.actions.can_issue}
+        error={staleReview && !issuePending ? "This request changed. Close and review the latest details before issuing." : error}
         onOpenChange={setConfirmOpen}
         onConfirm={() => void confirmIssue()}
       >
@@ -169,21 +186,22 @@ export function GoodMoralIssueSection({
           The issued certificate will record the approved form revision,
           issuance date, and issuing counselor. Review the details below before issuing.
         </p>
-        {item.variant === "GRADUATE" ? <Notice>Confirm the degree and date with the Registrar before issuing F6.</Notice> : null}
+        {reviewed.variant === "GRADUATE" ? <Notice>Confirm the degree and date with the Registrar before issuing F6.</Notice> : null}
+        {reviewed.receipt_inspection ? <p className="text-sm">{receiptStatuses[reviewed.receipt_inspection.status].label} · Receipt {reviewed.official_receipt_number || "not recorded"}</p> : null}
         <dl className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
-          <GoodMoralField label="Applicant name" value={item.applicant_name} />
-          <GoodMoralField label="Variant" value={item.variant === "CURRENT_STUDENT" ? "Current Student" : "UCN Bachelor's degree"} />
-          {item.variant === "CURRENT_STUDENT" ? (
+          <GoodMoralField label="Applicant name" value={reviewed.applicant_name} />
+          <GoodMoralField label="Variant" value={reviewed.variant === "CURRENT_STUDENT" ? "Current Student" : "UCN Bachelor's degree"} />
+          {reviewed.variant === "CURRENT_STUDENT" ? (
             <>
-              <GoodMoralField label="Year level" value={item.year_level} />
-              <GoodMoralField label="College" value={item.college} />
-              <GoodMoralField label="Course" value={item.course} />
-              <GoodMoralField label="Semester" value={item.semester} />
+              <GoodMoralField label="Year level" value={reviewed.year_level} />
+              <GoodMoralField label="College" value={reviewed.college} />
+              <GoodMoralField label="Course" value={reviewed.course} />
+              <GoodMoralField label="Semester" value={reviewed.semester} />
             </>
           ) : (
             <>
-              <GoodMoralField label="Degree" value={item.degree} />
-              <GoodMoralField label="Graduation date" value={formatGoodMoralDate(item.graduation_date)} />
+              <GoodMoralField label="Degree" value={reviewed.degree} />
+              <GoodMoralField label="Graduation date" value={formatGoodMoralDate(reviewed.graduation_date)} />
             </>
           )}
         </dl>

@@ -13,13 +13,33 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
+from compass.appointments.email_presentation import (
+    APPOINTMENT_EMAIL_EVENTS,
+    AppointmentEmailDetail,
+    AppointmentEmailFacts,
+)
 from compass.common.correlation import get_current_request_id
 from compass.common.email import RenderedEmail, render_email
 from compass.integrations.mail import Mailer
 
 from .current import notification_is_current
-from .models import EmailDelivery, EmailDeliveryStatus
-from .policy import get_event_definition
+from .email_disclosure import (
+    APPOINTMENT_EMAIL_FIELD_POLICY,
+    APPROVED_EMAIL_EVENTS,
+    APPROVED_OPERATIONAL_POLICY,
+    OPERATIONAL_EMAIL_EVENTS,
+    OPERATIONAL_EMAIL_TARGETS,
+    email_disclosure_policy,
+)
+from .email_links import NotificationEmailTarget, build_notification_email_link
+from .email_presentation import (
+    EmailPresentationReason,
+    NotificationEmailPresentation,
+    resolve_notification_email_presentation,
+)
+from .models import EmailDelivery, EmailDeliveryStatus, Notification
+from .operational_email_rendering import operational_email_context
+from .policy import NotificationEvent, NotificationTargetType, get_event_definition
 
 logger = logging.getLogger("compass.notifications")
 DELIVERY_BATCH_SIZE = 100
@@ -128,12 +148,79 @@ def claim_email_delivery(
         )
 
 
-def render_notification_email(event_code: str) -> RenderedEmail:
-    """Render an event's fixed wording; no Notification or source-domain data reaches templates."""
+def render_notification_email(
+    event_code: str, *, presentation: NotificationEmailPresentation | None = None
+) -> RenderedEmail:
+    """Fixed-copy previews remain context-free; approved plans add controlled values.
+
+    Subjects, templates, action wording and all body text stay code-owned. The
+    URL is rebuilt from a closed target. Detail rows are typed, allowlisted and
+    institutionally gated; raw models and arbitrary mappings are never accepted.
+    """
 
     definition = get_event_definition(event_code)
+    context = {}
+    if presentation is not None:
+        if not isinstance(presentation, NotificationEmailPresentation):
+            raise ValueError("invalid notification email presentation")
+        if presentation.event_code != event_code or presentation.suppress:
+            raise ValueError("ineligible notification email presentation")
+        if (presentation.target is not None) != (
+            presentation.reason
+            in {EmailPresentationReason.LINK_AVAILABLE, EmailPresentationReason.RICH_AVAILABLE}
+        ):
+            raise ValueError("inconsistent notification email action")
+        if presentation.target is not None:
+            if (
+                event_code not in APPROVED_EMAIL_EVENTS
+                or (
+                    presentation.reason == EmailPresentationReason.LINK_AVAILABLE
+                    and event_code in APPOINTMENT_EMAIL_EVENTS
+                    and event_code != NotificationEvent.APPOINTMENT_SCHEDULED
+                )
+                or not isinstance(presentation.target, NotificationEmailTarget)
+                or presentation.target.target_type
+                != OPERATIONAL_EMAIL_TARGETS.get(event_code, NotificationTargetType.APPOINTMENT)
+            ):
+                raise ValueError("unsupported notification email action")
+            link = build_notification_email_link(presentation.target)
+            if presentation.validated_link is not None and presentation.validated_link != link:
+                raise ValueError("notification email link changed")
+            if link.url is not None:
+                context["action_url"] = link.url
+        if presentation.appointment_facts is not None:
+            facts = presentation.appointment_facts
+            fields = APPOINTMENT_EMAIL_FIELD_POLICY.get(presentation.recipient_class, frozenset())
+            if (
+                event_code not in APPOINTMENT_EMAIL_EVENTS
+                or type(facts) is not AppointmentEmailFacts
+                or presentation.reason != EmailPresentationReason.RICH_AVAILABLE
+                or presentation.disclosure_policy != APPROVED_OPERATIONAL_POLICY
+                or presentation.validated_link is None
+                or email_disclosure_policy() != APPROVED_OPERATIONAL_POLICY
+                or presentation.target is None
+                or facts.event_code != event_code
+                or facts.appointment_id != presentation.target.target_id
+                or facts.recipient_class != presentation.recipient_class
+                or not facts.rows
+                or type(facts.rows) is not tuple
+                or any(
+                    type(row) is not AppointmentEmailDetail or row.field not in fields
+                    for row in facts.rows
+                )
+                or len({row.field for row in facts.rows}) != len(facts.rows)
+            ):
+                raise ValueError("unapproved appointment email facts")
+            if "action_url" in context:
+                context["appointment_details"] = facts.rows
+        elif (
+            presentation.reason == EmailPresentationReason.RICH_AVAILABLE
+            and event_code not in OPERATIONAL_EMAIL_EVENTS
+        ):
+            raise ValueError("missing appointment email facts")
+        context.update(operational_email_context(event_code, presentation))
     return render_email(
-        definition.email_subject, f"notifications/email/{definition.email_template}"
+        definition.email_subject, f"notifications/email/{definition.email_template}", context
     )
 
 
@@ -216,6 +303,7 @@ def _log_delivery_result(
     *,
     status: str,
     failure_code: str = "",
+    presentation_reason: str = "",
 ) -> None:
     logger.info(
         "notification email delivery processed",
@@ -227,12 +315,45 @@ def _log_delivery_result(
             "attempt_number": claim.attempt_number,
             "delivery_status": status,
             "failure_code": failure_code,
+            "presentation_reason": presentation_reason,
             "request_id": get_current_request_id(),
         },
     )
 
 
-def _email_claim_is_current(claim):
+def _cancel_delivery(delivery, *, failure_code):
+    delivery.status = EmailDeliveryStatus.CANCELLED
+    delivery.failure_code = failure_code
+    delivery.next_attempt_at = None
+    _clear_claim(delivery)
+    delivery.save(
+        update_fields=[
+            "status",
+            "failure_code",
+            "next_attempt_at",
+            "claim_token",
+            "claim_expires_at",
+            "updated_at",
+        ]
+    )
+
+
+def _cancel_claim(claim, *, failure_code):
+    with transaction.atomic():
+        delivery = (
+            EmailDelivery.objects.select_for_update()
+            .filter(
+                pk=claim.delivery_id,
+                claim_token=claim.claim_token,
+                status=EmailDeliveryStatus.PROCESSING,
+            )
+            .first()
+        )
+        if delivery is not None:
+            _cancel_delivery(delivery, failure_code=failure_code)
+
+
+def _email_claim_is_current(claim, presentation):
     with transaction.atomic():
         delivery = (
             EmailDelivery.objects.select_for_update(of=("self",))
@@ -247,25 +368,17 @@ def _email_claim_is_current(claim):
         if delivery is None:
             return False
         if (
-            notification_is_current(delivery.notification)
+            delivery.notification.recipient.is_active
+            and notification_is_current(delivery.notification)
             and delivery.notification.recipient.email == claim.recipient_email
+            and delivery.claim_expires_at is not None
             and delivery.claim_expires_at > timezone.now()
+            # Re-query source-owned eligibility and current capabilities/scope.
+            # A change after rendering cancels this attempt without sending stale links.
+            and resolve_notification_email_presentation(delivery.notification) == presentation
         ):
             return True
-        delivery.status = EmailDeliveryStatus.CANCELLED
-        delivery.failure_code = "source_or_recipient_changed"
-        delivery.next_attempt_at = None
-        _clear_claim(delivery)
-        delivery.save(
-            update_fields=[
-                "status",
-                "failure_code",
-                "next_attempt_at",
-                "claim_token",
-                "claim_expires_at",
-                "updated_at",
-            ]
-        )
+        _cancel_delivery(delivery, failure_code="source_or_recipient_changed")
         return False
 
 
@@ -275,7 +388,31 @@ def deliver_email_delivery(delivery_id: UUID) -> str:
         return "skipped"
 
     try:
-        rendered = render_notification_email(claim.event_code)
+        notification = Notification.objects.get(pk=claim.notification_id)
+        presentation = resolve_notification_email_presentation(notification)
+    except Exception:
+        # Keep the existing terminal render-phase failure classification, with a
+        # bounded stage code. Never expose exceptions or raw source context.
+        _record_failure(claim, failure_code="template_error", retryable=False)
+        _log_delivery_result(
+            claim,
+            status=EmailDeliveryStatus.FAILED,
+            failure_code="template_error",
+            presentation_reason="resolution_error",
+        )
+        return EmailDeliveryStatus.FAILED
+    if presentation.suppress:
+        _cancel_claim(claim, failure_code="source_ineligible")
+        _log_delivery_result(
+            claim,
+            status=EmailDeliveryStatus.CANCELLED,
+            failure_code="source_ineligible",
+            presentation_reason=presentation.reason,
+        )
+        return EmailDeliveryStatus.CANCELLED
+
+    try:
+        rendered = render_notification_email(claim.event_code, presentation=presentation)
     except Exception:
         _record_failure(claim, failure_code="template_error", retryable=False)
         _log_delivery_result(
@@ -283,8 +420,18 @@ def deliver_email_delivery(delivery_id: UUID) -> str:
         )
         return EmailDeliveryStatus.FAILED
 
-    if not _email_claim_is_current(claim):
-        return EmailDeliveryStatus.CANCELLED
+    try:
+        if not _email_claim_is_current(claim, presentation):
+            return EmailDeliveryStatus.CANCELLED
+    except Exception:
+        _record_failure(claim, failure_code="template_error", retryable=False)
+        _log_delivery_result(
+            claim,
+            status=EmailDeliveryStatus.FAILED,
+            failure_code="template_error",
+            presentation_reason="revalidation_error",
+        )
+        return EmailDeliveryStatus.FAILED
 
     try:
         sent = Mailer().send(
@@ -304,7 +451,9 @@ def deliver_email_delivery(delivery_id: UUID) -> str:
         return "retry_or_failed"
 
     _record_success(claim)
-    _log_delivery_result(claim, status=EmailDeliveryStatus.SENT)
+    _log_delivery_result(
+        claim, status=EmailDeliveryStatus.SENT, presentation_reason=presentation.reason
+    )
     return EmailDeliveryStatus.SENT
 
 

@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { goodMoralInitiationLabel } from "./good-moral-shared";
 import { useState } from "react";
+import { RefreshCw } from "lucide-react";
+import { PageAction } from "@/components/ui/page-action";
+import { ActionStatus, useActionStatus } from "@/components/ui/action-status";
+import { GoodMoralReceiptSection } from "./good-moral-receipt-section";
 
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
@@ -22,7 +26,6 @@ import {
   GoodMoralHeading,
   GoodMoralSection,
   GoodMoralStatus,
-  formatGoodMoralAmount,
   formatGoodMoralDate,
   formatGoodMoralDateTime,
   goodMoralErrorCode,
@@ -47,9 +50,11 @@ export function GoodMoralCounselorDetail({
   canIssue: boolean;
   canPrepare: boolean;
 }) {
-  const detail = useGoodMoralGetRequest(requestId, { query: { retry: false } });
+  const detail = useGoodMoralGetRequest(requestId, { query: { retry: false, refetchOnMount: "always" } });
   const confirmed = safeQueryData(detail);
   const [correctionOpen, setCorrectionOpen] = useState(false);
+  const [inspecting, setInspecting] = useState(false);
+  const saved = useActionStatus();
 
   if (detail.isPending) {
     return <GoodMoralDetailSkeleton />;
@@ -66,10 +71,12 @@ export function GoodMoralCounselorDetail({
 
   const item = confirmed.data;
   const refresh = async () => {
-    const result = await detail.refetch();
+    const result = await detail.refetch({ cancelRefetch: true });
     return result.isError ? undefined : result.data?.data;
   };
-  const hasReceipt = Boolean(item.official_receipt_number || item.official_receipt_date || item.official_receipt_amount !== null);
+  const confirmedNow = !detail.isError;
+  const fenced = item.receipt_identity?.ledger_mode === "FENCED";
+  const available = confirmedNow && !fenced && !inspecting;
   // The facts a counselor checks first; the remaining request details follow in the same sheet.
   const keyFacts: RecordFact[] = [
     { label: "Initiation", value: goodMoralInitiationLabel(item.initiation_origin) },
@@ -88,6 +95,7 @@ export function GoodMoralCounselorDetail({
       <GoodMoralHeading
         headingId="good-moral-counselor-detail-heading"
         title="Good Moral request"
+        action={<PageAction label="Refresh" labelDetail="request" icon={RefreshCw} variant="secondary" disabled={detail.isFetching || inspecting || correctionOpen} onClick={() => void refresh()} />}
         description={item.status === "ISSUED" ? `${goodMoralVariantLabel(item.variant)} certificate` : `${goodMoralVariantLabel(item.variant)} request`}
         back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral queue</Link>}
       />
@@ -122,46 +130,23 @@ export function GoodMoralCounselorDetail({
           </dl>
         </PanelSection>
         {item.variant === "GRADUATE" ? <Notice>COMPASS hasn&apos;t verified this degree.</Notice> : null}
-        <PanelSection
-          title="Official Receipt"
-          titleId="good-moral-counselor-receipt"
-          description="Optional receipt details. Payment status isn’t tracked here."
-        >
-          <dl className={factGrid}>
-            <GoodMoralField label="Receipt number" value={item.official_receipt_number || "Not provided"} />
-            <GoodMoralField label="Receipt date" value={formatGoodMoralDate(item.official_receipt_date)} />
-            <GoodMoralField label="Receipt amount" value={formatGoodMoralAmount(item.official_receipt_amount)} />
-          </dl>
-          {!hasReceipt ? <p className="mt-4 text-xs text-muted">No Official Receipt details are recorded.</p> : null}
-        </PanelSection>
+
       </Panel>
 
-      {((item.actions.can_correct && canPrepare) || (item.actions.can_cancel && canManage)) && !detail.isError ? (
-        correctionOpen && item.actions.can_correct && canPrepare ? (
-          <>
-            <GoodMoralCorrectionForm
-              item={item}
-              onRefresh={refresh}
-              open={correctionOpen}
-              onClose={() => setCorrectionOpen(false)}
-            />
-            <GoodMoralSection title="Request actions">
-              {canManage && item.actions.can_cancel ? <GoodMoralCancelAction requestId={item.id} studentFacing={false} onRefresh={refresh} /> : null}
-            </GoodMoralSection>
-          </>
-        ) : (
-          <GoodMoralSection title="Request actions">
-            <div className="flex flex-wrap gap-3">
-              {item.actions.can_correct && canPrepare ? <Button variant="secondary" onClick={() => setCorrectionOpen(true)}>Correct certificate details</Button> : null}
-              {canManage && item.actions.can_cancel ? <GoodMoralCancelAction requestId={item.id} studentFacing={false} onRefresh={refresh} /> : null}
-            </div>
-          </GoodMoralSection>
-        )
-      ) : null}
+      <GoodMoralReceiptSection item={item} confirmed={confirmedNow && !detail.isFetching} editorOpen={correctionOpen} onRefresh={refresh} onActivityChange={setInspecting} />
 
-      {canPrepare && (item.status === "REQUESTED" || item.status === "READY_FOR_ISSUANCE") && !detail.isError && !correctionOpen ? <GoodMoralPreparationSection item={item} onRefresh={refresh} /> : null}
+      {correctionOpen && canPrepare ? <GoodMoralCorrectionForm item={item} open onRefresh={refresh}
+        confirmed={available && item.actions.can_correct}
+        onSaved={saved.show} onClose={() => setCorrectionOpen(false)} /> : null}
+      {!correctionOpen && available && ((item.actions.can_correct && canPrepare) || (item.actions.can_cancel && canManage)) ? <GoodMoralSection title="Request actions">
+        <div className="flex flex-wrap gap-3">
+          {item.actions.can_correct && canPrepare ? <Button variant="secondary" onClick={() => { saved.dismiss(); setCorrectionOpen(true); }}>Correct certificate details</Button> : null}
+          {canManage && item.actions.can_cancel ? <GoodMoralCancelAction requestId={item.id} studentFacing={false} onRefresh={refresh} /> : null}
+        </div>
+      </GoodMoralSection> : null}
 
-      {item.actions.can_issue && canIssue && !detail.isError ? <GoodMoralIssueSection item={item} onRefresh={refresh} /> : null}
+      {canPrepare && (item.status === "REQUESTED" || item.status === "READY_FOR_ISSUANCE") && !correctionOpen && !inspecting ? <GoodMoralPreparationSection item={item} confirmed={confirmedNow && !fenced} onRefresh={refresh} /> : null}
+      {canIssue && !correctionOpen && !inspecting ? <GoodMoralIssueSection item={item} confirmed={confirmedNow && !fenced} onRefresh={refresh} /> : null}
 
       {item.status === "ISSUED" ? (
         <GoodMoralSection title="Certificate issuance">
@@ -186,6 +171,7 @@ export function GoodMoralCounselorDetail({
           </dl>
         </GoodMoralSection>
       ) : null}
+      <ActionStatus status={saved.status} onDismiss={saved.dismiss} />
     </section>
   );
 }

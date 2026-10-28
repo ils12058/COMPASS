@@ -1,0 +1,356 @@
+{
+  "engine": "webkit",
+  "reusedSyntheticPreviews": true,
+  "results": [
+    {
+      "slice": "notif-02",
+      "file": "cancelled-student.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "cancelled-student.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "long-labels.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "long-labels.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "minimal-no-approval.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "minimal-no-approval.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "missing-optionals.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "missing-optionals.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "reassigned-former-counselor.html",
+      "width": 390,
+      "passed": true,
+      "links": 0
+    },
+    {
+      "slice": "notif-02",
+      "file": "reassigned-former-counselor.html",
+      "width": 680,
+      "passed": true,
+      "links": 0
+    },
+    {
+      "slice": "notif-02",
+      "file": "reassigned-student.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "reassigned-student.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "reminder-24h.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "reminder-24h.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "reminder-3h.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "reminder-3h.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "reminder-manual.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "reminder-manual.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "rescheduled-student.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "rescheduled-student.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "scheduled-counselor.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "scheduled-counselor.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "scheduled-student.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-02",
+      "file": "scheduled-student.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "call-slip-issued.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "call-slip-issued.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "call-slip-voided.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "call-slip-voided.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "good-moral-assisted.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "good-moral-assisted.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "good-moral-issued.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "good-moral-issued.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "group-cancelled.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "group-cancelled.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "group-registered.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "group-registered.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "group-registration-cancelled.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "group-registration-cancelled.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "group-rescheduled.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "group-rescheduled.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "legacy-void-minimal.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "legacy-void-minimal.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "long-sensitive-title-omitted.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "long-sensitive-title-omitted.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "minimal-link.html",
+      "width": 390,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "minimal-link.html",
+      "width": 680,
+      "passed": true,
+      "links": 1
+    },
+    {
+      "slice": "notif-03",
+      "file": "missing-source.html",
+      "width": 390,
+      "passed": true,
+      "links": 0
+    },
+    {
+      "slice": "notif-03",
+      "file": "missing-source.html",
+      "width": 680,
+      "passed": true,
+      "links": 0
+    },
+    {
+      "slice": "notif-03",
+      "file": "unauthorized-recipient.html",
+      "width": 390,
+      "passed": true,
+      "links": 0
+    },
+    {
+      "slice": "notif-03",
+      "file": "unauthorized-recipient.html",
+      "width": 680,
+      "passed": true,
+      "links": 0
+    }
+  ]
+}

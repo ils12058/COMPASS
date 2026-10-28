@@ -1,242 +1,167 @@
-"""Explicit synchronization of the code-owned UCN organization catalog."""
+"""Explicit seed/adoption only. The persisted catalog is the live authority."""
 
-from __future__ import annotations
+from dataclasses import dataclass
 
-from dataclasses import asdict, dataclass
-from uuid import UUID
+from django.core.exceptions import ValidationError
+from django.db import DatabaseError, connection, transaction
+from django.db.migrations.exceptions import InconsistentMigrationHistory
+from django.db.migrations.loader import MigrationLoader
 
-from django.db import IntegrityError, transaction
-
-from compass.audit.actions import ORGANIZATION_CATALOG_SYNCED
+from compass.audit.actions import ORGANIZATION_CATALOG_ADOPTED, ORGANIZATION_CATALOG_INITIALIZED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
-from compass.organization.canonical import CANONICAL_CAMPUSES
-from compass.organization.models import (
-    Campus,
-    College,
-    CounselorResponsibility,
-    Program,
-    StudentAffiliation,
-)
+from compass.organization.canonical import BASELINE_VERSION, CANONICAL_CAMPUSES
+from compass.organization.models import Campus, CatalogInitialization, College, Program
+from compass.organization.program_policy import validate_program_policy
+
+CATALOG_MIGRATION = ("organization", "0002_program_policy_and_catalog_initialization")
+# Cooperative initialization lock; not a fence against old binaries or privileged SQL.
+CATALOG_INITIALIZATION_LOCK = 477580715031
 
 
-class CanonicalOrganizationSyncError(RuntimeError):
-    """Persisted Organization state cannot be safely reconciled automatically."""
+class CatalogInitializationError(RuntimeError):
+    pass
+
+
+# Compatibility for old importers, without the old reconciliation implementation.
+CanonicalOrganizationSyncError = CatalogInitializationError
 
 
 @dataclass(frozen=True, slots=True)
-class CanonicalOrganizationSyncResult:
+class CatalogInitializationResult:
+    receipt: CatalogInitialization
+    changed: bool = False
     campuses_created: int = 0
-    campuses_updated: int = 0
-    campuses_deactivated: int = 0
     colleges_created: int = 0
-    colleges_updated: int = 0
-    colleges_deactivated: int = 0
     programs_created: int = 0
-    programs_updated: int = 0
-    programs_deactivated: int = 0
 
-    @property
-    def changed(self) -> bool:
-        return any(asdict(self).values())
+    def metadata(self):
+        return {
+            "source": self.receipt.source,
+            "baseline_version": self.receipt.baseline_version,
+            "campuses_created": self.campuses_created,
+            "colleges_created": self.colleges_created,
+            "programs_created": self.programs_created,
+        }
 
-    def metadata(self) -> dict[str, int]:
-        return asdict(self)
 
-
-def _get_or_create_campus(*, code: str, name: str) -> tuple[Campus, bool]:
-    campus = Campus.objects.select_for_update().filter(code=code).first()
-    if campus is not None:
-        return campus, False
+def require_catalog_schema() -> None:
+    """Reject old/incomplete/unknown Organization migration graphs before bootstrap writes."""
+    loader = MigrationLoader(connection)
     try:
-        with transaction.atomic():
-            return Campus.objects.create(code=code, name=name), True
-    except IntegrityError:
-        return Campus.objects.select_for_update().get(code=code), False
-
-
-def _get_or_create_college(*, campus: Campus, code: str, name: str) -> tuple[College, bool]:
-    college = College.objects.select_for_update().filter(campus=campus, code=code).first()
-    if college is not None:
-        return college, False
-    try:
-        with transaction.atomic():
-            return College.objects.create(campus=campus, code=code, name=name), True
-    except IntegrityError:
-        return College.objects.select_for_update().get(campus=campus, code=code), False
-
-
-def _get_or_create_program(*, college: College, code: str, name: str) -> tuple[Program, bool]:
-    program = Program.objects.select_for_update().filter(college=college, code=code).first()
-    if program is not None:
-        return program, False
-    try:
-        with transaction.atomic():
-            return Program.objects.create(college=college, code=code, name=name), True
-    except IntegrityError:
-        return Program.objects.select_for_update().get(college=college, code=code), False
-
-
-def _repair_row(row, *, name: str, active: bool) -> bool:
-    changed: list[str] = []
-    if row.name != name:
-        row.name = name
-        changed.append("name")
-    if row.is_active != active:
-        row.is_active = active
-        changed.append("is_active")
-    if not changed:
-        return False
-    row.save(update_fields=[*changed, "updated_at"])
-    return True
-
-
-def _sync_organization_catalog() -> CanonicalOrganizationSyncResult:
-    counts = {
-        "campuses_created": 0,
-        "campuses_updated": 0,
-        "campuses_deactivated": 0,
-        "colleges_created": 0,
-        "colleges_updated": 0,
-        "colleges_deactivated": 0,
-        "programs_created": 0,
-        "programs_updated": 0,
-        "programs_deactivated": 0,
-    }
-    canonical_campus_ids: set[UUID] = set()
-    canonical_college_ids: set[UUID] = set()
-    canonical_program_ids: set[UUID] = set()
-
-    for campus_definition in CANONICAL_CAMPUSES:
-        campus, created = _get_or_create_campus(
-            code=campus_definition.code,
-            name=campus_definition.name,
-        )
-        canonical_campus_ids.add(campus.pk)
-        if created:
-            counts["campuses_created"] += 1
-        elif _repair_row(
-            campus,
-            name=campus_definition.name,
-            active=campus_definition.active,
-        ):
-            counts["campuses_updated"] += 1
-
-        for college_definition in campus_definition.colleges:
-            college, college_created = _get_or_create_college(
-                campus=campus,
-                code=college_definition.code,
-                name=college_definition.name,
-            )
-            canonical_college_ids.add(college.pk)
-            if college_created:
-                counts["colleges_created"] += 1
-            elif _repair_row(
-                college,
-                name=college_definition.name,
-                active=college_definition.active,
-            ):
-                counts["colleges_updated"] += 1
-
-            for program_definition in college_definition.programs:
-                program, program_created = _get_or_create_program(
-                    college=college,
-                    code=program_definition.code,
-                    name=program_definition.name,
-                )
-                canonical_program_ids.add(program.pk)
-                if program_created:
-                    counts["programs_created"] += 1
-                elif _repair_row(
-                    program,
-                    name=program_definition.name,
-                    active=program_definition.active,
-                ):
-                    counts["programs_updated"] += 1
-
-    # Programs are safe to retire from new selection without rewriting historical
-    # StudentInventory foreign keys.
-    legacy_programs = tuple(
-        Program.objects.select_for_update(of=("self",))
-        .select_related("college__campus")
-        .filter(is_active=True)
-        .exclude(pk__in=canonical_program_ids)
-        .order_by("college__campus__code", "college__code", "code")
-    )
-    for program in legacy_programs:
-        program.is_active = False
-        program.save(update_fields=["is_active", "updated_at"])
-        counts["programs_deactivated"] += 1
-
-    # Colleges carry live GCO routing. Unknown active rows are only retired when
-    # doing so cannot invalidate an existing affiliation or responsibility.
-    legacy_colleges = tuple(
-        College.objects.select_for_update(of=("self",))
-        .select_related("campus")
-        .filter(is_active=True)
-        .exclude(pk__in=canonical_college_ids)
-        .order_by("campus__code", "code")
-    )
-    for college in legacy_colleges:
-        has_affiliations = StudentAffiliation.objects.filter(college=college).exists()
-        has_responsibility = CounselorResponsibility.objects.filter(college=college).exists()
-        if has_affiliations or has_responsibility:
-            raise CanonicalOrganizationSyncError(
-                "Cannot deactivate noncanonical College "
-                f"{college.campus.code}/{college.code} ({college.pk}) while it has "
-                "current Student affiliation or Counselor responsibility relationships. "
-                "Reconcile those operational relationships explicitly before retrying."
-            )
-        if Program.objects.filter(college=college, is_active=True).exists():
-            raise CanonicalOrganizationSyncError(
-                "Cannot deactivate noncanonical College "
-                f"{college.campus.code}/{college.code} ({college.pk}) while it still "
-                "contains active Programs."
-            )
-        college.is_active = False
-        college.save(update_fields=["is_active", "updated_at"])
-        counts["colleges_deactivated"] += 1
-
-    legacy_campuses = tuple(
-        Campus.objects.select_for_update()
-        .filter(is_active=True)
-        .exclude(pk__in=canonical_campus_ids)
-        .order_by("code")
-    )
-    for campus in legacy_campuses:
-        if College.objects.filter(campus=campus, is_active=True).exists():
-            raise CanonicalOrganizationSyncError(
-                "Cannot deactivate noncanonical Campus "
-                f"{campus.code} ({campus.pk}) while it still contains active Colleges. "
-                "Reconcile those Colleges and their operational relationships explicitly "
-                "before retrying."
-            )
-        campus.is_active = False
-        campus.save(update_fields=["is_active", "updated_at"])
-        counts["campuses_deactivated"] += 1
-
-    result = CanonicalOrganizationSyncResult(**counts)
-    if result.changed:
-        record_event(
-            context=AuditContext.system(),
-            action=ORGANIZATION_CATALOG_SYNCED,
-            outcome=AuditOutcome.SUCCESS,
-            metadata=result.metadata(),
-        )
-    return result
-
-
-def sync_organization_catalog() -> CanonicalOrganizationSyncResult:
-    """Reconcile the canonical UCN catalog while preserving historical identities."""
-
-    try:
-        with transaction.atomic():
-            return _sync_organization_catalog()
-    except CanonicalOrganizationSyncError:
-        raise
-    except (Campus.DoesNotExist, College.DoesNotExist, Program.DoesNotExist, IntegrityError) as exc:
-        raise CanonicalOrganizationSyncError(
-            "Canonical Organization catalog could not be synchronized safely. "
-            "Inspect existing Campus, College, and Program identities before retrying."
+        loader.check_consistent_history(connection)
+    except InconsistentMigrationHistory as exc:
+        raise CatalogInitializationError(
+            "Organization schema is incompatible; repair inconsistent migration history "
+            "through the reviewed recovery procedure before initialization/adoption."
         ) from exc
+    applied = set(loader.applied_migrations)
+    if (
+        CATALOG_MIGRATION not in applied
+        or any(key[0] == "organization" and key not in loader.disk_migrations for key in applied)
+        or any(leaf not in applied for leaf in loader.graph.leaf_nodes("organization"))
+    ):
+        raise CatalogInitializationError(
+            "Organization schema is incompatible; apply the reviewed catalog migrations with a "
+            "compatible release before initialization/adoption."
+        )
+
+
+def check_organization_catalog() -> CatalogInitializationResult:
+    require_catalog_schema()
+    receipt = CatalogInitialization.objects.filter(pk=1).first()
+    if receipt is None:
+        raise CatalogInitializationError(
+            "Catalog is not initialized. Explicitly seed an empty catalog or adopt existing data."
+        )
+    # A previously initialized empty catalog is deliberate history, never a reseed trigger.
+    return CatalogInitializationResult(receipt)
+
+
+def initialize_organization_catalog(
+    *, action: str, reference: str = "", allow_empty_adoption: bool = False
+) -> CatalogInitializationResult:
+    if action not in {"seed", "adopt", "check"}:
+        raise CatalogInitializationError("Choose seed, adopt or check explicitly.")
+    if (
+        not isinstance(reference, str)
+        or len(reference) > 160
+        or any(ord(c) < 32 or ord(c) == 127 for c in reference)
+    ):
+        raise CatalogInitializationError("Initialization reference must be bounded plain text.")
+    if allow_empty_adoption and action != "adopt":
+        raise CatalogInitializationError("Empty adoption is only available for explicit adoption.")
+    try:
+        with transaction.atomic():
+            require_catalog_schema()
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT pg_advisory_xact_lock(%s)", [CATALOG_INITIALIZATION_LOCK])
+            receipt = CatalogInitialization.objects.filter(pk=1).first()
+            if receipt is not None:
+                return CatalogInitializationResult(receipt)
+            if action == "check":
+                raise CatalogInitializationError("Catalog has no initialization/adoption receipt.")
+            populated = (
+                Campus.objects.exists() or College.objects.exists() or Program.objects.exists()
+            )
+            if action == "seed" and populated:
+                raise CatalogInitializationError(
+                    "Refusing seed: catalog contains existing data. Use explicit adoption; no "
+                    "existing rows will be reconciled or topped up."
+                )
+            if action == "adopt" and not populated and not allow_empty_adoption:
+                raise CatalogInitializationError("Empty adoption requires --allow-empty-adoption.")
+            campuses = colleges = programs = 0
+            if action == "seed":
+                for c in CANONICAL_CAMPUSES:
+                    campus = Campus.objects.create(code=c.code, name=c.name, is_active=c.active)
+                    campuses += 1
+                    for k in c.colleges:
+                        college = College.objects.create(
+                            campus=campus, code=k.code, name=k.name, is_active=k.active
+                        )
+                        colleges += 1
+                        for p in k.programs:
+                            validate_program_policy(
+                                p.academic_classification,
+                                p.year_level_policy_status,
+                                p.applicable_year_levels,
+                            )
+                            Program.objects.create(
+                                college=college,
+                                code=p.code,
+                                name=p.name,
+                                is_active=p.active,
+                                academic_classification=p.academic_classification,
+                                year_level_policy_status=p.year_level_policy_status,
+                                applicable_year_levels=p.applicable_year_levels,
+                            )
+                            programs += 1
+            receipt = CatalogInitialization.objects.create(
+                source="SEEDED" if action == "seed" else "ADOPTED",
+                baseline_version=BASELINE_VERSION if action == "seed" else None,
+                reference=reference.strip(),
+            )
+            result = CatalogInitializationResult(receipt, True, campuses, colleges, programs)
+            record_event(
+                context=AuditContext.system(),
+                action=ORGANIZATION_CATALOG_INITIALIZED
+                if action == "seed"
+                else ORGANIZATION_CATALOG_ADOPTED,
+                outcome=AuditOutcome.SUCCESS,
+                target_type="organization.cataloginitialization",
+                target_id=1,
+                metadata={**result.metadata(), "reference": receipt.reference},
+            )
+            return result
+    except (DatabaseError, ValidationError) as exc:
+        raise CatalogInitializationError(
+            "Catalog initialization failed atomically; inspect the synthetic/reviewed environment "
+            "before retrying. No reconciliation fallback is available."
+        ) from exc
+
+
+def sync_organization_catalog() -> CatalogInitializationResult:
+    """Deprecated seed-only fixture/CLI alias. Populated catalogs require explicit adoption."""
+    return initialize_organization_catalog(action="seed")

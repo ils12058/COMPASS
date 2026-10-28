@@ -330,7 +330,7 @@ export function ServiceDetailPage() {
             <Fact label="Flexible individual appointments">
               {service.is_active &&
               (service.booking_pathways?.includes(BookingPathway.FLEXIBLE_APPOINTMENT) ?? service.appointment_booking_enabled)
-                ? "Available for new bookings"
+                ? "Enabled; availability depends on Counselor schedules"
                 : (service.booking_pathways?.includes(BookingPathway.FLEXIBLE_APPOINTMENT) ?? service.appointment_booking_enabled)
                   ? "Configured · unavailable while the Service is inactive"
                   : "Not configured"}
@@ -338,14 +338,14 @@ export function ServiceDetailPage() {
             <Fact label="Fixed-date appointment slots">
               {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT)
                 ? service.is_active
-                  ? "Available when a slot is published"
+                  ? "Enabled; no published slot confirmed"
                   : "Configured · unavailable while the Service is inactive"
                 : "Not configured"}
             </Fact>
             <Fact label="Group sessions and events">
               {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION)
                 ? service.is_active
-                  ? "Available when an event is published"
+                  ? "Enabled; no published event confirmed"
                   : "Configured · unavailable while the Service is inactive"
                 : "Not configured"}
             </Fact>

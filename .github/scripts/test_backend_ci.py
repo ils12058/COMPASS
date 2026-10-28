@@ -228,6 +228,15 @@ class SelectionTests(unittest.TestCase):
         result = selected("be/compass/counseling/services.py")
         for name in (
             "test_counseling.py",
+            "test_handoff.py",
+            "test_handoff_configuration.py",
+            "test_handoff_concurrency.py",
+            "test_handoff_migrations.py",
+            "test_continuity.py",
+            "test_continuity_access.py",
+            "test_continuity_release_concurrency.py",
+            "test_continuity_contract.py",
+            "test_continuity_migrations.py",
             "test_counseling_context.py",
             "test_counseling_downstream_lifecycle.py",
             "test_routine_encounter_linking.py",

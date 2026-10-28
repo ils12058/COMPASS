@@ -1,5 +1,7 @@
 # ADR-092: E-Counseling media governance v2, artifact custody and disposition
 
+> Historical summary terminology and configuration below are superseded by the [CONT-1B Student Session Summary contract](../../../docs/cont-1b/README.md). Original decision text is retained as evidence.
+
 - Status: Proposed
 - Date: 2026-10-08
 - Refines: [ADR-026](ADR-026-ecounseling-media-consent.md) and

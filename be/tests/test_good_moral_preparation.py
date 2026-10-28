@@ -68,7 +68,7 @@ def test_gss_baseline_is_clerical_and_reference_only():
             (
                 "counseling.",
                 "routine_interviews.",
-                "shared_summaries.",
+                "student_session_summaries.",
                 "inventory.",
                 "ecounseling.",
             )

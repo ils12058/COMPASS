@@ -161,7 +161,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 5
     assert Designation.objects.count() == 2
-    assert Capability.objects.count() == 80
+    assert Capability.objects.count() == len(CAPABILITY_CODES)
     assert RoleCapability.objects.count() == 99
     assert DesignationCapability.objects.count() == 20
 
@@ -336,8 +336,8 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
         "assessment_records.view",
         "assessment_records.manage",
         "student_support.view",
-        "shared_summaries.view_assigned",
-        "shared_summaries.manage_assigned",
+        "student_session_summaries.view_assigned",
+        "student_session_summaries.manage_assigned",
         "routine_interviews.view_assigned",
         "routine_interviews.manage_assigned",
         "referrals.view",
@@ -386,8 +386,8 @@ def test_effective_capabilities_combine_role_designation_and_overrides():
     assert user.has_capability("appointments.manage")
     assert user.has_capability("counseling.view_assigned")
     assert user.has_capability("counseling.manage_assigned")
-    assert user.has_capability("shared_summaries.view_assigned")
-    assert user.has_capability("shared_summaries.manage_assigned")
+    assert user.has_capability("student_session_summaries.view_assigned")
+    assert user.has_capability("student_session_summaries.manage_assigned")
     assert user.has_capability("routine_interviews.view_assigned")
     assert user.has_capability("routine_interviews.manage_assigned")
     assert user.has_capability("referrals.view")

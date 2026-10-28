@@ -999,7 +999,7 @@ def test_runtime_keyring_configuration_boundary(configuration):
         environment["GUIDANCE_MESSAGE_ENCRYPTION_KEYS"] = "malformed synthetic key"
     if configuration == "reuse":
         environment["GUIDANCE_MESSAGE_ENCRYPTION_KEYS"] = environment[
-            "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS"
+            "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS"
         ]
     result = subprocess.run(
         [

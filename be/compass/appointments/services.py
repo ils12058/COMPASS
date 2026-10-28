@@ -34,6 +34,7 @@ from compass.inventory.services import (
 )
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
+from compass.organization.integrity import catalog_dependent_write
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import DeliveryMode, Service
@@ -880,6 +881,7 @@ def _allocate_reference(*, at: datetime) -> str:
     return f"APT-{year:04d}-{number:06d}"
 
 
+@catalog_dependent_write
 def create_student_appointment(
     *,
     student: User,

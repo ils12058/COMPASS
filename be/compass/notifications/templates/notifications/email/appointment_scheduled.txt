@@ -1,6 +1,11 @@
 {% extends "compass/email/base.txt" %}
 {% block content %}A COMPASS Appointment has been scheduled.
 
-Sign in to review its date, time, and any instructions before the session.
+{% if appointment_details %}{% include "notifications/partials/appointment_details.txt" %}{% else %}Sign in to review its date, time, and any instructions before the session.{% endif %}
+{% if action_url %}
+View Appointment in COMPASS: {{ action_url }}
+
+Sign in to review the latest details. The Appointment may have changed since this notice.
+{% endif %}
 
 For assistance, contact the Guidance and Counseling Office through an official university channel.{% endblock %}

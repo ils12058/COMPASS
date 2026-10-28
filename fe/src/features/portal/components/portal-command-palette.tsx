@@ -116,7 +116,14 @@ export function PortalCommandPalette() {
           type="button"
           aria-label="Go to a COMPASS feature"
           aria-keyshortcuts="Meta+K Control+K"
-          onClick={(event) => { if (hasOtherPortalModal(document, dialog.current)) event.preventDefault(); }}
+          onClick={(event) => {
+            if (hasOtherPortalModal(document, dialog.current)) {
+              event.preventDefault();
+              return;
+            }
+            // WebKit may leave focus on the prior control when a button is opened by pointer.
+            opener.current = trigger.current;
+          }}
           className="inline-flex min-h-11 min-w-11 items-center justify-center gap-2 rounded-md text-muted hover:bg-surface-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus sm:w-full sm:max-w-xs sm:justify-start sm:border sm:border-border sm:px-3"
         >
           <Search size={18} aria-hidden="true" />
@@ -128,13 +135,20 @@ export function PortalCommandPalette() {
         ref={dialog}
         className="max-w-xl p-4 sm:p-5"
         onOpenAutoFocus={(event) => {
-          opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          if (!opener.current?.isConnected) {
+            opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+          }
           event.preventDefault();
           dialog.current?.querySelector<HTMLInputElement>('[data-command-search]')?.focus();
         }}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
-          (opener.current?.isConnected ? opener.current : trigger.current)?.focus();
+          const target = opener.current?.isConnected ? opener.current : trigger.current;
+          opener.current = null;
+          // Defer until the native dialog has closed. WebKit otherwise moves focus back to the
+          // document after this callback even though Chromium retains the synchronous focus.
+          if (typeof window === "undefined") target?.focus();
+          else window.requestAnimationFrame(() => target?.focus());
         }}
       >
         <DialogTitle>Go to a COMPASS feature</DialogTitle>

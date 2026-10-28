@@ -144,7 +144,7 @@ export function OrganizationsSection({ draft, onChange, validationIssues = [] }:
           {transportationModes.map(([mode, label]) => {
             const selected = transportation.some((entry) => entry.mode === mode);
             return (
-              <label key={mode} className="flex min-h-9 items-center gap-3 text-sm font-medium text-ink">
+              <label key={mode} className="flex min-h-11 items-center gap-3 text-sm font-medium text-ink">
                 <input
                   type="checkbox"
                   className="h-4 w-4 accent-brand"

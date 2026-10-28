@@ -1,0 +1,38 @@
+{
+  "baseURL": "http://localhost:3124",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "visual-desktop-pending",
+      "passed": true
+    },
+    {
+      "name": "visual-desktop-empty",
+      "passed": true
+    },
+    {
+      "name": "visual-mobile-pending",
+      "passed": true
+    },
+    {
+      "name": "visual-narrow-enlarged",
+      "passed": true
+    },
+    {
+      "name": "visual-join-now",
+      "passed": true
+    },
+    {
+      "name": "visual-failed-actions",
+      "passed": true
+    },
+    {
+      "name": "visual-graduated",
+      "passed": true
+    },
+    {
+      "name": "visual-professional",
+      "passed": true
+    }
+  ]
+}

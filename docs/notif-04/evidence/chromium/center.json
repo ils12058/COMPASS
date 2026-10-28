@@ -1,0 +1,94 @@
+{
+  "baseURL": "http://localhost:3115",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "Student opens APPOINTMENT then reloads read history",
+      "passed": true
+    },
+    {
+      "name": "Student opens GROUP_SESSION then reloads read history",
+      "passed": true
+    },
+    {
+      "name": "Student opens GOOD_MORAL then reloads read history",
+      "passed": true
+    },
+    {
+      "name": "Student opens CALL_SLIP then reloads read history",
+      "passed": true
+    },
+    {
+      "name": "signed-out email link returns to APPOINTMENT after login",
+      "passed": true
+    },
+    {
+      "name": "signed-out email link returns to GROUP_SESSION after login",
+      "passed": true
+    },
+    {
+      "name": "signed-out email link returns to GOOD_MORAL after login",
+      "passed": true
+    },
+    {
+      "name": "signed-out email link returns to CALL_SLIP after login",
+      "passed": true
+    },
+    {
+      "name": "failed mark-read keeps unread/cache/destination; explicit retry succeeds",
+      "passed": true
+    },
+    {
+      "name": "mark-all failure leaves count and rows; successful retry reconciles both",
+      "passed": true
+    },
+    {
+      "name": "COUNSELOR Notification opens only backend-permitted Appointment",
+      "passed": true
+    },
+    {
+      "name": "GUIDANCE_SERVICES_STAFF Notification opens only backend-permitted Appointment",
+      "passed": true
+    },
+    {
+      "name": "former Counselor read history leads to safe record denial",
+      "passed": true
+    },
+    {
+      "name": "same-tab session reconciliation evicts account A Notification state",
+      "passed": true
+    },
+    {
+      "name": "session expiry on mark-read reconciles to login without old rows",
+      "passed": true
+    },
+    {
+      "name": "Notification Center empty",
+      "passed": true
+    },
+    {
+      "name": "Notification Center error",
+      "passed": true
+    },
+    {
+      "name": "Notification Center long desktop",
+      "passed": true
+    },
+    {
+      "name": "Notification Center long phone dark preference reduced motion",
+      "passed": true
+    },
+    {
+      "name": "unsupported target offers mark-read without invented navigation",
+      "passed": true
+    },
+    {
+      "name": "sign out then reopen emailed Appointment requires a fresh login",
+      "passed": true
+    },
+    {
+      "name": "loading Notification list announces a busy status before data",
+      "passed": true
+    }
+  ]
+}

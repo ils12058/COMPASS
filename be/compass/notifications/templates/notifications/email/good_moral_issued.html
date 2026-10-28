@@ -5,4 +5,5 @@
 <p>Your Good Moral certificate has been issued in COMPASS.</p>
 <p>Sign in to review your certificate and the actions available to you.</p>
 <p>If you need help accessing it, contact the Guidance and Counseling Office through an official university channel.</p>
-{% endblock %}
+{% if email_details %}{% include "notifications/partials/detail_rows.html" %}{% endif %}
+{% include "notifications/partials/operational_action.html" %}{% endblock %}

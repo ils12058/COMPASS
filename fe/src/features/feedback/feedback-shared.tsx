@@ -49,8 +49,14 @@ export function feedbackErrorCode(error: unknown): string | undefined {
   return error instanceof CompassApiError ? readApiErrorCode(error.body) : undefined;
 }
 
-// Submission-specific wording: generic server errors don't prove that no response was saved.
-// Existing form recovery clears its intent on this branch, so don't promise same-identity Retry.
+// Network failures can happen after the server commits, and a gateway timeout/server error
+// doesn't establish whether the one-time submission reached its transaction boundary.
+export function feedbackSubmissionOutcomeIsUncertain(error: unknown): boolean {
+  return !(error instanceof CompassApiError) || error.status === 408 || error.status >= 500;
+}
+
+// Submission-specific wording for deterministic errors. Ambiguous network/HTTP outcomes are
+// reconciled by the owning form before it chooses a next action.
 export function feedbackSubmissionErrorMessage(error: unknown, fallback: string): string {
   const code = feedbackErrorCode(error);
   // Keep authoritative known-code guidance, including the same-response recovery paths.
@@ -100,10 +106,14 @@ export function FeedbackSection({
 }) {
   // One part of the instrument; the form renders the parts inside one Panel.
   return (
-    <PanelSection title={title} titleId={"feedback-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-")} description={description}>
+    <PanelSection title={title} titleId={feedbackSectionHeadingId(title)} description={description}>
       <div className="space-y-5">{children}</div>
     </PanelSection>
   );
+}
+
+export function feedbackSectionHeadingId(title: string) {
+  return "feedback-" + title.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 }
 
 export function FeedbackFormSkeleton({ label }: { label: string }) {
@@ -197,29 +207,30 @@ export function FeedbackRadioGroup({
   required?: boolean;
   hint?: string;
 }) {
-  const grid = columns === 1 ? "grid-cols-1" : columns === 2 ? "grid-cols-1 sm:grid-cols-2" : columns === 3 ? "grid-cols-1 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6";
+  const grid = columns === 1 ? "grid-cols-1" : columns === 2 ? "grid-cols-1 sm:grid-cols-2" : columns === 3 ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-6";
   return (
-    <fieldset className="min-w-0" disabled={disabled}>
+    <fieldset className="min-w-0" disabled={disabled} aria-describedby={hint ? `${name}-hint` : undefined}>
       <legend className="text-sm font-semibold text-ink">
         {legend}{required ? <span aria-hidden="true" className="text-danger"> *</span> : null}
       </legend>
-      {hint ? <p className="mt-1 text-xs leading-5 text-muted">{hint}</p> : null}
+      {hint ? <p id={`${name}-hint`} className="mt-1 text-xs leading-5 text-muted">{hint}</p> : null}
       <div className={`mt-3 grid gap-x-4 gap-y-3 ${grid}`}>
         {choices.map((choice, index) => {
           const id = `${name}-${index}`;
+          const selected = value === choice.value;
           return (
-            <label key={String(choice.value)} htmlFor={id} className="flex min-h-10 items-start gap-2 text-sm leading-5 text-ink">
+            <label key={String(choice.value)} htmlFor={id} className={`flex min-h-11 min-w-0 items-start gap-2 rounded-sm px-2 py-2 text-sm leading-6 text-ink transition-colors hover:bg-surface-subtle focus-within:ring-2 focus-within:ring-focus ${selected ? "bg-brand-wash" : ""}`}>
               <input
                 id={id}
-                className="mt-1 h-4 w-4 shrink-0 accent-brand"
+                className="mt-1.5 h-4 w-4 shrink-0 accent-brand"
                 type="radio"
                 name={name}
                 value={String(choice.value)}
-                checked={value === choice.value}
+                checked={selected}
                 required={required && index === 0}
                 onChange={() => onChange(choice.value)}
               />
-              <span>{choice.label}</span>
+              <span className="min-w-0">{choice.label}</span>
             </label>
           );
         })}

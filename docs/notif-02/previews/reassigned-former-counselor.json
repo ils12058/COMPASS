@@ -1,0 +1,7 @@
+{
+  "event": "appointment.reassigned",
+  "reason": "recipient_minimal",
+  "suppressed": false,
+  "synthetic": true,
+  "transport": "not_sent"
+}

@@ -4,4 +4,5 @@
 {% block content %}
 <p>A COMPASS Call Slip issued to you has been withdrawn.</p>
 <p>Sign in to review the current Call Slip record. If you planned to act on it, contact the Guidance and Counseling Office through an official university channel to confirm what to do next.</p>
-{% endblock %}
+{% if email_details %}{% include "notifications/partials/detail_rows.html" %}{% endif %}
+{% include "notifications/partials/operational_action.html" %}{% endblock %}

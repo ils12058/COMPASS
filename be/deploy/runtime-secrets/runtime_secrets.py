@@ -6,6 +6,7 @@ import stat
 from pathlib import Path
 
 SECRET_FILES = {
+    "COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS": "counselor_handoff_summary_encryption_keys",
     "GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS": "guidance_followup_encryption_keys",
     "ASSESSMENT_RECORD_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
         "assessment_record_confidential_content_encryption_keys"
@@ -24,7 +25,7 @@ SECRET_FILES = {
     "PSGC_API_TOKEN": "psgc_api_token",
     "AUTH_TOTP_ENCRYPTION_KEY": "auth_totp_encryption_key",
     "ROUTINE_INTERVIEW_ENCRYPTION_KEYS": "routine_interview_encryption_keys",
-    "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS": "counseling_shared_summary_encryption_keys",
+    "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS": "student_session_summary_encryption_keys",
     "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS": (
         "referral_confidential_content_encryption_keys"
     ),
@@ -59,7 +60,7 @@ REQUIRED_SECRETS = {
     "S3_SECRET_ACCESS_KEY",
     "AUTH_TOTP_ENCRYPTION_KEY",
     "ROUTINE_INTERVIEW_ENCRYPTION_KEYS",
-    "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS",
+    "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS",
     "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
     "EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",
     "INVENTORY_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS",

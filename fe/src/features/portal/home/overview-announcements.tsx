@@ -21,7 +21,7 @@ export function OverviewAnnouncements() {
   const items = list.isError ? [] : list.data?.data.items ?? [];
 
   return (
-    <Panel aria-labelledby="overview-announcements-heading">
+    <Panel className="@container [overflow-wrap:anywhere]" aria-labelledby="overview-announcements-heading">
       <PanelHeader
         title="Announcements"
         titleId="overview-announcements-heading"
@@ -55,7 +55,7 @@ export function OverviewAnnouncements() {
             <li key={announcement.id}>
               <Link
                 href={`/announcements/${announcement.id}`}
-                className="group grid grid-cols-[3.5rem_minmax(0,1fr)] items-center gap-x-4 px-4 py-3 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-5"
+                className="group grid min-w-0 gap-3 px-4 py-3 transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus @min-[22rem]:grid-cols-[3.5rem_minmax(0,1fr)] @min-[22rem]:items-center @min-[22rem]:gap-x-4 sm:px-5"
               >
                 <AnnouncementDate value={announcement.published_at} />
                 <span className="min-w-0">

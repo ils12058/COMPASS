@@ -12,6 +12,7 @@ import pytest
 
 BACKEND = Path(__file__).parents[1]
 SECRET_NAMES = {
+    "counselor_handoff_summary_encryption_keys",
     "guidance_followup_encryption_keys",
     "guidance_message_encryption_keys",
     "assessment_record_confidential_content_encryption_keys",
@@ -28,7 +29,7 @@ SECRET_NAMES = {
     "psgc_api_token",
     "auth_totp_encryption_key",
     "routine_interview_encryption_keys",
-    "counseling_shared_summary_encryption_keys",
+    "student_session_summary_encryption_keys",
     "referral_confidential_content_encryption_keys",
     "exit_interview_confidential_content_encryption_keys",
     "inventory_confidential_content_encryption_keys",
@@ -86,6 +87,17 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
     )
     config = json.loads(result.stdout)
     _assert_realtime_receives_only_its_own_configuration(config, manifest)
+    for service in ("worker", "beat"):
+        assert (
+            config["services"][service]["environment"]["COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS"]
+            == ""
+        )
+        assert (
+            config["services"][service]["environment"][
+                "COUNSELOR_HANDOFF_SUMMARY_ENCRYPTION_KEYS_FILE"
+            ]
+            == ""
+        )
     if manifest == "compose.yaml":
         assert not config.get("secrets")
         assert not config["services"]["web"].get("secrets")
@@ -104,7 +116,7 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
         assert config["volumes"][key]["name"] == name
     assert config["networks"]["default"]["external"] is True
     assert config["networks"]["default"]["name"] == "compass_canonical_d86ddc08"
-    assert len(SECRET_NAMES) == 25
+    assert len(SECRET_NAMES) == 26
     assert set(config["secrets"]) == SECRET_NAMES
     for name, source in config["secrets"].items():
         assert source["file"] == str(secrets / name)
@@ -115,6 +127,7 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
             if service == "web"
             else SECRET_NAMES
             - {
+                "counselor_handoff_summary_encryption_keys",
                 "guidance_message_encryption_keys",
                 "guidance_followup_encryption_keys",
                 "assessment_record_confidential_content_encryption_keys",
@@ -152,9 +165,9 @@ def test_compose_delivery_contract_with_synthetic_sources(tmp_path, manifest):
             grant["target"] in {grant["source"], f"/run/secrets/{grant['source']}"}
             for grant in app["secrets"]
         )
-        assert "COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS" not in app["environment"]
-        assert app["environment"]["COUNSELING_SHARED_SUMMARY_ENCRYPTION_KEYS_FILE"] == (
-            "/run/secrets/counseling_shared_summary_encryption_keys"
+        assert "STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS" not in app["environment"]
+        assert app["environment"]["STUDENT_SESSION_SUMMARY_ENCRYPTION_KEYS_FILE"] == (
+            "/run/secrets/student_session_summary_encryption_keys"
         )
         assert "REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS" not in app["environment"]
         assert app["environment"]["REFERRAL_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS_FILE"] == (

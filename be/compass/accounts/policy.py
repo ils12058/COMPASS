@@ -70,7 +70,49 @@ DESIGNATION_DEFINITIONS = (
     ),
 )
 
+CATALOG_ELIGIBLE_ROLES = frozenset({"IT_ADMIN", "COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
+
 CAPABILITY_DEFINITIONS = (
+    CapabilityDefinition(
+        code="organization.catalog.manage",
+        name="Manage organization catalog",
+        description="Explicit delegated catalog definition authority; no default grants.",
+    ),
+    CapabilityDefinition(
+        code="counseling.handoff.manage_own",
+        name="Author own confidential Counselor Handoff",
+        description="Requires current original-author relationship and approved Handoff policy.",
+    ),
+    CapabilityDefinition(
+        code="counseling.handoff.read_received",
+        name="Read intended submitted Counselor Handoff",
+        description="Requires exact recipient and effective approved coverage and Handoff policy.",
+    ),
+    CapabilityDefinition(
+        code="counseling.continuity.view",
+        name="View authorized continuity metadata",
+        description="Continuity foundation; institutional policy and actor checks also required.",
+    ),
+    CapabilityDefinition(
+        code="counseling.continuity.request",
+        name="Request scoped case coverage",
+        description="Continuity foundation; institutional policy and actor checks also required.",
+    ),
+    CapabilityDefinition(
+        code="counseling.continuity.approve",
+        name="Decide scoped case coverage",
+        description="Continuity foundation; institutional policy and actor checks also required.",
+    ),
+    CapabilityDefinition(
+        code="counseling.continuity.revoke",
+        name="Revoke scoped case coverage",
+        description="Continuity foundation; institutional policy and actor checks also required.",
+    ),
+    CapabilityDefinition(
+        code="counseling.continuity.read_selected",
+        name="Future selected-source eligibility",
+        description="Continuity foundation; institutional policy and actor checks also required.",
+    ),
     CapabilityDefinition(
         code="guidance_followups.view",
         name="View assigned Guidance Follow-Ups",
@@ -253,19 +295,23 @@ CAPABILITY_DEFINITIONS = (
         ),
     ),
     CapabilityDefinition(
-        code="shared_summaries.view_self",
-        name="View own shared counseling summaries",
-        description="View published Counseling Shared Summaries belonging to the Student.",
+        code="student_session_summaries.view_self",
+        name="View own Student Session Summaries",
+        description="View published Student Session Summaries belonging to the Student.",
     ),
     CapabilityDefinition(
-        code="shared_summaries.view_assigned",
-        name="View assigned shared counseling summaries",
-        description="View Shared Summaries for Counseling Encounters assigned to the Counselor.",
+        code="student_session_summaries.view_assigned",
+        name="View assigned Student Session Summaries",
+        description=(
+            "View Student Session Summaries for Counseling Encounters assigned to the Counselor."
+        ),
     ),
     CapabilityDefinition(
-        code="shared_summaries.manage_assigned",
-        name="Manage assigned shared counseling summaries",
-        description="Draft and publish Shared Summaries for assigned Counseling Encounters.",
+        code="student_session_summaries.manage_assigned",
+        name="Manage assigned Student Session Summaries",
+        description=(
+            "Draft and publish Student Session Summaries for assigned Counseling Encounters."
+        ),
     ),
     CapabilityDefinition(
         code="inventory.view_self",
@@ -427,6 +473,13 @@ CAPABILITY_DEFINITIONS = (
         description="Correct clerical certificate facts and mark Good Moral requests ready.",
     ),
     CapabilityDefinition(
+        code="good_moral.verify_receipt",
+        name="Inspect Good Moral physical receipts",
+        description=(
+            "Personally inspect a physical Official Receipt for an exact Good Moral revision."
+        ),
+    ),
+    CapabilityDefinition(
         code="good_moral.issue",
         name="Issue Good Moral certificates",
         description="Issue source-controlled Good Moral certificates as an authorized Counselor.",
@@ -568,8 +621,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "counseling.manage_assigned",
             "student_support.view",
             "reports.view",
-            "shared_summaries.view_assigned",
-            "shared_summaries.manage_assigned",
+            "student_session_summaries.view_assigned",
+            "student_session_summaries.manage_assigned",
             "routine_interviews.view_assigned",
             "routine_interviews.manage_assigned",
             "referrals.view",
@@ -635,7 +688,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "ecounseling.view_self",
             "ecounseling.join_self",
             "ecounseling.consent_self",
-            "shared_summaries.view_self",
+            "student_session_summaries.view_self",
             "call_slips.view_self",
             "good_moral.view_self",
             "good_moral.request_self",
@@ -693,6 +746,15 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 # Dependencies constrain whether already-granted authority is effective. They never
 # create prerequisite authority or rewrite persisted grants/overrides.
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
+    "organization.catalog.manage": frozenset({"organization.structure.view"}),
+    "counseling.handoff.manage_own": frozenset(
+        {"counseling.continuity.view", "counseling.view_assigned"}
+    ),
+    "counseling.handoff.read_received": frozenset({"counseling.continuity.read_selected"}),
+    "counseling.continuity.request": frozenset({"counseling.continuity.view"}),
+    "counseling.continuity.approve": frozenset({"counseling.continuity.view"}),
+    "counseling.continuity.revoke": frozenset({"counseling.continuity.view"}),
+    "counseling.continuity.read_selected": frozenset({"counseling.continuity.view"}),
     "guidance_followups.manage": frozenset({"guidance_followups.view"}),
     "assessment_records.manage": frozenset({"assessment_records.view"}),
     "guidance_messages.manage_self": frozenset({"guidance_messages.view_self"}),
@@ -710,6 +772,7 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "good_moral.prepare": frozenset({"good_moral.view"}),
     "good_moral.initiate": frozenset({"good_moral.view"}),
     "good_moral.issue": frozenset({"good_moral.view"}),
+    "good_moral.verify_receipt": frozenset({"good_moral.view", "good_moral.prepare"}),
     "ecounseling.access_media_assigned": frozenset({"ecounseling.view_assigned"}),
     "counseling.manage_assigned": frozenset({"counseling.view_assigned"}),
     "referrals.manage": frozenset({"referrals.view"}),

@@ -1,0 +1,30 @@
+{
+  "baseURL": "http://localhost:3123",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "shell-layout-matrix-320-to-1440-normal-and-200-percent-text",
+      "passed": true
+    },
+    {
+      "name": "student-home-shell-context-at-320px-200-percent-text",
+      "passed": true
+    },
+    {
+      "name": "header-actions-drawer-overlays-account-and-notifications",
+      "passed": true
+    },
+    {
+      "name": "counselor-mobile-drawer-long-navigation-scrolls",
+      "passed": true
+    },
+    {
+      "name": "counselor-workspace-desktop-dock-expanded-and-collapsed",
+      "passed": true
+    },
+    {
+      "name": "command-palette-keeps-unsaved-form-navigation-guard",
+      "passed": true
+    }
+  ]
+}

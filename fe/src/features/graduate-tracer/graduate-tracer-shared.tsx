@@ -85,7 +85,7 @@ export function GraduateTracerSection({
   // One part of the official survey; the form or response renders the parts inside one Panel.
   // The section is a jump-link target, so it takes focus without drawing a ring.
   return (
-    <PanelSection id={id} tabIndex={-1} title={title} titleId={headingId} className="scroll-mt-6 focus:outline-none">
+    <PanelSection id={id} tabIndex={-1} title={title} titleId={headingId} className="scroll-mt-24 focus:outline-none focus-visible:ring-2 focus-visible:ring-focus">
       <div className="space-y-6">{children}</div>
     </PanelSection>
   );

@@ -115,3 +115,78 @@ def test_corr_lifecycle_migrations_are_refused_without_their_reviewed_pin(module
     monkeypatch.delitem(guard.REVIEWED_MIGRATIONS, f"{app_label}/{migration_name}")
     with pytest.raises(guard.Refused):
         guard.validate_operations([(migration, False)])
+
+
+def test_org1_cutover_is_not_implicitly_approved_for_routine_deployment():
+    module_name = "compass.organization.migrations.0002_program_policy_and_catalog_initialization"
+    migration = importlib.import_module(module_name).Migration(
+        "0002_program_policy_and_catalog_initialization", "organization"
+    )
+    # ORG-1 authorizes source implementation, not a real institutional migration rollout.
+    # Do not silently add the data migration to REVIEWED_MIGRATIONS.
+    with pytest.raises(guard.Refused, match="coordinated procedure"):
+        guard.validate_operations([(migration, False)])
+
+
+@pytest.mark.parametrize(
+    "action,applied,receipt,populated,allowed",
+    [
+        ("check", True, True, True, True),
+        ("check", True, True, False, True),
+        ("check", True, False, True, False),
+        ("check", False, False, True, False),
+        ("adopt", False, False, True, True),
+        ("seed", False, False, False, True),
+        ("seed", False, False, True, False),
+        ("adopt", False, False, False, False),
+        ("check", False, True, True, False),
+        ("INVALID", True, True, True, False),
+    ],
+)
+def test_catalog_preflight_requires_deliberate_matching_plan(
+    action, applied, receipt, populated, allowed
+):
+    kwargs = {"migration_applied": applied, "receipt_exists": receipt, "populated": populated}
+    if allowed:
+        guard.validate_catalog_initialization(action, **kwargs)
+    else:
+        with pytest.raises(guard.Refused):
+            guard.validate_catalog_initialization(action, **kwargs)
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    "receipt,action,allowed",
+    [
+        (True, "check", True),
+        (False, "check", False),
+        (False, "adopt", True),
+    ],
+)
+def test_catalog_preflight_reads_real_disposable_database_without_adopting(
+    receipt, action, allowed, monkeypatch, capsys
+):
+    from django.test import override_settings
+
+    from compass.organization.bootstrap import initialize_organization_catalog
+    from compass.organization.models import Campus, CatalogInitialization
+    from tests.test_organization_catalog import _student, _sync_policy
+
+    _sync_policy()
+    _student("preflight@synthetic.invalid")
+    if receipt:
+        initialize_organization_catalog(action="seed")
+    else:
+        Campus.objects.create(code="OFFICIAL", name="Preserve this catalog")
+    before = list(Campus.objects.order_by("pk").values())
+    monkeypatch.setenv("ORG_CATALOG_ACTION", action)
+    # Simulated destination mode; connection/keyrings remain tests.settings and localhost:56548.
+    with override_settings(APP_ENV="live-staging", STAGING_SEED_ENABLED=False):
+        if allowed:
+            guard.inspect_database()
+            assert '"canonical_database": true' in capsys.readouterr().out
+        else:
+            with pytest.raises(guard.Refused, match="explicitly approved"):
+                guard.inspect_database()
+    assert list(Campus.objects.order_by("pk").values()) == before
+    assert CatalogInitialization.objects.exists() == receipt

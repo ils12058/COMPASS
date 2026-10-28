@@ -16,8 +16,9 @@ import {
 } from "@/lib/api/generated/good-moral/good-moral";
 import type { GoodMoralOperationalDetailResponse } from "@/lib/api/generated/model";
 
-export function GoodMoralPreparationSection({ item, onRefresh }: {
+export function GoodMoralPreparationSection({ item, onRefresh, confirmed = true }: {
   item: GoodMoralOperationalDetailResponse;
+  confirmed?: boolean;
   onRefresh: () => Promise<GoodMoralOperationalDetailResponse | undefined>;
 }) {
   const client = useQueryClient();
@@ -32,7 +33,7 @@ export function GoodMoralPreparationSection({ item, onRefresh }: {
   });
 
   async function confirm() {
-    if (!reviewedAt) return;
+    if (!reviewedAt || !confirmed || !item.actions.can_prepare || reviewedAt !== item.actions.request_version) return;
     setError(null);
     try {
       await prepare.mutateAsync(reviewedAt);
@@ -53,9 +54,12 @@ export function GoodMoralPreparationSection({ item, onRefresh }: {
   return <>
     <GoodMoralSection title="Certificate preparation">
       <p className="text-sm text-muted">{item.status === "READY_FOR_ISSUANCE"
-        ? "This request is ready for a Counselor's final review and issuance."
-        : "Check the certificate details and optional receipt facts before marking this request ready."}</p>
-      {item.actions.can_prepare ? <Button className="mt-4" onClick={() => {
+        ? "This request is marked ready for a Counselor’s final review. Any receipt blocker below must be resolved before issuance."
+        : item.receipt_identity?.ledger_mode === "ACTIVE"
+          ? "Review the certificate details and physical receipt inspection before marking this request ready."
+          : "Check the certificate details and optional receipt facts before marking this request ready."}</p>
+      {item.receipt_inspection?.blocker && item.receipt_identity?.ledger_mode !== "DORMANT" ? <p role="status" className="mt-3 text-sm text-muted">Resolve the receipt review above before preparation or issuance.</p> : null}
+      {item.actions.can_prepare && confirmed ? <Button className="mt-4" onClick={() => {
         setError(null);
         setCompleted(false);
         setReviewedAt(item.actions.request_version);
@@ -68,7 +72,8 @@ export function GoodMoralPreparationSection({ item, onRefresh }: {
       confirmLabel="Mark ready"
       pendingLabel="Marking ready…"
       pending={prepare.isPending}
-      error={null}
+      confirmDisabled={!confirmed || reviewedAt !== item.actions.request_version || !item.actions.can_prepare}
+      error={reviewedAt && reviewedAt !== item.actions.request_version ? "This request changed. Close and review the latest details." : null}
       onConfirm={() => void confirm()}
       onOpenChange={(open) => { if (!open) setReviewedAt(null); }}
       onCloseAutoFocus={(event) => { if (completed) { event.preventDefault(); focusHeading("good-moral-counselor-detail-heading"); } }}

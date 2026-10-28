@@ -10,6 +10,26 @@ COMPASS-LIVE-RESET-1 completed on **2026-10-17**. Initial baseline installation 
 separate reset; subsequent deployments **reuse its initialized storage**. No reset, import, seed,
 credential issuance, authentication reset, task purge or data-volume deletion belongs in this flow.
 
+## ORG-1 compatibility boundary — no operational cutover authorized
+
+The new Organization migration is intentionally not in `REVIEWED_MIGRATIONS`. Its data backfill and
+constraints require a separately reviewed coordinated procedure; normal deployment preflight
+continues to refuse it. No workflow was dispatched or live destination inspected by ORG-1.
+
+After that separate approval, the workflow's `organization_catalog_action` is `check` by default.
+An approved first adoption can deliberately select `adopt`; `seed` is only for a genuinely empty
+catalog. The orchestrator passes this bounded choice as `ORG_CATALOG_ACTION`. The deployment script
+retains its stop/restart fences, applies reviewed migrations, invokes the explicit initializer,
+and checks its receipt before restarting applications. There is no recurring canonical sync.
+Fresh installation is separate from normal deployment's existing initialized-account/volume gates;
+choosing seed does not bypass those gates.
+
+Retire old web, workers, Beat, CLI tools and external scheduled writers before adoption. Old images
+still have destructive writers and Python policy readers. A receipt cannot stop them. After adoption,
+retain policy columns/history and use a compatible rollback image or roll forward; never restart
+the old reconciler. See [ORG-1 recovery](../../docs/org-1/deployment-and-recovery.md). Historical
+resource/account observations below remain dated evidence, not reverified operational state.
+
 ## Verified destination and stable resources
 
 Read-only inspection on 2026-10-17 confirmed:

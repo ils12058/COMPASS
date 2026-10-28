@@ -169,7 +169,7 @@ def _counselor(student: StudentSpec) -> str:
 
 def seed_secondary_stories(session: SeedSession) -> None:
     # Two compact Routine stories add a second pending evaluation and prove ADR-088 with no
-    # Inventory. They have no Shared Summary; an Encounter need not have one.
+    # Inventory. They have no Student Session Summary; an Encounter need not have one.
     for key, intake, finalize in (
         ("bg_38", NO_INVENTORY_INTAKE, False),
         ("bg_27", CAREER_INTAKE, True),

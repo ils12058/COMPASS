@@ -25,6 +25,7 @@ from compass.audit.actions import IDENTITY_POLICY_SYNCED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.organization.integrity import catalog_dependent_write
 
 RENAMED_LEGACY_CAPABILITY_CODES = ("organization.view", "services.view")
 RETIRED_CAPABILITY_CODES = (
@@ -84,6 +85,7 @@ def _sync_definition(model, definition) -> tuple[object, str]:
     return obj, "unchanged"
 
 
+@catalog_dependent_write
 def sync_identity_policy() -> IdentityPolicySyncResult:
     """Reconcile canonical roles, designations, capabilities, and baseline grants.
 
@@ -93,6 +95,11 @@ def sync_identity_policy() -> IdentityPolicySyncResult:
     counts = {field_name: 0 for field_name in IdentityPolicySyncResult.__dataclass_fields__}
 
     with transaction.atomic():
+        if Capability.objects.filter(code__startswith="shared_summaries.").exists():
+            raise IdentityPolicySyncError(
+                "Run accounts migration 0002_student_session_summary_capabilities "
+                "before policy sync."
+            )
         if Capability.objects.filter(code__in=RENAMED_LEGACY_CAPABILITY_CODES).exists():
             raise IdentityPolicySyncError(
                 "Legacy capability rows remain. Run accounts migration "

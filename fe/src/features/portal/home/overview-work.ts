@@ -9,6 +9,7 @@ import { presentWork } from "@/features/work-queue/work-queue-presentation";
 import { hasStudentActions } from "@/features/student-actions/student-actions-access";
 import { useStudentActions } from "@/features/student-actions/student-actions-data";
 import { presentStudentAction } from "@/features/student-actions/student-actions-presentation";
+import type { WorkItem } from "@/lib/api/generated/model";
 
 export type OverviewAttentionItem = {
   id: string;
@@ -19,18 +20,31 @@ export type OverviewAttentionItem = {
   actionLabel: string;
   onRetry?: () => void;
   isError?: boolean;
+  priorityLabel?: string | null;
   // Internal ranking facts; never shown (ADR-090).
   rank: AttentionRank;
 };
 
 export type OverviewAttentionData = {
   items: OverviewAttentionItem[];
+  // The GSS Home needs the canonical projection in its backend order. The ranked attention list
+  // below remains the presentation used by the other overview compositions.
+  canonicalWorkItems: WorkItem[];
+  workGeneratedAt?: string;
+  workPageSize?: number;
+  workHasConfirmedData: boolean;
+  workIsPending: boolean;
+  workIsError: boolean;
+  workError: unknown;
   isPending: boolean;
   isVisible: boolean;
   staleNotices: string[];
   viewAllWork?: boolean;
+  workHasNext?: boolean;
   viewAllActions?: boolean;
   isCaughtUp?: boolean;
+  retryActions?: () => void;
+  retryWork?: () => void;
 };
 
 export function shouldShowOverviewAttention(
@@ -96,6 +110,7 @@ export function useOverviewAttention(
     for (const item of workData?.items ?? []) {
       items.push({
         id: item.id, ...presentWork(item, workData?.generated_at), subject: item.student.display_name,
+        priorityLabel: item.priority === "TIME_SENSITIVE" ? "Time sensitive" : null,
         rank: {
           priority: item.priority === "TIME_SENSITIVE" ? AttentionPriority.TIME_SENSITIVE : AttentionPriority.ACTION_REQUIRED,
           // Backend priority decides urgency; a non-urgent due date must not jump the queue.
@@ -176,11 +191,21 @@ export function useOverviewAttention(
 
   return {
     items: workEnabled || studentEnabled ? items : rankAttention(items),
+    canonicalWorkItems: workData?.items ?? [],
+    workGeneratedAt: workData?.generated_at,
+    workPageSize: workData?.page_size,
+    workHasConfirmedData: workData !== undefined,
+    workIsPending: workEnabled && work.isPending,
+    workIsError: workEnabled && work.isError,
+    workError: work.error,
     isPending,
     isVisible: workEnabled || studentEnabled || isVisible,
     viewAllWork: workEnabled,
+    workHasNext: workData?.has_next,
     viewAllActions: studentEnabled,
     isCaughtUp: (workEnabled && work.isSuccess && workData?.items.length === 0) || (studentEnabled && studentActions.isSuccess && studentData?.items.length === 0),
     staleNotices: Array.from(new Set(staleNotices)),
+    retryActions: studentEnabled && studentActions.isError ? () => void studentActions.refetch() : undefined,
+    retryWork: workEnabled && work.isError ? () => void work.refetch() : undefined,
   };
 }
