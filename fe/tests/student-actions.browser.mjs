@@ -48,7 +48,7 @@ for (const width of [320, 375, 390, 430, 768, 1440]) {
     await shown(page.getByRole("heading", { name: "My actions", exact: true }));
     await shown(page.getByText(titles[7], { exact: true }));
     const main = page.getByRole("main");
-    assert.deepEqual(await main.locator("li > div > p:first-child").allTextContents(), titles);
+    assert.deepEqual(await main.locator("li h3").allTextContents(), titles);
     assert.equal(await main.getByRole("link", { name: "Read new Guidance message" }).getAttribute("href"), `/portal/messages/${threadIds.office}`);
     for (const path of ["/portal/call-slips/", "/portal/routine-interviews/", "/portal/exit-interviews/", "/portal/e-counseling/"]) {
       assert.ok(await main.locator(`a[href^="${path}"]`).count());

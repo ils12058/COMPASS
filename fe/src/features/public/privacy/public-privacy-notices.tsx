@@ -33,11 +33,14 @@ export function PublicPrivacyNotices({ page }: { page: number }) {
 
   if (result.items.length === 0) {
     return (
-      <Notice>
-        {page === 1
-          ? "No public COMPASS privacy notice is currently published."
-          : "No privacy notices on this page."}
-      </Notice>
+      <>
+        <Notice>
+          {result.page === 1
+            ? "No public COMPASS privacy notice is currently published."
+            : "No privacy notices on this page."}
+        </Notice>
+        <PublicPagination page={result.page} hasNext={result.has_next} buildHref={(nextPage) => `/privacy?page=${nextPage}`} />
+      </>
     );
   }
 

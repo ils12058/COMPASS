@@ -13,7 +13,7 @@ function render(props) {
 }
 
 function isDisabled(html, name) {
-  const button = html.match(new RegExp(`<button\\b([^>]*)>${name}</button>`));
+  const button = html.match(new RegExp(`<button\\b([^>]*aria-label="${name}"[^>]*)>`));
   assert.ok(button, `${name} is rendered`);
   return /\bdisabled=""/.test(button[1]);
 }
@@ -21,8 +21,8 @@ function isDisabled(html, name) {
 // The component is a plain function, so calling it reaches the Previous and Next handlers.
 function controls(props) {
   const nav = CanonicalPagination({ label: "Accounts pagination", ...props });
-  const buttons = [nav.props.children].flat().filter((child) => child?.props?.onClick);
-  return Object.fromEntries(buttons.map((button) => [button.props.children, button.props]));
+  const buttons = [nav.props.children.props.children].flat().filter((child) => child?.props?.onClick);
+  return Object.fromEntries(buttons.map((button) => [button.props["aria-label"], button.props]));
 }
 
 test("a single page of results renders no pager", () => {

@@ -10,11 +10,11 @@ export function presentStudentAction(item: StudentActionItem) {
   let row: { title: string; detail: string; href: string; actionLabel: string };
   switch (item.kind) {
     case StudentActionKind.INVENTORY_START:
-      row = { title: "Individual Inventory", detail: "No current Academic Year Inventory has been started.", href: "/portal/inventory", actionLabel: "Start Inventory" }; break;
+      row = { title: "Individual Inventory", detail: "You haven't started this year's form.", href: "/portal/inventory", actionLabel: "Start Inventory" }; break;
     case StudentActionKind.INVENTORY_CONTINUE:
-      row = { title: "Individual Inventory", detail: "Your current Academic Year Inventory is still in draft.", href: "/portal/inventory/current", actionLabel: "Continue Inventory" }; break;
+      row = { title: "Individual Inventory", detail: "Your form for this academic year is still a draft.", href: "/portal/inventory/current", actionLabel: "Continue Inventory" }; break;
     case StudentActionKind.ROUTINE_INTAKE:
-      row = { title: "Routine Interview", detail: "Your intake is ready to complete.", href: `/portal/routine-interviews/${id}`, actionLabel: "Complete Routine Interview" }; break;
+      row = { title: "Routine Interview", detail: "Your form is ready to complete.", href: `/portal/routine-interviews/${id}`, actionLabel: "Complete Routine Interview" }; break;
     case StudentActionKind.EXIT_INTERVIEW_START:
       row = { title: "Exit Interview", detail: "Your Exit Interview is ready to start.", href: "/portal/exit-interviews", actionLabel: "Start Exit Interview" }; break;
     case StudentActionKind.EXIT_INTERVIEW_CONTINUE:
@@ -30,7 +30,7 @@ export function presentStudentAction(item: StudentActionItem) {
     case StudentActionKind.ECOUNSELING_JOIN:
       row = { title: "E-Counseling", detail: "Your online Counseling session is available to join now.", href: `/portal/e-counseling/${id}`, actionLabel: "Join E-Counseling" }; break;
     case StudentActionKind.GUIDANCE_MESSAGE_UNREAD:
-      row = { title: "Guidance Messages", detail: item.conversation_kind === "COUNSELING" ? "You have unread Counseling communication." : "You have unread Guidance communication.", href: `/portal/messages/${id}`, actionLabel: "Read new Guidance message" }; break;
+      row = { title: "Guidance Messages", detail: "You have unread messages.", href: `/portal/messages/${id}`, actionLabel: "Read new Guidance message" }; break;
   }
   return { ...row, timing, priorityLabel: item.priority === "TIME_SENSITIVE" ? "Time sensitive" : null };
 }

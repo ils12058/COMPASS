@@ -105,13 +105,16 @@ export function AnnouncementList(props: AnnouncementListProps) {
 
   if (result.items.length === 0) {
     return frame(
-      <PanelMessage action={search ? (
-        <Link href={indexHref(undefined, requestedOrdering)} className={buttonVariants({ variant: "secondary" })}>Clear search</Link>
-      ) : undefined}>
-        {search ? "No announcements match this search." : readsAccount
-          ? "No announcements are available right now."
-          : "No public announcements are available right now."}
-      </PanelMessage>,
+      <>
+        <PanelMessage action={search ? (
+          <Link href={indexHref(undefined, requestedOrdering)} className={buttonVariants({ variant: "secondary" })}>Clear search</Link>
+        ) : undefined}>
+          {result.page > 1 ? "No announcements on this page." : search ? "No announcements match this search." : readsAccount
+            ? "No announcements are available right now."
+            : "No public announcements are available right now."}
+        </PanelMessage>
+        {!isPreview ? <PublicPagination page={result.page} hasNext={result.has_next} buildHref={(nextPage) => indexHref(search, requestedOrdering, nextPage)} /> : null}
+      </>,
     );
   }
 

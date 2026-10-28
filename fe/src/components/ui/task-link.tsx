@@ -10,7 +10,7 @@ export function TaskLink({ href, actionLabel, title, subject, detail, timing, pr
 }) {
   const contextId = useId();
   return <Link href={href} aria-label={actionLabel} aria-describedby={contextId}
-    className={cn("group flex min-h-11 min-w-0 items-center gap-4 px-4 py-3 text-sm transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-5", className)}>
+    className={cn("group flex min-h-11 min-w-0 items-center gap-2 px-3 py-3 text-sm transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:gap-4 sm:px-5", className)}>
     <div className="min-w-0 flex-1 [overflow-wrap:anywhere]">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <h3 className="font-semibold leading-6 text-ink group-hover:text-brand">{title}</h3>
