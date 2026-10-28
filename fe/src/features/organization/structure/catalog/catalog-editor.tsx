@@ -72,7 +72,7 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
   const dirty = !saved && JSON.stringify(draft) !== JSON.stringify(initialDraft(intent));
   useUnsavedChangesGuard({ dirty, message: "Discard the unsaved Catalog change?" });
   const { confirmDiscard } = useUnsavedNavigation();
-  const title = intent.mode === "create" ? `Add ${kind}` : intent.mode === "rename" ? `Rename ${kind}` : intent.mode === "policy" ? "Edit Program policy" : `${draft.active === "active" ? "Activate" : "Deactivate"} ${kind}`;
+  const title = intent.mode === "create" ? `Add ${kind}` : intent.mode === "rename" ? `Rename ${kind}` : intent.mode === "policy" ? "Edit Program settings" : `${draft.active === "active" ? "Activate" : "Deactivate"} ${kind}`;
 
   function close() { if (!busy && (!dirty || confirmDiscard())) onClose(); }
   async function authority() {
@@ -102,7 +102,7 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
       if (!mounted.current) return;
       if (context && !fresh) throw new Error("Missing current target");
       if (fresh && target.data && fresh.record.resource_version !== target.data.record.resource_version) {
-        setNotice("This record changed. Your input is preserved. Compare the latest saved values below, then review again."); return;
+        setNotice("This information was updated. Your input is preserved. Compare the latest saved values below, then review again."); return;
       }
       if (retiring && (!preview?.can_deactivate || preview.resource_version !== fresh?.record.resource_version)) {
         setError("Deactivation is unavailable. Review the latest impact and resolve its blockers."); return;
@@ -131,8 +131,8 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
       if (!mounted.current) return;
       if (confirmed) { await finishSave(confirmed); return; }
       await reload();
-      setError("The result could not be confirmed from the record and its change history. This attempt remains blocked. Check again before starting another change.");
-    } catch { if (mounted.current) setError("The result could not be confirmed. Keep this attempt blocked until the record and history can be reviewed."); }
+      setError("We couldn't confirm whether this change was saved. Check its status before making another change.");
+    } catch { if (mounted.current) setError("We couldn't confirm whether this change was saved. Check its status before making another change."); }
     finally { if (mounted.current) setReading(false); }
   }
   async function submit() {
@@ -154,7 +154,7 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
         setNotice(catalogErrorMessage(caught));
       } else if (uncertainCatalogOutcome(caught) && !denied && !(caught instanceof Error && caught.message === "Catalog authority changed")) {
         setUnconfirmed(command);
-        setNotice("The response was interrupted. Checking the record and change history; this request will not be repeated.");
+        setNotice("Checking whether your change was saved.");
         await reconcile(command);
       } else {
         setError(catalogErrorMessage(caught));
@@ -173,12 +173,12 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
     // No retained command and no mutation call after MFA.
   }
   return <Panel className="mb-5" aria-labelledby="catalog-editor-heading">
-    <PanelHeader title={<span ref={heading} tabIndex={-1} className="outline-none" id="catalog-editor-heading">{title}</span>} description={intent.mode === "create" ? "Enter the official institutional definition." : "Review the current record before changing it."} />
+    <PanelHeader title={<span ref={heading} tabIndex={-1} className="outline-none" id="catalog-editor-heading">{title}</span>} description={intent.mode === "create" ? undefined : "Review the current record before changing it."} />
     <PanelBody>
       {saved ? <Notice tone={refreshFailed ? "warning" : "success"} role="status" action={<>
         {refreshFailed ? <Button variant="secondary" disabled={busy} onClick={() => { setReading(true); void finishSave(saved).finally(() => setReading(false)); }}>Retry refresh</Button> : null}
         <Button variant="secondary" disabled={busy} onClick={onClose}>Done</Button>
-      </>}>{refreshFailed ? "The change was saved, but the latest details could not be loaded." : `The change was saved. Latest record: ${saved.record.name} · Version ${saved.record.resource_version}.`}</Notice> : <>
+      </>}>{refreshFailed ? "The change was saved, but the latest details could not be loaded." : "Changes saved."}</Notice> : <>
         {notice ? <Notice className="mb-4" role="status">{notice}</Notice> : null}
         {error ? <Notice className="mb-4" tone="danger" role="alert">{error}</Notice> : null}
         {denied ? <Notice tone="warning" action={<Button variant="secondary" onClick={onClose}>Close editor</Button>}>Catalog management access or your sign-in changed. This editor is unavailable.</Notice> : <>
@@ -186,7 +186,7 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
           {confirmedTarget ? <div className="mb-5 space-y-1 break-words text-sm" aria-label="Latest saved record">
             <h3 className="font-semibold">{intent.mode === "create" ? "Fixed parent" : target.isError ? "Last confirmed record" : "Latest saved record"}</h3>
             <p>{confirmedTarget.record.name} · <span className="font-mono">{confirmedTarget.record.code}</span></p>
-            <p>{parentLabel(confirmedTarget)} · {confirmedTarget.record.is_active ? "Active" : "Inactive"} · Version {confirmedTarget.record.resource_version}</p>
+            <p>{parentLabel(confirmedTarget)} · {confirmedTarget.record.is_active ? "Active" : "Inactive"}</p>
             {confirmedTarget.kind === "program" ? <p>{academicProgramLabel(confirmedTarget.record)}</p> : null}
           </div> : null}
           <form onSubmit={(event) => void prepare(event)} className="space-y-5" aria-label={title}>
@@ -206,17 +206,17 @@ export function CatalogEditor({ intent, knownIds, canManageRelationships, onClos
               </Select></div> : null}
               {intent.mode === "policy" || (intent.mode === "create" && kind === "program") ? <CatalogPolicyFields draft={draft} onChange={setDraft} disabled={busy} /> : null}
               {intent.mode === "rename" ? <p className="text-sm text-muted">The new official name may appear in current linked views. Finalized historical records keep their saved facts; documents are not regenerated.</p> : null}
-              {intent.mode === "status" && draft.active === "active" ? <p className="text-sm text-muted">Parent records must be active. Programs need complete academic policy. Descendants are not activated automatically, and historical assignments are not restored automatically.</p> : null}
-              <div className="grid gap-2"><Label htmlFor="catalog-basis">Institutional basis/reference</Label><Input id="catalog-basis" required maxLength={160} value={draft.basis} aria-describedby="catalog-basis-help" onChange={(event) => setDraft({ ...draft, basis: event.target.value })} /><p id="catalog-basis-help" className="text-sm text-muted">Record the reason or reference, up to 160 characters. This does not replace institutional approval.</p></div>
+              {intent.mode === "status" && draft.active === "active" ? <p className="text-sm text-muted">Parent records must be active. Programs need a classification and year levels. Descendants are not activated automatically, and historical assignments are not restored automatically.</p> : null}
+              <div className="grid gap-2"><Label htmlFor="catalog-basis">Change note</Label><Input id="catalog-basis" required maxLength={160} placeholder={intent.mode === "rename" ? `Corrected the ${kind} name.` : intent.mode === "status" ? `${draft.active === "active" ? "Activated" : "Deactivated"} the ${kind}.` : intent.mode === "policy" ? "Updated Program settings." : `Added a ${kind}.`} value={draft.basis} aria-describedby="catalog-basis-help" onChange={(event) => setDraft({ ...draft, basis: event.target.value })} /><p id="catalog-basis-help" className="text-sm text-muted">A short note about this change, up to 160 characters. It will appear in the change history.</p></div>
             </fieldset>
             {retiring ? impact.isPending ? <TableSkeleton label="Loading deactivation impact…" /> : impact.isError ? <Notice tone="warning" action={<Button variant="secondary" onClick={() => void impact.refetch()}>Refresh impact</Button>}>The current impact could not be confirmed. Deactivation is unavailable.</Notice> : impact.data ? <><CatalogImpact impact={impact.data} canManageRelationships={canManageRelationships} /><Button variant="secondary" disabled={busy} onClick={() => { setReview(null); void impact.refetch(); }}>Refresh impact</Button></> : null : null}
-            {unconfirmed ? <Notice tone="warning" action={<Button variant="secondary" disabled={busy} onClick={() => void reconcile(unconfirmed)}>Check saved state</Button>}>This attempt has an uncertain result. Only reads are available; the mutation cannot be repeated here.</Notice> : null}
+            {unconfirmed ? <Notice tone="warning" action={<Button variant="secondary" disabled={busy} onClick={() => void reconcile(unconfirmed)}>Check saved state</Button>}>The save is still unconfirmed. Check saved state before making another change.</Notice> : null}
             <div className="flex flex-wrap justify-end gap-2"><Button variant="secondary" disabled={busy} onClick={close}>Cancel</Button><Button ref={reviewButton} type="submit" disabled={busy || Boolean(unconfirmed) || (Boolean(context) && (!target.data || target.isError || target.isFetching)) || (retiring && (!impact.data?.can_deactivate || impact.isError || impact.isFetching))}>{reading ? "Loading latest details…" : "Review change"}</Button></div>
           </form>
         </>}
       </>}
     </PanelBody>
-    <ConsequentialActionDialog open={Boolean(review)} title={`Review: ${title}`} confirmLabel={title === "Edit Program policy" ? "Save Program policy" : title} pendingLabel="Saving Catalog change…" pending={saving} confirmDisabled={reading || denied} variant={retiring ? "danger" : "primary"} error={null} onOpenChange={(open) => { if (!open) setReview(null); }} onConfirm={() => void submit()} onCloseAutoFocus={(event) => { event.preventDefault(); reviewButton.current?.focus(); }}>
+    <ConsequentialActionDialog open={Boolean(review)} title={`Review: ${title}`} confirmLabel={title === "Edit Program settings" ? "Save Program settings" : title} pendingLabel="Saving Catalog change…" pending={saving} confirmDisabled={reading || denied} variant={retiring ? "danger" : "primary"} error={null} onOpenChange={(open) => { if (!open) setReview(null); }} onConfirm={() => void submit()} onCloseAutoFocus={(event) => { event.preventDefault(); reviewButton.current?.focus(); }}>
       {review ? <CatalogReview command={review} parent={intent.mode === "create" ? target.data : undefined} impact={retiring ? impact.data : undefined} /> : null}
     </ConsequentialActionDialog>
     <StepUpDialog setupInNewTab reviewAfterVerification open={Boolean(stepUp)} requirement={stepUp ?? "verify"} onOpenChange={(open) => { if (!open) setStepUp(null); }} onVerified={afterVerification} />

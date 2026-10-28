@@ -36,8 +36,8 @@ for (const [name, role, capabilities, enter, edit, relationships] of [
   assert.equal(commands.includes("/portal/organization/responsibilities"),enter && relationships);
   assert.equal(commands.includes("/portal/organization/student-affiliations"),enter && relationships);
 });
-for (const [levels,status,result] of [[[1,3,5],"CONFIGURED","1st, 3rd and 5th Year"],[[1,2,3,4],"CONFIGURED","1st–4th Year"],[[1,3],"CONFIGURED","1st and 3rd Year"],[[10],"CONFIGURED","10th Year"],[null,"PENDING_POLICY","Year Level policy pending"]]) test(`Actual Year Levels: ${JSON.stringify(levels)}`,()=>assert.equal(levelsLabel(levels,status),result));
-test("Unknown classification is explicit, never inferred from a Program name",()=>assert.equal(academicProgramLabel({...program, name:"Bachelor of Something",academic_classification:null,year_level_policy_status:"PENDING_POLICY",applicable_year_levels:null}),"Classification pending · Year Level policy pending"));
+for (const [levels,status,result] of [[[1,3,5],"CONFIGURED","1st, 3rd and 5th Year"],[[1,2,3,4],"CONFIGURED","1st–4th Year"],[[1,3],"CONFIGURED","1st and 3rd Year"],[[10],"CONFIGURED","10th Year"],[null,"PENDING_POLICY","Year levels not set"]]) test(`Actual Year Levels: ${JSON.stringify(levels)}`,()=>assert.equal(levelsLabel(levels,status),result));
+test("Unknown classification is explicit, never inferred from a Program name",()=>assert.equal(academicProgramLabel({...program, name:"Bachelor of Something",academic_classification:null,year_level_policy_status:"PENDING_POLICY",applicable_year_levels:null}),"Classification not set · Year levels not set"));
 for (const [kind,parent,operation] of [["campus",null,"createCampus"],["college",{kind:"campus",record:campus},"createCollege"],["program",{kind:"college",record:college},"createProgram"]]) test(`Strict ${kind} creation preserves fixed ancestry and explicit inactive state`,()=>{
  const intent={mode:"create",kind,...(parent?{parent}:{})};const draft={...initialDraft(intent),name:"New definition",code:" new_code ",active:"inactive",basis:"Approved memo"};
  assert.equal(draftError(intent,draft),null);const command=makeCommand(intent,draft);assert.equal(command.operation,operation);assert.equal(command.data.is_active,false);assert.equal(command.data.code,"NEW_CODE");
@@ -59,7 +59,7 @@ test("Rename contains only name, basis and reviewed resource version",()=>{
 });
 test("Normalized rename no-op has honest feedback",()=>{const i={mode:"rename",target};assert.match(draftError(i,{...initialDraft(i),name:` ${program.name} `,basis:"Memo"},target),/has not changed/);});
 test("Policy no-op is refused, pending sends null rather than an empty set",()=>{
- const i={mode:"policy",target};const d={...initialDraft(i),basis:"Memo"};assert.match(draftError(i,d,target),/has not changed/);const data=makeCommand(i,{...d,policyStatus:"PENDING_POLICY"},target).data;assert.equal(data.applicable_year_levels,null);assert.equal(data.expected_resource_version,3);
+ const i={mode:"policy",target};const d={...initialDraft(i),basis:"Memo"};assert.match(draftError(i,d,target),/have not changed/);const data=makeCommand(i,{...d,policyStatus:"PENDING_POLICY"},target).data;assert.equal(data.applicable_year_levels,null);assert.equal(data.expected_resource_version,3);
 });
 test("Status actions carry explicit desired state and current version without preview authority",()=>{
  const i={mode:"status",target};const c=makeCommand(i,{...initialDraft(i),basis:"Memo"},target);assert.deepEqual(c.data,{basis:"Memo",expected_resource_version:3,is_active:false});assert.equal("can_deactivate" in c.data,false);
