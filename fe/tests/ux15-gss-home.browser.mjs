@@ -114,7 +114,7 @@ await check("GSS restricted account omits the managed schedule and its request",
   await hidden(schedulePanel(page));
   assert.equal(requests.some((request) => request.pathname === "/api/v1/appointments"), false, "No managed Appointment request is sent without appointments.manage");
   assert.equal(await page.getByRole("link", { name: "Manage Appointments", exact: true }).count(), 0);
-  await shown(page.getByRole("link", { name: "Guidance operations", exact: true }));
+  await shown(page.locator('section[aria-labelledby="gss-destinations-heading"]').getByRole("link", { name: "Guidance operations", exact: true }));
   await screenshot(page, "after-gss-restricted-capabilities");
 });
 

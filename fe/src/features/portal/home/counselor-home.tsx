@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -45,18 +46,17 @@ export function getCounselorAgendaParams(today: string) {
 
 function destinationList(destinations: CounselorHomeDestination[]) {
   return (
-    <ul className="divide-y divide-border">
+    <ul className="grid @min-[32rem]:grid-cols-2">
       {destinations.map((destination) => (
-        <li key={destination.href}>
+        <li key={destination.href} className="border-b border-border">
           <Link
             href={destination.href}
-            className="group flex min-h-11 items-center justify-between gap-3 px-4 py-3 text-sm transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus sm:px-5"
+            className="group flex min-h-11 items-center justify-between gap-3 py-3 pr-4 text-sm transition-colors hover:bg-surface-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-focus"
           >
             <span className="min-w-0 [overflow-wrap:anywhere]">
               <span className="block font-semibold text-brand group-hover:underline">{destination.label}</span>
-              <span className="mt-0.5 block leading-6 text-muted">{destination.description}</span>
             </span>
-            <span aria-hidden="true" className="shrink-0">→</span>
+            <ArrowRight aria-hidden="true" className="h-4 w-4 shrink-0" />
           </Link>
         </li>
       ))}
@@ -85,8 +85,9 @@ function CounselorAgenda({ user, today }: { user: UserSummary; today: string }) 
   const todayHref = `/portal/appointments/my?status=${AppointmentStatus.SCHEDULED}&from=${today}&to=${today}`;
 
   return (
-    <Panel aria-labelledby="counselor-agenda-heading">
+    <Panel className="border-0 bg-transparent" aria-labelledby="counselor-agenda-heading">
       <PanelHeader
+        className="border-border px-0 sm:px-0"
         title={<span className="[overflow-wrap:anywhere]">{"Today's appointments"}</span>}
         titleId="counselor-agenda-heading"
         description={INSTITUTION_TIME_ZONE_LABEL}
@@ -151,7 +152,7 @@ function CounselorAgenda({ user, today }: { user: UserSummary; today: string }) 
 
 function CounselorAgendaRow({ appointment }: { appointment: AppointmentResponse }) {
   return (
-    <li className="min-w-0 px-4 py-3.5 sm:px-5">
+    <li className="min-w-0 py-3.5">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
         <p className="font-semibold tabular-nums text-ink">
           <time dateTime={appointment.starts_at}>{formatAppointmentTime(appointment.starts_at)}</time>
@@ -259,8 +260,8 @@ function CounselorDestinations({ user }: { user: UserSummary }) {
   const destinations = getCounselorHomeDestinations(user);
   if (destinations.length === 0) return null;
   return (
-    <Panel aria-labelledby="counselor-continuation-heading">
-      <PanelHeader title="Continue in your workspace" titleId="counselor-continuation-heading" />
+    <Panel className="@container border-0 bg-transparent" aria-labelledby="counselor-continuation-heading">
+      <PanelHeader className="border-border px-0 sm:px-0" title="Continue in your workspace" titleId="counselor-continuation-heading" />
       {destinationList(destinations)}
     </Panel>
   );
@@ -270,8 +271,8 @@ function HeadGuidanceDestinations({ user }: { user: UserSummary }) {
   const destinations = getHeadGuidanceHomeDestinations(user);
   if (destinations.length === 0) return null;
   return (
-    <Panel aria-labelledby="head-guidance-oversight-heading">
-      <PanelHeader title="Authorized oversight" titleId="head-guidance-oversight-heading" />
+    <Panel className="@container border-0 bg-transparent" aria-labelledby="head-guidance-oversight-heading">
+      <PanelHeader className="border-border px-0 sm:px-0" title="Authorized oversight" titleId="head-guidance-oversight-heading" />
       {destinationList(destinations)}
     </Panel>
   );
@@ -294,10 +295,10 @@ export function CounselorHome({
   return (
     <div className="@container grid min-w-0 gap-5">
       <div className={hasAgenda
-        ? "grid min-w-0 items-start gap-5 @min-[58rem]:grid-cols-[minmax(0,0.9fr)_minmax(0,1.3fr)]"
+        ? "grid min-w-0 items-start gap-5 @min-[58rem]:grid-cols-[minmax(0,1.3fr)_minmax(0,0.9fr)]"
         : "grid min-w-0 gap-5"}>
-        <CounselorAgenda user={user} today={today} />
         <CounselorMyWork data={attention} />
+        <CounselorAgenda user={user} today={today} />
       </div>
 
       <div className="grid min-w-0 items-start gap-5 @min-[64rem]:grid-cols-[minmax(0,1fr)_minmax(0,22rem)]">
