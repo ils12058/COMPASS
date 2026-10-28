@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelBody, PanelHeader, PanelMessage, PanelSection } from "@/components/ui/panel";
@@ -27,6 +28,7 @@ function sessionStatusLabel(status: string): string {
 
 export function GroupSessionDetailPage({ sessionId }: { sessionId: string }) {
   const { user } = usePortalSession();
+  const search = useSearchParams();
   const sessionQuery = useGroupSessionsGetDetail(sessionId, { query: { retry: false } });
   const session = sessionQuery.data?.data;
   const isStudent = user.role === "STUDENT";
@@ -68,8 +70,11 @@ export function GroupSessionDetailPage({ sessionId }: { sessionId: string }) {
     );
   }
 
-  const backHref = isStudent ? "/portal/group-sessions/my" : "/portal/group-sessions/manage";
-  const backLabel = isStudent ? "My Registrations" : "Manage Sessions";
+  const fromBrowse = isStudent && search.get("from") === "discover";
+  const contextId = search.get("service_id");
+  const validContext = contextId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(contextId);
+  const backHref = fromBrowse ? "/portal/group-sessions/discover" + (validContext ? `?service_id=${encodeURIComponent(contextId)}` : "") : isStudent ? "/portal/group-sessions/my" : "/portal/group-sessions/manage";
+  const backLabel = fromBrowse ? "Browse Sessions" : isStudent ? "My Registrations" : "Manage Sessions";
 
   return (
     <>

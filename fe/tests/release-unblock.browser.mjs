@@ -159,6 +159,7 @@ await check("fixed-slot API failure is visible and Retry restores the list", "/p
     return async ({ pathname, reply }) => {
       if (pathname === "/api/v1/auth/session") { await reply(sessionFor({ ...account("STUDENT"), capabilities: [...account("STUDENT").capabilities, "services.catalog.view"] })); return true; }
       if (pathname === "/api/v1/services") { await reply(pageOf([{ ...service, booking_pathways: ["FIXED_DATE_SLOT"] }])); return true; }
+      if (pathname === `/api/v1/services/${service.id}`) { await reply({ ...service, booking_pathways: ["FIXED_DATE_SLOT"] }); return true; }
       if (pathname === `/api/v1/services/${service.id}/slots/bookable`) { attempts++; await reply(attempts === 1 ? { error: { code: "unavailable", message: "Internal detail" } } : [], attempts === 1 ? 500 : 200); return true; }
       return false;
     };
@@ -177,6 +178,7 @@ await check("fixed-slot API failure is visible and Retry restores the list", "/p
     role: "STUDENT", device: "phone", handler: async ({ pathname, method, reply }) => {
       if (pathname === "/api/v1/auth/session") { await reply(sessionFor({ ...account("STUDENT"), capabilities: [...account("STUDENT").capabilities, "services.catalog.view"] })); return true; }
       if (pathname === "/api/v1/services") { await reply(pageOf([{ ...service, booking_pathways: ["FIXED_DATE_SLOT"] }])); return true; }
+      if (pathname === `/api/v1/services/${service.id}`) { await reply({ ...service, booking_pathways: ["FIXED_DATE_SLOT"] }); return true; }
       if (pathname === `/api/v1/services/${service.id}/slots/bookable`) { await reply(booked ? [] : [{ id: "release-slot", provider_name: "Example Counselor", starts_at: event.starts_at, ends_at: event.ends_at, delivery_mode: "IN_PERSON" }]); return true; }
       if (pathname === `/api/v1/services/${service.id}/slots/release-slot/book` && method === "POST") { booked = true; await reply({ appointment_id: "release-appointment", reference_code: "SYNTHETIC-ONLY" }, 201); return true; }
       return false;

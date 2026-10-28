@@ -25,6 +25,9 @@ import { Notice } from "@/components/ui/notice";
 import { useServicesGet, useServicesList } from "@/lib/api/generated/services/services";
 import { FloatingListTools, ListToolField } from "@/components/ui/floating-list-tools";
 import { FilterField } from "@/components/ui/filter-toolbar";
+import { CompassApiError } from "@/lib/api/errors";
+import { invalidateStudentScheduling } from "@/features/appointments/student-scheduling-invalidation";
+import { bookingResultIsUncertain, hasActiveRegistrationForSession, studentSchedulingScope } from "@/features/appointments/booking-recovery";
 import { groupSessionsError } from "@/features/group-sessions/group-sessions-shared";
 import { Select } from "@/components/ui/select";
 import { PanelSection } from "@/components/ui/panel";
@@ -57,6 +60,8 @@ import {
   getGroupSessionsGetMetricsQueryKey,
   getGroupSessionsListRegistrationsQueryKey,
   getGroupSessionsGetMyRegistrationsQueryKey,
+  getGroupSessionsGetDetailQueryKey,
+  groupSessionsGetMyRegistrations,
 } from "@/lib/api/generated/group-sessions/group-sessions";
 import {
   DeliveryMode,
@@ -1293,16 +1298,23 @@ export function ServiceGroupSessionsStudentPanel({
   service?: ServiceResponse;
 }) {
   const queryClient = useQueryClient();
+  const { user } = usePortalSession();
+  const viewerScope = studentSchedulingScope(user);
+  const canRegister = user.role === "STUDENT" && user.student_lifecycle_status === "CURRENT" && user.capabilities.includes("appointments.manage_self");
   const [registeringId, setRegisteringId] = useState<string | null>(null);
+  const [registeringSession, setRegisteringSession] = useState<StudentGroupSessionResponse | null>(null);
   const [cancellingSession, setCancellingSession] = useState<StudentGroupSessionResponse | null>(
     null
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [confirmedId, setConfirmedId] = useState<string | null>(null);
+  const [uncertain, setUncertain] = useState<StudentGroupSessionResponse | null>(null);
+  const [refreshFailed, setRefreshFailed] = useState(false);
 
   const discoveryParams = service ? { service_id: service.id } : undefined;
   const discoverQuery = useGroupSessionsDiscover(discoveryParams, {
-    query: { retry: false },
+    query: { retry: false, queryKey: [...getGroupSessionsDiscoverQueryKey(discoveryParams), viewerScope] },
   });
 
   const registerMutation = useGroupSessionsRegister();
@@ -1310,22 +1322,62 @@ export function ServiceGroupSessionsStudentPanel({
 
   const sessions = discoverQuery.data?.data ?? [];
 
-  const handleRegister = async (session: StudentGroupSessionResponse) => {
-    setErrorMessage(null);
-    setSuccessMessage(null);
+  const refreshAfterRegistration = async (sessionId: string) => {
+    const results = await Promise.allSettled([
+      invalidateStudentScheduling(queryClient),
+      queryClient.invalidateQueries({ queryKey: getGroupSessionsGetMyRegistrationsQueryKey() }, { throwOnError: true }),
+      queryClient.invalidateQueries({ queryKey: getGroupSessionsGetDetailQueryKey(sessionId) }, { throwOnError: true }),
+    ]);
+    setRefreshFailed(results.some(result => result.status === "rejected"));
+  };
+
+  const checkRegistration = async (session: StudentGroupSessionResponse) => {
     setRegisteringId(session.id);
     try {
-      await registerMutation.mutateAsync({ sessionId: session.id });
-      await queryClient.invalidateQueries({
-        queryKey: getGroupSessionsDiscoverQueryKey(discoveryParams),
-      });
-      await queryClient.invalidateQueries({
-        queryKey: getGroupSessionsGetMyRegistrationsQueryKey(),
-      });
+      const records = await groupSessionsGetMyRegistrations();
+      if (hasActiveRegistrationForSession(records.data, session.id)) {
+        setConfirmedId(session.id);
+        setSuccessMessage(`You are registered for "${session.title}".`);
+        setErrorMessage(null);
+        setUncertain(null);
+        await refreshAfterRegistration(session.id);
+      } else {
+        setErrorMessage("Your registration is not shown yet. The result is still unconfirmed; check My Registrations again before trying to register.");
+      }
+    } catch {
+      setErrorMessage("The registration result could not be checked. Try checking again or open My Registrations.");
+    } finally {
+      setRegisteringId(null);
+    }
+  };
+
+  const handleRegister = async (session: StudentGroupSessionResponse) => {
+    if (!canRegister || registeringId || uncertain) return;
+    setErrorMessage(null);
+    setSuccessMessage(null);
+    setConfirmedId(null);
+    setRegisteringId(session.id);
+    try {
+      try {
+        const result = (await registerMutation.mutateAsync({ sessionId: session.id })).data;
+        if (!result || result.session_id !== session.id || result.status !== "REGISTERED") throw new Error("Unconfirmed registration response");
+      } catch (err: unknown) {
+        if (bookingResultIsUncertain(err)) {
+          setRegisteringSession(null);
+          setUncertain(session);
+          setErrorMessage("We could not confirm your registration. Check your registrations before trying again.");
+          await checkRegistration(session);
+        } else if (err instanceof CompassApiError) {
+          setRegisteringSession(null);
+          setErrorMessage(err.message || "Registration could not be completed.");
+          void discoverQuery.refetch();
+        }
+        return;
+      }
+      setRegisteringSession(null);
+      setConfirmedId(session.id);
       setSuccessMessage(`Successfully registered for "${session.title}"!`);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Failed to register for session.";
-      setErrorMessage(msg);
+      await refreshAfterRegistration(session.id);
     } finally {
       setRegisteringId(null);
     }
@@ -1343,6 +1395,8 @@ export function ServiceGroupSessionsStudentPanel({
       await queryClient.invalidateQueries({
         queryKey: getGroupSessionsGetMyRegistrationsQueryKey(),
       });
+      setConfirmedId(null);
+      setRefreshFailed(false);
       setSuccessMessage(`Your registration for "${cancellingSession.title}" has been cancelled.`);
       setCancellingSession(null);
     } catch (err: unknown) {
@@ -1357,7 +1411,7 @@ export function ServiceGroupSessionsStudentPanel({
       titleId="group-sessions-student-heading"
     >
       <div className="flex flex-col gap-4">
-        {errorMessage && (
+        {errorMessage && !uncertain && !registeringSession && !cancellingSession && (
           <Notice role="alert" tone="danger" className="mb-2">
             {errorMessage}
           </Notice>
@@ -1365,9 +1419,13 @@ export function ServiceGroupSessionsStudentPanel({
         {successMessage && (
           <Notice role="status" tone="success" className="mb-2">
             {successMessage}
+            {confirmedId ? <p className="mt-2"><Link className="font-semibold underline" href={`/portal/group-sessions/${confirmedId}?from=discover${service ? `&service_id=${encodeURIComponent(service.id)}` : ""}`}>View session</Link> · <Link className="font-semibold underline" href="/portal/group-sessions/my">My Registrations</Link></p> : null}
           </Notice>
         )}
 
+        {refreshFailed ? <Notice role="alert" action={<Button variant="secondary" onClick={() => { if (confirmedId) void refreshAfterRegistration(confirmedId); }}>Refresh</Button>}>Your registration was confirmed, but the latest information could not be refreshed.</Notice> : null}
+        {uncertain ? <Notice role="alert" tone="warning" action={<><Button variant="secondary" disabled={Boolean(registeringId)} onClick={() => void checkRegistration(uncertain)}>Check registration</Button> <Link className="font-semibold underline" href="/portal/group-sessions/my">My Registrations</Link></>}>The result for {uncertain.title} is unconfirmed. {errorMessage} Checking only reads your registrations; it does not submit another registration.</Notice> : null}
+        {!canRegister ? <p className="text-sm text-muted">Registration is available to current students with booking access. You can still view your registrations.</p> : null}
         {service ? <Link href="/portal/group-sessions/my" className="inline-flex min-h-11 items-center text-sm font-semibold text-brand underline underline-offset-4">My Registrations</Link> : null}
 
         {discoverQuery.isPending ? (
@@ -1393,12 +1451,13 @@ export function ServiceGroupSessionsStudentPanel({
                   <div>
                     <h4 className="font-semibold text-ink text-base">
                       <Link
-                        href={`/portal/group-sessions/${sess.id}`}
+                        href={`/portal/group-sessions/${sess.id}?from=discover${service ? `&service_id=${encodeURIComponent(service.id)}` : ""}`}
                         className="underline decoration-brand-line underline-offset-4 hover:decoration-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
                       >
                         {sess.title}
                       </Link>
                     </h4>
+                    {!service ? <p className="mt-1 text-sm text-muted">Service: {sess.service_name}{user.capabilities.includes("services.catalog.view") ? <> · <Link className="font-semibold text-brand underline" href={`/portal/group-sessions/discover?service_id=${encodeURIComponent(sess.service_id)}`}>See Service options</Link></> : null}</p> : null}
                     {sess.description && (
                       <p className="mt-1 text-sm text-muted line-clamp-2">{sess.description}</p>
                     )}
@@ -1411,19 +1470,19 @@ export function ServiceGroupSessionsStudentPanel({
                           <CheckCircle className="h-3.5 w-3.5" />
                           You are registered
                         </span>
-                        <Button
+                        {user.capabilities.includes("appointments.manage_self") ? <Button
                           className="min-h-8 px-2.5 py-1 text-xs"
                           variant="secondary"
                           onClick={() => setCancellingSession(sess)}
                         >
                           Cancel Registration
-                        </Button>
+                        </Button> : null}
                       </div>
-                    ) : sess.can_register ? (
+                    ) : sess.can_register && canRegister ? (
                       <Button
                         className="min-h-8 px-3 py-1 text-xs"
-                        onClick={() => handleRegister(sess)}
-                        disabled={registeringId === sess.id}
+                        onClick={() => { setErrorMessage(null); setRegisteringSession(sess); }}
+                        disabled={Boolean(registeringId) || Boolean(uncertain) || confirmedId === sess.id}
                       >
                         {registeringId === sess.id ? "Registering..." : "Register"}
                       </Button>
@@ -1474,6 +1533,17 @@ export function ServiceGroupSessionsStudentPanel({
           </div>
         )}
       </div>
+
+      <ConsequentialActionDialog
+        open={registeringSession !== null}
+        title="Register for this group session?"
+        confirmLabel="Register"
+        pendingLabel="Registering…"
+        pending={Boolean(registeringId)}
+        error={errorMessage}
+        onOpenChange={(open) => { if (!open) { setRegisteringSession(null); setErrorMessage(null); } }}
+        onConfirm={() => { if (registeringSession) void handleRegister(registeringSession); }}
+      ><p>Register for <strong>{registeringSession?.title}</strong> on {registeringSession ? formatInstitutionalDateTime(registeringSession.starts_at) : ""}? Registration depends on eligibility and remaining seats.</p></ConsequentialActionDialog>
 
       {/* CONFIRM REGISTRATION CANCELLATION */}
       <ConsequentialActionDialog

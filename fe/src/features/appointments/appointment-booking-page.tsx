@@ -1,7 +1,7 @@
 "use client";
 
-import { CalendarDays } from "lucide-react";
-import { PageActionLink } from "@/components/ui/page-action";
+import { studentSchedulingScope } from "./booking-recovery";
+import { StudentBookingPathways } from "./student-booking-pathways";
 import { AppointmentFixedDateBooking } from "./appointment-fixed-date-booking";
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 
@@ -32,6 +32,8 @@ import {
 import {
   appointmentsCreateMy,
   getAppointmentsCreateMyMutationKey,
+  getAppointmentsListBookingServicesQueryKey,
+  getAppointmentsListEligibleCounselorsQueryKey,
   getAppointmentsListBookableSlotsQueryKey,
   getAppointmentsListMyQueryKey,
   useAppointmentsListBookableSlots,
@@ -101,6 +103,8 @@ export function BookingDeliveryModeChoice({
 }
 
 function BookingWorkspace() {
+  const { user } = usePortalSession();
+  const viewerScope = studentSchedulingScope(user);
   const queryClient = useQueryClient();
   const [serviceSearch, setServiceSearch] = useState("");
   const [servicePage, setServicePage] = useState(1);
@@ -123,7 +127,7 @@ function BookingWorkspace() {
       page: servicePage,
       page_size: 10,
     },
-    { query: { retry: false } },
+    { query: { retry: false, queryKey: [...getAppointmentsListBookingServicesQueryKey(), viewerScope, serviceSearch, servicePage] } },
   );
 
   const counselors = useAppointmentsListEligibleCounselors(
@@ -131,7 +135,7 @@ function BookingWorkspace() {
       service_id: service?.id ?? "",
       delivery_mode: deliveryMode || DeliveryMode.IN_PERSON,
     },
-    { query: { enabled: Boolean(service && deliveryMode), retry: false } },
+    { query: { enabled: Boolean(service && deliveryMode), retry: false, queryKey: [...getAppointmentsListEligibleCounselorsQueryKey(), viewerScope, service?.id ?? "", deliveryMode] } },
   );
 
   const counselorItems = counselors.data?.data.items ?? [];
@@ -152,6 +156,7 @@ function BookingWorkspace() {
     {
       query: {
         enabled: Boolean(service && deliveryMode && counselorId && date),
+        queryKey: [...getAppointmentsListBookableSlotsQueryKey(), viewerScope, service?.id ?? "", counselorId, deliveryMode, date],
         retry: false,
         ...appointmentSlotFreshness,
       },
@@ -343,8 +348,9 @@ function BookingWorkspace() {
       <AppointmentsPageHeading
         headingId="book-appointment-heading"
         title="Book appointment"
-        action={<PageActionLink href="/portal/appointments/book?pathway=FIXED_DATE_SLOT" icon={CalendarDays} label="Scheduled slots" variant="secondary" />}
       />
+
+      <StudentBookingPathways />
 
       <p className="-mt-3 mb-5 text-sm text-muted">
         Service <span aria-hidden="true">→</span> Delivery <span aria-hidden="true">→</span> Counselor <span aria-hidden="true">→</span> Time <span aria-hidden="true">→</span> Review
@@ -601,14 +607,18 @@ function BookingWorkspace() {
 // spent review never lingers with a disabled Book button.
 function BookingCompletion({ booked, onDone }: { booked: BookedAppointment | null; onDone: () => void }) {
   const viewLink = useRef<HTMLAnchorElement>(null);
+  const { user } = usePortalSession();
+  const canView = user.capabilities.includes("appointments.view_self");
   return (
     <Dialog open={booked !== null} onOpenChange={(open) => { if (!open) onDone(); }}>
       {booked ? (
         <DialogContent
           closeLabel="Close and start a new booking"
           onOpenAutoFocus={(event) => {
-            event.preventDefault();
-            viewLink.current?.focus();
+            if (viewLink.current) {
+              event.preventDefault();
+              viewLink.current.focus();
+            }
           }}
           onCloseAutoFocus={(event) => {
             // The review that opened this is gone; a new booking starts at the Service search.
@@ -629,9 +639,9 @@ function BookingCompletion({ booked, onDone }: { booked: BookedAppointment | nul
           </DialogDescription>
           <div className="mt-6 flex flex-wrap justify-end gap-2">
             <Button variant="secondary" onClick={onDone}>Done</Button>
-            <Link ref={viewLink} href={`/portal/appointments/${booked.id}`} className={buttonVariants({ variant: "primary" })}>
+            {canView ? <Link ref={viewLink} href={`/portal/appointments/${booked.id}`} className={buttonVariants({ variant: "primary" })}>
               View appointment
-            </Link>
+            </Link> : <p className="text-sm text-muted">Your account cannot open appointment details.</p>}
           </div>
         </DialogContent>
       ) : null}
@@ -639,7 +649,7 @@ function BookingCompletion({ booked, onDone }: { booked: BookedAppointment | nul
   );
 }
 
-export function AppointmentBookingPage({ scheduledSlots = false }: { scheduledSlots?: boolean } = {}) {
+export function AppointmentBookingPage({ scheduledSlots = false, serviceId, initialSearch, initialPage }: { scheduledSlots?: boolean; serviceId?: string; initialSearch?: string; initialPage?: string } = {}) {
   const { user } = usePortalSession();
   const access = getAppointmentAccess(user);
   if (!access.canBook) {
@@ -659,13 +669,13 @@ export function AppointmentBookingPage({ scheduledSlots = false }: { scheduledSl
           ) : undefined}
         >
           {access.isStudent
-            ? access.canViewSelf
-              ? "Only current students can book appointments. You can still view your existing appointments."
-              : "Booking is unavailable to this account."
+            ? user.student_lifecycle_status !== "CURRENT"
+              ? access.canViewSelf ? "Only current students can book appointments. You can still view your existing appointments." : "Only current students can book appointments."
+              : access.canViewSelf ? "Your account does not have permission to book appointments. You can still view your existing appointments." : "Booking is unavailable to this account."
             : "Student self-booking is not available to this account."}
         </Notice>
       </section>
     );
   }
-  return scheduledSlots ? <AppointmentFixedDateBooking /> : <BookingWorkspace />;
+  return scheduledSlots ? <AppointmentFixedDateBooking key={`${user.id}:${user.capabilities.join(",")}:${serviceId ?? ""}`} initialServiceId={serviceId} initialSearch={initialSearch} initialPage={initialPage} /> : <BookingWorkspace key={`${user.id}:${user.capabilities.join(",")}`} />;
 }

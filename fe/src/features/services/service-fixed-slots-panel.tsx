@@ -5,6 +5,10 @@ import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { Plus, Ban, Calendar, Clock, User as UserIcon } from "lucide-react";
 
+import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
+import { bookingResultIsUncertain, studentSchedulingScope } from "@/features/appointments/booking-recovery";
+import { invalidateStudentScheduling } from "@/features/appointments/student-scheduling-invalidation";
+import { getAppointmentsListMyQueryKey } from "@/lib/api/generated/appointments/appointments";
 import { appointmentErrorMessage } from "@/features/appointments/appointments-shared";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -457,42 +461,72 @@ export function ServiceFixedSlotsStaffPanel({ service }: { service: ServiceRespo
   );
 }
 
-export function ServiceFixedSlotsStudentPanel({ service }: { service: ServiceResponse }) {
+export function ServiceFixedSlotsStudentPanel({ service, checkService }: { service: ServiceResponse; checkService?: () => Promise<boolean> }) {
+  const { user } = usePortalSession();
+  const viewerScope = studentSchedulingScope(user);
   const queryClient = useQueryClient();
   const [selectedSlot, setSelectedSlot] = useState<StudentBookableSlotResponse | null>(null);
   const [bookSuccess, setBookSuccess] = useState<string | null>(null);
   const [bookedApptId, setBookedApptId] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [uncertainSlot, setUncertainSlot] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [refreshFailed, setRefreshFailed] = useState(false);
 
   const slotsQuery = useServicesListBookableSlots(service.id, undefined, {
-    query: { retry: false },
+    query: { retry: false, queryKey: [...getServicesListBookableSlotsQueryKey(service.id), viewerScope] },
   });
   const bookMutation = useServicesBookSlot();
 
   const slots = slotsQuery.data?.data ?? [];
 
   const handleBookSlot = async (slotId: string) => {
+    if (uncertainSlot === slotId || checking) return;
     setErrorMessage(null);
     setBookSuccess(null);
+    setChecking(true);
     try {
-      const res = await bookMutation.mutateAsync({
-        serviceId: service.id,
-        slotId,
-      });
-
-      const appt = res.data;
+      if (checkService && !(await checkService())) {
+        setErrorMessage("This Service could not be confirmed for scheduled slots. Check the Service and try again.");
+        return;
+      }
+      const current = await slotsQuery.refetch();
+      if (current.isError) {
+        setErrorMessage("The available slots could not be checked. Retry the slot refresh before booking.");
+        return;
+      }
+      if (!current.data?.data.some(slot => slot.id === slotId)) {
+        setSelectedSlot(null);
+        setErrorMessage("This slot is no longer available. Choose another time.");
+        return;
+      }
+      let appt;
+      try {
+        appt = (await bookMutation.mutateAsync({ serviceId: service.id, slotId })).data;
+        if (!appt || typeof appt.appointment_id !== "string" || !appt.appointment_id || typeof appt.reference_code !== "string" || !appt.reference_code) throw new Error("Unconfirmed booking response");
+      } catch (err: unknown) {
+        if (bookingResultIsUncertain(err)) {
+          setUncertainSlot(slotId);
+          setErrorMessage("We could not confirm whether this appointment was booked. Check My appointments before making another booking. Refreshing slots cannot confirm who booked this time.");
+        } else if (err instanceof CompassApiError) {
+          const code = readApiErrorCode(err.body);
+          setErrorMessage(code === "slot_already_booked" || code === "slot_unavailable" || code === "slot_not_found"
+            ? "This slot is no longer available. Close this dialog and choose another time."
+            : appointmentErrorMessage(err, "The appointment could not be booked. Review the details and try again."));
+          if (err.status === 409 || err.status === 404) void slotsQuery.refetch();
+        }
+        return;
+      }
       setBookedApptId(appt.appointment_id);
       setBookSuccess(`Appointment booked successfully! Reference code: ${appt.reference_code}`);
       setSelectedSlot(null);
-
-      await queryClient.invalidateQueries({
-        queryKey: getServicesListBookableSlotsQueryKey(service.id),
-      });
-    } catch (err: unknown) {
-      const apiErr = err as { data?: { error?: { message?: string } }; message?: string };
-      setErrorMessage(
-        apiErr.data?.error?.message ?? apiErr.message ?? "Failed to book appointment slot."
-      );
+      const refresh = await Promise.allSettled([
+        invalidateStudentScheduling(queryClient),
+        queryClient.invalidateQueries({ queryKey: getAppointmentsListMyQueryKey() }, { throwOnError: true }),
+      ]);
+      setRefreshFailed(refresh.some(result => result.status === "rejected"));
+    } finally {
+      setChecking(false);
     }
   };
 
@@ -502,6 +536,7 @@ export function ServiceFixedSlotsStudentPanel({ service }: { service: ServiceRes
         Choose a published date and time to reserve an individual appointment directly.
       </p>
 
+      {service.requires_current_inventory ? <p className="mt-3 text-sm text-muted">A submitted Individual Inventory for the current Academic Year is required to book this Service.</p> : null}
       {bookSuccess ? (
         <Notice role="status" tone="success" className="mt-4">
           <p>{bookSuccess}</p>
@@ -513,10 +548,13 @@ export function ServiceFixedSlotsStudentPanel({ service }: { service: ServiceRes
               View your confirmed Appointment
             </Link>
           ) : null}
+          <Link href="/portal/appointments/my" className="mt-1 block font-semibold underline">My appointments</Link>
         </Notice>
       ) : null}
+      {refreshFailed ? <Notice role="alert" className="mt-4" action={<Button variant="secondary" onClick={() => void Promise.allSettled([invalidateStudentScheduling(queryClient), queryClient.invalidateQueries({ queryKey: getAppointmentsListMyQueryKey() }, { throwOnError: true })]).then(results => setRefreshFailed(results.some(result => result.status === "rejected")))}>Refresh</Button>}>Your appointment was booked, but the latest booking information could not be refreshed.</Notice> : null}
+      {uncertainSlot ? <Notice role="alert" tone="warning" className="mt-4" action={<><Button variant="secondary" onClick={() => void slotsQuery.refetch()}>Refresh slots</Button> <Link href="/portal/appointments/my" className="font-semibold underline">My appointments</Link></>}>The booking outcome is unconfirmed. A slot refresh cannot identify who booked it. Check My appointments before making another booking.</Notice> : null}
 
-      {errorMessage ? (
+      {errorMessage && !selectedSlot ? (
         <Notice role="alert" tone="danger" className="mt-4">
           {errorMessage}
         </Notice>
@@ -556,6 +594,7 @@ export function ServiceFixedSlotsStudentPanel({ service }: { service: ServiceRes
                 <Button
                   variant="primary"
                   className="w-full text-xs"
+                  disabled={uncertainSlot === slot.id || checking}
                   onClick={() => setSelectedSlot(slot)}
                 >
                   Book this slot
@@ -574,9 +613,10 @@ export function ServiceFixedSlotsStudentPanel({ service }: { service: ServiceRes
         pendingLabel="Booking…"
         error={errorMessage}
         variant="primary"
-        pending={bookMutation.isPending}
+        pending={bookMutation.isPending || checking}
+        confirmDisabled={uncertainSlot === selectedSlot?.id}
         onOpenChange={(open) => {
-          if (!open) setSelectedSlot(null);
+          if (!open) { setSelectedSlot(null); setErrorMessage(null); }
         }}
         onConfirm={() => {
           if (selectedSlot) void handleBookSlot(selectedSlot.id);
