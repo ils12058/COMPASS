@@ -70,7 +70,7 @@ export function serviceDeliveryLabel(modes: DeliveryMode[]): string {
 }
 
 export function serviceBookingLabel(enabled: boolean): string {
-  return enabled ? "Available" : "Not available";
+  return enabled ? "Enabled for flexible appointments" : "Flexible appointments disabled";
 }
 
 export const serviceCoverageLabels: Record<ServiceProviderCoverage, string> = {

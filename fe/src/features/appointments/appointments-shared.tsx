@@ -180,6 +180,9 @@ export function AppointmentsLocalNavigation() {
     ...(access.canManage
       ? [{ href: "/portal/appointments/manage", label: "Manage appointments" }]
       : []),
+    ...(access.canManageSlots
+      ? [{ href: "/portal/appointments/slots", label: "Manage appointment slots" }]
+      : []),
   ];
 
   if (links.length === 0) return null;

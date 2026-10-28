@@ -7,6 +7,7 @@ export type AppointmentAccess = {
   canManage: boolean;
   hasWorkspace: boolean;
   isStudent: boolean;
+  canManageSlots: boolean;
 };
 
 export function getAppointmentAccess(user: UserSummary): AppointmentAccess {
@@ -18,6 +19,9 @@ export function getAppointmentAccess(user: UserSummary): AppointmentAccess {
     isStudent && user.capabilities.includes("appointments.manage_self");
   const isCurrentStudent = user.student_lifecycle_status === "CURRENT";
   const canManage = user.capabilities.includes("appointments.manage");
+  const canManageSlots =
+    canManage &&
+    (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF");
 
   return {
     canViewSelf,
@@ -26,5 +30,6 @@ export function getAppointmentAccess(user: UserSummary): AppointmentAccess {
     canManage,
     hasWorkspace: canViewSelf || canManage,
     isStudent,
+    canManageSlots,
   };
 }

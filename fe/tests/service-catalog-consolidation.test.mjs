@@ -175,8 +175,8 @@ test("Service details distinguish saved pathway configuration from a working boo
       }));
     },
   });
-  assert.match(html, /Available for new bookings/);
-  assert.match(html, /Available when a slot is published/);
-  assert.match(html, /Available when an event is published/);
+  assert.match(html, /Enabled; availability depends on Counselor schedules/);
+  assert.match(html, /Enabled; no published slot confirmed/);
+  assert.match(html, /Enabled; no published event confirmed/);
   assert.doesNotMatch(html, /coming later|not yet available to Students/i);
 });

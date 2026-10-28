@@ -3,7 +3,8 @@
 import { ContextHelp, type HelpSection } from "@/components/ui/context-help";
 
 export const serviceHelpSections: readonly HelpSection[] = [
-  { heading: "Appointment booking", content: "Available allows students to book when the Service, counselor availability, and booking requirements permit. Duration, cancellation cutoff, and Inventory requirements apply to new Appointments; existing Appointments keep their saved settings." },
+  { heading: "Booking pathways", content: "Flexible appointments use Counselor availability. Scheduled appointment slots are specific opportunities published by authorized staff. Group Sessions are separate events with their own registration and attendance lifecycle. Enabling a pathway does not publish an offering." },
+  { heading: "Appointment booking", content: "Flexible appointment settings apply only to flexible appointments. Duration, cancellation cutoff, and Inventory requirements apply to new Appointments; existing Appointments keep their saved settings." },
   { heading: "Delivery", content: "An active Service needs at least one delivery mode. Removing a mode stops new work in that mode. Existing Appointments keep their saved mode. Changes that affect scheduled work require a consequence review." },
   { heading: "Provider coverage", content: "All active Counselors permits any active Counselor to provide new work. Selected Counselors limits new work to those selected. College responsibility supplies default routing; it does not restrict student choice to one College counselor." },
   { heading: "Required Counseling Service", content: "Counseling also supports Routine Interviews and E-Counseling and must stay active. Other settings can be changed." },
