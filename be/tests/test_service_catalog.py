@@ -18,10 +18,16 @@ from compass.accounts.models import (
     UserCapabilityOverride,
     UserDesignation,
 )
+from compass.appointments.services import (
+    AppointmentCurrentAcademicYearNotConfigured,
+    AppointmentCurrentInventoryRequired,
+)
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.common.errors import APIError
 from compass.organization.models import Campus, College, CounselorResponsibility
+from compass.service_catalog.api import _raise_slot_error
 from compass.service_catalog.models import (
     Service,
     ServiceCounselorProvider,
@@ -76,6 +82,31 @@ def csrf(client: Client) -> dict[str, str]:
     response = client.get("/api/v1/auth/csrf")
     assert response.status_code == 200
     return {"HTTP_X_CSRFTOKEN": response.json()["csrf_token"]}
+
+
+@pytest.mark.parametrize(
+    ("exception", "code"),
+    [
+        (
+            AppointmentCurrentInventoryRequired("A current inventory record is required."),
+            "current_inventory_required",
+        ),
+        (
+            AppointmentCurrentAcademicYearNotConfigured(
+                "The current academic year is not configured."
+            ),
+            "current_academic_year_not_configured",
+        ),
+    ],
+)
+def test_fixed_slot_inventory_prerequisite_errors_preserve_typed_conflict_contract(
+    exception, code
+):
+    with pytest.raises(APIError) as raised:
+        _raise_slot_error(exception)
+
+    assert raised.value.status_code == 409
+    assert raised.value.code == code
 
 
 def configured_service(actor: User, *, active: bool = False, **overrides):
