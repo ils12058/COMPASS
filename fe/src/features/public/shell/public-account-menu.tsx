@@ -36,7 +36,7 @@ export function PublicAccountMenu({ user }: { user: UserSummary }) {
   }
 
   return (
-    <AccountMenu user={user} profile={profile} error={error}>
+    <AccountMenu user={user} profile={profile} error={error} containerResponsive>
       <DropdownMenuItem asChild>
         <Link href="/portal">
           <LayoutDashboard size={17} className="mr-2" aria-hidden="true" />

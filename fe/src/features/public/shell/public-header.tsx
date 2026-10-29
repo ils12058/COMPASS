@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useId, useRef, useState } from "react";
 
 import { buttonVariants } from "@/components/ui/button";
+import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
 import { PublicAccountMenu } from "@/features/public/shell/public-account-menu";
 import { useAuthGetSession } from "@/lib/api/generated/auth/auth";
 import { cn } from "@/lib/utils/cn";
@@ -19,7 +20,7 @@ function Brand() {
   return (
     <Link
       href="/"
-      className="flex min-h-11 items-center gap-2 rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
+      className="flex min-h-11 min-w-0 max-w-full flex-wrap items-center gap-2 rounded-sm @max-[16rem]:basis-full @max-[16rem]:gap-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2"
       aria-label="COMPASS home"
     >
       <Image
@@ -27,10 +28,10 @@ function Brand() {
         width={33}
         height={30}
         alt="University of Camarines Norte"
-        className="h-8 w-auto object-contain"
+        className="h-8 w-auto object-contain @max-[16rem]:hidden"
         priority
       />
-      <span className="h-7 w-px bg-border" aria-hidden="true" />
+      <span className="h-7 w-px bg-border @max-[16rem]:hidden" aria-hidden="true" />
       <Image
         src="/brand/compass-mark.svg"
         width={34}
@@ -63,7 +64,7 @@ function MobileMenu({
   const close = () => panelRef.current?.hidePopover();
 
   return (
-    <div className="md:hidden">
+    <div className="@min-[42rem]:hidden">
       <button
         type="button"
         popoverTarget={panelId}
@@ -89,7 +90,7 @@ function MobileMenu({
         aria-label="Mobile public navigation"
         onToggle={(event) => setOpen(event.newState === "open")}
         className={cn(
-          "absolute inset-auto top-20 right-5 m-0 w-60 rounded-md border border-border bg-surface-raised p-1 text-ink shadow-dialog sm:right-8",
+          "fixed inset-auto m-0 w-[min(15rem,calc(100vw-2rem))] max-h-[min(32rem,calc(100dvh-2rem))] overflow-y-auto rounded-md border border-border bg-surface-raised p-1 text-ink shadow-dialog [position-area:bottom] [position-try-fallbacks:flip-block]",
           "origin-top-right -translate-y-1 scale-95 opacity-0 transition-[opacity,scale,translate,overlay,display] transition-discrete duration-150 ease-out",
           "open:translate-y-0 open:scale-100 open:opacity-100 starting:open:-translate-y-1 starting:open:scale-95 starting:open:opacity-0",
         )}
@@ -129,33 +130,36 @@ export function PublicHeader() {
 
   return (
     <header className="relative z-30 border-b border-border bg-surface-raised">
-      <div className="mx-auto flex h-18 max-w-6xl items-center justify-between gap-4 px-5 sm:px-8">
-        <Brand />
-        <div className="flex items-center gap-2">
-        <nav aria-label="Public navigation" className="hidden items-center gap-1 md:flex">
-          {navigation.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={pathname.startsWith(item.href) ? "page" : undefined}
-              className="inline-flex min-h-10 items-center rounded-md px-3 text-sm font-semibold text-muted transition-colors hover:bg-surface-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-[current=page]:text-brand"
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-        {/* Signed in, the reader's own menu replaces the Sign in button at every width. */}
-        {user ? (
-          <PublicAccountMenu user={user} />
-        ) : (
-          <Link
-            href="/login"
-            className={buttonVariants({ variant: "primary", className: "ml-2 hidden md:inline-flex" })}
-          >
-            Sign in
-          </Link>
-        )}
-        <MobileMenu key={pathname} pathname={pathname} signInHref={user ? undefined : "/login"} />
+      <div className="@container mx-auto max-w-6xl px-5 sm:px-8">
+        <div className="flex min-h-18 flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2">
+          <Brand />
+          <div className="flex min-w-0 flex-wrap items-center gap-2 @max-[16rem]:gap-1">
+            <nav aria-label="Public navigation" className="hidden items-center gap-1 @min-[42rem]:flex">
+              {navigation.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  aria-current={pathname.startsWith(item.href) ? "page" : undefined}
+                  className="inline-flex min-h-10 items-center rounded-md px-3 text-sm font-semibold text-muted transition-colors hover:bg-surface-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus aria-[current=page]:text-brand"
+                >
+                  {item.label}
+                </Link>
+              ))}
+            </nav>
+            {/* Signed in, the reader's own menu replaces the Sign in button at every width. */}
+            {user ? (
+              <PublicAccountMenu user={user} />
+            ) : (
+              <Link
+                href="/login"
+                className={buttonVariants({ variant: "primary", className: "ml-2 hidden @min-[42rem]:inline-flex" })}
+              >
+                Sign in
+              </Link>
+            )}
+            <AccessibilityControl placement="header" />
+            <MobileMenu key={pathname} pathname={pathname} signInHref={user ? undefined : "/login"} />
+          </div>
         </div>
       </div>
     </header>

@@ -10,7 +10,7 @@ const footerLinkClass =
 export function PublicFooter() {
   return (
     <footer className="bg-brand-strong text-on-brand">
-      <div className="mx-auto grid max-w-6xl gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.4fr_1fr_auto]">
+      <div className="@container mx-auto grid max-w-6xl gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.4fr_1fr_auto]">
         <div>
           <div className="flex items-center gap-3">
             <Image src="/brand/compass-mark.svg" width={36} height={36} alt="" />
@@ -20,7 +20,7 @@ export function PublicFooter() {
             Counseling Office Management Platform and Student Services
           </p>
         </div>
-        <div className="flex items-start gap-3 self-start text-sm leading-6 text-on-brand/80">
+        <div className="flex min-w-0 items-start gap-3 self-start text-sm @max-[16rem]:flex-col leading-6 text-on-brand/80">
           {/* The maroon mark disappears on this background; the user-approved exception in
               fe/AGENTS.md allows the solid white version here. */}
           <Image
@@ -30,7 +30,7 @@ export function PublicFooter() {
             alt=""
             className="mt-1 h-10 w-auto shrink-0 brightness-0 invert"
           />
-          <div>
+          <div className="min-w-0 [overflow-wrap:anywhere]">
             <p className="font-semibold text-on-brand">University of Camarines Norte</p>
             <p>Guidance and Counseling Office</p>
             <a

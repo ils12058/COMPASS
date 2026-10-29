@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 
-import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
 import { PublicFooter } from "@/features/public/shell/public-footer";
 import { PublicHeader } from "@/features/public/shell/public-header";
 import { MaintenanceNotice, PublicMaintenanceGate } from "@/features/platform/maintenance-presentation";
@@ -18,7 +17,6 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
         <div className="flex-1">{children}</div>
         <PublicFooter />
       </PublicMaintenanceGate>
-      <AccessibilityControl placement="floating" />
     </div>
   );
 }
