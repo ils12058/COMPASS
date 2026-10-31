@@ -390,6 +390,7 @@ def remove_counselor_responsibility(*, college_id: UUID, context: AuditContext) 
         return True
 
 
+@catalog_dependent_write
 def set_staff_supervisor(
     *, staff_id: UUID, supervisor_id: UUID, context: AuditContext
 ) -> StaffSupervision:
@@ -426,6 +427,7 @@ def set_staff_supervisor(
         return current
 
 
+@catalog_dependent_write
 def remove_staff_supervisor(*, staff_id: UUID, context: AuditContext) -> bool:
     with transaction.atomic():
         _lock_user_with_role(

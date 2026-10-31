@@ -17,6 +17,9 @@ import { Label } from "@/components/ui/label";
 import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { SortField } from "@/components/ui/sort-field";
 import { SortableColumnHeader } from "@/components/ui/sortable-column-header";
+import { Select } from "@/components/ui/select";
+import { administrativeStateLabel } from "@/features/faculty-referrals/presentation";
+import { ReferralSubmissionChannel, type ReferralSummaryResponse } from "@/lib/api/generated/model";
 import { ReferralOrdering } from "@/lib/api/generated/model";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import {
@@ -31,6 +34,7 @@ import { formatDateOnly, formatInstitutionalDateTime } from "@/lib/institutional
 
 export type ReferralListFilters = {
   search: string;
+  origin?: ReferralSubmissionChannel;
   formRevisionId: string;
   fromDate: string;
   toDate: string;
@@ -42,6 +46,7 @@ export type ReferralListFilters = {
 
 function filtersToUrl(filters: ReferralListFilters): string {
   const params = new URLSearchParams();
+  if (filters.origin) params.set("submission_channel", filters.origin);
   if (filters.formRevisionId) params.set("form_revision_id", filters.formRevisionId);
   if (filters.search.trim()) params.set("search", filters.search.trim());
   if (filters.fromDate) params.set("from_date", filters.fromDate);
@@ -60,6 +65,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
   const [draft, setDraft] = useState(filters);
   const referrals = useReferralsList(
     {
+      ...(filters.origin ? { submission_channel: filters.origin } : {}),
       ...(filters.search ? { search: filters.search } : {}),
       ...(filters.formRevisionId ? { form_revision_id: filters.formRevisionId } : {}),
       ...(filters.fromDate ? { from_date: filters.fromDate } : {}),
@@ -77,10 +83,10 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
   const data = referrals.data?.data;
   const items = data?.items ?? [];
   const filtered = Boolean(
-    filters.formRevisionId || filters.search || filters.fromDate || filters.toDate || filters.includeVoided || filters.page > 1,
+    filters.origin || filters.formRevisionId || filters.search || filters.fromDate || filters.toDate || filters.includeVoided || filters.page > 1,
   );
 
-  const advancedCount = [filters.formRevisionId, filters.fromDate, filters.toDate, filters.includeVoided].filter(Boolean).length;
+  const advancedCount = [filters.origin, filters.formRevisionId, filters.fromDate, filters.toDate, filters.includeVoided].filter(Boolean).length;
   const draftRangeInvalid = Boolean(draft.fromDate && draft.toDate && draft.fromDate > draft.toDate);
   // The order the rows are in: the reader's choice, or the default the backend applied.
   const ordering = filters.ordering ?? data?.ordering;
@@ -112,6 +118,11 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
           clear={filtered ? <Link href={clearHref} className={buttonVariants({ variant: "quiet" })}>Clear filters</Link> : undefined}
           filters={
             <>
+          <FilterField label="Origin" htmlFor="referrals-origin">
+            <Select id="referrals-origin" value={draft.origin ?? ""} onChange={(event) => setDraft({ ...draft, origin: (event.target.value || undefined) as ReferralSubmissionChannel | undefined })}>
+              <option value="">All origins</option><option value="FACULTY_PORTAL">Faculty submission</option><option value="GCO_RECORDED">GCO recorded</option><option value="LEGACY_UNSPECIFIED">Legacy unspecified</option>
+            </Select>
+          </FilterField>
           <FormRevisionFilter id="referrals-revision" selectedId={draft.formRevisionId} value={draft.formRevisionId} options={data?.filter_options.form_revisions} onChange={(event) => setDraft({ ...draft, formRevisionId: event.target.value })} />
           <FilterField label="From" htmlFor="referrals-from">
             <Input id="referrals-from" type="date" value={draft.fromDate} onChange={(event) => setDraft({ ...draft, fromDate: event.target.value })} />
@@ -178,6 +189,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                   <Link href={`/portal/referrals/${referral.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">
                     {referral.reference_code}
                   </Link>
+                  <IntakeContext item={referral} />
                   <p className="text-sm font-medium text-ink">{referral.student_name_snapshot}</p>
                   {referral.student.institutional_id ? <p className="text-xs text-muted">{referral.student.institutional_id}</p> : null}
                   <p className="text-sm text-muted">{referral.course_year_block_snapshot}</p>
@@ -235,6 +247,7 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
                     <tr key={referral.id} className={dataTable.row}>
                       <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-normal`}>
                         <Link href={`/portal/referrals/${referral.id}`} className="font-semibold text-brand underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus">{referral.reference_code}</Link>
+                        <IntakeContext item={referral} />
                         <span className="mt-1 block text-ink">{referral.student_name_snapshot}</span>
                         {referral.student.institutional_id ? <span className="mt-1 block text-xs text-muted">{referral.student.institutional_id}</span> : null}
                       </th>
@@ -264,4 +277,8 @@ export function ReferralsPage({ filters }: { filters: ReferralListFilters }) {
       </Panel>
     </div>
   );
+}
+
+function IntakeContext({ item }: { item: ReferralSummaryResponse }) {
+  return item.submission_channel === "FACULTY_PORTAL" ? <div className="mt-1 space-y-1 text-xs text-muted"><p>Faculty submission{item.submitted_at ? ` · ${formatInstitutionalDateTime(item.submitted_at)}` : ""}</p>{item.administrative_state ? <p className="font-semibold text-ink">{administrativeStateLabel(item.administrative_state)}</p> : null}</div> : null;
 }

@@ -120,6 +120,9 @@ REFERRAL_CREATED = "referral.created"
 REFERRAL_ACTION_RECORDED = "referral.action_recorded"
 REFERRAL_STATUS_UPDATED = "referral.status_updated"
 REFERRAL_VOIDED = "referral.voided"
+REFERRAL_ACKNOWLEDGED = "referral.acknowledged"
+REFERRAL_ADMINISTRATIVELY_CLOSED = "referral.administratively_closed"
+REFERRAL_ADMIN_POLICY_RECORDED = "referral.administration.policy.recorded"
 CALL_SLIP_CREATED = "call_slip.created"
 CALL_SLIP_VOIDED = "call_slip.voided"
 DOCUMENT_BRANDING_UPDATED = "document_branding.updated"
@@ -396,6 +399,9 @@ __all__ = [
     "REFERRAL_ACTION_RECORDED",
     "REFERRAL_STATUS_UPDATED",
     "REFERRAL_VOIDED",
+    "REFERRAL_ACKNOWLEDGED",
+    "REFERRAL_ADMINISTRATIVELY_CLOSED",
+    "REFERRAL_ADMIN_POLICY_RECORDED",
     "CALL_SLIP_CREATED",
     "CALL_SLIP_VOIDED",
     "DOCUMENT_BRANDING_UPDATED",

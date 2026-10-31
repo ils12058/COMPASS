@@ -12390,10 +12390,34 @@
       "FacultyReferralSubmissionResponse": {
         "additionalProperties": false,
         "properties": {
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
           },
           "reference_code": {
             "title": "Reference Code",
@@ -12416,14 +12440,18 @@
           "reference_code",
           "submitted_at",
           "state",
-          "student"
+          "student",
+          "received_at",
+          "closed_at"
         ],
         "title": "FacultyReferralSubmissionResponse",
         "type": "object"
       },
       "FacultyReferralSubmissionState": {
         "enum": [
-          "SUBMITTED"
+          "SUBMITTED",
+          "RECEIVED_BY_GCO",
+          "ADMINISTRATIVELY_CLOSED"
         ],
         "title": "FacultyReferralSubmissionState",
         "type": "string"
@@ -24755,6 +24783,21 @@
         "title": "RecordingWorkspaceState",
         "type": "object"
       },
+      "ReferralAcknowledgmentRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expected_version"
+        ],
+        "title": "ReferralAcknowledgmentRequest",
+        "type": "object"
+      },
       "ReferralActionCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -24880,6 +24923,168 @@
         "title": "ReferralActorSummary",
         "type": "object"
       },
+      "ReferralAdministrationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "acknowledged_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralAdministrativeActor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "can_acknowledge": {
+            "title": "Can Acknowledge",
+            "type": "boolean"
+          },
+          "can_close": {
+            "title": "Can Close",
+            "type": "boolean"
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At"
+          },
+          "closed_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferralAdministrativeActor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "faculty_home_college": {
+            "title": "Faculty Home College",
+            "type": "string"
+          },
+          "received_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Received At"
+          },
+          "referral_id": {
+            "format": "uuid",
+            "title": "Referral Id",
+            "type": "string"
+          },
+          "state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FacultyReferralSubmissionState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "student_college_at_submission": {
+            "title": "Student College At Submission",
+            "type": "string"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          },
+          "submitted_by": {
+            "$ref": "#/components/schemas/ReferralAdministrativeActor"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "referral_id",
+          "version",
+          "state",
+          "submitted_at",
+          "submitted_by",
+          "faculty_home_college",
+          "student_college_at_submission",
+          "received_at",
+          "acknowledged_by",
+          "closed_at",
+          "closed_by",
+          "can_acknowledge",
+          "can_close",
+          "valid_until"
+        ],
+        "title": "ReferralAdministrationResponse",
+        "type": "object"
+      },
+      "ReferralAdministrativeActor": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "display_name"
+        ],
+        "title": "ReferralAdministrativeActor",
+        "type": "object"
+      },
+      "ReferralAdministrativeClosureRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "expected_version": {
+            "minimum": 1,
+            "title": "Expected Version",
+            "type": "integer"
+          },
+          "obligations_reviewed": {
+            "title": "Obligations Reviewed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "expected_version",
+          "obligations_reviewed"
+        ],
+        "title": "ReferralAdministrativeClosureRequest",
+        "type": "object"
+      },
       "ReferralCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -24937,6 +25142,16 @@
             },
             "title": "Actions",
             "type": "array"
+          },
+          "administrative_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FacultyReferralSubmissionState"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "course_year_block_snapshot": {
             "title": "Course Year Block Snapshot",
@@ -25004,6 +25219,26 @@
           "student_name_snapshot": {
             "title": "Student Name Snapshot",
             "type": "string"
+          },
+          "submission_channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferralSubmissionChannel"
+              }
+            ],
+            "default": "LEGACY_UNSPECIFIED"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
           },
           "updated_at": {
             "format": "date-time",
@@ -25351,9 +25586,28 @@
         "title": "ReferralStudentOptionResponse",
         "type": "object"
       },
+      "ReferralSubmissionChannel": {
+        "enum": [
+          "LEGACY_UNSPECIFIED",
+          "GCO_RECORDED",
+          "FACULTY_PORTAL"
+        ],
+        "title": "ReferralSubmissionChannel",
+        "type": "string"
+      },
       "ReferralSummaryResponse": {
         "additionalProperties": false,
         "properties": {
+          "administrative_state": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FacultyReferralSubmissionState"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "course_year_block_snapshot": {
             "title": "Course Year Block Snapshot",
             "type": "string"
@@ -25399,6 +25653,26 @@
           "student_name_snapshot": {
             "title": "Student Name Snapshot",
             "type": "string"
+          },
+          "submission_channel": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/ReferralSubmissionChannel"
+              }
+            ],
+            "default": "LEGACY_UNSPECIFIED"
+          },
+          "submitted_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Submitted At"
           },
           "voided_at": {
             "anyOf": [
@@ -64799,6 +65073,21 @@
           },
           {
             "in": "query",
+            "name": "submission_channel",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ReferralSubmissionChannel"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "in": "query",
             "name": "form_revision_id",
             "required": false,
             "schema": {
@@ -65160,6 +65449,104 @@
         ]
       }
     },
+    "/api/v1/referrals/{referral_id}/acknowledgment": {
+      "post": {
+        "operationId": "referralsAcknowledge",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferralAcknowledgmentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralAdministrationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Referrals Acknowledge",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
     "/api/v1/referrals/{referral_id}/actions": {
       "post": {
         "operationId": "referralsRecordAction",
@@ -65253,6 +65640,182 @@
           }
         ],
         "summary": "Referrals Record Action",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/referrals/{referral_id}/administration": {
+      "get": {
+        "operationId": "referralsGetAdministration",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralAdministrationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Referrals Get Administration",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/referrals/{referral_id}/administrative-closure": {
+      "post": {
+        "operationId": "referralsCloseAdministratively",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReferralAdministrativeClosureRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferralAdministrationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Referrals Close Administratively",
         "tags": [
           "referrals"
         ]

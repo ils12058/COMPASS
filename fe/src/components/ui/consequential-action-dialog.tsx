@@ -124,11 +124,12 @@ export function ConsequentialActionDialog({
             ) : null}
             <div className="mt-6 flex flex-wrap justify-end gap-2">
               <AlertDialogCancel asChild>
-                <Button type="button" variant="secondary" disabled={pending}>
+                <Button className="min-w-0 max-w-full [overflow-wrap:anywhere]" type="button" variant="secondary" disabled={pending}>
                   {cancelLabel}
                 </Button>
               </AlertDialogCancel>
               <Button
+                className="min-w-0 max-w-full [overflow-wrap:anywhere]"
                 type="button"
                 variant={variant}
                 disabled={pending || confirmDisabled}

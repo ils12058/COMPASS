@@ -63,7 +63,7 @@ export function useFacultySubmission({ available, onPolicyChange }: { available:
     const intended = intent.current;
     if (!intended) throw new Error("Missing intended submission");
     const reply = await referralsFacultySubmit(intended.body, { headers: { "Idempotency-Key": intended.key } });
-    if ((reply.status !== 200 && reply.status !== 201) || reply.data.state !== "SUBMITTED") throw new Error("Unconfirmed submission result");
+    if ((reply.status !== 200 && reply.status !== 201) || !["SUBMITTED", "RECEIVED_BY_GCO", "ADMINISTRATIVELY_CLOSED"].includes(reply.data.state)) throw new Error("Unconfirmed submission result");
     setResult(reply.data);
     setIdentifier(""); setCourse(""); setReason(""); setConfirmed(null);
     intent.current = null; setUncertain(false); setReviewing(false); setError("");

@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { readOrdering } from "@/features/portal/components/list-ordering-params";
-import { ReferralOrdering } from "@/lib/api/generated/model";
+import { ReferralSubmissionChannel, ReferralOrdering } from "@/lib/api/generated/model";
 import { Suspense } from "react";
 
 import { ReferralListSkeleton } from "@/features/referrals/referrals-shared";
@@ -27,6 +27,7 @@ export default async function Page({
   const query = await searchParams;
   const filters: ReferralListFilters = {
     search: singleValue(query.search),
+    origin: readOrdering(singleValue(query.submission_channel), ReferralSubmissionChannel),
     formRevisionId: singleValue(query.form_revision_id),
     fromDate: singleValue(query.from_date),
     toDate: singleValue(query.to_date),
