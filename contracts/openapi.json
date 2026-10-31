@@ -4613,7 +4613,9 @@
           "privacy_governance.retention.view",
           "privacy_governance.view",
           "referrals.manage",
+          "referrals.submit_self",
           "referrals.view",
+          "referrals.view_submitted_self",
           "reports.view",
           "resources.manage",
           "routine_interviews.manage_assigned",
@@ -12300,6 +12302,189 @@
           "campus_code"
         ],
         "title": "FacultyCollegeChoiceResponse",
+        "type": "object"
+      },
+      "FacultyConfirmedStudent": {
+        "additionalProperties": false,
+        "properties": {
+          "display_name": {
+            "title": "Display Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "display_name"
+        ],
+        "title": "FacultyConfirmedStudent",
+        "type": "object"
+      },
+      "FacultyReferralSubmissionPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/FacultyReferralSubmissionResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "FacultyReferralSubmissionPage",
+        "type": "object"
+      },
+      "FacultyReferralSubmissionResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "state": {
+            "$ref": "#/components/schemas/FacultyReferralSubmissionState"
+          },
+          "student": {
+            "$ref": "#/components/schemas/FacultyConfirmedStudent"
+          },
+          "submitted_at": {
+            "format": "date-time",
+            "title": "Submitted At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reference_code",
+          "submitted_at",
+          "state",
+          "student"
+        ],
+        "title": "FacultyReferralSubmissionResponse",
+        "type": "object"
+      },
+      "FacultyReferralSubmissionState": {
+        "enum": [
+          "SUBMITTED"
+        ],
+        "title": "FacultyReferralSubmissionState",
+        "type": "string"
+      },
+      "FacultyReferralSubmitRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmation": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Confirmation",
+            "type": "string"
+          },
+          "course_year_block": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Course Year Block",
+            "type": "string"
+          },
+          "reason": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "confirmation",
+          "course_year_block",
+          "reason"
+        ],
+        "title": "FacultyReferralSubmitRequest",
+        "type": "object"
+      },
+      "FacultyStudentConfirmationRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "institutional_id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Institutional Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "institutional_id"
+        ],
+        "title": "FacultyStudentConfirmationRequest",
+        "type": "object"
+      },
+      "FacultyStudentConfirmationResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "confirmation": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmation"
+          },
+          "confirmed": {
+            "title": "Confirmed",
+            "type": "boolean"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expires At"
+          },
+          "student": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FacultyConfirmedStudent"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "confirmed",
+          "student",
+          "confirmation",
+          "expires_at"
+        ],
+        "title": "FacultyStudentConfirmationResponse",
         "type": "object"
       },
       "FamilyMemberKindValue": {
@@ -31704,7 +31889,9 @@
                 "privacy_governance.retention.view",
                 "privacy_governance.view",
                 "referrals.manage",
+                "referrals.submit_self",
                 "referrals.view",
+                "referrals.view_submitted_self",
                 "reports.view",
                 "resources.manage",
                 "routine_interviews.manage_assigned",
@@ -31890,7 +32077,9 @@
                 "privacy_governance.retention.view",
                 "privacy_governance.view",
                 "referrals.manage",
+                "referrals.submit_self",
                 "referrals.view",
+                "referrals.view_submitted_self",
                 "reports.view",
                 "resources.manage",
                 "routine_interviews.manage_assigned",
@@ -47150,6 +47339,354 @@
         "summary": "Exit Interviews Reopen",
         "tags": [
           "exit-interviews"
+        ]
+      }
+    },
+    "/api/v1/faculty/referrals": {
+      "get": {
+        "operationId": "referralsFacultyListMine",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacultyReferralSubmissionPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "List only Faculty-safe own submissions",
+        "tags": [
+          "referrals"
+        ]
+      },
+      "post": {
+        "operationId": "referralsFacultySubmit",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FacultyReferralSubmitRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacultyReferralSubmissionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacultyReferralSubmissionResponse"
+                }
+              }
+            },
+            "description": "Created"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Submit an authenticated Faculty Referral under approved digital-form policy",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/faculty/referrals/student-confirmation": {
+      "post": {
+        "operationId": "referralsFacultyConfirmStudent",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FacultyStudentConfirmationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacultyStudentConfirmationResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "429": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Too Many Requests"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Confirm one exact Student identity under approved disclosure policy",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/faculty/referrals/{referral_id}": {
+      "get": {
+        "operationId": "referralsFacultyGetMine",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacultyReferralSubmissionResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Read one allowlisted own Faculty submission",
+        "tags": [
+          "referrals"
         ]
       }
     },

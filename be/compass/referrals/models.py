@@ -10,6 +10,12 @@ from django.db import models
 from compass.institutional_forms.models import FormRevision
 
 
+class ReferralSubmissionChannel(models.TextChoices):
+    LEGACY_UNSPECIFIED = "LEGACY_UNSPECIFIED", "Legacy origin unspecified"
+    GCO_RECORDED = "GCO_RECORDED", "GCO recorded"
+    FACULTY_PORTAL = "FACULTY_PORTAL", "Faculty digital submission"
+
+
 class ReferralActionType(models.TextChoices):
     CALL_PARENT_GUARDIAN = "CALL_PARENT_GUARDIAN", "Call the Parent/Guardian"
     SEND_PARENT_NOTIFICATION_LETTER = (
@@ -39,6 +45,42 @@ class ReferralReferenceCounter(models.Model):
 class Referral(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     reference_code = models.CharField(max_length=32, unique=True)
+    submission_channel = models.CharField(
+        max_length=24,
+        choices=ReferralSubmissionChannel.choices,
+        default=ReferralSubmissionChannel.LEGACY_UNSPECIFIED,
+        db_default="LEGACY_UNSPECIFIED",
+    )
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="faculty_submitted_referrals",
+    )
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    faculty_home_college = models.ForeignKey(
+        "organization.College",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="faculty_origin_referrals",
+    )
+    student_college_at_submission = models.ForeignKey(
+        "organization.College",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="student_origin_referrals",
+    )
+    submission_policy_digest = models.CharField(max_length=64, null=True, blank=True)
+    submission_policy_event = models.ForeignKey(
+        "audit.AuditEvent",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="approved_faculty_referrals",
+    )
     student = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -89,9 +131,40 @@ class Referral(models.Model):
         ]
         constraints = [
             models.CheckConstraint(
+                condition=models.Q(submission_channel__in=ReferralSubmissionChannel.values),
+                name="referral_submission_channel_valid",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(
+                        submission_channel="FACULTY_PORTAL",
+                        submitted_by__isnull=False,
+                        submitted_at__isnull=False,
+                        faculty_home_college__isnull=False,
+                        student_college_at_submission__isnull=False,
+                        submission_policy_digest__regex=r"^[0-9a-f]{64}$",
+                        submission_policy_digest__isnull=False,
+                        submission_policy_event__isnull=False,
+                        recorded_by__isnull=True,
+                    )
+                    | (
+                        ~models.Q(submission_channel="FACULTY_PORTAL")
+                        & models.Q(
+                            submitted_by__isnull=True,
+                            submitted_at__isnull=True,
+                            faculty_home_college__isnull=True,
+                            student_college_at_submission__isnull=True,
+                            submission_policy_digest__isnull=True,
+                            submission_policy_event__isnull=True,
+                        )
+                    )
+                ),
+                name="referral_submission_provenance_complete",
+            ),
+            models.CheckConstraint(
                 condition=~models.Q(confidential_content_ciphertext=""),
                 name="referral_confidential_ciphertext_present",
-            )
+            ),
         ]
 
 
