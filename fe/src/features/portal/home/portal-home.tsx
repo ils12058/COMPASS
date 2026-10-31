@@ -22,6 +22,7 @@ import {
 } from "@/features/portal/home/overview-presentation";
 import { useOverviewAttention } from "@/features/portal/home/overview-work";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { scriptFontVariable } from "@/styles/script-font";
 import { CompassApiError } from "@/lib/api/errors";
 import { useOverviewGetSummary } from "@/lib/api/generated/overview/overview";
 
@@ -77,9 +78,11 @@ export function PortalHome() {
   );
 
   return (
-    <section aria-labelledby="portal-overview-heading" className={pageSheetWidth}>
+    <section aria-labelledby="portal-overview-heading" className={`${pageSheetWidth} ${user.role === "STUDENT" ? scriptFontVariable : ""}`}>
       <PageHeader
-        title={user.role === "GUIDANCE_SERVICES_STAFF" ? "Guidance Services Home" : getOverviewGreeting(user, now)}
+        title={user.role === "STUDENT"
+          ? <span className="inline-block max-w-full font-script text-3xl font-semibold leading-[1.1] [overflow-wrap:anywhere] sm:text-4xl">{getOverviewGreeting(user, now)}</span>
+          : user.role === "GUIDANCE_SERVICES_STAFF" ? "Guidance Services Home" : getOverviewGreeting(user, now)}
         headingId="portal-overview-heading"
         context={user.role === "STUDENT" ? "Overview" : undefined}
         description={[formatOverviewDate(now), user.role === "GUIDANCE_SERVICES_STAFF" ? null : roleContext].filter(Boolean).join(" · ")}

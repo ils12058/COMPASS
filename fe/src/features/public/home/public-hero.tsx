@@ -10,7 +10,7 @@ export function PublicHero() {
       {/* An introduction rather than a whole first screen: on desktop the hero leaves room for
           the announcements, quick access, and resources below it, and stops at 31rem. */}
       <div className="mx-auto grid max-w-6xl gap-6 px-5 pt-10 sm:px-8 sm:pt-12 lg:min-h-[clamp(24rem,calc(100svh_-_23rem),31rem)] lg:grid-cols-[minmax(0,1fr)_minmax(0,19rem)] lg:items-end lg:gap-10 lg:pt-0">
-        <div className="self-center lg:py-10">
+        <div className="min-w-0 self-center lg:py-10">
           <HeroCopy />
         </div>
         {/* The approved 3D group keeps its 2:1 ratio and ample resolution for the 304px 2x slot. */}

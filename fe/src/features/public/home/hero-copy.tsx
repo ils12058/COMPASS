@@ -17,7 +17,7 @@ function subscribeToVisibility(onChange: () => void) {
 }
 
 // The outgoing headline fades out before the incoming one fades in, so the two never overlap.
-const headlineLayer = "col-start-1 row-start-1 transition-opacity motion-reduce:delay-0";
+const headlineLayer = "col-start-1 row-start-1 min-w-0 [overflow-wrap:anywhere] transition-opacity motion-reduce:delay-0";
 const shownLayer = "opacity-100 duration-500 delay-300";
 const hiddenLayer = "opacity-0 duration-300";
 
@@ -87,17 +87,16 @@ export function HeroCopy() {
             showQuote ? shownLayer : hiddenLayer,
           )}
         >
-          You don’t have to{" "}
-          <span className="whitespace-nowrap underline decoration-gold decoration-[0.07em] underline-offset-[0.14em]">
-            find your way
-          </span>{" "}
-          alone.
+          A place to talk and{" "}
+          <span className="underline decoration-gold decoration-[0.07em] underline-offset-[0.14em]">
+            find support
+          </span>.
         </p>
       </div>
       <p className="mt-4 max-w-xl text-base leading-7 text-on-brand/85 sm:text-lg">
         The online platform of the UCN Guidance and Counseling Office.
       </p>
-      <div className="mt-6 flex items-center gap-3">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
         {/* Same session check as the site header, so both offer the same next step. */}
         <Link
           href={authenticated ? "/portal" : "/login"}
