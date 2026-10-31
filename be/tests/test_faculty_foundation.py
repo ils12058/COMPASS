@@ -25,7 +25,11 @@ from compass.account_management.services import (
 )
 from compass.accounts.bootstrap import sync_identity_policy
 from compass.accounts.models import Capability, Role, RoleCapability, User, UserCapabilityOverride
-from compass.accounts.policy import CAPABILITY_CODES, ROLE_CAPABILITY_GRANTS
+from compass.accounts.policy import (
+    CAPABILITY_CODES,
+    FACULTY_CAPABILITY_CEILING,
+    ROLE_CAPABILITY_GRANTS,
+)
 from compass.accounts.services import effective_capabilities, set_user_capability_override
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
@@ -92,24 +96,27 @@ def test_faculty_policy_sync_and_existing_role_baselines(setup_faculty):
     for _ in range(2):
         assert not sync_identity_policy().changed
         assert Role.objects.get(code="FACULTY").pk == faculty_role.pk
-    assert ROLE_CAPABILITY_GRANTS["FACULTY"] == frozenset()
+    assert ROLE_CAPABILITY_GRANTS["FACULTY"] == FACULTY_CAPABILITY_CEILING
     for role, grants in ROLE_CAPABILITY_GRANTS.items():
         assert effective_capabilities(person(role, role)) == grants
-    assert not faculty_role.capability_grants.exists()
+    assert (
+        set(faculty_role.capability_grants.values_list("capability__code", flat=True))
+        == FACULTY_CAPABILITY_CEILING
+    )
 
 
 def test_faculty_ceiling_blocks_persisted_grants_and_old_overrides(setup_faculty):
     faculty = person()
     for code in CAPABILITY_CODES:
         capability = Capability.objects.get(code=code)
-        RoleCapability.objects.create(role=faculty.role, capability=capability)
+        RoleCapability.objects.get_or_create(role=faculty.role, capability=capability)
         UserCapabilityOverride.objects.create(
             user=faculty,
             capability=capability,
             effect="GRANT",
             reason="Synthetic legacy state",
         )
-    assert effective_capabilities(faculty) == frozenset()
+    assert effective_capabilities(faculty) == FACULTY_CAPABILITY_CEILING
     with pytest.raises(ValueError, match="Faculty"):
         set_user_capability_override(
             user=faculty,
@@ -118,7 +125,7 @@ def test_faculty_ceiling_blocks_persisted_grants_and_old_overrides(setup_faculty
             reason="Not eligible",
         )
     assert not sync_identity_policy().changed  # ceiling also covers unknown retained DB grants
-    assert effective_capabilities(faculty) == frozenset()
+    assert effective_capabilities(faculty) == FACULTY_CAPABILITY_CEILING
 
 
 def test_creation_provenance_repeat_provisioning_and_safe_missing_home(setup_faculty):
@@ -132,7 +139,7 @@ def test_creation_provenance_repeat_provisioning_and_safe_missing_home(setup_fac
         provision(args, college)
     assert not faculty.has_usable_password()
     assert faculty.student_lifecycle_status is None
-    assert effective_capabilities(faculty) == frozenset()
+    assert effective_capabilities(faculty) == FACULTY_CAPABILITY_CEILING
     assign(args, faculty, college, 1)
     assert AuditEvent.objects.filter(action="account.faculty_affiliation.changed").count() == 1
     unassigned = provision(args, label="unassigned")
@@ -183,7 +190,7 @@ def test_affiliation_versions_role_changes_and_catalog_retirement(setup_faculty)
     change_role(**args, target_id=faculty.pk, role="FACULTY")
     faculty.refresh_from_db()
     assert FacultyAffiliation.objects.get(faculty=faculty).resource_version == 3
-    assert effective_capabilities(faculty) == frozenset()
+    assert effective_capabilities(faculty) == FACULTY_CAPABILITY_CEILING
     assign(args, faculty, college, 3)
     set_account_active(**args, target_id=faculty.pk, is_active=False)
     assert _impact(college).can_deactivate
@@ -407,7 +414,7 @@ def test_entering_faculty_revokes_sessions_and_rejects_managed_grants(setup_facu
     counselor.refresh_from_db()
     issued.session.refresh_from_db()
     assert issued.session.revoked_at is not None
-    assert effective_capabilities(counselor) == frozenset()
+    assert effective_capabilities(counselor) == FACULTY_CAPABILITY_CEILING
     with pytest.raises(InvalidManagementInput, match="Faculty"):
         set_capability_override(
             **args,

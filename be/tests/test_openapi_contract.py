@@ -20,7 +20,33 @@ from compass.api.v1.router import api
 REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
+
+def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection():
+    schemas = api.get_openapi_schema()["components"]["schemas"]
+    expected = {
+        "FacultyStudentConfirmationRequest": {"institutional_id"},
+        "FacultyConfirmedStudent": {"display_name"},
+        "FacultyReferralSubmitRequest": {"confirmation", "course_year_block", "reason"},
+        "FacultyReferralSubmissionResponse": {
+            "id",
+            "reference_code",
+            "submitted_at",
+            "state",
+            "student",
+        },
+    }
+    for name, fields in expected.items():
+        assert schemas[name]["additionalProperties"] is False
+        assert set(schemas[name]["properties"]) == fields
+        assert set(schemas[name]["required"]) == fields
+    assert schemas["FacultyReferralSubmissionState"]["enum"] == ["SUBMITTED"]
+
+
 EXPECTED_OPERATION_IDS = {
+    "referralsFacultyConfirmStudent",
+    "referralsFacultySubmit",
+    "referralsFacultyListMine",
+    "referralsFacultyGetMine",
     "accountsFacultyCollegeChoices",
     "accountsSetFacultyAffiliation",
     "organizationUpdateProgramPolicy",
@@ -2147,6 +2173,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "privacy_governance.view",
             "reports.view",
             "resources.manage",
+            "referrals.submit_self",
+            "referrals.view_submitted_self",
             "referrals.manage",
             "referrals.view",
             "routine_interviews.manage_assigned",

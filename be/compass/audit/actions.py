@@ -391,6 +391,8 @@ __all__ = [
     "ROUTINE_INTERVIEW_ENCOUNTER_LINKED",
     "ROUTINE_INTERVIEW_EVALUATION_FINALIZED",
     "REFERRAL_CREATED",
+    "REFERRAL_FACULTY_SUBMITTED",
+    "REFERRAL_FACULTY_POLICY_RECORDED",
     "REFERRAL_ACTION_RECORDED",
     "REFERRAL_STATUS_UPDATED",
     "REFERRAL_VOIDED",
@@ -471,3 +473,6 @@ HANDOFF_DRAFT_UPDATED = "counseling.handoff.draft_updated"
 HANDOFF_SUBMITTED = "counseling.handoff.submitted"
 HANDOFF_READ = "counseling.handoff.read"
 CONTINUITY_SELECTION_READ = "counseling.continuity.selection_read"
+
+REFERRAL_FACULTY_SUBMITTED = "referral.faculty.submitted"
+REFERRAL_FACULTY_POLICY_RECORDED = "referral.faculty.policy.recorded"

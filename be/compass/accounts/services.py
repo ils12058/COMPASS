@@ -20,6 +20,7 @@ from compass.accounts.models import (
 from compass.accounts.policy import (
     CAPABILITY_CODES,
     CATALOG_ELIGIBLE_ROLES,
+    faculty_capability_eligible,
     resolve_capability_dependencies,
 )
 from compass.organization.integrity import catalog_dependent_write
@@ -34,11 +35,6 @@ def _candidate_capabilities(
     """Collect canonical candidate authority without account-active/runtime gating."""
 
     if not getattr(user, "pk", None):
-        return frozenset()
-
-    # FAC-1 is identity-only. Persisted grants, designations and old overrides cannot
-    # turn Faculty into an operational actor, including after a primary-role change.
-    if user.role.code == "FACULTY":
         return frozenset()
 
     capability_codes: set[str] = set()
@@ -82,7 +78,9 @@ def _candidate_capabilities(
     candidates = ((capability_codes | granted) & CAPABILITY_CODES) - revoked
     if user.role.code not in CATALOG_ELIGIBLE_ROLES:
         candidates.discard("organization.catalog.manage")
-    return frozenset(candidates)
+    return frozenset(
+        code for code in candidates if faculty_capability_eligible(user.role.code, code)
+    )
 
 
 def projected_capabilities(
@@ -173,8 +171,11 @@ def set_user_capability_override(
     locked_user = (
         User.objects.select_for_update(of=("self",)).select_related("role").get(pk=user.pk)
     )
-    if locked_user.role.code == "FACULTY" and effect == UserCapabilityOverride.Effect.GRANT:
-        raise ValueError("Faculty operational capability grants are unavailable in FAC-1.")
+    if effect == UserCapabilityOverride.Effect.GRANT and not faculty_capability_eligible(
+        locked_user.role.code,
+        capability.code,
+    ):
+        raise ValueError("The capability is incompatible with the current Faculty role boundary.")
     if (
         capability.code == "organization.catalog.manage"
         and effect == UserCapabilityOverride.Effect.GRANT

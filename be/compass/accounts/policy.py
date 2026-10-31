@@ -75,9 +75,29 @@ DESIGNATION_DEFINITIONS = (
     ),
 )
 
+# Faculty receives only its own submission functions; domain approval is independent.
+FACULTY_CAPABILITY_CEILING = frozenset({"referrals.submit_self", "referrals.view_submitted_self"})
+
+
+def faculty_capability_eligible(role_code: str, capability_code: str) -> bool:
+    if role_code == "FACULTY":
+        return capability_code in FACULTY_CAPABILITY_CEILING
+    return capability_code not in FACULTY_CAPABILITY_CEILING
+
+
 CATALOG_ELIGIBLE_ROLES = frozenset({"IT_ADMIN", "COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
 
 CAPABILITY_DEFINITIONS = (
+    CapabilityDefinition(
+        code="referrals.submit_self",
+        name="Submit own Faculty Referrals",
+        description="Requires current Faculty identity and approved digital form policy.",
+    ),
+    CapabilityDefinition(
+        code="referrals.view_submitted_self",
+        name="View own Faculty submissions",
+        description="Own-submission projection only; separate disclosure policy is required.",
+    ),
     CapabilityDefinition(
         code="organization.catalog.manage",
         name="Manage organization catalog",
@@ -588,7 +608,7 @@ CAPABILITY_DEFINITIONS = (
 # management remains an IT_ADMIN responsibility. Scope and sensitive profile data are separate
 # concerns and are intentionally not implied by these grants.
 ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
-    "FACULTY": frozenset(),
+    "FACULTY": FACULTY_CAPABILITY_CEILING,
     "IT_ADMIN": frozenset(
         {
             "accounts.view",
@@ -752,6 +772,7 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 # Dependencies constrain whether already-granted authority is effective. They never
 # create prerequisite authority or rewrite persisted grants/overrides.
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
+    "referrals.submit_self": frozenset({"referrals.view_submitted_self"}),
     "organization.catalog.manage": frozenset({"organization.structure.view"}),
     "counseling.handoff.manage_own": frozenset(
         {"counseling.continuity.view", "counseling.view_assigned"}

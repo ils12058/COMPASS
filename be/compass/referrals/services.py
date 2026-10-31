@@ -57,7 +57,13 @@ from .confidential_content import (
     write_referral_confidential_content,
 )
 from .errors import InvalidReferralInput, ReferralError
-from .models import Referral, ReferralAction, ReferralActionType, ReferralReferenceCounter
+from .models import (
+    Referral,
+    ReferralAction,
+    ReferralActionType,
+    ReferralReferenceCounter,
+    ReferralSubmissionChannel,
+)
 
 REFERRAL_FORM_FAMILY_KEY = "referral_slip"
 OPERATIONAL_ROLES = frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
@@ -192,8 +198,11 @@ def _validate_fingerprint(value: str) -> str:
     return value
 
 
-def _creation_digest(*, actor_id: UUID, key: str) -> str:
-    return hashlib.sha256(f"{actor_id}\0{key}".encode()).hexdigest()
+def _creation_digest(*, actor_id: UUID, key: str, namespace: str = "") -> str:
+    material = f"{actor_id}\0{key}"
+    if namespace:
+        material = f"{namespace}\0{material}"
+    return hashlib.sha256(material.encode()).hexdigest()
 
 
 def _validate_operational_actor(actor: User) -> None:
@@ -443,33 +452,76 @@ def create_referral(
             )
 
         revision = _active_referral_revision()
-        reference_code = _allocate_reference(at=current)
-        item = Referral(
-            reference_code=reference_code,
+        item = persist_referral(
+            actor=locked_actor,
             student=student,
-            student_name_snapshot=student.get_full_name(),
-            course_year_block_snapshot=course_snapshot,
+            course_snapshot=course_snapshot,
+            reason=cleaned_reason,
+            referrer_name=cleaned_referrer,
             referred_on=source_date,
             received_at=normalized_received_at,
-            form_revision=revision,
-            recorded_by=locked_actor,
-            creation_key_digest=digest,
-            creation_request_fingerprint=fingerprint,
-        )
-        write_referral_confidential_content(
-            item, ReferralConfidentialContent(reason=cleaned_reason, referrer_name=cleaned_referrer)
-        )
-        item.save(force_insert=True)
-        item_for_audit = _queryset().get(pk=item.pk)
-        record_event(
+            revision=revision,
+            reference_code=_allocate_reference(at=current),
+            digest=digest,
+            fingerprint=fingerprint,
             context=context,
-            action=REFERRAL_CREATED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="referrals.referral",
-            target_id=item.pk,
-            metadata=_safe_form_metadata(item_for_audit),
+            channel=ReferralSubmissionChannel.GCO_RECORDED,
         )
         return _detail_queryset().get(pk=item.pk)
+
+
+@transaction.atomic
+def persist_referral(
+    *,
+    actor,
+    student,
+    course_snapshot,
+    reason,
+    referrer_name,
+    referred_on,
+    received_at,
+    revision,
+    reference_code,
+    digest,
+    fingerprint,
+    context,
+    channel,
+    faculty_origin=None,
+):
+    """Canonical encrypted insert and synchronous Audit; caller owns authorization/transaction.
+
+    Both entry paths allocate through the one annual counter. This primitive never
+    decides actor eligibility, Student scope, receipt, actions, tasks or notifications.
+    """
+    origin = faculty_origin or {}
+    item = Referral(
+        reference_code=reference_code,
+        student=student,
+        student_name_snapshot=student.get_full_name(),
+        course_year_block_snapshot=course_snapshot,
+        referred_on=referred_on,
+        received_at=received_at,
+        form_revision=revision,
+        recorded_by=actor if channel == ReferralSubmissionChannel.GCO_RECORDED else None,
+        creation_key_digest=digest,
+        creation_request_fingerprint=fingerprint,
+        submission_channel=channel,
+        **origin,
+    )
+    write_referral_confidential_content(
+        item,
+        ReferralConfidentialContent(reason=reason, referrer_name=referrer_name),
+    )
+    item.save(force_insert=True)
+    record_event(
+        context=context,
+        action=REFERRAL_CREATED,
+        outcome=AuditOutcome.SUCCESS,
+        target_type="referrals.referral",
+        target_id=item.pk,
+        metadata=_safe_form_metadata(item),
+    )
+    return item
 
 
 def list_referrals(
