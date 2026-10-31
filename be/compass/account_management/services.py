@@ -31,6 +31,7 @@ from compass.accounts.policy import (
     ROLE_CAPABILITY_GRANTS,
     ROLE_CODES,
     designation_role_compatible,
+    faculty_capability_eligible,
     missing_required_capabilities,
     required_capabilities,
 )
@@ -1199,9 +1200,12 @@ def set_capability_override(
             raise SelfTargetForbidden(
                 "an administrator cannot change their own capability overrides"
             )
-        if target.role.code == "FACULTY" and effect_value == UserCapabilityOverride.Effect.GRANT:
+        if effect_value == UserCapabilityOverride.Effect.GRANT and not faculty_capability_eligible(
+            target.role.code,
+            capability_code,
+        ):
             raise InvalidManagementInput(
-                "Faculty operational capability grants are unavailable in FAC-1."
+                "The capability is incompatible with the current Faculty role boundary."
             )
         if (
             capability_code == "organization.catalog.manage"
