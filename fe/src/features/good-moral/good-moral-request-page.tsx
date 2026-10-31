@@ -256,7 +256,7 @@ function CurrentStudentRequestChoices() {
 
   return (
     <section className="max-w-3xl space-y-5">
-      <IllustratedIntroduction src={!context.isPending && !context.isError && f4Eligible ? "/illustrations/good-moral-3d.png" : undefined}>
+      <IllustratedIntroduction edgeFade src={!context.isPending && !context.isError && f4Eligible ? "/illustrations/good-moral-3d.png" : undefined}>
         <GoodMoralHeading title="Request Good Moral Certificate" description="Choose the request that matches the certificate you need." back={<Link href="/portal/good-moral" className={pageBackLinkClass}>Back to Good Moral</Link>} />
       </IllustratedIntroduction>
       <Panel as="div">

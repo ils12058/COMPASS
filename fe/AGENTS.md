@@ -104,6 +104,13 @@ consequential confirmation dialogs or dense administrative tables. Decorative im
 text when nearby content supplies the meaning, never take
 focus, preserve aspect ratio and reserve layout space with correct intrinsic dimensions.
 
+A selected non-sensitive introduction may use the user-requested right-edge illustration treatment:
+the existing object remains decorative and retains its aspect ratio, while a CSS mask softly fades
+its edges into the actual surface and permits a partial non-destructive crop. Keep the text and
+actions clear, hide the accent where the container is too narrow, and omit it in the restricted
+states above. This exception applies to approved object illustrations, not logos or characters,
+and does not authorize gradient backgrounds or artwork in confidential workflows.
+
 Use approved assets purposefully.
 
 Do not:
@@ -2383,7 +2390,7 @@ marketing copy.
   the page. Dialogs and menus float with the dialog shadow and `rounded-md`; the floating list
   tools and the dock's labels use the lighter float shadow and `rounded-md`. Nothing on the page
   itself uses `rounded-lg` or larger.
-* No gradients outside §18's branded surfaces.
+* No gradients outside §18's branded surfaces, except the object illustration alpha-mask treatment in §2.
 * No glassmorphism, giant icons, colored icon circles, pills for everything, decorative metric
   cards, or routine empty-state illustrations. Only §2's selected non-sensitive object accents
   are permitted; rounded 3D object geometry does not change component border-radius rules.
