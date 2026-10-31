@@ -1,5 +1,6 @@
 "use client";
 
+import { FacultyHome } from "@/features/portal/home/faculty-home";
 import { CalendarPlus } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -40,6 +41,11 @@ function overviewErrorMessage(error: unknown): string {
 // Queries and primary commands remain shared. Student and Counselor Home branches change
 // presentation only; source projections, summary metrics, and role access remain authoritative.
 export function PortalHome() {
+  const { user } = usePortalSession();
+  return user.role === "FACULTY" ? <FacultyHome user={user} /> : <OperationalPortalHome />;
+}
+
+function OperationalPortalHome() {
   const { user } = usePortalSession();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {

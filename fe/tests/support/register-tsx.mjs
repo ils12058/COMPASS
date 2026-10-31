@@ -21,6 +21,11 @@ function sourceFile(base) {
 
 registerHooks({
   resolve(specifier, context, nextResolve) {
+    // next/font runs through Next's build transform. Static component tests need only
+    // its deterministic class/variable shape; real font rendering stays in browser checks.
+    if (specifier === "next/font/google") {
+      return { url: new URL("./next-font-google.mjs", import.meta.url).href, shortCircuit: true };
+    }
     let file = null;
     if (specifier.startsWith("@/")) {
       file = sourceFile(path.join(srcRoot, specifier.slice(2)));

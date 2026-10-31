@@ -12,6 +12,7 @@ import type {
 import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 
 export const roleLabels: Record<RoleCode, string> = {
+  [RoleCode.FACULTY]: "Faculty",
   [RoleCode.IT_ADMIN]: "IT Administrator",
   [RoleCode.COUNSELOR]: "Counselor",
   [RoleCode.GUIDANCE_SERVICES_STAFF]: "Guidance Services Staff",

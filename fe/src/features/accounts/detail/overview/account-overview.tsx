@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 
+import { ManagedFacultyAffiliation } from "@/features/accounts/detail/overview/faculty-affiliation";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import {
@@ -249,6 +250,8 @@ export function AccountOverview() {
         ) : null}
         </PanelBody>
       </Panel>
+
+      {account.role === RoleCode.FACULTY ? <ManagedFacultyAffiliation /> : null}
 
       <Panel aria-labelledby="status-heading">
         <PanelHeader title="Account status" titleId="status-heading" />

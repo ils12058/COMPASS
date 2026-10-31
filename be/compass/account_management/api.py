@@ -10,8 +10,9 @@ from uuid import UUID
 from django.http import HttpResponse
 from ninja import File, Router, Schema, Status
 from ninja.files import UploadedFile
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field, StrictInt
 
+from compass.account_management.faculty import set_faculty_affiliation
 from compass.accounts.api_codes import (
     CapabilityCode,
     DesignationCode,
@@ -36,6 +37,8 @@ from compass.authentication.sessions import RecentMFARequired
 from compass.authentication.step_up import require_recent_mfa_for_request, step_up_api_error
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
+from compass.organization.faculty import FacultyAffiliationResponse
+from compass.organization.models import College
 
 from .csv_import import (
     MAX_CSV_BYTES,
@@ -119,6 +122,7 @@ class AccountDetailResponse(AccountSummaryResponse):
     updated_at: datetime
     email_verified_at: datetime | None
     mfa_enabled: bool
+    faculty_affiliation: FacultyAffiliationResponse | None
 
 
 class AccountListResponse(StrictSchema):
@@ -139,6 +143,7 @@ class AccountCreateRequest(StrictSchema):
     middle_name: str = ""
     suffix: str = ""
     is_active: bool = True
+    faculty_college_id: UUID | None = None
 
 
 class IdentityUpdateRequest(StrictSchema):
@@ -269,6 +274,7 @@ class MFAResetResponse(StrictSchema):
 
 
 class CsvImportRowResponse(StrictSchema):
+    faculty_college_id: UUID | None = None
     row_number: int
     institutional_id: str
     email: str
@@ -405,6 +411,7 @@ def _csv_report(report: CsvImportReport) -> dict[str, object]:
         "rows": [
             {
                 "row_number": row.row_number,
+                "faculty_college_id": row.faculty_college_id,
                 "institutional_id": row.institutional_id,
                 "email": row.email,
                 "action": row.action,
@@ -531,6 +538,72 @@ def account_csv_import(
     return _csv_report(report)
 
 
+class FacultyCollegeChoiceResponse(StrictSchema):
+    id: UUID
+    name: str
+    campus_id: UUID
+    campus_name: str
+    code: str
+    campus_code: str
+
+
+class FacultyAffiliationUpdateRequest(StrictSchema):
+    college_id: UUID | None
+    expected_resource_version: StrictInt = Field(ge=0)
+    basis: str = Field(min_length=1, max_length=500)
+
+
+@router.get(
+    "/faculty-colleges",
+    auth=session_auth,
+    response=response_with_errors(list[FacultyCollegeChoiceResponse], 401, 403),
+    operation_id="accountsFacultyCollegeChoices",
+    summary="List active catalog Colleges for institutional Faculty provisioning",
+)
+def faculty_college_choices(request):
+    _require_management(request, recent_mfa=False)
+    return [
+        {
+            "id": college.pk,
+            "name": college.name,
+            "campus_id": college.campus_id,
+            "campus_name": college.campus.name,
+            "code": college.code,
+            "campus_code": college.campus.code,
+        }
+        for college in College.objects.select_related("campus")
+        .filter(
+            is_active=True,
+            campus__is_active=True,
+        )
+        .order_by("campus__code", "code")
+    ]
+
+
+@router.put(
+    "/{user_id}/faculty-affiliation",
+    auth=session_auth,
+    response=response_with_errors(AccountDetailResponse, 401, 403, 404, 409, 422),
+    operation_id="accountsSetFacultyAffiliation",
+    summary="Assign or clear an institutional Faculty home College",
+)
+def account_faculty_affiliation(request, user_id: UUID, payload: FacultyAffiliationUpdateRequest):
+    _require_management(request, recent_mfa=True)
+    try:
+        target = set_faculty_affiliation(
+            actor=request.auth_user,
+            actor_session=request.auth_session,
+            target_id=user_id,
+            context=_context(request),
+            **payload.model_dump(),
+        )
+    except RecentMFARequired as exc:
+        raise step_up_api_error(exc) from exc
+    except AccountManagementError as exc:
+        _raise_management_error(exc)
+    return _detail(target.pk)
+
+
 @router.post(
     "",
     response=response_with_errors(
@@ -561,6 +634,7 @@ def account_create(request, payload: AccountCreateRequest):
             suffix=payload.suffix,
             role=payload.role.value,
             is_active=payload.is_active,
+            faculty_college_id=payload.faculty_college_id,
         )
     except RecentMFARequired as exc:
         raise step_up_api_error(exc) from exc

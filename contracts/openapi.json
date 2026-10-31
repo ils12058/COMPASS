@@ -351,6 +351,18 @@
             "title": "Email",
             "type": "string"
           },
+          "faculty_college_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Faculty College Id"
+          },
           "first_name": {
             "title": "First Name",
             "type": "string"
@@ -426,6 +438,16 @@
               }
             ],
             "title": "Email Verified At"
+          },
+          "faculty_affiliation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FacultyAffiliationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "first_name": {
             "title": "First Name",
@@ -537,7 +559,8 @@
           "created_at",
           "updated_at",
           "email_verified_at",
-          "mfa_enabled"
+          "mfa_enabled",
+          "faculty_affiliation"
         ],
         "title": "AccountDetailResponse",
         "type": "object"
@@ -4897,6 +4920,10 @@
             "title": "Active Child Programs",
             "type": "integer"
           },
+          "active_faculty_affiliations": {
+            "title": "Active Faculty Affiliations",
+            "type": "integer"
+          },
           "active_student_affiliations": {
             "title": "Active Student Affiliations",
             "type": "integer"
@@ -4917,12 +4944,20 @@
             "title": "Draft Inventories",
             "type": "integer"
           },
+          "faculty_affiliations": {
+            "title": "Faculty Affiliations",
+            "type": "integer"
+          },
           "graduate_tracer_references": {
             "title": "Graduate Tracer References",
             "type": "integer"
           },
           "inactive_account_affiliations": {
             "title": "Inactive Account Affiliations",
+            "type": "integer"
+          },
+          "inactive_faculty_affiliations": {
+            "title": "Inactive Faculty Affiliations",
             "type": "integer"
           },
           "issued_good_moral": {
@@ -4964,6 +4999,9 @@
           "child_programs",
           "active_child_programs",
           "student_affiliations",
+          "faculty_affiliations",
+          "active_faculty_affiliations",
+          "inactive_faculty_affiliations",
           "active_student_affiliations",
           "inactive_account_affiliations",
           "counselor_responsibilities",
@@ -5226,6 +5264,8 @@
         "enum": [
           "active_child_colleges",
           "active_child_programs",
+          "active_faculty_affiliations",
+          "inactive_faculty_affiliations",
           "active_student_affiliations",
           "counselor_responsibilities",
           "open_office_threads",
@@ -9223,6 +9263,18 @@
             "title": "Email",
             "type": "string"
           },
+          "faculty_college_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Faculty College Id"
+          },
           "institutional_id": {
             "title": "Institutional Id",
             "type": "string"
@@ -12085,6 +12137,169 @@
           "graduation_good_moral_blocked"
         ],
         "title": "ExitInterviewWorkspaceStatusResponse",
+        "type": "object"
+      },
+      "FacultyAffiliationResponse": {
+        "properties": {
+          "active": {
+            "title": "Active",
+            "type": "boolean"
+          },
+          "assigned_at": {
+            "format": "date-time",
+            "title": "Assigned At",
+            "type": "string"
+          },
+          "assigned_by_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assigned By Id"
+          },
+          "campus_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campus Id"
+          },
+          "campus_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campus Name"
+          },
+          "college_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "College Id"
+          },
+          "college_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "College Name"
+          },
+          "resource_version": {
+            "title": "Resource Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "college_id",
+          "college_name",
+          "campus_id",
+          "campus_name",
+          "active",
+          "resource_version",
+          "assigned_at",
+          "assigned_by_id"
+        ],
+        "title": "FacultyAffiliationResponse",
+        "type": "object"
+      },
+      "FacultyAffiliationUpdateRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "basis": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Basis",
+            "type": "string"
+          },
+          "college_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "College Id"
+          },
+          "expected_resource_version": {
+            "minimum": 0,
+            "title": "Expected Resource Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "college_id",
+          "expected_resource_version",
+          "basis"
+        ],
+        "title": "FacultyAffiliationUpdateRequest",
+        "type": "object"
+      },
+      "FacultyCollegeChoiceResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "campus_code": {
+            "title": "Campus Code",
+            "type": "string"
+          },
+          "campus_id": {
+            "format": "uuid",
+            "title": "Campus Id",
+            "type": "string"
+          },
+          "campus_name": {
+            "title": "Campus Name",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "campus_id",
+          "campus_name",
+          "code",
+          "campus_code"
+        ],
+        "title": "FacultyCollegeChoiceResponse",
         "type": "object"
       },
       "FamilyMemberKindValue": {
@@ -26154,6 +26369,7 @@
       "RoleCode": {
         "enum": [
           "COUNSELOR",
+          "FACULTY",
           "GUIDANCE_SERVICES_STAFF",
           "INSTITUTIONAL_OFFICER",
           "IT_ADMIN",
@@ -30104,6 +30320,16 @@
             "title": "Exit Interview Workspace Available",
             "type": "boolean"
           },
+          "faculty_affiliation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FacultyAffiliationResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "first_name": {
             "title": "First Name",
             "type": "string"
@@ -30983,6 +31209,57 @@
           }
         ],
         "summary": "Create a managed account",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/v1/accounts/faculty-colleges": {
+      "get": {
+        "operationId": "accountsFacultyCollegeChoices",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FacultyCollegeChoiceResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "List active catalog Colleges for institutional Faculty provisioning",
         "tags": [
           "accounts"
         ]
@@ -32358,6 +32635,104 @@
           }
         ],
         "summary": "Enable a managed account",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/api/v1/accounts/{user_id}/faculty-affiliation": {
+      "put": {
+        "operationId": "accountsSetFacultyAffiliation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FacultyAffiliationUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountDetailResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Assign or clear an institutional Faculty home College",
         "tags": [
           "accounts"
         ]

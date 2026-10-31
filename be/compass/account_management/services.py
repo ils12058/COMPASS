@@ -72,7 +72,7 @@ from compass.authentication.sessions import (
 from compass.common.ordering import parse_ordering
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
-from compass.organization.integrity import catalog_gate
+from compass.organization.integrity import catalog_dependent_write, catalog_gate
 
 ACCOUNT_MANAGE_CAPABILITY = "accounts.manage"
 INSTITUTIONAL_DESIGNATION_MANAGE_CAPABILITY = "institutional_designations.manage"
@@ -465,11 +465,14 @@ def serialize_account(user: User, *, detail: bool = False) -> dict[str, object]:
         "created_at": user.created_at,
     }
     if detail:
+        from compass.organization.faculty import faculty_affiliation_projection
+
         payload.update(
             {
                 "updated_at": user.updated_at,
                 "email_verified_at": user.email_verified_at,
                 "mfa_enabled": has_active_totp_factor(user.pk),
+                "faculty_affiliation": faculty_affiliation_projection(user),
             }
         )
     return payload
@@ -660,6 +663,7 @@ def inspect_account_access(
     }
 
 
+@catalog_dependent_write
 def create_account(
     *,
     actor: User,
@@ -673,6 +677,7 @@ def create_account(
     middle_name: str = "",
     suffix: str = "",
     is_active: bool = True,
+    faculty_college_id=None,
 ) -> User:
     cleaned_institutional_id = _clean_institutional_id(institutional_id)
     cleaned_email = _clean_email(email)
@@ -682,11 +687,17 @@ def create_account(
     cleaned_suffix = _clean_identity_text("suffix", suffix, allow_none=True)
     role_code = _canonical_role_code(role)
 
+    from compass.account_management.faculty import (
+        validate_faculty_college,
+        write_faculty_affiliation,
+    )
+
     with transaction.atomic():
         _lock_management_mutex()
         locked_actor, _ = _lock_users(actor_id=actor.pk)
         _assert_manager(locked_actor)
         _assert_recent_mfa(actor=locked_actor, actor_session=actor_session)
+        college = validate_faculty_college(role=role_code, college_id=faculty_college_id)
         role_record = Role.objects.filter(code=role_code).first()
         if role_record is None:
             raise ManagementConfigurationError(
@@ -724,6 +735,13 @@ def create_account(
             target_type="accounts.user",
             target_id=user.pk,
             metadata={"role": role_code},
+        )
+        write_faculty_affiliation(
+            target=user,
+            actor=locked_actor,
+            college=college,
+            basis="ACCOUNT_CREATION",
+            context=context,
         )
     return user
 
@@ -932,6 +950,16 @@ def change_role(
             raise AppointmentRelationshipConflict(str(exc)) from exc
 
         from_role = target.role.code
+        if from_role == "FACULTY":
+            from compass.account_management.faculty import write_faculty_affiliation
+
+            write_faculty_affiliation(
+                target=target,
+                actor=_locked_actor,
+                college=None,
+                basis="PRIMARY_ROLE_CHANGED",
+                context=context,
+            )
         target.role = role_record
         if target.is_active:
             from compass.organization.services import (
@@ -1170,6 +1198,10 @@ def set_capability_override(
         if target.pk == locked_actor.pk:
             raise SelfTargetForbidden(
                 "an administrator cannot change their own capability overrides"
+            )
+        if target.role.code == "FACULTY" and effect_value == UserCapabilityOverride.Effect.GRANT:
+            raise InvalidManagementInput(
+                "Faculty operational capability grants are unavailable in FAC-1."
             )
         if (
             capability_code == "organization.catalog.manage"

@@ -71,6 +71,7 @@ type CandidateLink = PortalWorkspaceLink & { visible: boolean };
 // The portal workspaces an account can open, grouped as the portal sidebar shows them. The sidebar
 // and the public landing's quick access both read this list, so they never offer different places.
 export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[] {
+  if (user.role === "FACULTY") return [];
   const canManageAccounts = user.capabilities.includes("accounts.manage");
   const hasOrganization = canEnterOrganization(user);
   const hasAcademicYears = canViewAcademicYears(user);

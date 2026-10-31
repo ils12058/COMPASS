@@ -320,3 +320,46 @@ class CatalogInitialization(models.Model):
         raise TypeError(
             "Catalog initialization receipts cannot be removed by application operations."
         )
+
+
+class FacultyAffiliation(models.Model):
+    """Current institutional home, independent of Student placement and GCO routing.
+
+    A cleared row retains its version to prevent ABA/lost-update conflicts. Historical
+    College UUIDs and assignment actors are retained in the synchronous Audit Trail.
+    """
+
+    faculty = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="organization_faculty_affiliation",
+    )
+    college = models.ForeignKey(
+        College,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="faculty_affiliations",
+    )
+    resource_version = models.PositiveIntegerField(default=1)
+    assigned_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="assigned_faculty_affiliations",
+    )
+    assigned_at = models.DateTimeField(default=timezone.now)
+    basis = models.CharField(max_length=500)
+
+    class Meta:
+        default_permissions = ()
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(resource_version__gte=1),
+                name="organization_faculty_version_positive",
+            ),
+            models.CheckConstraint(
+                condition=~models.Q(basis=""),
+                name="organization_faculty_basis_nonempty",
+            ),
+        ]

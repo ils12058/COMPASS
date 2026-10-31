@@ -90,6 +90,7 @@ from compass.authentication.step_up import step_up_api_error
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.rate_limit import client_ip
+from compass.organization.faculty import FacultyAffiliationResponse, faculty_affiliation_projection
 
 router = Router(tags=["auth"])
 
@@ -113,6 +114,7 @@ class UserSummary(Schema):
     student_lifecycle_status: StudentLifecycleCode | None
     designations: list[DesignationCode]
     capabilities: list[CapabilityCode]
+    faculty_affiliation: FacultyAffiliationResponse | None = None
 
 
 class CSRFResponse(Schema):
@@ -351,6 +353,7 @@ def _user_summary(user) -> dict[str, object]:
         "exit_interview_workspace_available": has_student_workspace(user),
         "designations": designations,
         "capabilities": sorted(effective_capabilities(user)),
+        "faculty_affiliation": faculty_affiliation_projection(user),
     }
 
 

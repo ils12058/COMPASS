@@ -21,6 +21,8 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 CONTRACT_PATH = REPOSITORY_ROOT / "contracts" / "openapi.json"
 
 EXPECTED_OPERATION_IDS = {
+    "accountsFacultyCollegeChoices",
+    "accountsSetFacultyAffiliation",
     "organizationUpdateProgramPolicy",
     "organizationCreateCampus",
     "organizationRenameCampus",
@@ -1256,6 +1258,8 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert "email_verified_at" in account_detail
     user_summary = schemas["UserSummary"]["properties"]
     assert "student_lifecycle_status" in user_summary
+    assert "faculty_affiliation" in user_summary
+    assert "faculty_affiliation" in account_detail
     assert user_summary["designations"]["type"] == "array"
     assert user_summary["designations"]["items"]["$ref"].endswith("/DesignationCode")
     assert user_summary["capabilities"]["type"] == "array"
@@ -2057,6 +2061,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     schemas = schema["components"]["schemas"]
     assert schemas["RoleCode"]["enum"] == [
         "COUNSELOR",
+        "FACULTY",
         "GUIDANCE_SERVICES_STAFF",
         "INSTITUTIONAL_OFFICER",
         "IT_ADMIN",

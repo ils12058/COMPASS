@@ -969,8 +969,7 @@ def test_real_browser_fixed_slot_booking_next_django_postgres_workflow(env, live
                     "**/*",
                     lambda route: (
                         route.continue_()
-                        if urlparse(route.request.url).hostname
-                        in {"localhost", "127.0.0.1"}
+                        if urlparse(route.request.url).hostname in {"localhost", "127.0.0.1"}
                         else route.abort()
                     ),
                 )
@@ -985,8 +984,10 @@ def test_real_browser_fixed_slot_booking_next_django_postgres_workflow(env, live
                 confirm = page.get_by_role("button", name="Confirm booking", exact=True)
                 expect(confirm).to_be_visible()
                 with page.expect_response(
-                    lambda response: response.request.method == "POST"
-                    and response.url.endswith(f"/services/{service.pk}/slots/{slot_id}/book")
+                    lambda response: (
+                        response.request.method == "POST"
+                        and response.url.endswith(f"/services/{service.pk}/slots/{slot_id}/book")
+                    )
                 ) as booking_response:
                     confirm.click()
                 booking_result = booking_response.value
@@ -1007,8 +1008,10 @@ def test_real_browser_fixed_slot_booking_next_django_postgres_workflow(env, live
                 appointment_id = appointment_path.rsplit("/", 1)[-1]
                 reference_code = booking_body["reference_code"]
                 with page.expect_response(
-                    lambda response: response.request.method == "GET"
-                    and response.url.split("?")[0].endswith("/api/v1/appointments/me")
+                    lambda response: (
+                        response.request.method == "GET"
+                        and response.url.split("?")[0].endswith("/api/v1/appointments/me")
+                    )
                 ) as history_response:
                     page.goto(origin + "/portal/appointments/my")
                 history_body = history_response.value.json()

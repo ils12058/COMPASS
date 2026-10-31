@@ -4,6 +4,8 @@ import type { CatalogDependentCounts, CatalogImpactResponse, CatalogIssueCode } 
 export const impactExplanations: Record<CatalogIssueCode, string> = {
   active_child_colleges: "Active colleges remain. Review them before deactivating this campus.",
   active_child_programs: "Active programs remain. Review them before deactivating this college.",
+  active_faculty_affiliations: "Active Faculty accounts still reference this scope. Review their home Colleges in Account Management before deactivation.",
+  inactive_faculty_affiliations: "Inactive Faculty references are retained; reactivation requires an active College and Campus.",
   active_student_affiliations: "Students are still linked to this scope. Their affiliations need review before deactivation.",
   counselor_responsibilities: "A Counselor responsibility remains. Remove or update it before deactivation.",
   open_office_threads: "Open guidance conversations depend on this scope. Resolve the affected work before deactivation.",
@@ -14,6 +16,7 @@ export const impactExplanations: Record<CatalogIssueCode, string> = {
 };
 const countLabels: Record<keyof CatalogDependentCounts, string> = {
   active_child_colleges: "Active colleges", active_child_programs: "Active programs",
+  faculty_affiliations: "All Faculty affiliations", active_faculty_affiliations: "Active Faculty affiliations", inactive_faculty_affiliations: "Inactive Faculty affiliations",
   active_student_affiliations: "Active Student affiliations", child_colleges: "All colleges", child_programs: "All programs",
   counselor_responsibilities: "Counselor responsibilities", draft_inventories: "Draft Inventories",
   graduate_tracer_references: "Graduate Tracer references", inactive_account_affiliations: "Inactive-account affiliations",

@@ -5,16 +5,19 @@ from __future__ import annotations
 import csv
 import io
 from dataclasses import dataclass
+from uuid import UUID
 
 from django.db import IntegrityError, transaction
 from django.db.models import Q
 
+from compass.account_management.faculty import validate_faculty_college, write_faculty_affiliation
 from compass.accounts.models import Role, User
 from compass.audit.actions import ACCOUNT_CREATED, ACCOUNT_CSV_IMPORTED
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.organization.integrity import catalog_dependent_write
+from compass.organization.models import FacultyAffiliation
 
 from .services import (
     InvalidManagementInput,
@@ -32,7 +35,7 @@ from .services import (
 MAX_CSV_BYTES = 1_048_576
 MAX_CSV_ROWS = 1_000
 REQUIRED_HEADERS = frozenset({"institutional_id", "email", "first_name", "last_name", "role"})
-OPTIONAL_HEADERS = frozenset({"middle_name", "suffix"})
+OPTIONAL_HEADERS = frozenset({"middle_name", "suffix", "faculty_college_id"})
 ALLOWED_HEADERS = REQUIRED_HEADERS | OPTIONAL_HEADERS
 
 
@@ -91,6 +94,7 @@ class CsvProvisionRow:
     last_name: str
     suffix: str
     role: str
+    faculty_college_id: UUID | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +104,7 @@ class CsvImportRowResult:
     email: str
     action: str
     message: str = ""
+    faculty_college_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -196,6 +201,10 @@ def _parse_csv(data: bytes) -> ParsedCsv:
                 )
                 suffix = _clean_identity_text("suffix", raw.get("suffix", ""), allow_none=True)
                 role = _canonical_role_code(raw.get("role", ""))
+                college = validate_faculty_college(
+                    role=role,
+                    college_id=raw.get("faculty_college_id", "").strip() or None,
+                )
             except InvalidManagementInput as exc:
                 issues.append(
                     CsvImportIssue(
@@ -242,6 +251,7 @@ def _parse_csv(data: bytes) -> ParsedCsv:
                     last_name=last_name,
                     suffix=suffix,
                     role=role,
+                    faculty_college_id=college.pk if college else None,
                 )
             )
     except csv.Error as exc:
@@ -284,6 +294,11 @@ def _classify_rows(
         for user in queryset
         if user.institutional_id is not None
     }
+    affiliation_ids = dict(
+        FacultyAffiliation.objects.filter(
+            faculty_id__in=[user.pk for user in existing_by_email.values()],
+        ).values_list("faculty_id", "college_id")
+    )
     results: list[CsvImportRowResult] = []
 
     for row in rows:
@@ -296,6 +311,7 @@ def _classify_rows(
                     institutional_id=row.institutional_id,
                     email=row.email,
                     action="CREATE",
+                    faculty_college_id=row.faculty_college_id,
                 )
             )
             continue
@@ -308,6 +324,7 @@ def _classify_rows(
                     institutional_id=row.institutional_id,
                     email=row.email,
                     action="CONFLICT",
+                    faculty_college_id=row.faculty_college_id,
                     message=reason,
                 )
             )
@@ -318,6 +335,7 @@ def _classify_rows(
             current.is_active
             and current.role.code == row.role
             and _existing_identity(current) == _normalized_identity(row)
+            and (row.role != "FACULTY" or affiliation_ids.get(current.pk) == row.faculty_college_id)
         ):
             results.append(
                 CsvImportRowResult(
@@ -325,6 +343,7 @@ def _classify_rows(
                     institutional_id=row.institutional_id,
                     email=row.email,
                     action="SKIP",
+                    faculty_college_id=row.faculty_college_id,
                 )
             )
             continue
@@ -333,7 +352,7 @@ def _classify_rows(
         if current.is_active and current.role.code != row.role:
             reason = "existing account has a different role"
         elif current.is_active:
-            reason = "existing account has different identity fields"
+            reason = "existing account has different identity fields or Faculty affiliation"
         results.append(
             CsvImportRowResult(
                 row_number=row.row_number,
@@ -439,6 +458,15 @@ def provision_accounts_from_csv(
                     last_name=row.last_name,
                     suffix=row.suffix,
                     is_active=True,
+                )
+                write_faculty_affiliation(
+                    target=user,
+                    actor=locked_actor,
+                    college=validate_faculty_college(
+                        role=row.role, college_id=row.faculty_college_id
+                    ),
+                    basis="ACCOUNT_CSV_IMPORT",
+                    context=context,
                 )
                 record_event(
                     context=context,

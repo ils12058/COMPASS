@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { FacultyCollegeReferences } from "@/features/accounts/import/faculty-college-references";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Label } from "@/components/ui/label";
@@ -19,7 +20,7 @@ import type { CsvImportResponse } from "@/lib/api/generated/model";
 import { CompassApiError } from "@/lib/api/errors";
 
 const template =
-  "institutional_id,email,first_name,middle_name,last_name,suffix,role\n";
+  "institutional_id,email,first_name,middle_name,last_name,suffix,role,faculty_college_id\n";
 
 const rowActionLabels: Record<string, [review: string, committed: string]> = {
   CREATE: ["Create", "Created"],
@@ -170,7 +171,8 @@ export function ImportAccounts() {
         <PanelBody className="py-5">
         <p className="text-sm text-muted">
           Required columns: institutional_id, email, first_name, last_name,
-          role. Optional: middle_name, suffix. Limit: about 1 MiB and 1,000
+          role. Optional: middle_name, suffix, faculty_college_id (Faculty only; active catalog College UUID).
+          A blank Faculty College leaves the affiliation unassigned. Existing affiliations are never changed by import. Limit: about 1 MiB and 1,000
           non-empty rows.
         </p>
         <a
@@ -180,6 +182,7 @@ export function ImportAccounts() {
         >
           Download headers-only template
         </a>
+        <FacultyCollegeReferences />
         <div className="mt-5 grid max-w-lg gap-1.5">
           <Label htmlFor="account-csv-file">CSV file</Label>
           <input
@@ -320,7 +323,7 @@ export function ImportAccounts() {
                     <td className={`${dataTable.cell} font-semibold`}>
                       {rowActionLabel(row.action, report.committed)}
                     </td>
-                    <td className={dataTable.cell}>{row.message || "—"}</td>
+                    <td className={dataTable.cell}>{row.message || "—"}{row.faculty_college_id ? <span className="mt-1 block break-all">Faculty College: {row.faculty_college_id}</span> : null}</td>
                   </tr>
                 ))}
               </tbody>
