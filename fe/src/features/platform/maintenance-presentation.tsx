@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 
+import { AccessibilityControl } from "@/features/accessibility/accessibility-control";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { PlatformTimestamp } from "@/features/platform/platform-presentation";
 import {
@@ -58,7 +59,7 @@ export function MaintenanceNotice({ surface = "page" }: { surface?: "page" | "au
 
 function MaintenanceBrand() {
   return (
-    <div className="flex items-center gap-2 text-brand-strong">
+    <div className="flex flex-wrap items-center gap-2 text-brand-strong">
       <Image src="/brand/ucn-logo.png" width={32} height={30} alt="" aria-hidden="true" className="h-8 w-auto object-contain" />
       <span className="h-7 w-px bg-border" aria-hidden="true" />
       <Image src="/brand/compass-mark.svg" width={36} height={36} alt="" aria-hidden="true" />
@@ -98,7 +99,7 @@ export function MaintenanceScreen({
             <MaintenanceBrand />
             <p className="mt-2 text-sm font-medium text-muted">Guidance and Counseling Office</p>
           </div>
-          <h1 id="maintenance-heading" className="mt-5 font-heading text-2xl font-bold leading-tight text-ink">{heading}</h1>
+          <h1 id="maintenance-heading" className="mt-5 font-heading text-2xl font-bold leading-tight text-ink [overflow-wrap:anywhere]">{heading}</h1>
           <MaintenanceMessage message={status.message} className="mt-3 text-base leading-7 text-ink" />
           {status.ends_at ? (
             <dl className="mt-4">
@@ -133,6 +134,7 @@ export function PublicMaintenanceGate({ children }: { children: ReactNode }) {
       checkedAt={checkedAt}
       onCheck={() => void check()}
       actions={<Link href="/login" className={buttonVariants({ variant: "quiet" })}>Sign in</Link>}
+      controls={<AccessibilityControl placement="header" />}
     />
   );
 }
