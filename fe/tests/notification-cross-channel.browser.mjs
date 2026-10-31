@@ -87,7 +87,7 @@ for (const family of families) {
   f.state.authenticated = false;
   const destination = `/portal/${family[3]}/${id}`;
   await check(`signed-out email link returns to ${family[0]} after login`, destination, f.options, async page => {
-    await shown(page.getByRole("heading", { name: "Sign in to COMPASS", exact: true }));
+    await shown(page.getByRole("heading", { name: "Sign in", exact: true }));
     assert.equal(new URL(page.url()).searchParams.get("next"), destination);
     assert.equal(f.state.recordReads, 0);
     await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");
@@ -166,7 +166,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]) {
     f.state.authenticated = false;
     f.state.switchOnMark = true;
     await page.getByRole("button", { name: "Open Appointment", exact: true }).click();
-    await shown(page.getByRole("heading", { name: "Sign in to COMPASS", exact: true }));
+    await shown(page.getByRole("heading", { name: "Sign in", exact: true }));
     assert.equal(new URL(page.url()).searchParams.get("next"), center);
     await hidden(page.getByRole("heading", { name: families[0][1], exact: true }));
   });
@@ -213,7 +213,7 @@ for (const mode of ["empty", "error", "long desktop", "long phone dark preferenc
     assert.equal(f.state.authenticated, false);
     const destination = `/portal/appointments/${id}`;
     await navigate(page, destination);
-    await shown(page.getByRole("heading", { name: "Sign in to COMPASS", exact: true }));
+    await shown(page.getByRole("heading", { name: "Sign in", exact: true }));
     assert.equal(new URL(page.url()).searchParams.get("next"), destination);
     assert.equal(f.state.recordReads, 0);
     await page.getByLabel("Email", { exact: true }).fill("synthetic@example.test");

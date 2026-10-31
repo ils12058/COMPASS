@@ -24,12 +24,12 @@ export function AuthSurface({
 
       <MaintenanceNotice surface="auth" />
 
-      <div className="w-full rounded-sm border border-brand-line bg-surface-raised px-5 py-6 text-left sm:px-8 sm:py-7">
+      <div className="w-full rounded-sm border border-brand-line bg-surface-raised px-[min(1.25rem,5vw)] py-6 text-left sm:px-8 sm:py-7 [&_h1]:[overflow-wrap:anywhere]">
         <div className="mb-5 border-b border-border pb-5">
           <Link
             href="/"
             aria-label="COMPASS public site"
-            className="flex w-fit items-center gap-2 rounded-sm text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body"
+            className="flex w-fit max-w-full flex-wrap items-center gap-2 rounded-sm text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-body"
           >
             <Image src="/brand/ucn-logo.png" width={32} height={30} alt="" aria-hidden="true" className="h-8 w-auto object-contain" priority />
             <span className="h-7 w-px bg-border" aria-hidden="true" />

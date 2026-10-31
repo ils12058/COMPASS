@@ -5,13 +5,14 @@ import styles from "./auth-shell.module.css";
 
 export function AuthShell({ children }: { children: ReactNode }) {
   return (
-    <div className="relative min-h-dvh overflow-x-clip bg-body">
+    <div className="relative flex min-h-dvh flex-col bg-body">
       <div className={styles.campus} aria-hidden="true" />
-      <main className="relative flex min-h-dvh items-center px-4 pb-24 pt-10 sm:px-6 sm:py-10">
+      <header className="relative flex justify-end px-[min(1rem,4vw)] pt-2">
+        <AccessibilityControl placement="header" />
+      </header>
+      <main className="relative flex flex-1 items-center px-[min(1rem,4vw)] pb-10 pt-2 sm:px-6 sm:pb-10">
         {children}
       </main>
-
-      <AccessibilityControl placement="floating" />
     </div>
   );
 }

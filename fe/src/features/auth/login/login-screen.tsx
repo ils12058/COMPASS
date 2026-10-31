@@ -97,7 +97,7 @@ function LoginForm({ nextPath, emailChanged }: { nextPath: string; emailChanged:
         </div>
       ) : null}
       <h1 id="login-heading" className="font-heading text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-        Sign in to COMPASS
+        Sign in
       </h1>
       <p className="mt-3 text-sm leading-6 text-muted">
         Use your University of Camarines Norte COMPASS account.
