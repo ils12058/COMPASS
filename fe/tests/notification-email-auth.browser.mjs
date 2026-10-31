@@ -73,7 +73,7 @@ for (const mode of ["signed in", "password", "MFA", "denied after login"]) {
   const fixture = world({ authenticated: mode === "signed in", mfa: mode === "MFA", denied: mode === "denied after login" });
   await check(`email destination: ${mode}`, destination, { role: "STUDENT", handler: fixture.handler }, async page => {
     if (mode !== "signed in") {
-      await shown(page.getByRole("heading", { name: "Sign in to COMPASS", exact: true }));
+      await shown(page.getByRole("heading", { name: "Sign in", exact: true }));
       assert.equal(new URL(page.url()).searchParams.get("next"), destination);
       assert.equal(fixture.state.recordReads, 0);
       await hidden(page.getByText(record.reference_code, { exact: true }));
@@ -104,7 +104,7 @@ for (const mode of ["signed in", "password", "MFA", "denied after login"]) {
       await shown(page.getByText(record.reference_code, { exact: true }));
       fixture.state.authenticated = false;
       await page.reload();
-      await shown(page.getByRole("heading", { name: "Sign in to COMPASS", exact: true }));
+      await shown(page.getByRole("heading", { name: "Sign in", exact: true }));
       assert.equal(new URL(page.url()).searchParams.get("next"), destination);
       await hidden(page.getByText(record.reference_code, { exact: true }));
       await signIn(page);
@@ -117,7 +117,7 @@ for (const mode of ["signed in", "password", "MFA", "denied after login"]) {
   const fixture = world({ mfa: true, mandatorySetup: true });
   await check("mandatory authenticator setup preserves destination through fresh login and MFA", destination,
     { role: "STUDENT", handler: fixture.handler }, async page => {
-      await shown(page.getByRole("heading", { name: "Sign in to COMPASS", exact: true }));
+      await shown(page.getByRole("heading", { name: "Sign in", exact: true }));
       await signIn(page);
       await shown(page.getByRole("heading", { name: "Set up an authenticator app", exact: true }));
       await page.getByRole("button", { name: "Start authenticator setup", exact: true }).click();
@@ -127,7 +127,7 @@ for (const mode of ["signed in", "password", "MFA", "denied after login"]) {
       assert.equal(fixture.state.recordReads, 0);
       await page.getByLabel("I have saved my recovery codes.", { exact: true }).check();
       await page.getByRole("button", { name: "Return to sign in", exact: true }).click();
-      await shown(page.getByRole("heading", { name: "Sign in to COMPASS", exact: true }));
+      await shown(page.getByRole("heading", { name: "Sign in", exact: true }));
       assert.equal(new URL(page.url()).searchParams.get("next"), destination);
       await signIn(page);
       await shown(page.getByRole("heading", { name: "Verify your identity", exact: true }));
@@ -144,7 +144,7 @@ for (const next of ["https://evil.test", "//evil.test", "%2f%2fevil.test", "/log
   const fixture = world();
   await check("unsafe login next remains local: " + next, `/login?next=${encodeURIComponent(next)}`,
     { role: "STUDENT", handler: fixture.handler }, async page => {
-      await shown(page.getByRole("heading", { name: "Sign in to COMPASS", exact: true }));
+      await shown(page.getByRole("heading", { name: "Sign in", exact: true }));
       await signIn(page);
       await page.waitForURL(url => url.pathname === "/portal");
       assert.equal(new URL(page.url()).hostname, "localhost");
@@ -156,7 +156,7 @@ for (const mandatorySetup of [false, true]) {
   const fixture = world({ mfa: true, mandatorySetup });
   await check(`reload ${mandatorySetup ? "mandatory setup" : "MFA"} restarts with the email destination`, destination,
     { role: "STUDENT", handler: fixture.handler }, async page => {
-      await shown(page.getByRole("heading", { name: "Sign in to COMPASS", exact: true }));
+      await shown(page.getByRole("heading", { name: "Sign in", exact: true }));
       await signIn(page);
       await shown(page.getByRole("heading", { name: mandatorySetup ? "Set up an authenticator app" : "Verify your identity", exact: true }));
       if (mandatorySetup) {
@@ -168,7 +168,7 @@ for (const mandatorySetup of [false, true]) {
       await shown(page.getByRole("heading", { name: "Restart sign in", exact: true }));
       assert.equal(fixture.state.recordReads, 0);
       await page.getByRole("link", { name: "Return to sign in", exact: true }).click();
-      await shown(page.getByRole("heading", { name: "Sign in to COMPASS", exact: true }));
+      await shown(page.getByRole("heading", { name: "Sign in", exact: true }));
       assert.equal(new URL(page.url()).searchParams.get("next"), destination);
       // A new password challenge is required; reload never restores credentials or MFA state.
       assert.equal(fixture.state.loginCalls, 1);
