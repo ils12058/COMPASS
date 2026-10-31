@@ -20,6 +20,10 @@ Supplemental authentication, capability dependencies and continuity contract run
 41 passed plus one outdated exact session-key assertion. The assertion now
 explicitly includes `faculty_affiliation` and verifies it is null for Students;
 its focused rerun passed. No authorization assertion was removed or relaxed.
+Supplemental OpenAPI/Profile checks: 72 passed; one operation-inventory assertion
+needed the two new managed Faculty operation IDs and passed on focused rerun.
+The role enum and exact own-session DTO expectations are updated deliberately;
+Faculty now participates in the existing own-Profile GET/PATCH role matrix.
 
 The four Faculty PostgreSQL race scenarios observe an actual ungranted advisory
 lock on an independent connection. Assignment or single-account creation races

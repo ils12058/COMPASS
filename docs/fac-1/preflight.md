@@ -21,8 +21,38 @@ and authentication invalidation. Existing role changes reject stranded Student,
 Counselor, Supervision, Availability and Appointment relationships. These are the
 verified access-control principles relevant to Proposal #13: distinct primary
 identity, compatible designation, explicit action authority, separate resource
-scope, default denial and audited institutional provisioning. The complete text
-of Proposal #13 is not in this checkout; no additional policy is inferred.
+scope, default denial and audited institutional provisioning. The local published
+*COMPASS Development Proposal Booklet* (2026-10-21), Chapter 2, Proposal #13,
+sections 3.5, 4.1–4.4 and 6.2–6.4, was also checked against these current owners;
+its historical observations are not treated as current implementation evidence.
+Chapter 10, Proposal #7, sections 5.1–5.6 confirms the single-primary-role,
+institutional-home, server-derived Campus, provenance and missing-affiliation
+boundaries. The original notes text is no longer at its earlier local path; the
+published Markdown is available. No institutional approval is inferred from it.
+
+### Proposal #13 predicate audit
+
+| Principle / predicate | Current owning source and FAC-1 result |
+| --- | --- |
+| Valid current actor | Existing session authentication and `_admin_mutation` reload/lock active manager; no new auth system |
+| Role and compatible designation | One Role FK; existing Head/DPO compatibility retained; Faculty inherits neither designation authority nor clinical identity |
+| Effective function authority | Existing persisted grants/dependency resolver preserved; Faculty ceiling prevents additive-sync drift or raw overrides from becoming effective |
+| Exact resource relationship | Manager targets one account; Faculty College FK is home provenance only, never Student ownership, teaching scope or GCO routing |
+| Action/lifecycle eligibility | Active College/Campus validation, explicit stale-version rejection, safe role clearing and retained-reference reactivation checks |
+| Higher-trust constraints | Existing recent-MFA, CSRF, self-target, last-manager and Audit protections retained; no clinical consent or delegation bypass introduced |
+| Transactional revalidation | Catalog gate precedes manager/account locks; concurrent retirement/assignment tested on independent PostgreSQL connections |
+| Frontend/backend parity | Empty Faculty business navigation, blocked direct routes before component mounting, backend capability ceiling and negative endpoint checks |
+
+Proposal #13's general baseline reconciliation, redesigned Group Session grants,
+global override compatibility matrix and institutional responsibility review remain
+separate ACCESS work. FAC-1 makes no unapproved changes to other roles' baselines
+and does not claim inspection of persisted production grants or complete ACCESS-0.
+
+Current source baseline counts: IT Administrator 11, Counselor 40, GSS 23,
+Student 25, Institutional Officer 0, Faculty 0; Head designation 16, DPO 4.
+There are 89 canonical capability codes, 99 expected role grants and 20 expected
+designation grants. Existing-database unknown grants remain retained by sync;
+synthetic malformed Faculty role/override rows are tested and stay ineffective.
 
 ORG-1–4 established database-owned UUID references, active parent validation,
 resource versions, impact blockers and a cooperative catalog gate taken before

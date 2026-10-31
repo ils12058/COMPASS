@@ -30,7 +30,7 @@ workflow. Provisioning a Faculty account is not approval of any of those policie
    `_validate_operational_actor` or relax GCO scope. A retried Faculty request must
    resolve to the same immutable submission without allocating another reference.
 5. Encrypt the Referral reason and controlled referrer content with the existing
-   `referrals/confidential.py` writer. Neither Student confirmation nor error,
+   `referrals/confidential_content.py` writer. Neither Student confirmation nor error,
    activity, notification or own-list projections may expose reason plaintext or
    internal actions. Existing operational document rendering remains GCO-only
    until Faculty-safe document authority and content are explicitly decided.

@@ -160,6 +160,7 @@ def test_profile_foundation_tracks_current_capability_policy_counts():
 @pytest.mark.parametrize(
     "role_code",
     [
+        "FACULTY",
         "STUDENT",
         "COUNSELOR",
         "GUIDANCE_SERVICES_STAFF",
@@ -248,7 +249,14 @@ def test_unauthenticated_profile_requests_are_rejected():
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "role_code",
-    ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER"],
+    [
+        "FACULTY",
+        "STUDENT",
+        "COUNSELOR",
+        "GUIDANCE_SERVICES_STAFF",
+        "IT_ADMIN",
+        "INSTITUTIONAL_OFFICER",
+    ],
 )
 def test_each_role_can_patch_own_profile_without_recent_mfa_or_session_rotation(role_code):
     sync_policy()
