@@ -24,6 +24,7 @@ from compass.referrals.faculty_policy import FacultyReferralError
 from compass.referrals.models import Referral, ReferralSubmissionChannel
 from compass.referrals.services import (
     MAX_REASON_LENGTH,
+    ReferralConfigurationConflict,
     ReferralCreationConflict,
     ReferralNotFound,
     _active_referral_revision,
@@ -40,13 +41,13 @@ CONFIRMATION_SALT = "compass.faculty-referral.student-confirmation.v1"
 MAX_CONFIRMATION_LENGTH = 4096
 
 
-def _current_actor(actor, capability):
+def _current_actor(actor, capability=None):
     current = User.objects.select_related("role").filter(pk=getattr(actor, "pk", None)).first()
     if (
         current is None
         or not current.is_active
         or current.role.code != "FACULTY"
-        or not current.has_capability(capability)
+        or (capability is not None and not current.has_capability(capability))
     ):
         raise FacultyReferralError("not_permitted")
     return current
@@ -78,6 +79,7 @@ def _session(actor, actor_session, now):
     )
     if current is None:
         raise FacultyReferralError("session_unavailable", 401)
+    return current
 
 
 def _home(actor):
@@ -102,6 +104,64 @@ def _home(actor):
 def _admitted(actor, policy):
     if actor.pk not in policy.faculty_ids:
         raise FacultyReferralError("not_permitted")
+
+
+@catalog_dependent_write
+def referral_availability(*, actor, actor_session):
+    """Advisory current availability only; never a grant or Student disclosure."""
+    users = _lock_users(actor.pk)
+    actor = _current_actor(users.get(actor.pk))
+    now = timezone.now()
+    session = _session(actor, actor_session, now)
+    result = {
+        "can_confirm_student": False,
+        "can_submit_referral": False,
+        "can_view_submissions": False,
+        "valid_until": None,
+    }
+    try:
+        _home(actor)
+    except FacultyReferralError:
+        return result
+    deadlines = []
+    lookup = submission = None
+    try:
+        lookup = faculty_policy.require_lookup_policy(now)
+        _admitted(actor, lookup)
+        result["can_confirm_student"] = actor.has_capability("referrals.submit_self")
+        if result["can_confirm_student"]:
+            deadlines.append(lookup.valid_until)
+    except FacultyReferralError:
+        lookup = None
+    try:
+        submission = faculty_policy.require_submission_policy(now)
+        _admitted(actor, submission)
+        result["can_view_submissions"] = actor.has_capability("referrals.view_submitted_self")
+        if result["can_view_submissions"]:
+            deadlines.append(submission.valid_until)
+    except FacultyReferralError:
+        submission = None
+    if result["can_confirm_student"] and lookup and submission:
+        try:
+            revision = _active_referral_revision()
+            result["can_submit_referral"] = (
+                bool(submission.student_college_ids & lookup.student_college_ids)
+                and submission.lookup_policy_digest == lookup.digest
+                and (
+                    revision.official_code,
+                    revision.official_revision,
+                    revision.internal_schema_version,
+                )
+                == (submission.form_code, submission.form_revision, submission.form_schema)
+            )
+        except ReferralConfigurationConflict:
+            pass
+    if any(
+        result[key]
+        for key in ("can_confirm_student", "can_submit_referral", "can_view_submissions")
+    ):
+        result["valid_until"] = min(session.expires_at, *deadlines)
+    return result
 
 
 def _rate_limit(actor, ip_address, policy):

@@ -25,6 +25,12 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
     schemas = api.get_openapi_schema()["components"]["schemas"]
     expected = {
         "FacultyStudentConfirmationRequest": {"institutional_id"},
+        "FacultyReferralAvailability": {
+            "can_confirm_student",
+            "can_submit_referral",
+            "can_view_submissions",
+            "valid_until",
+        },
         "FacultyConfirmedStudent": {"display_name"},
         "FacultyReferralSubmitRequest": {"confirmation", "course_year_block", "reason"},
         "FacultyReferralSubmissionResponse": {
@@ -43,6 +49,7 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
 
 
 EXPECTED_OPERATION_IDS = {
+    "referralsFacultyAvailability",
     "referralsFacultyConfirmStudent",
     "referralsFacultySubmit",
     "referralsFacultyListMine",

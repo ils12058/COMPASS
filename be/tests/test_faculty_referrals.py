@@ -31,6 +31,77 @@ def world(monkeypatch):
     return make_world(monkeypatch)
 
 
+@pytest.mark.parametrize("missing", ["both", "lookup", "submission", "neither"])
+def test_advisory_availability_keeps_policy_authorities_independent(world, monkeypatch, missing):
+    if missing in {"both", "lookup"}:
+        monkeypatch.setattr(faculty_policy, "get_approved_lookup_policy", lambda: None)
+    if missing in {"both", "submission"}:
+        monkeypatch.setattr(faculty_policy, "get_approved_submission_policy", lambda: None)
+    result = faculty_services.referral_availability(
+        actor=world.faculty, actor_session=world.issued.session
+    )
+    assert result["can_confirm_student"] == (missing not in {"both", "lookup"})
+    assert result["can_view_submissions"] == (missing not in {"both", "submission"})
+    assert result["can_submit_referral"] == (missing == "neither")
+    assert set(result) == {
+        "can_confirm_student",
+        "can_submit_referral",
+        "can_view_submissions",
+        "valid_until",
+    }
+    assert not Referral.objects.exists() and not world.limiter.counts
+    if missing == "both":
+        assert result["valid_until"] is None
+    else:
+        assert result["valid_until"] <= world.issued.session.expires_at
+
+
+def test_availability_does_not_convert_own_read_into_submission_permission(world):
+    from compass.institutional_forms.models import FormRevision
+
+    args = dict(actor=world.faculty, actor_session=world.issued.session)
+    FormRevision.objects.filter(family__key="referral_slip").update(status="INACTIVE")
+    assert faculty_services.referral_availability(**args)["can_submit_referral"] is False
+    UserCapabilityOverride.objects.create(
+        user=world.faculty,
+        capability=Capability.objects.get(code="referrals.submit_self"),
+        effect="REVOKE",
+        reason="Synthetic read-only",
+    )
+    value = faculty_services.referral_availability(**args)
+    assert value["can_view_submissions"] is True
+    assert value["can_confirm_student"] is False and value["can_submit_referral"] is False
+
+
+def test_availability_reloads_session_role_and_home_before_advising(world):
+    args = dict(actor=world.faculty, actor_session=world.issued.session)
+    FacultyAffiliation.objects.filter(faculty=world.faculty).update(college=None)
+    assert not faculty_services.referral_availability(**args)["can_submit_referral"]
+    world.faculty.role = Role.objects.get(code="STUDENT")
+    world.faculty.save(update_fields=["role"])
+    with pytest.raises(FacultyReferralError):
+        faculty_services.referral_availability(**args)
+
+
+def test_availability_api_requires_real_faculty_session_and_projects_only_safe_facts(world):
+    client = Client()
+    path = "/api/v1/faculty/referrals/availability"
+    assert client.get(path).status_code == 401
+    client.cookies["compass_session"] = world.issued.token
+    response = client.get(path)
+    assert response.status_code == 200
+    assert response.json()["can_submit_referral"] is True
+    assert set(response.json()) == {
+        "can_confirm_student",
+        "can_submit_referral",
+        "can_view_submissions",
+        "valid_until",
+    }
+    world.issued.session.revoked_at = timezone.now()
+    world.issued.session.save(update_fields=["revoked_at"])
+    assert client.get(path).status_code == 401
+
+
 def test_cross_college_submission_encrypted_and_server_provenance(world):
     confirmation = confirm(world)
     assert confirmation["confirmed"]

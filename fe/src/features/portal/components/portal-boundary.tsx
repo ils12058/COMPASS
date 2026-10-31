@@ -133,8 +133,9 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
     );
   } else {
     const user = session.data.data.user;
-    const pageContent = user.role === "FACULTY" && !facultyPortalPathAvailable(pathname)
-      ? <WorkspaceUnavailable title="Workspace unavailable">Faculty access currently supports your own account. Digital Referrals are not available yet.</WorkspaceUnavailable>
+    const pageContent = (user.role === "FACULTY" && !facultyPortalPathAvailable(pathname)) ||
+      (user.role !== "FACULTY" && (pathname === "/portal/faculty" || pathname.startsWith("/portal/faculty/")))
+      ? <WorkspaceUnavailable title="Workspace unavailable">This account cannot open this workspace.</WorkspaceUnavailable>
       : children;
     content = (
       <PortalSessionProvider value={session.data.data}>

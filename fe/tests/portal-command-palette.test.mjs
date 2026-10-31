@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync, existsSync } from "node:fs";
 import { test } from "node:test";
 import vm from "node:vm";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import * as React from "react";
 import * as jsx from "react/jsx-runtime";
@@ -220,6 +221,7 @@ function searchHarness(destinations = commands.portalCommandDestinations(student
     "@/features/portal/components/portal-command-destinations": commands,
     "@/features/portal/components/portal-command-keyboard": keyboard,
     "@/features/portal/components/portal-session": session, "@/lib/utils/cn": { cn },
+    "@/features/faculty-referrals/availability": { useFacultyAvailability: () => ({ availability: undefined }) },
     react: { ...React,
       useState(initial) { const index = cursor++; if (!(index in slots)) slots[index] = initial; return [slots[index], (value) => { slots[index] = typeof value === "function" ? value(slots[index]) : value; }]; },
       useRef(initial) { const index = cursor++; return slots[index] ??= { current: initial }; },
@@ -303,7 +305,7 @@ test("authorized search markup exposes coherent ARIA and never contains hidden u
 });
 
 test("visible trigger names the same palette and shortcut hints are supplemental", () => {
-  const html = renderToStaticMarkup(withNextRouter(h(session.PortalSessionProvider, { value: { user: student } }, h(PortalCommandPalette))));
+  const html = renderToStaticMarkup(withNextRouter(h(QueryClientProvider, { client: new QueryClient() }, h(session.PortalSessionProvider, { value: { user: student } }, h(PortalCommandPalette)))));
   assert.match(html, /aria-label="Go to a COMPASS feature"/);
   assert.match(html, /Go to…/);
   assert.match(html, /aria-keyshortcuts="Meta\+K Control\+K"/);
@@ -314,7 +316,7 @@ test("visible trigger names the same palette and shortcut hints are supplemental
 test("opening focuses search and closing returns to the opener or the surviving trigger", () => {
   let palette;
   function Probe() { palette = PortalCommandPalette(); return null; }
-  renderToStaticMarkup(withNextRouter(h(session.PortalSessionProvider, { value: { user: student } }, h(Probe))));
+  renderToStaticMarkup(withNextRouter(h(QueryClientProvider, { client: new QueryClient() }, h(session.PortalSessionProvider, { value: { user: student } }, h(Probe)))));
   const content = find(palette, (node) => node.type === dialog.DialogContent).props;
   const trigger = find(palette, (node) => node.type === "button").props;
   class Element {

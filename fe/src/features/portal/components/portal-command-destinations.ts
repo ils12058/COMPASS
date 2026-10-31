@@ -12,7 +12,7 @@ import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { canManagePrivacyGovernance, canViewPrivacyGovernance, canViewRetention } from "@/features/privacy-governance/privacy-governance-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
 import { portalWorkspaceGroups } from "@/features/portal/components/portal-workspaces";
-import type { UserSummary } from "@/lib/api/generated/model";
+import type { FacultyReferralAvailability, UserSummary } from "@/lib/api/generated/model";
 
 export type PortalCommandDestination = {
   href: string;
@@ -36,14 +36,14 @@ const workspaceKeywords: Readonly<Record<string, readonly string[]>> = {
 
 // Code-owned destinations only. Root visibility comes directly from the dock's registry. Deep
 // entries also require the workspace and the helper used by the actual page/tab. No record context.
-export function portalCommandDestinations(user: UserSummary): PortalCommandDestination[] {
-  const groups = portalWorkspaceGroups(user);
+export function portalCommandDestinations(user: UserSummary, facultyAvailability?: FacultyReferralAvailability): PortalCommandDestination[] {
+  const groups = portalWorkspaceGroups(user, facultyAvailability);
   const roots = groups.flatMap((group) => group.links.map((link) => ({
     ...link, group: group.label, breadcrumb: link.label,
     keywords: workspaceKeywords[link.label] ?? [],
   })));
   const destinations: PortalCommandDestination[] = [
-    { href: "/portal", label: "Overview", breadcrumb: "Overview", group: "General", icon: LayoutDashboard, keywords: ["home"] },
+    { href: "/portal", label: user.role === "FACULTY" ? "Home" : "Overview", breadcrumb: "Overview", group: "General", icon: LayoutDashboard, keywords: ["home"] },
     ...roots,
     { href: "/portal/notifications", label: "Notifications", breadcrumb: "Notifications", group: "General", icon: Bell, keywords: ["alerts"] },
   ];
