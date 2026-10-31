@@ -97,3 +97,19 @@ production/staging readiness, live database upgrade safety, Faculty eligibility,
 SAR availability or authority to use a digital Referral Slip. No full all-domain
 backend/browser rerun is claimed. Hosted CI status belongs to the PR checks.
 FAC-2 policy decisions remain unresolved as recorded in `fac-2-contract.md`.
+
+
+## Hosted follow-up before integration merge
+
+The first hosted backend run stopped in CI selection self-tests because the three
+new Faculty test files were absent from `BUNDLES`. They are now registered in the
+identity-access/organization bundles. All 60 CI selector/orchestrator self-tests
+pass locally; verification covers all 203 backend test files exactly once across
+six full-regression shards. This correction does not change application behavior.
+
+Hosted frontend unit tests, lint, typecheck and production/browser builds passed.
+The broad Chromium shard 4/4 failed in the unchanged `ux-p1.browser.mjs` suite on
+three action-layout assertions requiring the former 48px icon surfaces. The
+shared PageAction and those legacy assertions are unchanged by FAC-1. No full
+hosted browser pass is claimed, and these unrelated layout tests are not rewritten
+as part of Faculty identity or merge preparation.
