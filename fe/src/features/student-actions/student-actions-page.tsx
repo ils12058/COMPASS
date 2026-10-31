@@ -47,7 +47,7 @@ function ActionList({ user }: { user: UserSummary }) {
         </ul> : null}
         {data && data.page < 100 ? <CanonicalPagination page={data.page} hasNext={data.has_next} disabled={query.isFetching} onPageChange={setPage} label="My actions pages" className="px-4 sm:px-5" /> : null}
         {data?.page === 100 ? <div className="px-4 py-4 sm:px-5"><Button variant="secondary" disabled={query.isFetching} onClick={() => setPage(99)}>Previous</Button></div> : null}
-        {data?.page === 100 && data.has_next ? <PanelMessage>More actions remain. Open the source workspaces to review items beyond this page limit.</PanelMessage> : null}
+        {data?.page === 100 && data.has_next ? <PanelMessage>More actions remain. Check the relevant pages for items beyond this list.</PanelMessage> : null}
       </Panel>
     </section>
   );

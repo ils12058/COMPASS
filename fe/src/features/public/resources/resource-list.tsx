@@ -100,28 +100,31 @@ export function ResourceList(props: ResourceListProps) {
     );
   } else if (query.isSuccess && query.data.data.items.length === 0) {
     content = (
-      <PanelMessage
-        action={filtered ? (
-          <Link
-            className={buttonVariants({ variant: "secondary" })}
-            href={resourceFiltersHref({ search: "", category: "", kind: "", ordering: requestedOrdering })}
-          >
-            Clear filters
-          </Link>
-        ) : undefined}
-      >
-        {filtered
-          ? search
-            ? category || kind
-              ? "No resources match this search and the selected filters."
-              : "No resources match this search."
+      <>
+        <PanelMessage
+          action={filtered ? (
+            <Link
+              className={buttonVariants({ variant: "secondary" })}
+              href={resourceFiltersHref({ search: "", category: "", kind: "", ordering: requestedOrdering })}
+            >
+              Clear filters
+            </Link>
+          ) : undefined}
+        >
+          {query.data.data.page > 1 ? "No resources on this page." : filtered
+            ? search
+              ? category || kind
+                ? "No resources match this search and the selected filters."
+                : "No resources match this search."
+              : readsAccount
+              ? "No resources match the selected filters."
+              : "No public resources match the selected filters."
             : readsAccount
-            ? "No resources match the selected filters."
-            : "No public resources match the selected filters."
-          : readsAccount
-            ? "No resources are available right now."
-            : "No public resources are available right now."}
-      </PanelMessage>
+              ? "No resources are available right now."
+              : "No public resources are available right now."}
+        </PanelMessage>
+        {!isPreview ? <PublicPagination page={query.data.data.page} hasNext={query.data.data.has_next} buildHref={buildPageHref} /> : null}
+      </>
     );
   } else if (query.isSuccess) {
     content = (

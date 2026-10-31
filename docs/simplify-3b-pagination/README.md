@@ -1,0 +1,17 @@
+# SIMPLIFY-3B — pagination and queue copy
+
+Baseline: `4bfc1b4185c46cff2a40598f071bad1f2e40168e` on `integration/ux15-modernization`, fetched 29 October 2026. This is one bounded foundation slice; it does not complete the cross-application copy or role audit.
+
+The authenticated pager spread Previous, the page number and Next across the entire collection width and overflowed its container at 320/390px with 200% root text in synthetic Student and Counselor queues. It now keeps the controls together, using labeled arrows where space allows. At a narrow container width it puts the page indicator above compact, named arrow controls. The controls retain a 44px minimum target, visible focus, disabled states, a polite page announcement and real `page`/`has_next` values; no totals are invented. Public paging remains link navigation and follows the same compact arrangement.
+
+The public Announcements, Resources and Privacy lists previously discarded navigation on a successfully loaded empty later page. They now retain a Previous link and accurately describe that page as empty; Announcements and Resources preserve search and ordering parameters. Filter clearing, the account/public audience choice and publication rules are unchanged.
+
+For Student Actions, ordinary Inventory, Routine Interview and unread-message descriptions now state the task in direct language rather than repeating the heading or using “Guidance communication.” The staff My Work description and page-limit notices in both queues remove implementation-oriented “source workspaces” language while preserving the fact that additional work exists outside the list. Institutional form wording, privacy, authorization and uncertain-action recovery are not changed. The shared task row uses a smaller phone inset and gap so words have more space at enlarged text.
+
+## Evidence
+
+Synthetic fixtures only. The pre-change [320px, 200% Student screenshot](screenshots/before-student-320-enlarged.png) shows the original pager overflowing the viewport; the [after](screenshots/after-student-320-enlarged.png) keeps both arrows and the current page in the panel. [Desktop before](screenshots/before-student-1440.png) and [after](screenshots/after-student-1440.png) show the more compact pager. Widths 320, 390, 768, 1024 and 1440 are exercised on Student and Counselor queues, plus 390/1440 for GSS; browser checks cover keyboard paging, last-page return, 200% root text and a long synthetic name.
+
+The public shell has a **pre-existing** 200% root-text overflow: on the unchanged baseline `/privacy?page=2` at 320px, `scrollWidth` was 400px and the header brand/menu extended beyond the 320px viewport. The public pagination check therefore tests the pager region at 200% and does not claim the whole page fits. The floating accessibility control can also overlap nearby content and needs separate shell review. These are open audit findings, not fixed by this slice.
+
+Chromium and WebKit each passed 12/12 queue checks, 4/4 public Privacy checks and 4/4 filtered Announcements/Resources checks. The focused Node batch passed 31/31; ESLint, TypeScript and a webpack production build passed. Existing Student Actions and My Work browser suites also passed 22/22 and 19/19 in Chromium before the last responsive styling refinement; the focused role/keyboard checks were rerun after it. Synthetic data cannot establish physical-device, real-screen-reader, authenticated-production or institutional UAT coverage.

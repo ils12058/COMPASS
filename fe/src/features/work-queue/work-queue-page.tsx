@@ -31,7 +31,7 @@ function WorkList({ user }: { user: UserSummary }) {
   const forbidden = query.error instanceof CompassApiError && query.error.status === 403;
   return (
     <section aria-labelledby="my-work-heading" className="min-w-0">
-      <PageHeader title="My work" headingId="my-work-heading" description="Work that needs your attention now. Open an item to act in its workspace." />
+      <PageHeader title="My work" headingId="my-work-heading" description="Work that needs your attention." />
       {query.isError && data ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
       <Panel>
         {query.isPending ? <PanelMessage role="status">Loading your work…</PanelMessage> : null}
@@ -47,7 +47,7 @@ function WorkList({ user }: { user: UserSummary }) {
         </ul> : null}
         {data && data.page < 100 ? <CanonicalPagination page={data.page} hasNext={data.has_next} disabled={query.isFetching} onPageChange={setPage} label="My work pages" className="px-4 sm:px-5" /> : null}
         {data?.page === 100 ? <div className="px-4 py-4 sm:px-5"><Button variant="secondary" disabled={query.isFetching} onClick={() => setPage(99)}>Previous</Button></div> : null}
-        {data?.page === 100 && data.has_next ? <PanelMessage>More work remains. Open the source workspaces to review items beyond this queue’s page limit.</PanelMessage> : null}
+        {data?.page === 100 && data.has_next ? <PanelMessage>More work remains. Check the relevant pages for items beyond this list.</PanelMessage> : null}
       </Panel>
     </section>
   );
