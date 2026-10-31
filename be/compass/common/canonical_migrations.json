@@ -44,6 +44,8 @@
     "good_moral/migrations/0002_receipt_identity_and_history.py",
     "good_moral/migrations/0003_receipt_verification.py",
     "organization/migrations/0002_program_policy_and_catalog_initialization.py",
-    "organization/migrations/0003_catalog_resource_versions.py"
+    "organization/migrations/0003_catalog_resource_versions.py",
+    "organization/migrations/0004_facultyaffiliation.py",
+    "referrals/migrations/0002_referral_faculty_home_college_and_more.py"
   ]
 }

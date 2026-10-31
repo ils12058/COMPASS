@@ -104,3 +104,33 @@ technical results and do not establish current release readiness.
 For future deployment compatibility and outstanding decisions, see
 [the handoff](handoff.md#deployment-compatibility-for-later-authorized-work) and
 [the policy register](policy-and-privacy.md#institutional-decision-register).
+
+## Merge validation — 2026-11-01
+
+The user authorized merging PR #349 into integration. The hosted runs for
+`98512d42` completed: backend prepare and shards 1/2/3 passed; shards 4/5/6 failed.
+Frontend lint/typecheck/build, synthetic browser build and all unit tests passed;
+the broad browser shards failed. No full hosted pass is claimed.
+
+The canonical manifest omitted both FAC-1's Organization migration and FAC-2's
+Referral migration. Both are now registered as additive migrations without changing
+any frozen baseline digest or weakening the registry assertions. The final local
+canonical-baseline plus Faculty Referral migration checks pass: **8 passed in
+18.82 seconds**. Ruff lint/format and whitespace checks also pass.
+
+The other backend failures were compared against the parent FAC-1 run and occur
+there too: privacy-notice query budget, joined-row lock scope in Counseling,
+the session-revocation helper inventory, and the postbaseline rehearsal attempting
+to reverse the irreversible Organization policy backfill. They remain outside this
+Faculty intake change. Every failing browser suite in this run also fails in at
+least one engine in the parent run (E-Counseling call/runtime, email change,
+public illustrations/shell, information hierarchy, user copy, UX-P1 and UX-P2A).
+Frontend application/test source is identical to the integration base.
+
+Current-head evidence: [backend 41210711472](https://github.com/ils12058/COMPASS/actions/runs/41210711472)
+and [frontend 41210714252](https://github.com/ils12058/COMPASS/actions/runs/41210714252).
+Parent evidence: [backend 41204815181](https://github.com/ils12058/COMPASS/actions/runs/41204815181)
+and [frontend 41204115567](https://github.com/ils12058/COMPASS/actions/runs/41204115567).
+The final manifest-only correction is locally verified; those hosted runs precede
+it. Merge authorization does not activate the denied institutional policy providers
+or authorize deployment.
