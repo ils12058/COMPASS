@@ -28,6 +28,11 @@ class CapabilityDefinition:
 
 ROLE_DEFINITIONS = (
     RoleDefinition(
+        code="FACULTY",
+        name="Faculty",
+        description="Institutionally provisioned Faculty identity; digital Referrals unavailable.",
+    ),
+    RoleDefinition(
         code="IT_ADMIN",
         name="IT Administrator",
         description="Technical administrator for COMPASS account and platform operations.",
@@ -583,6 +588,7 @@ CAPABILITY_DEFINITIONS = (
 # management remains an IT_ADMIN responsibility. Scope and sensitive profile data are separate
 # concerns and are intentionally not implied by these grants.
 ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
+    "FACULTY": frozenset(),
     "IT_ADMIN": frozenset(
         {
             "accounts.view",

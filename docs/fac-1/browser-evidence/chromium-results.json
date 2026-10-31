@@ -1,0 +1,50 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "chromium",
+  "results": [
+    {
+      "name": "faculty-home-1440-100",
+      "passed": true
+    },
+    {
+      "name": "faculty-home-390-100",
+      "passed": true
+    },
+    {
+      "name": "faculty-home-320-200",
+      "passed": true
+    },
+    {
+      "name": "faculty-deep-link-referrals-new",
+      "passed": true
+    },
+    {
+      "name": "faculty-deep-link-appointments-book",
+      "passed": true
+    },
+    {
+      "name": "faculty-deep-link-accounts",
+      "passed": true
+    },
+    {
+      "name": "faculty-deep-link-counseling",
+      "passed": true
+    },
+    {
+      "name": "faculty-deep-link-follow-ups",
+      "passed": true
+    },
+    {
+      "name": "administrator-provisions-faculty-with-reviewed-home-college",
+      "passed": true
+    },
+    {
+      "name": "administrator-affiliation-conflict-requires-fresh-review",
+      "passed": true
+    },
+    {
+      "name": "csv-exposes-active-faculty-college-references",
+      "passed": true
+    }
+  ]
+}

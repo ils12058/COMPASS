@@ -267,7 +267,7 @@ export function AccountAccess() {
     if (item.kind === "role")
       return [
         `Change ${name}'s role from ${roleLabels[account.role]} to ${roleLabels[item.role]}?`,
-        `This changes the account's baseline COMPASS access. If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.${item.role === "STUDENT" && !account.student_lifecycle_status ? " The account will also begin with current student status." : ""}`,
+        `This changes the account's baseline COMPASS access. If completed, ${name} will be signed out of active COMPASS sessions, saved trusted-browser authorization will be removed, and they will need to authenticate again.${account.role === "FACULTY" ? " The Faculty home College will be cleared; its assignment history remains in the activity record." : ""}${item.role === "FACULTY" ? " Digital Referrals remain unavailable. Assign the Faculty home College separately on the account overview." : ""}${item.role === "STUDENT" && !account.student_lifecycle_status ? " The account will also begin with current student status." : ""}`,
         "Change role",
         "Changing role…",
       ];
@@ -561,7 +561,7 @@ export function AccountAccess() {
           titleId="overrides-heading"
           description="Overrides are exceptional changes to role and designation access."
           actions={
-            !self && effective.isSuccess && !overrides.isError ? (
+            !self && account.role !== "FACULTY" && effective.isSuccess && !overrides.isError ? (
               <Button
                 variant="secondary"
                 onClick={() => {

@@ -36,6 +36,11 @@ def _candidate_capabilities(
     if not getattr(user, "pk", None):
         return frozenset()
 
+    # FAC-1 is identity-only. Persisted grants, designations and old overrides cannot
+    # turn Faculty into an operational actor, including after a primary-role change.
+    if user.role.code == "FACULTY":
+        return frozenset()
+
     capability_codes: set[str] = set()
     role_id = getattr(user, "role_id", None)
     if role_id:
@@ -168,6 +173,8 @@ def set_user_capability_override(
     locked_user = (
         User.objects.select_for_update(of=("self",)).select_related("role").get(pk=user.pk)
     )
+    if locked_user.role.code == "FACULTY" and effect == UserCapabilityOverride.Effect.GRANT:
+        raise ValueError("Faculty operational capability grants are unavailable in FAC-1.")
     if (
         capability.code == "organization.catalog.manage"
         and effect == UserCapabilityOverride.Effect.GRANT

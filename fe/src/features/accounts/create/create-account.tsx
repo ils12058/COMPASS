@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 
+import { FacultyCollegeField } from "@/features/accounts/components/faculty-college-field";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,7 @@ import {
   roleLabels,
   roles,
 } from "@/features/accounts/presentation";
-import { useAccountsCreate } from "@/lib/api/generated/accounts/accounts";
+import { useAccountsFacultyCollegeChoices, useAccountsCreate } from "@/lib/api/generated/accounts/accounts";
 import { RoleCode, type AccountCreateRequest } from "@/lib/api/generated/model";
 
 const fieldClass = "grid gap-2";
@@ -41,6 +42,8 @@ export function CreateAccount() {
     role: RoleCode.STUDENT,
     is_active: true,
   });
+  const facultyColleges = useAccountsFacultyCollegeChoices({ query: { enabled: form.role === RoleCode.FACULTY, retry: false } });
+  const selectedFacultyCollege = facultyColleges.data?.data.find((college) => college.id === form.faculty_college_id);
   const [review, setReview] = useState<AccountCreateRequest | null>(null);
 
   function change<K extends keyof AccountCreateRequest>(
@@ -54,7 +57,7 @@ export function CreateAccount() {
     event.preventDefault();
     action.setError(null);
     action.setNotice(null);
-    setReview({ ...form });
+    setReview({ ...form, faculty_college_id: form.role === RoleCode.FACULTY ? form.faculty_college_id || null : null });
   }
 
   async function confirmCreate() {
@@ -167,6 +170,7 @@ export function CreateAccount() {
             </Select>
           </div>
         </div>
+        {form.role === RoleCode.FACULTY ? <FacultyCollegeField id="create-faculty-college" value={form.faculty_college_id ?? ""} onChange={(value) => change("faculty_college_id", value || null)} /> : null}
         <label className="flex items-center gap-3 text-sm font-medium text-ink">
           <input
             type="checkbox"
@@ -235,6 +239,7 @@ export function CreateAccount() {
                 ? "This account will be active after creation."
                 : "This account will be created disabled and cannot sign in until enabled."}
             </p>
+            {review.role === RoleCode.FACULTY ? <p>Faculty home College: {selectedFacultyCollege ? `${selectedFacultyCollege.campus_name} · ${selectedFacultyCollege.name}` : review.faculty_college_id ? "Selected College is no longer available" : "Not assigned"}. Digital Referrals are not available.</p> : null}
             {review.role === RoleCode.STUDENT ? (
               <p>New student accounts start with current student status.</p>
             ) : null}

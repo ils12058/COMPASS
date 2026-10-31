@@ -33,6 +33,7 @@ from compass.organization.models import (
     CatalogInitialization,
     College,
     CounselorResponsibility,
+    FacultyAffiliation,
     Program,
     StudentAffiliation,
     normalize_code,
@@ -532,6 +533,18 @@ def _impact(item):
         else 0,
         "child_programs": programs.count() if not is_program else 0,
         "active_child_programs": programs.filter(is_active=True).count() if not is_program else 0,
+        "faculty_affiliations": FacultyAffiliation.objects.filter(
+            college_id__in=colleges.values("pk")
+        ).count(),
+        "active_faculty_affiliations": FacultyAffiliation.objects.filter(
+            college_id__in=colleges.values("pk"),
+            faculty__is_active=True,
+            faculty__role__code="FACULTY",
+        ).count(),
+        "inactive_faculty_affiliations": FacultyAffiliation.objects.filter(
+            college_id__in=colleges.values("pk"),
+            faculty__is_active=False,
+        ).count(),
         "student_affiliations": affiliations.count(),
         "active_student_affiliations": affiliations.filter(
             student__is_active=True, student__role__code="STUDENT"
@@ -560,6 +573,7 @@ def _impact(item):
     if not is_program:
         blocker_keys = [
             "active_student_affiliations",
+            "active_faculty_affiliations",
             "counselor_responsibilities",
             "open_office_threads",
             "pending_operational_followups",
@@ -567,7 +581,12 @@ def _impact(item):
         blocker_keys += (
             ["active_child_colleges"] if isinstance(item, Campus) else ["active_child_programs"]
         )
-    warning_keys = ["inactive_account_affiliations", "draft_inventories", "pending_good_moral"]
+    warning_keys = [
+        "inactive_account_affiliations",
+        "inactive_faculty_affiliations",
+        "draft_inventories",
+        "pending_good_moral",
+    ]
     blockers = tuple(CatalogIssue(k, counts[k]) for k in blocker_keys if counts[k])
     return CatalogImpact(
         item.pk,

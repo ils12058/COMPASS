@@ -238,8 +238,10 @@ def test_authenticated_student_contract_exposes_effective_capabilities_without_s
         "designations",
         "capabilities",
         "exit_interview_workspace_available",
+        "faculty_affiliation",
     }
     assert set(login_user) == expected_user_keys
+    assert login_user["faculty_affiliation"] is None
     assert {
         "role_capabilities",
         "designation_capabilities",

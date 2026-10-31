@@ -618,6 +618,8 @@ class CatalogPolicyRequest(CatalogPolicyFields):
 class CatalogIssueCode(StrEnum):
     ACTIVE_CHILD_COLLEGES = "active_child_colleges"
     ACTIVE_CHILD_PROGRAMS = "active_child_programs"
+    ACTIVE_FACULTY_AFFILIATIONS = "active_faculty_affiliations"
+    INACTIVE_FACULTY_AFFILIATIONS = "inactive_faculty_affiliations"
     ACTIVE_STUDENT_AFFILIATIONS = "active_student_affiliations"
     COUNSELOR_RESPONSIBILITIES = "counselor_responsibilities"
     OPEN_OFFICE_THREADS = "open_office_threads"
@@ -638,6 +640,9 @@ class CatalogDependentCounts(StrictSchema):
     child_programs: int
     active_child_programs: int
     student_affiliations: int
+    faculty_affiliations: int
+    active_faculty_affiliations: int
+    inactive_faculty_affiliations: int
     active_student_affiliations: int
     inactive_account_affiliations: int
     counselor_responsibilities: int

@@ -99,9 +99,7 @@ def csrf(client: Client) -> dict[str, str]:
         ),
     ],
 )
-def test_fixed_slot_inventory_prerequisite_errors_preserve_typed_conflict_contract(
-    exception, code
-):
+def test_fixed_slot_inventory_prerequisite_errors_preserve_typed_conflict_contract(exception, code):
     with pytest.raises(APIError) as raised:
         _raise_slot_error(exception)
 

@@ -32,6 +32,7 @@ from compass.organization.models import (
     Campus,
     College,
     CounselorResponsibility,
+    FacultyAffiliation,
     Program,
     StaffSupervision,
     StudentAffiliation,
@@ -536,6 +537,13 @@ def validate_account_catalog_reactivation(user: User) -> None:
         .exists()
     ):
         raise OrganizationConflict("Repair the retained Student affiliation before reactivation.")
+    if (
+        user.role.code == "FACULTY"
+        and FacultyAffiliation.objects.filter(faculty_id=user.pk)
+        .filter(Q(college__is_active=False) | Q(college__campus__is_active=False))
+        .exists()
+    ):
+        raise OrganizationConflict("Repair the retained Faculty affiliation before reactivation.")
     if (
         CounselorResponsibility.objects.filter(counselor_id=user.pk)
         .filter(Q(college__is_active=False) | Q(college__campus__is_active=False))

@@ -136,6 +136,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     call_command("sync_identity_policy", stdout=first_output)
 
     assert set(Role.objects.values_list("code", flat=True)) == {
+        "FACULTY",
         "IT_ADMIN",
         "COUNSELOR",
         "GUIDANCE_SERVICES_STAFF",
@@ -159,7 +160,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "designations created=0 updated=0" in second_output.getvalue()
     assert "capabilities created=0 updated=0" in second_output.getvalue()
     assert "role grants created=0" in second_output.getvalue()
-    assert Role.objects.count() == 5
+    assert Role.objects.count() == 6
     assert Designation.objects.count() == 2
     assert Capability.objects.count() == len(CAPABILITY_CODES)
     assert RoleCapability.objects.count() == 99

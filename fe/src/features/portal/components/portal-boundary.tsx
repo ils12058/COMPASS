@@ -4,6 +4,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 
+import { facultyPortalPathAvailable } from "@/features/portal/components/faculty-access";
+import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { loginPathForPortal, safePortalDestination } from "@/features/auth/utils/redirect";
@@ -131,13 +133,16 @@ export function PortalBoundary({ children }: { children: ReactNode }) {
     );
   } else {
     const user = session.data.data.user;
+    const pageContent = user.role === "FACULTY" && !facultyPortalPathAvailable(pathname)
+      ? <WorkspaceUnavailable title="Workspace unavailable">Faculty access currently supports your own account. Digital Referrals are not available yet.</WorkspaceUnavailable>
+      : children;
     content = (
       <PortalSessionProvider value={session.data.data}>
         <PortalMaintenanceGate
           pathname={pathname}
           canOperate={hasPlatformView(user)}
-          workspace={<PortalShell>{children}</PortalShell>}
-          page={children}
+          workspace={<PortalShell>{pageContent}</PortalShell>}
+          page={pageContent}
           controls={<><AccessibilityControl placement="header" /><PortalUserMenu /></>}
           loading={<PortalSessionLoading />}
         />

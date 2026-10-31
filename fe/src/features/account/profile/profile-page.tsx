@@ -100,6 +100,7 @@ function ProfileIdentity({
             <div><dt className="sr-only">Institutional ID</dt><dd>{profile.institutional_id}</dd></div>
           ) : null}
           <div><dt className="sr-only">Role</dt><dd>{userRoleLabel(profile.role)}</dd></div>
+          {user.role === "FACULTY" ? <div><dt className="text-muted">Home College</dt><dd>{user.faculty_affiliation?.college_name ?? "Not assigned"}</dd></div> : null}
           <div><dt className="sr-only">Sign-in email</dt><dd className="break-all">{profile.email}</dd></div>
         </dl>
         <div className="mt-4 flex flex-wrap gap-2">
