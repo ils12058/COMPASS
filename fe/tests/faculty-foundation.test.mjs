@@ -5,7 +5,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { facultyPortalPathAvailable } from "../src/features/portal/components/faculty-access.ts";
 import { portalWorkspaceGroups } from "../src/features/portal/components/portal-workspaces.ts";
 import { portalCommandDestinations } from "../src/features/portal/components/portal-command-destinations.ts";
-import { FacultyHome } from "../src/features/portal/home/faculty-home.tsx";
+import { FacultyHomeView } from "../src/features/portal/home/faculty-home.tsx";
+import { UnsavedChangesProvider } from "../src/features/form-safety/unsaved-changes-provider.tsx";
 import { roleLabels, compatibleDesignation } from "../src/features/accounts/presentation.ts";
 
 const faculty = {
@@ -30,12 +31,13 @@ test("Faculty has only own-account destinations, including with a stale authorit
 });
 
 test("Faculty holding Home states unavailable Referrals and missing affiliation honestly", () => {
-  const html = renderToStaticMarkup(createElement(FacultyHome, { user: faculty }));
+  const renderHome = (user) => renderToStaticMarkup(createElement(UnsavedChangesProvider, null, createElement(FacultyHomeView, { user }, "Digital Student Referrals are not available yet.")));
+  const html = renderHome(faculty);
   assert.match(html, /Digital Student Referrals are not available yet/);
   assert.match(html, /Not assigned/);
   assert.match(html, /Contact the account administrator/);
   assert.doesNotMatch(html, /Book appointment|Record referral|href=.*referrals/);
-  const assigned = renderToStaticMarkup(createElement(FacultyHome, { user: { ...faculty, faculty_affiliation: { college_name: "Faculty College", campus_name: "Main Campus", active: true } } }));
+  const assigned = renderHome({ ...faculty, faculty_affiliation: { college_name: "Faculty College", campus_name: "Main Campus", active: true } });
   assert.match(assigned, /Main Campus · Faculty College/);
   assert.doesNotMatch(assigned, /Contact the account administrator/);
 });

@@ -16,6 +16,8 @@ import {
   type NavigationAttentionBadge,
 } from "@/features/portal/components/portal-navigation-attention";
 import { cn } from "@/lib/utils/cn";
+import { useFacultyAvailability } from "@/features/faculty-referrals/availability";
+import { facultyReferralsPath } from "@/features/faculty-referrals/access";
 
 const overviewLink: PortalWorkspaceLink = { href: "/portal", label: "Overview", icon: LayoutDashboard };
 
@@ -164,11 +166,13 @@ export function PortalNavigation({
   className?: string;
 }) {
   const { user } = usePortalSession();
+  const { availability } = useFacultyAvailability(user);
+  const homeLink = user.role === "FACULTY" ? { ...overviewLink, label: "Home" } : overviewLink;
   const pathname = usePathname();
   const attention = useNavigationAttention(user);
   const isWithin = (href: string) =>
     Boolean(pathname && (pathname === href || pathname.startsWith(href + "/")));
-  const visibleGroups = portalWorkspaceGroups(user);
+  const visibleGroups = portalWorkspaceGroups(user, availability);
   const tips = useDockTips(!expanded);
   const navRef = useRef<HTMLElement>(null);
 
@@ -211,11 +215,11 @@ export function PortalNavigation({
         className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-3"
       >
         <NavItem
-          link={overviewLink}
+          link={homeLink}
           current={pathname === "/portal"}
           expanded={expanded}
           onNavigate={onNavigate}
-          tipProps={tips.bind(overviewLink.label)}
+          tipProps={tips.bind(homeLink.label)}
         />
         {visibleGroups.map((group) => (
           <div key={group.label} className="mt-2 border-t border-on-brand/15 pt-2">
@@ -237,7 +241,7 @@ export function PortalNavigation({
                 <NavItem
                   key={link.href}
                   link={link}
-                  current={isWithin(link.section ?? link.href)}
+                  current={link.href === facultyReferralsPath ? pathname === facultyReferralsPath || (pathname.startsWith(facultyReferralsPath + "/") && !pathname.endsWith("/new")) : isWithin(link.section ?? link.href)}
                   expanded={expanded}
                   onNavigate={onNavigate}
                   tipProps={tips.bind(link.label)}

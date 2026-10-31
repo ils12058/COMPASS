@@ -1,0 +1,146 @@
+{
+  "baseURL": "http://localhost:3107",
+  "engine": "webkit",
+  "results": [
+    {
+      "name": "responsive-320-100",
+      "passed": true
+    },
+    {
+      "name": "responsive-320-200",
+      "passed": true
+    },
+    {
+      "name": "responsive-390-100",
+      "passed": true
+    },
+    {
+      "name": "responsive-390-200",
+      "passed": true
+    },
+    {
+      "name": "responsive-768-100",
+      "passed": true
+    },
+    {
+      "name": "responsive-768-200",
+      "passed": true
+    },
+    {
+      "name": "responsive-1024-100",
+      "passed": true
+    },
+    {
+      "name": "responsive-1024-200",
+      "passed": true
+    },
+    {
+      "name": "responsive-1440-100",
+      "passed": true
+    },
+    {
+      "name": "responsive-1440-200",
+      "passed": true
+    },
+    {
+      "name": "default-unavailable-home-and-direct-submission",
+      "passed": true
+    },
+    {
+      "name": "own-list-alone-never-enables-submission",
+      "passed": true
+    },
+    {
+      "name": "approved-home-uses-actual-own-records-and-primary-action",
+      "passed": true
+    },
+    {
+      "name": "form-errors-focus-original-fields-and-preserve-input",
+      "passed": true
+    },
+    {
+      "name": "uncertain-result-retains-exact-key-body-and-never-auto-retries",
+      "passed": true
+    },
+    {
+      "name": "submission-refusal-403-is-not-success",
+      "passed": true
+    },
+    {
+      "name": "submission-refusal-409-is-not-success",
+      "passed": true
+    },
+    {
+      "name": "confirmation-refusal-429-preserves-exact-input",
+      "passed": true
+    },
+    {
+      "name": "confirmation-refusal-503-preserves-exact-input",
+      "passed": true
+    },
+    {
+      "name": "expired-confirmation-requires-deliberate-reconfirmation",
+      "passed": true
+    },
+    {
+      "name": "pagination-keeps-previous-on-empty-later-page",
+      "passed": true
+    },
+    {
+      "name": "safe-own-detail-404-never-probes-internal-record",
+      "passed": true
+    },
+    {
+      "name": "keyboard-only-confirm-review-submit",
+      "passed": true
+    },
+    {
+      "name": "own-list-policy-denial-hides-protected-results",
+      "passed": true
+    },
+    {
+      "name": "empty-own-list-is-not-a-fabricated-total",
+      "passed": true
+    },
+    {
+      "name": "uniform-negative-confirmation-never-advances-to-review",
+      "passed": true
+    },
+    {
+      "name": "pending-submit-prevents-duplicates",
+      "passed": true
+    },
+    {
+      "name": "discard-is-deliberate-and-cancel-preserves-draft",
+      "passed": true
+    },
+    {
+      "name": "initial-loading-then-retry-never-claims-empty",
+      "passed": true
+    },
+    {
+      "name": "stale-role-revalidation-unmounts-faculty-form-without-replay",
+      "passed": true
+    },
+    {
+      "name": "ended-session-uses-existing-sign-in-boundary-without-replay",
+      "passed": true
+    },
+    {
+      "name": "non-faculty-STUDENT-direct-route",
+      "passed": true
+    },
+    {
+      "name": "non-faculty-COUNSELOR-direct-route",
+      "passed": true
+    },
+    {
+      "name": "non-faculty-IT_ADMIN-direct-route",
+      "passed": true
+    },
+    {
+      "name": "faculty-gco-route-denies-before-protected-components-mount",
+      "passed": true
+    }
+  ]
+}

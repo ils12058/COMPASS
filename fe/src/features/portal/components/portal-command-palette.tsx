@@ -10,6 +10,7 @@ import { GuardedPortalLink } from "@/features/form-safety/guarded-portal-link";
 import { portalCommandDestinations, searchPortalCommands, type PortalCommandDestination } from "@/features/portal/components/portal-command-destinations";
 import { hasOtherPortalModal, nextActiveCommandIndex, registerPortalCommandShortcut } from "@/features/portal/components/portal-command-keyboard";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { useFacultyAvailability } from "@/features/faculty-referrals/availability";
 import { cn } from "@/lib/utils/cn";
 
 export function PortalCommandSearch({ destinations, pathname, onNavigate }: {
@@ -98,8 +99,9 @@ export function PortalCommandSearch({ destinations, pathname, onNavigate }: {
 
 export function PortalCommandPalette() {
   const { user } = usePortalSession();
+  const { availability } = useFacultyAvailability(user);
   const pathname = usePathname();
-  const destinations = useMemo(() => portalCommandDestinations(user), [user]);
+  const destinations = useMemo(() => portalCommandDestinations(user, availability), [user, availability]);
   const [open, setOpen] = useState(false);
   const dialog = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);

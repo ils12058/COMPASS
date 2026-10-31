@@ -51,7 +51,8 @@ import {
   canViewInstitutionalForms,
   hasInstitutionWorkspace,
 } from "@/features/institution-configuration/institution-access";
-import type { UserSummary } from "@/lib/api/generated/model";
+import type { FacultyReferralAvailability, UserSummary } from "@/lib/api/generated/model";
+import { facultyReferralAccess, facultyReferralsPath, facultySubmitPath, facultySubmissionAvailable } from "@/features/faculty-referrals/access";
 import { hasStudentActions } from "@/features/student-actions/student-actions-access";
 import { hasWorkQueue } from "@/features/work-queue/work-queue-access";
 import { hasGuidanceOperations } from "@/features/guidance-operations/guidance-operations-access";
@@ -70,8 +71,14 @@ type CandidateLink = PortalWorkspaceLink & { visible: boolean };
 
 // The portal workspaces an account can open, grouped as the portal sidebar shows them. The sidebar
 // and the public landing's quick access both read this list, so they never offer different places.
-export function portalWorkspaceGroups(user: UserSummary): PortalWorkspaceGroup[] {
-  if (user.role === "FACULTY") return [];
+export function portalWorkspaceGroups(user: UserSummary, facultyAvailability?: FacultyReferralAvailability): PortalWorkspaceGroup[] {
+  if (user.role === "FACULTY") {
+    const access = facultyReferralAccess(user);
+    const links: PortalWorkspaceLink[] = [];
+    if (access.submit && facultySubmissionAvailable(facultyAvailability)) links.push({ href: facultySubmitPath, label: "Submit Referral", icon: Forward });
+    if (access.read && facultyAvailability?.can_view_submissions) links.push({ href: facultyReferralsPath, label: "My Referrals", icon: FileText });
+    return links.length ? [{ label: "Referrals", links }] : [];
+  }
   const canManageAccounts = user.capabilities.includes("accounts.manage");
   const hasOrganization = canEnterOrganization(user);
   const hasAcademicYears = canViewAcademicYears(user);

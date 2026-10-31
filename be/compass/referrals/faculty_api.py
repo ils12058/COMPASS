@@ -19,6 +19,7 @@ from compass.referrals.faculty_services import (
     confirm_student,
     get_own_submission,
     list_own_submissions,
+    referral_availability,
     submit_referral,
 )
 
@@ -69,6 +70,13 @@ class FacultyReferralSubmissionPage(StrictSchema):
     has_next: bool
 
 
+class FacultyReferralAvailability(StrictSchema):
+    can_confirm_student: bool
+    can_submit_referral: bool
+    can_view_submissions: bool
+    valid_until: datetime | None
+
+
 def _actor_args(request):
     return {"actor": request.auth_user, "actor_session": request.auth_session}
 
@@ -82,6 +90,20 @@ def _error(exc):
         )
         raise APIError(exc.status, exc.code, str(exc), headers=headers) from exc
     _raise(exc)
+
+
+@router.get(
+    "/availability",
+    auth=session_auth,
+    response=response_with_errors(FacultyReferralAvailability, 401, 403),
+    operation_id="referralsFacultyAvailability",
+    summary="Read separate current Faculty Referral availability facts",
+)
+def faculty_referral_availability(request):
+    try:
+        return referral_availability(**_actor_args(request))
+    except ReferralError as exc:
+        _error(exc)
 
 
 @router.post(

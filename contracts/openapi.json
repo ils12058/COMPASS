@@ -12318,6 +12318,43 @@
         "title": "FacultyConfirmedStudent",
         "type": "object"
       },
+      "FacultyReferralAvailability": {
+        "additionalProperties": false,
+        "properties": {
+          "can_confirm_student": {
+            "title": "Can Confirm Student",
+            "type": "boolean"
+          },
+          "can_submit_referral": {
+            "title": "Can Submit Referral",
+            "type": "boolean"
+          },
+          "can_view_submissions": {
+            "title": "Can View Submissions",
+            "type": "boolean"
+          },
+          "valid_until": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid Until"
+          }
+        },
+        "required": [
+          "can_confirm_student",
+          "can_submit_referral",
+          "can_view_submissions",
+          "valid_until"
+        ],
+        "title": "FacultyReferralAvailability",
+        "type": "object"
+      },
       "FacultyReferralSubmissionPage": {
         "additionalProperties": false,
         "properties": {
@@ -47520,6 +47557,53 @@
           }
         ],
         "summary": "Submit an authenticated Faculty Referral under approved digital-form policy",
+        "tags": [
+          "referrals"
+        ]
+      }
+    },
+    "/api/v1/faculty/referrals/availability": {
+      "get": {
+        "operationId": "referralsFacultyAvailability",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FacultyReferralAvailability"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Read separate current Faculty Referral availability facts",
         "tags": [
           "referrals"
         ]

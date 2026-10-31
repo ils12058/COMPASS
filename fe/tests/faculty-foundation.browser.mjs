@@ -11,6 +11,7 @@ const facultyId = "f0000000-0000-4000-8000-000000000001";
 const college = { id: collegeId, code: "FAC", name: "Faculty College", campus_code: "MAIN", campus_name: "Main Campus", campus_id: "c0000000-0000-4000-8000-000000000002" };
 const faculty = { ...user("STUDENT"), id: facultyId, role: "FACULTY", capabilities: [], designations: [], student_lifecycle_status: null, faculty_affiliation: null };
 const facultyHandler = async ({ pathname, reply }) => {
+  if (pathname === "/api/v1/faculty/referrals/availability") { await reply({ can_confirm_student: false, can_submit_referral: false, can_view_submissions: false, valid_until: null }); return true; }
   if (pathname === "/api/v1/auth/session") { await reply(sessionFor(faculty)); return true; }
   return false;
 };
@@ -18,9 +19,9 @@ const protectedRead = (request) => /\/api\/v1\/(?:referrals|counseling|assessmen
 
 for (const [width, scale] of [[1440, 100], [390, 100], [320, 200]]) {
   await check(`faculty-home-${width}-${scale}`, "/portal", { handler: facultyHandler, viewport: { width, height: 950 } }, async (page, fixture) => {
-    await shown(page.getByRole("heading", { name: "Faculty", exact: true }));
+    await shown(page.getByRole("heading", { name: "Faculty Home", exact: true }));
     await page.evaluate((value) => { document.documentElement.style.fontSize = `${value}%`; }, scale);
-    await shown(page.getByText("Your Faculty account is active. Digital Student Referrals are not available yet."));
+    await shown(page.getByText("Digital Student Referrals are not available yet."));
     await shown(page.getByText("Not assigned", { exact: true }));
     assert.equal(await page.locator('a[href^="/portal/referrals"],a[href^="/portal/appointments"],a[href^="/portal/accounts"]').count(), 0);
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false);
@@ -39,7 +40,7 @@ for (const path of ["/portal/referrals/new", "/portal/appointments/book", "/port
     await shown(page.getByRole("heading", { name: "Workspace unavailable" }));
     assert.equal(fixture.requests.some(protectedRead), false, "Blocked workspace must never mount protected queries");
     await page.getByRole("link", { name: "Return to Overview" }).click();
-    await shown(page.getByRole("heading", { name: "Faculty", exact: true }));
+    await shown(page.getByRole("heading", { name: "Faculty Home", exact: true }));
   });
 }
 const managed = {
