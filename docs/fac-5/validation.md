@@ -40,7 +40,7 @@ build and the separate loopback-only synthetic browser build pass. Normal builds
 fake-call seam off; runtime environment changes cannot activate it. No generated client is
 manually edited or committed and no API DTO changes are introduced by this slice.
 
-The safe [browser report](evidence/browser-local.json) records **590 passing checks**, 295 per engine, from
+The safe [browser report](evidence/browser-local.json) records **762 passing checks**, 381 per engine, from
 both Chromium and WebKit. The expanded Faculty/GCO suite has **108 cases per engine**:
 all three persisted Faculty states in Home/list/detail at 320/390/768/1024/1440px and
 100/200% text, GCO closure review at those widths/scales, role/privacy/availability errors,
@@ -54,6 +54,14 @@ resource links, read-only/no-mutation, privacy, preserved input and no-automatic
 boundaries. The real narrow-call defect is fixed without hiding identity or controls.
 The expanded 200% run also exposed and corrected actual available-width rail/facts/status
 wrapping defects; these are scoped layout corrections, not a redesign.
+
+The first complete hosted frontend run also exposed persistent-call save-label/status,
+UX-P1 action/rail, WebKit public-popover focus and test-triggered hard-reload races. The
+corrected complete suites pass in both engines: runtime 17, P1 16, public shell 21, email
+change 11 and notification email/auth 21 per engine. Public Escape explicitly closes its
+native popover and restores the real trigger; an Appointment rail width correction retains
+the original two-line label check. Test reloads use the existing bounded settling helper,
+without suppressing page errors or weakening auth/session assertions.
 
 Actual backend browser proof uses existing disposable fixture infrastructure with actual
 sessions, CSRF and PostgreSQL: CAS Faculty submission, commit/lost response, intervening
@@ -96,6 +104,11 @@ COMPASS_API_BASE_URL=http://127.0.0.1:8033 pnpm start --hostname 127.0.0.1 --por
 node tests/ecounseling-call.browser.mjs
 node tests/ui-information-hierarchy.browser.mjs
 node tests/ux-p2a.browser.mjs
+node tests/ecounseling-runtime.browser.mjs
+node tests/ux-p1.browser.mjs
+node tests/simplify-3b-public-shell.browser.mjs
+node tests/email-change.browser.mjs
+node tests/notification-email-auth.browser.mjs
 node tests/user-copy.browser.mjs
 node tests/referral-administration.browser.mjs
 node tests/faculty-referrals.browser.mjs

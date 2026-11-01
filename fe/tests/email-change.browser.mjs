@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { user } from "./support/ui-hierarchy-fixtures.mjs";
 
-const { baseURL, check, finish, noHorizontalOverflow, shown } = await createBrowserHarness("email-change");
+const { baseURL, check, finish, noHorizontalOverflow, settleFetches, shown } = await createBrowserHarness("email-change");
 const requestId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 const challengeId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 const pendingStatus = () => ({
@@ -158,6 +158,7 @@ function fixtures({
   await check("owner rediscovers admin request after refresh and verifies new mailbox on phone", "/portal/account/security", f.options, async (page, browser) => {
     await shown(page.getByText("Verify your new sign-in email", { exact: true }));
     await shown(page.getByRole("link", { name: "Verify email", exact: true }));
+    await settleFetches(page);
     await page.reload({ waitUntil: "domcontentloaded" });
     await shown(page.getByRole("link", { name: "Verify email", exact: true }));
     await page.getByRole("link", { name: "Verify email", exact: true }).click();
@@ -353,6 +354,7 @@ for (const kind of ["permission", "network", "repeat-stepup"]) {
 
     state.request = { ...state.request, status: "confirmed", confirmed_at: "2026-10-18T00:00:00Z" };
     state.account.email = "admin-managed-new@example.test";
+    await settleFetches(page);
     await page.reload({ waitUntil: "domcontentloaded" });
     await shown(page.getByText("Email verified", { exact: true }).first());
     await shown(page.getByText("admin-managed-new@example.test", { exact: true }).first());

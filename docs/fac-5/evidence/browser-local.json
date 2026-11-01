@@ -2448,5 +2448,743 @@
         "passed": true
       }
     ]
+  },
+  "chromium-fac5-followup-ecounseling-runtime": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "counselor-call-follows-routine-interview",
+        "passed": true
+      },
+      {
+        "name": "counselor-return-to-session-no-rejoin",
+        "passed": true
+      },
+      {
+        "name": "dock-controls-capture-and-leave",
+        "passed": true
+      },
+      {
+        "name": "student-mobile-dock-collapse-and-intake",
+        "passed": true
+      },
+      {
+        "name": "student-pending-consent-cue",
+        "passed": true
+      },
+      {
+        "name": "another-appointment-keeps-active-call",
+        "passed": true
+      },
+      {
+        "name": "second-tab-blocked-and-released",
+        "passed": true
+      },
+      {
+        "name": "sign-out-ends-call-after-confirmation",
+        "passed": true
+      },
+      {
+        "name": "confirmed-signed-out-ends-call",
+        "passed": true
+      },
+      {
+        "name": "unverified-session-keeps-call",
+        "passed": true
+      },
+      {
+        "name": "maintenance-keeps-connected-call",
+        "passed": true
+      },
+      {
+        "name": "call-ended-elsewhere-notice",
+        "passed": true
+      },
+      {
+        "name": "reload-warns-while-in-call",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-desktop",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-laptop",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-tablet",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-narrowPhone",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-followup-ux-p1": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "Appointment desktop contextual rail and Messages dock",
+        "passed": true
+      },
+      {
+        "name": "Appointment mobile actions stay labeled in the header area",
+        "passed": true
+      },
+      {
+        "name": "Appointment unavailable action reasons stay discoverable",
+        "passed": true
+      },
+      {
+        "name": "Referral desktop action rail keeps the PDF command and its pending state",
+        "passed": true
+      },
+      {
+        "name": "Referral mobile keeps its labeled download near the heading",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 320px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 320px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 768px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 768px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 1024px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 1024px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 1280px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 1280px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 1440px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 1440px",
+        "passed": true
+      },
+      {
+        "name": "non-Counseling Appointment hides contextual Messages and E-Counseling",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-followup-simplify-3b-public-shell": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "public-320-100",
+        "passed": true
+      },
+      {
+        "name": "public-320-200",
+        "passed": true
+      },
+      {
+        "name": "public-390-100",
+        "passed": true
+      },
+      {
+        "name": "public-390-200",
+        "passed": true
+      },
+      {
+        "name": "public-768-100",
+        "passed": true
+      },
+      {
+        "name": "public-768-200",
+        "passed": true
+      },
+      {
+        "name": "public-1024-100",
+        "passed": true
+      },
+      {
+        "name": "public-1024-200",
+        "passed": true
+      },
+      {
+        "name": "public-1440-100",
+        "passed": true
+      },
+      {
+        "name": "public-1440-200",
+        "passed": true
+      },
+      {
+        "name": "account-320-100",
+        "passed": true
+      },
+      {
+        "name": "account-320-200",
+        "passed": true
+      },
+      {
+        "name": "account-390-100",
+        "passed": true
+      },
+      {
+        "name": "account-390-200",
+        "passed": true
+      },
+      {
+        "name": "account-768-100",
+        "passed": true
+      },
+      {
+        "name": "account-768-200",
+        "passed": true
+      },
+      {
+        "name": "account-1024-100",
+        "passed": true
+      },
+      {
+        "name": "account-1024-200",
+        "passed": true
+      },
+      {
+        "name": "account-1440-100",
+        "passed": true
+      },
+      {
+        "name": "account-1440-200",
+        "passed": true
+      },
+      {
+        "name": "public-maintenance-accessibility",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-followup-email-change": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "invalid TOTP never repeats the confirmed email change",
+        "passed": true
+      },
+      {
+        "name": "a changed sign-in session discards the pending email change",
+        "passed": true
+      },
+      {
+        "name": "owner rediscovers admin request after refresh and verifies new mailbox on phone",
+        "passed": true
+      },
+      {
+        "name": "owner completes TOTP step-up and the confirmed email change continues once",
+        "passed": true
+      },
+      {
+        "name": "navigation during the refreshed-session check discards the email change",
+        "passed": true
+      },
+      {
+        "name": "a permission failure after TOTP is terminal and never replays the email change",
+        "passed": true
+      },
+      {
+        "name": "a network failure after TOTP is terminal and never replays the email change",
+        "passed": true
+      },
+      {
+        "name": "a repeat-stepup failure after TOTP is terminal and never replays the email change",
+        "passed": true
+      },
+      {
+        "name": "expired email request offers a safe self-service restart",
+        "passed": true
+      },
+      {
+        "name": "different account cannot discover another user's pending email change",
+        "passed": true
+      },
+      {
+        "name": "IT Admin sees staged and completed status without changing email before verification",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-followup-notification-email-auth": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "email destination: signed in",
+        "passed": true
+      },
+      {
+        "name": "email destination: password",
+        "passed": true
+      },
+      {
+        "name": "email destination: MFA",
+        "passed": true
+      },
+      {
+        "name": "email destination: denied after login",
+        "passed": true
+      },
+      {
+        "name": "expired session restores the original email destination after sign in",
+        "passed": true
+      },
+      {
+        "name": "mandatory authenticator setup preserves destination through fresh login and MFA",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: https://evil.test",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: //evil.test",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: %2f%2fevil.test",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: /login?next=/login",
+        "passed": true
+      },
+      {
+        "name": "reload MFA restarts with the email destination",
+        "passed": true
+      },
+      {
+        "name": "reload mandatory setup restarts with the email destination",
+        "passed": true
+      },
+      {
+        "name": "expired MFA denies resource; original email link supports deliberate restart",
+        "passed": true
+      },
+      {
+        "name": "reloaded verify sanitizes return https://evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded verify sanitizes return //evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded verify sanitizes return /portal/%2e%2e/login",
+        "passed": true
+      },
+      {
+        "name": "reloaded setup-authenticator sanitizes return https://evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded setup-authenticator sanitizes return //evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded setup-authenticator sanitizes return /portal/%2e%2e/login",
+        "passed": true
+      },
+      {
+        "name": "Back during MFA permits only deliberate fresh login",
+        "passed": true
+      },
+      {
+        "name": "Back during required setup permits only deliberate fresh login",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-followup-ecounseling-runtime": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "counselor-call-follows-routine-interview",
+        "passed": true
+      },
+      {
+        "name": "counselor-return-to-session-no-rejoin",
+        "passed": true
+      },
+      {
+        "name": "dock-controls-capture-and-leave",
+        "passed": true
+      },
+      {
+        "name": "student-mobile-dock-collapse-and-intake",
+        "passed": true
+      },
+      {
+        "name": "student-pending-consent-cue",
+        "passed": true
+      },
+      {
+        "name": "another-appointment-keeps-active-call",
+        "passed": true
+      },
+      {
+        "name": "second-tab-blocked-and-released",
+        "passed": true
+      },
+      {
+        "name": "sign-out-ends-call-after-confirmation",
+        "passed": true
+      },
+      {
+        "name": "confirmed-signed-out-ends-call",
+        "passed": true
+      },
+      {
+        "name": "unverified-session-keeps-call",
+        "passed": true
+      },
+      {
+        "name": "maintenance-keeps-connected-call",
+        "passed": true
+      },
+      {
+        "name": "call-ended-elsewhere-notice",
+        "passed": true
+      },
+      {
+        "name": "reload-warns-while-in-call",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-desktop",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-laptop",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-tablet",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-narrowPhone",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-followup-ux-p1": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "Appointment desktop contextual rail and Messages dock",
+        "passed": true
+      },
+      {
+        "name": "Appointment mobile actions stay labeled in the header area",
+        "passed": true
+      },
+      {
+        "name": "Appointment unavailable action reasons stay discoverable",
+        "passed": true
+      },
+      {
+        "name": "Referral desktop action rail keeps the PDF command and its pending state",
+        "passed": true
+      },
+      {
+        "name": "Referral mobile keeps its labeled download near the heading",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 320px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 320px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 768px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 768px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 1024px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 1024px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 1280px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 1280px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 1440px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 1440px",
+        "passed": true
+      },
+      {
+        "name": "non-Counseling Appointment hides contextual Messages and E-Counseling",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-followup-simplify-3b-public-shell": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "public-320-100",
+        "passed": true
+      },
+      {
+        "name": "public-320-200",
+        "passed": true
+      },
+      {
+        "name": "public-390-100",
+        "passed": true
+      },
+      {
+        "name": "public-390-200",
+        "passed": true
+      },
+      {
+        "name": "public-768-100",
+        "passed": true
+      },
+      {
+        "name": "public-768-200",
+        "passed": true
+      },
+      {
+        "name": "public-1024-100",
+        "passed": true
+      },
+      {
+        "name": "public-1024-200",
+        "passed": true
+      },
+      {
+        "name": "public-1440-100",
+        "passed": true
+      },
+      {
+        "name": "public-1440-200",
+        "passed": true
+      },
+      {
+        "name": "account-320-100",
+        "passed": true
+      },
+      {
+        "name": "account-320-200",
+        "passed": true
+      },
+      {
+        "name": "account-390-100",
+        "passed": true
+      },
+      {
+        "name": "account-390-200",
+        "passed": true
+      },
+      {
+        "name": "account-768-100",
+        "passed": true
+      },
+      {
+        "name": "account-768-200",
+        "passed": true
+      },
+      {
+        "name": "account-1024-100",
+        "passed": true
+      },
+      {
+        "name": "account-1024-200",
+        "passed": true
+      },
+      {
+        "name": "account-1440-100",
+        "passed": true
+      },
+      {
+        "name": "account-1440-200",
+        "passed": true
+      },
+      {
+        "name": "public-maintenance-accessibility",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-followup-email-change": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "invalid TOTP never repeats the confirmed email change",
+        "passed": true
+      },
+      {
+        "name": "a changed sign-in session discards the pending email change",
+        "passed": true
+      },
+      {
+        "name": "owner rediscovers admin request after refresh and verifies new mailbox on phone",
+        "passed": true
+      },
+      {
+        "name": "owner completes TOTP step-up and the confirmed email change continues once",
+        "passed": true
+      },
+      {
+        "name": "navigation during the refreshed-session check discards the email change",
+        "passed": true
+      },
+      {
+        "name": "a permission failure after TOTP is terminal and never replays the email change",
+        "passed": true
+      },
+      {
+        "name": "a network failure after TOTP is terminal and never replays the email change",
+        "passed": true
+      },
+      {
+        "name": "a repeat-stepup failure after TOTP is terminal and never replays the email change",
+        "passed": true
+      },
+      {
+        "name": "expired email request offers a safe self-service restart",
+        "passed": true
+      },
+      {
+        "name": "different account cannot discover another user's pending email change",
+        "passed": true
+      },
+      {
+        "name": "IT Admin sees staged and completed status without changing email before verification",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-followup-notification-email-auth": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "email destination: signed in",
+        "passed": true
+      },
+      {
+        "name": "email destination: password",
+        "passed": true
+      },
+      {
+        "name": "email destination: MFA",
+        "passed": true
+      },
+      {
+        "name": "email destination: denied after login",
+        "passed": true
+      },
+      {
+        "name": "expired session restores the original email destination after sign in",
+        "passed": true
+      },
+      {
+        "name": "mandatory authenticator setup preserves destination through fresh login and MFA",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: https://evil.test",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: //evil.test",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: %2f%2fevil.test",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: /login?next=/login",
+        "passed": true
+      },
+      {
+        "name": "reload MFA restarts with the email destination",
+        "passed": true
+      },
+      {
+        "name": "reload mandatory setup restarts with the email destination",
+        "passed": true
+      },
+      {
+        "name": "expired MFA denies resource; original email link supports deliberate restart",
+        "passed": true
+      },
+      {
+        "name": "reloaded verify sanitizes return https://evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded verify sanitizes return //evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded verify sanitizes return /portal/%2e%2e/login",
+        "passed": true
+      },
+      {
+        "name": "reloaded setup-authenticator sanitizes return https://evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded setup-authenticator sanitizes return //evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded setup-authenticator sanitizes return /portal/%2e%2e/login",
+        "passed": true
+      },
+      {
+        "name": "Back during MFA permits only deliberate fresh login",
+        "passed": true
+      },
+      {
+        "name": "Back during required setup permits only deliberate fresh login",
+        "passed": true
+      }
+    ]
   }
 }

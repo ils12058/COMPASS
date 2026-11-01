@@ -97,7 +97,11 @@ export function AccessibilityControl({ placement }: { placement: Placement }) {
         role="dialog"
         aria-labelledby={titleId}
         onKeyDown={(event) => {
-          if (event.key === "Escape") window.requestAnimationFrame(() => triggerRef.current?.focus());
+          if (event.key === "Escape") {
+            event.preventDefault();
+            panelRef.current?.hidePopover();
+            triggerRef.current?.focus();
+          }
         }}
         onToggle={(event) => {
           const isOpen = event.newState === "open";

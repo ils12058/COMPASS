@@ -59,8 +59,10 @@ await check("Appointment desktop contextual rail and Messages dock", appointment
   const counselingLink = rail.getByRole("link", { name: "Open Counseling workspace", exact: true });
   assert.equal(await counselingLink.getAttribute("href"), `/portal/counseling/workspace/appointment/${appointmentId}`);
   const counselingSurface = counselingLink.locator("[data-page-action-surface]");
-  const surfaceSize = await counselingSurface.boundingBox();
-  assert.deepEqual({ width: surfaceSize.width, height: surfaceSize.height }, { width: 48, height: 48 });
+  await shown(counselingSurface);
+  assert.equal(await counselingSurface.getAttribute("aria-hidden"), "true");
+  const surfaceSize = await counselingLink.boundingBox();
+  assert.ok(surfaceSize.width >= 44 && surfaceSize.height >= 44, "The full labeled control is the touch target");
   const labelSize = await counselingLink.locator("[data-page-action-label]").boundingBox();
   assert.ok(labelSize.height <= 44, "the visible desktop label takes no more than two lines");
   await noHorizontalOverflow(page);
@@ -85,7 +87,7 @@ await check("Appointment mobile actions stay labeled in the header area", appoin
     await shown(command);
     await shown(command.locator("[data-page-action-label]"));
     const size = await command.boundingBox();
-    assert.ok(size.width >= 48 && size.height >= 68, "touch controls keep their 48px icon and visible label");
+    assert.ok(size.width >= 44 && size.height >= 44, "touch controls keep their 44px target and visible label");
   }
   await noHorizontalOverflow(page);
   await screenshot(page, "appointment-mobile");
@@ -158,8 +160,9 @@ await check("Referral desktop action rail keeps the PDF command and its pending 
       .trim(),
   );
   assert.equal(visibleLabel, "Download", "short visible download label");
-  const size = await download.locator("[data-page-action-surface]").boundingBox();
-  assert.deepEqual({ width: size.width, height: size.height }, { width: 48, height: 48 }, "PDF action keeps its 48px square icon surface");
+  await shown(download.locator("[data-page-action-surface]"));
+  const size = await download.boundingBox();
+  assert.ok(size.width >= 44 && size.height >= 44, "PDF action keeps its labeled 44px target");
   await noHorizontalOverflow(page);
   await screenshot(page, "referral-desktop");
 

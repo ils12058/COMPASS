@@ -23,6 +23,9 @@ controlled staging execution or deployment is represented by this package.
   comparison and compatible-column/transaction recovery. Historical migrations/guards are intact.
 - Correct the real narrow-call layout and available-width Referral/facts/status reflow; reconcile
   obsolete tests with current approved control/Help/uncertain-save behavior, retaining safeguards.
+- Correct cross-engine native-popover Escape focus and the cramped Appointment action label;
+  reconcile persistent-call save selectors and settle test-triggered reloads without suppressing
+  runtime errors or reducing auth/continuity/focus assertions.
 - Add actual-session integrated cross-College and direct API assurance, explicit unsupervised/
   expired administrative session cases and a complete requested viewport/text matrix.
 
