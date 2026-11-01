@@ -137,6 +137,10 @@ The 0600 manifest contains only synthetic session cookies. Stop the owned fixtur
 its finally block removes its owned unique database and manifest. Never overwrite another
 fixture manifest or point these scenarios at a live institutional account/database.
 
+The browser dependency helper also passes Bash syntax checking and the planner self-tests.
+Its actual Ubuntu/APT/install behavior is verified in the final hosted jobs, including both
+targeted and full backend workflows; no macOS/local shell-only result certifies runner setup.
+
 ## Hosted gate assessment
 
 The integration branch is outside current automatic PR triggers; dispatch the existing

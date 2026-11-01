@@ -23,6 +23,8 @@ Current unchanged failures were reproduced locally before correction.
 | Public-shell WebKit Escape focus / Public + Accessibility UI | Native popover close/focus sequencing did not reliably return focus; delayed Accessibility focus could compete with native default | Handle Escape explicitly: prevent competing default, close native popover, focus its actual trigger. Opening mobile navigation focuses its first link. Native outside dismissal and real navigation remain | 21/21 public-shell width/text/focus cases per engine |
 | WebKit reload runtime errors / Email/session browser fixtures | Test-triggered hard reload cancelled router RSC prefetches, reported as access-control page errors; raw synthetic-only diagnostic reproduced the affected paths | Wait for the existing bounded fetch-settling helper before the test's reload. Do not filter, ignore or clear errors; zero-runtime-error and all auth/destination/MFA assertions remain | Email change 11/11 and email auth 21/21 per engine |
 
+| Hosted browser dependency installation / CI infrastructure | Backend job 124708430521 made no progress after APT index fetches at 00:59:42 UTC until superseded/cancelled at 01:20:50; no tests ran in that job | On disposable Linux Actions runners replace only the Azure mirror URI with official HTTPS Ubuntu archive, bound connection/data waits to 30s with two retries and browser install to 10 minutes. Keep suites, components, keys, TLS/signature checks, frozen dependencies and every test | Shell syntax and planner checks pass; final exact-head hosted install/tests are the acceptance gate |
+
 The four original backend cases failed in a 26.95s unchanged local reproduction.
 The corrected synthetic baseline browser counts were 39/40, 17/18, 1/6 and 40/44;
 all corresponding current focused suites pass. Normal-build fake-call failures and a local
@@ -41,3 +43,23 @@ unexecuted jobs remain incomplete, regardless of successful build/unit jobs.
 
 No known failed assertion was removed or weakened. No production approval, grant, clinical
 lifecycle, migration history, live Notification behavior or deployment setting is changed.
+
+## CI dependency evidence and bounded correction
+
+The initial backend run's [shard 4](https://github.com/ils12058/COMPASS/actions/runs/41258965387/job/124708430521)
+started its installer at 00:59:22 UTC. Its final APT progress was at 00:59:42, with Azure
+package-index requests ignored and archive fallback fetches, followed by no progress before
+our final-head dispatch superseded it at 01:20:50. This is an observed repository-fetch stall,
+not a failed backend assertion. Shard 1 printed 1,064 passing tests/two skips but was cancelled
+during completion; it is still not an accepted successful job. Shards 2/3/6 passed normally.
+
+The shared CI-only helper changes only the known Azure mirror URI in the runner's existing
+mirrorlist, retaining other entries/metadata and the existing Ubuntu suite/signing configuration.
+APT's [mirrorlist format](https://manpages.ubuntu.com/manpages/noble/man1/apt-transport-mirror.1.html)
+and [connection/data timeout](https://manpages.debian.org/bookworm/apt/apt-transport-http.1.en.html)
+are documented by their maintainers. The helper applies [APT retry/configuration options](https://manpages.debian.org/bookworm/apt/apt.conf.5.en.html),
+requires a disposable Linux Actions environment and does not run on application/deployment hosts.
+Targeted backend, full backend and frontend browser jobs use the same preparation, with a
+10-minute install-step bound. Install errors still fail the job and no test is bypassed.
+The final exact implementation must pass both backend workflows and the complete frontend
+workflow; intermediate cancelled runs never substitute for that final gate.

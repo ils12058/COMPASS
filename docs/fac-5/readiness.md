@@ -26,6 +26,8 @@ controlled staging execution or deployment is represented by this package.
 - Correct cross-engine native-popover Escape focus and the cramped Appointment action label;
   reconcile persistent-call save selectors and settle test-triggered reloads without suppressing
   runtime errors or reducing auth/continuity/focus assertions.
+- Bound CI browser dependency downloads and replace only the observed stalled Azure mirror
+  URI on disposable runners; keep verified dependencies and the full test matrix.
 - Add actual-session integrated cross-College and direct API assurance, explicit unsupervised/
   expired administrative session cases and a complete requested viewport/text matrix.
 
