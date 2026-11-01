@@ -12,6 +12,7 @@ from django.utils import timezone
 from compass.accounts.models import Capability, Role, UserCapabilityOverride
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
+from compass.authentication.sessions import create_auth_session
 from compass.organization.models import StaffSupervision
 from compass.referrals import administration, faculty_services, services
 from compass.referrals import administrative_policy as policy
@@ -111,6 +112,8 @@ def test_no_administrative_capability_for_other_roles(world, role):
         "role",
         "inactive",
         "session",
+        "session_expired",
+        "unsupervised",
         "scope",
         "supervision",
         "policy_actor",
@@ -138,6 +141,12 @@ def test_current_authority_and_scope_revalidated(world, mutation):
     elif mutation == "session":
         world.counselor_issued.session.revoked_at = timezone.now()
         world.counselor_issued.session.save(update_fields=["revoked_at"])
+    elif mutation == "session_expired":
+        expired = create_auth_session(world.counselor, now=timezone.now() - timedelta(days=365))
+        args = dict(actor_session=expired.session)
+    elif mutation == "unsupervised":
+        StaffSupervision.objects.filter(staff=world.staff).delete()
+        args = dict(actor=world.staff, actor_session=world.staff_issued.session)
     elif mutation == "scope":
         args = dict(actor=world.other_counselor, actor_session=world.other_counselor_issued.session)
     elif mutation == "supervision":
