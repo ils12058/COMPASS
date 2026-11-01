@@ -91,7 +91,7 @@ class Command(BaseCommand):
             prepared = []
             for record in plan["summary_records"]:
                 encounter = (
-                    CounselingEncounter.objects.select_for_update()
+                    CounselingEncounter.objects.select_for_update(of=("self",))
                     .select_related("student", "counselor")
                     .get(pk=record["encounter_id"])
                 )

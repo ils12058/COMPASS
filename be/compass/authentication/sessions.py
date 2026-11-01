@@ -241,7 +241,7 @@ def resolve_auth_session(token: str | None, *, request=None, now: datetime | Non
     current = now or timezone.now()
     digest = digest_opaque_token(token)
     session = (
-        AuthSession.objects.select_related("user")
+        AuthSession.objects.select_related("user__role")
         .filter(
             token_digest=digest,
             revoked_at__isnull=True,

@@ -1,13 +1,15 @@
-"""Real PostgreSQL rehearsal: canonical upgrade and data-safe additive migration rollback.
+"""Disposable PostgreSQL forward-upgrade and compatible-column recovery rehearsal.
 
-Only pytest's disposable database is touched. History-bearing lifecycle protection is not reversed.
+Irreversible policy/cutover migrations and immutable Faculty history are never reversed.
 """
 
+import copy
 from datetime import timedelta
+from uuid import uuid4
 
 import pytest
 from django.apps import apps
-from django.db import connection
+from django.db import connection, connections, transaction
 from django.db.migrations.executor import MigrationExecutor
 from django.utils import timezone
 
@@ -19,59 +21,64 @@ from compass.common.canonical_baseline import pre_canonical_history
 
 
 @pytest.mark.django_db(transaction=True)
-def test_postbaseline_upgrade_preserves_canonical_records_and_reverses_only_additions():
+def test_postbaseline_upgrade_preserves_records_and_supports_forward_recovery(django_db_blocker):
     assert connection.vendor == "postgresql"
     assert connection.settings_dict["NAME"].startswith("test_")
-    executor = MigrationExecutor(connection)
-    full = executor.loader.graph.leaf_nodes()
-    compass_labels = {
-        config.label for config in apps.get_app_configs() if config.name.startswith("compass.")
-    }
-    baseline = []
-    # CONT-1B is an irreversible empty-resource cutover, not a reversible addition.
-    # Keep its capability/schema dependency unit while rehearsing later additions.
-    protected_floor = {
-        "accounts": "0002_student_session_summary_capabilities",
-        "counseling": "0002_student_session_summary_contract",
-    }
-    for label, leaf in full:
-        if label not in compass_labels:
-            baseline.append((label, leaf))
-        elif label in protected_floor:
-            baseline.append((label, protected_floor[label]))
-        elif (label, "0001_canonical_baseline") in executor.loader.disk_migrations:
-            baseline.append((label, "0001_canonical_baseline"))
-        else:
-            baseline.append((label, None))
+    alias = "test_fac5_upgrade_" + uuid4().hex
+    with connection.cursor() as cursor:
+        cursor.execute(f'CREATE DATABASE "{alias}"')
+    config = copy.deepcopy(connection.settings_dict)
+    config["NAME"] = alias
+    connections.databases[alias] = config
+    db = connections[alias]
     try:
+        # Explicitly open only our newly created disposable alias; Django blocks late aliases.
+        with django_db_blocker.unblock():
+            db.ensure_connection()
+        executor = MigrationExecutor(db)
+        full = executor.loader.graph.leaf_nodes()
+        compass_labels = {
+            config.label for config in apps.get_app_configs() if config.name.startswith("compass.")
+        }
+        # The empty-resource summary cutover is a permanent floor, not a reversible addition.
+        floor = {
+            "accounts": "0002_student_session_summary_capabilities",
+            "counseling": "0002_student_session_summary_contract",
+        }
+        baseline = []
+        for label, leaf in full:
+            if label not in compass_labels:
+                baseline.append((label, leaf))
+            elif label in floor:
+                baseline.append((label, floor[label]))
+            elif (label, "0001_canonical_baseline") in executor.loader.disk_migrations:
+                baseline.append((label, "0001_canonical_baseline"))
+            else:
+                baseline.append((label, None))
+        # A new owned database starts at this schema; no installed migration is rolled back.
         executor.migrate(baseline)
         historical = executor.loader.project_state([node for node in baseline if node[1]]).apps
-        Role = historical.get_model("accounts", "Role")
-        User = historical.get_model("accounts", "User")
-        Service = historical.get_model("service_catalog", "Service")
-        Appointment = historical.get_model("appointments", "Appointment")
-        student_role = Role.objects.create(code="STUDENT", name="Student")
-        counselor_role = Role.objects.create(code="COUNSELOR", name="Counselor")
-        student = User(
-            email="upgrade-student@example.test",
-            password="!",
-            role_id=student_role.pk,
-            first_name="Synthetic",
-            last_name="Student",
-            is_active=True,
-        )
-        counselor = User(
-            email="upgrade-counselor@example.test",
-            password="!",
-            role_id=counselor_role.pk,
-            first_name="Synthetic",
-            last_name="Counselor",
-            is_active=True,
-        )
-        for user in (student, counselor):
+
+        def manager(app, model):
+            return historical.get_model(app, model).objects.using(alias)
+
+        student_role = manager("accounts", "Role").create(code="STUDENT", name="Student")
+        counselor_role = manager("accounts", "Role").create(code="COUNSELOR", name="Counselor")
+        people = []
+        for role, name in ((student_role, "Student"), (counselor_role, "Counselor")):
+            user = historical.get_model("accounts", "User")(
+                email=f"upgrade-{name}@synthetic.invalid",
+                password="!",
+                role_id=role.pk,
+                first_name="Synthetic",
+                last_name=name,
+                is_active=True,
+            )
             write_account_profile_confidential_content(user, AccountProfileConfidentialContent())
-            user.save()
-        service = Service.objects.create(
+            user.save(using=alias)
+            people.append(user)
+        student, counselor = people
+        service = manager("service_catalog", "Service").create(
             code="UPGRADE_FIXTURE",
             name="Synthetic upgrade service",
             is_active=True,
@@ -79,7 +86,7 @@ def test_postbaseline_upgrade_preserves_canonical_records_and_reverses_only_addi
             default_appointment_duration_minutes=60,
         )
         starts = timezone.now() + timedelta(days=2)
-        item = Appointment.objects.create(
+        item = manager("appointments", "Appointment").create(
             reference_code="UPGRADE-FIXTURE",
             student_id=student.pk,
             provider_id=counselor.pk,
@@ -91,46 +98,49 @@ def test_postbaseline_upgrade_preserves_canonical_records_and_reverses_only_addi
             status="SCHEDULED",
             created_by_id=student.pk,
         )
-        fields = (
-            "reference_code",
-            "student_id",
-            "provider_id",
-            "service_id",
-            "status",
-            "starts_at",
-            "ends_at",
-        )
-        original = Appointment.objects.filter(pk=item.pk).values(*fields).get()
-        counts = (User.objects.count(), Service.objects.count(), Appointment.objects.count())
-        MigrationExecutor(connection).migrate(full)
-        CurrentAppointment = apps.get_model("appointments", "Appointment")
-        assert CurrentAppointment.objects.filter(pk=item.pk).values(*fields).get() == original
+        models = [
+            ("accounts", "User"),
+            ("service_catalog", "Service"),
+            ("appointments", "Appointment"),
+        ]
+        original = {key: list(manager(*key).order_by("pk").values()) for key in models}
+        executor = MigrationExecutor(db)
+        executor.migrate(full)
+        current = executor.loader.project_state(full).apps
+        for key, rows in original.items():
+            after = list(current.get_model(*key).objects.using(alias).order_by("pk").values())
+            assert [
+                {name: row[name] for name in old} for old, row in zip(rows, after, strict=True)
+            ] == rows
+        pathway = current.get_model("service_catalog", "ServiceBookingPathway")
         assert (
-            apps.get_model("accounts", "User").objects.count(),
-            apps.get_model("service_catalog", "Service").objects.count(),
-            CurrentAppointment.objects.count(),
-        ) == counts
-        if hasattr(CurrentAppointment, "reminder_revision"):
-            assert CurrentAppointment.objects.get(pk=item.pk).reminder_revision == 1
-        # SVC-1, when present in a candidate, intentionally adds flexible pathways for existing
-        # bookable Services; it must not mutate the canonical Service or Appointment rows.
-        if apps.is_installed("compass.service_catalog"):
-            try:
-                Pathway = apps.get_model("service_catalog", "ServiceBookingPathway")
-            except LookupError:
-                pass
-            else:
-                assert (
-                    Pathway.objects.filter(
-                        service_id=service.pk, code="FLEXIBLE_APPOINTMENT"
-                    ).count()
-                    == 1
+            pathway.objects.using(alias)
+            .filter(service_id=service.pk, code="FLEXIBLE_APPOINTMENT")
+            .count()
+            == 1
+        )
+        assert pre_canonical_history(db) == []
+        # Compatible code can read retained columns. A failed transaction rolls back data,
+        # then an idempotent forward migrate recovers without dropping schema or history.
+        with pytest.raises(RuntimeError, match="Synthetic component failure"):
+            with transaction.atomic(using=alias):
+                manager("appointments", "Appointment").filter(pk=item.pk).update(
+                    service_name_snapshot="Uncommitted recovery probe"
                 )
-        assert pre_canonical_history(connection) == []
-        MigrationExecutor(connection).migrate(baseline)
-        assert Appointment.objects.filter(pk=item.pk).values(*fields).get() == original
-        assert User.objects.count() == counts[0]
-        MigrationExecutor(connection).migrate(full)
-        assert CurrentAppointment.objects.filter(pk=item.pk).values(*fields).get() == original
+                raise RuntimeError("Synthetic component failure")
+        MigrationExecutor(db).migrate(full)
+        for key, rows in original.items():
+            assert list(manager(*key).order_by("pk").values()) == rows
+        assert (
+            current.get_model("appointments", "Appointment")
+            .objects.using(alias)
+            .get(pk=item.pk)
+            .reminder_revision
+            == 1
+        )
     finally:
-        MigrationExecutor(connection).migrate(full)
+        db.close()
+        del connections[alias]
+        del connections.databases[alias]
+        with connection.cursor() as cursor:
+            cursor.execute(f'DROP DATABASE "{alias}"')
