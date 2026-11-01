@@ -3186,5 +3186,1003 @@
         "passed": true
       }
     ]
+  },
+  "chromium-fac5-navigation-assessment-records": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "320px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "375px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "390px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "430px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "768px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "1440px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "STUDENT override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "IT_ADMIN override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "INSTITUTIONAL_OFFICER override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records/new",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records/types",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records/d0000000-0000-4000-8000-000000000001",
+        "passed": true
+      },
+      {
+        "name": "View-only Counselor has Records without correction or catalog actions",
+        "passed": true
+      },
+      {
+        "name": "Non-Head Counselor with effective manage reaches and uses the shared catalog",
+        "passed": true
+      },
+      {
+        "name": "Manage without effective view cannot open the catalog by direct route",
+        "passed": true
+      },
+      {
+        "name": "Revoked manage removes stale record and catalog actions after a fresh session",
+        "passed": true
+      },
+      {
+        "name": "Empty catalog and empty record list remain usable",
+        "passed": true
+      },
+      {
+        "name": "Detail 403 safe error and retry",
+        "passed": true
+      },
+      {
+        "name": "Detail 404 safe error and retry",
+        "passed": true
+      },
+      {
+        "name": "Detail 500 safe error and retry",
+        "passed": true
+      },
+      {
+        "name": "List failure retry and loading conceal confidential content",
+        "passed": true
+      },
+      {
+        "name": "Search draft applies only on submit and invalid dates stay in Filters",
+        "passed": true
+      },
+      {
+        "name": "Assessment sorting has a separate display group and does not count as a filter",
+        "passed": true
+      },
+      {
+        "name": "Bounded paging uses has_next without inventing a total",
+        "passed": true
+      },
+      {
+        "name": "Create validates blank result prevents duplicate save and uses narrow Student picker",
+        "passed": true
+      },
+      {
+        "name": "Create validation failure keeps draft and unsaved navigation guard",
+        "passed": true
+      },
+      {
+        "name": "Correction keeps Student immutable and sends textual source values",
+        "passed": true
+      },
+      {
+        "name": "Catalog creates updates deactivates and reactivates without delete",
+        "passed": true
+      },
+      {
+        "name": "Duplicate catalog name fails safely and retains the correction draft",
+        "passed": true
+      },
+      {
+        "name": "Account switch conceals previously decrypted content and removes Records navigation",
+        "passed": true
+      },
+      {
+        "name": "Lost capability in same session conceals confidential projection",
+        "passed": true
+      },
+      {
+        "name": "Expired CSRF keeps the source draft and permits a safe retry",
+        "passed": true
+      },
+      {
+        "name": "Revoked manage authority during save conceals the draft",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-navigation-ux15-tracer-after": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "after desktop visual evidence",
+        "passed": true
+      },
+      {
+        "name": "after phone visual evidence",
+        "passed": true
+      },
+      {
+        "name": "after validation evidence",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow desktop",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow wide",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow tablet",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow phone",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow narrowPhone",
+        "passed": true
+      },
+      {
+        "name": "Partial drafts, draft errors, deduplicated review and original field focus",
+        "passed": true
+      },
+      {
+        "name": "Matrix validation summary focuses original radios and preserves error descriptions",
+        "passed": true
+      },
+      {
+        "name": "Failed save preserves unsaved answers 500",
+        "passed": true
+      },
+      {
+        "name": "Failed save preserves unsaved answers 409",
+        "passed": true
+      },
+      {
+        "name": "Failed save preserves unsaved answers network",
+        "passed": true
+      },
+      {
+        "name": "Pending protection and canonical save synchronization across return",
+        "passed": true
+      },
+      {
+        "name": "Employment transitions clear stale branches and preserve conditional semantics",
+        "passed": true
+      },
+      {
+        "name": "Stable repeating records and College to Program filtering",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation ok",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation unknown-committed",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation unknown-draft",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation unknown-check-fails",
+        "passed": true
+      },
+      {
+        "name": "Dirty route navigation, browser back and native unload remain guarded",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response non-graduate",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response restricted",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response read-only-draft",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response submitted",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response disposed",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-navigation-ux-hardening-chromium": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "containment-inventory-320",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-320",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-320",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-320",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-375",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-375",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-375",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-375",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-390",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-390",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-390",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-390",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-393",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-393",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-393",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-393",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-430",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-430",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-430",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-430",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-768",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-768",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-768",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-768",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-1440",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-1440",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-1440",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-header-email-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-announcement-title-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-name-code-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-list-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-referral-url-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-header-email-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-announcement-title-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-name-code-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-list-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-referral-url-1440",
+        "passed": true
+      },
+      {
+        "name": "sticky-account-normal",
+        "passed": true
+      },
+      {
+        "name": "sticky-account-long-email",
+        "passed": true
+      },
+      {
+        "name": "sticky-account-long-id",
+        "passed": true
+      },
+      {
+        "name": "accounts-explicit-search",
+        "passed": true
+      },
+      {
+        "name": "accounts-older-submit-keeps-new-draft",
+        "passed": true
+      },
+      {
+        "name": "clear-services-timer",
+        "passed": true
+      },
+      {
+        "name": "clear-services-in-flight",
+        "passed": true
+      },
+      {
+        "name": "clear-affiliations-timer",
+        "passed": true
+      },
+      {
+        "name": "clear-affiliations-in-flight",
+        "passed": true
+      },
+      {
+        "name": "newest-intent-availability",
+        "passed": true
+      },
+      {
+        "name": "newest-intent-services",
+        "passed": true
+      },
+      {
+        "name": "newest-intent-affiliations",
+        "passed": true
+      },
+      {
+        "name": "exit-siblings-320",
+        "passed": true
+      },
+      {
+        "name": "exit-siblings-393",
+        "passed": true
+      },
+      {
+        "name": "exit-siblings-1440",
+        "passed": true
+      },
+      {
+        "name": "exit-capability-responses-only",
+        "passed": true
+      },
+      {
+        "name": "exit-capability-access-only",
+        "passed": true
+      },
+      {
+        "name": "exit-capability-neither",
+        "passed": true
+      },
+      {
+        "name": "exit-rating-columns-reachable-320",
+        "passed": true
+      },
+      {
+        "name": "tracer-answer-columns-reachable-320",
+        "passed": true
+      },
+      {
+        "name": "exit-rating-columns-reachable-390",
+        "passed": true
+      },
+      {
+        "name": "tracer-answer-columns-reachable-390",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-navigation-assessment-records": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "320px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "375px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "390px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "430px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "768px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "1440px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "STUDENT override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "IT_ADMIN override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "INSTITUTIONAL_OFFICER override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records/new",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records/types",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records/d0000000-0000-4000-8000-000000000001",
+        "passed": true
+      },
+      {
+        "name": "View-only Counselor has Records without correction or catalog actions",
+        "passed": true
+      },
+      {
+        "name": "Non-Head Counselor with effective manage reaches and uses the shared catalog",
+        "passed": true
+      },
+      {
+        "name": "Manage without effective view cannot open the catalog by direct route",
+        "passed": true
+      },
+      {
+        "name": "Revoked manage removes stale record and catalog actions after a fresh session",
+        "passed": true
+      },
+      {
+        "name": "Empty catalog and empty record list remain usable",
+        "passed": true
+      },
+      {
+        "name": "Detail 403 safe error and retry",
+        "passed": true
+      },
+      {
+        "name": "Detail 404 safe error and retry",
+        "passed": true
+      },
+      {
+        "name": "Detail 500 safe error and retry",
+        "passed": true
+      },
+      {
+        "name": "List failure retry and loading conceal confidential content",
+        "passed": true
+      },
+      {
+        "name": "Search draft applies only on submit and invalid dates stay in Filters",
+        "passed": true
+      },
+      {
+        "name": "Assessment sorting has a separate display group and does not count as a filter",
+        "passed": true
+      },
+      {
+        "name": "Bounded paging uses has_next without inventing a total",
+        "passed": true
+      },
+      {
+        "name": "Create validates blank result prevents duplicate save and uses narrow Student picker",
+        "passed": true
+      },
+      {
+        "name": "Create validation failure keeps draft and unsaved navigation guard",
+        "passed": true
+      },
+      {
+        "name": "Correction keeps Student immutable and sends textual source values",
+        "passed": true
+      },
+      {
+        "name": "Catalog creates updates deactivates and reactivates without delete",
+        "passed": true
+      },
+      {
+        "name": "Duplicate catalog name fails safely and retains the correction draft",
+        "passed": true
+      },
+      {
+        "name": "Account switch conceals previously decrypted content and removes Records navigation",
+        "passed": true
+      },
+      {
+        "name": "Lost capability in same session conceals confidential projection",
+        "passed": true
+      },
+      {
+        "name": "Expired CSRF keeps the source draft and permits a safe retry",
+        "passed": true
+      },
+      {
+        "name": "Revoked manage authority during save conceals the draft",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-navigation-ux15-tracer-after": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "after desktop visual evidence",
+        "passed": true
+      },
+      {
+        "name": "after phone visual evidence",
+        "passed": true
+      },
+      {
+        "name": "after validation evidence",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow desktop",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow wide",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow tablet",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow phone",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow narrowPhone",
+        "passed": true
+      },
+      {
+        "name": "Partial drafts, draft errors, deduplicated review and original field focus",
+        "passed": true
+      },
+      {
+        "name": "Matrix validation summary focuses original radios and preserves error descriptions",
+        "passed": true
+      },
+      {
+        "name": "Failed save preserves unsaved answers 500",
+        "passed": true
+      },
+      {
+        "name": "Failed save preserves unsaved answers 409",
+        "passed": true
+      },
+      {
+        "name": "Failed save preserves unsaved answers network",
+        "passed": true
+      },
+      {
+        "name": "Pending protection and canonical save synchronization across return",
+        "passed": true
+      },
+      {
+        "name": "Employment transitions clear stale branches and preserve conditional semantics",
+        "passed": true
+      },
+      {
+        "name": "Stable repeating records and College to Program filtering",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation ok",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation unknown-committed",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation unknown-draft",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation unknown-check-fails",
+        "passed": true
+      },
+      {
+        "name": "Dirty route navigation, browser back and native unload remain guarded",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response non-graduate",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response restricted",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response read-only-draft",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response submitted",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response disposed",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-navigation-ux-hardening-webkit": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "containment-inventory-320",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-320",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-320",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-320",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-375",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-375",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-375",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-375",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-390",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-390",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-390",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-390",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-393",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-393",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-393",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-393",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-430",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-430",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-430",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-430",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-768",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-768",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-768",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-768",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-1440",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-1440",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-1440",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-header-email-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-announcement-title-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-name-code-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-list-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-referral-url-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-header-email-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-announcement-title-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-name-code-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-list-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-referral-url-1440",
+        "passed": true
+      },
+      {
+        "name": "sticky-account-normal",
+        "passed": true
+      },
+      {
+        "name": "sticky-account-long-email",
+        "passed": true
+      },
+      {
+        "name": "sticky-account-long-id",
+        "passed": true
+      },
+      {
+        "name": "accounts-explicit-search",
+        "passed": true
+      },
+      {
+        "name": "accounts-older-submit-keeps-new-draft",
+        "passed": true
+      },
+      {
+        "name": "clear-services-timer",
+        "passed": true
+      },
+      {
+        "name": "clear-services-in-flight",
+        "passed": true
+      },
+      {
+        "name": "clear-affiliations-timer",
+        "passed": true
+      },
+      {
+        "name": "clear-affiliations-in-flight",
+        "passed": true
+      },
+      {
+        "name": "newest-intent-availability",
+        "passed": true
+      },
+      {
+        "name": "newest-intent-services",
+        "passed": true
+      },
+      {
+        "name": "newest-intent-affiliations",
+        "passed": true
+      },
+      {
+        "name": "exit-siblings-320",
+        "passed": true
+      },
+      {
+        "name": "exit-siblings-393",
+        "passed": true
+      },
+      {
+        "name": "exit-siblings-1440",
+        "passed": true
+      },
+      {
+        "name": "exit-capability-responses-only",
+        "passed": true
+      },
+      {
+        "name": "exit-capability-access-only",
+        "passed": true
+      },
+      {
+        "name": "exit-capability-neither",
+        "passed": true
+      },
+      {
+        "name": "exit-rating-columns-reachable-320",
+        "passed": true
+      },
+      {
+        "name": "tracer-answer-columns-reachable-320",
+        "passed": true
+      },
+      {
+        "name": "exit-rating-columns-reachable-390",
+        "passed": true
+      },
+      {
+        "name": "tracer-answer-columns-reachable-390",
+        "passed": true
+      }
+    ]
   }
 }

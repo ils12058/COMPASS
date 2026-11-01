@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { createBrowserHarness } from './support/browser-harness.mjs';
 import { tracerFixture, tracerPath, graduate } from './support/ux15-tracer-fixtures.mjs';
 const phase = process.env.COMPASS_UX15_TRACER_PHASE ?? 'after';
-const { check, shown, hidden, noHorizontalOverflow, artifacts, finish } = await createBrowserHarness(`ux15-tracer-${phase}`);
+const { check, shown, hidden, noHorizontalOverflow, artifacts, finish, settleFetches } = await createBrowserHarness(`ux15-tracer-${phase}`);
 const saveButton = page => page.getByRole('button', { name: 'Save draft', exact: true });
 const submitButton = page => page.getByRole('button', { name: 'Submit Graduate Tracer Survey', exact: true });
 async function focusId(page, id) { assert.equal(await page.evaluate(() => document.activeElement?.id), id); }
@@ -143,6 +143,7 @@ if (phase !== 'before') {
       release(); await shown(page.getByRole('status').filter({ hasText: 'Draft saved.' }));
       assert.equal(await page.locator('#gts-mobile').inputValue(), 'Canonical synthetic answer');
       assert.equal(await saveButton(page).isEnabled(), false);
+      await settleFetches(page);
       await page.reload(); await shown(page.locator('#gts-name'));
       assert.equal(await page.locator('#gts-mobile').inputValue(), 'Canonical synthetic answer');
       assert.equal(await saveButton(page).isEnabled(), false);

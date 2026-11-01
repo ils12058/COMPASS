@@ -4,7 +4,7 @@ import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { assessmentWorld, content, head, record, recordId, typeId } from "./support/assessment-records-fixtures.mjs";
 
 const harness = await createBrowserHarness("assessment-records");
-const { check, shown, hidden, finish, noHorizontalOverflow, screenshot } = harness;
+const { check, shown, hidden, finish, noHorizontalOverflow, screenshot, settleFetches } = harness;
 const root = "/portal/assessment-records";
 const detail = `${root}/${recordId}`;
 const save = (page) => page.getByRole("button", { name: "Save record", exact: true });
@@ -34,6 +34,7 @@ for (const width of [320, 375, 390, 430, 768, 1440]) {
     await page.getByRole("link", { name: "Maria Assessment Student", exact: true }).click();
     await shown(page.getByText(content.score, { exact: true }));
     world.records[0].interpretation = "LONG-CONFIDENTIAL-".repeat(150);
+    await settleFetches(page);
     await page.reload(); await shown(page.getByText(world.records[0].interpretation, { exact: true }));
     await noHorizontalOverflow(page);
     await page.getByRole("link", { name: /Edit assessment record/ }).click();
@@ -116,7 +117,9 @@ for (const path of [root, root + "/new", root + "/types", detail]) {
   const world = assessmentWorld({ records: [] });
   await check("Empty catalog and empty record list remain usable", root, world.options(), async (page) => {
     await shown(page.getByText("No assessment results have been recorded."));
-    world.types = []; await page.reload(); await shown(page.getByText("No assessment results have been recorded.")); await page.getByRole("link", { name: /Record assessment result/ }).click();
+    world.types = [];
+    await settleFetches(page);
+    await page.reload(); await shown(page.getByText("No assessment results have been recorded.")); await page.getByRole("link", { name: /Record assessment result/ }).click();
     await shown(page.getByText(/No active Assessment Types are available\./));
     assert.ok(!(await text(page)).includes("Head Guidance"));
     await shown(page.getByRole("link", { name: "Assessment Types", exact: true }));

@@ -40,7 +40,7 @@ build and the separate loopback-only synthetic browser build pass. Normal builds
 fake-call seam off; runtime environment changes cannot activate it. No generated client is
 manually edited or committed and no API DTO changes are introduced by this slice.
 
-The safe [browser report](evidence/browser-local.json) records **762 passing checks**, 381 per engine, from
+The safe [browser report](evidence/browser-local.json) records **1,004 passing checks**, 502 per engine, from
 both Chromium and WebKit. The expanded Faculty/GCO suite has **108 cases per engine**:
 all three persisted Faculty states in Home/list/detail at 320/390/768/1024/1440px and
 100/200% text, GCO closure review at those widths/scales, role/privacy/availability errors,
@@ -62,6 +62,13 @@ change 11 and notification email/auth 21 per engine. Public Escape explicitly cl
 native popover and restores the real trigger; an Appointment rail width correction retains
 the original two-line label check. Test reloads use the existing bounded settling helper,
 without suppressing page errors or weakening auth/session assertions.
+
+A later hosted WebKit run on `271187ea` exposed the same unintentional reload race in
+Assessment Records (the unchanged local diagnostic passed, consistent with an intermittent
+race). Four remaining ordinary reloads in Assessment, Graduate Tracer and URL-state checks
+now use the existing bounded fetch-settling helper. All assertions remain intact. Full local
+suites pass per engine: Assessment 35, Graduate Tracer 26 and UX hardening 60. The deliberate
+in-flight MFA navigation/cancellation test is unchanged; errors are not globally filtered.
 
 Actual backend browser proof uses existing disposable fixture infrastructure with actual
 sessions, CSRF and PostgreSQL: CAS Faculty submission, commit/lost response, intervening
@@ -109,6 +116,9 @@ node tests/ux-p1.browser.mjs
 node tests/simplify-3b-public-shell.browser.mjs
 node tests/email-change.browser.mjs
 node tests/notification-email-auth.browser.mjs
+node tests/assessment-records.browser.mjs
+node tests/ux15-graduate-tracer.browser.mjs
+node tests/ux-hardening.browser.mjs
 node tests/user-copy.browser.mjs
 node tests/referral-administration.browser.mjs
 node tests/faculty-referrals.browser.mjs

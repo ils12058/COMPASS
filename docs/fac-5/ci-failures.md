@@ -21,7 +21,7 @@ Current unchanged failures were reproduced locally before correction.
 | Persistent-call Routine save selectors / E-Counseling UI test | Exact old Save evaluation/Save progress and Saved strings predated current labels/status | Select Save Evaluation/Save Progress and the actual polite Evaluation progress saved status; retain same audio element, track ownership, single join/token, capture and dock clearance checks | 17/17 runtime cases per engine |
 | UX-P1 action contract and Appointment rail / Appointments + UI test | Old decorative 48px assumptions; 7rem rail left only 60px for Open Counseling, splitting it into three lines | Assert accepted full labeled 44px control; widen only the Appointment rail to 10rem. Retain two-line label, actual resource links, PDF pending state, Messages side-by-side and overflow checks | 16/16 P1 cases per engine |
 | Public-shell WebKit Escape focus / Public + Accessibility UI | Native popover close/focus sequencing did not reliably return focus; delayed Accessibility focus could compete with native default | Handle Escape explicitly: prevent competing default, close native popover, focus its actual trigger. Opening mobile navigation focuses its first link. Native outside dismissal and real navigation remain | 21/21 public-shell width/text/focus cases per engine |
-| WebKit reload runtime errors / Email/session browser fixtures | Test-triggered hard reload cancelled router RSC prefetches, reported as access-control page errors; raw synthetic-only diagnostic reproduced the affected paths | Wait for the existing bounded fetch-settling helper before the test's reload. Do not filter, ignore or clear errors; zero-runtime-error and all auth/destination/MFA assertions remain | Email change 11/11 and email auth 21/21 per engine |
+| WebKit reload runtime errors / Shared browser fixtures | Test-triggered hard reload cancelled router RSC prefetches, reported as access-control page errors; raw synthetic-only diagnostic reproduced the affected paths | Wait for the existing bounded fetch-settling helper before the test's reload. Do not filter, ignore or clear errors; zero-runtime-error and all auth/destination/MFA assertions remain | Email change 11/11, email auth 21/21, Assessment 35/35, Tracer 26/26 and UX hardening 60/60 per engine |
 
 | Hosted browser dependency installation / CI infrastructure | Backend job 124708430521 made no progress after APT index fetches at 00:59:42 UTC until superseded/cancelled at 01:20:50; no tests ran in that job | On disposable Linux Actions runners replace only the Azure mirror URI with official HTTPS Ubuntu archive, bound connection/data waits to 30s with two retries and browser install to 10 minutes. Keep suites, components, keys, TLS/signature checks, frozen dependencies and every test | Shell syntax and planner checks pass; final exact-head hosted install/tests are the acceptance gate |
 
@@ -63,3 +63,14 @@ Targeted backend, full backend and frontend browser jobs use the same preparatio
 10-minute install-step bound. Install errors still fail the job and no test is bypassed.
 The final exact implementation must pass both backend workflows and the complete frontend
 workflow; intermediate cancelled runs never substitute for that final gate.
+
+The subsequent [frontend run 41261014338](https://github.com/ils12058/COMPASS/actions/runs/41261014338)
+on `271187ea` passed static/unit/build and seven browser shards. WebKit shard 4 failed only
+the Assessment 320px case with cancelled router requests to the list/edit paths during its
+ordinary hard reload. An unchanged local diagnostic passed; the observed race is intermittent.
+Owning test inspection found four remaining ordinary reloads missing the existing bounded
+settling helper: two Assessment cases, Tracer saved-answer persistence and account URL-state
+persistence. Those preconditions now match the existing harness contract, retaining every
+assertion and zero-runtime-error check. Full local suites pass in both engines. The deliberately
+held in-flight MFA cancellation case remains unchanged because cancellation is its purpose.
+The updated exact head is revalidated by the complete hosted matrix.
