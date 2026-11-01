@@ -106,7 +106,7 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
   }
 
   return (
-    <div className={pageSheetWidth}>
+    <div className={`${pageSheetWidth} @container`}>
       <ReferralHeading
         title={item.reference_code}
         context="Referral"
@@ -114,11 +114,11 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
         backHref="/portal/referrals"
       />
 
-      <div data-page-action-layout="referral" className="grid gap-4 lg:grid-cols-[7rem_minmax(0,1fr)] lg:gap-5">
+      <div data-page-action-layout="referral" className="grid gap-4 @4xl:grid-cols-[7rem_minmax(0,1fr)] @4xl:gap-5">
         <PageActionGroup
           aria-label="Referral page actions"
           data-page-action-rail=""
-          className="lg:sticky lg:top-4 lg:flex-col lg:items-center lg:gap-x-0 lg:gap-y-3"
+          className="@4xl:sticky @4xl:top-4 @4xl:flex-col @4xl:items-center @4xl:gap-x-0 @4xl:gap-y-3"
         >
           <ReferralPdfDownload referral={item} onError={setPdfError} />
         </PageActionGroup>

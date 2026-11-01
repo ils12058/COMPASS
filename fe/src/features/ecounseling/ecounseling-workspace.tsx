@@ -79,7 +79,10 @@ function SessionHeader({
   return (
     <PageHeader
       title={<span className="inline-flex items-center gap-3"><PersonAvatar displayName={participant} photoUrl={participantPhotoUrl} photoUpdatedAt={participantPhotoUpdatedAt} size="standard" />{participant}</span>}
-      meta={<AppointmentStatusBadge status={appointment.status} />}
+      meta={<div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+        <AppointmentStatusBadge status={appointment.status} />
+        <span className="inline-flex min-w-0 items-center gap-2 text-sm text-muted [overflow-wrap:anywhere]"><PersonAvatar displayName={selfName} photoUrl={selfPhotoUrl} photoUpdatedAt={selfPhotoUpdatedAt} size="compact" />You · {selfName}</span>
+      </div>}
       // Guidance Messages is the session's durable text channel (ADR-103); there is no call chat.
       actions={<div className="flex flex-wrap items-start gap-2"><GuidanceMessagesTrigger />{layoutControl}</div>}
       help={<ECounselingHelp mediaPolicyVersion={mediaPolicyVersion} />}
@@ -94,7 +97,6 @@ function SessionHeader({
         <span aria-hidden="true"> · </span>
         <span className="whitespace-nowrap">E-Counseling</span>
       </p>
-      <p className="mt-2 inline-flex items-center gap-2 text-sm text-muted"><PersonAvatar displayName={selfName} photoUrl={selfPhotoUrl} photoUpdatedAt={selfPhotoUpdatedAt} size="compact" />You · {selfName}</p>
     </PageHeader>
   );
 }

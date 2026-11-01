@@ -199,8 +199,11 @@ for (const device of ["desktop", "phone"]) {
     assert.equal(await page.getByText("No adopted retention policy has been recorded in COMPASS for this category.", { exact: true }).count(), 3);
     const main = await page.locator("main").innerText();
     assert.doesNotMatch(main, /Retention & Disposition|Create|Edit|Activate|Approve|Retry|Place hold|Release hold|Disposition cases|Needs review|0 days|N\/A/);
-    const buttons = await page.locator("main").getByRole("button").allInnerTexts();
-    assert.deepEqual(buttons.map((text) => text.trim()), ["Help"]);
+    const buttons = page.locator("main").getByRole("button");
+    assert.equal(await buttons.count(), 1, "Read-only oversight has only contextual Help");
+    assert.equal(await buttons.getAttribute("aria-label"), "Help: About Retention Policies");
+    const helpTarget = await buttons.boundingBox();
+    assert.ok(helpTarget && helpTarget.width >= 44 && helpTarget.height >= 44);
     await page.getByRole("button", { name: "Help: About Retention Policies", exact: true }).click();
     const help = page.getByRole("dialog", { name: "About Retention Policies", exact: true });
     assert.match(await help.innerText(), /version-controlled COMPASS code[\s\S]*can’t be created or edited in COMPASS[\s\S]*outside COMPASS/);

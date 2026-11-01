@@ -45,7 +45,7 @@ function fixture(options = {}) {
 }
 const dialog = page => page.getByRole("alertdialog");
 const confirm = (page,name) => dialog(page).getByRole("button", { name, exact: true });
-for (const width of [320, 1440]) for (const scale of [100, 200]) {
+for (const width of [320, 390, 768, 1024, 1440]) for (const scale of [100, 200]) {
   const f = fixture({ version: 2 });
   await check(`gco-review-${width}-${scale}`, path, { handler: f.handler, viewport: { width, height: 1000 } }, async page => {
     await page.emulateMedia({ colorScheme: scale === 200 ? "dark" : "light", reducedMotion: "reduce" });
@@ -61,9 +61,11 @@ for (const width of [320, 1440]) for (const scale of [100, 200]) {
     assert.equal(f.state.writes,1);
   });
 }
-for (const version of [1,2,3]) for (const entry of ["/portal",facultyPath,`${facultyPath}/${id}`]) {
+for (const version of [1,2,3]) for (const entry of ["/portal",facultyPath,`${facultyPath}/${id}`]) for (const width of [320,390,768,1024,1440]) for (const scale of [100,200]) {
   const f=fixture({faculty:true,version});
-  await check(`faculty-stage-${version}-${entry.split("/").at(-1)}`,entry,{handler:f.handler,viewport:{width:320,height:1000}},async(page,observed)=>{
+  await check(`faculty-stage-${version}-${entry.split("/").at(-1)}-${width}-${scale}`,entry,{handler:f.handler,viewport:{width,height:1000}},async(page,observed)=>{
+    await page.emulateMedia({ colorScheme: scale === 200 ? "dark" : "light", reducedMotion: "reduce" });
+    await page.evaluate(scale => { document.documentElement.style.fontSize = `${scale}%`; }, scale);
     const labels=["Submitted","Received by GCO","Administratively Closed"];
     await shown(page.getByText(labels[version-1],{exact:true}).last());
     assert.equal(await page.getByText("Synthetic GCO actor",{exact:true}).count(),0);
@@ -73,7 +75,8 @@ for (const version of [1,2,3]) for (const entry of ["/portal",facultyPath,`${fac
       assert.equal(await page.getByText("Administratively closed · Philippine Time",{exact:true}).count(),version===3?1:0);
       if(version===3) { await page.getByRole("button",{name:/Help/}).click(); await shown(page.getByText(/does not establish that Counseling/)); }
     }
-    await page.screenshot({path:join(artifacts,`faculty-${version}-${entry.split("/").at(-1)}.png`),fullPage:true});
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth+1),false);
+    if ([320,1440].includes(width) && scale === 200) await page.screenshot({path:join(artifacts,`faculty-${version}-${entry.split("/").at(-1)}-${width}-${scale}.png`),fullPage:true});
   });
 }
 for (const version of [1,2]) {

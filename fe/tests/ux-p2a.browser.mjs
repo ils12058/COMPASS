@@ -196,8 +196,11 @@ async function assertActionPlacement(page, name, labels, width) {
     const action = rail.getByRole(kind, { name: label, exact: true });
     await shown(action);
     const surface = action.locator("[data-page-action-surface]");
-    const box = await surface.boundingBox();
-    assert.ok(box && Math.abs(box.width - 48) < 1 && Math.abs(box.height - 48) < 1, `${label} has a 48px square action surface`);
+    await shown(surface);
+    // SIMPLIFY-3 makes the labeled control the target; its icon is decorative (AGENTS §2190).
+    const box = await action.boundingBox();
+    assert.ok(box && box.width >= 44 && box.height >= 44, `${label} has a usable 44px control target`);
+    assert.equal(await surface.getAttribute("aria-hidden"), "true");
     await shown(action.locator("[data-page-action-label]"));
   }
 }
@@ -291,7 +294,7 @@ await check("P2A Counselor Routine Interview distinguishes context from Student 
 await check("P2A Student Routine Interview keeps Intake work in its existing form flow", `/portal/routine-interviews/${routineId}`, routineOptions("STUDENT"), async (page) => {
   await shown(page.getByRole("heading", { name: "Routine Interview", exact: true }));
   await shown(page.getByRole("heading", { name: "Student Intake", exact: true }));
-  await shown(page.getByRole("button", { name: "Save progress", exact: true }));
+  await shown(page.getByRole("button", { name: "Save Progress", exact: true }));
   await hidden(page.getByRole("heading", { name: "Counselor Evaluation", exact: true }));
   await hidden(page.getByRole("link", { name: "Open Counseling workspace", exact: true }));
   await hidden(page.getByRole("group", { name: "Routine Interview page actions", exact: true }));

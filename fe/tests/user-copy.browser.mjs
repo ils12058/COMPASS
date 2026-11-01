@@ -147,10 +147,17 @@ for (const width of [320, 1440]) {
         const dialog = page.getByRole('alertdialog');
         await shown(dialog);
         await dialog.getByRole('button', { name: 'Submit Customer Feedback', exact: true }).click();
-        await oneAlert(page, 'The submission result could not be confirmed.');
+        await hidden(dialog);
+        const uncertain = page.getByRole('status').filter({ hasText: 'Submission result not confirmed' });
+        await shown(uncertain);
+        assert.equal(await uncertain.count(), 1);
+        await shown(page.getByRole('button', { name: 'Check status', exact: true }));
+        await shown(page.getByRole('button', { name: 'Retry same submission', exact: true }));
+        await safe(page);
         assert.equal(requests.filter(r => r.method === 'POST' && r.pathname === '/api/v1/feedback/customer-feedback').length, 1);
         assert.equal(await page.locator('#feedback-course-year').inputValue(), 'BSIT / 4');
-        assert.match(await dialog.innerText(), /Check your feedback status/);
+        assert.equal(await page.locator('#feedback-course-year').isDisabled(), true);
+        assert.ok(requests.filter(r => r.method === 'GET' && r.pathname.endsWith(opportunity)).length >= 2, 'Canonical status is checked after an uncertain result');
         await screenshot(page, `feedback-unconfirmed-${width}`);
     });
     await check(`csm-server-error-${width}`, `/portal/feedback/csm?opportunity=${opportunity}`, { viewport, overrides: { '/api/v1/auth/session': session(currentStudent), [`/api/v1/feedback/opportunities/${opportunity}`]: { id: opportunity, service_kind: 'COUNSELING', service_label: 'Counseling', csm_submitted: false, can_submit_csm: true, customer_feedback_submitted: false, can_submit_customer_feedback: true, service_completed_at: '2026-10-01T00:00:00Z' }, 'POST /api/v1/feedback/csm': error('internal_error', 500) } }, async (page, { requests }) => {
@@ -165,9 +172,17 @@ for (const width of [320, 1440]) {
         await shown(dialog);
         assert.match(await dialog.innerText(), /will not be able to edit or view/);
         await dialog.getByRole('button', { name: 'Submit Client Satisfaction Measurement', exact: true }).click();
-        await oneAlert(page, 'The submission result could not be confirmed.');
+        await hidden(dialog);
+        const uncertain = page.getByRole('status').filter({ hasText: 'Submission result not confirmed' });
+        await shown(uncertain);
+        assert.equal(await uncertain.count(), 1);
+        await shown(page.getByRole('button', { name: 'Check status', exact: true }));
+        await shown(page.getByRole('button', { name: 'Retry same submission', exact: true }));
+        await safe(page);
         assert.equal(requests.filter(r => r.method === 'POST' && r.pathname === '/api/v1/feedback/csm').length, 1);
         assert.equal(await page.locator('#csm-region').inputValue(), 'Synthetic Region');
+        assert.equal(await page.locator('#csm-region').isDisabled(), true);
+        assert.ok(requests.filter(r => r.method === 'GET' && r.pathname.endsWith(opportunity)).length >= 2, 'Canonical status is checked after an uncertain result');
         await screenshot(page, `csm-unconfirmed-${width}`);
     });
     await check(`auth-expired-security-${width}`, '/login', { viewport, overrides: { '/api/v1/auth/session': error('not_authenticated', 401), 'POST /api/v1/auth/login': error('csrf_failed', 403) } }, async (page, { requests }) => {
