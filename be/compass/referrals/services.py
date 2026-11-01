@@ -532,6 +532,7 @@ def list_referrals(
     from_date: date | None = None,
     to_date: date | None = None,
     include_voided: bool = False,
+    submission_channel: str | None = None,
     form_revision_id: UUID | None = None,
     ordering: str | ReferralOrdering | None = None,
     page: int = 1,
@@ -554,6 +555,10 @@ def list_referrals(
     term = _clean_search(search)
 
     qs = _scope_queryset(_queryset(), actor)
+    if submission_channel is not None:
+        if submission_channel not in ReferralSubmissionChannel.values:
+            raise InvalidReferralInput("Unknown Referral submission channel.")
+        qs = qs.filter(submission_channel=submission_channel)
     revisions = represented_form_revisions(qs, family_keys=("referral_slip",))
     if form_revision_id is not None:
         qs = qs.filter(form_revision_id=form_revision_id)

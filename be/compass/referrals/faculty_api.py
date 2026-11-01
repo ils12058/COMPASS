@@ -1,7 +1,6 @@
 """Strict Faculty contracts; every call crosses live domain authorization."""
 
 from datetime import datetime
-from enum import StrEnum
 from uuid import UUID
 
 from ninja import Header, Router, Schema, Status
@@ -12,6 +11,7 @@ from compass.authentication.api import session_auth
 from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.rate_limit import client_ip
+from compass.referrals.administrative_state import FacultyReferralSubmissionState
 from compass.referrals.api import _raise
 from compass.referrals.errors import ReferralError
 from compass.referrals.faculty_policy import FacultyReferralError
@@ -51,16 +51,14 @@ class FacultyReferralSubmitRequest(StrictSchema):
     reason: str = Field(min_length=1, max_length=10000)
 
 
-class FacultyReferralSubmissionState(StrEnum):
-    SUBMITTED = "SUBMITTED"
-
-
 class FacultyReferralSubmissionResponse(StrictSchema):
     id: UUID
     reference_code: str
     submitted_at: datetime
     state: FacultyReferralSubmissionState
     student: FacultyConfirmedStudent
+    received_at: datetime | None
+    closed_at: datetime | None
 
 
 class FacultyReferralSubmissionPage(StrictSchema):

@@ -19,6 +19,7 @@ from compass.institutional_forms.models import FormRevision
 from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import FacultyAffiliation
 from compass.referrals import faculty_policy
+from compass.referrals.administrative_state import administrative_state
 from compass.referrals.faculty_placement import resolve_student_placement
 from compass.referrals.faculty_policy import FacultyReferralError
 from compass.referrals.models import Referral, ReferralSubmissionChannel
@@ -34,6 +35,10 @@ from compass.referrals.services import (
     _pagination,
     _validate_idempotency_key,
     persist_referral,
+)
+from compass.referrals.tracking_disclosure import (
+    require_tracking_for_item,
+    require_tracking_for_queryset,
 )
 
 SUBMIT_ROUTE = "/api/v1/faculty/referrals"
@@ -156,6 +161,14 @@ def referral_availability(*, actor, actor_session):
             )
         except ReferralConfigurationConflict:
             pass
+    if result["can_view_submissions"]:
+        try:
+            disclosure = require_tracking_for_queryset(actor, _own_queryset(actor, submission), now)
+            if disclosure:
+                deadlines.append(disclosure.valid_until)
+        except FacultyReferralError:
+            result["can_view_submissions"] = False
+            result["can_submit_referral"] = False
     if any(
         result[key]
         for key in ("can_confirm_student", "can_submit_referral", "can_view_submissions")
@@ -284,8 +297,10 @@ def _projection(item):
         "id": item.pk,
         "reference_code": item.reference_code,
         "submitted_at": item.submitted_at,
-        "state": "SUBMITTED",
+        "state": administrative_state(item),
         "student": {"display_name": item.student_name_snapshot},
+        "received_at": item.received_at,
+        "closed_at": item.administratively_closed_at,
     }
 
 
@@ -341,6 +356,7 @@ def submit_referral(
             raise ReferralNotFound("The submitted Referral was not found.")
         # Replays do not resubmit, allocate a reference, require an unexpired ticket,
         # rewrite provenance, or announce a new receipt.
+        require_tracking_for_item(actor, existing, now)
         return _projection(existing), False
     lookup = faculty_policy.require_lookup_policy(now)
     _admitted(actor, lookup)
@@ -441,12 +457,10 @@ def list_own_submissions(*, actor, actor_session, page=1, page_size=20):
     _home(actor)
     policy = faculty_policy.require_submission_policy(now)
     _admitted(actor, policy)
+    queryset = _own_queryset(actor, policy)
+    require_tracking_for_queryset(actor, queryset, now)
     offset = (page - 1) * page_size
-    items = list(
-        _own_queryset(actor, policy).order_by("-submitted_at", "-id")[
-            offset : offset + page_size + 1
-        ]
-    )
+    items = list(queryset.order_by("-submitted_at", "-id")[offset : offset + page_size + 1])
     return {
         "items": [_projection(item) for item in items[:page_size]],
         "page": page,
@@ -467,4 +481,5 @@ def get_own_submission(*, actor, actor_session, referral_id):
     item = _own_queryset(actor, policy).filter(pk=referral_id).first()
     if item is None:
         raise ReferralNotFound("The submitted Referral was not found.")
+    require_tracking_for_item(actor, item, now)
     return _projection(item)

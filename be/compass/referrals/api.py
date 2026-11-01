@@ -27,12 +27,13 @@ from compass.privacy_governance.releases import (
     record_referral_release,
 )
 
+from .administrative_state import FacultyReferralSubmissionState, administrative_state
 from .confidential_content import (
     ReferralConfidentialContentUnavailable,
     read_referral_action_remarks,
     read_referral_confidential_content,
 )
-from .models import ReferralActionType
+from .models import ReferralActionType, ReferralSubmissionChannel
 from .services import (
     DEFAULT_PAGE_SIZE,
     InvalidReferralInput,
@@ -170,6 +171,9 @@ class ReferralSummaryResponse(StrictSchema):
     status_note: str
     voided_at: datetime | None
     created_at: datetime
+    submission_channel: ReferralSubmissionChannel = ReferralSubmissionChannel.LEGACY_UNSPECIFIED
+    submitted_at: datetime | None = None
+    administrative_state: FacultyReferralSubmissionState | None = None
 
 
 class ReferralDetailResponse(ReferralSummaryResponse):
@@ -304,6 +308,9 @@ def _summary(item, *, content=None) -> dict[str, object]:
         "status_note": content.status_note,
         "voided_at": item.voided_at,
         "created_at": item.created_at,
+        "submission_channel": item.submission_channel,
+        "submitted_at": item.submitted_at,
+        "administrative_state": administrative_state(item),
     }
 
 
@@ -427,6 +434,7 @@ def referrals_list(
     from_date: date | None = None,
     to_date: date | None = None,
     include_voided: bool = False,
+    submission_channel: ReferralSubmissionChannel | None = None,
     form_revision_id: UUID | None = None,
     ordering: ReferralOrdering | None = None,
     page: int = 1,
@@ -441,6 +449,7 @@ def referrals_list(
             from_date=from_date,
             to_date=to_date,
             include_voided=include_voided,
+            submission_channel=submission_channel,
             form_revision_id=form_revision_id,
             ordering=ordering,
             page=page,

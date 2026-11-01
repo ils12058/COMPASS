@@ -1,4 +1,4 @@
-"""Loopback-only FAC-3 browser fixture. Creates/drops its own disposable PostgreSQL DB.
+"""Loopback-only FAC-3/FAC-4 browser fixture. Creates/drops its own disposable PostgreSQL DB.
 
 Not an application command, provider, activation switch or deployment entry point.
 Run from be/: .venv/bin/python -m tests.faculty_portal_server /tmp/fac3-session.json
@@ -33,7 +33,7 @@ def run():
 
     from compass.authentication.sessions import create_auth_session
     from compass.institutional_forms.bootstrap import sync_institutional_forms
-    from tests.faculty_referral_helpers import make_world
+    from tests.referral_administration_helpers import make_world
 
     config = settings.DATABASES["default"]
     assert config["NAME"] == database and config["HOST"] in {"127.0.0.1", "localhost"}
@@ -58,6 +58,8 @@ def run():
             "faculty_cookie": world.issued.token,
             "other_faculty_cookie": world.other_issued.token,
             "student_cookie": student_session.token,
+            "counselor_cookie": world.counselor_issued.token,
+            "staff_cookie": world.staff_issued.token,
         }
         descriptor = os.open(manifest, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
         with os.fdopen(descriptor, "w") as handle:

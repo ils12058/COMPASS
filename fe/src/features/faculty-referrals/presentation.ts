@@ -1,3 +1,4 @@
+import type { FacultyReferralSubmissionState } from "@/lib/api/generated/model";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 
 export function facultyReferralError(error: unknown, operation: "confirm" | "submit" | "read") {
@@ -37,4 +38,8 @@ export function confirmationRetryDeadline(error: unknown, now = Date.now()) {
   if (raw && Number.isFinite(seconds) && seconds > 0) return new Date(now + seconds * 1000).toISOString();
   const date = raw ? Date.parse(raw) : Number.NaN;
   return Number.isFinite(date) && date > now ? new Date(date).toISOString() : null;
+}
+
+export function administrativeStateLabel(state: FacultyReferralSubmissionState): string {
+  return { SUBMITTED: "Submitted", RECEIVED_BY_GCO: "Received by GCO", ADMINISTRATIVELY_CLOSED: "Administratively Closed" }[state];
 }

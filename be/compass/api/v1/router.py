@@ -43,6 +43,7 @@ from compass.privacy_governance.expansion_api import router as privacy_expansion
 from compass.privacy_governance.retention_api import router as retention_router
 from compass.realtime.api import router as realtime_router
 from compass.reference_data.api import router as reference_data_router
+from compass.referrals.administrative_api import router as referral_administration_router
 from compass.referrals.api import router as referrals_router
 from compass.referrals.faculty_api import router as faculty_referrals_router
 from compass.reports.api import router as reports_router
@@ -274,6 +275,7 @@ api.add_router("/graduate-tracer", graduate_tracer_router)
 api.add_router("/exit-interviews", exit_interviews_router)
 api.add_router("/routine-interviews", routine_interviews_router)
 api.add_router("/referrals", referrals_router)
+api.add_router("/referrals", referral_administration_router)
 api.add_router("/faculty/referrals", faculty_referrals_router)
 api.add_router("/call-slips", call_slips_router)
 api.add_router("/notifications", notifications_router)

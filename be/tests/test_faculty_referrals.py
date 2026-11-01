@@ -121,7 +121,15 @@ def test_cross_college_submission_encrypted_and_server_provenance(world):
     assert content.referrer_name == world.faculty.get_full_name()
     assert content.reason not in row.confidential_content_ciphertext
     assert content.referrer_name not in row.confidential_content_ciphertext
-    assert set(result) == {"id", "reference_code", "submitted_at", "state", "student"}
+    assert set(result) == {
+        "id",
+        "reference_code",
+        "submitted_at",
+        "state",
+        "student",
+        "received_at",
+        "closed_at",
+    }
     assert not ReferralAction.objects.exists()
     assert (
         AuditEvent.objects.filter(

@@ -39,16 +39,25 @@ def test_faculty_referral_contract_has_strict_intake_and_minimal_own_projection(
             "submitted_at",
             "state",
             "student",
+            "received_at",
+            "closed_at",
         },
     }
     for name, fields in expected.items():
         assert schemas[name]["additionalProperties"] is False
         assert set(schemas[name]["properties"]) == fields
         assert set(schemas[name]["required"]) == fields
-    assert schemas["FacultyReferralSubmissionState"]["enum"] == ["SUBMITTED"]
+    assert schemas["FacultyReferralSubmissionState"]["enum"] == [
+        "SUBMITTED",
+        "RECEIVED_BY_GCO",
+        "ADMINISTRATIVELY_CLOSED",
+    ]
 
 
 EXPECTED_OPERATION_IDS = {
+    "referralsGetAdministration",
+    "referralsAcknowledge",
+    "referralsCloseAdministratively",
     "referralsFacultyAvailability",
     "referralsFacultyConfirmStudent",
     "referralsFacultySubmit",
@@ -1025,6 +1034,7 @@ def test_review_list_query_parameters_match_backend_consistency_contract() -> No
             "page_size",
         },
         "/api/v1/referrals": {
+            "submission_channel",
             "form_revision_id",
             "search",
             "student_id",

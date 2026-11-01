@@ -6,6 +6,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Download } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
+import { ReferralAdministration } from "./referral-administration";
 import { ReferralHelp } from "@/features/referrals/referral-help";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
@@ -139,6 +140,8 @@ export function ReferralDetailPage({ referralId }: { referralId: string }) {
           {item.voided_by ? <p className="mt-1 text-muted">Voided by {item.voided_by.display_name}</p> : null}
         </Notice>
       ) : null}
+
+      {item.submission_channel === "FACULTY_PORTAL" ? <ReferralAdministration referral={item} canManage={referralAccess.canManage} refreshFailed={refreshFailed} /> : null}
 
       {/* One record sheet in the order of the paper referral; the source note follows it. */}
       <Panel as="div">

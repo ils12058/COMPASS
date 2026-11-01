@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Forward } from "lucide-react";
+import { ContextHelp } from "@/components/ui/context-help";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { PageActionLink } from "@/components/ui/page-action";
@@ -20,16 +21,18 @@ import { formatInstitutionalDateTime } from "@/lib/institutional-time";
 import { useFacultyAvailability } from "./availability";
 import { facultySubmitPath, facultyReferralsPath, facultyReferralAccess, facultySubmissionAvailable } from "./access";
 import { FacultyLoading, FacultyReferralGate, FacultyUnavailable } from "./shared";
-import { facultyReferralError } from "./presentation";
+import { administrativeStateLabel, facultyReferralError } from "./presentation";
 
-function SubmittedState() {
-  return <span className="inline-block rounded-sm bg-success/10 px-2 py-1 text-sm font-semibold text-success">Submitted</span>;
+function SubmittedState({ item }: { item: FacultyReferralSubmissionResponse }) {
+  return <span className="inline-block rounded-sm bg-success/10 px-2 py-1 text-sm font-semibold text-success">{administrativeStateLabel(item.state)}</span>;
 }
 
 export function SubmissionFacts({ item }: { item: FacultyReferralSubmissionResponse }) {
-  return <RecordSummary label="Referral" title={item.reference_code} status={<SubmittedState />} facts={[
+  return <RecordSummary label="Referral" title={item.reference_code} status={<SubmittedState item={item} />} facts={[
     { label: "Student", value: item.student.display_name },
     { label: "Submitted · Philippine Time", value: formatInstitutionalDateTime(item.submitted_at) },
+    ...(item.received_at ? [{ label: "Received by GCO · Philippine Time", value: formatInstitutionalDateTime(item.received_at) }] : []),
+    ...(item.closed_at ? [{ label: "Administratively closed · Philippine Time", value: formatInstitutionalDateTime(item.closed_at) }] : []),
   ]} />;
 }
 
@@ -41,7 +44,7 @@ export function SubmissionRows({ items }: { items: FacultyReferralSubmissionResp
         <p className="text-ink [overflow-wrap:anywhere]">{item.student.display_name}</p>
       </div>
       <p className="min-w-0 self-center text-muted [overflow-wrap:anywhere]"><span className="sr-only">Submitted </span><time dateTime={item.submitted_at}>{formatInstitutionalDateTime(item.submitted_at)}</time><span className="block text-xs">Philippine Time</span></p>
-      <div className="self-center"><SubmittedState /></div>
+      <div className="self-center"><SubmittedState item={item} /></div>
     </li>)}
   </ul>;
 }
@@ -83,10 +86,10 @@ function FacultyReferralDetail({ referralId }: { referralId: string }) {
   const query = useReferralsFacultyGetMine(referralId, { query: { retry: false, refetchOnWindowFocus: true } });
   const item = safeQueryData(query)?.data;
   return <section className={pageSheetWidth}>
-    <PageHeader title="Referral details" back={<GuardedPortalLink href={facultyReferralsPath} className={pageBackLinkClass}>Back to My Referrals</GuardedPortalLink>} />
+    <PageHeader title="Referral details" help={<ContextHelp title="Referral tracking" sections={[{ heading: "Administrative handling", content: "Submitted records your online submission. Received by GCO records explicit receipt. Administratively Closed records completion of administrative handling; it does not establish that Counseling or other support is complete, or that the Student’s concern is resolved." }]} />} back={<GuardedPortalLink href={facultyReferralsPath} className={pageBackLinkClass}>Back to My Referrals</GuardedPortalLink>} />
     {query.isPending ? <FacultyLoading label="Loading referral details…" /> : null}
     {query.isError && !item ? <Notice role="alert" action={<Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button>}>{facultyReferralError(query.error, "read")}</Notice> : null}
     {item && query.isError ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
-    {item ? <Panel><SubmissionFacts item={item} /><PanelMessage>Submitted records the online submission. It does not indicate acknowledgment or review by the Guidance and Counseling Office.</PanelMessage></Panel> : null}
+    {item ? <Panel><SubmissionFacts item={item} /><PanelMessage>{item.state === "SUBMITTED" ? "Submitted records the online submission. It does not indicate acknowledgment or review by the Guidance and Counseling Office." : item.state === "RECEIVED_BY_GCO" ? "The Guidance and Counseling Office recorded receipt of this referral." : "Administrative handling is complete. See Help for what this status means."}</PanelMessage></Panel> : null}
   </section>;
 }

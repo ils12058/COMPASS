@@ -91,6 +91,38 @@ class Referral(models.Model):
     confidential_content_ciphertext = models.TextField(editable=False)
     referred_on = models.DateField()
     received_at = models.DateTimeField(null=True, blank=True)
+    acknowledged_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="acknowledged_faculty_referrals",
+    )
+    acknowledgment_policy_digest = models.CharField(max_length=64, null=True, blank=True)
+    acknowledgment_policy_event = models.ForeignKey(
+        "audit.AuditEvent",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="acknowledgment_approved_referrals",
+    )
+    administratively_closed_at = models.DateTimeField(null=True, blank=True)
+    administratively_closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="administratively_closed_referrals",
+    )
+    closure_policy_digest = models.CharField(max_length=64, null=True, blank=True)
+    closure_policy_event = models.ForeignKey(
+        "audit.AuditEvent",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="closure_approved_referrals",
+    )
+    administrative_version = models.PositiveIntegerField(default=1, db_default=1)
     form_revision = models.ForeignKey(
         FormRevision,
         on_delete=models.PROTECT,
@@ -130,6 +162,64 @@ class Referral(models.Model):
             ),
         ]
         constraints = [
+            models.CheckConstraint(
+                name="referral_administration_complete",
+                condition=(
+                    models.Q(
+                        acknowledged_by__isnull=True,
+                        acknowledgment_policy_digest__isnull=True,
+                        acknowledgment_policy_event__isnull=True,
+                        administratively_closed_by__isnull=True,
+                        administratively_closed_at__isnull=True,
+                        closure_policy_digest__isnull=True,
+                        closure_policy_event__isnull=True,
+                        administrative_version=1,
+                    )
+                    & (
+                        ~models.Q(submission_channel="FACULTY_PORTAL")
+                        | models.Q(received_at__isnull=True)
+                    )
+                )
+                | (
+                    models.Q(
+                        submission_channel="FACULTY_PORTAL",
+                        acknowledged_by__isnull=False,
+                        received_at__isnull=False,
+                        acknowledgment_policy_digest__isnull=False,
+                        acknowledgment_policy_digest__regex=r"^[0-9a-f]{64}$",
+                        acknowledgment_policy_event__isnull=False,
+                    )
+                    & (
+                        models.Q(
+                            administratively_closed_by__isnull=True,
+                            administratively_closed_at__isnull=True,
+                            closure_policy_digest__isnull=True,
+                            closure_policy_event__isnull=True,
+                            administrative_version=2,
+                        )
+                        | models.Q(
+                            administratively_closed_by__isnull=False,
+                            administratively_closed_at__isnull=False,
+                            closure_policy_digest__isnull=False,
+                            closure_policy_digest__regex=r"^[0-9a-f]{64}$",
+                            closure_policy_event__isnull=False,
+                            administrative_version=3,
+                        )
+                    )
+                ),
+            ),
+            models.CheckConstraint(
+                name="referral_administration_chronology",
+                condition=(
+                    ~models.Q(submission_channel="FACULTY_PORTAL")
+                    | models.Q(received_at__isnull=True)
+                    | models.Q(received_at__gte=models.F("submitted_at"))
+                )
+                & (
+                    models.Q(administratively_closed_at__isnull=True)
+                    | models.Q(administratively_closed_at__gte=models.F("received_at"))
+                ),
+            ),
             models.CheckConstraint(
                 condition=models.Q(submission_channel__in=ReferralSubmissionChannel.values),
                 name="referral_submission_channel_valid",
