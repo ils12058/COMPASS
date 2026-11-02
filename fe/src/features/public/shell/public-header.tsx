@@ -60,13 +60,22 @@ function MobileMenu({
 }) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
   const panelId = useId();
   const close = () => panelRef.current?.hidePopover();
+  const closeOnEscape = (event: React.KeyboardEvent<HTMLElement>) => {
+    if (event.key !== "Escape" || !panelRef.current?.matches(":popover-open")) return;
+    event.preventDefault();
+    close();
+    triggerRef.current?.focus();
+  };
 
   return (
     <div className="@min-[42rem]:hidden">
       <button
         type="button"
+        ref={triggerRef}
+        onKeyDown={closeOnEscape}
         popoverTarget={panelId}
         aria-controls={panelId}
         aria-expanded={open}
@@ -80,7 +89,7 @@ function MobileMenu({
         </span>
       </button>
 
-      {/* A native popover closes on outside taps and Escape and returns focus to the button. It
+      {/* A native popover closes on outside taps; explicit Escape restores focus across engines. It
           sits in the top layer, where absolute positioning is page-relative, so it opens just
           below the header's menu button. */}
       <nav
@@ -88,7 +97,12 @@ function MobileMenu({
         id={panelId}
         popover="auto"
         aria-label="Mobile public navigation"
-        onToggle={(event) => setOpen(event.newState === "open")}
+        onKeyDown={closeOnEscape}
+        onToggle={(event) => {
+          const isOpen = event.newState === "open";
+          setOpen(isOpen);
+          if (isOpen) panelRef.current?.querySelector<HTMLAnchorElement>("a[href]")?.focus();
+        }}
         className={cn(
           "fixed inset-auto m-0 w-[min(15rem,calc(100vw-2rem))] max-h-[min(32rem,calc(100dvh-2rem))] overflow-y-auto rounded-md border border-border bg-surface-raised p-1 text-ink shadow-dialog [position-area:bottom] [position-try-fallbacks:flip-block]",
           "origin-top-right -translate-y-1 scale-95 opacity-0 transition-[opacity,scale,translate,overlay,display] transition-discrete duration-150 ease-out",

@@ -1,0 +1,4188 @@
+{
+  "chromium-ci-ecall": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "participant-avatars-camera-off-and-live-video",
+        "passed": true
+      },
+      {
+        "name": "participant-avatar-load-failure-falls-back-to-initials",
+        "passed": true
+      },
+      {
+        "name": "participant-avatars-phone-layout",
+        "passed": true
+      },
+      {
+        "name": "counselor-native-call-desktop",
+        "passed": true
+      },
+      {
+        "name": "call-controls-and-devices",
+        "passed": true
+      },
+      {
+        "name": "speaker-selection-fallback",
+        "passed": true
+      },
+      {
+        "name": "leave-and-rejoin-fresh-credential",
+        "passed": true
+      },
+      {
+        "name": "governed-recording-through-compass",
+        "passed": true
+      },
+      {
+        "name": "governed-transcription-storage-choice",
+        "passed": true
+      },
+      {
+        "name": "transcription-without-storage-consent",
+        "passed": true
+      },
+      {
+        "name": "provider-events-only-refresh",
+        "passed": true
+      },
+      {
+        "name": "leave-warning-during-capture",
+        "passed": true
+      },
+      {
+        "name": "camera-error-product-copy",
+        "passed": true
+      },
+      {
+        "name": "reconnecting-and-network",
+        "passed": true
+      },
+      {
+        "name": "remote-audio-autoplay-blocked",
+        "passed": true
+      },
+      {
+        "name": "refresh-failure-keeps-call-local-controls",
+        "passed": true
+      },
+      {
+        "name": "fullscreen-stage",
+        "passed": true
+      },
+      {
+        "name": "fullscreen-video-fits-landscape-portrait-and-classic",
+        "passed": true
+      },
+      {
+        "name": "layout-presets-desktop",
+        "passed": true
+      },
+      {
+        "name": "session-remains-mounted-with-collapsed-sidebar",
+        "passed": true
+      },
+      {
+        "name": "laptop-1280-two-columns",
+        "passed": true
+      },
+      {
+        "name": "tablet-stacked-no-presets",
+        "passed": true
+      },
+      {
+        "name": "counselor-mobile-tray-phone",
+        "passed": true
+      },
+      {
+        "name": "counselor-mobile-tray-narrowPhone",
+        "passed": true
+      },
+      {
+        "name": "student-mobile-v2",
+        "passed": true
+      },
+      {
+        "name": "student-withdrawal-consequence",
+        "passed": true
+      },
+      {
+        "name": "student-v1-scopes-stay-distinct",
+        "passed": true
+      },
+      {
+        "name": "help-keyboard-focus",
+        "passed": true
+      },
+      {
+        "name": "visible-video-blocker",
+        "passed": true
+      },
+      {
+        "name": "active-capture-visible-before-joining",
+        "passed": true
+      },
+      {
+        "name": "encounter-separate-from-recording",
+        "passed": true
+      },
+      {
+        "name": "encounter-save-dismissal",
+        "passed": true
+      },
+      {
+        "name": "v2-session-files-preparing",
+        "passed": true
+      },
+      {
+        "name": "v2-no-transcript-saved-copy",
+        "passed": true
+      },
+      {
+        "name": "v2-fresh-download-per-click",
+        "passed": true
+      },
+      {
+        "name": "v2-download-error",
+        "passed": true
+      },
+      {
+        "name": "prejoin-device-check-student-too-early",
+        "passed": true
+      },
+      {
+        "name": "prejoin-device-check-and-join-transition",
+        "passed": true
+      },
+      {
+        "name": "student-prejoin-mobile",
+        "passed": true
+      },
+      {
+        "name": "prejoin-navigation-cancels-pending-permission",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-ci-ecall": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "participant-avatars-camera-off-and-live-video",
+        "passed": true
+      },
+      {
+        "name": "participant-avatar-load-failure-falls-back-to-initials",
+        "passed": true
+      },
+      {
+        "name": "participant-avatars-phone-layout",
+        "passed": true
+      },
+      {
+        "name": "counselor-native-call-desktop",
+        "passed": true
+      },
+      {
+        "name": "call-controls-and-devices",
+        "passed": true
+      },
+      {
+        "name": "speaker-selection-fallback",
+        "passed": true
+      },
+      {
+        "name": "leave-and-rejoin-fresh-credential",
+        "passed": true
+      },
+      {
+        "name": "governed-recording-through-compass",
+        "passed": true
+      },
+      {
+        "name": "governed-transcription-storage-choice",
+        "passed": true
+      },
+      {
+        "name": "transcription-without-storage-consent",
+        "passed": true
+      },
+      {
+        "name": "provider-events-only-refresh",
+        "passed": true
+      },
+      {
+        "name": "leave-warning-during-capture",
+        "passed": true
+      },
+      {
+        "name": "camera-error-product-copy",
+        "passed": true
+      },
+      {
+        "name": "reconnecting-and-network",
+        "passed": true
+      },
+      {
+        "name": "remote-audio-autoplay-blocked",
+        "passed": true
+      },
+      {
+        "name": "refresh-failure-keeps-call-local-controls",
+        "passed": true
+      },
+      {
+        "name": "fullscreen-stage",
+        "passed": true
+      },
+      {
+        "name": "fullscreen-video-fits-landscape-portrait-and-classic",
+        "passed": true
+      },
+      {
+        "name": "layout-presets-desktop",
+        "passed": true
+      },
+      {
+        "name": "session-remains-mounted-with-collapsed-sidebar",
+        "passed": true
+      },
+      {
+        "name": "laptop-1280-two-columns",
+        "passed": true
+      },
+      {
+        "name": "tablet-stacked-no-presets",
+        "passed": true
+      },
+      {
+        "name": "counselor-mobile-tray-phone",
+        "passed": true
+      },
+      {
+        "name": "counselor-mobile-tray-narrowPhone",
+        "passed": true
+      },
+      {
+        "name": "student-mobile-v2",
+        "passed": true
+      },
+      {
+        "name": "student-withdrawal-consequence",
+        "passed": true
+      },
+      {
+        "name": "student-v1-scopes-stay-distinct",
+        "passed": true
+      },
+      {
+        "name": "help-keyboard-focus",
+        "passed": true
+      },
+      {
+        "name": "visible-video-blocker",
+        "passed": true
+      },
+      {
+        "name": "active-capture-visible-before-joining",
+        "passed": true
+      },
+      {
+        "name": "encounter-separate-from-recording",
+        "passed": true
+      },
+      {
+        "name": "encounter-save-dismissal",
+        "passed": true
+      },
+      {
+        "name": "v2-session-files-preparing",
+        "passed": true
+      },
+      {
+        "name": "v2-no-transcript-saved-copy",
+        "passed": true
+      },
+      {
+        "name": "v2-fresh-download-per-click",
+        "passed": true
+      },
+      {
+        "name": "v2-download-error",
+        "passed": true
+      },
+      {
+        "name": "prejoin-device-check-student-too-early",
+        "passed": true
+      },
+      {
+        "name": "prejoin-device-check-and-join-transition",
+        "passed": true
+      },
+      {
+        "name": "student-prejoin-mobile",
+        "passed": true
+      },
+      {
+        "name": "prejoin-navigation-cancels-pending-permission",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-ci-hierarchy": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "appointment-dialogs",
+        "passed": true
+      },
+      {
+        "name": "counseling-workspace",
+        "passed": true
+      },
+      {
+        "name": "reassignment-save-dismissal",
+        "passed": true
+      },
+      {
+        "name": "service-editor-help",
+        "passed": true
+      },
+      {
+        "name": "service-detail-help",
+        "passed": true
+      },
+      {
+        "name": "responsibilities-help",
+        "passed": true
+      },
+      {
+        "name": "institutional-forms-warning-help",
+        "passed": true
+      },
+      {
+        "name": "student-call-slip-instruction",
+        "passed": true
+      },
+      {
+        "name": "page-action-label-and-confirmation-focus",
+        "passed": true
+      },
+      {
+        "name": "platform-help",
+        "passed": true
+      },
+      {
+        "name": "adr090-sortable-header",
+        "passed": true
+      },
+      {
+        "name": "mobile-sort-and-dialog",
+        "passed": true
+      },
+      {
+        "name": "mobile-icon-action-label",
+        "passed": true
+      },
+      {
+        "name": "retention-policies-read-only-desktop",
+        "passed": true
+      },
+      {
+        "name": "retention-policies-read-only-phone",
+        "passed": true
+      },
+      {
+        "name": "retention-legacy-bookmark-rules",
+        "passed": true
+      },
+      {
+        "name": "retention-legacy-bookmark-rules-new",
+        "passed": true
+      },
+      {
+        "name": "retention-legacy-bookmark-cases-dd93953c-e82b-4d07-b3cf-79b204cdb0f3",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-ci-hierarchy": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "appointment-dialogs",
+        "passed": true
+      },
+      {
+        "name": "counseling-workspace",
+        "passed": true
+      },
+      {
+        "name": "reassignment-save-dismissal",
+        "passed": true
+      },
+      {
+        "name": "service-editor-help",
+        "passed": true
+      },
+      {
+        "name": "service-detail-help",
+        "passed": true
+      },
+      {
+        "name": "responsibilities-help",
+        "passed": true
+      },
+      {
+        "name": "institutional-forms-warning-help",
+        "passed": true
+      },
+      {
+        "name": "student-call-slip-instruction",
+        "passed": true
+      },
+      {
+        "name": "page-action-label-and-confirmation-focus",
+        "passed": true
+      },
+      {
+        "name": "platform-help",
+        "passed": true
+      },
+      {
+        "name": "adr090-sortable-header",
+        "passed": true
+      },
+      {
+        "name": "mobile-sort-and-dialog",
+        "passed": true
+      },
+      {
+        "name": "mobile-icon-action-label",
+        "passed": true
+      },
+      {
+        "name": "retention-policies-read-only-desktop",
+        "passed": true
+      },
+      {
+        "name": "retention-policies-read-only-phone",
+        "passed": true
+      },
+      {
+        "name": "retention-legacy-bookmark-rules",
+        "passed": true
+      },
+      {
+        "name": "retention-legacy-bookmark-rules-new",
+        "passed": true
+      },
+      {
+        "name": "retention-legacy-bookmark-cases-dd93953c-e82b-4d07-b3cf-79b204cdb0f3",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-ci-p2a": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "P2A Call Slip detail keeps authorized commands clear across widths",
+        "passed": true
+      },
+      {
+        "name": "P2A Student Call Slip keeps the PDF action near the mobile heading",
+        "passed": true
+      },
+      {
+        "name": "P2A Service detail preserves distinct booking pathways and management access",
+        "passed": true
+      },
+      {
+        "name": "P2A Assessment Record keeps confidential content and edit access scoped",
+        "passed": true
+      },
+      {
+        "name": "P2A Counselor Routine Interview distinguishes context from Student and Counselor work",
+        "passed": true
+      },
+      {
+        "name": "P2A Student Routine Interview keeps Intake work in its existing form flow",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-ci-p2a": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "P2A Call Slip detail keeps authorized commands clear across widths",
+        "passed": true
+      },
+      {
+        "name": "P2A Student Call Slip keeps the PDF action near the mobile heading",
+        "passed": true
+      },
+      {
+        "name": "P2A Service detail preserves distinct booking pathways and management access",
+        "passed": true
+      },
+      {
+        "name": "P2A Assessment Record keeps confidential content and edit access scoped",
+        "passed": true
+      },
+      {
+        "name": "P2A Counselor Routine Interview distinguishes context from Student and Counselor work",
+        "passed": true
+      },
+      {
+        "name": "P2A Student Routine Interview keeps Intake work in its existing form flow",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-ci-copy": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "referral-validation-320",
+        "passed": true
+      },
+      {
+        "name": "call-slip-validation-320",
+        "passed": true
+      },
+      {
+        "name": "appointment-validation-320",
+        "passed": true
+      },
+      {
+        "name": "counseling-validation-320",
+        "passed": true
+      },
+      {
+        "name": "hidden-referral-320",
+        "passed": true
+      },
+      {
+        "name": "hidden-call-slip-320",
+        "passed": true
+      },
+      {
+        "name": "exit-access-conflict-320",
+        "passed": true
+      },
+      {
+        "name": "retention-unavailable-320",
+        "passed": true
+      },
+      {
+        "name": "referral-create-rejection-320",
+        "passed": true
+      },
+      {
+        "name": "call-slip-issue-rejection-320",
+        "passed": true
+      },
+      {
+        "name": "referral-action-consequences-320",
+        "passed": true
+      },
+      {
+        "name": "routine-form-blocker-320",
+        "passed": true
+      },
+      {
+        "name": "inventory-conflict-retains-answers-320",
+        "passed": true
+      },
+      {
+        "name": "good-moral-unconfirmed-320",
+        "passed": true
+      },
+      {
+        "name": "booking-server-error-same-intent-320",
+        "passed": true
+      },
+      {
+        "name": "feedback-server-error-320",
+        "passed": true
+      },
+      {
+        "name": "csm-server-error-320",
+        "passed": true
+      },
+      {
+        "name": "auth-expired-security-320",
+        "passed": true
+      },
+      {
+        "name": "exit-correction-reviewer-320",
+        "passed": true
+      },
+      {
+        "name": "exit-submitted-reviewers-320",
+        "passed": true
+      },
+      {
+        "name": "graduate-tracer-confidentiality-320",
+        "passed": true
+      },
+      {
+        "name": "exit-reviewer-staff-navigation-320",
+        "passed": true
+      },
+      {
+        "name": "referral-validation-1440",
+        "passed": true
+      },
+      {
+        "name": "call-slip-validation-1440",
+        "passed": true
+      },
+      {
+        "name": "appointment-validation-1440",
+        "passed": true
+      },
+      {
+        "name": "counseling-validation-1440",
+        "passed": true
+      },
+      {
+        "name": "hidden-referral-1440",
+        "passed": true
+      },
+      {
+        "name": "hidden-call-slip-1440",
+        "passed": true
+      },
+      {
+        "name": "exit-access-conflict-1440",
+        "passed": true
+      },
+      {
+        "name": "retention-unavailable-1440",
+        "passed": true
+      },
+      {
+        "name": "referral-create-rejection-1440",
+        "passed": true
+      },
+      {
+        "name": "call-slip-issue-rejection-1440",
+        "passed": true
+      },
+      {
+        "name": "referral-action-consequences-1440",
+        "passed": true
+      },
+      {
+        "name": "routine-form-blocker-1440",
+        "passed": true
+      },
+      {
+        "name": "inventory-conflict-retains-answers-1440",
+        "passed": true
+      },
+      {
+        "name": "good-moral-unconfirmed-1440",
+        "passed": true
+      },
+      {
+        "name": "booking-server-error-same-intent-1440",
+        "passed": true
+      },
+      {
+        "name": "feedback-server-error-1440",
+        "passed": true
+      },
+      {
+        "name": "csm-server-error-1440",
+        "passed": true
+      },
+      {
+        "name": "auth-expired-security-1440",
+        "passed": true
+      },
+      {
+        "name": "exit-correction-reviewer-1440",
+        "passed": true
+      },
+      {
+        "name": "exit-submitted-reviewers-1440",
+        "passed": true
+      },
+      {
+        "name": "graduate-tracer-confidentiality-1440",
+        "passed": true
+      },
+      {
+        "name": "exit-reviewer-staff-navigation-1440",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-ci-copy": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "referral-validation-320",
+        "passed": true
+      },
+      {
+        "name": "call-slip-validation-320",
+        "passed": true
+      },
+      {
+        "name": "appointment-validation-320",
+        "passed": true
+      },
+      {
+        "name": "counseling-validation-320",
+        "passed": true
+      },
+      {
+        "name": "hidden-referral-320",
+        "passed": true
+      },
+      {
+        "name": "hidden-call-slip-320",
+        "passed": true
+      },
+      {
+        "name": "exit-access-conflict-320",
+        "passed": true
+      },
+      {
+        "name": "retention-unavailable-320",
+        "passed": true
+      },
+      {
+        "name": "referral-create-rejection-320",
+        "passed": true
+      },
+      {
+        "name": "call-slip-issue-rejection-320",
+        "passed": true
+      },
+      {
+        "name": "referral-action-consequences-320",
+        "passed": true
+      },
+      {
+        "name": "routine-form-blocker-320",
+        "passed": true
+      },
+      {
+        "name": "inventory-conflict-retains-answers-320",
+        "passed": true
+      },
+      {
+        "name": "good-moral-unconfirmed-320",
+        "passed": true
+      },
+      {
+        "name": "booking-server-error-same-intent-320",
+        "passed": true
+      },
+      {
+        "name": "feedback-server-error-320",
+        "passed": true
+      },
+      {
+        "name": "csm-server-error-320",
+        "passed": true
+      },
+      {
+        "name": "auth-expired-security-320",
+        "passed": true
+      },
+      {
+        "name": "exit-correction-reviewer-320",
+        "passed": true
+      },
+      {
+        "name": "exit-submitted-reviewers-320",
+        "passed": true
+      },
+      {
+        "name": "graduate-tracer-confidentiality-320",
+        "passed": true
+      },
+      {
+        "name": "exit-reviewer-staff-navigation-320",
+        "passed": true
+      },
+      {
+        "name": "referral-validation-1440",
+        "passed": true
+      },
+      {
+        "name": "call-slip-validation-1440",
+        "passed": true
+      },
+      {
+        "name": "appointment-validation-1440",
+        "passed": true
+      },
+      {
+        "name": "counseling-validation-1440",
+        "passed": true
+      },
+      {
+        "name": "hidden-referral-1440",
+        "passed": true
+      },
+      {
+        "name": "hidden-call-slip-1440",
+        "passed": true
+      },
+      {
+        "name": "exit-access-conflict-1440",
+        "passed": true
+      },
+      {
+        "name": "retention-unavailable-1440",
+        "passed": true
+      },
+      {
+        "name": "referral-create-rejection-1440",
+        "passed": true
+      },
+      {
+        "name": "call-slip-issue-rejection-1440",
+        "passed": true
+      },
+      {
+        "name": "referral-action-consequences-1440",
+        "passed": true
+      },
+      {
+        "name": "routine-form-blocker-1440",
+        "passed": true
+      },
+      {
+        "name": "inventory-conflict-retains-answers-1440",
+        "passed": true
+      },
+      {
+        "name": "good-moral-unconfirmed-1440",
+        "passed": true
+      },
+      {
+        "name": "booking-server-error-same-intent-1440",
+        "passed": true
+      },
+      {
+        "name": "feedback-server-error-1440",
+        "passed": true
+      },
+      {
+        "name": "csm-server-error-1440",
+        "passed": true
+      },
+      {
+        "name": "auth-expired-security-1440",
+        "passed": true
+      },
+      {
+        "name": "exit-correction-reviewer-1440",
+        "passed": true
+      },
+      {
+        "name": "exit-submitted-reviewers-1440",
+        "passed": true
+      },
+      {
+        "name": "graduate-tracer-confidentiality-1440",
+        "passed": true
+      },
+      {
+        "name": "exit-reviewer-staff-navigation-1440",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-faculty-matrix": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "gco-review-320-100",
+        "passed": true
+      },
+      {
+        "name": "gco-review-320-200",
+        "passed": true
+      },
+      {
+        "name": "gco-review-390-100",
+        "passed": true
+      },
+      {
+        "name": "gco-review-390-200",
+        "passed": true
+      },
+      {
+        "name": "gco-review-768-100",
+        "passed": true
+      },
+      {
+        "name": "gco-review-768-200",
+        "passed": true
+      },
+      {
+        "name": "gco-review-1024-100",
+        "passed": true
+      },
+      {
+        "name": "gco-review-1024-200",
+        "passed": true
+      },
+      {
+        "name": "gco-review-1440-100",
+        "passed": true
+      },
+      {
+        "name": "gco-review-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-1440-200",
+        "passed": true
+      },
+      {
+        "name": "policy-unavailable-1",
+        "passed": true
+      },
+      {
+        "name": "policy-unavailable-2",
+        "passed": true
+      },
+      {
+        "name": "mutation-reconcile-409",
+        "passed": true
+      },
+      {
+        "name": "mutation-reconcile-403",
+        "passed": true
+      },
+      {
+        "name": "mutation-reconcile-lost",
+        "passed": true
+      },
+      {
+        "name": "intake-error-disables-actions",
+        "passed": true
+      },
+      {
+        "name": "keyboard-explicit-review-cancel",
+        "passed": true
+      },
+      {
+        "name": "origin-filter-is-server-side",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-faculty-matrix": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "gco-review-320-100",
+        "passed": true
+      },
+      {
+        "name": "gco-review-320-200",
+        "passed": true
+      },
+      {
+        "name": "gco-review-390-100",
+        "passed": true
+      },
+      {
+        "name": "gco-review-390-200",
+        "passed": true
+      },
+      {
+        "name": "gco-review-768-100",
+        "passed": true
+      },
+      {
+        "name": "gco-review-768-200",
+        "passed": true
+      },
+      {
+        "name": "gco-review-1024-100",
+        "passed": true
+      },
+      {
+        "name": "gco-review-1024-200",
+        "passed": true
+      },
+      {
+        "name": "gco-review-1440-100",
+        "passed": true
+      },
+      {
+        "name": "gco-review-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-portal-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-referrals-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-1-f4000000-0000-4000-8000-000000000001-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-portal-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-referrals-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-2-f4000000-0000-4000-8000-000000000001-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-portal-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-referrals-1440-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-320-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-390-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-768-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-768-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-1024-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-1024-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-stage-3-f4000000-0000-4000-8000-000000000001-1440-200",
+        "passed": true
+      },
+      {
+        "name": "policy-unavailable-1",
+        "passed": true
+      },
+      {
+        "name": "policy-unavailable-2",
+        "passed": true
+      },
+      {
+        "name": "mutation-reconcile-409",
+        "passed": true
+      },
+      {
+        "name": "mutation-reconcile-403",
+        "passed": true
+      },
+      {
+        "name": "mutation-reconcile-lost",
+        "passed": true
+      },
+      {
+        "name": "intake-error-disables-actions",
+        "passed": true
+      },
+      {
+        "name": "keyboard-explicit-review-cancel",
+        "passed": true
+      },
+      {
+        "name": "origin-filter-is-server-side",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac3": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "responsive-320-100",
+        "passed": true
+      },
+      {
+        "name": "responsive-320-200",
+        "passed": true
+      },
+      {
+        "name": "responsive-390-100",
+        "passed": true
+      },
+      {
+        "name": "responsive-390-200",
+        "passed": true
+      },
+      {
+        "name": "responsive-768-100",
+        "passed": true
+      },
+      {
+        "name": "responsive-768-200",
+        "passed": true
+      },
+      {
+        "name": "responsive-1024-100",
+        "passed": true
+      },
+      {
+        "name": "responsive-1024-200",
+        "passed": true
+      },
+      {
+        "name": "responsive-1440-100",
+        "passed": true
+      },
+      {
+        "name": "responsive-1440-200",
+        "passed": true
+      },
+      {
+        "name": "default-unavailable-home-and-direct-submission",
+        "passed": true
+      },
+      {
+        "name": "own-list-alone-never-enables-submission",
+        "passed": true
+      },
+      {
+        "name": "approved-home-uses-actual-own-records-and-primary-action",
+        "passed": true
+      },
+      {
+        "name": "form-errors-focus-original-fields-and-preserve-input",
+        "passed": true
+      },
+      {
+        "name": "uncertain-result-retains-exact-key-body-and-never-auto-retries",
+        "passed": true
+      },
+      {
+        "name": "submission-refusal-403-is-not-success",
+        "passed": true
+      },
+      {
+        "name": "submission-refusal-409-is-not-success",
+        "passed": true
+      },
+      {
+        "name": "confirmation-refusal-429-preserves-exact-input",
+        "passed": true
+      },
+      {
+        "name": "confirmation-refusal-503-preserves-exact-input",
+        "passed": true
+      },
+      {
+        "name": "expired-confirmation-requires-deliberate-reconfirmation",
+        "passed": true
+      },
+      {
+        "name": "pagination-keeps-previous-on-empty-later-page",
+        "passed": true
+      },
+      {
+        "name": "safe-own-detail-404-never-probes-internal-record",
+        "passed": true
+      },
+      {
+        "name": "keyboard-only-confirm-review-submit",
+        "passed": true
+      },
+      {
+        "name": "own-list-policy-denial-hides-protected-results",
+        "passed": true
+      },
+      {
+        "name": "empty-own-list-is-not-a-fabricated-total",
+        "passed": true
+      },
+      {
+        "name": "uniform-negative-confirmation-never-advances-to-review",
+        "passed": true
+      },
+      {
+        "name": "pending-submit-prevents-duplicates",
+        "passed": true
+      },
+      {
+        "name": "discard-is-deliberate-and-cancel-preserves-draft",
+        "passed": true
+      },
+      {
+        "name": "initial-loading-then-retry-never-claims-empty",
+        "passed": true
+      },
+      {
+        "name": "stale-role-revalidation-unmounts-faculty-form-without-replay",
+        "passed": true
+      },
+      {
+        "name": "ended-session-uses-existing-sign-in-boundary-without-replay",
+        "passed": true
+      },
+      {
+        "name": "non-faculty-STUDENT-direct-route",
+        "passed": true
+      },
+      {
+        "name": "non-faculty-COUNSELOR-direct-route",
+        "passed": true
+      },
+      {
+        "name": "non-faculty-IT_ADMIN-direct-route",
+        "passed": true
+      },
+      {
+        "name": "faculty-gco-route-denies-before-protected-components-mount",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac3": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "responsive-320-100",
+        "passed": true
+      },
+      {
+        "name": "responsive-320-200",
+        "passed": true
+      },
+      {
+        "name": "responsive-390-100",
+        "passed": true
+      },
+      {
+        "name": "responsive-390-200",
+        "passed": true
+      },
+      {
+        "name": "responsive-768-100",
+        "passed": true
+      },
+      {
+        "name": "responsive-768-200",
+        "passed": true
+      },
+      {
+        "name": "responsive-1024-100",
+        "passed": true
+      },
+      {
+        "name": "responsive-1024-200",
+        "passed": true
+      },
+      {
+        "name": "responsive-1440-100",
+        "passed": true
+      },
+      {
+        "name": "responsive-1440-200",
+        "passed": true
+      },
+      {
+        "name": "default-unavailable-home-and-direct-submission",
+        "passed": true
+      },
+      {
+        "name": "own-list-alone-never-enables-submission",
+        "passed": true
+      },
+      {
+        "name": "approved-home-uses-actual-own-records-and-primary-action",
+        "passed": true
+      },
+      {
+        "name": "form-errors-focus-original-fields-and-preserve-input",
+        "passed": true
+      },
+      {
+        "name": "uncertain-result-retains-exact-key-body-and-never-auto-retries",
+        "passed": true
+      },
+      {
+        "name": "submission-refusal-403-is-not-success",
+        "passed": true
+      },
+      {
+        "name": "submission-refusal-409-is-not-success",
+        "passed": true
+      },
+      {
+        "name": "confirmation-refusal-429-preserves-exact-input",
+        "passed": true
+      },
+      {
+        "name": "confirmation-refusal-503-preserves-exact-input",
+        "passed": true
+      },
+      {
+        "name": "expired-confirmation-requires-deliberate-reconfirmation",
+        "passed": true
+      },
+      {
+        "name": "pagination-keeps-previous-on-empty-later-page",
+        "passed": true
+      },
+      {
+        "name": "safe-own-detail-404-never-probes-internal-record",
+        "passed": true
+      },
+      {
+        "name": "keyboard-only-confirm-review-submit",
+        "passed": true
+      },
+      {
+        "name": "own-list-policy-denial-hides-protected-results",
+        "passed": true
+      },
+      {
+        "name": "empty-own-list-is-not-a-fabricated-total",
+        "passed": true
+      },
+      {
+        "name": "uniform-negative-confirmation-never-advances-to-review",
+        "passed": true
+      },
+      {
+        "name": "pending-submit-prevents-duplicates",
+        "passed": true
+      },
+      {
+        "name": "discard-is-deliberate-and-cancel-preserves-draft",
+        "passed": true
+      },
+      {
+        "name": "initial-loading-then-retry-never-claims-empty",
+        "passed": true
+      },
+      {
+        "name": "stale-role-revalidation-unmounts-faculty-form-without-replay",
+        "passed": true
+      },
+      {
+        "name": "ended-session-uses-existing-sign-in-boundary-without-replay",
+        "passed": true
+      },
+      {
+        "name": "non-faculty-STUDENT-direct-route",
+        "passed": true
+      },
+      {
+        "name": "non-faculty-COUNSELOR-direct-route",
+        "passed": true
+      },
+      {
+        "name": "non-faculty-IT_ADMIN-direct-route",
+        "passed": true
+      },
+      {
+        "name": "faculty-gco-route-denies-before-protected-components-mount",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac1": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "faculty-home-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-home-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-home-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-deep-link-referrals-new",
+        "passed": true
+      },
+      {
+        "name": "faculty-deep-link-appointments-book",
+        "passed": true
+      },
+      {
+        "name": "faculty-deep-link-accounts",
+        "passed": true
+      },
+      {
+        "name": "faculty-deep-link-counseling",
+        "passed": true
+      },
+      {
+        "name": "faculty-deep-link-follow-ups",
+        "passed": true
+      },
+      {
+        "name": "administrator-provisions-faculty-with-reviewed-home-college",
+        "passed": true
+      },
+      {
+        "name": "administrator-affiliation-conflict-requires-fresh-review",
+        "passed": true
+      },
+      {
+        "name": "csv-exposes-active-faculty-college-references",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac1": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "faculty-home-1440-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-home-390-100",
+        "passed": true
+      },
+      {
+        "name": "faculty-home-320-200",
+        "passed": true
+      },
+      {
+        "name": "faculty-deep-link-referrals-new",
+        "passed": true
+      },
+      {
+        "name": "faculty-deep-link-appointments-book",
+        "passed": true
+      },
+      {
+        "name": "faculty-deep-link-accounts",
+        "passed": true
+      },
+      {
+        "name": "faculty-deep-link-counseling",
+        "passed": true
+      },
+      {
+        "name": "faculty-deep-link-follow-ups",
+        "passed": true
+      },
+      {
+        "name": "administrator-provisions-faculty-with-reviewed-home-college",
+        "passed": true
+      },
+      {
+        "name": "administrator-affiliation-conflict-requires-fresh-review",
+        "passed": true
+      },
+      {
+        "name": "csv-exposes-active-faculty-college-references",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-live": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "real-approved-cross-college-submit-and-own-detail",
+        "passed": true
+      },
+      {
+        "name": "real-committed-response-loss-replays-identical-request",
+        "passed": true
+      },
+      {
+        "name": "real-own-list-shows-canonical-records-only",
+        "passed": true
+      },
+      {
+        "name": "real-foreign-owner-retains-safe-404",
+        "passed": true
+      },
+      {
+        "name": "real-other-role-does-not-mount-faculty-query",
+        "passed": true
+      },
+      {
+        "name": "real-gco-explicit-acknowledgment-and-administrative-closure",
+        "passed": true
+      },
+      {
+        "name": "real-faculty-canonical-closed-projection-hides-gco-actors-and-source",
+        "passed": true
+      },
+      {
+        "name": "real-gco-origin-filter-and-actual-state",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-live": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "real-approved-cross-college-submit-and-own-detail",
+        "passed": true
+      },
+      {
+        "name": "real-committed-response-loss-replays-identical-request",
+        "passed": true
+      },
+      {
+        "name": "real-own-list-shows-canonical-records-only",
+        "passed": true
+      },
+      {
+        "name": "real-foreign-owner-retains-safe-404",
+        "passed": true
+      },
+      {
+        "name": "real-other-role-does-not-mount-faculty-query",
+        "passed": true
+      },
+      {
+        "name": "real-gco-explicit-acknowledgment-and-administrative-closure",
+        "passed": true
+      },
+      {
+        "name": "real-faculty-canonical-closed-projection-hides-gco-actors-and-source",
+        "passed": true
+      },
+      {
+        "name": "real-gco-origin-filter-and-actual-state",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-call-slip": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "COUNSELOR view-only ACTIVE keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR view-only COMPLETED keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR view-only VOIDED keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF view-only ACTIVE keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF view-only COMPLETED keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF view-only VOIDED keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "STUDENT view-only ACTIVE keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "STUDENT view-only COMPLETED keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "STUDENT view-only VOIDED keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR manager cannot transition COMPLETED",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR manager cannot transition VOIDED",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR interview-ended confirmation and confirmed refresh",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR interview-ended confirmation and uncertain recovery",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR void confirmation and confirmed refresh",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR void confirmation and uncertain recovery",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF manager cannot transition COMPLETED",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF manager cannot transition VOIDED",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF interview-ended confirmation and confirmed refresh",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF interview-ended confirmation and uncertain recovery",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF void confirmation and confirmed refresh",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF void confirmation and uncertain recovery",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR direct URL without viewing capability makes no detail request",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF direct URL without viewing capability makes no detail request",
+        "passed": true
+      },
+      {
+        "name": "STUDENT direct URL without viewing capability makes no detail request",
+        "passed": true
+      },
+      {
+        "name": "Student cannot view another owner's record",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-call-slip": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "COUNSELOR view-only ACTIVE keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR view-only COMPLETED keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR view-only VOIDED keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF view-only ACTIVE keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF view-only COMPLETED keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF view-only VOIDED keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "STUDENT view-only ACTIVE keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "STUDENT view-only COMPLETED keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "STUDENT view-only VOIDED keeps details and PDF",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR manager cannot transition COMPLETED",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR manager cannot transition VOIDED",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR interview-ended confirmation and confirmed refresh",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR interview-ended confirmation and uncertain recovery",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR void confirmation and confirmed refresh",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR void confirmation and uncertain recovery",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF manager cannot transition COMPLETED",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF manager cannot transition VOIDED",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF interview-ended confirmation and confirmed refresh",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF interview-ended confirmation and uncertain recovery",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF void confirmation and confirmed refresh",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF void confirmation and uncertain recovery",
+        "passed": true
+      },
+      {
+        "name": "COUNSELOR direct URL without viewing capability makes no detail request",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF direct URL without viewing capability makes no detail request",
+        "passed": true
+      },
+      {
+        "name": "STUDENT direct URL without viewing capability makes no detail request",
+        "passed": true
+      },
+      {
+        "name": "Student cannot view another owner's record",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-followup-ecounseling-runtime": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "counselor-call-follows-routine-interview",
+        "passed": true
+      },
+      {
+        "name": "counselor-return-to-session-no-rejoin",
+        "passed": true
+      },
+      {
+        "name": "dock-controls-capture-and-leave",
+        "passed": true
+      },
+      {
+        "name": "student-mobile-dock-collapse-and-intake",
+        "passed": true
+      },
+      {
+        "name": "student-pending-consent-cue",
+        "passed": true
+      },
+      {
+        "name": "another-appointment-keeps-active-call",
+        "passed": true
+      },
+      {
+        "name": "second-tab-blocked-and-released",
+        "passed": true
+      },
+      {
+        "name": "sign-out-ends-call-after-confirmation",
+        "passed": true
+      },
+      {
+        "name": "confirmed-signed-out-ends-call",
+        "passed": true
+      },
+      {
+        "name": "unverified-session-keeps-call",
+        "passed": true
+      },
+      {
+        "name": "maintenance-keeps-connected-call",
+        "passed": true
+      },
+      {
+        "name": "call-ended-elsewhere-notice",
+        "passed": true
+      },
+      {
+        "name": "reload-warns-while-in-call",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-desktop",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-laptop",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-tablet",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-narrowPhone",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-followup-ux-p1": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "Appointment desktop contextual rail and Messages dock",
+        "passed": true
+      },
+      {
+        "name": "Appointment mobile actions stay labeled in the header area",
+        "passed": true
+      },
+      {
+        "name": "Appointment unavailable action reasons stay discoverable",
+        "passed": true
+      },
+      {
+        "name": "Referral desktop action rail keeps the PDF command and its pending state",
+        "passed": true
+      },
+      {
+        "name": "Referral mobile keeps its labeled download near the heading",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 320px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 320px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 768px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 768px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 1024px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 1024px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 1280px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 1280px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 1440px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 1440px",
+        "passed": true
+      },
+      {
+        "name": "non-Counseling Appointment hides contextual Messages and E-Counseling",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-followup-simplify-3b-public-shell": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "public-320-100",
+        "passed": true
+      },
+      {
+        "name": "public-320-200",
+        "passed": true
+      },
+      {
+        "name": "public-390-100",
+        "passed": true
+      },
+      {
+        "name": "public-390-200",
+        "passed": true
+      },
+      {
+        "name": "public-768-100",
+        "passed": true
+      },
+      {
+        "name": "public-768-200",
+        "passed": true
+      },
+      {
+        "name": "public-1024-100",
+        "passed": true
+      },
+      {
+        "name": "public-1024-200",
+        "passed": true
+      },
+      {
+        "name": "public-1440-100",
+        "passed": true
+      },
+      {
+        "name": "public-1440-200",
+        "passed": true
+      },
+      {
+        "name": "account-320-100",
+        "passed": true
+      },
+      {
+        "name": "account-320-200",
+        "passed": true
+      },
+      {
+        "name": "account-390-100",
+        "passed": true
+      },
+      {
+        "name": "account-390-200",
+        "passed": true
+      },
+      {
+        "name": "account-768-100",
+        "passed": true
+      },
+      {
+        "name": "account-768-200",
+        "passed": true
+      },
+      {
+        "name": "account-1024-100",
+        "passed": true
+      },
+      {
+        "name": "account-1024-200",
+        "passed": true
+      },
+      {
+        "name": "account-1440-100",
+        "passed": true
+      },
+      {
+        "name": "account-1440-200",
+        "passed": true
+      },
+      {
+        "name": "public-maintenance-accessibility",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-followup-email-change": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "invalid TOTP never repeats the confirmed email change",
+        "passed": true
+      },
+      {
+        "name": "a changed sign-in session discards the pending email change",
+        "passed": true
+      },
+      {
+        "name": "owner rediscovers admin request after refresh and verifies new mailbox on phone",
+        "passed": true
+      },
+      {
+        "name": "owner completes TOTP step-up and the confirmed email change continues once",
+        "passed": true
+      },
+      {
+        "name": "navigation during the refreshed-session check discards the email change",
+        "passed": true
+      },
+      {
+        "name": "a permission failure after TOTP is terminal and never replays the email change",
+        "passed": true
+      },
+      {
+        "name": "a network failure after TOTP is terminal and never replays the email change",
+        "passed": true
+      },
+      {
+        "name": "a repeat-stepup failure after TOTP is terminal and never replays the email change",
+        "passed": true
+      },
+      {
+        "name": "expired email request offers a safe self-service restart",
+        "passed": true
+      },
+      {
+        "name": "different account cannot discover another user's pending email change",
+        "passed": true
+      },
+      {
+        "name": "IT Admin sees staged and completed status without changing email before verification",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-followup-notification-email-auth": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "email destination: signed in",
+        "passed": true
+      },
+      {
+        "name": "email destination: password",
+        "passed": true
+      },
+      {
+        "name": "email destination: MFA",
+        "passed": true
+      },
+      {
+        "name": "email destination: denied after login",
+        "passed": true
+      },
+      {
+        "name": "expired session restores the original email destination after sign in",
+        "passed": true
+      },
+      {
+        "name": "mandatory authenticator setup preserves destination through fresh login and MFA",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: https://evil.test",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: //evil.test",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: %2f%2fevil.test",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: /login?next=/login",
+        "passed": true
+      },
+      {
+        "name": "reload MFA restarts with the email destination",
+        "passed": true
+      },
+      {
+        "name": "reload mandatory setup restarts with the email destination",
+        "passed": true
+      },
+      {
+        "name": "expired MFA denies resource; original email link supports deliberate restart",
+        "passed": true
+      },
+      {
+        "name": "reloaded verify sanitizes return https://evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded verify sanitizes return //evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded verify sanitizes return /portal/%2e%2e/login",
+        "passed": true
+      },
+      {
+        "name": "reloaded setup-authenticator sanitizes return https://evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded setup-authenticator sanitizes return //evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded setup-authenticator sanitizes return /portal/%2e%2e/login",
+        "passed": true
+      },
+      {
+        "name": "Back during MFA permits only deliberate fresh login",
+        "passed": true
+      },
+      {
+        "name": "Back during required setup permits only deliberate fresh login",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-followup-ecounseling-runtime": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "counselor-call-follows-routine-interview",
+        "passed": true
+      },
+      {
+        "name": "counselor-return-to-session-no-rejoin",
+        "passed": true
+      },
+      {
+        "name": "dock-controls-capture-and-leave",
+        "passed": true
+      },
+      {
+        "name": "student-mobile-dock-collapse-and-intake",
+        "passed": true
+      },
+      {
+        "name": "student-pending-consent-cue",
+        "passed": true
+      },
+      {
+        "name": "another-appointment-keeps-active-call",
+        "passed": true
+      },
+      {
+        "name": "second-tab-blocked-and-released",
+        "passed": true
+      },
+      {
+        "name": "sign-out-ends-call-after-confirmation",
+        "passed": true
+      },
+      {
+        "name": "confirmed-signed-out-ends-call",
+        "passed": true
+      },
+      {
+        "name": "unverified-session-keeps-call",
+        "passed": true
+      },
+      {
+        "name": "maintenance-keeps-connected-call",
+        "passed": true
+      },
+      {
+        "name": "call-ended-elsewhere-notice",
+        "passed": true
+      },
+      {
+        "name": "reload-warns-while-in-call",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-desktop",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-laptop",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-tablet",
+        "passed": true
+      },
+      {
+        "name": "dock-layout-narrowPhone",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-followup-ux-p1": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "Appointment desktop contextual rail and Messages dock",
+        "passed": true
+      },
+      {
+        "name": "Appointment mobile actions stay labeled in the header area",
+        "passed": true
+      },
+      {
+        "name": "Appointment unavailable action reasons stay discoverable",
+        "passed": true
+      },
+      {
+        "name": "Referral desktop action rail keeps the PDF command and its pending state",
+        "passed": true
+      },
+      {
+        "name": "Referral mobile keeps its labeled download near the heading",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 320px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 320px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 768px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 768px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 1024px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 1024px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 1280px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 1280px",
+        "passed": true
+      },
+      {
+        "name": "Appointment action layout has no overflow at 1440px",
+        "passed": true
+      },
+      {
+        "name": "Referral action layout has no overflow at 1440px",
+        "passed": true
+      },
+      {
+        "name": "non-Counseling Appointment hides contextual Messages and E-Counseling",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-followup-simplify-3b-public-shell": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "public-320-100",
+        "passed": true
+      },
+      {
+        "name": "public-320-200",
+        "passed": true
+      },
+      {
+        "name": "public-390-100",
+        "passed": true
+      },
+      {
+        "name": "public-390-200",
+        "passed": true
+      },
+      {
+        "name": "public-768-100",
+        "passed": true
+      },
+      {
+        "name": "public-768-200",
+        "passed": true
+      },
+      {
+        "name": "public-1024-100",
+        "passed": true
+      },
+      {
+        "name": "public-1024-200",
+        "passed": true
+      },
+      {
+        "name": "public-1440-100",
+        "passed": true
+      },
+      {
+        "name": "public-1440-200",
+        "passed": true
+      },
+      {
+        "name": "account-320-100",
+        "passed": true
+      },
+      {
+        "name": "account-320-200",
+        "passed": true
+      },
+      {
+        "name": "account-390-100",
+        "passed": true
+      },
+      {
+        "name": "account-390-200",
+        "passed": true
+      },
+      {
+        "name": "account-768-100",
+        "passed": true
+      },
+      {
+        "name": "account-768-200",
+        "passed": true
+      },
+      {
+        "name": "account-1024-100",
+        "passed": true
+      },
+      {
+        "name": "account-1024-200",
+        "passed": true
+      },
+      {
+        "name": "account-1440-100",
+        "passed": true
+      },
+      {
+        "name": "account-1440-200",
+        "passed": true
+      },
+      {
+        "name": "public-maintenance-accessibility",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-followup-email-change": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "invalid TOTP never repeats the confirmed email change",
+        "passed": true
+      },
+      {
+        "name": "a changed sign-in session discards the pending email change",
+        "passed": true
+      },
+      {
+        "name": "owner rediscovers admin request after refresh and verifies new mailbox on phone",
+        "passed": true
+      },
+      {
+        "name": "owner completes TOTP step-up and the confirmed email change continues once",
+        "passed": true
+      },
+      {
+        "name": "navigation during the refreshed-session check discards the email change",
+        "passed": true
+      },
+      {
+        "name": "a permission failure after TOTP is terminal and never replays the email change",
+        "passed": true
+      },
+      {
+        "name": "a network failure after TOTP is terminal and never replays the email change",
+        "passed": true
+      },
+      {
+        "name": "a repeat-stepup failure after TOTP is terminal and never replays the email change",
+        "passed": true
+      },
+      {
+        "name": "expired email request offers a safe self-service restart",
+        "passed": true
+      },
+      {
+        "name": "different account cannot discover another user's pending email change",
+        "passed": true
+      },
+      {
+        "name": "IT Admin sees staged and completed status without changing email before verification",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-followup-notification-email-auth": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "email destination: signed in",
+        "passed": true
+      },
+      {
+        "name": "email destination: password",
+        "passed": true
+      },
+      {
+        "name": "email destination: MFA",
+        "passed": true
+      },
+      {
+        "name": "email destination: denied after login",
+        "passed": true
+      },
+      {
+        "name": "expired session restores the original email destination after sign in",
+        "passed": true
+      },
+      {
+        "name": "mandatory authenticator setup preserves destination through fresh login and MFA",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: https://evil.test",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: //evil.test",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: %2f%2fevil.test",
+        "passed": true
+      },
+      {
+        "name": "unsafe login next remains local: /login?next=/login",
+        "passed": true
+      },
+      {
+        "name": "reload MFA restarts with the email destination",
+        "passed": true
+      },
+      {
+        "name": "reload mandatory setup restarts with the email destination",
+        "passed": true
+      },
+      {
+        "name": "expired MFA denies resource; original email link supports deliberate restart",
+        "passed": true
+      },
+      {
+        "name": "reloaded verify sanitizes return https://evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded verify sanitizes return //evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded verify sanitizes return /portal/%2e%2e/login",
+        "passed": true
+      },
+      {
+        "name": "reloaded setup-authenticator sanitizes return https://evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded setup-authenticator sanitizes return //evil.test",
+        "passed": true
+      },
+      {
+        "name": "reloaded setup-authenticator sanitizes return /portal/%2e%2e/login",
+        "passed": true
+      },
+      {
+        "name": "Back during MFA permits only deliberate fresh login",
+        "passed": true
+      },
+      {
+        "name": "Back during required setup permits only deliberate fresh login",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-navigation-assessment-records": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "320px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "375px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "390px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "430px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "768px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "1440px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "STUDENT override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "IT_ADMIN override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "INSTITUTIONAL_OFFICER override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records/new",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records/types",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records/d0000000-0000-4000-8000-000000000001",
+        "passed": true
+      },
+      {
+        "name": "View-only Counselor has Records without correction or catalog actions",
+        "passed": true
+      },
+      {
+        "name": "Non-Head Counselor with effective manage reaches and uses the shared catalog",
+        "passed": true
+      },
+      {
+        "name": "Manage without effective view cannot open the catalog by direct route",
+        "passed": true
+      },
+      {
+        "name": "Revoked manage removes stale record and catalog actions after a fresh session",
+        "passed": true
+      },
+      {
+        "name": "Empty catalog and empty record list remain usable",
+        "passed": true
+      },
+      {
+        "name": "Detail 403 safe error and retry",
+        "passed": true
+      },
+      {
+        "name": "Detail 404 safe error and retry",
+        "passed": true
+      },
+      {
+        "name": "Detail 500 safe error and retry",
+        "passed": true
+      },
+      {
+        "name": "List failure retry and loading conceal confidential content",
+        "passed": true
+      },
+      {
+        "name": "Search draft applies only on submit and invalid dates stay in Filters",
+        "passed": true
+      },
+      {
+        "name": "Assessment sorting has a separate display group and does not count as a filter",
+        "passed": true
+      },
+      {
+        "name": "Bounded paging uses has_next without inventing a total",
+        "passed": true
+      },
+      {
+        "name": "Create validates blank result prevents duplicate save and uses narrow Student picker",
+        "passed": true
+      },
+      {
+        "name": "Create validation failure keeps draft and unsaved navigation guard",
+        "passed": true
+      },
+      {
+        "name": "Correction keeps Student immutable and sends textual source values",
+        "passed": true
+      },
+      {
+        "name": "Catalog creates updates deactivates and reactivates without delete",
+        "passed": true
+      },
+      {
+        "name": "Duplicate catalog name fails safely and retains the correction draft",
+        "passed": true
+      },
+      {
+        "name": "Account switch conceals previously decrypted content and removes Records navigation",
+        "passed": true
+      },
+      {
+        "name": "Lost capability in same session conceals confidential projection",
+        "passed": true
+      },
+      {
+        "name": "Expired CSRF keeps the source draft and permits a safe retry",
+        "passed": true
+      },
+      {
+        "name": "Revoked manage authority during save conceals the draft",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-navigation-ux15-tracer-after": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "after desktop visual evidence",
+        "passed": true
+      },
+      {
+        "name": "after phone visual evidence",
+        "passed": true
+      },
+      {
+        "name": "after validation evidence",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow desktop",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow wide",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow tablet",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow phone",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow narrowPhone",
+        "passed": true
+      },
+      {
+        "name": "Partial drafts, draft errors, deduplicated review and original field focus",
+        "passed": true
+      },
+      {
+        "name": "Matrix validation summary focuses original radios and preserves error descriptions",
+        "passed": true
+      },
+      {
+        "name": "Failed save preserves unsaved answers 500",
+        "passed": true
+      },
+      {
+        "name": "Failed save preserves unsaved answers 409",
+        "passed": true
+      },
+      {
+        "name": "Failed save preserves unsaved answers network",
+        "passed": true
+      },
+      {
+        "name": "Pending protection and canonical save synchronization across return",
+        "passed": true
+      },
+      {
+        "name": "Employment transitions clear stale branches and preserve conditional semantics",
+        "passed": true
+      },
+      {
+        "name": "Stable repeating records and College to Program filtering",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation ok",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation unknown-committed",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation unknown-draft",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation unknown-check-fails",
+        "passed": true
+      },
+      {
+        "name": "Dirty route navigation, browser back and native unload remain guarded",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response non-graduate",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response restricted",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response read-only-draft",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response submitted",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response disposed",
+        "passed": true
+      }
+    ]
+  },
+  "chromium-fac5-navigation-ux-hardening-chromium": {
+    "engine": "chromium",
+    "cases": [
+      {
+        "name": "containment-inventory-320",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-320",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-320",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-320",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-375",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-375",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-375",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-375",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-390",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-390",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-390",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-390",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-393",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-393",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-393",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-393",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-430",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-430",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-430",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-430",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-768",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-768",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-768",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-768",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-1440",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-1440",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-1440",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-header-email-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-announcement-title-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-name-code-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-list-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-referral-url-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-header-email-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-announcement-title-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-name-code-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-list-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-referral-url-1440",
+        "passed": true
+      },
+      {
+        "name": "sticky-account-normal",
+        "passed": true
+      },
+      {
+        "name": "sticky-account-long-email",
+        "passed": true
+      },
+      {
+        "name": "sticky-account-long-id",
+        "passed": true
+      },
+      {
+        "name": "accounts-explicit-search",
+        "passed": true
+      },
+      {
+        "name": "accounts-older-submit-keeps-new-draft",
+        "passed": true
+      },
+      {
+        "name": "clear-services-timer",
+        "passed": true
+      },
+      {
+        "name": "clear-services-in-flight",
+        "passed": true
+      },
+      {
+        "name": "clear-affiliations-timer",
+        "passed": true
+      },
+      {
+        "name": "clear-affiliations-in-flight",
+        "passed": true
+      },
+      {
+        "name": "newest-intent-availability",
+        "passed": true
+      },
+      {
+        "name": "newest-intent-services",
+        "passed": true
+      },
+      {
+        "name": "newest-intent-affiliations",
+        "passed": true
+      },
+      {
+        "name": "exit-siblings-320",
+        "passed": true
+      },
+      {
+        "name": "exit-siblings-393",
+        "passed": true
+      },
+      {
+        "name": "exit-siblings-1440",
+        "passed": true
+      },
+      {
+        "name": "exit-capability-responses-only",
+        "passed": true
+      },
+      {
+        "name": "exit-capability-access-only",
+        "passed": true
+      },
+      {
+        "name": "exit-capability-neither",
+        "passed": true
+      },
+      {
+        "name": "exit-rating-columns-reachable-320",
+        "passed": true
+      },
+      {
+        "name": "tracer-answer-columns-reachable-320",
+        "passed": true
+      },
+      {
+        "name": "exit-rating-columns-reachable-390",
+        "passed": true
+      },
+      {
+        "name": "tracer-answer-columns-reachable-390",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-navigation-assessment-records": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "320px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "375px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "390px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "430px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "768px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "1440px list detail editor catalog and long confidential text wrap",
+        "passed": true
+      },
+      {
+        "name": "STUDENT override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "GUIDANCE_SERVICES_STAFF override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "IT_ADMIN override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "INSTITUTIONAL_OFFICER override cannot open direct confidential route",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records/new",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records/types",
+        "passed": true
+      },
+      {
+        "name": "Ordinary Counselor baseline direct route /portal/assessment-records/d0000000-0000-4000-8000-000000000001",
+        "passed": true
+      },
+      {
+        "name": "View-only Counselor has Records without correction or catalog actions",
+        "passed": true
+      },
+      {
+        "name": "Non-Head Counselor with effective manage reaches and uses the shared catalog",
+        "passed": true
+      },
+      {
+        "name": "Manage without effective view cannot open the catalog by direct route",
+        "passed": true
+      },
+      {
+        "name": "Revoked manage removes stale record and catalog actions after a fresh session",
+        "passed": true
+      },
+      {
+        "name": "Empty catalog and empty record list remain usable",
+        "passed": true
+      },
+      {
+        "name": "Detail 403 safe error and retry",
+        "passed": true
+      },
+      {
+        "name": "Detail 404 safe error and retry",
+        "passed": true
+      },
+      {
+        "name": "Detail 500 safe error and retry",
+        "passed": true
+      },
+      {
+        "name": "List failure retry and loading conceal confidential content",
+        "passed": true
+      },
+      {
+        "name": "Search draft applies only on submit and invalid dates stay in Filters",
+        "passed": true
+      },
+      {
+        "name": "Assessment sorting has a separate display group and does not count as a filter",
+        "passed": true
+      },
+      {
+        "name": "Bounded paging uses has_next without inventing a total",
+        "passed": true
+      },
+      {
+        "name": "Create validates blank result prevents duplicate save and uses narrow Student picker",
+        "passed": true
+      },
+      {
+        "name": "Create validation failure keeps draft and unsaved navigation guard",
+        "passed": true
+      },
+      {
+        "name": "Correction keeps Student immutable and sends textual source values",
+        "passed": true
+      },
+      {
+        "name": "Catalog creates updates deactivates and reactivates without delete",
+        "passed": true
+      },
+      {
+        "name": "Duplicate catalog name fails safely and retains the correction draft",
+        "passed": true
+      },
+      {
+        "name": "Account switch conceals previously decrypted content and removes Records navigation",
+        "passed": true
+      },
+      {
+        "name": "Lost capability in same session conceals confidential projection",
+        "passed": true
+      },
+      {
+        "name": "Expired CSRF keeps the source draft and permits a safe retry",
+        "passed": true
+      },
+      {
+        "name": "Revoked manage authority during save conceals the draft",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-navigation-ux15-tracer-after": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "after desktop visual evidence",
+        "passed": true
+      },
+      {
+        "name": "after phone visual evidence",
+        "passed": true
+      },
+      {
+        "name": "after validation evidence",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow desktop",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow wide",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow tablet",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow phone",
+        "passed": true
+      },
+      {
+        "name": "Navigation, matrix keyboard access and text reflow narrowPhone",
+        "passed": true
+      },
+      {
+        "name": "Partial drafts, draft errors, deduplicated review and original field focus",
+        "passed": true
+      },
+      {
+        "name": "Matrix validation summary focuses original radios and preserves error descriptions",
+        "passed": true
+      },
+      {
+        "name": "Failed save preserves unsaved answers 500",
+        "passed": true
+      },
+      {
+        "name": "Failed save preserves unsaved answers 409",
+        "passed": true
+      },
+      {
+        "name": "Failed save preserves unsaved answers network",
+        "passed": true
+      },
+      {
+        "name": "Pending protection and canonical save synchronization across return",
+        "passed": true
+      },
+      {
+        "name": "Employment transitions clear stale branches and preserve conditional semantics",
+        "passed": true
+      },
+      {
+        "name": "Stable repeating records and College to Program filtering",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation ok",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation unknown-committed",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation unknown-draft",
+        "passed": true
+      },
+      {
+        "name": "Deliberate submission and canonical reconciliation unknown-check-fails",
+        "passed": true
+      },
+      {
+        "name": "Dirty route navigation, browser back and native unload remain guarded",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response non-graduate",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response restricted",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response read-only-draft",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response submitted",
+        "passed": true
+      },
+      {
+        "name": "Eligibility and historical response disposed",
+        "passed": true
+      }
+    ]
+  },
+  "webkit-fac5-navigation-ux-hardening-webkit": {
+    "engine": "webkit",
+    "cases": [
+      {
+        "name": "containment-inventory-320",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-320",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-320",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-320",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-375",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-375",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-375",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-375",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-390",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-390",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-390",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-390",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-393",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-393",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-393",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-393",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-430",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-430",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-430",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-430",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-768",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-768",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-768",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-768",
+        "passed": true
+      },
+      {
+        "name": "containment-inventory-1440",
+        "passed": true
+      },
+      {
+        "name": "containment-exit-responses-1440",
+        "passed": true
+      },
+      {
+        "name": "containment-resources-1440",
+        "passed": true
+      },
+      {
+        "name": "containment-accounts-unaffected-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-header-email-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-announcement-title-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-name-code-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-list-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-referral-url-393",
+        "passed": true
+      },
+      {
+        "name": "accepted-header-email-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-announcement-title-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-name-code-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-service-list-1440",
+        "passed": true
+      },
+      {
+        "name": "accepted-referral-url-1440",
+        "passed": true
+      },
+      {
+        "name": "sticky-account-normal",
+        "passed": true
+      },
+      {
+        "name": "sticky-account-long-email",
+        "passed": true
+      },
+      {
+        "name": "sticky-account-long-id",
+        "passed": true
+      },
+      {
+        "name": "accounts-explicit-search",
+        "passed": true
+      },
+      {
+        "name": "accounts-older-submit-keeps-new-draft",
+        "passed": true
+      },
+      {
+        "name": "clear-services-timer",
+        "passed": true
+      },
+      {
+        "name": "clear-services-in-flight",
+        "passed": true
+      },
+      {
+        "name": "clear-affiliations-timer",
+        "passed": true
+      },
+      {
+        "name": "clear-affiliations-in-flight",
+        "passed": true
+      },
+      {
+        "name": "newest-intent-availability",
+        "passed": true
+      },
+      {
+        "name": "newest-intent-services",
+        "passed": true
+      },
+      {
+        "name": "newest-intent-affiliations",
+        "passed": true
+      },
+      {
+        "name": "exit-siblings-320",
+        "passed": true
+      },
+      {
+        "name": "exit-siblings-393",
+        "passed": true
+      },
+      {
+        "name": "exit-siblings-1440",
+        "passed": true
+      },
+      {
+        "name": "exit-capability-responses-only",
+        "passed": true
+      },
+      {
+        "name": "exit-capability-access-only",
+        "passed": true
+      },
+      {
+        "name": "exit-capability-neither",
+        "passed": true
+      },
+      {
+        "name": "exit-rating-columns-reachable-320",
+        "passed": true
+      },
+      {
+        "name": "tracer-answer-columns-reachable-320",
+        "passed": true
+      },
+      {
+        "name": "exit-rating-columns-reachable-390",
+        "passed": true
+      },
+      {
+        "name": "tracer-answer-columns-reachable-390",
+        "passed": true
+      }
+    ]
+  }
+}

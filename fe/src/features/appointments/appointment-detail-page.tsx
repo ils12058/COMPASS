@@ -613,7 +613,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         meta={<AppointmentStatusBadge status={appointment.status} />}
       />
 
-      <div data-page-action-layout="appointment" className="grid gap-4 lg:grid-cols-[7rem_minmax(0,1fr)] lg:gap-5">
+      <div data-page-action-layout="appointment" className="grid gap-4 lg:grid-cols-[10rem_minmax(0,1fr)] lg:gap-5">
         <PageActionGroup
           aria-label="Appointment page actions"
           data-page-action-rail=""

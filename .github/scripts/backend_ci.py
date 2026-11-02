@@ -89,6 +89,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_account_csv_import.py",
             "test_faculty_foundation.py",
             "test_faculty_referrals.py",
+            "test_faculty_integration_assurance.py",
             "test_referral_administration.py",
             "test_account_profile_confidential_content_encryption.py",
             "test_profiles.py",

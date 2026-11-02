@@ -179,7 +179,10 @@ jobs:
         working-directory: fe
         run: pnpm api:generate
 
+      - name: Configure browser dependency downloads
+        run: bash .github/scripts/configure_browser_apt.sh
       - name: Install Chromium and WebKit for the locked Playwright
+        timeout-minutes: 10
         working-directory: fe
         run: pnpm exec playwright install --with-deps chromium webkit
 

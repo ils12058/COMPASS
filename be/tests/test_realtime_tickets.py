@@ -6,6 +6,7 @@ single-use guarantee is Redis's atomic GETDEL, not anything a fake could prove.
 
 from __future__ import annotations
 
+import ast
 import asyncio
 import hashlib
 import json
@@ -432,7 +433,39 @@ def test_only_the_hooked_helper_ever_revokes_an_auth_session():
     for path in (BACKEND / "compass").rglob("*.py"):
         if "migrations" in path.parts:
             continue
-        if assignment.search(path.read_text(encoding="utf-8")):
+        source = path.read_text(encoding="utf-8")
+        if path.relative_to(BACKEND).as_posix() == "compass/counseling/continuity_services.py":
+            # This is CounselorCaseContinuityGrant revocation, with no AuthSession dependency.
+            # Exempt only the typed, single grant assignment; any other writer still fails.
+            tree = ast.parse(source)
+            imports = [
+                node
+                for node in ast.walk(tree)
+                if isinstance(node, ast.ImportFrom)
+                and node.module == "compass.counseling.continuity_models"
+            ]
+            assert any(
+                alias.name == "CounselorCaseContinuityGrant" and alias.asname == "Grant"
+                for node in imports
+                for alias in node.names
+            )
+            bindings = [
+                node.value
+                for node in ast.walk(tree)
+                if isinstance(node, ast.Assign)
+                and any(
+                    isinstance(target, ast.Name) and target.id == "grant" for target in node.targets
+                )
+            ]
+            for value in bindings:
+                while isinstance(value, (ast.Call, ast.Attribute)):
+                    value = value.func if isinstance(value, ast.Call) else value.value
+                assert isinstance(value, ast.Name) and value.id == "Grant"
+            assert bindings
+            assert len(assignment.findall(source)) == 1
+            assert "grant.revoked_at = now" in source
+            source = source.replace("grant.revoked_at = now", "")
+        if assignment.search(source):
             writers.add(path.relative_to(BACKEND).as_posix())
     # sessions.py revokes AuthSession and TrustedSession rows; Exit Interview opportunities
     # have their own unrelated ``revoked_at``.

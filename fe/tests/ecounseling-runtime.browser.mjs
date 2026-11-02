@@ -128,8 +128,8 @@ async function openRoutineFromSession(page) {
 
     // The Counselor Evaluation stays on its own page and saves normally during the call.
     await page.getByLabel("Recommendations", { exact: true }).fill("Synthetic follow-up next week.");
-    await page.getByRole("button", { name: "Save evaluation", exact: true }).click();
-    await shown(page.getByText("Saved", { exact: true }));
+    await page.getByRole("button", { name: "Save Evaluation", exact: true }).click();
+    await shown(page.getByRole("status").filter({ hasText: "Evaluation progress saved." }));
     assert.equal(session.state.evaluationSaves.at(-1).recommendations, "Synthetic follow-up next week.");
     await screenshot(page, "counselor-evaluation-with-dock");
     assert.equal(await fakeCount(page, "join"), 1);
@@ -227,7 +227,7 @@ async function openRoutineFromSession(page) {
     // The Intake form stays usable, and its save button is not covered by the dock.
     const answer = page.getByLabel(/How are you\? How are you coping with the challenges in college\?/);
     await answer.fill("Synthetic intake answer.");
-    await page.getByRole("button", { name: "Save progress", exact: true }).tap();
+    await page.getByRole("button", { name: "Save Progress", exact: true }).tap();
     await page.waitForFunction(() => true);
     for (let attempt = 0; attempt < 40 && !session.state.intakeSaves.length; attempt++) await page.waitForTimeout(50);
     assert.equal(session.state.intakeSaves.length, 1);
@@ -420,7 +420,7 @@ for (const device of ["desktop", "laptop", "tablet", "narrowPhone"]) {
     assert.ok(box.x >= 0 && box.x + box.width <= viewport.width + 1, "The dock fits the screen");
     await noHorizontalOverflow(page);
     // The page can scroll its last action clear of the dock.
-    const save = page.getByRole("button", { name: "Save evaluation", exact: true });
+    const save = page.getByRole("button", { name: "Save Evaluation", exact: true });
     await save.scrollIntoViewIfNeeded();
     await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
     const saveBox = await save.boundingBox();

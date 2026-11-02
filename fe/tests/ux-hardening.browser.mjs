@@ -7,7 +7,7 @@ import { worlds, auth, account, empty, longEmail, student, year } from "./suppor
 import { service, serviceId, slip, user } from "./support/ui-hierarchy-fixtures.mjs";
 
 const engine = process.env.COMPASS_UI_BROWSER ?? "chromium";
-const { check, finish, shown, noHorizontalOverflow, artifacts } = await createBrowserHarness(`ux-hardening-${engine}`);
+const { check, finish, shown, noHorizontalOverflow, artifacts, settleFetches } = await createBrowserHarness(`ux-hardening-${engine}`);
 const measurements = [];
 const viewport = (width) => ({ width, height: 900 });
 async function measure(page, name) {
@@ -107,6 +107,7 @@ await check("accounts-explicit-search", "/portal/accounts?search=Old&role=STUDEN
   await input.fill("Ana"); await page.getByRole("button", { name: "Search", exact: true }).click(); await page.waitForURL((u) => u.searchParams.get("search") === "Ana");
   await page.goBack(); await page.waitForURL((u) => u.searchParams.get("search") === "Maria"); assert.equal(await input.inputValue(), "Maria");
   await page.goForward(); await page.waitForURL((u) => u.searchParams.get("search") === "Ana"); assert.equal(await input.inputValue(), "Ana");
+  await settleFetches(page);
   await page.reload(); assert.equal(await input.inputValue(), "Ana");
   await page.getByRole("button", { name: /^Filters/ }).click(); await page.getByRole("button", { name: "Clear filters", exact: true }).click();
   await page.waitForURL((u) => !u.searchParams.has("search") && !u.searchParams.has("role")); assert.equal(await input.inputValue(), ""); assert.equal(new URL(page.url()).searchParams.get("ordering"), "NAME_DESC");

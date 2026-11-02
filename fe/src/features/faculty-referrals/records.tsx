@@ -24,7 +24,7 @@ import { FacultyLoading, FacultyReferralGate, FacultyUnavailable } from "./share
 import { administrativeStateLabel, facultyReferralError } from "./presentation";
 
 function SubmittedState({ item }: { item: FacultyReferralSubmissionResponse }) {
-  return <span className="inline-block rounded-sm bg-success/10 px-2 py-1 text-sm font-semibold text-success">{administrativeStateLabel(item.state)}</span>;
+  return <span className="inline-block max-w-full rounded-sm [overflow-wrap:anywhere] bg-success/10 px-2 py-1 text-sm font-semibold text-success">{administrativeStateLabel(item.state)}</span>;
 }
 
 export function SubmissionFacts({ item }: { item: FacultyReferralSubmissionResponse }) {

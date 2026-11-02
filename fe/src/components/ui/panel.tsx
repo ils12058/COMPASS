@@ -216,7 +216,7 @@ export function RecordSummary({
   className?: string;
 }) {
   return (
-    <div className={cn("px-4 py-4 sm:px-5", className)}>
+    <div className={cn("@container px-4 py-4 sm:px-5", className)}>
       <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
         <div className="min-w-0">
           {label ? <p className="text-xs font-semibold text-muted">{label}</p> : null}
@@ -224,10 +224,10 @@ export function RecordSummary({
             {title}
           </h2>
         </div>
-        {status ? <div className="shrink-0">{status}</div> : null}
+        {status ? <div className="min-w-0 max-w-full [overflow-wrap:anywhere]">{status}</div> : null}
       </div>
       {facts.length > 0 ? (
-        <dl className="mt-4 grid gap-x-6 gap-y-3 border-t border-brand-line pt-4 sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-4 grid gap-x-6 gap-y-3 border-t border-brand-line pt-4 @lg:grid-cols-2 @4xl:grid-cols-4">
           {facts.map((fact) => (
             <div key={fact.label} className="min-w-0">
               <dt className="text-xs font-semibold text-muted">{fact.label}</dt>

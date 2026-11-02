@@ -103,6 +103,7 @@ for (const mode of ["signed in", "password", "MFA", "denied after login"]) {
     { role: "STUDENT", handler: fixture.handler }, async page => {
       await shown(page.getByText(record.reference_code, { exact: true }));
       fixture.state.authenticated = false;
+      await settleFetches(page);
       await page.reload();
       await shown(page.getByRole("heading", { name: "Sign in", exact: true }));
       assert.equal(new URL(page.url()).searchParams.get("next"), destination);

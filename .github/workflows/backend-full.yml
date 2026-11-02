@@ -149,7 +149,10 @@ jobs:
       - name: Install locked dependencies
         working-directory: be
         run: uv sync --frozen
+      - name: Configure browser dependency downloads
+        run: bash .github/scripts/configure_browser_apt.sh
       - name: Install Chromium for document rendering
+        timeout-minutes: 10
         working-directory: be
         run: uv run playwright install --with-deps --only-shell chromium
       # Daily provider traffic is fully mocked; CI must never contact Daily.co.
