@@ -131,6 +131,10 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_operational_students.py",
         ),
     ),
+    "student-academics": (
+        "Shadow Student Academic Profile sync, gate, backfill and reconciliation.",
+        ("test_student_academic_profiles.py",),
+    ),
     "service-catalog": (
         "Services, canonical Counseling, provider qualification, scheduling consequences.",
         (
@@ -755,6 +759,11 @@ DOMAINS: dict[str, Area] = {
         "Student Support is derived from the Inventory and read by reports and Counseling.",
         ("student-support", "inventory", "inventory-encryption", "reports"),
         ("test_counseling_context.py",),
+    ),
+    "student_academics": domain(
+        "student_academics",
+        "Shadow profile mirrors StudentAffiliation inside its transaction; no consumer reads it.",
+        ("student-academics", "organization", "identity-access"),
     ),
 }
 

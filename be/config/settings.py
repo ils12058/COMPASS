@@ -75,6 +75,7 @@ INSTALLED_APPS = [
     "compass.audit",
     "compass.authentication",
     "compass.organization",
+    "compass.student_academics",
     "compass.service_catalog",
     "compass.group_sessions",
     "compass.availability",
@@ -782,6 +783,10 @@ if NOTIFICATION_EMAIL_CLAIM_TTL_SECONDS <= SMTP_TIMEOUT:
 DOCUMENT_RENDER_TIMEOUT_SECONDS = env_int("DOCUMENT_RENDER_TIMEOUT_SECONDS", 30)
 if not 1 <= DOCUMENT_RENDER_TIMEOUT_SECONDS <= 120:
     raise ValueError("DOCUMENT_RENDER_TIMEOUT_SECONDS must be between 1 and 120")
+
+# SAR-1 shadow mirror of the authoritative StudentAffiliation. Off by default; enabling it only
+# mirrors affiliation writes and does not change any read path.
+STUDENT_ACADEMIC_PROFILE_SYNC_ENABLED = env_bool("STUDENT_ACADEMIC_PROFILE_SYNC_ENABLED", False)
 
 # Operator opt-in for the synthetic ``seed_staging_dataset`` command (COMPASS Staging Dataset v1).
 # The command also enforces its own explicit staging allowlist, so this flag can never enable

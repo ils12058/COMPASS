@@ -37,6 +37,10 @@ from compass.organization.models import (
     StaffSupervision,
     StudentAffiliation,
 )
+from compass.student_academics.services import (
+    clear_profile_for_removed_affiliation,
+    sync_profile_from_affiliation,
+)
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -278,6 +282,9 @@ def set_student_affiliation(
             StudentAffiliation.objects.select_for_update().filter(student_id=student.pk).first()
         )
         if current is not None and current.college_id == college.pk:
+            sync_profile_from_affiliation(
+                student=student, college=college, updated_by=_actor(context)
+            )
             return current
         previous = str(current.college_id) if current is not None else None
         if current is None:
@@ -292,6 +299,7 @@ def set_student_affiliation(
             current.assigned_by = _actor(context)
             current.save(update_fields=["college", "assigned_by", "updated_at"])
             action = ORGANIZATION_STUDENT_AFFILIATION_CHANGED
+        sync_profile_from_affiliation(student=student, college=college, updated_by=_actor(context))
         record_event(
             context=context,
             action=action,
@@ -314,6 +322,7 @@ def remove_student_affiliation(*, student_id: UUID, context: AuditContext) -> bo
             return False
         college_id = str(current.college_id)
         current.delete()
+        clear_profile_for_removed_affiliation(student_id=student_id, updated_by=_actor(context))
         record_event(
             context=context,
             action=ORGANIZATION_STUDENT_AFFILIATION_REMOVED,
