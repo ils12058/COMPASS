@@ -77,7 +77,7 @@ function StructureWorkspace() {
       className="[&>div]:flex-col [&>div>div:last-child]:max-w-full @[36rem]/structure-heading:[&>div]:flex-row"
       actions={canEdit ? <PageAction icon={Plus} label="Add campus" disabled={hasError || !loaded || editing} onClick={(event) => openEditor({ mode: "create", kind: "campus" }, event.currentTarget)} /> : undefined}
       help={<ContextHelp title="Organization structure" sections={[
-        { heading: "Catalog and relationships", content: <p>Campus, College and Program definitions belong here. Counselor Responsibilities and Student affiliations have separate authority and workflows.</p> },
+        { heading: "Catalog and relationships", content: <p>Campus, College and Program definitions belong here. Counselor Responsibilities and Student placements have separate authority and workflows.</p> },
         { heading: "Academic policy and history", content: <p>Year Levels show the configured set. Pending policy is not approval to activate a Program. Current linked names can change; submitted records and issued certificates keep their saved facts.</p> },
         { heading: "Browse context", content: <p>Search matches official codes and names. Parents stay visible when a descendant matches; context labels identify parents outside the selected status or search. All returned records, including inactive records, are searched.</p> },
       ]} />}

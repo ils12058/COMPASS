@@ -91,8 +91,8 @@ test("GSS, Counselor, and Head Guidance keep their distinct scheduling and opera
   assert.ok(!hrefs(counselor).some((path) => /^\/portal\/(platform|privacy|accounts)/.test(path)));
   assert.ok(hrefs(counselor).includes("/portal/organization"), "authorized staff can browse Structure");
   assert.ok(!hrefs(counselor).includes("/portal/organization/responsibilities"));
-  assert.ok(!hrefs(counselor).includes("/portal/organization/student-affiliations"));
-  for (const path of ["/portal/organization/responsibilities", "/portal/organization/student-affiliations", "/portal/availability/office", "/portal/availability/providers", "/portal/feedback/csm/responses"]) assert.ok(hrefs(head).includes(path));
+  assert.ok(!hrefs(counselor).includes("/portal/organization/student-academics"));
+  for (const path of ["/portal/organization/responsibilities", "/portal/organization/student-academics", "/portal/availability/office", "/portal/availability/providers", "/portal/feedback/csm/responses"]) assert.ok(hrefs(head).includes(path));
   assert.ok(!hrefs(head).some((path) => /^\/portal\/(platform|privacy|accounts)/.test(path)));
 });
 
@@ -128,7 +128,7 @@ test("deep actions disappear when their actual manage capability is removed", ()
 });
 
 const all = commands.portalCommandDestinations({ ...head, capabilities: [...new Set([...student.capabilities, ...head.capabilities, ...it.capabilities, ...dpo.capabilities])] });
-for (const [query, expected] of [["retention", "/portal/privacy/retention"], ["student affiliation", "/portal/organization/student-affiliations"], ["mfa", "/portal/account/security"], ["email delivery", "/portal/platform/email-delivery"], ["worker", "/portal/platform/health"], ["forms", "/portal/institutional-forms"], ["profile", "/portal/account/profile"], ["book", "/portal/appointments/book"]]) {
+for (const [query, expected] of [["retention", "/portal/privacy/retention"], ["student placement", "/portal/organization/student-academics"], ["mfa", "/portal/account/security"], ["email delivery", "/portal/platform/email-delivery"], ["worker", "/portal/platform/health"], ["forms", "/portal/institutional-forms"], ["profile", "/portal/account/profile"], ["book", "/portal/appointments/book"]]) {
   test(`search alias: ${query}`, () => {
     const index = query === "book" ? commands.portalCommandDestinations(student) : all;
     assert.ok(commands.searchPortalCommands(index, query).some((item) => item.href === expected));
@@ -146,7 +146,7 @@ test("search normalization, ranking, no-results and stable ties are deterministi
     { ...base, label: "Finder again" },
   ];
   assert.deepEqual(commands.searchPortalCommands(index, " FIND ").map((item) => item.label), ["Find", "Finder", "Finder again", "A finder", "Context", "Other"]);
-  assert.equal(commands.normalizeCommandQuery("  STUDENT   affiliation  "), "student affiliation");
+  assert.equal(commands.normalizeCommandQuery("  STUDENT   placement  "), "student placement");
   assert.deepEqual(commands.searchPortalCommands(all, "xyzzynothing"), []);
   assert.deepEqual(commands.searchPortalCommands(all, "  "), all);
   assert.deepEqual(commands.searchPortalCommands(all, "activity"), commands.searchPortalCommands(all, "ACTIVITY"));
@@ -301,7 +301,7 @@ test("authorized search markup exposes coherent ARIA and never contains hidden u
   assert.match(html, /role="combobox"/); assert.match(html, /role="listbox"/); assert.match(html, /role="option"/);
   assert.match(html, /aria-activedescendant=/); assert.match(html, /aria-selected="true"/);
   assert.match(html, /Search COMPASS features/); assert.match(html, /Account › Security/);
-  assert.doesNotMatch(html, /Platform Operations|Retention|Manage appointments|Student affiliations|Create account/);
+  assert.doesNotMatch(html, /Platform Operations|Retention|Manage appointments|Student placements|Create account/);
 });
 
 test("visible trigger names the same palette and shortcut hints are supplemental", () => {

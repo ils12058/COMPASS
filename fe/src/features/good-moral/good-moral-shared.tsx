@@ -125,8 +125,8 @@ export function goodMoralErrorMessage(error: unknown, fallback: string): string 
       return "Submit your Individual Inventory for the current academic year before requesting a certificate.";
     case "good_moral_exit_interview_required":
       return "Complete and submit your Exit Interview before requesting your graduation Good Moral certificate.";
-    case "good_moral_affiliation_required":
-      return "A current college affiliation is required to request this certificate.";
+    case "good_moral_placement_required":
+      return "A current college placement is required to request this certificate.";
     case "current_student_required":
       return "This request is available only to current students.";
     case "graduated_student_required":

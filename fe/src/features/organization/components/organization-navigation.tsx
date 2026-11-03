@@ -36,8 +36,8 @@ export function OrganizationNavigation() {
           <NavLink href="/portal/organization/responsibilities">
             Responsibilities
           </NavLink>
-          <NavLink href="/portal/organization/student-affiliations">
-            Student affiliations
+          <NavLink href="/portal/organization/student-academics">
+            Student placements
           </NavLink>
         </>
       ) : null}

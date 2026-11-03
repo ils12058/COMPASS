@@ -34,7 +34,7 @@ for (const [name, role, capabilities, enter, edit, relationships] of [
   assert.equal(dock.includes("/portal/organization"),enter);
   const commands = portalCommandDestinations(user).map((item) => item.href);
   assert.equal(commands.includes("/portal/organization/responsibilities"),enter && relationships);
-  assert.equal(commands.includes("/portal/organization/student-affiliations"),enter && relationships);
+  assert.equal(commands.includes("/portal/organization/student-academics"),enter && relationships);
 });
 for (const [levels,status,result] of [[[1,3,5],"CONFIGURED","1st, 3rd and 5th Year"],[[1,2,3,4],"CONFIGURED","1st–4th Year"],[[1,3],"CONFIGURED","1st and 3rd Year"],[[10],"CONFIGURED","10th Year"],[null,"PENDING_POLICY","Year levels not set"]]) test(`Actual Year Levels: ${JSON.stringify(levels)}`,()=>assert.equal(levelsLabel(levels,status),result));
 test("Unknown classification is explicit, never inferred from a Program name",()=>assert.equal(academicProgramLabel({...program, name:"Bachelor of Something",academic_classification:null,year_level_policy_status:"PENDING_POLICY",applicable_year_levels:null}),"Classification not set · Year levels not set"));
@@ -86,8 +86,8 @@ for(const code of ["permission_denied","invalid_session","mfa_setup_required","r
 });
 test("Network and server errors require read-only reconciliation",()=>{assert.equal(uncertainCatalogOutcome(new TypeError("Failed to fetch")),true);assert.equal(uncertainCatalogOutcome(new CompassApiError({status:503,body:{},headers:{},method:"POST",url:"/api/v1/organization/campuses"})),true);});
 test("Impact distinguishes blockers/warnings, safe counts and authorized remediation only",()=>{
- const impact={target_id:program.id,resource_version:3,observed_at:"2026-10-26T00:00:00Z",can_deactivate:false,blockers:[{code:"active_student_affiliations",count:7}],warnings:[{code:"draft_inventories",count:2}],counts:{draft_inventories:2},preserved_categories:["submitted_inventory_facts","issued_certificate_snapshots"]};
- const html=renderToStaticMarkup(createElement(CatalogImpact,{impact,canManageRelationships:false}));assert.match(html,/Deactivation blocked/);assert.match(html,/Count: 7/);assert.match(html,/Warnings/);assert.match(html,/Submitted Inventory facts/);assert.doesNotMatch(html,/href=/);const authorized=renderToStaticMarkup(createElement(CatalogImpact,{impact,canManageRelationships:true}));assert.match(authorized,/student-affiliations/);
+ const impact={target_id:program.id,resource_version:3,observed_at:"2026-10-26T00:00:00Z",can_deactivate:false,blockers:[{code:"active_student_placements",count:7}],warnings:[{code:"draft_inventories",count:2}],counts:{draft_inventories:2},preserved_categories:["submitted_inventory_facts","issued_certificate_snapshots"]};
+ const html=renderToStaticMarkup(createElement(CatalogImpact,{impact,canManageRelationships:false}));assert.match(html,/Deactivation blocked/);assert.match(html,/Count: 7/);assert.match(html,/Warnings/);assert.match(html,/Submitted Inventory facts/);assert.doesNotMatch(html,/href=/);const authorized=renderToStaticMarkup(createElement(CatalogImpact,{impact,canManageRelationships:true}));assert.match(authorized,/student-academics/);
 });
 test("Catalog browser suite is registered once per engine in CI discovery",()=>assertBrowserSuiteInCI("organization-catalog.browser.mjs"));
 test("Contract declares all sixteen integrated operations and no Catalog API changes",()=>{

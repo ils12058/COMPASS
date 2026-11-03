@@ -5,7 +5,7 @@ import { coverageFixture, ids, path, recommendation } from './support/case-cover
 
 const { check, finish, shown, hidden } = await createBrowserHarness('cont4-final-security');
 
-for (const change of ['role', 'capability', 'student-affiliation', 'grant-revocation']) {
+for (const change of ['role', 'capability', 'student-placement', 'grant-revocation']) {
   const state = coverageFixture({ handoff: {} });
   await check(`${change}-clears-selected-and-handoff`, path, { handler: state.handler }, async page => {
     await page.getByRole('button', { name: new RegExp(`Review record ${ids.routine}`) }).click();

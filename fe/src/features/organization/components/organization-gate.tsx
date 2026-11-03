@@ -40,3 +40,12 @@ export function OrganizationRelationshipsGate({ children }: { children: ReactNod
     </WorkspaceUnavailable>
   );
 }
+
+export function StudentAcademicRecordsGate({ children }: { children: ReactNode }) {
+  const { user } = usePortalSession();
+  return canManageOrganization(user) ? children : (
+    <WorkspaceUnavailable title="Student Academic Records unavailable">
+      You don’t have access to manage Student placements.
+    </WorkspaceUnavailable>
+  );
+}

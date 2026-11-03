@@ -92,7 +92,7 @@ to have every command.
 | Institution | Organization | `/portal/organization` |
 | Institution | Organization › Structure | `/portal/organization` |
 | Institution | Organization › Responsibilities | `/portal/organization/responsibilities` |
-| Institution | Organization › Student affiliations | `/portal/organization/student-affiliations` |
+| Institution | Organization › Student placements | `/portal/organization/student-academics` |
 | Identity & Access | Accounts | `/portal/accounts` |
 | Identity & Access | Accounts › Create account | `/portal/accounts/new` |
 | Identity & Access | Accounts › Import accounts | `/portal/accounts/import` |
@@ -129,7 +129,7 @@ All rules below additionally require the visible parent from `portalWorkspaceGro
 | Create Announcement / Create Resource | Parent gates (`canManageAnnouncements` / `canManageResources`) |
 | Student Profiling / Graduate Tracer reports | Reports workspace/layout gate (`canAttemptReports`) |
 | Structure | Organization workspace gate plus `canViewOrganizationStructure` |
-| Responsibilities / Student affiliations | Organization workspace/layout gate (`canManageOrganization`) |
+| Responsibilities / Student placements | Organization workspace/layout gate (`canManageOrganization`) |
 | Create account / Import accounts | Accounts workspace/layout gate (`accounts.manage`, inherited rather than duplicated) |
 | Privacy Notices / Privacy & Security Activity | `canViewPrivacyGovernance` |
 | Create Privacy Notice | `canViewPrivacyGovernance` and `canManagePrivacyGovernance` |

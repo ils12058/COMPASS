@@ -6,30 +6,30 @@ export const impactExplanations: Record<CatalogIssueCode, string> = {
   active_child_programs: "Active programs remain. Review them before deactivating this college.",
   active_faculty_affiliations: "Active Faculty accounts still reference this scope. Review their home Colleges in Account Management before deactivation.",
   inactive_faculty_affiliations: "Inactive Faculty references are retained; reactivation requires an active College and Campus.",
-  active_student_affiliations: "Students are still linked to this scope. Their affiliations need review before deactivation.",
+  active_student_placements: "Students are still placed in this scope. Their placements need review before deactivation.",
   counselor_responsibilities: "A Counselor responsibility remains. Remove or update it before deactivation.",
   open_office_threads: "Open guidance conversations depend on this scope. Resolve the affected work before deactivation.",
   pending_operational_followups: "Pending operational Follow-Ups depend on this scope. Review the affected work before deactivation.",
-  inactive_account_affiliations: "Affiliations for inactive accounts are retained. Account reactivation will require usable parent records.",
+  inactive_student_placements: "Placements for inactive accounts are retained. Account reactivation will require usable parent records.",
   draft_inventories: "Draft Inventories are retained. Future selection or submission will need an active Program and valid academic policy.",
   pending_good_moral: "Pending Good Moral requests are retained. Review their existing academic and certificate requirements separately.",
 };
 const countLabels: Record<keyof CatalogDependentCounts, string> = {
   active_child_colleges: "Active colleges", active_child_programs: "Active programs",
   faculty_affiliations: "All Faculty affiliations", active_faculty_affiliations: "Active Faculty affiliations", inactive_faculty_affiliations: "Inactive Faculty affiliations",
-  active_student_affiliations: "Active Student affiliations", child_colleges: "All colleges", child_programs: "All programs",
+  active_student_placements: "Active Student placements", child_colleges: "All colleges", child_programs: "All programs",
   counselor_responsibilities: "Counselor responsibilities", draft_inventories: "Draft Inventories",
-  graduate_tracer_references: "Graduate Tracer references", inactive_account_affiliations: "Inactive-account affiliations",
+  graduate_tracer_references: "Graduate Tracer references", inactive_student_placements: "Inactive-account placements",
   issued_good_moral: "Issued Good Moral certificates", open_office_threads: "Open Office conversations",
   pending_f4: "Pending Good Moral F4 requests", pending_good_moral: "All pending Good Moral requests",
   pending_operational_followups: "Pending operational Follow-Ups", resolved_threads: "Resolved conversations",
-  student_affiliations: "All Student affiliations", submitted_inventories: "Submitted Inventories",
+  student_placements: "All Student placements", submitted_inventories: "Submitted Inventories",
 };
 export function preservedCategoryLabel(value: string) {
   const labels: Record<string, string> = {
     submitted_inventory_facts: "Submitted Inventory facts", issued_certificate_snapshots: "Issued certificate snapshots",
     graduate_tracer_references: "Graduate Tracer references", resolved_guidance_threads: "Resolved guidance conversations",
-    inactive_affiliations: "Inactive affiliations",
+    inactive_placements: "Inactive placements",
   };
   return labels[value] ?? value.replaceAll("_", " ");
 }
@@ -43,8 +43,8 @@ export function CatalogImpact({ impact, canManageRelationships }: { impact: Cata
       <ul className="mt-1 space-y-2">{impact.blockers.map((issue) => <li key={issue.code}>{impactExplanations[issue.code]} <strong>Count: {issue.count}</strong></li>)}</ul>
     </div> : null}
     {impact.warnings.length ? <div><h4 className="font-semibold">Warnings</h4><ul className="mt-1 space-y-2">{impact.warnings.map((issue) => <li key={issue.code}>{impactExplanations[issue.code]} <strong>Count: {issue.count}</strong></li>)}</ul></div> : null}
-    {canManageRelationships && impact.blockers.some((issue) => issue.code === "active_student_affiliations" || issue.code === "counselor_responsibilities") ? <p className="flex flex-wrap gap-3">
-      {impact.blockers.some((issue) => issue.code === "active_student_affiliations") ? <Link className="text-brand underline" href="/portal/organization/student-affiliations">Review Student affiliations</Link> : null}
+    {canManageRelationships && impact.blockers.some((issue) => issue.code === "active_student_placements" || issue.code === "counselor_responsibilities") ? <p className="flex flex-wrap gap-3">
+      {impact.blockers.some((issue) => issue.code === "active_student_placements") ? <Link className="text-brand underline" href="/portal/organization/student-academics">Review Student placements</Link> : null}
       {impact.blockers.some((issue) => issue.code === "counselor_responsibilities") ? <Link className="text-brand underline" href="/portal/organization/responsibilities">Review Responsibilities</Link> : null}
     </p> : null}
     <details><summary className="min-h-11 cursor-pointer py-2 font-semibold">Dependent-record counts</summary>

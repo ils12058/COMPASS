@@ -35,21 +35,35 @@ import {
 } from "@/features/organization/components/organization-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import {
-  getOrganizationListStudentAffiliationsQueryKey,
+  getStudentAcademicsListPlacementsQueryKey,
+  useStudentAcademicsClearPlacement,
+  useStudentAcademicsListPlacements,
+  useStudentAcademicsSetPlacement,
+} from "@/lib/api/generated/student-academics/student-academics";
+import {
   useOrganizationListCampuses,
   useOrganizationListColleges,
-  useOrganizationListStudentAffiliations,
-  useOrganizationRemoveStudentAffiliation,
-  useOrganizationSetStudentAffiliation,
 } from "@/lib/api/generated/organization/organization";
-import type { CollegeSummary, OrganizationPersonSummary } from "@/lib/api/generated/model";
+import type {
+  CollegeSummary,
+  OrganizationPersonSummary,
+  PlacementVerificationStatus,
+} from "@/lib/api/generated/model";
 
 function parsePage(value: string | null): number {
   const page = Number(value);
   return value && Number.isSafeInteger(page) && page > 0 ? page : 1;
 }
 
-export function StudentAffiliationsPage() {
+function VerificationBadge({ status }: { status: PlacementVerificationStatus }) {
+  return (
+    <span className="inline-flex rounded-full border border-border bg-surface-muted px-2 py-0.5 text-xs font-semibold text-muted">
+      {status === "VERIFIED" ? "Verified" : "Unverified"}
+    </span>
+  );
+}
+
+export function StudentAcademicRecordsPage() {
   const { user } = usePortalSession();
   const canViewStructure = user.capabilities.includes("organization.structure.view");
   const router = useRouter();
@@ -124,7 +138,7 @@ export function StudentAffiliationsPage() {
     {},
     { query: { enabled: canViewStructure, retry: false } },
   );
-  const list = useOrganizationListStudentAffiliations(
+  const list = useStudentAcademicsListPlacements(
     {
       page,
       page_size: 20,
@@ -135,8 +149,8 @@ export function StudentAffiliationsPage() {
     { query: { retry: false } },
   );
 
-  const setAffiliation = useOrganizationSetStudentAffiliation();
-  const removeAffiliation = useOrganizationRemoveStudentAffiliation();
+  const setPlacement = useStudentAcademicsSetPlacement();
+  const clearPlacement = useStudentAcademicsClearPlacement();
   const action = useOrganizationAction();
 
   const [dialog, setDialog] = useState<{ student: OrganizationPersonSummary | null } | null>(null);
@@ -153,16 +167,15 @@ export function StudentAffiliationsPage() {
     college: CollegeSummary;
   } | null>(null);
 
-  const selectedAffiliation = useOrganizationListStudentAffiliations(
+  const selectedPlacement = useStudentAcademicsListPlacements(
     { student_id: studentId, page_size: 1 },
     { query: { enabled: Boolean(dialog && studentId), retry: false } },
   );
-  const mutationPending =
-    setAffiliation.isPending || removeAffiliation.isPending;
+  const mutationPending = setPlacement.isPending || clearPlacement.isPending;
 
   async function refresh() {
     await queryClient.invalidateQueries({
-      queryKey: getOrganizationListStudentAffiliationsQueryKey(),
+      queryKey: getStudentAcademicsListPlacementsQueryKey(),
     });
   }
 
@@ -178,12 +191,12 @@ export function StudentAffiliationsPage() {
     setTargetCollegeId(currentCollegeId);
   }
 
-  function reviewAffiliation() {
+  function reviewPlacement() {
     if (!selectedStudent || !targetCollegeId) return;
     const newCollege = activeColleges.find((college) => college.id === targetCollegeId);
     if (!newCollege) return;
     const currentCollege =
-      selectedAffiliation.data?.data.items[0]?.college ??
+      selectedPlacement.data?.data.items[0]?.college ??
       list.data?.data.items.find((item) => item.student.id === selectedStudent.id)?.college ??
       null;
     if (currentCollege?.id === newCollege.id) return;
@@ -192,39 +205,39 @@ export function StudentAffiliationsPage() {
     action.setError(null);
   }
 
-  async function saveAffiliation() {
+  async function savePlacement() {
     if (!review) return;
     const target = review;
     const response = await action.run(
       () =>
-        setAffiliation.mutateAsync({
+        setPlacement.mutateAsync({
           studentId: target.student.id,
           data: { college_id: target.newCollege.id },
         }),
-      "The Student affiliation could not be saved.",
+      "The Student placement could not be saved.",
       {
         onStepUpRequired: () => setReview(null),
       },
     );
     if (!response) return;
     setReview(null);
-    action.setNotice(target.currentCollege ? "Student affiliation changed." : "Student affiliation set.");
+    action.setNotice(target.currentCollege ? "Student placement updated." : "Student placement assigned.");
     await refresh();
   }
 
-  async function confirmRemove() {
+  async function confirmClear() {
     if (!removal) return;
     const target = removal;
     const response = await action.run(
-      () => removeAffiliation.mutateAsync({ studentId: target.student.id }),
-      "The Student affiliation could not be removed.",
+      () => clearPlacement.mutateAsync({ studentId: target.student.id }),
+      "The Student placement could not be cleared.",
       {
         onStepUpRequired: () => setRemoval(null),
       },
     );
     if (!response) return;
     setRemoval(null);
-    action.setNotice("Student affiliation removed.");
+    action.setNotice("Student placement cleared.");
     await refresh();
   }
 
@@ -274,25 +287,25 @@ export function StudentAffiliationsPage() {
   const listPage = list.data?.data;
 
   return (
-    <section aria-labelledby="student-affiliations-heading">
+    <section aria-labelledby="student-academic-records-heading">
       <PageHeading
-        title="Student affiliations"
-        headingId="student-affiliations-heading"
+        title="Student Academic Records"
+        headingId="student-academic-records-heading"
         description={
           !canViewStructure
-            ? "Organization structure is unavailable to this account, so College choices for new or changed affiliations are unavailable. Existing affiliations are still listed."
+            ? "Organization structure is unavailable to this account, so College choices for new or changed placements are unavailable. Current placements are still listed."
             : undefined
         }
         action={
           structureReady ? (
-            <PageAction icon={Link2} label="Set" labelDetail="affiliation" onClick={() => openSet()} />
+            <PageAction icon={Link2} label="Assign" labelDetail="placement" onClick={() => openSet()} />
           ) : null
         }
       />
 
       {/* The search applies as you type and the structure choices apply on change. */}
       <FloatingListTools
-        label="Student affiliation search and filters"
+        label="Student placement search and filters"
         filterCount={[campusId, collegeId].filter(Boolean).length}
         clear={hasFilters ? (
           <Button variant="quiet" onClick={() => {
@@ -304,9 +317,9 @@ export function StudentAffiliationsPage() {
           </Button>
         ) : undefined}
         filters={<>
-        <FilterField label="Campus" htmlFor="affiliation-campus-filter">
+        <FilterField label="Campus" htmlFor="placement-campus-filter">
           <Select
-            id="affiliation-campus-filter"
+            id="placement-campus-filter"
             value={campusId}
             disabled={!structureReady}
             onChange={(event) =>
@@ -321,9 +334,9 @@ export function StudentAffiliationsPage() {
             ))}
           </Select>
         </FilterField>
-        <FilterField label="College" htmlFor="affiliation-college-filter">
+        <FilterField label="College" htmlFor="placement-college-filter">
           <Select
-            id="affiliation-college-filter"
+            id="placement-college-filter"
             value={collegeId}
             disabled={!structureReady}
             onChange={(event) =>
@@ -343,55 +356,55 @@ export function StudentAffiliationsPage() {
         <ListSearchField
           id="organization-search" maxLength={200} value={searchValue}
           onChange={(event) => setSearchDraft((draft) => ({ ...draft, value: event.target.value }))}
-          label="Search student affiliations"
+          label="Search student placements"
           placeholder="Search by student name or institutional ID"
         />
       </FloatingListTools>
 
       {canViewStructure && (campuses.isError || colleges.isError) ? (
         <Notice role="alert" tone="warning" className="mb-5">
-          Structure choices could not be loaded. The affiliation list remains
-          available, but set/change controls are unavailable.
+          Structure choices could not be loaded. The placement list remains
+          available, but assign/update controls are unavailable.
         </Notice>
       ) : null}
       {action.notice && !dialog && !removal ? action.messages : null}
 
-      <Panel aria-labelledby="student-affiliations-results-heading">
+      <Panel aria-labelledby="student-placements-heading">
         <PanelHeader
-          title="Current affiliations"
-          titleId="student-affiliations-results-heading"
+          title="Student placements"
+          titleId="student-placements-heading"
           context={
             list.isFetching && !list.isPending
-              ? "Refreshing Student affiliations…"
+              ? "Refreshing Student placements…"
               : listPage && !list.isError
                 ? describeResultPage({
                     count: listPage.items.length,
                     page: listPage.page,
                     hasNext: listPage.has_next,
-                    noun: { one: "Student affiliation", other: "Student affiliations" },
+                    noun: { one: "Student placement", other: "Student placements" },
                     filtered: hasFilters,
                   })
                 : null
           }
         />
         {list.isPending ? (
-          <TableSkeleton label="Loading student affiliations…" />
+          <TableSkeleton label="Loading student placements…" />
         ) : list.isError ? (
           <PanelQueryError
             error={list.error}
-            fallback="Student affiliations could not be loaded."
+            fallback="Student placements could not be loaded."
             onRetry={() => void list.refetch()}
           />
         ) : list.data.data.items.length === 0 ? (
           <PanelMessage>
             {hasFilters
-              ? "No student affiliations match the current filters."
-              : "No student affiliations have been recorded."}
+              ? "No student placements match the current filters."
+              : "No student placements have been recorded."}
           </PanelMessage>
         ) : (
           <div className={dataTable.scroll}>
-            <table className={`${dataTable.table} min-w-[42rem]`}>
-              <caption className="sr-only">Student affiliations</caption>
+            <table className={`${dataTable.table} min-w-[52rem]`}>
+              <caption className="sr-only">Student placements</caption>
               <thead className={dataTable.head}>
                 <tr>
                   <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>
@@ -405,6 +418,9 @@ export function StudentAffiliationsPage() {
                   </th>
                   <th scope="col" className={dataTable.headerCell}>
                     Campus
+                  </th>
+                  <th scope="col" className={dataTable.headerCell}>
+                    Verification
                   </th>
                   <th scope="col" className={`${dataTable.headerCell} text-right`}>
                     Action
@@ -430,6 +446,9 @@ export function StudentAffiliationsPage() {
                     </td>
                     <td className={dataTable.cell}>{item.college.name}</td>
                     <td className={dataTable.cell}>{item.college.campus.name}</td>
+                    <td className={dataTable.cell}>
+                      <VerificationBadge status={item.verification_status} />
+                    </td>
                     <td className={`${dataTable.cell} py-2`}>
                       <div className="flex justify-end gap-1">
                         {structureReady ? (
@@ -439,7 +458,7 @@ export function StudentAffiliationsPage() {
                               openSet(item.student, item.college.id)
                             }
                           >
-                            Change affiliation
+                            Update placement
                           </Button>
                         ) : null}
                         <Button
@@ -451,7 +470,7 @@ export function StudentAffiliationsPage() {
                             })
                           }
                         >
-                          Remove
+                          Clear placement
                         </Button>
                       </div>
                     </td>
@@ -466,7 +485,7 @@ export function StudentAffiliationsPage() {
             className="border-brand-line px-4 py-3 sm:px-5"
             page={list.data.data.page}
             hasNext={list.data.data.has_next}
-            label="Student affiliation pagination"
+            label="Student placement pagination"
             onPageChange={movePage}
           />
         ) : null}
@@ -483,9 +502,9 @@ export function StudentAffiliationsPage() {
         }}
       >
         <DialogContent className="max-w-xl" dismissible={!mutationPending}>
-          <DialogTitle>{dialog?.student ? "Change affiliation" : "Set affiliation"}</DialogTitle>
+          <DialogTitle>{dialog?.student ? "Update placement" : "Assign placement"}</DialogTitle>
           <DialogDescription>
-            Choose a Student and College. The current and new affiliation will be reviewed before it is saved.
+            Choose a Student and College. The current and new placement will be reviewed before it is saved.
           </DialogDescription>
           <div className="mt-6 space-y-6">
             {dialog?.student ? (
@@ -502,7 +521,7 @@ export function StudentAffiliationsPage() {
               </div>
             ) : (
               <PeoplePicker
-                id="student-affiliation-person-search"
+                id="student-placement-person-search"
                 label="Student"
                 role="STUDENT"
                 enabled={Boolean(dialog)}
@@ -515,9 +534,9 @@ export function StudentAffiliationsPage() {
               />
             )}
             <div>
-              <Label htmlFor="student-affiliation-college">College</Label>
+              <Label htmlFor="student-placement-college">College</Label>
               <Select
-                id="student-affiliation-college"
+                id="student-placement-college"
                 required
                 className="mt-2"
                 value={targetCollegeId}
@@ -532,9 +551,9 @@ export function StudentAffiliationsPage() {
               </Select>
             </div>
           </div>
-          {selectedAffiliation.isError ? (
+          {selectedPlacement.isError ? (
             <p role="alert" className="mt-4 text-sm text-danger">
-              The Student&apos;s current affiliation could not be verified. Refresh and try again.
+              The Student&apos;s current placement could not be verified. Refresh and try again.
             </p>
           ) : null}
           {action.messages}
@@ -547,13 +566,13 @@ export function StudentAffiliationsPage() {
                 mutationPending ||
                 !selectedStudent ||
                 !targetCollegeId ||
-                selectedAffiliation.isPending ||
-                selectedAffiliation.isError ||
-                selectedAffiliation.data?.data.items[0]?.college.id === targetCollegeId
+                selectedPlacement.isPending ||
+                selectedPlacement.isError ||
+                selectedPlacement.data?.data.items[0]?.college.id === targetCollegeId
               }
-              onClick={reviewAffiliation}
+              onClick={reviewPlacement}
             >
-              Review affiliation
+              Review placement
             </Button>
           </div>
         </DialogContent>
@@ -561,15 +580,15 @@ export function StudentAffiliationsPage() {
 
       <ConsequentialActionDialog
         open={review !== null}
-        title={review ? `${review.currentCollege ? "Change" : "Set"} ${review.student.full_name}'s College affiliation?` : "Review Student affiliation"}
-        confirmLabel={review?.currentCollege ? "Change affiliation" : "Set affiliation"}
-        pendingLabel={review?.currentCollege ? "Changing…" : "Setting…"}
+        title={review ? `${review.currentCollege ? "Update" : "Assign"} ${review.student.full_name}'s College placement?` : "Review Student placement"}
+        confirmLabel={review?.currentCollege ? "Update placement" : "Assign placement"}
+        pendingLabel={review?.currentCollege ? "Updating…" : "Assigning…"}
         pending={mutationPending}
         error={action.error}
         onOpenChange={(open) => {
           if (!open) setReview(null);
         }}
-        onConfirm={() => void saveAffiliation()}
+        onConfirm={() => void savePlacement()}
       >
         {review ? (
           <>
@@ -578,17 +597,17 @@ export function StudentAffiliationsPage() {
               <div><dt className="text-muted">Current College</dt><dd className="font-semibold text-ink">{review.currentCollege?.name ?? "Not assigned"}</dd></div>
               <div><dt className="text-muted">New College</dt><dd className="font-semibold text-ink">{review.newCollege.name}</dd></div>
             </dl>
-            {review.currentCollege ? <p>Changing this affiliation replaces the current College relationship.</p> : null}
-            <p>The College affiliation affects default institutional Counselor and routing behavior. Historical records are not rewritten by this change.</p>
+            {review.currentCollege ? <p>Updating this placement replaces the current College relationship.</p> : null}
+            <p>The College placement affects default institutional Counselor and routing behavior. Historical records are not rewritten by this change.</p>
           </>
         ) : null}
       </ConsequentialActionDialog>
 
       <ConsequentialActionDialog
         open={removal !== null}
-        title={removal ? `Remove ${removal.student.full_name}'s College affiliation?` : "Remove Student affiliation?"}
-        confirmLabel="Remove affiliation"
-        pendingLabel="Removing…"
+        title={removal ? `Clear ${removal.student.full_name}'s College placement?` : "Clear Student placement?"}
+        confirmLabel="Clear placement"
+        pendingLabel="Clearing…"
         pending={mutationPending}
         error={action.error}
         variant="danger"
@@ -598,12 +617,12 @@ export function StudentAffiliationsPage() {
             action.setError(null);
           }
         }}
-        onConfirm={() => void confirmRemove()}
+        onConfirm={() => void confirmClear()}
       >
         <p>
           {removal
-            ? `${removal.student.full_name} will no longer be affiliated with ${removal.college.name} until a new College is assigned. Default institutional routing may change. Historical records are not deleted.`
-            : "The current College affiliation will be removed."}
+            ? `${removal.student.full_name} will no longer be placed in ${removal.college.name} until a new College is assigned. Default institutional routing may change. Historical records are not deleted.`
+            : "The current College placement will be cleared."}
         </p>
       </ConsequentialActionDialog>
 

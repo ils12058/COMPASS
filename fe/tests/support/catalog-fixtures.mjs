@@ -1,7 +1,7 @@
 // Synthetic ORG-2 wire shapes. No live backend or institutional grants.
 import { user } from "./ui-hierarchy-fixtures.mjs";
 export const ids={campus:"10000000-0000-4000-8000-000000000001",college:"20000000-0000-4000-8000-000000000001",program:"30000000-0000-4000-8000-000000000001"};
-const countKeys=["active_child_colleges","active_child_programs","active_student_affiliations","child_colleges","child_programs","counselor_responsibilities","draft_inventories","graduate_tracer_references","inactive_account_affiliations","issued_good_moral","open_office_threads","pending_f4","pending_good_moral","pending_operational_followups","resolved_threads","student_affiliations","submitted_inventories"];
+const countKeys=["active_child_colleges","active_child_programs","active_student_placements","child_colleges","child_programs","counselor_responsibilities","draft_inventories","graduate_tracer_references","inactive_student_placements","issued_good_moral","open_office_threads","pending_f4","pending_good_moral","pending_operational_followups","resolved_threads","student_placements","submitted_inventories"];
 export function catalogFixture({catalog=true,relationships=false,role="COUNSELOR",readonly=false}={}){
  const campus={id:ids.campus,code:"MAIN",name:"Main Campus",is_active:true,resource_version:1};
  const college={id:ids.college,code:"COMP",name:"College of Computing",campus,is_active:true,resource_version:1};
@@ -20,6 +20,7 @@ export function catalogFixture({catalog=true,relationships=false,role="COUNSELOR
  }
  const handler=async({route,reply,request,pathname,method,url})=>{
   if(pathname==="/api/v1/auth/session"){await reply(session());return true;}
+  if(pathname==="/api/v1/student-academics/placements"){await reply({items:[],page:1,page_size:20,has_next:false});return true;}
   if(pathname==="/api/v1/auth/mfa/totp/verify" && method==="POST"){state.verified=true;await reply({verified:true});return true;}
   if(pathname==="/api/v1/auth/mfa"){await reply({enabled:true,verified_recently:state.verified});return true;}
   if(!pathname.startsWith("/api/v1/organization/"))return false;
@@ -34,10 +35,10 @@ export function catalogFixture({catalog=true,relationships=false,role="COUNSELOR
     if(action==="impact"){
       state.impactReads++;
       const blocked=state.blocked||(state.stalePreview&&state.impactReads>=2);
-      const blockers=blocked?[{code:collection==="campuses"?"active_child_colleges":collection==="colleges"?"active_student_affiliations":"open_office_threads",count:2}]:[];
+      const blockers=blocked?[{code:collection==="campuses"?"active_child_colleges":collection==="colleges"?"active_student_placements":"open_office_threads",count:2}]:[];
       const counts=Object.fromEntries(countKeys.map(k=>[k,0]));counts.draft_inventories=2;counts.submitted_inventories=9;
       for(const b of blockers)counts[b.code]=b.count;
-      await reply({target_id:id,resource_version:record.resource_version,observed_at:new Date().toISOString(),can_deactivate:!blocked,blockers,warnings:[{code:"draft_inventories",count:2}],counts,preserved_categories:["submitted_inventory_facts","issued_certificate_snapshots","graduate_tracer_references","resolved_guidance_threads","inactive_affiliations"]});return true;
+      await reply({target_id:id,resource_version:record.resource_version,observed_at:new Date().toISOString(),can_deactivate:!blocked,blockers,warnings:[{code:"draft_inventories",count:2}],counts,preserved_categories:["submitted_inventory_facts","issued_certificate_snapshots","graduate_tracer_references","resolved_guidance_threads","inactive_placements"]});return true;
     }
     if(action==="history"){
       const page=Number(url.searchParams.get("page")??1);const pageSize=Number(url.searchParams.get("page_size")??10);const all=state.histories[id]??[];

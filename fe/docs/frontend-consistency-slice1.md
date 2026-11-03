@@ -300,7 +300,7 @@ rendering and its separation from the Back link. The affected browser suites and
 * `/portal/operations` — `@/features/guidance-operations/guidance-operations-page`.
 * `/portal/organization` — `@/features/organization/components/organization-gate`, `@/features/organization/structure/organization-structure-page`.
 * `/portal/organization/responsibilities` — `@/features/organization/responsibilities/responsibilities-page`.
-* `/portal/organization/student-affiliations` — `@/features/organization/components/organization-shared`, `@/features/organization/student-affiliations/student-affiliations-page`.
+* `/portal/organization/student-academics` — `@/features/organization/components/organization-shared`, `@/features/student-academics/student-academic-records/student-academic-records-page`.
 * `/portal` — `@/features/portal/home/portal-home`.
 * `/portal/platform/activity` — `@/features/platform/activity/platform-activity-page`.
 * `/portal/platform/email-delivery` — `@/features/platform/email-delivery/platform-email-delivery-page`.
