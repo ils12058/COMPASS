@@ -1,7 +1,8 @@
 # SAR-2A — Canonical Student Academic Placement Cutover
 
-**Status:** Destructive backend and frontend cutover implemented. **Not merged, deployed or
-activated against any shared environment.**
+**Status:** Destructive backend and frontend cutover implemented. **Merged into
+`integration/ux15-modernization` and pushed to `origin`; not deployed or activated against any
+shared environment.**
 **Branch:** `codex/sar-2a-canonical-placement`.
 **Date:** 2026-11-03.
 **Base:** `9109aa83b761086337826d9d1404e0ba8c8c2be3` (SAR-1 commit on
@@ -36,7 +37,8 @@ Not implemented by this slice:
   create placements from scratch.
 - A new feature flag. The new path is live immediately.
 - Any change to `FacultyAffiliation` or Faculty code.
-- Any production or staging contact, deployment, gate activation, push, PR or merge.
+- Any production or staging contact, deployment or gate activation. The cutover was merged into
+  `integration/ux15-modernization` and pushed to `origin` without a PR.
 
 `current_program` and `placement_effective_at` stay present in the model and remain null. They have
 no writer in this slice.

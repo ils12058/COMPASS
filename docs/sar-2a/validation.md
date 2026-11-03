@@ -19,18 +19,18 @@ call with synthetic fixtures and run against a local Next server.
 | `uv run python manage.py makemigrations --check --dry-run --settings=tests.settings` | PASS — no changes detected |
 | `uv run python manage.py export_openapi --output ../contracts/openapi.json --settings=tests.settings` | PASS — exported |
 | `uv run pytest -q tests/test_student_academic_records.py` | PASS — 16 passed |
-| `uv run pytest -q` (full suite) | See final-gate note below |
-
-The first complete full-suite run after the cutover reported 6393 passed and 10 failed. All ten
-failures were confined to migration bookkeeping and fixtures: the canonical migration manifest was
-missing the four new migrations, the handoff rehearsal read the renamed continuity column through the
-ORM, and one frozen seed fingerprint included the changed review copy. The manifest entries were
-added, the rehearsal now reads the state-dependent column with raw SQL, and the fingerprint reverses
-the single copy change. Every affected file was then re-run in full: `test_canonical_baseline.py`
-(5 passed), `test_handoff_migrations.py` (5 passed), `test_staging_deployment.py` (41 passed) and
-`test_staging_seed.py` (50 passed). The final full-suite run on the merged integration branch is the
-closing gate; its result is recorded in section 5.
 | `python3 .github/scripts/backend_ci.py verify` | PASS — 211 test files bundled, each runs exactly once across 6 shards |
+| `uv run pytest -q` (full suite) | Not re-run on the final tree — explicitly excluded; see section 5 |
+
+The last complete full-suite run, made before the final migration and fixture fixes, reported 6393
+passed and 10 failed. All ten failures were confined to migration bookkeeping and fixtures: the
+canonical migration manifest was missing the four new migrations, the handoff rehearsal read the
+renamed continuity column through the ORM, and one frozen seed fingerprint included the changed
+review copy. The manifest entries were added, the rehearsal now reads the state-dependent column
+with raw SQL, and the fingerprint reverses the single copy change. Every affected file was then
+re-run in full: `test_canonical_baseline.py` (5 passed), `test_handoff_migrations.py` (5 passed),
+`test_staging_deployment.py` (41 passed) and `test_staging_seed.py` (50 passed). The full suite was
+not re-run on the final tree, by explicit instruction.
 
 ## 2. Frontend
 
@@ -83,9 +83,10 @@ The full suite exercises the swapped consumers. Focused suites relevant to the p
 
 ## 5. Not validated
 
-- The closing full-suite run is executed on `integration/ux15-modernization` after the merge; its
-  result is appended here when it finishes.
-- No merge, push, PR, deployment, staging seed run or production contact.
+- The full-suite rerun on the final tree was explicitly excluded; the focused suites and the four
+  remediated files above are the final backend test evidence.
+- The cutover was merged into `integration/ux15-modernization` and pushed to `origin`; no PR,
+  deployment, staging seed run or production/staging contact followed.
 - No manual browser session; only the synthetic Playwright suites above.
 - WebKit browser regression was not run.
 - No data migration or backfill rehearsal, because neither exists in this slice.

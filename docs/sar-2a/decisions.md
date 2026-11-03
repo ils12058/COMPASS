@@ -5,7 +5,8 @@ recorded there as **Open**, with institutional owners.
 **Status of this file:** SAR-2A applies the task's **provisional engineering defaults** so the
 canonical cutover can be implemented without inventing institutional policy. These are not UCN, GCO,
 Registrar, DPO, Records or IT approvals. The cutover is destructive to the repository only; it was
-not merged, deployed or run against a shared environment.
+merged into `integration/ux15-modernization` and pushed, but not deployed or run against a shared
+environment.
 
 ## 1. Applied defaults — D-SAR-01 to D-SAR-08
 
@@ -78,4 +79,5 @@ graduation, enrollment, verification, imports, display, history and institutiona
 - No `student_academics.*` capability, role grant or designation grant was added.
 - `FacultyAffiliation` and all Faculty code are untouched.
 - No data migration, backfill, import or seed rewrite of historical facts.
-- No production or staging contact, deployment, push, PR or merge.
+- No production or staging contact, deployment or gate activation. The merge and push were limited
+  to `integration/ux15-modernization`.
