@@ -12,7 +12,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
-from compass.organization.models import StudentAffiliation
+from compass.student_academics.models import StudentAcademicProfile
 from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
@@ -72,11 +72,11 @@ def _require_scoped_student(*, actor: User, student_id: UUID) -> User:
     scope = resolve_operational_responsibility_scope(actor)
     if not scope.college_ids:
         raise StudentSupportNotFound("The requested Student was not found.")
-    if not StudentAffiliation.objects.filter(
+    if not StudentAcademicProfile.objects.filter(
         student_id=student.pk,
-        college_id__in=scope.college_ids,
-        college__is_active=True,
-        college__campus__is_active=True,
+        current_college_id__in=scope.college_ids,
+        current_college__is_active=True,
+        current_college__campus__is_active=True,
     ).exists():
         raise StudentSupportNotFound("The requested Student was not found.")
     return student

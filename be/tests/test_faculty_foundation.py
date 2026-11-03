@@ -35,8 +35,9 @@ from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import RecentMFARequired, create_auth_session
 from compass.organization.catalog_services import _impact
-from compass.organization.models import Campus, College, FacultyAffiliation, StudentAffiliation
+from compass.organization.models import Campus, College, FacultyAffiliation
 from compass.organization.services import resolve_default_counselor_for_student
+from compass.student_academics.models import StudentAcademicProfile
 
 pytestmark = pytest.mark.django_db
 
@@ -347,20 +348,22 @@ def test_api_provisioning_csrf_versioning_and_no_self_affiliation_writer(setup_f
     )
 
 
-def test_student_affiliation_and_cross_college_routing_remain_independent(setup_faculty):
+def test_student_placement_and_cross_college_routing_remain_independent(setup_faculty):
     args, college = setup_faculty
     student = person("STUDENT", "student")
     student_college = College.objects.create(
         campus=college.campus, code="STUDENT", name="Student College"
     )
-    original = StudentAffiliation.objects.create(student=student, college=student_college)
+    original = StudentAcademicProfile.objects.create(
+        student=student, current_college=student_college
+    )
     before = resolve_default_counselor_for_student(student)
     faculty = provision(args, college)
     assign(args, faculty, student_college, 1)
     original.refresh_from_db()
-    assert original.college_id == student_college.pk
+    assert original.current_college_id == student_college.pk
     assert resolve_default_counselor_for_student(student) == before
-    assert not StudentAffiliation.objects.filter(student=faculty).exists()
+    assert not StudentAcademicProfile.objects.filter(student=faculty).exists()
 
 
 def test_faculty_catalog_impact_api_includes_strict_counts_and_blockers(setup_faculty):

@@ -15,12 +15,13 @@ from compass.accounts.policy import FACULTY_CAPABILITY_CEILING
 from compass.accounts.services import effective_capabilities
 from compass.audit.models import AuditEvent
 from compass.common.rate_limit import RateLimitUnavailable
-from compass.organization.models import FacultyAffiliation, StudentAffiliation
+from compass.organization.models import FacultyAffiliation
 from compass.referrals import faculty_policy, faculty_services
 from compass.referrals.confidential_content import read_referral_confidential_content
 from compass.referrals.faculty_policy import FacultyReferralError
 from compass.referrals.models import Referral, ReferralAction, ReferralReferenceCounter
 from compass.referrals.services import ReferralCreationConflict, ReferralNotFound
+from compass.student_academics.models import StudentAcademicProfile
 from tests.faculty_referral_helpers import confirm, make_world, seal, submit
 
 pytestmark = pytest.mark.django_db
@@ -202,7 +203,7 @@ def test_exact_confirmation_uniform_negatives_no_account_or_placement_leak(world
         world.student.role = Role.objects.get(code="FACULTY")
         world.student.save(update_fields=["role"])
     elif invalid == "no_placement":
-        StudentAffiliation.objects.filter(student=world.student).delete()
+        StudentAcademicProfile.objects.filter(student=world.student).delete()
     elif invalid == "retired_college":
         world.ccms.is_active = False
         world.ccms.save(update_fields=["is_active"])
@@ -295,7 +296,7 @@ def test_confirmation_never_bypasses_current_account_affiliation_or_student_stat
         world.issued.session.revoked_at = timezone.now()
         world.issued.session.save(update_fields=["revoked_at"])
     elif change == "student_placement":
-        StudentAffiliation.objects.filter(student=world.student).delete()
+        StudentAcademicProfile.objects.filter(student=world.student).delete()
     elif change == "student_id":
         world.student.institutional_id = "CHANGED-ID"
         world.student.save(update_fields=["institutional_id", "updated_at"])

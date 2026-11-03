@@ -50,11 +50,11 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.referrals.models import ReferralAction, ReferralActionType
 from compass.referrals.services import create_referral, record_action, void_referral
 from compass.routine_interviews.models import RoutineInterview
+from compass.student_academics.models import StudentAcademicProfile
 
 
 def sync_policy() -> None:
@@ -201,8 +201,8 @@ def setup_scope():
     StaffSupervision.objects.create(staff=gss, supervisor=counselor_a)
     student_a = make_user("student.a@example.edu", "STUDENT")
     student_b = make_user("student.b@example.edu", "STUDENT")
-    StudentAffiliation.objects.create(student=student_a, college=college_a)
-    StudentAffiliation.objects.create(student=student_b, college=college_b)
+    StudentAcademicProfile.objects.create(student=student_a, current_college=college_a)
+    StudentAcademicProfile.objects.create(student=student_b, current_college=college_b)
     return counselor_a, counselor_b, gss, student_a, student_b
 
 
@@ -361,7 +361,9 @@ def test_counselor_gss_and_head_issuer_and_scope_rules():
         campus=College.objects.get(code="A").campus, code="FALLBACK", name="Fallback"
     )
     fallback_student = make_user("fallback.student@example.edu", "STUDENT")
-    StudentAffiliation.objects.create(student=fallback_student, college=fallback_college)
+    StudentAcademicProfile.objects.create(
+        student=fallback_student, current_college=fallback_college
+    )
     referral = create_referral_for(
         head_staff, fallback_student, key="head-staff-ref", fingerprint="9" * 64
     )

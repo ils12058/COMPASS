@@ -26,14 +26,15 @@ from compass.notifications.email_presentation import (
 from compass.notifications.models import EmailDelivery, EmailDeliveryStatus, Notification
 from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
-from compass.organization.models import StaffSupervision, StudentAffiliation
+from compass.organization.models import StaffSupervision
+from compass.student_academics.models import StudentAcademicProfile
 from tests.test_appointments import (
     active_service,
     auth_client,
     configure_availability,
     context,
-    create_affiliation,
     create_list_appointment,
+    create_placement,
     future_local_start,
     make_user,
     sync_policy,
@@ -205,7 +206,7 @@ def test_notification_ownership_never_grants_record_link(case, change):
 
 def test_staff_link_tracks_current_college_and_supervision(case):
     student, counselor, item = case
-    create_affiliation(student, counselor)
+    create_placement(student, counselor)
     staff = make_user("staff@example.test", "GUIDANCE_SERVICES_STAFF")
     supervision = StaffSupervision.objects.create(staff=staff, supervisor=counselor)
     notice = notification_for(item, staff)
@@ -219,7 +220,7 @@ def test_staff_link_tracks_current_college_and_supervision(case):
         == EmailPresentationReason.RECIPIENT_DENIED
     )
     StaffSupervision.objects.create(staff=staff, supervisor=counselor)
-    StudentAffiliation.objects.filter(student=student).delete()
+    StudentAcademicProfile.objects.filter(student=student).delete()
     assert resolve_notification_email_presentation(notice).target is None
 
 
@@ -474,7 +475,7 @@ def test_linked_delivery_keeps_concurrent_claim_protection(case, monkeypatch):
 @pytest.mark.parametrize("change", ["supervision", "college"])
 def test_final_check_requeries_staff_scope(case, change, monkeypatch):
     student, counselor, item = case
-    create_affiliation(student, counselor)
+    create_placement(student, counselor)
     staff = make_user("scope-staff@example.test", "GUIDANCE_SERVICES_STAFF")
     StaffSupervision.objects.create(staff=staff, supervisor=counselor)
     notice = notification_for(item, staff)
@@ -485,7 +486,7 @@ def test_final_check_requeries_staff_scope(case, change, monkeypatch):
         if change == "supervision":
             StaffSupervision.objects.filter(staff=staff).delete()
         else:
-            StudentAffiliation.objects.filter(student=student).delete()
+            StudentAcademicProfile.objects.filter(student=student).delete()
         return rendered
 
     monkeypatch.setattr(delivery_module, "render_notification_email", render_then_revoke)

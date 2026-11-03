@@ -45,10 +45,10 @@ from compass.organization.models import (
     Campus,
     College,
     CounselorResponsibility,
-    StudentAffiliation,
 )
 from compass.service_catalog.models import Service, ServiceDeliveryMode
 from compass.service_catalog.services import create_service, set_service_active, update_service
+from compass.student_academics.models import StudentAcademicProfile
 
 
 def sync_policy() -> None:
@@ -181,14 +181,14 @@ def create_list_appointment(
     )
 
 
-def create_affiliation(student: User, counselor: User):
+def create_placement(student: User, counselor: User):
     campus = Campus.objects.create(code=f"C{Campus.objects.count() + 1}", name="Campus")
     college = College.objects.create(
         campus=campus,
         code=f"COL{College.objects.count() + 1}",
         name="College",
     )
-    StudentAffiliation.objects.create(student=student, college=college)
+    StudentAcademicProfile.objects.create(student=student, current_college=college)
     CounselorResponsibility.objects.create(college=college, counselor=counselor)
     return college
 
@@ -370,7 +370,7 @@ def test_default_counselor_uses_organization_resolver_and_unresolved_default_is_
     provider = make_user("provider@example.edu", "COUNSELOR")
     service = active_service(actor)
     configure_availability(actor, provider)
-    create_affiliation(student, provider)
+    create_placement(student, provider)
     start = future_local_start()
 
     item = create_student_appointment(
@@ -421,7 +421,7 @@ def test_default_routing_does_not_silently_fallback_when_default_is_time_unavail
         windows=[weekly()],
         context=context(actor),
     )
-    create_affiliation(student, default)
+    create_placement(student, default)
     start = future_local_start(hour=10)
 
     with pytest.raises(AppointmentTimeUnavailable):
@@ -456,7 +456,7 @@ def test_explicit_cross_scope_counselor_is_allowed_and_gss_is_not_student_select
             windows=[weekly()],
             context=context(actor),
         )
-    create_affiliation(student, default)
+    create_placement(student, default)
     start = future_local_start()
 
     item = create_student_appointment(
@@ -817,7 +817,7 @@ def test_eligible_counselors_are_cross_scope_bounded_and_default_is_marked():
     other = make_user("other@example.edu", "COUNSELOR")
     make_user("inactive@example.edu", "COUNSELOR", active=False)
     service = active_service(actor)
-    create_affiliation(student, default)
+    create_placement(student, default)
 
     rows = list_eligible_counselors(
         student=student,

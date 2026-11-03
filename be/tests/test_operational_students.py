@@ -15,9 +15,9 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.referrals.services import list_eligible_students as list_referral_students
+from compass.student_academics.models import StudentAcademicProfile
 
 
 def list_handled_students(*, actor, **kwargs):
@@ -62,7 +62,7 @@ def test_institution_wide_picker_requires_active_current_lifecycle(list_students
     disabled.is_active = False
     disabled.save(update_fields=["is_active", "updated_at"])
 
-    # None of these Students has an affiliation; institution-wide eligibility must use lifecycle.
+    # None of these Students has a placement; institution-wide eligibility must use lifecycle.
     page = list_students(actor=head, page_size=50)
     assert {item.id for item in page.items} == {current_a.pk, current_b.pk}
     assert all(item.college is None for item in page.items)
@@ -114,10 +114,10 @@ def test_college_picker_preserves_scope_and_projection_after_lifecycle_filter(li
     outside = _user("outside@example.edu")
     graduated = _lifecycle(_user("graduate@example.edu"), StudentLifecycleStatus.GRADUATED)
     former = _lifecycle(_user("former@example.edu"), StudentLifecycleStatus.FORMER)
-    StudentAffiliation.objects.create(student=current, college=college)
-    StudentAffiliation.objects.create(student=outside, college=other)
-    StudentAffiliation.objects.create(student=graduated, college=college)
-    StudentAffiliation.objects.create(student=former, college=college)
+    StudentAcademicProfile.objects.create(student=current, current_college=college)
+    StudentAcademicProfile.objects.create(student=outside, current_college=other)
+    StudentAcademicProfile.objects.create(student=graduated, current_college=college)
+    StudentAcademicProfile.objects.create(student=former, current_college=college)
 
     page = list_students(actor=counselor, page_size=50)
     assert [item.id for item in page.items] == [current.pk]
@@ -151,7 +151,7 @@ def test_gss_head_picker_uses_only_explicit_and_valid_fallback_colleges(list_stu
     CounselorResponsibility.objects.create(college=colleges[2], counselor=other)
     students = [_user(f"picker-{i}@example.edu") for i in range(3)]
     for student, college in zip(students, colleges, strict=True):
-        StudentAffiliation.objects.create(student=student, college=college)
+        StudentAcademicProfile.objects.create(student=student, current_college=college)
 
     def listed(actor):
         return {

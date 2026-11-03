@@ -12,7 +12,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
-from compass.organization.models import StudentAffiliation
+from compass.student_academics.models import StudentAcademicProfile
 
 from . import policy
 from .errors import FollowUpInvalid, FollowUpNotFound
@@ -111,10 +111,12 @@ def eligible_assignees(
         candidates = candidates.filter(pk=actor.pk)
     else:
         college_id = (
-            StudentAffiliation.objects.filter(
-                student=student, college__is_active=True, college__campus__is_active=True
+            StudentAcademicProfile.objects.filter(
+                student=student,
+                current_college__is_active=True,
+                current_college__campus__is_active=True,
             )
-            .values_list("college_id", flat=True)
+            .values_list("current_college_id", flat=True)
             .first()
         )
         head = Q(designation_assignments__designation__code="HEAD_GUIDANCE_COUNSELOR")

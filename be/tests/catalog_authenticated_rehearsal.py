@@ -59,7 +59,8 @@ def main():
     from compass.authentication.crypto import decrypt_totp_secret, encrypt_totp_secret
     from compass.authentication.models import AuthSession, TOTPFactor
     from compass.organization import catalog_services as cs
-    from compass.organization.models import Campus, College, Program, StudentAffiliation
+    from compass.organization.models import Campus, College, Program
+    from compass.student_academics.models import StudentAcademicProfile
 
     if action == "prepare":
         from django.db import transaction
@@ -128,7 +129,7 @@ def main():
         )
         s = User.objects.get(pk=state["actors"]["student"]["id"])
         configure_year(User.objects.get(pk=state["actors"]["both"]["id"]))
-        StudentAffiliation.objects.create(student=s, college=k)
+        StudentAcademicProfile.objects.create(student=s, current_college=k)
         ensure_current_inventory(student=s, context=AuditContext.user(s))
         replace_current_inventory(
             student=s, values=minimum_normalized_inventory_values(program_id=p.pk, year_level=1)

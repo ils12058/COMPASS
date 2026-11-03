@@ -24,8 +24,8 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     Program,
-    StudentAffiliation,
 )
+from compass.student_academics.models import StudentAcademicProfile
 from tests.catalog_test_helpers import authority, hierarchy, manager, run_serialized_race, student
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -40,7 +40,7 @@ def work(settings):
     Program.objects.filter(pk=p.pk).update(is_active=False)
     counselor, _ = manager("COUNSELOR", grant=False)
     s = student()
-    StudentAffiliation.objects.create(student=s, college=k)
+    StudentAcademicProfile.objects.create(student=s, current_college=k)
     CounselorResponsibility.objects.create(counselor=counselor, college=k)
     return auth, c, k, p, counselor, s
 
@@ -93,7 +93,7 @@ def test_catalog_change_first_serializes_new_operational_work_without_lost_relat
         lambda: new_work(kind, counselor, s),
     )
     assert not isinstance(item, Exception)
-    assert StudentAffiliation.objects.get(student=s).college_id == k.pk
+    assert StudentAcademicProfile.objects.get(student=s).current_college_id == k.pk
     impact = cs.get_catalog_impact(actor=auth["actor"], model=College, target_id=k.pk)
     assert (
         impact.counts[
@@ -126,9 +126,9 @@ def test_resolved_completed_work_and_encrypted_history_survive_retirement(work, 
     CounselorResponsibility.objects.filter(college=k).delete()
     impact = cs.get_catalog_impact(actor=auth["actor"], model=College, target_id=k.pk)
     assert impact.can_deactivate
-    assert impact.counts["inactive_account_affiliations"] == 1
+    assert impact.counts["inactive_student_placements"] == 1
     cs.set_college_active(**auth, target_id=k.pk, expected_resource_version=1, is_active=False)
-    assert StudentAffiliation.objects.get(student=s).college_id == k.pk
+    assert StudentAcademicProfile.objects.get(student=s).current_college_id == k.pk
     if kind == "office":
         assert GuidanceThread.objects.get(pk=item.pk).status == "RESOLVED"
         assert item.messages.get().body_ciphertext == ciphertext

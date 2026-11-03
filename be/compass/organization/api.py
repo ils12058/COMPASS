@@ -44,13 +44,10 @@ from compass.organization.services import (
     list_colleges,
     list_people,
     list_programs,
-    list_student_affiliations,
     remove_counselor_responsibility,
     remove_staff_supervisor,
-    remove_student_affiliation,
     set_counselor_responsibility,
     set_staff_supervisor,
-    set_student_affiliation,
 )
 
 router = Router(tags=["organization"])
@@ -131,10 +128,6 @@ class StaffSupervisorRequest(StrictSchema):
     supervisor_id: UUID
 
 
-class StudentAffiliationRequest(StrictSchema):
-    college_id: UUID
-
-
 class CounselorResponsibilityResponse(StrictSchema):
     college: CollegeSummary
     counselor: OrganizationPersonSummary
@@ -151,18 +144,6 @@ class StaffSupervisionResponse(StrictSchema):
 
 class StaffSupervisionListResponse(StrictSchema):
     items: list[StaffSupervisionResponse]
-
-
-class StudentAffiliationResponse(StrictSchema):
-    student: OrganizationPersonSummary
-    college: CollegeSummary
-
-
-class StudentAffiliationListResponse(StrictSchema):
-    items: list[StudentAffiliationResponse]
-    page: int
-    page_size: int
-    has_next: bool
 
 
 class RemovedResponse(StrictSchema):
@@ -476,78 +457,6 @@ def staff_supervisor_remove(request, staff_id: UUID):
 
 
 @router.get(
-    "/student-affiliations",
-    response=response_with_errors(StudentAffiliationListResponse, 401, 403, 422),
-    auth=session_auth,
-    operation_id="organizationListStudentAffiliations",
-)
-def student_affiliations(
-    request,
-    student_id: UUID | None = None,
-    college_id: UUID | None = None,
-    campus_id: UUID | None = None,
-    search: str | None = None,
-    page: int = 1,
-    page_size: int = DEFAULT_PAGE_SIZE,
-):
-    _require(request, "organization.manage")
-    try:
-        result = list_student_affiliations(
-            student_id=student_id,
-            college_id=college_id,
-            campus_id=campus_id,
-            search=search,
-            page=page,
-            page_size=page_size,
-        )
-    except OrganizationError as exc:
-        _raise(exc)
-    return {
-        "items": [
-            {"student": _person(item.student), "college": _college(item.college)}
-            for item in result.items
-        ],
-        "page": result.page,
-        "page_size": result.page_size,
-        "has_next": result.has_next,
-    }
-
-
-@router.put(
-    "/students/{student_id}/affiliation",
-    response=response_with_errors(StudentAffiliationResponse, 401, 403, 404, 409, 422),
-    auth=session_auth,
-    operation_id="organizationSetStudentAffiliation",
-)
-def student_affiliation_set(request, student_id: UUID, payload: StudentAffiliationRequest):
-    _require(request, "organization.manage", recent_mfa=True)
-    try:
-        item = set_student_affiliation(
-            student_id=student_id,
-            college_id=payload.college_id,
-            context=_context(request),
-        )
-    except OrganizationError as exc:
-        _raise(exc)
-    return {"student": _person(item.student), "college": _college(item.college)}
-
-
-@router.delete(
-    "/students/{student_id}/affiliation",
-    response=response_with_errors(RemovedResponse, 401, 403, 404, 409, 422),
-    auth=session_auth,
-    operation_id="organizationRemoveStudentAffiliation",
-)
-def student_affiliation_remove(request, student_id: UUID):
-    _require(request, "organization.manage", recent_mfa=True)
-    try:
-        removed = remove_student_affiliation(student_id=student_id, context=_context(request))
-    except OrganizationError as exc:
-        _raise(exc)
-    return {"removed": removed}
-
-
-@router.get(
     "/people",
     response=response_with_errors(PersonListResponse, 401, 403, 422),
     auth=session_auth,
@@ -620,11 +529,11 @@ class CatalogIssueCode(StrEnum):
     ACTIVE_CHILD_PROGRAMS = "active_child_programs"
     ACTIVE_FACULTY_AFFILIATIONS = "active_faculty_affiliations"
     INACTIVE_FACULTY_AFFILIATIONS = "inactive_faculty_affiliations"
-    ACTIVE_STUDENT_AFFILIATIONS = "active_student_affiliations"
+    ACTIVE_STUDENT_PLACEMENTS = "active_student_placements"
     COUNSELOR_RESPONSIBILITIES = "counselor_responsibilities"
     OPEN_OFFICE_THREADS = "open_office_threads"
     PENDING_OPERATIONAL_FOLLOWUPS = "pending_operational_followups"
-    INACTIVE_ACCOUNT_AFFILIATIONS = "inactive_account_affiliations"
+    INACTIVE_STUDENT_PLACEMENTS = "inactive_student_placements"
     DRAFT_INVENTORIES = "draft_inventories"
     PENDING_GOOD_MORAL = "pending_good_moral"
 
@@ -639,12 +548,12 @@ class CatalogDependentCounts(StrictSchema):
     active_child_colleges: int
     child_programs: int
     active_child_programs: int
-    student_affiliations: int
+    student_placements: int
     faculty_affiliations: int
     active_faculty_affiliations: int
     inactive_faculty_affiliations: int
-    active_student_affiliations: int
-    inactive_account_affiliations: int
+    active_student_placements: int
+    inactive_student_placements: int
     counselor_responsibilities: int
     draft_inventories: int
     submitted_inventories: int

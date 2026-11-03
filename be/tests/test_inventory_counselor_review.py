@@ -28,10 +28,10 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     Program,
-    StudentAffiliation,
 )
 from compass.reports.services import build_student_profiling_report, resolve_report_access_scope
 from compass.service_catalog.services import set_service_active
+from compass.student_academics.models import StudentAcademicProfile
 from compass.student_support.services import StudentSupportNotFound, get_student_support_context
 from tests.canonical_service_helpers import legacy_counseling_service
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
@@ -100,7 +100,7 @@ def make_org(code: str) -> tuple[Campus, College, Program]:
 
 
 def affiliate(student: User, college: College, counselor: User | None = None) -> None:
-    StudentAffiliation.objects.create(student=student, college=college)
+    StudentAcademicProfile.objects.create(student=student, current_college=college)
     if counselor is not None:
         CounselorResponsibility.objects.create(college=college, counselor=counselor)
 
@@ -339,7 +339,7 @@ def test_inventory_roster_scope_missing_filters_search_and_draft_privacy():
         (a2_student, college_a2),
         (b1_student, college_b1),
     ):
-        StudentAffiliation.objects.create(student=student, college=college)
+        StudentAcademicProfile.objects.create(student=student, current_college=college)
 
     submitted = submit_inventory(student=submitted_student, program=program_a1)
     ensure_current_inventory(student=draft_student, context=context(draft_student))

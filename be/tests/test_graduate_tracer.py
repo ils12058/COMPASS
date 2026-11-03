@@ -176,7 +176,6 @@ def test_graduate_tracer_is_focused_domain_without_alumni_or_cross_domain_prereq
     assert {
         "inventory",
         "academic_year",
-        "student_affiliation",
         "appointment",
         "counseling_encounter",
         "exit_interview",

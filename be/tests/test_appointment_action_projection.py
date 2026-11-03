@@ -19,8 +19,8 @@ from compass.ecounseling.models import ECounselingRoom
 from tests.test_appointments import (
     active_service,
     auth_client,
-    create_affiliation,
     create_list_appointment,
+    create_placement,
     csrf,
     make_user,
     sync_policy,
@@ -48,7 +48,7 @@ def setup_participants(prefix: str):
     manager = make_user(f"{prefix}-manager@example.edu", "COUNSELOR")
     # Service codes allow only A-Z, 0-9, and underscore; email-style prefixes may contain hyphens.
     service = active_service(admin, code=f"{prefix.upper().replace('-', '_')}_SERVICE")
-    create_affiliation(student, manager)
+    create_placement(student, manager)
     return student, manager, service
 
 

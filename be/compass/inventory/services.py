@@ -429,14 +429,14 @@ def _scoped_students(actor: User):
     queryset = User.objects.filter(
         is_active=True,
         role__code="STUDENT",
-        organization_student_affiliation__college__is_active=True,
-        organization_student_affiliation__college__campus__is_active=True,
-    ).select_related("role", "organization_student_affiliation__college__campus")
+        student_academic_profile__current_college__is_active=True,
+        student_academic_profile__current_college__campus__is_active=True,
+    ).select_related("role", "student_academic_profile__current_college__campus")
     if college_ids is None:
         return queryset
     if not college_ids:
         return queryset.none()
-    return queryset.filter(organization_student_affiliation__college_id__in=college_ids)
+    return queryset.filter(student_academic_profile__current_college_id__in=college_ids)
 
 
 def _student_in_scope(actor: User, student_id: UUID) -> bool:
@@ -1538,7 +1538,7 @@ def list_inventory_students(
         if student_id is not None:
             queryset = queryset.filter(pk=student_id)
         if college_id is not None:
-            queryset = queryset.filter(organization_student_affiliation__college_id=college_id)
+            queryset = queryset.filter(student_academic_profile__current_college_id=college_id)
         queryset = _identity_search(queryset, term)
 
         annual = "individual_inventories"
@@ -1609,7 +1609,7 @@ def list_inventory_students(
     if student_id is not None:
         queryset = queryset.filter(student_id=student_id)
     if college_id is not None:
-        queryset = queryset.filter(student__organization_student_affiliation__college_id=college_id)
+        queryset = queryset.filter(student__student_academic_profile__current_college_id=college_id)
     if program_id is not None:
         queryset = queryset.filter(program_id=program_id)
     if year_level is not None:

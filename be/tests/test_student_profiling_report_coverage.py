@@ -14,7 +14,7 @@ from compass.inventory.models import (
     InventoryFamilyMember,
     InventoryGeographicLocation,
 )
-from compass.organization.models import AcademicYear, StudentAffiliation
+from compass.organization.models import AcademicYear
 from compass.reports import services as report_services
 from compass.reports.pdf import render_student_profiling_pdf
 from compass.reports.services import (
@@ -26,6 +26,7 @@ from compass.reports.services import (
     resolve_report_filters,
 )
 from compass.reports.xlsx import render_student_profiling_xlsx
+from compass.student_academics.models import StudentAcademicProfile
 from tests.inventory_encryption_helpers import create_inventory_row
 from tests.test_student_profiling_reports import (
     auth_client,
@@ -169,7 +170,7 @@ def test_current_coverage_distinguishes_submitted_draft_missing_and_ignores_prog
         submitted=False,
     )
     for student in (submitted_student, draft_student, missing_student):
-        StudentAffiliation.objects.create(student=student, college=college)
+        StudentAcademicProfile.objects.create(student=student, current_college=college)
 
     report = build_student_profiling_report(
         access_scope=GLOBAL_REPORT_ACCESS_SCOPE, program_id=program.pk, year_level=2
@@ -192,7 +193,7 @@ def test_current_coverage_inventory_existence_is_not_lost_to_profile_scope_filte
     _, authorized_college, _ = make_organization("COV-AUTH")
     _, _, outside_program = make_organization("COV-PROFILE")
     student = make_user("coverage-existing-outside-profile@example.edu")
-    StudentAffiliation.objects.create(student=student, college=authorized_college)
+    StudentAcademicProfile.objects.create(student=student, current_college=authorized_college)
     make_inventory(
         student=student,
         academic_year=year,
@@ -217,15 +218,15 @@ def test_current_coverage_inventory_existence_is_not_lost_to_profile_scope_filte
 
 
 @pytest.mark.django_db
-def test_current_coverage_campus_college_scope_uses_guidance_affiliation_without_mutation():
+def test_current_coverage_campus_college_scope_uses_guidance_placement_without_mutation():
     sync_policy()
     AcademicYear.objects.create(label="2026-2027", is_current=True)
     campus_a, college_a, _ = make_organization("SCOPE-A")
     _, college_b, _ = make_organization("SCOPE-B")
     first = make_user("scope-a@example.edu")
     second = make_user("scope-b@example.edu")
-    StudentAffiliation.objects.create(student=first, college=college_a)
-    StudentAffiliation.objects.create(student=second, college=college_b)
+    StudentAcademicProfile.objects.create(student=first, current_college=college_a)
+    StudentAcademicProfile.objects.create(student=second, current_college=college_b)
 
     report = build_student_profiling_report(
         access_scope=GLOBAL_REPORT_ACCESS_SCOPE, campus_id=campus_a.pk, college_id=college_a.pk
@@ -235,7 +236,7 @@ def test_current_coverage_campus_college_scope_uses_guidance_affiliation_without
     assert coverage["missing_count"] == 1
     assert {"campus_id", "college_id"} <= set(coverage["applied_filters"])
     first.refresh_from_db()
-    assert first.organization_student_affiliation.college_id == college_a.pk
+    assert first.student_academic_profile.current_college_id == college_a.pk
 
 
 @pytest.mark.django_db
@@ -373,22 +374,22 @@ def test_scoped_report_sees_assigned_colleges_and_only_explicit_global_sees_all(
 
 
 @pytest.mark.django_db
-def test_reconciliation_exposes_current_affiliation_that_differs_from_inventory_program():
+def test_reconciliation_exposes_current_placement_that_differs_from_inventory_program():
     """A Student affiliated with one College whose Inventory records another College's Program."""
 
     sync_policy()
     year = AcademicYear.objects.create(label="2026-2027", is_current=True)
-    revision = make_revision("reconcile-affiliation")
+    revision = make_revision("reconcile-placement")
     _, ccms, ccms_program = make_organization("RC-CCMS")
     _, cas, cas_program = make_organization("RC-CAS")
     bea = make_user("reconcile-bea@example.edu")
-    StudentAffiliation.objects.create(student=bea, college=ccms)
+    StudentAcademicProfile.objects.create(student=bea, current_college=ccms)
     make_inventory(student=bea, academic_year=year, revision=revision, program=cas_program)
     matched = make_user("reconcile-matched@example.edu")
-    StudentAffiliation.objects.create(student=matched, college=ccms)
+    StudentAcademicProfile.objects.create(student=matched, current_college=ccms)
     make_inventory(student=matched, academic_year=year, revision=revision, program=ccms_program)
     graduated = make_user("reconcile-graduated@example.edu")
-    StudentAffiliation.objects.create(student=graduated, college=ccms)
+    StudentAcademicProfile.objects.create(student=graduated, current_college=ccms)
     make_inventory(student=graduated, academic_year=year, revision=revision, program=ccms_program)
     graduated.student_lifecycle_status = StudentLifecycleStatus.GRADUATED
     graduated.save(update_fields=["student_lifecycle_status", "updated_at"])
@@ -428,7 +429,7 @@ def test_reconciliation_counts_profile_filters_outside_current_coverage_classifi
     _, college, program = make_organization("RC-FILTER")
     for index, level in enumerate((1, 1, 2)):
         student = make_user(f"reconcile-filter-{index}@example.edu")
-        StudentAffiliation.objects.create(student=student, college=college)
+        StudentAcademicProfile.objects.create(student=student, current_college=college)
         make_inventory(
             student=student,
             academic_year=year,
@@ -504,7 +505,7 @@ def test_scoped_counselor_and_head_reconciliation_follow_their_own_scope():
         ((college_a, program_a), (college_a, program_b), (college_b, program_b))
     ):
         student = make_user(f"reconcile-scope-{index}@example.edu")
-        StudentAffiliation.objects.create(student=student, college=college)
+        StudentAcademicProfile.objects.create(student=student, current_college=college)
         make_inventory(student=student, academic_year=year, revision=revision, program=program)
 
     scoped = build_student_profiling_report(

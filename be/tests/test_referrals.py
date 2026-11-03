@@ -27,7 +27,6 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.referrals.confidential_content import read_referral_confidential_content
 from compass.referrals.models import Referral, ReferralAction, ReferralReferenceCounter
@@ -49,6 +48,7 @@ from compass.referrals.services import (
     void_referral,
 )
 from compass.routine_interviews.models import RoutineInterview
+from compass.student_academics.models import StudentAcademicProfile
 
 
 def sync_policy() -> None:
@@ -121,8 +121,8 @@ def setup_scope():
     student_a = make_user("student.a@example.edu", "STUDENT")
     student_b = make_user("student.b@example.edu", "STUDENT")
     unaffiliated = make_user("student.none@example.edu", "STUDENT")
-    StudentAffiliation.objects.create(student=student_a, college=college_a)
-    StudentAffiliation.objects.create(student=student_b, college=college_b)
+    StudentAcademicProfile.objects.create(student=student_a, current_college=college_a)
+    StudentAcademicProfile.objects.create(student=student_b, current_college=college_b)
     return counselor_a, counselor_b, gss, student_a, student_b, unaffiliated
 
 
@@ -962,7 +962,7 @@ def test_head_referral_oversight_is_not_inherited_by_supervised_staff():
         campus=College.objects.get(code="A").campus, code="FALLBACK", name="Fallback"
     )
     student = make_user("scope-fallback@example.edu", "STUDENT")
-    StudentAffiliation.objects.create(student=student, college=fallback)
+    StudentAcademicProfile.objects.create(student=student, current_college=fallback)
     c = create_for(staff, student, key="staff-c", fingerprint="c" * 64)
     assert {item.pk for item in list_referrals(actor=head).items} == {a.pk, b.pk, c.pk}
     assert {item.pk for item in list_referrals(actor=staff).items} == {c.pk}

@@ -37,8 +37,8 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     Program,
-    StudentAffiliation,
 )
+from compass.student_academics.models import StudentAcademicProfile
 from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
@@ -135,7 +135,7 @@ def make_inventory(
 
 
 def affiliate(student: User, college: College, *, counselor: User | None = None) -> None:
-    StudentAffiliation.objects.create(student=student, college=college)
+    StudentAcademicProfile.objects.create(student=student, current_college=college)
     if counselor is not None:
         CounselorResponsibility.objects.create(college=college, counselor=counselor)
 
@@ -231,7 +231,7 @@ def test_head_can_view_any_current_submitted_student_support_context():
 
 
 @pytest.mark.django_db
-def test_ordinary_counselor_scope_is_current_affiliation_and_responsibility_only():
+def test_ordinary_counselor_scope_is_current_placement_and_responsibility_only():
     sync_policy()
     counselor = make_user("support-scope-counselor@example.edu", "COUNSELOR")
     year = AcademicYear.objects.create(label="2026-2027", is_current=True)

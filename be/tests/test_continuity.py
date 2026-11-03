@@ -33,9 +33,10 @@ from compass.counseling.continuity_models import CounselorCaseContinuityScope as
 from compass.counseling.continuity_policy import ApprovedContinuityPolicy, ContinuityError
 from compass.counseling.continuity_sources import SelectedSource
 from compass.counseling.models import CounselingEncounter
-from compass.organization.models import Campus, College, StudentAffiliation
+from compass.organization.models import Campus, College
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.models import Service
+from compass.student_academics.models import StudentAcademicProfile
 
 pytestmark = pytest.mark.django_db(transaction=True)
 CAPS = ["view", "request", "approve", "revoke", "read_selected"]
@@ -75,7 +76,7 @@ def case(monkeypatch):
     campus = Campus.objects.create(code="SYNTHETIC", name="Synthetic")
     college = College.objects.create(campus=campus, code="A", name="A")
     college_b = College.objects.create(campus=campus, code="B", name="B")
-    StudentAffiliation.objects.create(student=student, college=college)
+    StudentAcademicProfile.objects.create(student=student, current_college=college)
     now = timezone.now()
     service = Service.objects.create(code="SYNTHETIC", name="Synthetic")
     encounter = CounselingEncounter.objects.create(
@@ -470,8 +471,8 @@ def test_effective_eligibility_revalidated(case, monkeypatch, change):
             user=case.receiver, capability__code="counseling.continuity.read_selected"
         ).update(expires_at=case.now - timedelta(seconds=1))
     elif change == "transfer":
-        StudentAffiliation.objects.filter(student=case.student).update(
-            college=case.college_b, updated_at=timezone.now()
+        StudentAcademicProfile.objects.filter(student=case.student).update(
+            current_college=case.college_b, updated_at=timezone.now()
         )
     elif change == "former":
         User.objects.filter(pk=case.student.pk).update(student_lifecycle_status="FORMER")
@@ -913,8 +914,8 @@ def test_policy_expiry_and_approval_scope_changed(case, monkeypatch):
     with expect("policy_unconfirmed"):
         decide(case, g)
     monkeypatch.setattr(continuity_policy, "get_approved_policy", lambda: case.policy)
-    StudentAffiliation.objects.filter(student=case.student).update(
-        college=case.college_b, updated_at=timezone.now()
+    StudentAcademicProfile.objects.filter(student=case.student).update(
+        current_college=case.college_b, updated_at=timezone.now()
     )
     with expect("student_changed"):
         decide(case, g)

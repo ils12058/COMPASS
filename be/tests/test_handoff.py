@@ -153,7 +153,7 @@ def test_unsupported_role_even_with_overrides(workflow_case, role, monkeypatch):
         "expired_capability",
         "role",
         "student",
-        "affiliation",
+        "placement",
         "policy",
         "workflow",
         "manifest",
@@ -191,8 +191,10 @@ def test_receiver_invalidations_before_decrypt(workflow_case, monkeypatch, chang
     elif change == "student":
         c.student.is_active = False
         c.student.save(update_fields=["is_active"])
-    elif change == "affiliation":
-        selected.StudentAffiliation.objects.filter(student=c.student).update(college=c.college_b)
+    elif change == "placement":
+        selected.StudentAcademicProfile.objects.filter(student=c.student).update(
+            current_college=c.college_b
+        )
     elif change == "policy":
         c.control.operational = None
     elif change == "workflow":
@@ -767,13 +769,14 @@ def test_original_departure_preserves_submitted_receiver_access(workflow_case):
 
 
 def test_office_original_metadata_revalidates_current_scope(workflow_case):
-    from compass.organization.models import Campus, College, StudentAffiliation
+    from compass.organization.models import Campus, College
+    from compass.student_academics.models import StudentAcademicProfile
 
     c = workflow_case
     g = request(c, actor=c.head)
     draft(c, g)
     campus = Campus.objects.create(code="OTHER", name="Synthetic other")
     college = College.objects.create(campus=campus, code="OTHER", name="Synthetic other")
-    StudentAffiliation.objects.filter(student=c.student).update(college=college)
+    StudentAcademicProfile.objects.filter(student=c.student).update(current_college=college)
     with pytest.raises(ContinuityError):
         op(c, g, "metadata")

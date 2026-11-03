@@ -150,6 +150,10 @@ def pre_cont1b_catalog_snapshot(value):
             .replace("Student Session Summary", "Shared Summary")
             .replace("student session summaries", "shared summaries")
             .replace("student session summary", "shared summary")
+            .replace(
+                "Review responsibilities and Student placements.",
+                "Review responsibilities and Student affiliations.",
+            )
         )
     return value
 

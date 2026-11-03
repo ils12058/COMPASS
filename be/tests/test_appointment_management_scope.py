@@ -41,9 +41,9 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.service_catalog.services import create_service, set_service_active
+from compass.student_academics.models import StudentAcademicProfile
 from tests.canonical_service_helpers import legacy_counseling_service
 
 
@@ -125,7 +125,7 @@ def make_college(code: str, *, campus_active: bool = True, college_active: bool 
 
 
 def affiliate(student: User, college: College) -> None:
-    StudentAffiliation.objects.create(student=student, college=college)
+    StudentAcademicProfile.objects.create(student=student, current_college=college)
 
 
 def appointment(*, reference: str, student: User, provider: User, service):

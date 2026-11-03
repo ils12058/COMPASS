@@ -37,7 +37,6 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     Program,
-    StudentAffiliation,
 )
 from compass.routine_interviews.content import read_evaluation, read_intake
 from compass.routine_interviews.matching import routine_interview_encounter_matches
@@ -61,6 +60,7 @@ from compass.routine_interviews.services import (
     submit_my_intake,
 )
 from compass.service_catalog.services import create_service, set_service_active
+from compass.student_academics.models import StudentAcademicProfile
 from tests.canonical_service_helpers import legacy_counseling_service
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
@@ -297,7 +297,9 @@ def test_direct_creation_has_no_fake_appointment_and_persistent_idempotency(entr
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     configure_year(admin)
     inventory = submit_inventory(student, student)
-    StudentAffiliation.objects.create(student=student, college=inventory.program.college)
+    StudentAcademicProfile.objects.create(
+        student=student, current_college=inventory.program.college
+    )
     counselor_campus = Campus.objects.create(
         code="DIRECT-COUNSELOR", name="Direct Counselor Campus"
     )
@@ -1130,7 +1132,9 @@ def test_direct_options_and_student_candidates_preserve_create_direct_authority_
     submitted = submit_inventory(student, student, course="BSIS", major="Data")
     service = create_counseling_service(admin, modes=["ONLINE"])
 
-    StudentAffiliation.objects.create(student=student, college=submitted.program.college)
+    StudentAcademicProfile.objects.create(
+        student=student, current_college=submitted.program.college
+    )
     other_campus = Campus.objects.create(code="OTHER-CAMP", name="Other Campus")
     other_college = College.objects.create(
         campus=other_campus,

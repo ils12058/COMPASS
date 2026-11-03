@@ -33,7 +33,7 @@ from compass.routine_interviews.services import (
     submit_my_intake,
 )
 from compass.service_catalog.services import update_service
-from tests.test_appointments import create_affiliation
+from tests.test_appointments import create_placement
 from tests.test_routine_interviews import (
     auth_client,
     configure_year,
@@ -56,7 +56,7 @@ def setup_online_appointment(prefix: str):
     configure_year(admin)
     submit_inventory(student, student)
     service = create_counseling_service(admin)
-    create_affiliation(student, counselor)
+    create_placement(student, counselor)
     appointment = make_appointment(
         student=student,
         counselor=counselor,

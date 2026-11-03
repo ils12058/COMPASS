@@ -47,9 +47,9 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.service_catalog.models import Service
+from compass.student_academics.models import StudentAcademicProfile
 
 
 def sync_policy() -> None:
@@ -1307,7 +1307,7 @@ def test_institutional_officer_transition_does_not_bypass_organization_relations
     student = make_user(email="related-student@example.edu", role="STUDENT")
     CounselorResponsibility.objects.create(college=counselor_college, counselor=counselor)
     StaffSupervision.objects.create(staff=staff, supervisor=counselor)
-    StudentAffiliation.objects.create(student=student, college=student_college)
+    StudentAcademicProfile.objects.create(student=student, current_college=student_college)
 
     for target in (counselor, staff, student):
         response = client.put(
@@ -1327,7 +1327,7 @@ def test_institutional_officer_transition_does_not_bypass_organization_relations
     assert student.role.code == "STUDENT"
     assert CounselorResponsibility.objects.filter(counselor=counselor).exists()
     assert StaffSupervision.objects.filter(staff=staff).exists()
-    assert StudentAffiliation.objects.filter(student=student).exists()
+    assert StudentAcademicProfile.objects.filter(student=student).exists()
 
 
 @pytest.mark.django_db

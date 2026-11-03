@@ -58,8 +58,8 @@ from compass.notifications.policy import NotificationEvent
 from compass.notifications.services import create_notification_for_event
 from compass.organization.academic_years import get_current_academic_year
 from compass.organization.integrity import catalog_dependent_write
-from compass.organization.models import StudentAffiliation
 from compass.organization.program_policy import AcademicClassification, get_program_policy
+from compass.student_academics.models import StudentAcademicProfile
 
 from .models import (
     CANONICAL_SEMESTERS,
@@ -134,7 +134,7 @@ class GoodMoralExitInterviewRequired(GoodMoralError):
     pass
 
 
-class GoodMoralAffiliationRequired(GoodMoralError):
+class GoodMoralPlacementRequired(GoodMoralError):
     pass
 
 
@@ -527,21 +527,22 @@ def _require_f4_bachelors_inventory(inventory) -> str:
     return F4_YEAR_LEVEL_LABELS[academic.year_level]
 
 
-def _current_affiliation(student: User) -> StudentAffiliation:
-    affiliation = (
-        StudentAffiliation.objects.select_related("college__campus")
+def _current_placement(student: User) -> StudentAcademicProfile:
+    profile = (
+        StudentAcademicProfile.objects.select_related("current_college__campus")
         .filter(student_id=student.pk)
         .first()
     )
     if (
-        affiliation is None
-        or not affiliation.college.is_active
-        or not affiliation.college.campus.is_active
+        profile is None
+        or profile.current_college is None
+        or not profile.current_college.is_active
+        or not profile.current_college.campus.is_active
     ):
-        raise GoodMoralAffiliationRequired(
-            "A current active College affiliation is required for Current Student Good Moral."
+        raise GoodMoralPlacementRequired(
+            "A current active College placement is required for Current Student Good Moral."
         )
-    return affiliation
+    return profile
 
 
 def _graduation_prerequisite(student: User, academic_year_id: UUID):
@@ -717,7 +718,7 @@ def list_eligible_students(
             StudentLifecycleStatus.GRADUATED,
             StudentLifecycleStatus.FORMER,
         ),
-    ).select_related("organization_student_affiliation__college__campus")
+    ).select_related("student_academic_profile__current_college__campus")
     if term:
         rows = rows.filter(
             Q(institutional_id__icontains=term)
@@ -795,7 +796,7 @@ def _create_current_student(
         graduation_opportunity, exit_interview = _graduation_prerequisite(
             locked_student, inventory.academic_year_id
         )
-        affiliation = _current_affiliation(locked_student)
+        placement = _current_placement(locked_student)
         profile = get_person_profile_context(locked_student)
 
         try:
@@ -818,7 +819,7 @@ def _create_current_student(
                     else None,
                     applicant_name_snapshot=profile.full_name.strip(),
                     year_level_snapshot=inventory_year,
-                    college_snapshot=affiliation.college.name.strip(),
+                    college_snapshot=placement.current_college.name.strip(),
                     course_snapshot=inventory.course_currently_enrolled.strip(),
                     major_snapshot=inventory.major.strip(),
                     semester_snapshot=term,

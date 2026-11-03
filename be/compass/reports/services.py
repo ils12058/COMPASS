@@ -1008,16 +1008,16 @@ def _coverage(
         )
         applied = ["academic_year_id"]
         if college_ids is not None:
-            eligible = eligible.filter(organization_student_affiliation__college_id__in=college_ids)
+            eligible = eligible.filter(student_academic_profile__current_college_id__in=college_ids)
             applied.append("access_scope")
         if filters.campus is not None:
             eligible = eligible.filter(
-                organization_student_affiliation__college__campus_id=filters.campus.pk
+                student_academic_profile__current_college__campus_id=filters.campus.pk
             )
             applied.append("campus_id")
         if filters.college is not None:
             eligible = eligible.filter(
-                organization_student_affiliation__college_id=filters.college.pk
+                student_academic_profile__current_college_id=filters.college.pk
             )
             applied.append("college_id")
         eligible_ids = list(eligible.distinct().values_list("id", flat=True))

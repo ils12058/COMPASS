@@ -43,9 +43,9 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.service_catalog.models import Service
+from compass.student_academics.models import StudentAcademicProfile
 from tests.test_notifications import auth_client
 
 pytestmark = pytest.mark.django_db
@@ -84,8 +84,8 @@ def world():
     ]
     for college, handler in zip(colleges[:3], [counselor, other, head], strict=True):
         CounselorResponsibility.objects.create(college=college, counselor=handler)
-    StudentAffiliation.objects.create(student=student, college=colleges[0])
-    StudentAffiliation.objects.create(student=other_student, college=colleges[1])
+    StudentAcademicProfile.objects.create(student=student, current_college=colleges[0])
+    StudentAcademicProfile.objects.create(student=other_student, current_college=colleges[1])
     StaffSupervision.objects.create(staff=gss, supervisor=counselor)
     StaffSupervision.objects.create(staff=head_gss, supervisor=head)
     service = Service.objects.create(code="COUNSELING", name="Counseling")
@@ -177,8 +177,8 @@ def test_office_conceals_other_workload_and_role(world, actor):
 
 @pytest.mark.parametrize("college_index", [2, 3])
 def test_head_and_supervised_gss_see_assigned_and_unassigned_colleges(world, college_index):
-    StudentAffiliation.objects.filter(student=world.student).update(
-        college=world.colleges[college_index]
+    StudentAcademicProfile.objects.filter(student=world.student).update(
+        current_college=world.colleges[college_index]
     )
     thread, _ = office(world)
     for actor in [world.student, world.head, world.head_gss]:
@@ -194,18 +194,18 @@ def test_head_and_supervised_gss_see_assigned_and_unassigned_colleges(world, col
         College.objects.filter(is_active=True, campus__is_active=True).values_list("pk", flat=True)
     )
     assert returned == set(
-        StudentAffiliation.objects.filter(
-            college_id__in=scope,
+        StudentAcademicProfile.objects.filter(
+            current_college_id__in=scope,
             student__is_active=True,
             student__student_lifecycle_status="CURRENT",
         ).values_list("student_id", flat=True)
     )
     for item in directory:
-        affiliation = StudentAffiliation.objects.select_related("college__campus").get(
+        placement = StudentAcademicProfile.objects.select_related("current_college__campus").get(
             student_id=item.id
         )
-        assert affiliation.college_id in scope
-        assert affiliation.college.is_active and affiliation.college.campus.is_active
+        assert placement.current_college_id in scope
+        assert placement.current_college.is_active and placement.current_college.campus.is_active
 
 
 @pytest.mark.parametrize(
@@ -361,7 +361,9 @@ def test_head_office_visibility_never_extends_to_counseling_messages(world):
 
 def test_multiple_heads_fail_closed_without_implicit_fallback(world):
     world.other.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
-    StudentAffiliation.objects.filter(student=world.student).update(college=world.colleges[3])
+    StudentAcademicProfile.objects.filter(student=world.student).update(
+        current_college=world.colleges[3]
+    )
     with pytest.raises(MessagesConflict, match="routing"):
         office(world)
     assert not GuidanceThread.objects.exists()
@@ -370,7 +372,9 @@ def test_multiple_heads_fail_closed_without_implicit_fallback(world):
             item.id for item in services.eligible_students(actor=actor).items
         }
     # General visibility survives multiple Heads; routing still needs an explicit handler.
-    StudentAffiliation.objects.filter(student=world.student).update(college=world.colleges[2])
+    StudentAcademicProfile.objects.filter(student=world.student).update(
+        current_college=world.colleges[2]
+    )
     assert office(world)[0].assigned_to_id == world.head.pk
 
 

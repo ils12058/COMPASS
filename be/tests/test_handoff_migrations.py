@@ -7,7 +7,6 @@ import pytest
 from django.db import IntegrityError, connection, transaction
 from django.db.migrations.executor import MigrationExecutor
 
-from compass.counseling.continuity_models import CounselorCaseContinuityGrant as Grant
 from compass.counseling.handoff_models import CounselorHandoffSummary as Handoff
 from compass.counseling.models import CounselingEncounter
 from tests import test_handoff as cases
@@ -19,30 +18,41 @@ workflow_case = cases.workflow_case
 pytestmark = pytest.mark.django_db(transaction=True)
 
 
+def _grant_row(grant_id, marker_column):
+    with connection.cursor() as cursor:
+        cursor.execute(
+            "SELECT id, student_id, receiving_counselor_id, policy_digest, "
+            f"{marker_column} FROM counseling_counselorcasecontinuitygrant WHERE id = %s",
+            [grant_id],
+        )
+        return cursor.fetchone()
+
+
 def test_populated_integration_upgrade_and_disposable_rollback_reapply(workflow_case):
     c = workflow_case
     g = approved(c)
-    before = Grant.objects.values().get(pk=g["id"])
+    # The 0005 rename means the pre-0004 row is only readable through its old column name.
+    before = _grant_row(g["id"], "student_placement_marker")
     encounter = CounselingEncounter.objects.values().get(pk=c.encounter.pk)
     assert connection.vendor == "postgresql" and connection.settings_dict["NAME"].startswith(
         "test_"
     )
     old = [("counseling", "0003_case_continuity_foundation")]
-    new = [("counseling", "0004_counselor_handoff_summary")]
+    new = [("counseling", "0005_student_placement_marker")]
     try:
         MigrationExecutor(connection).migrate(old)
         assert Handoff._meta.db_table not in connection.introspection.table_names()
-        assert Grant.objects.values().get(pk=g["id"]) == before
+        assert _grant_row(g["id"], "student_affiliation_marker") == before
         MigrationExecutor(connection).migrate(new)
         cases.submitted(c, g)
         assert cases.op(c, g, "receive", actor=c.receiver)["content"] == cases.TEXT
-        assert Grant.objects.values().get(pk=g["id"]) == before
+        assert _grant_row(g["id"], "student_placement_marker") == before
         assert CounselingEncounter.objects.values().get(pk=c.encounter.pk) == encounter
         MigrationExecutor(connection).migrate(old)
         assert Handoff._meta.db_table not in connection.introspection.table_names()
         MigrationExecutor(connection).migrate(new)
         assert not Handoff.objects.exists()
-        assert Grant.objects.values().get(pk=g["id"]) == before
+        assert _grant_row(g["id"], "student_placement_marker") == before
     finally:
         MigrationExecutor(connection).migrate(new)
     inventory = json.loads(

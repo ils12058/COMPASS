@@ -1191,7 +1191,7 @@ SCENARIOS: tuple[Scenario, ...] = (
         "it_admin",
         "/portal/organization/responsibilities",
         "Nine College responsibilities across three Counselors.",
-        "Review responsibilities and Student affiliations.",
+        "Review responsibilities and Student placements.",
         "Every College except Graduate School has exactly one Counselor.",
         mutating=False,
         fresh_state=False,

@@ -73,13 +73,13 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.privacy_governance.models import PrivacyNoticeRevision
 from compass.referrals.models import Referral, ReferralAction
 from compass.resources.models import Resource
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.bootstrap import canonical_counseling_readiness
+from compass.student_academics.models import StudentAcademicProfile
 
 from . import DATASET_NAME, DATASET_VERSION
 from .config import load_config
@@ -501,21 +501,22 @@ def _accounts(section: Section, lookup: Lookup, domain, onboarding, allow) -> di
                 lifecycle == account.lifecycle,
                 f"{account.key}: lifecycle is {lifecycle}, expected {account.lifecycle}.",
             )
-            affiliation = (
-                StudentAffiliation.objects.select_related("college__campus")
-                .filter(student=user)
+            profile = (
+                StudentAcademicProfile.objects.select_related("current_college__campus")
+                .filter(student=user, current_college__isnull=False)
                 .first()
             )
             if account.affiliated:
                 section.check(
-                    affiliation is not None
-                    and (affiliation.college.campus.code, affiliation.college.code)
+                    profile is not None
+                    and (profile.current_college.campus.code, profile.current_college.code)
                     == (account.campus_code, account.college_code),
-                    f"{account.key}: College affiliation differs from the manifest.",
+                    f"{account.key}: College placement differs from the manifest.",
                 )
             else:
                 section.check(
-                    affiliation is None, f"{account.key}: a non-current Student has a College."
+                    profile is None,
+                    f"{account.key}: a non-current Student has a College placement.",
                 )
             inventory = (
                 StudentInventory.objects.select_related("program")
@@ -612,8 +613,10 @@ def _workflow(section: Section, lookup: Lookup, allow) -> None:
     responsibility = dict(CounselorResponsibility.objects.values_list("college_id", "counselor_id"))
     head = lookup.user("head_guidance")
     for appointment in Appointment.objects.filter(student_id__in=ids).select_related("student"):
-        affiliation = StudentAffiliation.objects.filter(student=appointment.student).first()
-        expected = responsibility.get(affiliation.college_id) if affiliation else None
+        profile = StudentAcademicProfile.objects.filter(
+            student=appointment.student, current_college__isnull=False
+        ).first()
+        expected = responsibility.get(profile.current_college_id) if profile else None
         section.check(
             appointment.provider_id in {expected, head.pk if head else None},
             f"Appointment {appointment.reference_code} is with neither the Counselor nor Head.",

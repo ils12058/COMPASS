@@ -12,10 +12,11 @@ from compass.account_management.faculty import set_faculty_affiliation
 from compass.account_management.services import change_role, set_account_active
 from compass.audit.context import AuditContext
 from compass.authentication.sessions import create_auth_session
-from compass.organization.models import CounselorResponsibility, StudentAffiliation
+from compass.organization.models import CounselorResponsibility
 from compass.referrals import faculty_services, services
 from compass.referrals.faculty_policy import FacultyReferralError
 from compass.referrals.models import Referral, ReferralReferenceCounter
+from compass.student_academics.models import StudentAcademicProfile
 from tests.faculty_referral_helpers import confirm, make_world, person, submit
 
 pytestmark = pytest.mark.django_db(transaction=True)
@@ -103,9 +104,9 @@ def test_submission_serializes_with_current_identity_and_placement(
                 expected_resource_version=1,
                 basis="Synthetic",
             )
-        from compass.organization.services import set_student_affiliation
+        from compass.student_academics.services import set_current_placement
 
-        return set_student_affiliation(
+        return set_current_placement(
             student_id=world.student.pk, college_id=world.cas.pk, context=args["context"]
         )
 
@@ -140,7 +141,7 @@ def test_gco_and_faculty_share_annual_counter_without_deadlock(monkeypatch):
     ticket = confirm(world)["confirmation"]
     counselor = person("counselor", "COUNSELOR")
     other_student = person("other-student", "STUDENT")
-    StudentAffiliation.objects.create(student=other_student, college=world.ccms)
+    StudentAcademicProfile.objects.create(student=other_student, current_college=world.ccms)
     CounselorResponsibility.objects.create(counselor=counselor, college=world.ccms)
     barrier = Barrier(2)
     original = services._allocate_reference

@@ -32,7 +32,6 @@ from compass.privacy_governance.releases import (
 from .models import GoodMoralInitiationOrigin, GoodMoralStatus, GoodMoralVariant
 from .services import (
     DEFAULT_PAGE_SIZE,
-    GoodMoralAffiliationRequired,
     GoodMoralCertificateDateInFuture,
     GoodMoralConfigurationConflict,
     GoodMoralConflict,
@@ -47,6 +46,7 @@ from .services import (
     GoodMoralNotPermitted,
     GoodMoralNotReady,
     GoodMoralOrdering,
+    GoodMoralPlacementRequired,
     GoodMoralPreparationChanged,
     InvalidGoodMoralInput,
     cancel_request,
@@ -421,8 +421,8 @@ def _raise(exc: GoodMoralError) -> NoReturn:
         raise APIError(409, "good_moral_exit_interview_required", str(exc)) from exc
     if isinstance(exc, GoodMoralInventoryRequired):
         raise APIError(409, "good_moral_inventory_required", str(exc)) from exc
-    if isinstance(exc, GoodMoralAffiliationRequired):
-        raise APIError(409, "good_moral_affiliation_required", str(exc)) from exc
+    if isinstance(exc, GoodMoralPlacementRequired):
+        raise APIError(409, "good_moral_placement_required", str(exc)) from exc
     if isinstance(exc, GoodMoralConfigurationConflict):
         raise APIError(409, "good_moral_configuration_conflict", str(exc)) from exc
     if isinstance(exc, GoodMoralCreationConflict):
@@ -716,8 +716,8 @@ def good_moral_student_options(
         _raise(exc)
     items = []
     for student in rows:
-        affiliation = getattr(student, "organization_student_affiliation", None)
-        college = affiliation.college if affiliation else None
+        profile = getattr(student, "student_academic_profile", None)
+        college = profile.current_college if profile else None
         items.append(
             {
                 "id": student.pk,

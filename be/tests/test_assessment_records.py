@@ -38,8 +38,8 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     StaffSupervision,
-    StudentAffiliation,
 )
+from compass.student_academics.models import StudentAcademicProfile
 from tests.test_notifications import auth_client
 
 pytestmark = pytest.mark.django_db
@@ -78,8 +78,8 @@ def world():
     college_a = College.objects.create(campus=campus, code="AS-A", name="College A")
     college_b = College.objects.create(campus=campus, code="AS-B", name="College B")
     CounselorResponsibility.objects.create(counselor=ordinary, college=college_a)
-    StudentAffiliation.objects.create(student=student, college=college_a)
-    StudentAffiliation.objects.create(student=other_student, college=college_b)
+    StudentAcademicProfile.objects.create(student=student, current_college=college_a)
+    StudentAcademicProfile.objects.create(student=other_student, current_college=college_b)
     assessment_type = services.create_type(actor=head, values={"name": "Career Aptitude Test"})
     return SimpleNamespace(**locals())
 

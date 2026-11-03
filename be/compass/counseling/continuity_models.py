@@ -92,7 +92,7 @@ class CounselorCaseContinuityGrant(models.Model):
     policy_version = models.CharField(max_length=64)
     policy_evidence = models.CharField(max_length=128)
     policy_digest = models.CharField(max_length=64)
-    student_affiliation_marker = models.CharField(max_length=128)
+    student_placement_marker = models.CharField(max_length=128)
     snapshot_digest = models.CharField(max_length=64)
     # One new client intent uses a UUID, never a bearer credential. Replays bind to snapshot.
     request_id = models.UUIDField()

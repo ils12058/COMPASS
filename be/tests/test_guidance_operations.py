@@ -26,12 +26,13 @@ from compass.guidance_messages.models import GuidanceThread
 from compass.guidance_operations import services
 from compass.guidance_operations.schemas import DueMetric, WaitingMetric
 from compass.institutional_forms.bootstrap import sync_institutional_forms
-from compass.organization.models import StaffSupervision, StudentAffiliation
+from compass.organization.models import StaffSupervision
 from compass.overview.services import build_overview_summary
 from compass.routine_interviews.content import initial_content
 from compass.routine_interviews.models import RoutineInterview
 from compass.routine_interviews.services import finalize_assigned_evaluation
 from compass.service_catalog.models import Service
+from compass.student_academics.models import StudentAcademicProfile
 from compass.work_queue import services as work
 from tests.test_guidance_messages import (  # noqa: F401
     BODY,
@@ -179,7 +180,9 @@ def test_counseling_exact_persisted_provider_and_no_gss_or_head_broadening(world
 
 def test_second_head_keeps_existing_office_backlog_with_its_saved_handler(world):
     head_designation = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
-    StudentAffiliation.objects.filter(student=world.student).update(college=world.colleges[3])
+    StudentAcademicProfile.objects.filter(student=world.student).update(
+        current_college=world.colleges[3]
+    )
     thread, _ = office(world)
     assert thread.assigned_to_id == world.head.pk
     assert summary(world, world.head).backlog.guidance_messages.count == 1
@@ -216,21 +219,27 @@ def test_multiple_heads_fail_closed_for_message_fallback(world):
         )[0]
 
     # A new thread for an unassigned College needs exactly one active Head; none is guessed.
-    StudentAffiliation.objects.filter(student=world.other_student).update(college=world.colleges[3])
+    StudentAcademicProfile.objects.filter(student=world.other_student).update(
+        current_college=world.colleges[3]
+    )
     with pytest.raises(MessagesConflict, match="routing"):
         open_for_other_student()
     assert not GuidanceThread.objects.filter(student=world.other_student).exists()
     for actor in (world.head, world.other, world.head_gss):
         assert summary(world, actor).backlog.guidance_messages.count == 0
     # An explicit College Counselor assignment still wins over any Head fallback.
-    StudentAffiliation.objects.filter(student=world.other_student).update(college=world.colleges[0])
+    StudentAcademicProfile.objects.filter(student=world.other_student).update(
+        current_college=world.colleges[0]
+    )
     assert open_for_other_student().assigned_to_id == world.counselor.pk
     assert summary(world).backlog.guidance_messages.count == 1
     for actor in (world.head, world.other, world.head_gss):
         assert summary(world, actor).backlog.guidance_messages.count == 0
     # With one active Head again, the unassigned College falls back to that Head.
     world.other.designations.remove(head_designation)
-    StudentAffiliation.objects.filter(student=world.student).update(college=world.colleges[3])
+    StudentAcademicProfile.objects.filter(student=world.student).update(
+        current_college=world.colleges[3]
+    )
     assert office(world)[0].assigned_to_id == world.head.pk
 
 

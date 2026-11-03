@@ -45,7 +45,7 @@ from tests.test_exit_interviews import (
 )
 from tests.test_good_moral import (
     create_my_current_student,
-    make_affiliation,
+    make_placement,
 )
 from tests.test_good_moral import (
     make_inventory as make_good_moral_inventory,
@@ -149,7 +149,7 @@ def test_opportunity_for_another_year_does_not_admit_or_gate_f4():
         ensure_api(auth_client(student)).json()["error"]["code"]
         == "exit_interview_opportunity_required"
     )
-    make_affiliation(student)
+    make_placement(student)
     assert request_f4(student).graduation_opportunity_id is None
 
 
@@ -309,7 +309,7 @@ def test_legacy_draft_without_opportunity_remains_editable_submittable_and_histo
 def test_completed_opportunity_allows_controlled_reopen_edit_resubmit_and_blocks_f4_while_draft():
     student, head, year, _ = setup_student()
     opportunity = open_for(student, head, year)
-    make_affiliation(student)
+    make_placement(student)
     client, item = prepare_response(student)
     assert submit_api(client).status_code == 200
     initial = request_f4(student)
@@ -340,7 +340,7 @@ def test_completed_opportunity_allows_controlled_reopen_edit_resubmit_and_blocks
 def test_graduation_f4_requires_matching_submitted_response_with_controlled_api_error(state):
     student, head, year, inventory = setup_student()
     open_for(student, head, year)
-    make_affiliation(student)
+    make_placement(student)
     if state == "DRAFT":
         prepare_response(student)
     elif state == "WRONG_YEAR_SUBMITTED":
@@ -372,7 +372,7 @@ def test_graduation_f4_requires_matching_submitted_response_with_controlled_api_
 @pytest.mark.parametrize("source", ["NONE", "MANUAL"])
 def test_ordinary_and_manual_do_not_gate_f4(source):
     student, head, year, _ = setup_student()
-    make_affiliation(student)
+    make_placement(student)
     if source != "NONE":
         open_for(student, head, year, "MANUAL")
     assert request_f4(student).graduation_opportunity_id is None
@@ -381,7 +381,7 @@ def test_ordinary_and_manual_do_not_gate_f4(source):
 @pytest.mark.django_db
 def test_revocation_does_not_reclassify_a_graduation_workflow_as_ordinary_f4():
     student, head, year, _ = setup_student()
-    make_affiliation(student)
+    make_placement(student)
     opportunity = open_for(student, head, year)
     revoke_opportunity(actor=head, opportunity_id=opportunity.pk, context=AuditContext.user(head))
     with pytest.raises(GoodMoralExitInterviewRequired):
@@ -398,7 +398,7 @@ def test_revocation_does_not_reclassify_a_graduation_workflow_as_ordinary_f4():
 def test_graduation_creation_replay_survives_reopen_but_new_creation_intent_is_blocked():
     student, head, year, _ = setup_student()
     open_for(student, head, year)
-    make_affiliation(student)
+    make_placement(student)
     client, item = prepare_response(student)
     assert submit_api(client).status_code == 200
     first = request_f4(student, idempotency_key="graduation-exact-replay")
@@ -533,7 +533,7 @@ def test_concurrent_f4_creation_and_reopen_preserve_checked_submission_provenanc
     monkeypatch.setattr("compass.notifications.services._safe_kick_email_delivery", lambda _: None)
     student, head, year, _ = setup_student()
     open_for(student, head, year)
-    make_affiliation(student)
+    make_placement(student)
     client, item = prepare_response(student)
     assert submit_api(client).status_code == 200
 

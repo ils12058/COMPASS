@@ -51,6 +51,7 @@ from compass.resources.api import public_router as public_resources_router
 from compass.resources.api import router as resources_router
 from compass.routine_interviews.api import router as routine_interviews_router
 from compass.service_catalog.api import router as service_catalog_router
+from compass.student_academics.api import router as student_academics_router
 from compass.student_actions.api import router as student_actions_router
 from compass.student_support.api import router as student_support_router
 from compass.work_queue.api import router as work_queue_router
@@ -76,6 +77,10 @@ api = NinjaAPI(
             {
                 "name": "organization",
                 "description": "Organizational structure and default responsibility routing.",
+            },
+            {
+                "name": "student-academics",
+                "description": "Canonical Student current College placements.",
             },
             {
                 "name": "services",
@@ -251,6 +256,7 @@ api.add_router("/me", activity_router)
 api.add_router("/me", profile_router)
 api.add_router("/accounts", account_management_router)
 api.add_router("/organization", organization_router)
+api.add_router("/student-academics", student_academics_router)
 api.add_router("/services", service_catalog_router)
 api.add_router("/group-sessions", group_sessions_router)
 api.add_router("/availability", availability_router)

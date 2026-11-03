@@ -1,4 +1,4 @@
-"""Read-only placement boundary for Faculty intake; SAR may replace this adapter.
+"""Read-only placement boundary for Faculty intake.
 
 Home College, inventory form text and Head fallback are never Student placement.
 Caller takes catalog gate and Student row lock before resolving mutable placement.
@@ -7,7 +7,7 @@ Caller takes catalog gate and Student row lock before resolving mutable placemen
 from dataclasses import dataclass
 from uuid import UUID
 
-from compass.organization.models import StudentAffiliation
+from compass.student_academics.models import StudentAcademicProfile
 
 
 @dataclass(frozen=True)
@@ -20,21 +20,22 @@ class FacultyReferralStudentPlacement:
 def resolve_student_placement(student):
     if not student.is_active or student.role.code != "STUDENT":
         return None
-    affiliation = (
-        StudentAffiliation.objects.select_related("college__campus")
+    profile = (
+        StudentAcademicProfile.objects.select_related("current_college__campus")
         .filter(
             student_id=student.pk,
         )
         .first()
     )
     if (
-        affiliation is None
-        or not affiliation.college.is_active
-        or not affiliation.college.campus.is_active
+        profile is None
+        or profile.current_college is None
+        or not profile.current_college.is_active
+        or not profile.current_college.campus.is_active
     ):
         return None
     return FacultyReferralStudentPlacement(
         student_id=student.pk,
-        college_id=affiliation.college_id,
-        revision=f"organization:{affiliation.pk}:{affiliation.updated_at.isoformat()}",
+        college_id=profile.current_college_id,
+        revision=f"student_academics:{profile.pk}:{profile.updated_at.isoformat()}",
     )

@@ -43,7 +43,6 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.referrals.confidential_content import (
     ReferralConfidentialContent,
@@ -53,6 +52,7 @@ from compass.referrals.models import Referral, ReferralAction
 from compass.routine_interviews.content import initial_content
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.models import Service
+from compass.student_academics.models import StudentAcademicProfile
 from tests.inventory_encryption_helpers import create_inventory_row
 
 pytestmark = pytest.mark.django_db
@@ -97,7 +97,7 @@ def world():
     rows = {}
     for name, owner_college in (("student", college), ("other", outside)):
         student = people[name]
-        StudentAffiliation.objects.create(student=student, college=owner_college)
+        StudentAcademicProfile.objects.create(student=student, current_college=owner_college)
         inventory = create_inventory_row(
             StudentInventory,
             student=student,

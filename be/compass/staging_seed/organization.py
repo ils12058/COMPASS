@@ -2,7 +2,7 @@
 
 Canonical structure (Campus, College, Program, Forms, the Counseling Service) comes only from the
 synchronizers. This module adds legitimate runtime relationships on top of it: Counselor
-responsibility, Staff supervision, Student affiliation, ONLINE Counseling delivery, and
+responsibility, Staff supervision, Student current placement, ONLINE Counseling delivery, and
 Availability. Existing configuration is reused; a conflicting relationship fails preflight.
 """
 
@@ -27,18 +27,18 @@ from compass.organization.models import (
     CounselorResponsibility,
     Program,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.organization.selection import active_programs
 from compass.organization.services import (
     remove_staff_supervisor,
     set_counselor_responsibility,
     set_staff_supervisor,
-    set_student_affiliation,
 )
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import DeliveryMode, Service, ServiceDeliveryMode
 from compass.service_catalog.services import update_service
+from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.services import set_current_placement
 
 from .identities import StudentSpec
 from .staff import (
@@ -136,13 +136,13 @@ def check_organization_conflicts(session_users: dict[str, object]) -> None:
         student = session_users.get(persona.key)
         if student is None:
             continue
-        current = StudentAffiliation.objects.filter(student_id=student.pk).first()
-        if current is None:
+        current = StudentAcademicProfile.objects.filter(student_id=student.pk).first()
+        if current is None or current.current_college_id is None:
             continue
         expected = college_for(persona.campus_code, persona.college_code)
-        if current.college_id != expected.pk:
+        if current.current_college_id != expected.pk:
             raise StagingSeedConflict(
-                f"{persona.label} is affiliated with a different College than the dataset."
+                f"{persona.label} is placed in a different College than the dataset."
             )
 
 
@@ -178,14 +178,16 @@ def ensure_organization(session: SeedSession) -> None:
         if not persona.affiliated:
             continue
         student = session.users[persona.key]
-        exists = StudentAffiliation.objects.filter(student=student).exists()
+        exists = StudentAcademicProfile.objects.filter(
+            student=student, current_college__isnull=False
+        ).exists()
         if not exists:
-            set_student_affiliation(
+            set_current_placement(
                 student_id=student.pk,
                 college_id=college_for(persona.campus_code, persona.college_code).pk,
                 context=context,
             )
-        session.record("Student affiliations", created=not exists)
+        session.record("Student placements", created=not exists)
 
 
 def ensure_counseling_configuration(session: SeedSession) -> None:

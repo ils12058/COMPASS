@@ -1,4 +1,4 @@
-"""Shadow current-state academic profile; no SAR-1 consumer reads it."""
+"""Canonical current-state Student academic placement."""
 
 from __future__ import annotations
 

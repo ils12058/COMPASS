@@ -54,7 +54,7 @@ from compass.referrals.services import (
 from tests.test_appointments import (
     active_service,
     configure_availability,
-    create_affiliation,
+    create_placement,
     future_local_start,
     sync_policy,
     weekly,
@@ -114,7 +114,7 @@ def test_appointment_reschedule_history_terminal_outcomes_and_safe_notifications
     provider = make_appointment_user("final-provider@example.edu", "COUNSELOR")
     service = active_service(catalog_actor, duration=60, cutoff=30)
     configure_availability(catalog_actor, provider)
-    create_affiliation(student, provider)
+    create_placement(student, provider)
     start = future_local_start(hour=10)
 
     item = create_student_appointment(
@@ -227,7 +227,7 @@ def test_admin_reschedule_reassign_without_step_up_and_downstream_binding_safety
         windows=[weekly()],
         context=appointment_context(catalog_actor),
     )
-    create_affiliation(student, manager)
+    create_placement(student, manager)
     start = future_local_start(hour=10)
     item = create_student_appointment(
         student=student,
@@ -288,7 +288,7 @@ def test_no_show_is_terminal_and_rejects_existing_counseling_encounter():
     student = make_appointment_user("noshow-student@example.edu", "STUDENT")
     manager = make_appointment_user("noshow-manager@example.edu", "COUNSELOR")
     service = active_service(catalog_actor)
-    create_affiliation(student, manager)
+    create_placement(student, manager)
     now = timezone.now()
     item = Appointment.objects.create(
         reference_code="APT-2099-800001",

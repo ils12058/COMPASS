@@ -67,10 +67,10 @@ def _search_term(search: str | None) -> str:
 
 
 def _college_option(student: User) -> OperationalCollegeOption | None:
-    affiliation = getattr(student, "organization_student_affiliation", None)
-    if affiliation is None:
+    profile = getattr(student, "student_academic_profile", None)
+    if profile is None or profile.current_college is None:
         return None
-    college = affiliation.college
+    college = profile.current_college
     if not college.is_active or not college.campus.is_active:
         return None
     return OperationalCollegeOption(id=college.pk, code=college.code, name=college.name)
@@ -92,17 +92,17 @@ def list_scoped_operational_students(
         student_lifecycle_status=StudentLifecycleStatus.CURRENT,
     ).select_related(
         "role",
-        "organization_student_affiliation__college",
-        "organization_student_affiliation__college__campus",
+        "student_academic_profile__current_college",
+        "student_academic_profile__current_college__campus",
     )
     if college_ids is not None:
         if not college_ids:
             queryset = queryset.none()
         else:
             queryset = queryset.filter(
-                organization_student_affiliation__college_id__in=college_ids,
-                organization_student_affiliation__college__is_active=True,
-                organization_student_affiliation__college__campus__is_active=True,
+                student_academic_profile__current_college_id__in=college_ids,
+                student_academic_profile__current_college__is_active=True,
+                student_academic_profile__current_college__campus__is_active=True,
             )
     if term:
         queryset = queryset.filter(

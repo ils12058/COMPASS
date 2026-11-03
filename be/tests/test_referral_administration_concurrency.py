@@ -12,12 +12,12 @@ from compass.organization.services import (
     remove_staff_supervisor,
     set_counselor_responsibility,
     set_staff_supervisor,
-    set_student_affiliation,
 )
 from compass.referrals import services
 from compass.referrals.administrative_policy import AdministrativeReferralError
 from compass.referrals.models import Referral
 from compass.referrals.services import ReferralNotFound
+from compass.student_academics.services import set_current_placement
 from tests.faculty_referral_helpers import submit
 from tests.referral_administration_helpers import make_world, transition
 from tests.test_faculty_referral_concurrency import ordered_race
@@ -119,7 +119,7 @@ def test_current_authority_changes_serialize_before_admission(monkeypatch, chang
             return set_staff_supervisor(
                 staff_id=world.staff.pk, supervisor_id=world.other_counselor.pk, context=context
             )
-        return set_student_affiliation(
+        return set_current_placement(
             student_id=world.student.pk, college_id=world.cas.pk, context=context
         )
 

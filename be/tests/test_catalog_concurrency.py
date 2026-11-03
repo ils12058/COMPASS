@@ -27,12 +27,12 @@ from compass.organization.integrity import catalog_gate
 from compass.organization.models import (
     College,
     Program,
-    StudentAffiliation,
 )
 from compass.organization.services import (
     set_counselor_responsibility,
-    set_student_affiliation,
 )
+from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.services import set_current_placement
 from tests.catalog_test_helpers import authority, hierarchy, manager, run_serialized_race, student
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 from tests.test_inventory import configure_year
@@ -49,7 +49,7 @@ def setup():
 def inventory_fixture(auth, p, *, submit=False):
     s = student()
     configure_year(auth["actor"])
-    StudentAffiliation.objects.create(student=s, college=p.college)
+    StudentAcademicProfile.objects.create(student=s, current_college=p.college)
     context = AuditContext.user(s)
     ensure_current_inventory(student=s, context=context)
     replace_current_inventory(
@@ -204,7 +204,7 @@ def test_relationship_assignment_vs_college_retirement(setup, relationship):
     target = student() if relationship == "student" else manager("COUNSELOR", grant=False)[0]
     first = (
         (
-            lambda: set_student_affiliation(
+            lambda: set_current_placement(
                 student_id=target.pk, college_id=k.pk, context=auth["context"]
             )
         )
@@ -234,7 +234,7 @@ def test_account_reactivation_vs_college_retirement(setup):
     Program.objects.filter(pk=p.pk).update(is_active=False)
     s = student()
     type(s).objects.filter(pk=s.pk).update(is_active=False)
-    StudentAffiliation.objects.create(student=s, college=k)
+    StudentAcademicProfile.objects.create(student=s, current_college=k)
     _, error = run_serialized_race(
         lambda: cs.set_college_active(
             **auth, target_id=k.pk, expected_resource_version=1, is_active=False

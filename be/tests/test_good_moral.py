@@ -68,7 +68,8 @@ from compass.institutional_forms.models import FormRevision
 from compass.inventory.models import StudentInventory
 from compass.notifications.models import EmailDelivery, Notification, NotificationPreference
 from compass.organization.canonical import canonical_program_metadata
-from compass.organization.models import AcademicYear, Campus, College, Program, StudentAffiliation
+from compass.organization.models import AcademicYear, Campus, College, Program
+from compass.student_academics.models import StudentAcademicProfile
 from tests.inventory_encryption_helpers import create_inventory_row
 
 
@@ -139,7 +140,7 @@ def good_moral_create_headers(client: Client, key: str | None = None) -> dict[st
     }
 
 
-def make_affiliation(student: User, *, code: str = "CCMS") -> StudentAffiliation:
+def make_placement(student: User, *, code: str = "CCMS") -> StudentAcademicProfile:
     campus, _ = Campus.objects.get_or_create(
         code="MAIN",
         defaults={"name": "Main Campus"},
@@ -149,7 +150,7 @@ def make_affiliation(student: User, *, code: str = "CCMS") -> StudentAffiliation
         code=code,
         defaults={"name": f"{code} College"},
     )
-    return StudentAffiliation.objects.create(student=student, college=college)
+    return StudentAcademicProfile.objects.create(student=student, current_college=college)
 
 
 def make_academic_year(label: str = "2026-2027", *, current: bool = True) -> AcademicYear:
@@ -205,7 +206,7 @@ def make_inventory(
 
 
 def make_current_request(student: User) -> tuple[GoodMoralRequest, StudentInventory]:
-    make_affiliation(student)
+    make_placement(student)
     academic_year = make_academic_year()
     inventory = make_inventory(
         student,
@@ -235,7 +236,7 @@ def make_graduate_request(student: User) -> GoodMoralRequest:
 def test_f4_creation_uses_locked_current_student_inventory_year_and_local_text_snapshots():
     sync_policy()
     student = make_user("current.student@example.edu")
-    affiliation = make_affiliation(student)
+    placement = make_placement(student)
     academic_year = make_academic_year()
     inventory = make_inventory(
         student,
@@ -263,7 +264,7 @@ def test_f4_creation_uses_locked_current_student_inventory_year_and_local_text_s
     assert first.inventory_id == inventory.pk
     assert first.academic_year_id == inventory.academic_year_id
     assert first.applicant_name_snapshot == student.get_full_name()
-    assert first.college_snapshot == affiliation.college.name
+    assert first.college_snapshot == placement.current_college.name
     assert first.course_snapshot == "BS Information Systems"
     assert first.major_snapshot == "Systems Development"
     assert first.year_level_snapshot == "4th Year"
@@ -276,7 +277,7 @@ def test_f4_creation_uses_locked_current_student_inventory_year_and_local_text_s
 def test_f4_year_level_is_derived_from_inventory_and_explicit_mismatch_is_rejected():
     sync_policy()
     student = make_user("inventory.year.level@example.edu")
-    make_affiliation(student)
+    make_placement(student)
     make_inventory(student, make_academic_year(), year_level=2)
     client = auth_client(student)
 
@@ -318,7 +319,7 @@ def test_f4_rejects_postgraduate_unclassified_and_unsupported_inventory_facts(
 ):
     sync_policy()
     student = make_user(f"f4-{expected_status.lower()}-{program_code}@example.edu")
-    make_affiliation(student)
+    make_placement(student)
     make_inventory(
         student,
         make_academic_year(),
@@ -387,7 +388,7 @@ def test_f4_academic_context_is_student_self_service_only():
 def test_f4_uses_submitted_inventory_for_current_academic_year():
     sync_policy()
     student = make_user("resolver.student@example.edu")
-    make_affiliation(student)
+    make_placement(student)
     current_year = make_academic_year("2026-2027", current=True)
     prior_year = make_academic_year("2025-2026", current=False)
     inventory = make_inventory(student, current_year)
@@ -409,7 +410,7 @@ def test_f4_uses_submitted_inventory_for_current_academic_year():
 def test_f4_inventory_prerequisite_failures_are_controlled_good_moral_409(case: str):
     sync_policy()
     student = make_user(f"{case}@example.edu")
-    make_affiliation(student)
+    make_placement(student)
     revision = FormRevision.objects.get(family__key="individual_inventory", status="ACTIVE")
 
     if case != "no_current_year":
@@ -564,7 +565,7 @@ def test_f6_ucn_undergraduate_claim_remains_available_during_local_postgraduate_
     student = make_user(
         "local-postgraduate-alumnus@example.edu", lifecycle=StudentLifecycleStatus.CURRENT
     )
-    make_affiliation(student)
+    make_placement(student)
     make_inventory(
         student,
         make_academic_year(),
@@ -614,7 +615,7 @@ def test_ucn_postgraduate_record_does_not_verify_reported_external_bachelor_qual
     student = make_user(
         "external-degree-claim@example.edu", lifecycle=StudentLifecycleStatus.CURRENT
     )
-    make_affiliation(student)
+    make_placement(student)
     make_inventory(
         student,
         make_academic_year(),
@@ -1325,9 +1326,9 @@ def test_f4_render_uses_full_labels_and_fragments_without_changing_snapshots(
     sync_policy()
     student = make_user("f4.labels@example.edu")
     counselor = make_user("f4.issuer@example.edu", role="COUNSELOR")
-    affiliation = make_affiliation(student)
-    affiliation.college.name = college_name
-    affiliation.college.save(update_fields=["name", "updated_at"])
+    placement = make_placement(student)
+    placement.current_college.name = college_name
+    placement.current_college.save(update_fields=["name", "updated_at"])
     academic_year = make_academic_year()
     inventory = make_inventory(student, academic_year)
     item = GoodMoralRequest.objects.create(
@@ -1551,12 +1552,12 @@ def test_good_moral_operational_list_supports_student_filter_and_safe_identity_s
 
 
 @pytest.mark.django_db
-def test_f4_persistent_replay_precedes_lifecycle_inventory_affiliation_and_snapshot_refresh(
+def test_f4_persistent_replay_precedes_lifecycle_inventory_placement_and_snapshot_refresh(
     monkeypatch,
 ):
     sync_policy()
     student = make_user("idem-f4@example.edu")
-    affiliation = make_affiliation(student, code="F4IDEM")
+    placement = make_placement(student, code="F4IDEM")
     academic_year = make_academic_year()
     inventory = make_inventory(
         student,
@@ -1608,22 +1609,22 @@ def test_f4_persistent_replay_precedes_lifecycle_inventory_affiliation_and_snaps
     inventory.course_currently_enrolled = "Changed Course"
     inventory.major = "Changed Major"
     inventory.save(update_fields=["course_currently_enrolled", "major", "updated_at"])
-    affiliation.college.name = "Changed College"
-    affiliation.college.save(update_fields=["name", "updated_at"])
+    placement.current_college.name = "Changed College"
+    placement.current_college.save(update_fields=["name", "updated_at"])
 
     def fail_inventory(_student):
         raise AssertionError("exact replay must not resolve current Inventory")
 
-    def fail_affiliation(_student):
-        raise AssertionError("exact replay must not resolve current affiliation")
+    def fail_placement(_student):
+        raise AssertionError("exact replay must not resolve current placement")
 
     monkeypatch.setattr(
         "compass.good_moral.services._require_submitted_inventory",
         fail_inventory,
     )
     monkeypatch.setattr(
-        "compass.good_moral.services._current_affiliation",
-        fail_affiliation,
+        "compass.good_moral.services._current_placement",
+        fail_placement,
     )
 
     replay = client.post(
@@ -1738,7 +1739,7 @@ def test_f6_persistent_replay_precedes_lifecycle_and_profile_refresh():
 def test_same_good_moral_key_changed_body_and_cross_variant_conflict():
     sync_policy()
     current = make_user("same-key-current@example.edu")
-    make_affiliation(current, code="SAMEKEY")
+    make_placement(current, code="SAMEKEY")
     make_inventory(current, make_academic_year(), course="BSIS")
     client = auth_client(current)
     key = "gm-shared-intent"
@@ -2213,7 +2214,7 @@ def test_legacy_certificate_reprint_preserves_saved_form_and_template(graduate):
 def test_form_input_1a_creation_accepts_inventory_derived_bachelors_year_levels(year_level: str):
     sync_policy()
     student = make_user(f"year.{year_level.replace(' ', '.').lower()}@example.edu")
-    make_affiliation(student)
+    make_placement(student)
     academic_year = make_academic_year()
     make_inventory(student, academic_year, year_level=CANONICAL_YEAR_LEVELS.index(year_level) + 1)
     client = auth_client(student)
@@ -2235,7 +2236,7 @@ def test_form_input_1a_creation_accepts_inventory_derived_bachelors_year_levels(
 def test_form_input_1a_creation_accepts_both_canonical_semesters(semester: str):
     sync_policy()
     student = make_user(f"sem.{semester.replace(' ', '.').lower()}@example.edu")
-    make_affiliation(student)
+    make_placement(student)
     academic_year = make_academic_year()
     make_inventory(student, academic_year, year_level=3)
     client = auth_client(student)
@@ -2270,7 +2271,7 @@ def test_form_input_1a_creation_accepts_both_canonical_semesters(semester: str):
 def test_form_input_1a_creation_rejects_unsupported_year_level(invalid_year: str):
     sync_policy()
     student = make_user("bad.year@example.edu")
-    make_affiliation(student)
+    make_placement(student)
     academic_year = make_academic_year()
     make_inventory(student, academic_year)
     client = auth_client(student)
@@ -2304,7 +2305,7 @@ def test_form_input_1a_creation_rejects_unsupported_year_level(invalid_year: str
 def test_form_input_1a_creation_rejects_unsupported_semester(invalid_sem: str):
     sync_policy()
     student = make_user("bad.sem@example.edu")
-    make_affiliation(student)
+    make_placement(student)
     academic_year = make_academic_year()
     make_inventory(student, academic_year, year_level=3)
     client = auth_client(student)
@@ -2324,7 +2325,7 @@ def test_form_input_1a_creation_rejects_unsupported_semester(invalid_sem: str):
 def test_form_input_1a_idempotent_replay_preserves_older_accepted_fifth_year_requests(monkeypatch):
     sync_policy()
     student = make_user("idem.legacy@example.edu")
-    make_affiliation(student)
+    make_placement(student)
     academic_year = make_academic_year()
     inventory = make_inventory(student, academic_year)
 
@@ -2395,7 +2396,7 @@ def test_form_input_1a_counselor_and_gss_corrections_match_the_linked_inventory(
 
     # GSS retains authorized clerical correction access for a request linked to 1st Year.
     other_student = make_user("correction.gss.student@example.edu")
-    make_affiliation(other_student)
+    make_placement(other_student)
     make_inventory(
         other_student,
         AcademicYear.objects.get(pk=item.academic_year_id),
@@ -2427,7 +2428,7 @@ def test_form_input_1a_operational_correction_preserves_untouched_legacy_values(
     sync_policy()
     student = make_user("legacy.preserve@example.edu")
     counselor = make_user("legacy.counselor@example.edu", role="COUNSELOR")
-    make_affiliation(student)
+    make_placement(student)
     academic_year = make_academic_year()
     inventory = make_inventory(student, academic_year)
 
@@ -2609,7 +2610,7 @@ def test_form_input_1a_official_f4_pdf_rendering_scenarios(
     sync_policy()
     student = make_user(f"pdf.{scenario_name}@example.edu")
     counselor = make_user(f"pdf.counselor.{scenario_name}@example.edu", role="COUNSELOR")
-    make_affiliation(student)
+    make_placement(student)
     academic_year = make_academic_year()
     inventory = make_inventory(student, academic_year)
 

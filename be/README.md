@@ -629,7 +629,7 @@ reference structure synchronized by deployment; ordinary portal users do not cre
 or disable that institutional topology. PostgreSQL rows remain so Inventory, reporting, routing,
 and historical foreign keys retain stable relational identities.
 
-Student affiliation, one default Counselor responsibility per College, and Guidance Services Staff
+Student current placement, one default Counselor responsibility per College, and Guidance Services Staff
 supervision remain genuine GCO operational relationships. Effective organizational scope is default
 responsibility/routing context rather than a permanent authorization wall. An active Counselor
 holding the HEAD_GUIDANCE_COUNSELOR designation has institution-wide responsibility over active
@@ -637,7 +637,7 @@ Colleges under active Campuses and is the deterministic fallback only when exact
 exists.
 
 Safe Campus, College, and Program reads use `organization.structure.view`. `organization.manage`
-continues to govern Counselor responsibility, staff supervision, Student affiliation, and eligible
+continues to govern Counselor responsibility, staff supervision, Student placement, and eligible
 people discovery; consequential relationship mutations still require recent MFA and synchronous
 audit recording. No ordinary user capability mutates institutional topology.
 

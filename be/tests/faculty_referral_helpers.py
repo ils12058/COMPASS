@@ -15,8 +15,9 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.authentication.sessions import create_auth_session
 from compass.common.rate_limit import RateLimitResult
-from compass.organization.models import Campus, College, FacultyAffiliation, StudentAffiliation
+from compass.organization.models import Campus, College, FacultyAffiliation
 from compass.referrals import faculty_policy, faculty_services
+from compass.student_academics.models import StudentAcademicProfile
 
 
 def person(label, role):
@@ -70,7 +71,7 @@ def make_world(monkeypatch):
         FacultyAffiliation.objects.create(
             faculty=member, college=cas, assigned_by=admin, basis="Synthetic"
         )
-    StudentAffiliation.objects.create(student=student, college=ccms)
+    StudentAcademicProfile.objects.create(student=student, current_college=ccms)
     issued = create_auth_session(faculty, mfa_verified_at=timezone.now())
     other_issued = create_auth_session(other_faculty, mfa_verified_at=timezone.now())
     now = timezone.now()

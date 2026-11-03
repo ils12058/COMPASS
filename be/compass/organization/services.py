@@ -16,9 +16,6 @@ from compass.audit.actions import (
     ORGANIZATION_STAFF_SUPERVISION_ASSIGNED,
     ORGANIZATION_STAFF_SUPERVISION_CHANGED,
     ORGANIZATION_STAFF_SUPERVISION_REMOVED,
-    ORGANIZATION_STUDENT_AFFILIATION_ASSIGNED,
-    ORGANIZATION_STUDENT_AFFILIATION_CHANGED,
-    ORGANIZATION_STUDENT_AFFILIATION_REMOVED,
 )
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
@@ -35,12 +32,8 @@ from compass.organization.models import (
     FacultyAffiliation,
     Program,
     StaffSupervision,
-    StudentAffiliation,
 )
-from compass.student_academics.services import (
-    clear_profile_for_removed_affiliation,
-    sync_profile_from_affiliation,
-)
+from compass.student_academics.models import StudentAcademicProfile
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -81,14 +74,6 @@ class PeoplePage:
     has_next: bool
 
 
-@dataclass(frozen=True, slots=True)
-class StudentAffiliationPage:
-    items: tuple[StudentAffiliation, ...]
-    page: int
-    page_size: int
-    has_next: bool
-
-
 def _actor(context: AuditContext) -> User | None:
     actor = context.actor
     return actor if isinstance(actor, User) else None
@@ -109,14 +94,14 @@ def effective_responsibility_colleges(user: User) -> tuple[College, ...]:
 def resolve_default_counselor_for_student(student: User) -> DefaultCounselorResolution:
     if not getattr(student, "pk", None) or not student.is_active or student.role.code != "STUDENT":
         return DefaultCounselorResolution(None, "UNRESOLVED", "INVALID_STUDENT")
-    affiliation = (
-        StudentAffiliation.objects.select_related("college__campus")
+    profile = (
+        StudentAcademicProfile.objects.select_related("current_college__campus")
         .filter(student_id=student.pk)
         .first()
     )
-    if affiliation is None:
+    if profile is None or profile.current_college is None:
         return DefaultCounselorResolution(None, "UNRESOLVED", "NO_AFFILIATION")
-    college = affiliation.college
+    college = profile.current_college
     if not college.is_active or not college.campus.is_active:
         return DefaultCounselorResolution(None, "UNRESOLVED", "INACTIVE_ORGANIZATION")
     responsibility = (
@@ -159,10 +144,12 @@ def validate_role_transition(*, user: User, new_role_code: str) -> None:
         )
     if (
         user.role.code == "STUDENT"
-        and StudentAffiliation.objects.filter(student_id=user.pk).exists()
+        and StudentAcademicProfile.objects.filter(
+            student_id=user.pk, current_college__isnull=False
+        ).exists()
     ):
         raise OrganizationRoleTransitionConflict(
-            "Remove the student's organizational affiliation before changing role."
+            "Clear the student's current College placement before changing role."
         )
 
 
@@ -269,69 +256,6 @@ def _lock_active_college(college_id: UUID) -> College:
     if not college.is_active or not college.campus.is_active:
         raise OrganizationConflict("The College and its Campus must both be active.")
     return college
-
-
-@catalog_dependent_write
-def set_student_affiliation(
-    *, student_id: UUID, college_id: UUID, context: AuditContext
-) -> StudentAffiliation:
-    with transaction.atomic():
-        student = _lock_active_user(student_id, "STUDENT", "student")
-        college = _lock_active_college(college_id)
-        current = (
-            StudentAffiliation.objects.select_for_update().filter(student_id=student.pk).first()
-        )
-        if current is not None and current.college_id == college.pk:
-            sync_profile_from_affiliation(
-                student=student, college=college, updated_by=_actor(context)
-            )
-            return current
-        previous = str(current.college_id) if current is not None else None
-        if current is None:
-            current = StudentAffiliation.objects.create(
-                student=student,
-                college=college,
-                assigned_by=_actor(context),
-            )
-            action = ORGANIZATION_STUDENT_AFFILIATION_ASSIGNED
-        else:
-            current.college = college
-            current.assigned_by = _actor(context)
-            current.save(update_fields=["college", "assigned_by", "updated_at"])
-            action = ORGANIZATION_STUDENT_AFFILIATION_CHANGED
-        sync_profile_from_affiliation(student=student, college=college, updated_by=_actor(context))
-        record_event(
-            context=context,
-            action=action,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.studentaffiliation",
-            target_id=student.pk,
-            metadata={"previous_college_id": previous, "new_college_id": str(college.pk)},
-        )
-        return current
-
-
-@catalog_dependent_write
-def remove_student_affiliation(*, student_id: UUID, context: AuditContext) -> bool:
-    with transaction.atomic():
-        _lock_user_with_role(student_id, "STUDENT", "student", require_active=False)
-        current = (
-            StudentAffiliation.objects.select_for_update().filter(student_id=student_id).first()
-        )
-        if current is None:
-            return False
-        college_id = str(current.college_id)
-        current.delete()
-        clear_profile_for_removed_affiliation(student_id=student_id, updated_by=_actor(context))
-        record_event(
-            context=context,
-            action=ORGANIZATION_STUDENT_AFFILIATION_REMOVED,
-            outcome=AuditOutcome.SUCCESS,
-            target_type="organization.studentaffiliation",
-            target_id=student_id,
-            metadata={"college_id": college_id},
-        )
-        return True
 
 
 @catalog_dependent_write
@@ -489,65 +413,15 @@ def list_people(
     return PeoplePage(tuple(rows[:page_size]), page, page_size, len(rows) > page_size)
 
 
-def list_student_affiliations(
-    *,
-    student_id: UUID | None = None,
-    college_id: UUID | None = None,
-    campus_id: UUID | None = None,
-    search: str | None = None,
-    page: int = 1,
-    page_size: int = DEFAULT_PAGE_SIZE,
-) -> StudentAffiliationPage:
-    if type(page) is not int or page < 1:
-        raise InvalidOrganizationInput("page must be a positive integer")
-    if type(page_size) is not int or not 1 <= page_size <= MAX_PAGE_SIZE:
-        raise InvalidOrganizationInput(f"page_size must be between 1 and {MAX_PAGE_SIZE}")
-
-    term = ""
-    if search is not None:
-        if not isinstance(search, str):
-            raise InvalidOrganizationInput("search must be text")
-        term = search.strip()
-        if len(term) > 160:
-            raise InvalidOrganizationInput("search must be at most 160 characters")
-
-    queryset = StudentAffiliation.objects.select_related(
-        "student__role",
-        "college__campus",
-    )
-    if student_id is not None:
-        queryset = queryset.filter(student_id=student_id)
-    if college_id is not None:
-        queryset = queryset.filter(college_id=college_id)
-    if campus_id is not None:
-        queryset = queryset.filter(college__campus_id=campus_id)
-    if term:
-        queryset = queryset.filter(
-            Q(student__institutional_id__icontains=term)
-            | Q(student__first_name__icontains=term)
-            | Q(student__middle_name__icontains=term)
-            | Q(student__last_name__icontains=term)
-        )
-    queryset = queryset.order_by("student__last_name", "student__first_name", "student_id")
-    offset = (page - 1) * page_size
-    rows = list(queryset[offset : offset + page_size + 1])
-    return StudentAffiliationPage(
-        tuple(rows[:page_size]),
-        page,
-        page_size,
-        len(rows) > page_size,
-    )
-
-
 def validate_account_catalog_reactivation(user: User) -> None:
-    """Retained affiliations may not silently become operational beneath retired ancestry."""
+    """Retained placements may not silently become operational beneath retired ancestry."""
     if (
         user.role.code == "STUDENT"
-        and StudentAffiliation.objects.filter(student_id=user.pk)
-        .filter(Q(college__is_active=False) | Q(college__campus__is_active=False))
+        and StudentAcademicProfile.objects.filter(student_id=user.pk, current_college__isnull=False)
+        .filter(Q(current_college__is_active=False) | Q(current_college__campus__is_active=False))
         .exists()
     ):
-        raise OrganizationConflict("Repair the retained Student affiliation before reactivation.")
+        raise OrganizationConflict("Repair the retained Student placement before reactivation.")
     if (
         user.role.code == "FACULTY"
         and FacultyAffiliation.objects.filter(faculty_id=user.pk)

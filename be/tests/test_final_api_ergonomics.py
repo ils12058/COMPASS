@@ -55,7 +55,6 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.publications import PublicationAudience
 from compass.referrals.services import (
@@ -80,6 +79,7 @@ from compass.resources.services import (
     update_resource,
 )
 from compass.service_catalog.services import create_service, set_service_active
+from compass.student_academics.models import StudentAcademicProfile
 
 ZONE = ZoneInfo("Asia/Manila")
 
@@ -260,8 +260,8 @@ def make_scope():
         "STUDENT",
         institutional_id=f"2026-B-{uuid4().hex[:4]}",
     )
-    StudentAffiliation.objects.create(student=student_a, college=college_a)
-    StudentAffiliation.objects.create(student=student_b, college=college_b)
+    StudentAcademicProfile.objects.create(student=student_a, current_college=college_a)
+    StudentAcademicProfile.objects.create(student=student_b, current_college=college_b)
     return counselor_a, counselor_b, gss, student_a, student_b
 
 

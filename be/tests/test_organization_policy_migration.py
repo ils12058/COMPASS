@@ -33,7 +33,7 @@ def upgrade_database(django_db_blocker):
             targets = [
                 node
                 for node in executor.loader.graph.leaf_nodes()
-                if node[0] not in {"organization", "referrals"}
+                if node[0] not in {"organization", "referrals", "student_academics"}
             ]
             # FAC-2 Referral provenance depends on current Organization. Rehearsing
             # old Organization deliberately keeps Referral at its pre-FAC schema.
@@ -105,9 +105,6 @@ def historical_fixture(db, apps):
             profile_confidential_content_ciphertext="preservation-sentinel",
         )
     college = colleges["MAIN", "CCMS"]
-    manager("organization", "StudentAffiliation").create(
-        student_id=people["student"].pk, college_id=college.pk
-    )
     manager("organization", "CounselorResponsibility").create(
         college_id=college.pk, counselor_id=people["counselor"].pk
     )
@@ -155,7 +152,6 @@ def historical_fixture(db, apps):
             "Campus",
             "College",
             "Program",
-            "StudentAffiliation",
             "CounselorResponsibility",
             "StaffSupervision",
         ]
@@ -216,7 +212,7 @@ def test_populated_upgrade_is_frozen_and_preserves_all_original_fields(
         + [
             node
             for node in executor.loader.graph.leaf_nodes()
-            if node[0] not in {"organization", "referrals"}
+            if node[0] not in {"organization", "referrals", "student_academics"}
         ]
         + [("referrals", "0001_canonical_baseline")]
     ).apps

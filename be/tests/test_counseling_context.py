@@ -50,7 +50,6 @@ from compass.organization.models import (
     CounselorResponsibility,
     Program,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.routine_interviews.services import (
     create_direct,
@@ -59,6 +58,7 @@ from compass.routine_interviews.services import (
     submit_my_intake,
 )
 from compass.service_catalog.services import set_service_active
+from compass.student_academics.models import StudentAcademicProfile
 from compass.student_support.models import (
     FourPsStatus,
     IndigenousPeoplesStatus,
@@ -228,7 +228,7 @@ def world(db):
 
     _, cas, cas_program = make_org("CAS")
     _, ccms, _ccms_program = make_org("CCMS")
-    StudentAffiliation.objects.create(student=anna, college=cas)
+    StudentAcademicProfile.objects.create(student=anna, current_college=cas)
     CounselorResponsibility.objects.create(college=cas, counselor=counselor_a)
     CounselorResponsibility.objects.create(college=ccms, counselor=counselor_b)
 
@@ -664,7 +664,7 @@ def test_context_support_indicators_use_only_current_submitted_inventory(world):
 
     draft_student = make_user("draft.context@example.edu", "STUDENT", institutional_id="DRAFT-001")
     _, draft_college, draft_program = make_org("DRAFT")
-    StudentAffiliation.objects.create(student=draft_student, college=draft_college)
+    StudentAcademicProfile.objects.create(student=draft_student, current_college=draft_college)
     draft_inventory = make_inventory(
         student=draft_student,
         program=draft_program,
@@ -695,7 +695,7 @@ def test_context_support_indicators_use_only_current_submitted_inventory(world):
         institutional_id="MISSING-001",
     )
     _, missing_college, missing_program = make_org("MISSING")
-    StudentAffiliation.objects.create(student=missing_student, college=missing_college)
+    StudentAcademicProfile.objects.create(student=missing_student, current_college=missing_college)
     historical_year = AcademicYear.objects.create(label="2025-2026", is_current=False)
     historical = create_inventory_row(
         StudentInventory,

@@ -60,13 +60,13 @@ def _guard(actor, grant, scopes, users, operation, session):
         return workflow
     if grant.decision not in {"REQUESTED", "APPROVED"} or now >= grant.expires_at:
         raise ContinuityError("not_found", 404)
-    if grants._student(users.get(grant.student_id), policy) != grant.student_affiliation_marker:
+    if grants._student(users.get(grant.student_id), policy) != grant.student_placement_marker:
         raise ContinuityError("not_found", 404)
     grants._receiver(users.get(grant.receiving_counselor_id), now)
     if (
         not workflow.college_ids.intersection(policy.college_ids)
-        or not grants.StudentAffiliation.objects.filter(
-            student_id=grant.student_id, college_id__in=workflow.college_ids
+        or not grants.StudentAcademicProfile.objects.filter(
+            student_id=grant.student_id, current_college_id__in=workflow.college_ids
         ).exists()
     ):
         raise ContinuityError("not_found", 404)

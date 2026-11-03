@@ -47,8 +47,8 @@ from tests.test_exit_interviews import (
     sync_policy,
     valid_payload,
 )
-from tests.test_good_moral import make_affiliation
 from tests.test_good_moral import make_inventory as make_good_moral_inventory
+from tests.test_good_moral import make_placement
 
 K1, K2, K3, K4, K5, K6, K7, K8 = (
     base64.urlsafe_b64encode(bytes([n]) * 32).decode("ascii") for n in range(101, 109)
@@ -364,7 +364,7 @@ def test_lists_search_history_status_and_good_moral_prerequisite_need_no_decrypt
     item = record(world, submitted=True)
     world["student"].institutional_id = "PRIVATE-STRUCTURED-ID"
     world["student"].save(update_fields=["institutional_id", "updated_at"])
-    make_affiliation(world["student"])
+    make_placement(world["student"])
     patch_readers(monkeypatch)
     head = auth_client(world["head"])
     for term in ["PRIVATE-STRUCTURED-ID", "Exit", "Form Local Student"]:

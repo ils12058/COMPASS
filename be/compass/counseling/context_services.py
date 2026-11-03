@@ -16,9 +16,9 @@ from compass.inventory.services import (
     InventoryStatus,
     get_current_inventory_status,
 )
-from compass.organization.models import StudentAffiliation
 from compass.referrals.models import Referral
 from compass.routine_interviews.models import RoutineInterview
+from compass.student_academics.models import StudentAcademicProfile
 from compass.student_support.services import StudentSupportContext, build_student_support_context
 
 from .context_access import CounselingContextAccess
@@ -176,11 +176,12 @@ def _program_reference(inventory: StudentInventory | None) -> ContextProgramRefe
 
 def get_context_overview(access: CounselingContextAccess) -> CounselingContextOverview:
     student = _student(access)
-    affiliation = (
-        StudentAffiliation.objects.select_related("college__campus")
+    profile = (
+        StudentAcademicProfile.objects.select_related("current_college__campus")
         .filter(student_id=access.student_id)
         .first()
     )
+    placement = profile if profile is not None and profile.current_college is not None else None
     try:
         _status, inventory = _inventory_source(access)
     except CurrentAcademicYearNotConfigured:
@@ -191,16 +192,16 @@ def get_context_overview(access: CounselingContextAccess) -> CounselingContextOv
 
     campus = None
     college = None
-    if affiliation is not None:
+    if placement is not None:
         campus = ContextOrganizationReference(
-            id=affiliation.college.campus_id,
-            code=affiliation.college.campus.code,
-            name=affiliation.college.campus.name,
+            id=placement.current_college.campus_id,
+            code=placement.current_college.campus.code,
+            name=placement.current_college.campus.name,
         )
         college = ContextOrganizationReference(
-            id=affiliation.college_id,
-            code=affiliation.college.code,
-            name=affiliation.college.name,
+            id=placement.current_college_id,
+            code=placement.current_college.code,
+            name=placement.current_college.name,
         )
 
     routine_summary = None

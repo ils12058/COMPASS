@@ -56,11 +56,11 @@ def configuration(*, actor):
             for c in workflow.office_cases
             if office
             and c.requester_id == actor.pk
-            and grants.StudentAffiliation.objects.filter(
+            and grants.StudentAcademicProfile.objects.filter(
                 student_id=c.student_id,
-                college_id__in=workflow.college_ids.intersection(policy.college_ids),
-                college__is_active=True,
-                college__campus__is_active=True,
+                current_college_id__in=workflow.college_ids.intersection(policy.college_ids),
+                current_college__is_active=True,
+                current_college__campus__is_active=True,
                 student__is_active=True,
                 student__role__code="STUDENT",
                 student__student_lifecycle_status="CURRENT",
@@ -83,8 +83,8 @@ def select(*, actor, student_id, original_counselor_id, page=1, context=None):
             actor = users[actor.pk]
             policy, workflow = _policies(actor)
             grants._student(users.get(student_id), policy)
-            if not grants.StudentAffiliation.objects.filter(
-                student_id=student_id, college_id__in=workflow.college_ids
+            if not grants.StudentAcademicProfile.objects.filter(
+                student_id=student_id, current_college_id__in=workflow.college_ids
             ).exists():
                 raise ContinuityError("source_not_found", 404)
             office = actor.pk != original_counselor_id

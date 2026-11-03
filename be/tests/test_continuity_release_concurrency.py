@@ -31,10 +31,11 @@ from compass.counseling import continuity_access as access
 from compass.counseling.continuity_locks import AUTHORITY_TABLES, continuity_policy_change
 from compass.counseling.continuity_policy import ContinuityError
 from compass.counseling.models import CounselingEncounter
-from compass.organization.models import Campus, College, StudentAffiliation
-from compass.organization.services import set_student_affiliation
+from compass.organization.models import Campus, College
 from compass.routine_interviews import content
 from compass.routine_interviews.models import RoutineInterview
+from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.services import set_current_placement
 from tests import test_continuity_access as selected_tests
 from tests.test_continuity import decide
 from tests.test_continuity_access import SENTINEL, approved, read, reads
@@ -99,7 +100,7 @@ def wait_for_pg_lock(application_name):
         "deactivate",
         "role",
         "student_lifecycle",
-        "affiliation",
+        "placement",
         "head_designation",
         "source_revision",
     ],
@@ -140,8 +141,8 @@ def test_read_linearizes_before_real_supported_mutation(selected_case, monkeypat
             return change_role(**options, target_id=c.receiver.pk, role="GUIDANCE_SERVICES_STAFF")
         if mutation == "student_lifecycle":
             return set_student_lifecycle(**options, target_id=c.student.pk, status="FORMER")
-        if mutation == "affiliation":
-            return set_student_affiliation(
+        if mutation == "placement":
+            return set_current_placement(
                 student_id=c.student.pk, college_id=c.college_b.pk, context=context
             )
         if mutation == "head_designation":
@@ -197,9 +198,9 @@ def authority_mutation(c, table):
         return lambda: UserCapabilityOverride.objects.filter(
             user=c.receiver, capability__code="counseling.continuity.read_selected"
         ).update(effect="REVOKE")
-    if table == "organization_studentaffiliation":
-        return lambda: StudentAffiliation.objects.filter(student=c.student).update(
-            college=c.college_b, updated_at=timezone.now()
+    if table == "student_academics_studentacademicprofile":
+        return lambda: StudentAcademicProfile.objects.filter(student=c.student).update(
+            current_college=c.college_b, updated_at=timezone.now()
         )
     if table == "organization_college":
         return lambda: College.objects.filter(pk=c.college.pk).update(is_active=False)

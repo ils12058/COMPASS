@@ -31,11 +31,12 @@ from compass.counseling.continuity_models import CounselorCaseContinuityGrant as
 from compass.counseling.continuity_models import CounselorCaseContinuityScope as Scope
 from compass.counseling.continuity_policy import ContinuityError
 from compass.counseling.models import CounselingEncounter
-from compass.organization.models import CounselorResponsibility, StudentAffiliation
+from compass.organization.models import CounselorResponsibility
 from compass.routine_interviews import content
 from compass.routine_interviews.continuity import read_selected_evaluation_for_continuity
 from compass.routine_interviews.crypto import RoutineContentSection, encrypt_section
 from compass.routine_interviews.models import RoutineInterview
+from compass.student_academics.models import StudentAcademicProfile
 from tests import test_continuity as foundation_tests
 from tests.test_continuity import client, decide, request
 
@@ -225,8 +226,8 @@ def test_current_authority_rechecked_before_decrypt(selected_case, monkeypatch, 
             user=c.receiver, capability__code="counseling.continuity.read_selected"
         ).update(expires_at=c.now - timedelta(seconds=1))
     elif change == "transfer":
-        StudentAffiliation.objects.filter(student=c.student).update(
-            college=c.college_b, updated_at=timezone.now()
+        StudentAcademicProfile.objects.filter(student=c.student).update(
+            current_college=c.college_b, updated_at=timezone.now()
         )
     elif change == "former":
         User.objects.filter(pk=c.student.pk).update(student_lifecycle_status="FORMER")

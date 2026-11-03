@@ -31,12 +31,12 @@ from compass.counseling.continuity_read_schemas import (
     ContinuitySelectedEncounterResponse,
     ContinuitySelectedEvaluationResponse,
 )
-from compass.organization.models import StudentAffiliation
 from compass.routine_interviews.continuity import (
     _evaluation_projection,
     _lock_evaluation,
     evaluation_revision,
 )
+from compass.student_academics.models import StudentAcademicProfile
 
 SOURCE_CAPABILITIES = {
     ("ENCOUNTER", "ENCOUNTER_METADATA_V1"): "counseling.view_assigned",
@@ -63,8 +63,8 @@ def _read_authority(*, actor, grant, scopes, users, resource_kind, projection, n
     grants._snapshot(grant, scopes, policy)
     if grants._effective(grant, scopes, users, policy, now) != "ACTIVE":
         raise ContinuityError("not_found", 404)
-    if not StudentAffiliation.objects.filter(
-        student_id=grant.student_id, college_id__in=disclosure.college_ids
+    if not StudentAcademicProfile.objects.filter(
+        student_id=grant.student_id, current_college_id__in=disclosure.college_ids
     ).exists():
         raise ContinuityError("not_found", 404)
     if session is not None and (

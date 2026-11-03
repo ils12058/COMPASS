@@ -45,8 +45,8 @@ from tests.test_good_moral import (
     auth_client,
     csrf,
     make_academic_year,
-    make_affiliation,
     make_inventory,
+    make_placement,
     make_user,
     sync_policy,
 )
@@ -65,7 +65,7 @@ def approved(monkeypatch):
 def actors(approved):
     sync_policy()
     student = make_user(f"gm4-{uuid4()}@example.test", lifecycle="CURRENT")
-    make_affiliation(student)
+    make_placement(student)
     make_inventory(student, make_academic_year())
     inspector = person("gm4-inspector", "GUIDANCE_SERVICES_STAFF")
     counselor = person("gm4-issuer", "COUNSELOR")

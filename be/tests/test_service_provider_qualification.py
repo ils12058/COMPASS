@@ -32,7 +32,6 @@ from compass.organization.models import (
     Campus,
     College,
     CounselorResponsibility,
-    StudentAffiliation,
 )
 from compass.routine_interviews.services import (
     RoutineInterviewAppointmentInvalid,
@@ -44,6 +43,7 @@ from compass.routine_interviews.services import (
 from compass.service_catalog.bootstrap import sync_canonical_services
 from compass.service_catalog.models import Service
 from compass.service_catalog.services import create_service, set_service_active, update_service
+from compass.student_academics.models import StudentAcademicProfile
 from tests.test_appointments import (
     configure_availability,
     context,
@@ -128,7 +128,7 @@ def test_booking_discovery_respects_coverage_default_and_cross_college_choice():
     tester = make_user("discovery-tester@example.edu", "COUNSELOR")
     home = make_user("discovery-home@example.edu", "COUNSELOR")
     student = make_user("discovery-student@example.edu", "STUDENT")
-    StudentAffiliation.objects.create(student=student, college=college("HOME", home))
+    StudentAcademicProfile.objects.create(student=student, current_college=college("HOME", home))
     college("AWAY", tester)
 
     testing = create_service(

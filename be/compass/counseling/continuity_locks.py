@@ -20,7 +20,7 @@ AUTHORITY_TABLES = (
     "accounts_designationcapability",
     "accounts_userdesignation",
     "accounts_usercapabilityoverride",
-    "organization_studentaffiliation",
+    "student_academics_studentacademicprofile",
     "organization_college",
     "organization_campus",
 )

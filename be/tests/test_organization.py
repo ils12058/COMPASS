@@ -29,14 +29,17 @@ from compass.organization.models import (
     CounselorResponsibility,
     Program,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.organization.services import (
     effective_responsibility_colleges,
     resolve_default_counselor_for_student,
     set_counselor_responsibility,
     set_staff_supervisor,
-    set_student_affiliation,
+)
+from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.services import (
+    clear_current_placement,
+    set_current_placement,
 )
 
 
@@ -120,7 +123,6 @@ def test_structural_reads_are_available_without_organization_management():
             for path in (
                 "counselor-responsibilities",
                 "staff-supervisions",
-                "student-affiliations",
             ):
                 assert client.get(f"/api/v1/organization/{path}").status_code == 403
             assert (
@@ -394,7 +396,7 @@ def test_default_routing_prefers_college_then_head_and_reports_head_ambiguity():
     head = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     UserDesignation.objects.create(user=head_one, designation=head)
 
-    set_student_affiliation(
+    set_current_placement(
         student_id=student.pk,
         college_id=college.pk,
         context=context(head_one),
@@ -452,22 +454,19 @@ def test_assignment_noop_does_not_create_fake_audit_event():
     college = College.objects.create(campus=campus, code="C", name="College")
     student = make_user("s@example.edu", "STUDENT")
 
-    set_student_affiliation(
+    set_current_placement(
         student_id=student.pk,
         college_id=college.pk,
         context=context(actor),
     )
-    count = AuditEvent.objects.filter(action__startswith="organization.student_affiliation").count()
-    set_student_affiliation(
+    count = AuditEvent.objects.filter(action="student_academics.placement.set").count()
+    set_current_placement(
         student_id=student.pk,
         college_id=college.pk,
         context=context(actor),
     )
-    assert StudentAffiliation.objects.filter(student=student).count() == 1
-    assert (
-        AuditEvent.objects.filter(action__startswith="organization.student_affiliation").count()
-        == count
-    )
+    assert StudentAcademicProfile.objects.filter(student=student).count() == 1
+    assert AuditEvent.objects.filter(action="student_academics.placement.set").count() == count
 
 
 @pytest.mark.django_db
@@ -477,7 +476,7 @@ def test_role_changes_are_blocked_until_organization_relationship_is_removed():
     student = make_user("s@example.edu", "STUDENT")
     campus = Campus.objects.create(code="M", name="Main")
     college = College.objects.create(campus=campus, code="C", name="College")
-    StudentAffiliation.objects.create(student=student, college=college, assigned_by=admin)
+    StudentAcademicProfile.objects.create(student=student, current_college=college)
     client = auth_client(admin)
     headers = csrf(client)
 
@@ -490,7 +489,8 @@ def test_role_changes_are_blocked_until_organization_relationship_is_removed():
     assert blocked.status_code == 409
     assert blocked.json()["error"]["code"] == "organization_relationship_conflict"
 
-    StudentAffiliation.objects.filter(student=student).delete()
+    clear_current_placement(student_id=student.pk, context=context(admin))
+    assert StudentAcademicProfile.objects.filter(student=student).exists()
     allowed = client.put(
         f"/api/v1/accounts/{student.pk}/role",
         data=json.dumps({"role": "COUNSELOR"}),
@@ -652,7 +652,7 @@ def test_dpo_institutional_officer_is_never_head_guidance_fallback():
         user=officer,
         designation=Designation.objects.get(code="DPO"),
     )
-    set_student_affiliation(
+    set_current_placement(
         student_id=student.pk,
         college_id=college.pk,
         context=context(officer),
@@ -663,78 +663,6 @@ def test_dpo_institutional_officer_is_never_head_guidance_fallback():
     assert result.counselor is None
     assert result.reason == "NO_HEAD_FALLBACK"
     assert effective_responsibility_colleges(officer) == ()
-
-
-@pytest.mark.django_db
-def test_student_affiliation_collection_is_paginated_searchable_and_filterable():
-    sync_policy()
-    admin = make_user("affiliation-admin@example.edu", "IT_ADMIN")
-    campus = Campus.objects.create(code="AFF-MAIN", name="Affiliation Main")
-    other_campus = Campus.objects.create(code="AFF-OTHER", name="Affiliation Other")
-    college_a = College.objects.create(campus=campus, code="AFF-A", name="Affiliation A")
-    college_b = College.objects.create(campus=other_campus, code="AFF-B", name="Affiliation B")
-
-    students = [
-        make_user("affiliation.alpha@example.edu", "STUDENT"),
-        make_user("affiliation.beta@example.edu", "STUDENT"),
-        make_user("affiliation.gamma@example.edu", "STUDENT"),
-    ]
-    for index, student in enumerate(students, start=1):
-        student.institutional_id = f"AFF-{index:03d}"
-        student.first_name = ("Alpha", "Beta", "Gamma")[index - 1]
-        student.save(update_fields=["institutional_id", "first_name", "updated_at"])
-        StudentAffiliation.objects.create(
-            student=student,
-            college=college_a if index < 3 else college_b,
-        )
-
-    client = auth_client(admin)
-    first = client.get("/api/v1/organization/student-affiliations", {"page_size": 2})
-    assert first.status_code == 200
-    assert first.json()["page"] == 1
-    assert first.json()["page_size"] == 2
-    assert first.json()["has_next"] is True
-    assert len(first.json()["items"]) == 2
-
-    searched = client.get(
-        "/api/v1/organization/student-affiliations",
-        {"search": "AFF-002"},
-    )
-    assert searched.status_code == 200
-    assert [row["student"]["id"] for row in searched.json()["items"]] == [str(students[1].pk)]
-    assert searched.json()["items"][0]["student"]["institutional_id"] == "AFF-002"
-
-    by_college = client.get(
-        "/api/v1/organization/student-affiliations",
-        {"college_id": str(college_b.pk)},
-    )
-    assert by_college.status_code == 200
-    assert [row["student"]["id"] for row in by_college.json()["items"]] == [str(students[2].pk)]
-
-    by_campus = client.get(
-        "/api/v1/organization/student-affiliations",
-        {"campus_id": str(campus.pk)},
-    )
-    assert by_campus.status_code == 200
-    assert {row["student"]["id"] for row in by_campus.json()["items"]} == {
-        str(students[0].pk),
-        str(students[1].pk),
-    }
-
-    by_student = client.get(
-        "/api/v1/organization/student-affiliations",
-        {"student_id": str(students[0].pk)},
-    )
-    assert by_student.status_code == 200
-    assert [row["student"]["id"] for row in by_student.json()["items"]] == [str(students[0].pk)]
-
-    assert (
-        client.get(
-            "/api/v1/organization/student-affiliations",
-            {"page": 0},
-        ).status_code
-        == 422
-    )
 
 
 @pytest.mark.django_db
@@ -774,7 +702,7 @@ def test_head_workload_matches_routing_and_gss_inherits_only_handled_colleges():
     assert {c.pk for c in effective_responsibility_colleges(head)} == expected
     for code, college in colleges.items():
         student = make_user(f"work-{code}@example.edu", "STUDENT")
-        StudentAffiliation.objects.create(student=student, college=college)
+        StudentAcademicProfile.objects.create(student=student, current_college=college)
         resolution = resolve_default_counselor_for_student(student)
         if code in "AB":
             assert resolution.counselor == other
@@ -817,7 +745,7 @@ def test_ambiguous_or_inactive_heads_never_receive_implicit_fallback_workload():
     explicit = College.objects.create(campus=campus, code="EX", name="Explicit")
     fallback = College.objects.create(campus=campus, code="FB", name="Fallback")
     student = make_user("multi-student@example.edu", "STUDENT")
-    StudentAffiliation.objects.create(student=student, college=fallback)
+    StudentAcademicProfile.objects.create(student=student, current_college=fallback)
     heads = [make_user(f"multi-h{i}@example.edu", "COUNSELOR") for i in range(2)]
     staff = [make_user(f"multi-g{i}@example.edu", "GUIDANCE_SERVICES_STAFF") for i in range(2)]
     for head, gss in zip(heads, staff, strict=True):
@@ -832,7 +760,7 @@ def test_ambiguous_or_inactive_heads_never_receive_implicit_fallback_workload():
         assert resolve_operational_responsibility_scope(heads[index]).college_ids == expected
         assert resolve_operational_responsibility_scope(staff[index]).college_ids == expected
     # Explicit assignment wins even when Head fallback is ambiguous.
-    StudentAffiliation.objects.filter(student=student).update(college=explicit)
+    StudentAcademicProfile.objects.filter(student=student).update(current_college=explicit)
     assert resolve_default_counselor_for_student(student).counselor == heads[0]
     for head in heads:
         head.is_active = False

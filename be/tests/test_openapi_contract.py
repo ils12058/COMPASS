@@ -230,9 +230,9 @@ EXPECTED_OPERATION_IDS = {
     "organizationListStaffSupervisions",
     "organizationSetStaffSupervisor",
     "organizationRemoveStaffSupervisor",
-    "organizationListStudentAffiliations",
-    "organizationSetStudentAffiliation",
-    "organizationRemoveStudentAffiliation",
+    "studentAcademicsListPlacements",
+    "studentAcademicsSetPlacement",
+    "studentAcademicsClearPlacement",
     "organizationListEligiblePeople",
     "servicesList",
     "servicesCreate",
@@ -848,7 +848,7 @@ def test_organization_person_projection_schema_is_dedicated_and_complete() -> No
     for response_name, field_names in {
         "CounselorResponsibilityResponse": ("counselor",),
         "StaffSupervisionResponse": ("staff", "supervisor"),
-        "StudentAffiliationResponse": ("student",),
+        "PlacementResponse": ("student",),
     }.items():
         for field_name in field_names:
             assert components[response_name]["properties"][field_name]["$ref"] == organization_ref
@@ -903,6 +903,7 @@ def test_all_public_operations_have_stable_unique_ids_and_approved_tags() -> Non
         "profile",
         "accounts",
         "organization",
+        "student-academics",
         "services",
         "availability",
         "appointments",

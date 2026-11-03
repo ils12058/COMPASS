@@ -56,11 +56,11 @@ def recoverable_queryset(*, actor):
     )
     if not is_head_guidance(actor):
         rows = rows.filter(
-            student__organization_student_affiliation__college_id__in=resolve_operational_responsibility_scope(
+            student__student_academic_profile__current_college_id__in=resolve_operational_responsibility_scope(
                 actor
             ).college_ids,
-            student__organization_student_affiliation__college__is_active=True,
-            student__organization_student_affiliation__college__campus__is_active=True,
+            student__student_academic_profile__current_college__is_active=True,
+            student__student_academic_profile__current_college__campus__is_active=True,
         )
     # Eligibility of the *current* owner, including capability dependency revocations, is decided
     # before pagination. These annotations read no protected content.
@@ -69,7 +69,7 @@ def recoverable_queryset(*, actor):
     for capability in ("guidance_followups.view", "guidance_followups.manage"):
         eligible = _capable_users(User.objects.all(), capability).values("pk")
         candidates = candidates.filter(pk__in=eligible)
-    college = OuterRef("student__organization_student_affiliation__college_id")
+    college = OuterRef("student__student_academic_profile__current_college_id")
     head = Q(
         role__code="COUNSELOR", designation_assignments__designation__code="HEAD_GUIDANCE_COUNSELOR"
     )
@@ -100,11 +100,11 @@ def recoverable_queryset(*, actor):
         candidates = candidates.alias(
             _assigned_college=ExpressionWrapper(college, output_field=UUIDField()),
             _student_college_active=ExpressionWrapper(
-                OuterRef("student__organization_student_affiliation__college__is_active"),
+                OuterRef("student__student_academic_profile__current_college__is_active"),
                 output_field=BooleanField(),
             ),
             _student_campus_active=ExpressionWrapper(
-                OuterRef("student__organization_student_affiliation__college__campus__is_active"),
+                OuterRef("student__student_academic_profile__current_college__campus__is_active"),
                 output_field=BooleanField(),
             ),
         )

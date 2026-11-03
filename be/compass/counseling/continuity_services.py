@@ -35,7 +35,7 @@ from compass.counseling.continuity_models import (
 )
 from compass.counseling.continuity_policy import ContinuityError, require_policy
 from compass.counseling.continuity_sources import resolve_source, validate_selection
-from compass.organization.models import StudentAffiliation
+from compass.student_academics.models import StudentAcademicProfile
 
 
 # Identity rows (sorted UUID) -> Grant -> Scope -> exact source rows (sorted kind/UUID).
@@ -74,19 +74,25 @@ def _head(actor, policy, now):
 def _student(student, policy):
     if student is None or not is_current_student(student):
         raise ContinuityError("ineligible_student", 422)
-    affiliation = (
-        StudentAffiliation.objects.filter(student_id=student.pk)
-        .values("college_id", "updated_at", "college__is_active", "college__campus__is_active")
+    placement = (
+        StudentAcademicProfile.objects.filter(student_id=student.pk)
+        .values(
+            "current_college_id",
+            "updated_at",
+            "current_college__is_active",
+            "current_college__campus__is_active",
+        )
         .first()
     )
     if (
-        not affiliation
-        or affiliation["college_id"] not in policy.college_ids
-        or not affiliation["college__is_active"]
-        or not affiliation["college__campus__is_active"]
+        not placement
+        or placement["current_college_id"] is None
+        or placement["current_college_id"] not in policy.college_ids
+        or not placement["current_college__is_active"]
+        or not placement["current_college__campus__is_active"]
     ):
         raise ContinuityError("ineligible_student", 422)
-    return str(affiliation["college_id"]) + ":" + affiliation["updated_at"].isoformat()
+    return str(placement["current_college_id"]) + ":" + placement["updated_at"].isoformat()
 
 
 def _receiver(receiver, now):
@@ -125,7 +131,7 @@ def _digest(grant, scopes):
         "policy_version",
         "policy_evidence",
         "policy_digest",
-        "student_affiliation_marker",
+        "student_placement_marker",
     )
     data = {}
     for field in fields:
@@ -232,7 +238,7 @@ def _effective(grant, scopes, users, policy, now):
     try:
         _snapshot(grant, scopes, policy)
         _receiver(users.get(grant.receiving_counselor_id), now)
-        if _student(users.get(grant.student_id), policy) != grant.student_affiliation_marker:
+        if _student(users.get(grant.student_id), policy) != grant.student_placement_marker:
             return "UNAVAILABLE"
         _head(users.get(grant.decision_by_id), policy, now)
         if not grant.starts_at <= now < grant.expires_at:
@@ -301,17 +307,17 @@ def _visible(grant, actor, policy, now):
         if (
             grant.policy_digest == policy.digest
             and actor.has_capability("counseling.handoff.manage_own", at=now)
-            and StudentAffiliation.objects.filter(
+            and StudentAcademicProfile.objects.filter(
                 student_id=grant.student_id,
-                college_id__in=workflow.college_ids.intersection(policy.college_ids),
+                current_college_id__in=workflow.college_ids.intersection(policy.college_ids),
             ).exists()
         ):
             return
     # Head status alone gives no office-wide enumeration; exact policy office scope applies.
     try:
         _head(actor, policy, now)
-        if StudentAffiliation.objects.filter(
-            student_id=grant.student_id, college_id__in=policy.college_ids
+        if StudentAcademicProfile.objects.filter(
+            student_id=grant.student_id, current_college_id__in=policy.college_ids
         ).exists():
             return
     except ContinuityError:
@@ -344,7 +350,7 @@ def request_coverage(
     now = timezone.now()
     actor = _actor(users.get(actor.pk), "request", now)
     policy = require_policy(now)
-    affiliation = _student(users.get(student_id), policy)
+    placement_marker = _student(users.get(student_id), policy)
     _receiver(users.get(receiving_counselor_id), now)
     _interval(starts_at, expires_at, policy, now)
     if (
@@ -372,7 +378,7 @@ def request_coverage(
         policy_version=policy.version,
         policy_evidence=policy.evidence_reference,
         policy_digest=policy.digest,
-        student_affiliation_marker=affiliation,
+        student_placement_marker=placement_marker,
         request_id=request_id,
     )
     selected = []
@@ -464,7 +470,7 @@ def decide_coverage(
     policy.validate(now)
     if decision == "APPROVED":
         _receiver(users.get(grant.receiving_counselor_id), now)
-        if _student(users.get(grant.student_id), policy) != grant.student_affiliation_marker:
+        if _student(users.get(grant.student_id), policy) != grant.student_placement_marker:
             raise ContinuityError("student_changed", 409)
         _interval(grant.starts_at, grant.expires_at, policy, now)
         _sources(grant, selected, users, policy)
@@ -549,13 +555,13 @@ def list_grant_metadata(*, actor, page=1, page_size=20):
         scope |= Q(
             original_counselor=actor,
             policy_digest=policy.digest,
-            student__organization_student_affiliation__college_id__in=workflow.college_ids.intersection(
-                policy.college_ids
+            student__student_academic_profile__current_college_id__in=(
+                workflow.college_ids.intersection(policy.college_ids)
             ),
         )
     try:
         _head(actor, policy, now)
-        scope |= Q(student__organization_student_affiliation__college_id__in=policy.college_ids)
+        scope |= Q(student__student_academic_profile__current_college_id__in=policy.college_ids)
     except ContinuityError:
         pass
     # Filter before slicing; no all-Student search parameters.

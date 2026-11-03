@@ -37,8 +37,8 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     Program,
-    StudentAffiliation,
 )
+from compass.student_academics.models import StudentAcademicProfile
 from tests.inventory_encryption_helpers import update_inventory_private
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
@@ -72,7 +72,7 @@ def make_submitted_inventory(*, student: User, actor: User, code: str) -> Studen
     program = Program.objects.create(
         college=college, code=f"P-{code}", name="BS Information Systems"
     )
-    StudentAffiliation.objects.create(student=student, college=college)
+    StudentAcademicProfile.objects.create(student=student, current_college=college)
     ensure_current_inventory(student=student, context=context(student))
     values = minimum_normalized_inventory_values(program_id=program.pk)
     values.update(

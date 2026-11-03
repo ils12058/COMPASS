@@ -46,7 +46,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
-from compass.organization.models import StudentAffiliation
+from compass.student_academics.models import StudentAcademicProfile
 
 from .confidential_content import (
     ReferralConfidentialContent,
@@ -233,11 +233,11 @@ def _student_in_scope(actor: User, student_id: UUID) -> bool:
         return True
     if not college_ids:
         return False
-    return StudentAffiliation.objects.filter(
+    return StudentAcademicProfile.objects.filter(
         student_id=student_id,
-        college_id__in=college_ids,
-        college__is_active=True,
-        college__campus__is_active=True,
+        current_college_id__in=college_ids,
+        current_college__is_active=True,
+        current_college__campus__is_active=True,
     ).exists()
 
 
@@ -263,9 +263,9 @@ def _scope_queryset(queryset, actor: User):
     if not college_ids:
         return queryset.none()
     return queryset.filter(
-        student__organization_student_affiliation__college_id__in=college_ids,
-        student__organization_student_affiliation__college__is_active=True,
-        student__organization_student_affiliation__college__campus__is_active=True,
+        student__student_academic_profile__current_college_id__in=college_ids,
+        student__student_academic_profile__current_college__is_active=True,
+        student__student_academic_profile__current_college__campus__is_active=True,
     )
 
 

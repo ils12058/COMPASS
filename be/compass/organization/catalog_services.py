@@ -35,10 +35,10 @@ from compass.organization.models import (
     CounselorResponsibility,
     FacultyAffiliation,
     Program,
-    StudentAffiliation,
     normalize_code,
 )
 from compass.organization.program_policy import validate_program_policy
+from compass.student_academics.models import StudentAcademicProfile
 
 CatalogEntity = Campus | College | Program
 
@@ -515,12 +515,12 @@ def _impact(item):
         if is_program
         else Program.objects.filter(college_id__in=colleges.values("pk"))
     )
-    affiliations = StudentAffiliation.objects.filter(college_id__in=colleges.values("pk"))
+    placements = StudentAcademicProfile.objects.filter(current_college_id__in=colleges.values("pk"))
     inventories = StudentInventory.objects.filter(program_id__in=programs.values("pk"))
     threads = GuidanceThread.objects.filter(routing_college_id__in=colleges.values("pk"))
     gm = GoodMoralRequest.objects.filter(
         Q(inventory__program_id__in=programs.values("pk"))
-        | Q(student_id__in=affiliations.values("student_id"))
+        | Q(student_id__in=placements.values("student_id"))
     )
     tracers = GraduateTracerResponse.objects.filter(
         Q(graduated_program_id__in=programs.values("pk"))
@@ -545,11 +545,11 @@ def _impact(item):
             college_id__in=colleges.values("pk"),
             faculty__is_active=False,
         ).count(),
-        "student_affiliations": affiliations.count(),
-        "active_student_affiliations": affiliations.filter(
+        "student_placements": placements.count(),
+        "active_student_placements": placements.filter(
             student__is_active=True, student__role__code="STUDENT"
         ).count(),
-        "inactive_account_affiliations": affiliations.filter(student__is_active=False).count(),
+        "inactive_student_placements": placements.filter(student__is_active=False).count(),
         "counselor_responsibilities": CounselorResponsibility.objects.filter(
             college_id__in=colleges.values("pk")
         ).count(),
@@ -564,7 +564,7 @@ def _impact(item):
         ).count(),
         "issued_good_moral": gm.filter(status="ISSUED").count(),
         "pending_operational_followups": GuidanceFollowUp.objects.filter(
-            student_id__in=affiliations.values("student_id"),
+            student_id__in=placements.values("student_id"),
             visibility="OPERATIONAL",
             status="PENDING",
         ).count(),
@@ -572,7 +572,7 @@ def _impact(item):
     blocker_keys = []
     if not is_program:
         blocker_keys = [
-            "active_student_affiliations",
+            "active_student_placements",
             "active_faculty_affiliations",
             "counselor_responsibilities",
             "open_office_threads",
@@ -582,7 +582,7 @@ def _impact(item):
             ["active_child_colleges"] if isinstance(item, Campus) else ["active_child_programs"]
         )
     warning_keys = [
-        "inactive_account_affiliations",
+        "inactive_student_placements",
         "inactive_faculty_affiliations",
         "draft_inventories",
         "pending_good_moral",
@@ -601,7 +601,7 @@ def _impact(item):
             "issued_certificate_snapshots",
             "graduate_tracer_references",
             "resolved_guidance_threads",
-            "inactive_affiliations",
+            "inactive_placements",
         ),
     )
 

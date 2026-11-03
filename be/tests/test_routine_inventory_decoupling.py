@@ -27,7 +27,6 @@ from compass.organization.academic_years import create_academic_year, set_curren
 from compass.organization.models import (
     CounselorResponsibility,
     Program,
-    StudentAffiliation,
 )
 from compass.routine_interviews.models import RoutineInterview
 from compass.routine_interviews.services import (
@@ -41,6 +40,7 @@ from compass.routine_interviews.services import (
     submit_my_intake,
 )
 from compass.service_catalog.services import update_service
+from compass.student_academics.models import StudentAcademicProfile
 from tests.inventory_test_helpers import (
     minimum_normalized_inventory_values,
 )
@@ -85,8 +85,8 @@ def submitted_inventory(student, program) -> StudentInventory:
 
 
 def reopen(inventory: StudentInventory, counselor) -> StudentInventory:
-    StudentAffiliation.objects.get_or_create(
-        student=inventory.student, defaults={"college": inventory.program.college}
+    StudentAcademicProfile.objects.get_or_create(
+        student=inventory.student, defaults={"current_college": inventory.program.college}
     )
     CounselorResponsibility.objects.get_or_create(
         college=inventory.program.college, defaults={"counselor": counselor}

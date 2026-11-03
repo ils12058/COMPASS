@@ -25,10 +25,10 @@ from compass.organization.access_scope import (
     resolve_operational_responsibility_scope,
 )
 from compass.organization.integrity import catalog_dependent_write
-from compass.organization.models import StudentAffiliation
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.realtime.publish import publish_to_user_on_commit
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
+from compass.student_academics.models import StudentAcademicProfile
 
 from . import content, policy
 from .errors import InvalidMessageInput, MessagesConflict, MessagesPermissionDenied, ThreadNotFound
@@ -225,7 +225,8 @@ def open_office_thread(*, actor, client_message_id, body, student_id=None, conte
             User.objects.select_related("role")
             .select_for_update(of=("self",), no_key=True)
             .filter(
-                pk=student_id, organization_student_affiliation__college_id__in=scope.college_ids
+                pk=student_id,
+                student_academic_profile__current_college_id__in=scope.college_ids,
             )
             .first()
         )
@@ -249,24 +250,25 @@ def open_office_thread(*, actor, client_message_id, body, student_id=None, conte
         .first()
     )
     if thread is None:
-        affiliation = (
-            StudentAffiliation.objects.select_related("college__campus")
+        placement = (
+            StudentAcademicProfile.objects.select_related("current_college__campus")
             .filter(student=student)
             .first()
         )
         resolution = resolve_default_counselor_for_student(student)
         if (
-            affiliation is None
+            placement is None
+            or placement.current_college is None
             or resolution.counselor is None
             or not resolution.counselor.has_capability("guidance_messages.manage")
-            or affiliation.college_id
+            or placement.current_college_id
             not in resolve_operational_responsibility_scope(resolution.counselor).college_ids
         ):
             raise MessagesConflict("Guidance Office routing is currently unavailable.")
         thread = GuidanceThread.objects.create(
             kind=ThreadKind.OFFICE,
             student=student,
-            routing_college=affiliation.college,
+            routing_college=placement.current_college,
             assigned_to=resolution.counselor,
             created_by=actor,
         )

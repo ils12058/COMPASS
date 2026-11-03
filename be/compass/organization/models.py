@@ -196,30 +196,6 @@ class Program(models.Model):
         return f"{self.college}/{self.code}"
 
 
-class StudentAffiliation(models.Model):
-    student = models.OneToOneField(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name="organization_student_affiliation",
-        primary_key=True,
-    )
-    college = models.ForeignKey(
-        College, on_delete=models.PROTECT, related_name="student_affiliations"
-    )
-    assigned_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        related_name="assigned_student_affiliations",
-        null=True,
-        blank=True,
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        default_permissions = ()
-
-
 class CounselorResponsibility(models.Model):
     college = models.OneToOneField(
         College,

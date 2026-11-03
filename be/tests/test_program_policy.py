@@ -161,7 +161,7 @@ def test_new_database_bachelor_submits_inventory_and_creates_f4_with_frozen_fact
         replace_current_inventory,
         submit_current_inventory,
     )
-    from compass.organization.models import StudentAffiliation
+    from compass.student_academics.models import StudentAcademicProfile
     from tests.inventory_test_helpers import minimum_normalized_inventory_values
     from tests.test_good_moral import make_user, sync_policy
     from tests.test_inventory import configure_year
@@ -175,7 +175,7 @@ def test_new_database_bachelor_submits_inventory_and_creates_f4_with_frozen_fact
         year_level_policy_status="CONFIGURED",
         applicable_year_levels=[1, 4, 5],
     )
-    StudentAffiliation.objects.create(student=student, college=item.college)
+    StudentAcademicProfile.objects.create(student=student, current_college=item.college)
     ensure_current_inventory(student=student, context=AuditContext.user(student))
     replace_current_inventory(
         student=student,

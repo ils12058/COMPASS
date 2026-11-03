@@ -41,13 +41,13 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     Program,
-    StudentAffiliation,
 )
 from compass.reports.services import (
     calculate_percentage,
     parent_income_bracket_legend,
     year_level_label,
 )
+from compass.student_academics.models import StudentAcademicProfile
 from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
 from tests.inventory_encryption_helpers import create_inventory_row
 
@@ -409,9 +409,9 @@ def test_student_profile_enforces_current_counselor_college_scope_across_filters
     student_a1 = make_user("scope-student-a1@example.edu")
     student_a2 = make_user("scope-student-a2@example.edu")
     student_b1 = make_user("scope-student-b1@example.edu")
-    StudentAffiliation.objects.create(student=student_a1, college=college_a1)
-    StudentAffiliation.objects.create(student=student_a2, college=college_a2)
-    StudentAffiliation.objects.create(student=student_b1, college=college_b1)
+    StudentAcademicProfile.objects.create(student=student_a1, current_college=college_a1)
+    StudentAcademicProfile.objects.create(student=student_a2, current_college=college_a2)
+    StudentAcademicProfile.objects.create(student=student_b1, current_college=college_b1)
 
     for student, program in (
         (student_a1, program_a1),

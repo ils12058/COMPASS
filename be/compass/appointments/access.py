@@ -11,9 +11,9 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
-from compass.organization.models import StudentAffiliation
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import Service
+from compass.student_academics.models import StudentAcademicProfile
 
 
 class AppointmentAccessPolicy(StrEnum):
@@ -41,11 +41,11 @@ def _student_in_organizational_scope(actor: User, student_id) -> bool:
     scope = resolve_operational_responsibility_scope(actor)
     if not scope.college_ids:
         return False
-    return StudentAffiliation.objects.filter(
+    return StudentAcademicProfile.objects.filter(
         student_id=student_id,
-        college_id__in=scope.college_ids,
-        college__is_active=True,
-        college__campus__is_active=True,
+        current_college_id__in=scope.college_ids,
+        current_college__is_active=True,
+        current_college__campus__is_active=True,
     ).exists()
 
 
@@ -101,9 +101,9 @@ def scope_managed_appointments(queryset, actor: User):
     if scope.college_ids:
         allowed |= (
             organizational
-            & Q(student__organization_student_affiliation__college_id__in=scope.college_ids)
-            & Q(student__organization_student_affiliation__college__is_active=True)
-            & Q(student__organization_student_affiliation__college__campus__is_active=True)
+            & Q(student__student_academic_profile__current_college_id__in=scope.college_ids)
+            & Q(student__student_academic_profile__current_college__is_active=True)
+            & Q(student__student_academic_profile__current_college__campus__is_active=True)
         )
 
     return queryset.filter(allowed).distinct()

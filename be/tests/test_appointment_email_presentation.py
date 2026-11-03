@@ -727,10 +727,10 @@ def test_a_to_b_to_c_never_grants_former_provider_new_details(case, settings):
 
 def test_former_provider_with_independent_domain_scope_still_gets_minimal_email(case, settings):
     from compass.appointments.services import get_appointment_for_actor
-    from tests.test_appointments import create_affiliation
+    from tests.test_appointments import create_placement
 
     settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
-    create_affiliation(case[0], case[2])
+    create_placement(case[0], case[2])
     assert get_appointment_for_actor(appointment_id=case[3].pk, actor=case[2]).pk == case[3].pk
     plan, message = resolve_render(
         notice(case, NotificationEvent.APPOINTMENT_REASSIGNED, recipient=case[2])
@@ -741,10 +741,10 @@ def test_former_provider_with_independent_domain_scope_still_gets_minimal_email(
 
 def test_gss_pilot_link_remains_scoped_and_never_rich(case, settings):
     from compass.organization.models import StaffSupervision
-    from tests.test_appointments import create_affiliation
+    from tests.test_appointments import create_placement
 
     settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
-    create_affiliation(case[0], case[1])
+    create_placement(case[0], case[1])
     staff = make_user("email-gss@example.test", "GUIDANCE_SERVICES_STAFF")
     supervision = StaffSupervision.objects.create(staff=staff, supervisor=case[1])
     notification = notice(case, NotificationEvent.APPOINTMENT_SCHEDULED, recipient=staff)

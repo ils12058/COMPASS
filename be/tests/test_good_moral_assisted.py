@@ -29,8 +29,8 @@ from tests.test_good_moral import (
     auth_client,
     good_moral_create_headers,
     make_academic_year,
-    make_affiliation,
     make_inventory,
+    make_placement,
     sync_policy,
 )
 
@@ -75,7 +75,7 @@ def world():
         user=people["dpo"], designation=Designation.objects.get(code="DPO")
     )
     year = make_academic_year()
-    make_affiliation(people["student"])
+    make_placement(people["student"])
     people["inventory"] = make_inventory(people["student"], year)
     people["year"] = year
     return people
@@ -244,7 +244,7 @@ def test_prerequisites_cannot_be_overridden(world, case):
         world["inventory"].submitted_at = None
         world["inventory"].save(update_fields=["submitted_at"])
     elif case == "college":
-        college = world["student"].organization_student_affiliation.college
+        college = world["student"].student_academic_profile.current_college
         college.is_active = False
         college.save(update_fields=["is_active"])
     else:
@@ -261,7 +261,7 @@ def test_prerequisites_cannot_be_overridden(world, case):
     assert response.status_code == 409
     expected = {
         "inventory": "good_moral_inventory_required",
-        "college": "good_moral_affiliation_required",
+        "college": "good_moral_placement_required",
         "exit_interview": "good_moral_exit_interview_required",
     }[case]
     assert response.json()["error"]["code"] == expected

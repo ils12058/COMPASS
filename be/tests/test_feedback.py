@@ -616,7 +616,7 @@ def test_csm_is_data_minimized_and_does_not_copy_account_identity():
         "inventory",
         "academic_year",
         "college",
-        "affiliation",
+        "student_placement",
     }.isdisjoint(field_names)
     assert read_feedback_confidential_content(item).email == ""
     assert "identity-not-copied@example.edu" not in str(item.__dict__)

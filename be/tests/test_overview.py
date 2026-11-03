@@ -29,11 +29,11 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.routine_interviews.content import initial_content
 from compass.routine_interviews.models import RoutineInterview
 from compass.service_catalog.models import Service
+from compass.student_academics.models import StudentAcademicProfile
 from tests.inventory_encryption_helpers import create_inventory_row
 
 
@@ -396,8 +396,8 @@ def test_guidance_overview_preserves_counselor_gss_and_head_scope() -> None:
     CounselorResponsibility.objects.create(college=college_a, counselor=counselor)
     CounselorResponsibility.objects.create(college=college_b, counselor=other_counselor)
     StaffSupervision.objects.create(staff=gss, supervisor=counselor)
-    StudentAffiliation.objects.create(student=student_a, college=college_a)
-    StudentAffiliation.objects.create(student=student_b, college=college_b)
+    StudentAcademicProfile.objects.create(student=student_a, current_college=college_a)
+    StudentAcademicProfile.objects.create(student=student_b, current_college=college_b)
 
     service = make_service("OVERVIEW_GUIDANCE")
     now = timezone.now()

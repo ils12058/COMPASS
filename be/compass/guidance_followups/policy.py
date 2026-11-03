@@ -10,7 +10,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
-from compass.organization.models import StudentAffiliation
+from compass.student_academics.models import StudentAcademicProfile
 
 from .errors import FollowUpInvalid, FollowUpNotFound, FollowUpPermissionDenied
 from .models import FollowUpCategory, FollowUpSource, FollowUpVisibility
@@ -45,11 +45,11 @@ def in_operational_scope(actor, student_id):
     scope = resolve_operational_responsibility_scope(actor)
     if not scope.college_ids:
         return False
-    return StudentAffiliation.objects.filter(
+    return StudentAcademicProfile.objects.filter(
         student_id=student_id,
-        college_id__in=scope.college_ids,
-        college__is_active=True,
-        college__campus__is_active=True,
+        current_college_id__in=scope.college_ids,
+        current_college__is_active=True,
+        current_college__campus__is_active=True,
     ).exists()
 
 
@@ -207,9 +207,9 @@ def scope(actor, queryset, *, manage=False):
         if colleges:
             operational = Q(
                 visibility=FollowUpVisibility.OPERATIONAL,
-                student__organization_student_affiliation__college_id__in=colleges,
-                student__organization_student_affiliation__college__is_active=True,
-                student__organization_student_affiliation__college__campus__is_active=True,
+                student__student_academic_profile__current_college_id__in=colleges,
+                student__student_academic_profile__current_college__is_active=True,
+                student__student_academic_profile__current_college__campus__is_active=True,
             )
     if actor.role.code != "COUNSELOR":
         return queryset.filter(operational).distinct()

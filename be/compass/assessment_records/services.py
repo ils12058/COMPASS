@@ -87,9 +87,9 @@ def _students(actor):
     colleges = _scope(actor)
     if colleges is not None:
         qs = qs.filter(
-            organization_student_affiliation__college_id__in=colleges,
-            organization_student_affiliation__college__is_active=True,
-            organization_student_affiliation__college__campus__is_active=True,
+            student_academic_profile__current_college_id__in=colleges,
+            student_academic_profile__current_college__is_active=True,
+            student_academic_profile__current_college__campus__is_active=True,
         )
     return qs
 

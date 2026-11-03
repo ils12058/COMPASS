@@ -29,8 +29,8 @@ from compass.organization.models import (
     Campus,
     College,
     Program,
-    StudentAffiliation,
 )
+from compass.student_academics.models import StudentAcademicProfile
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
 
@@ -221,7 +221,7 @@ def test_submitted_inventory_snapshot_survives_program_rename_and_deactivation()
 
 
 @pytest.mark.django_db
-def test_inventory_program_does_not_mutate_guidance_student_affiliation():
+def test_inventory_program_does_not_mutate_guidance_student_placement():
     sync_policy()
     actor = make_user("routing-admin@example.edu", "IT_ADMIN")
     student = make_user("routing-student@example.edu", "STUDENT")
@@ -236,9 +236,11 @@ def test_inventory_program_does_not_mutate_guidance_student_affiliation():
         code="BSCPE",
         name="BS Computer Engineering",
     )
-    StudentAffiliation.objects.create(student=student, college=college_a, assigned_by=actor)
-    affiliation_audits_before = AuditEvent.objects.filter(
-        action__startswith="organization.student_affiliation"
+    StudentAcademicProfile.objects.create(
+        student=student, current_college=college_a, updated_by=actor
+    )
+    placement_audits_before = AuditEvent.objects.filter(
+        action="student_academics.placement.set"
     ).count()
 
     ensure_current_inventory(student=student, context=context(student))
@@ -251,12 +253,12 @@ def test_inventory_program_does_not_mutate_guidance_student_affiliation():
     )
     submitted = submit_current_inventory(student=student, context=context(student))
 
-    affiliation = StudentAffiliation.objects.get(student=student)
-    assert affiliation.college_id == college_a.pk
+    placement = StudentAcademicProfile.objects.get(student=student)
+    assert placement.current_college_id == college_a.pk
     assert submitted.program.college_id == college_b.pk
     assert (
-        AuditEvent.objects.filter(action__startswith="organization.student_affiliation").count()
-        == affiliation_audits_before
+        AuditEvent.objects.filter(action="student_academics.placement.set").count()
+        == placement_audits_before
     )
 
 
@@ -267,7 +269,9 @@ def test_academic_year_switch_keeps_existing_narrow_semantics():
     student = make_user("year-student@example.edu", "STUDENT")
     campus = Campus.objects.create(code="MAIN", name="Main")
     college = College.objects.create(campus=campus, code="CCMS", name="CCMS")
-    StudentAffiliation.objects.create(student=student, college=college, assigned_by=actor)
+    StudentAcademicProfile.objects.create(
+        student=student, current_college=college, updated_by=actor
+    )
 
     first = configure_year(actor, "2026-2027")
     second = create_academic_year(label="2027-2028", context=context(actor))
@@ -276,8 +280,8 @@ def test_academic_year_switch_keeps_existing_narrow_semantics():
 
     set_current_academic_year(academic_year_id=second.pk, context=context(actor))
 
-    affiliation = StudentAffiliation.objects.get(student=student)
-    assert affiliation.college_id == college.pk
+    placement = StudentAcademicProfile.objects.get(student=student)
+    assert placement.current_college_id == college.pk
     assert StudentInventory.objects.count() == before_inventory_count
     assert Program.objects.count() == before_program_count
     first.refresh_from_db()

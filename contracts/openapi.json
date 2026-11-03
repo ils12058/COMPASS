@@ -4926,8 +4926,8 @@
             "title": "Active Faculty Affiliations",
             "type": "integer"
           },
-          "active_student_affiliations": {
-            "title": "Active Student Affiliations",
+          "active_student_placements": {
+            "title": "Active Student Placements",
             "type": "integer"
           },
           "child_colleges": {
@@ -4954,12 +4954,12 @@
             "title": "Graduate Tracer References",
             "type": "integer"
           },
-          "inactive_account_affiliations": {
-            "title": "Inactive Account Affiliations",
-            "type": "integer"
-          },
           "inactive_faculty_affiliations": {
             "title": "Inactive Faculty Affiliations",
+            "type": "integer"
+          },
+          "inactive_student_placements": {
+            "title": "Inactive Student Placements",
             "type": "integer"
           },
           "issued_good_moral": {
@@ -4986,8 +4986,8 @@
             "title": "Resolved Threads",
             "type": "integer"
           },
-          "student_affiliations": {
-            "title": "Student Affiliations",
+          "student_placements": {
+            "title": "Student Placements",
             "type": "integer"
           },
           "submitted_inventories": {
@@ -5000,12 +5000,12 @@
           "active_child_colleges",
           "child_programs",
           "active_child_programs",
-          "student_affiliations",
+          "student_placements",
           "faculty_affiliations",
           "active_faculty_affiliations",
           "inactive_faculty_affiliations",
-          "active_student_affiliations",
-          "inactive_account_affiliations",
+          "active_student_placements",
+          "inactive_student_placements",
           "counselor_responsibilities",
           "draft_inventories",
           "submitted_inventories",
@@ -5268,11 +5268,11 @@
           "active_child_programs",
           "active_faculty_affiliations",
           "inactive_faculty_affiliations",
-          "active_student_affiliations",
+          "active_student_placements",
           "counselor_responsibilities",
           "open_office_threads",
           "pending_operational_followups",
-          "inactive_account_affiliations",
+          "inactive_student_placements",
           "draft_inventories",
           "pending_good_moral"
         ],
@@ -23930,6 +23930,82 @@
         "title": "PersonWorkspaceSummary",
         "type": "object"
       },
+      "PlacementListResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PlacementResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "PlacementListResponse",
+        "type": "object"
+      },
+      "PlacementRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "college_id": {
+            "format": "uuid",
+            "title": "College Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "college_id"
+        ],
+        "title": "PlacementRequest",
+        "type": "object"
+      },
+      "PlacementResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "college": {
+            "$ref": "#/components/schemas/CollegeSummary"
+          },
+          "student": {
+            "$ref": "#/components/schemas/OrganizationPersonSummary"
+          },
+          "verification_status": {
+            "$ref": "#/components/schemas/PlacementVerificationStatus"
+          }
+        },
+        "required": [
+          "student",
+          "college",
+          "verification_status"
+        ],
+        "title": "PlacementResponse",
+        "type": "object"
+      },
+      "PlacementVerificationStatus": {
+        "enum": [
+          "UNVERIFIED",
+          "VERIFIED"
+        ],
+        "title": "PlacementVerificationStatus",
+        "type": "string"
+      },
       "PlatformEnvironmentResponse": {
         "additionalProperties": false,
         "properties": {
@@ -29217,70 +29293,6 @@
           "generated_at"
         ],
         "title": "StudentActionsResponse",
-        "type": "object"
-      },
-      "StudentAffiliationListResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "has_next": {
-            "title": "Has Next",
-            "type": "boolean"
-          },
-          "items": {
-            "items": {
-              "$ref": "#/components/schemas/StudentAffiliationResponse"
-            },
-            "title": "Items",
-            "type": "array"
-          },
-          "page": {
-            "title": "Page",
-            "type": "integer"
-          },
-          "page_size": {
-            "title": "Page Size",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "items",
-          "page",
-          "page_size",
-          "has_next"
-        ],
-        "title": "StudentAffiliationListResponse",
-        "type": "object"
-      },
-      "StudentAffiliationRequest": {
-        "additionalProperties": false,
-        "properties": {
-          "college_id": {
-            "format": "uuid",
-            "title": "College Id",
-            "type": "string"
-          }
-        },
-        "required": [
-          "college_id"
-        ],
-        "title": "StudentAffiliationRequest",
-        "type": "object"
-      },
-      "StudentAffiliationResponse": {
-        "additionalProperties": false,
-        "properties": {
-          "college": {
-            "$ref": "#/components/schemas/CollegeSummary"
-          },
-          "student": {
-            "$ref": "#/components/schemas/OrganizationPersonSummary"
-          }
-        },
-        "required": [
-          "student",
-          "college"
-        ],
-        "title": "StudentAffiliationResponse",
         "type": "object"
       },
       "StudentBookableSlotResponse": {
@@ -61567,335 +61579,6 @@
         ]
       }
     },
-    "/api/v1/organization/student-affiliations": {
-      "get": {
-        "operationId": "organizationListStudentAffiliations",
-        "parameters": [
-          {
-            "in": "query",
-            "name": "student_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Student Id"
-            }
-          },
-          {
-            "in": "query",
-            "name": "college_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "College Id"
-            }
-          },
-          {
-            "in": "query",
-            "name": "campus_id",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "format": "uuid",
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Campus Id"
-            }
-          },
-          {
-            "in": "query",
-            "name": "search",
-            "required": false,
-            "schema": {
-              "anyOf": [
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ],
-              "title": "Search"
-            }
-          },
-          {
-            "in": "query",
-            "name": "page",
-            "required": false,
-            "schema": {
-              "default": 1,
-              "title": "Page",
-              "type": "integer"
-            }
-          },
-          {
-            "in": "query",
-            "name": "page_size",
-            "required": false,
-            "schema": {
-              "default": 20,
-              "title": "Page Size",
-              "type": "integer"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StudentAffiliationListResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Student Affiliations",
-        "tags": [
-          "organization"
-        ]
-      }
-    },
-    "/api/v1/organization/students/{student_id}/affiliation": {
-      "delete": {
-        "operationId": "organizationRemoveStudentAffiliation",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "student_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Student Id",
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RemovedResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Student Affiliation Remove",
-        "tags": [
-          "organization"
-        ]
-      },
-      "put": {
-        "operationId": "organizationSetStudentAffiliation",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "student_id",
-            "required": true,
-            "schema": {
-              "format": "uuid",
-              "title": "Student Id",
-              "type": "string"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StudentAffiliationRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/StudentAffiliationResponse"
-                }
-              }
-            },
-            "description": "OK"
-          },
-          "401": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unauthorized"
-          },
-          "403": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Forbidden"
-          },
-          "404": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Not Found"
-          },
-          "409": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Conflict"
-          },
-          "422": {
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/APIErrorResponse"
-                }
-              }
-            },
-            "description": "Unprocessable Content"
-          }
-        },
-        "security": [
-          {
-            "OpaqueSessionAuth": []
-          }
-        ],
-        "summary": "Student Affiliation Set",
-        "tags": [
-          "organization"
-        ]
-      }
-    },
     "/api/v1/overview": {
       "get": {
         "operationId": "overviewGetSummary",
@@ -70854,6 +70537,335 @@
         ]
       }
     },
+    "/api/v1/student-academics/placements": {
+      "get": {
+        "operationId": "studentAcademicsListPlacements",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "student_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Student Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "college_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "College Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "campus_id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Campus Id"
+            }
+          },
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlacementListResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Placements",
+        "tags": [
+          "student-academics"
+        ]
+      }
+    },
+    "/api/v1/student-academics/students/{student_id}/placement": {
+      "delete": {
+        "operationId": "studentAcademicsClearPlacement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RemovedResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Placement Clear",
+        "tags": [
+          "student-academics"
+        ]
+      },
+      "put": {
+        "operationId": "studentAcademicsSetPlacement",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PlacementRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PlacementResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Placement Set",
+        "tags": [
+          "student-academics"
+        ]
+      }
+    },
     "/api/v1/student-actions": {
       "get": {
         "operationId": "studentActionsList",
@@ -71126,6 +71138,10 @@
     {
       "description": "Organizational structure and default responsibility routing.",
       "name": "organization"
+    },
+    {
+      "description": "Canonical Student current College placements.",
+      "name": "student-academics"
     },
     {
       "description": "Guidance and Counseling Office service catalog configuration.",

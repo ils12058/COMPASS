@@ -14,9 +14,9 @@ from compass.guidance_messages.errors import InvalidMessageInput, ThreadNotFound
 from compass.organization.models import (
     CounselorResponsibility,
     StaffSupervision,
-    StudentAffiliation,
 )
 from compass.realtime import publish
+from compass.student_academics.models import StudentAcademicProfile
 from tests.test_guidance_messages import BASE, counseling, deny, office, world  # noqa: F401
 from tests.test_notifications import auth_client
 
@@ -33,8 +33,8 @@ def eligible(world, thread, *, actor=None, **query):
 
 
 def office_in(world, college_index):
-    StudentAffiliation.objects.filter(student=world.student).update(
-        college=world.colleges[college_index]
+    StudentAcademicProfile.objects.filter(student=world.student).update(
+        current_college=world.colleges[college_index]
     )
     thread, _ = office(world)
     return thread
@@ -110,7 +110,9 @@ def test_multiple_heads_preserve_visibility_but_do_not_assign_a_new_fallback(wor
     for actor in [world.head, world.head_gss, world.other]:
         assert set(eligible(world, fallback, actor=actor)) == expected
     # A second Head may view even an explicitly Head-assigned College.
-    StudentAffiliation.objects.filter(student=world.student).update(college=world.colleges[2])
+    StudentAcademicProfile.objects.filter(student=world.student).update(
+        current_college=world.colleges[2]
+    )
     fallback.routing_college = world.colleges[2]
     fallback.save(update_fields=("routing_college",))
     assert set(eligible(world, fallback, actor=world.other)) == expected

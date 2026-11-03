@@ -57,9 +57,9 @@ from compass.good_moral.services import (
 from compass.organization.models import AcademicYear
 from tests.test_good_moral import (
     create_my_current_student,
-    make_affiliation,
     make_current_request,
     make_inventory,
+    make_placement,
     sync_policy,
 )
 
@@ -79,7 +79,7 @@ def request_for(student=None, variant="GRADUATE", **facts):
     if variant == "CURRENT_STUDENT":
         year = AcademicYear.objects.filter(is_current=True).first()
         if year:
-            make_affiliation(student)
+            make_placement(student)
             make_inventory(student, year)
             item = create_my_current_student(
                 student=student, semester="First Semester", context=AuditContext.user(student)
@@ -986,7 +986,7 @@ def test_new_self_and_assisted_requests_still_start_without_receipts_after_cutov
     student = person("new-applicant")
     if variant == "CURRENT_STUDENT":
         year = AcademicYear.objects.filter(is_current=True).first() or make_academic_year()
-        make_affiliation(student)
+        make_placement(student)
         make_inventory(student, year)
         details = {"semester": "First Semester"}
     else:

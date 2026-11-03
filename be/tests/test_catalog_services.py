@@ -27,8 +27,8 @@ from compass.organization.models import (
     College,
     CounselorResponsibility,
     Program,
-    StudentAffiliation,
 )
+from compass.student_academics.models import StudentAcademicProfile
 from tests.catalog_test_helpers import authority, client_for, hierarchy, manager, student
 
 pytestmark = pytest.mark.django_db
@@ -318,12 +318,12 @@ def test_impact_rechecks_stale_preview_all_student_lifecycles_and_stale_responsi
     preview = cs.get_catalog_impact(actor=auth["actor"], model=College, target_id=k.pk)
     assert preview.can_deactivate
     s = student()
-    StudentAffiliation.objects.create(student=s, college=k)
+    StudentAcademicProfile.objects.create(student=s, current_college=k)
     for lifecycle in ("CURRENT", "GRADUATED", "FORMER"):
         type(s).objects.filter(pk=s.pk).update(student_lifecycle_status=lifecycle)
         impact = cs.get_catalog_impact(actor=auth["actor"], model=College, target_id=k.pk)
-        assert impact.counts["active_student_affiliations"] == 1
-        with pytest.raises(cs.CatalogError, match="active_student_affiliations"):
+        assert impact.counts["active_student_placements"] == 1
+        with pytest.raises(cs.CatalogError, match="active_student_placements"):
             cs.set_college_active(
                 **auth,
                 target_id=k.pk,
@@ -336,17 +336,17 @@ def test_impact_rechecks_stale_preview_all_student_lifecycles_and_stale_responsi
         cs.set_college_active(**auth, target_id=k.pk, expected_resource_version=1, is_active=False)
     CounselorResponsibility.objects.filter(college=k).delete()
     impact = cs.get_catalog_impact(actor=auth["actor"], model=College, target_id=k.pk)
-    assert impact.can_deactivate and impact.warnings[0].code == "inactive_account_affiliations"
+    assert impact.can_deactivate and impact.warnings[0].code == "inactive_student_placements"
     cs.set_college_active(**auth, target_id=k.pk, expected_resource_version=1, is_active=False)
-    assert StudentAffiliation.objects.filter(student=s, college=k).exists()
+    assert StudentAcademicProfile.objects.filter(student=s, current_college=k).exists()
 
 
-def test_campus_blockers_include_inconsistent_inactive_child_affiliations(setup):
+def test_campus_blockers_include_inconsistent_inactive_child_placements(setup):
     auth, (c, k, p), _ = setup
     College.objects.filter(pk=k.pk).update(is_active=False)
     s = student()
-    StudentAffiliation.objects.create(student=s, college=k)
-    with pytest.raises(cs.CatalogError, match="active_student_affiliations"):
+    StudentAcademicProfile.objects.create(student=s, current_college=k)
+    with pytest.raises(cs.CatalogError, match="active_student_placements"):
         cs.set_campus_active(**auth, target_id=c.pk, expected_resource_version=1, is_active=False)
 
 

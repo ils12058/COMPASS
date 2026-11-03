@@ -49,9 +49,9 @@ from compass.organization.models import (
     Campus,
     College,
     CounselorResponsibility,
-    StudentAffiliation,
 )
 from compass.service_catalog.services import create_service, set_service_active
+from compass.student_academics.models import StudentAcademicProfile
 from tests.canonical_service_helpers import legacy_counseling_service
 
 
@@ -216,7 +216,7 @@ def test_direct_encounter_records_actual_completed_time_without_fake_appointment
         code="DIRECT-COUNSELOR-COL",
         name="Direct Counselor College",
     )
-    StudentAffiliation.objects.create(student=student, college=student_college)
+    StudentAcademicProfile.objects.create(student=student, current_college=student_college)
     CounselorResponsibility.objects.create(college=counselor_college, counselor=counselor)
     create_counseling_service(admin)
     started_at, ended_at = actual_times(minutes=75)
@@ -987,7 +987,7 @@ def test_encounter_options_and_new_appointment_candidates_mirror_creation_author
         code="READ-COU-COL",
         name="Readiness Counselor College",
     )
-    StudentAffiliation.objects.create(student=student, college=student_college)
+    StudentAcademicProfile.objects.create(student=student, current_college=student_college)
     CounselorResponsibility.objects.create(
         college=student_college,
         counselor=default_counselor,
@@ -1226,7 +1226,7 @@ def test_counseling_student_search_includes_institutional_id_without_org_or_life
         code="SEARCH-COU-COL",
         name="Search Counselor College",
     )
-    StudentAffiliation.objects.create(student=student, college=student_college)
+    StudentAcademicProfile.objects.create(student=student, current_college=student_college)
     CounselorResponsibility.objects.create(college=counselor_college, counselor=counselor)
     create_counseling_service(admin, delivery_modes=["IN_PERSON"])
 
