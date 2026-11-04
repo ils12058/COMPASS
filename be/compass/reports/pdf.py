@@ -495,7 +495,7 @@ def _filter_rows(
 ) -> list[dict[str, object]]:
     mode = str(coverage["mode"])
     applied = set(_require_list(coverage.get("applied_filters", []), "applied filters"))
-    by_affiliation = "Applied — Student's current Guidance affiliation"
+    by_placement = "Applied — Student's current academic placement"
     by_inventory = "Applied — College of the Program recorded on the Inventory"
     not_applied = "Not applied — cannot classify Students without an Inventory"
     if mode == "HISTORICAL_LIMITED":
@@ -510,7 +510,7 @@ def _filter_rows(
                 _cell(
                     "Institution-wide"
                     if is_global
-                    else by_affiliation
+                    else by_placement
                     if mode == "CURRENT"
                     else by_inventory
                 ),
@@ -535,7 +535,7 @@ def _filter_rows(
                 _row([_cell(FILTER_LABELS[name]), _cell("Not selected"), _cell("Not selected")])
             )
             continue
-        coverage_effect = by_affiliation if name in applied else not_applied
+        coverage_effect = by_placement if name in applied else not_applied
         rows.append(
             _row([_cell(FILTER_LABELS[name]), _cell(profile_effect), _cell(coverage_effect)])
         )

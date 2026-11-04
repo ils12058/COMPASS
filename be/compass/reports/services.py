@@ -61,8 +61,8 @@ PROFILE_METHODOLOGY = (
 CURRENT_COVERAGE_NOTE = (
     "Current Student Inventory Coverage compares active Student accounts with a Current "
     "lifecycle status against their Inventory state for the selected Academic Year. Campus and "
-    "College coverage filters, when supplied, use each Student's current Guidance College "
-    "affiliation rather than the Program recorded on the Inventory, so coverage and the profile "
+    "College coverage filters, when supplied, use each Student's current academic College "
+    "placement rather than the Program recorded on the Inventory, so coverage and the profile "
     "population can count different Students. Program and Year Level do not classify Students "
     "without an Individual Inventory."
 )

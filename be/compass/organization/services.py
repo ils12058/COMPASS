@@ -96,7 +96,7 @@ def resolve_default_counselor_for_student(student: User) -> DefaultCounselorReso
         return DefaultCounselorResolution(None, "UNRESOLVED", "INVALID_STUDENT")
     placement = get_current_placement(student_id=student.pk)
     if placement is None:
-        return DefaultCounselorResolution(None, "UNRESOLVED", "NO_AFFILIATION")
+        return DefaultCounselorResolution(None, "UNRESOLVED", "NO_PLACEMENT")
     if not placement.college.is_usable:
         return DefaultCounselorResolution(None, "UNRESOLVED", "INACTIVE_ORGANIZATION")
     responsibility = (

@@ -425,6 +425,22 @@ def test_default_routing_prefers_college_then_head_and_reports_head_ambiguity():
 
 
 @pytest.mark.django_db
+def test_default_counselor_reports_missing_academic_placement():
+    sync_policy()
+    student = make_user("no-placement@example.edu", "STUDENT")
+
+    result = resolve_default_counselor_for_student(student)
+    assert result.counselor is None
+    assert result.source == "UNRESOLVED"
+    assert result.reason == "NO_PLACEMENT"
+
+    StudentAcademicProfile.objects.create(student=student)
+    result = resolve_default_counselor_for_student(student)
+    assert result.counselor is None
+    assert result.reason == "NO_PLACEMENT"
+
+
+@pytest.mark.django_db
 def test_disabled_supervisor_keeps_relationship_but_staff_operational_scope_is_empty():
     sync_policy()
     admin = make_user("relationship-admin@example.edu", "IT_ADMIN")

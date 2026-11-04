@@ -917,7 +917,7 @@ def test_filter_table_and_metadata_distinguish_selected_filters_from_reporting_s
     filters = {cell_texts(row)[0]: cell_texts(row)[1:] for row in profile["filters"]["rows"]}
     assert filters["Reporting scope"] == [
         "Applied — College of the Program recorded on the Inventory",
-        "Applied — Student's current Guidance affiliation",
+        "Applied — Student's current academic placement",
     ]
     assert filters["Year Level"] == [
         "Applied — Year Level recorded on the Inventory",

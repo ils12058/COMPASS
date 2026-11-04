@@ -305,6 +305,8 @@ def test_methodology_is_explicit_and_no_report_persistence_models_exist():
     assert "submitted Individual Inventories" in report["methodology"]["profile_population_note"]
     assert "Without Individual Inventory" in report["methodology"]["profile_population_note"]
     assert "Program" in report["methodology"]["coverage_note"]
+    assert "academic College placement" in report["methodology"]["coverage_note"]
+    assert "Guidance" not in report["methodology"]["coverage_note"]
 
     from django.apps import apps
 
