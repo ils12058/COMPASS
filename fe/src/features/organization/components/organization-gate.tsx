@@ -45,7 +45,7 @@ export function StudentAcademicRecordsGate({ children }: { children: ReactNode }
   const { user } = usePortalSession();
   return canManageOrganization(user) ? children : (
     <WorkspaceUnavailable title="Student Academic Records unavailable">
-      You don’t have access to manage Student placements.
+      You don’t have access to Student academic records.
     </WorkspaceUnavailable>
   );
 }

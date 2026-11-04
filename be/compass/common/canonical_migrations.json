@@ -51,6 +51,7 @@
     "organization/migrations/0005_delete_studentaffiliation.py",
     "referrals/migrations/0002_referral_faculty_home_college_and_more.py",
     "referrals/migrations/0003_referral_acknowledged_by_and_more.py",
-    "student_academics/migrations/0001_initial.py"
+    "student_academics/migrations/0001_initial.py",
+    "student_academics/migrations/0002_studentacademicperiodrecord_studentgraduationrecord.py"
   ]
 }

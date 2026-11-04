@@ -50,6 +50,10 @@ from compass.guidance_messages.models import GuidanceThread
 from compass.inventory.models import StudentInventory
 from compass.notifications.models import EmailDelivery, Notification, PushDelivery
 from compass.staging_seed import DATASET_NAME, DATASET_VERSION
+from compass.staging_seed.academic_history import (
+    ACADEMIC_TERM,
+    GRADUATION_VERIFICATION_SOURCE,
+)
 from compass.staging_seed.config import StagingSeedConfigurationError, load_config
 from compass.staging_seed.credentials import (
     HANDOFF_COLUMNS,
@@ -93,6 +97,11 @@ from compass.staging_seed.students import (
 )
 from compass.staging_seed.timeline import StagingTimelineError, resolve_timeline
 from compass.staging_seed.verify import verify_dataset
+from compass.student_academics.models import (
+    StudentAcademicPeriodRecord,
+    StudentAcademicProfile,
+    StudentGraduationRecord,
+)
 from tests.test_authentication import AllowLimiter, login
 
 ANCHOR = date(2026, 10, 15)
@@ -582,6 +591,59 @@ class SeededDatasetTests(TestCase):
         )
         assert current.program.code == persona.program_code
         assert current.year_level == 4
+
+    def test_canonical_academic_history_matches_each_personas_recorded_years(self):
+        periods = StudentAcademicPeriodRecord.objects.select_related(
+            "academic_year", "college__campus"
+        )
+        assert periods.count() == sum(len(persona.year_levels) for persona in STUDENTS)
+        by_student: dict[uuid.UUID, list[StudentAcademicPeriodRecord]] = {}
+        for record in periods:
+            assert record.term == ACADEMIC_TERM
+            assert record.enrollment_status == "ENROLLED"
+            assert record.program_id is None
+            by_student.setdefault(record.student_id, []).append(record)
+        for persona in STUDENTS:
+            student = dataset_user(persona.key)
+            rows = by_student.get(student.pk, [])
+            assert {(row.academic_year.label, row.year_level) for row in rows} == set(
+                persona.year_levels
+            )
+            assert all(
+                (row.college.campus.code, row.college.code)
+                == (persona.campus_code, persona.college_code)
+                for row in rows
+            )
+
+        graduations = {
+            record.student_id: record
+            for record in StudentGraduationRecord.objects.select_related(
+                "graduated_college__campus"
+            )
+        }
+        graduated = {
+            dataset_user(persona.key).pk
+            for persona in STUDENTS
+            if persona.lifecycle == Lifecycle.GRADUATED
+        }
+        assert set(graduations) == graduated
+        for persona in STUDENTS:
+            if persona.lifecycle != Lifecycle.GRADUATED:
+                continue
+            student = dataset_user(persona.key)
+            record = graduations[student.pk]
+            final_label = persona.year_levels[-1][0]
+            assert record.graduation_date == date(int(final_label.rsplit("-", 1)[1]), 6, 30)
+            assert record.verification_source == GRADUATION_VERIFICATION_SOURCE
+            assert record.graduated_program_id is None
+            assert (record.graduated_college.campus.code, record.graduated_college.code) == (
+                persona.campus_code,
+                persona.college_code,
+            )
+            assert student.student_lifecycle_status == "GRADUATED"
+            assert not StudentAcademicProfile.objects.filter(
+                student=student, current_college__isnull=False
+            ).exists()
 
     def test_seeding_has_no_external_side_effects(self):
         ids = list(

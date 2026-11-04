@@ -16,6 +16,11 @@ const knownErrors: Record<string, string> = {
     "This change conflicts with an existing assignment or active organization structure. Review the details and try again.",
   invalid_organization_request:
     "The selected organization record cannot be used for this action. Review your selection and try again.",
+  student_academic_not_found: "This Student academic record is unavailable.",
+  student_academic_conflict:
+    "This change conflicts with the recorded academic history. Review the details and try again.",
+  invalid_student_academic_request:
+    "The academic record cannot be saved with these details. Review the selection and try again.",
 };
 
 export function organizationErrorMessage(

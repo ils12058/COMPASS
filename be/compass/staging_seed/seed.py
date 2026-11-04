@@ -37,6 +37,7 @@ from compass.service_catalog.bootstrap import (
 from compass.service_catalog.services import ServiceCatalogError
 
 from . import DATASET_NAME, DATASET_VERSION
+from .academic_history import seed_academic_history
 from .accounts import disable_account, plan_accounts, provision_accounts
 from .config import StagingSeedConfig, StagingSeedConfigurationError, load_config
 from .content import feedback_population
@@ -229,6 +230,12 @@ def _run(session: SeedSession, config: StagingSeedConfig) -> None:
     for unit in ACTION_UNITS:
         _unit(f"Action-ready {unit.key}", lambda unit=unit: run_action_unit(session, unit))
     _unit("Background stories", lambda: seed_secondary_stories(session))
+
+    def academic_history() -> None:
+        with transaction.atomic():
+            seed_academic_history(session)
+
+    _unit("Student academic history", academic_history)
     _unit("Announcements and Resources", lambda: seed_publications(session))
     _unit("Privacy Governance", lambda: seed_privacy_governance(session))
     _unit("Customer Feedback and CSM", lambda: seed_feedback(session))
