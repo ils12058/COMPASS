@@ -37,7 +37,7 @@ export function OrganizationNavigation() {
             Responsibilities
           </NavLink>
           <NavLink href="/portal/organization/student-academics">
-            Student placements
+            Student Academic Records
           </NavLink>
         </>
       ) : null}

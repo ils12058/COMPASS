@@ -1,13 +1,16 @@
 // Synthetic ORG-2 wire shapes. No live backend or institutional grants.
 import { user } from "./ui-hierarchy-fixtures.mjs";
-export const ids={campus:"10000000-0000-4000-8000-000000000001",college:"20000000-0000-4000-8000-000000000001",program:"30000000-0000-4000-8000-000000000001"};
+export const ids={campus:"10000000-0000-4000-8000-000000000001",college:"20000000-0000-4000-8000-000000000001",program:"30000000-0000-4000-8000-000000000001",student:"40000000-0000-4000-8000-000000000001",academicYear:"50000000-0000-4000-8000-000000000001"};
 const countKeys=["active_child_colleges","active_child_programs","active_student_placements","child_colleges","child_programs","counselor_responsibilities","draft_inventories","graduate_tracer_references","inactive_student_placements","issued_good_moral","open_office_threads","pending_f4","pending_good_moral","pending_operational_followups","resolved_threads","student_placements","submitted_inventories"];
 export function catalogFixture({catalog=true,relationships=false,role="COUNSELOR",readonly=false}={}){
  const campus={id:ids.campus,code:"MAIN",name:"Main Campus",is_active:true,resource_version:1};
  const college={id:ids.college,code:"COMP",name:"College of Computing",campus,is_active:true,resource_version:1};
  const program={id:ids.program,code:"BSIS",name:"Information Systems",college,is_active:true,resource_version:1,academic_classification:"BACHELORS",year_level_policy_status:"CONFIGURED",applicable_year_levels:[1,3,5]};
  const actor={...user(role),capabilities:["organization.structure.view",...(catalog && !readonly?["organization.catalog.manage"]:[]),...(relationships?["organization.manage"]:[])]};
- const state={campuses:[campus],colleges:[college],programs:[program],actor,sessionId:"catalog-session",histories:{},writes:[],reads:[],error:null,commitThenDisconnect:false,disconnect:false,failRefresh:false,blocked:false,impactReads:0,stalePreview:false,staleOnWrite:false,verified:false,mfa:null,delay:0};
+ const student={id:ids.student,full_name:"Maria Santos",institutional_id:"2024-00123",email:"maria.santos@example.test",is_active:true,responsibility_scope:null,role:"STUDENT"};
+ const placement={student,college,verification_status:"VERIFIED"};
+ const studentRecord={student,lifecycle_status:"CURRENT",placement:structuredClone(placement),periods:[],graduation:null};
+ const state={campuses:[campus],colleges:[college],programs:[program],actor,sessionId:"catalog-session",histories:{},writes:[],reads:[],recordReads:0,placements:[],academicYears:[{id:ids.academicYear,label:"2026-2027",is_current:true}],records:{},error:null,commitThenDisconnect:false,disconnect:false,failRefresh:false,blocked:false,impactReads:0,stalePreview:false,staleOnWrite:false,verified:false,mfa:null,delay:0};
  const plural={campuses:"campus",colleges:"college",programs:"program"};
  const session=()=>({authenticated:true,user:state.actor,session:{id:state.sessionId,expires_at:"2099-10-07T00:00:00Z",is_current:true}});
  const replyError=(reply,code,status=409)=>reply({error:{code,message:"Synthetic server refusal",details:null}},status);
@@ -20,9 +23,34 @@ export function catalogFixture({catalog=true,relationships=false,role="COUNSELOR
  }
  const handler=async({route,reply,request,pathname,method,url})=>{
   if(pathname==="/api/v1/auth/session"){await reply(session());return true;}
-  if(pathname==="/api/v1/student-academics/placements"){await reply({items:[],page:1,page_size:20,has_next:false});return true;}
+  if(pathname==="/api/v1/student-academics/placements"){await reply({items:state.placements,page:1,page_size:20,has_next:false});return true;}
   if(pathname==="/api/v1/auth/mfa/totp/verify" && method==="POST"){state.verified=true;await reply({verified:true});return true;}
   if(pathname==="/api/v1/auth/mfa"){await reply({enabled:true,verified_recently:state.verified});return true;}
+  if(pathname==="/api/v1/academic-years" && method==="GET"){await reply({items:state.academicYears});return true;}
+  if(pathname.startsWith("/api/v1/student-academics/students/")){
+    const parts=pathname.split("/").slice(4);const studentId=parts[1];const action=parts[2];
+    const record=state.records[studentId];
+    if(!record){await replyError(reply,"student_academic_not_found",404);return true;}
+    if(method==="GET" && action==="record"){state.recordReads++;await reply(record);return true;}
+    if(method==="PUT" && (action==="periods" || action==="graduation")){
+      const data=JSON.parse(request.postData()??"{}");state.writes.push({collection:"student-academics",id:studentId,action,method,data});
+      if(state.mfa&&!state.verified){await replyError(reply,state.mfa,403);return true;}
+      if(state.error){await replyError(reply,state.error,state.error==="permission_denied"?403:409);return true;}
+      if(action==="periods"){
+        const year=state.academicYears.find(item=>item.id===data.academic_year_id)??state.academicYears[0];
+        const existing=record.periods.find(item=>item.academic_year.id===data.academic_year_id&&item.term===data.term);
+        const now=new Date().toISOString();
+        const item={id:existing?.id??`period-${state.writes.length}`,academic_year:year,term:data.term,college:state.colleges.find(college=>college.id===data.college_id),year_level:data.year_level??null,enrollment_status:data.enrollment_status??"UNKNOWN",created_at:existing?.created_at??now,updated_at:now};
+        if(existing)Object.assign(existing,item);else record.periods.unshift(item);
+        await reply(item);return true;
+      }
+      const now=new Date().toISOString();
+      record.graduation={id:record.graduation?.id??"graduation-1",graduated_college:state.colleges.find(college=>college.id===data.graduated_college_id),graduation_date:data.graduation_date,verification_source:data.verification_source,verified_by:{...student,id:"counselor",full_name:"Example User",institutional_id:null,email:"example@example.test",role:"COUNSELOR"},verified_at:now,created_at:record.graduation?.created_at??now,updated_at:now};
+      record.placement=null;record.lifecycle_status="GRADUATED";
+      await reply(record.graduation);return true;
+    }
+    return false;
+  }
   if(!pathname.startsWith("/api/v1/organization/"))return false;
   const parts=pathname.split("/").slice(4);const [collection,id,action]=parts;
   if(!["campuses","colleges","programs"].includes(collection))return false;
@@ -73,5 +101,5 @@ export function catalogFixture({catalog=true,relationships=false,role="COUNSELOR
   if(state.commitThenDisconnect){state.commitThenDisconnect=false;if(state.returnOldOnce)state.oldRecord=snapshot;await route.abort("failed");return true;}
   await reply(result);return true;
  };
- return {state,handler,campus,college,program,session};
+ return {state,handler,campus,college,program,session,student,placement,studentRecord};
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { Link2 } from "lucide-react";
+import { Link2, Search } from "lucide-react";
+import Link from "next/link";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -157,6 +158,9 @@ export function StudentAcademicRecordsPage() {
   const [studentId, setStudentId] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<OrganizationPersonSummary | null>(null);
   const [targetCollegeId, setTargetCollegeId] = useState("");
+  const [openRecord, setOpenRecord] = useState(false);
+  const [recordStudentId, setRecordStudentId] = useState("");
+  const [recordStudent, setRecordStudent] = useState<OrganizationPersonSummary | null>(null);
   const [review, setReview] = useState<{
     student: OrganizationPersonSummary;
     currentCollege: CollegeSummary | null;
@@ -297,9 +301,21 @@ export function StudentAcademicRecordsPage() {
             : undefined
         }
         action={
-          structureReady ? (
-            <PageAction icon={Link2} label="Assign" labelDetail="placement" onClick={() => openSet()} />
-          ) : null
+          <>
+            {structureReady ? (
+              <PageAction icon={Link2} label="Assign" labelDetail="placement" onClick={() => openSet()} />
+            ) : null}
+            <PageAction
+              icon={Search}
+              label="Open record"
+              variant="secondary"
+              onClick={() => {
+                setRecordStudentId("");
+                setRecordStudent(null);
+                setOpenRecord(true);
+              }}
+            />
+          </>
         }
       />
 
@@ -433,9 +449,12 @@ export function StudentAcademicRecordsPage() {
                     <th scope="row" className={`${dataTable.cell} ${dataTable.stickyCell} font-normal`}>
                       <div className="space-y-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-ink">
+                          <Link
+                            href={`/portal/organization/student-academics/${item.student.id}`}
+                            className="font-semibold text-ink underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-focus"
+                          >
                             {item.student.full_name}
-                          </span>
+                          </Link>
                           <StatusBadge active={item.student.is_active} />
                         </div>
                         <p className="text-xs text-muted">{item.student.email}</p>
@@ -573,6 +592,54 @@ export function StudentAcademicRecordsPage() {
               onClick={reviewPlacement}
             >
               Review placement
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={openRecord}
+        onOpenChange={(open) => {
+          if (!open) {
+            setOpenRecord(false);
+            setRecordStudentId("");
+            setRecordStudent(null);
+          }
+        }}
+      >
+        <DialogContent className="max-w-xl">
+          <DialogTitle>Open Student record</DialogTitle>
+          <DialogDescription>
+            Choose a Student to open their academic record, including Students without a current
+            placement and graduated Students.
+          </DialogDescription>
+          <div className="mt-6">
+            <PeoplePicker
+              id="student-academic-record-person-search"
+              label="Student"
+              role="STUDENT"
+              enabled={openRecord}
+              value={recordStudentId}
+              selectedPerson={recordStudent}
+              onChange={(id, person) => {
+                setRecordStudentId(id);
+                setRecordStudent(person);
+              }}
+            />
+          </div>
+          <div className="mt-6 flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setOpenRecord(false)}>
+              Cancel
+            </Button>
+            <Button
+              disabled={!recordStudent}
+              onClick={() =>
+                router.push(
+                  `/portal/organization/student-academics/${recordStudentId}`,
+                )
+              }
+            >
+              Open record
             </Button>
           </div>
         </DialogContent>
