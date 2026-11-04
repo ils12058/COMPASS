@@ -1,29 +1,36 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import date, timedelta
 from uuid import uuid4
 
 import pytest
 from django.core.management import call_command
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.test import Client
 from django.utils import timezone
 
-from compass.accounts.models import Role, User
+from compass.accounts.models import Role, StudentLifecycleStatus, User
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
-from compass.organization.models import Campus, College, Program
+from compass.organization.models import AcademicYear, Campus, College, Program
 from compass.student_academics.models import (
+    AcademicTerm,
+    EnrollmentStatus,
     PlacementVerificationStatus,
+    StudentAcademicPeriodRecord,
     StudentAcademicProfile,
+    StudentGraduationRecord,
 )
 from compass.student_academics.services import (
     InvalidStudentAcademicInput,
     StudentAcademicConflict,
     StudentAcademicNotFound,
     clear_current_placement,
+    get_student_academic_record,
     list_current_placements,
+    record_academic_period,
+    record_graduation,
     set_current_placement,
 )
 
@@ -66,6 +73,10 @@ def make_college(
         name=f"{code} College",
         is_active=active,
     )
+
+
+def make_academic_year(label: str = "2026-2027", *, current: bool = False) -> AcademicYear:
+    return AcademicYear.objects.create(label=label, is_current=current)
 
 
 def auth_client(user: User, *, recent_mfa: bool = True) -> Client:
@@ -595,3 +606,758 @@ def test_retired_affiliation_routes_are_gone():
         ).status_code
         == 404
     )
+
+
+@pytest.mark.django_db
+def test_period_and_graduation_models_defaults_constraints_and_permissions():
+    sync_policy()
+    student = make_user("period.model@example.edu")
+    college = make_college()
+    year = make_academic_year()
+
+    period = StudentAcademicPeriodRecord.objects.create(
+        student=student,
+        academic_year=year,
+        term=AcademicTerm.FIRST_SEMESTER,
+        college=college,
+    )
+    assert period.enrollment_status == EnrollmentStatus.UNKNOWN
+    assert period.year_level is None
+    assert period.program_id is None
+    assert period.created_by is None
+    assert period.updated_by is None
+    assert period.created_at is not None
+    assert period.updated_at is not None
+    assert StudentAcademicPeriodRecord._meta.default_permissions == ()
+    assert StudentAcademicPeriodRecord._meta.ordering == (
+        "student_id",
+        "-academic_year__label",
+        "term",
+    )
+
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            StudentAcademicPeriodRecord.objects.create(
+                student=student,
+                academic_year=year,
+                term=AcademicTerm.FIRST_SEMESTER,
+                college=college,
+            )
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            StudentAcademicPeriodRecord.objects.create(
+                student=student,
+                academic_year=year,
+                term="SUMMER",
+                college=college,
+            )
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            StudentAcademicPeriodRecord.objects.create(
+                student=student,
+                academic_year=year,
+                term=AcademicTerm.SECOND_SEMESTER,
+                college=college,
+                enrollment_status="WITHDRAWN",
+            )
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            StudentAcademicPeriodRecord.objects.create(
+                student=student,
+                academic_year=year,
+                term=AcademicTerm.SECOND_SEMESTER,
+                college=college,
+                year_level=0,
+            )
+
+    graduation = StudentGraduationRecord.objects.create(
+        student=student,
+        graduated_college=college,
+        graduation_date=date(2026, 6, 30),
+        verification_source="Registrar confirmation",
+        verified_at=timezone.now(),
+    )
+    assert graduation.graduated_program_id is None
+    assert graduation.verified_by is None
+    assert StudentGraduationRecord._meta.default_permissions == ()
+    assert StudentGraduationRecord._meta.ordering == ("student_id",)
+    assert StudentGraduationRecord._meta.get_field("student").remote_field.one_to_one is True
+    with pytest.raises(IntegrityError):
+        with transaction.atomic():
+            StudentGraduationRecord.objects.create(
+                student=student,
+                graduated_college=college,
+                graduation_date=date(2026, 6, 30),
+                verification_source="Second confirmation",
+                verified_at=timezone.now(),
+            )
+
+
+@pytest.mark.django_db
+def test_record_period_creates_updates_and_audits_flat_metadata():
+    sync_policy()
+    actor = make_user("period.actor@example.edu", "IT_ADMIN")
+    student = make_user("period.student@example.edu")
+    college = make_college()
+    other_college = make_college("OTHER", campus_code="OTHER")
+    other_actor = make_user("period.other.actor@example.edu", "IT_ADMIN")
+    year = make_academic_year()
+
+    record = record_academic_period(
+        student_id=student.pk,
+        academic_year_id=year.pk,
+        term=AcademicTerm.FIRST_SEMESTER,
+        college_id=college.pk,
+        year_level=2,
+        enrollment_status=EnrollmentStatus.ENROLLED,
+        context=context(actor),
+    )
+
+    assert record.student_id == student.pk
+    assert record.academic_year_id == year.pk
+    assert record.college_id == college.pk
+    assert record.term == AcademicTerm.FIRST_SEMESTER
+    assert record.year_level == 2
+    assert record.enrollment_status == EnrollmentStatus.ENROLLED
+    assert record.program_id is None
+    assert record.created_by == actor
+    assert record.updated_by == actor
+    event = AuditEvent.objects.get(action="student_academics.period.recorded")
+    assert event.target_type == "student_academics.studentacademicperiodrecord"
+    assert event.target_id == str(record.pk)
+    assert event.metadata == {
+        "created": True,
+        "student_id": str(student.pk),
+        "academic_year_id": str(year.pk),
+        "term": "FIRST_SEMESTER",
+        "previous_college_id": None,
+        "new_college_id": str(college.pk),
+        "previous_year_level": None,
+        "new_year_level": 2,
+        "previous_enrollment_status": None,
+        "new_enrollment_status": "ENROLLED",
+    }
+
+    updated = record_academic_period(
+        student_id=student.pk,
+        academic_year_id=year.pk,
+        term=AcademicTerm.FIRST_SEMESTER,
+        college_id=other_college.pk,
+        year_level=3,
+        enrollment_status=EnrollmentStatus.NOT_ENROLLED,
+        context=context(other_actor),
+    )
+
+    assert updated.pk == record.pk
+    assert updated.college_id == other_college.pk
+    assert updated.year_level == 3
+    assert updated.enrollment_status == EnrollmentStatus.NOT_ENROLLED
+    assert updated.program_id is None
+    assert updated.created_by == actor
+    assert updated.updated_by == other_actor
+    update_event = AuditEvent.objects.filter(
+        action="student_academics.period.recorded", target_id=str(record.pk)
+    ).latest("occurred_at")
+    assert update_event.metadata == {
+        "created": False,
+        "student_id": str(student.pk),
+        "academic_year_id": str(year.pk),
+        "term": "FIRST_SEMESTER",
+        "previous_college_id": str(college.pk),
+        "new_college_id": str(other_college.pk),
+        "previous_year_level": 2,
+        "new_year_level": 3,
+        "previous_enrollment_status": "ENROLLED",
+        "new_enrollment_status": "NOT_ENROLLED",
+    }
+
+    updated_at = updated.updated_at
+    audits = AuditEvent.objects.filter(action="student_academics.period.recorded").count()
+    again = record_academic_period(
+        student_id=student.pk,
+        academic_year_id=year.pk,
+        term=AcademicTerm.FIRST_SEMESTER,
+        college_id=other_college.pk,
+        year_level=3,
+        enrollment_status=EnrollmentStatus.NOT_ENROLLED,
+        context=context(other_actor),
+    )
+    assert again.pk == updated.pk
+    assert again.updated_at == updated_at
+    assert AuditEvent.objects.filter(action="student_academics.period.recorded").count() == audits
+
+
+@pytest.mark.django_db
+def test_record_period_validation_and_history_correction_for_inactive_students():
+    sync_policy()
+    actor = make_user("period.validation.actor@example.edu", "IT_ADMIN")
+    student = make_user("period.validation.student@example.edu")
+    inactive = make_user("period.inactive.student@example.edu", active=False)
+    counselor = make_user("period.counselor@example.edu", "COUNSELOR")
+    college = make_college()
+    inactive_college = make_college("PERIOD-OFF", active=False)
+    inactive_campus_college = make_college(
+        "PERIOD-CAMPUS-OFF", campus_code="PERIOD-OFF", campus_active=False
+    )
+    year = make_academic_year()
+
+    def attempt(**overrides):
+        payload = {
+            "student_id": student.pk,
+            "academic_year_id": year.pk,
+            "term": AcademicTerm.FIRST_SEMESTER,
+            "college_id": college.pk,
+            "year_level": 1,
+            "enrollment_status": EnrollmentStatus.ENROLLED,
+            "context": context(actor),
+        }
+        payload.update(overrides)
+        return record_academic_period(**payload)
+
+    with pytest.raises(InvalidStudentAcademicInput):
+        attempt(student_id=counselor.pk)
+    with pytest.raises(StudentAcademicNotFound):
+        attempt(student_id=uuid4())
+    with pytest.raises(StudentAcademicNotFound):
+        attempt(academic_year_id=uuid4())
+    with pytest.raises(StudentAcademicNotFound):
+        attempt(college_id=uuid4())
+    with pytest.raises(StudentAcademicConflict):
+        attempt(college_id=inactive_college.pk)
+    with pytest.raises(StudentAcademicConflict):
+        attempt(college_id=inactive_campus_college.pk)
+    with pytest.raises(InvalidStudentAcademicInput):
+        attempt(term="SUMMER")
+    with pytest.raises(InvalidStudentAcademicInput):
+        attempt(enrollment_status="WITHDRAWN")
+    with pytest.raises(InvalidStudentAcademicInput):
+        attempt(year_level=0)
+    with pytest.raises(InvalidStudentAcademicInput):
+        attempt(year_level=9)
+    with pytest.raises(InvalidStudentAcademicInput):
+        attempt(year_level=True)
+
+    record = attempt(student_id=inactive.pk)
+    assert record.student_id == inactive.pk
+
+    student.student_lifecycle_status = StudentLifecycleStatus.FORMER
+    student.save(update_fields=["student_lifecycle_status", "updated_at"])
+    former_record = attempt(term=AcademicTerm.SECOND_SEMESTER)
+    assert former_record.term == AcademicTerm.SECOND_SEMESTER
+    student.refresh_from_db()
+    assert student.student_lifecycle_status == StudentLifecycleStatus.FORMER
+
+
+@pytest.mark.django_db
+def test_record_period_does_not_change_placement_or_lifecycle():
+    sync_policy()
+    actor = make_user("period.placement.actor@example.edu", "IT_ADMIN")
+    student = make_user("period.placement.student@example.edu")
+    college = make_college()
+    year = make_academic_year()
+    profile = set_current_placement(
+        student_id=student.pk, college_id=college.pk, context=context(actor)
+    )
+    updated_at = profile.updated_at
+
+    record_academic_period(
+        student_id=student.pk,
+        academic_year_id=year.pk,
+        term=AcademicTerm.FIRST_SEMESTER,
+        college_id=college.pk,
+        year_level=4,
+        enrollment_status=EnrollmentStatus.ENROLLED,
+        context=context(actor),
+    )
+
+    profile.refresh_from_db()
+    student.refresh_from_db()
+    assert profile.current_college_id == college.pk
+    assert profile.updated_at == updated_at
+    assert student.student_lifecycle_status == StudentLifecycleStatus.CURRENT
+    assert not AuditEvent.objects.filter(
+        action="student_academics.placement.cleared", target_id=str(student.pk)
+    ).exists()
+
+
+@pytest.mark.django_db
+def test_record_graduation_clears_placement_and_transitions_lifecycle():
+    sync_policy()
+    actor = make_user("graduation.actor@example.edu", "IT_ADMIN")
+    student = make_user("graduation.student@example.edu")
+    college = make_college()
+    program = Program.objects.create(college=college, code="BSIS", name="BS IS")
+    profile = StudentAcademicProfile.objects.create(
+        student=student,
+        current_college=college,
+        current_program=program,
+        placement_verification_status=PlacementVerificationStatus.VERIFIED,
+        placement_effective_at=timezone.now(),
+    )
+    before = timezone.now()
+
+    record = record_graduation(
+        student_id=student.pk,
+        graduated_college_id=college.pk,
+        graduation_date=date(2026, 6, 30),
+        verification_source="  Registrar confirmation  ",
+        context=context(actor),
+    )
+
+    assert record.student_id == student.pk
+    assert record.graduated_college_id == college.pk
+    assert record.graduated_program_id is None
+    assert record.graduation_date == date(2026, 6, 30)
+    assert record.verification_source == "Registrar confirmation"
+    assert record.verified_by == actor
+    assert record.verified_at >= before
+    profile.refresh_from_db()
+    assert profile.current_college_id is None
+    assert profile.current_program_id is None
+    assert profile.placement_verification_status == PlacementVerificationStatus.UNVERIFIED
+    assert profile.placement_effective_at is None
+    assert profile.updated_by == actor
+    student.refresh_from_db()
+    assert student.student_lifecycle_status == StudentLifecycleStatus.GRADUATED
+    placement_event = AuditEvent.objects.get(action="student_academics.placement.cleared")
+    assert placement_event.metadata == {
+        "previous_college_id": str(college.pk),
+        "cause": "graduation",
+    }
+    event = AuditEvent.objects.get(action="student_academics.graduation.recorded")
+    assert event.target_type == "student_academics.studentgraduationrecord"
+    assert event.target_id == str(record.pk)
+    assert event.metadata == {
+        "created": True,
+        "student_id": str(student.pk),
+        "previous_college_id": None,
+        "new_college_id": str(college.pk),
+        "previous_graduation_date": None,
+        "new_graduation_date": "2026-06-30",
+        "previous_source": None,
+        "new_source": "Registrar confirmation",
+        "lifecycle_from": "CURRENT",
+        "lifecycle_to": "GRADUATED",
+        "placement_cleared": True,
+    }
+
+
+@pytest.mark.django_db
+def test_record_graduation_correction_noop_and_lifecycle_resubmission():
+    sync_policy()
+    actor = make_user("graduation.update.actor@example.edu", "IT_ADMIN")
+    student = make_user("graduation.update.student@example.edu")
+    college = make_college()
+    other_college = make_college("GRAD-OTHER", campus_code="GRAD-OTHER")
+
+    first = record_graduation(
+        student_id=student.pk,
+        graduated_college_id=college.pk,
+        graduation_date=date(2026, 6, 30),
+        verification_source="Registrar confirmation",
+        context=context(actor),
+    )
+    corrected = record_graduation(
+        student_id=student.pk,
+        graduated_college_id=other_college.pk,
+        graduation_date=date(2026, 7, 1),
+        verification_source="Corrected registrar confirmation",
+        context=context(actor),
+    )
+
+    assert corrected.pk == first.pk
+    assert corrected.graduated_college_id == other_college.pk
+    assert corrected.graduation_date == date(2026, 7, 1)
+    events = AuditEvent.objects.filter(action="student_academics.graduation.recorded")
+    assert events.count() == 2
+    event = events.latest("occurred_at")
+    assert event.metadata["created"] is False
+    assert event.metadata["previous_college_id"] == str(college.pk)
+    assert event.metadata["new_college_id"] == str(other_college.pk)
+    assert event.metadata["previous_graduation_date"] == "2026-06-30"
+    assert event.metadata["new_graduation_date"] == "2026-07-01"
+    assert event.metadata["previous_source"] == "Registrar confirmation"
+    assert event.metadata["new_source"] == "Corrected registrar confirmation"
+    assert event.metadata["lifecycle_from"] == "GRADUATED"
+    assert event.metadata["lifecycle_to"] == "GRADUATED"
+    assert event.metadata["placement_cleared"] is False
+    assert not AuditEvent.objects.filter(action="student_academics.placement.cleared").exists()
+
+    verified_at = corrected.verified_at
+    audits = events.count()
+    again = record_graduation(
+        student_id=student.pk,
+        graduated_college_id=other_college.pk,
+        graduation_date=date(2026, 7, 1),
+        verification_source="Corrected registrar confirmation",
+        context=context(actor),
+    )
+    assert again.pk == first.pk
+    assert again.verified_at == verified_at
+    assert (
+        AuditEvent.objects.filter(action="student_academics.graduation.recorded").count() == audits
+    )
+
+    User.objects.filter(pk=student.pk).update(
+        student_lifecycle_status=StudentLifecycleStatus.CURRENT
+    )
+    resubmitted = record_graduation(
+        student_id=student.pk,
+        graduated_college_id=other_college.pk,
+        graduation_date=date(2026, 7, 1),
+        verification_source="Corrected registrar confirmation",
+        context=context(actor),
+    )
+    assert resubmitted.pk == first.pk
+    student.refresh_from_db()
+    assert student.student_lifecycle_status == StudentLifecycleStatus.GRADUATED
+    resubmission = AuditEvent.objects.filter(action="student_academics.graduation.recorded").latest(
+        "occurred_at"
+    )
+    assert resubmission.metadata["lifecycle_from"] == "CURRENT"
+    assert resubmission.metadata["lifecycle_to"] == "GRADUATED"
+    assert resubmission.metadata["placement_cleared"] is False
+
+
+@pytest.mark.django_db
+def test_record_graduation_with_already_cleared_placement_does_not_clear_or_audit():
+    sync_policy()
+    actor = make_user("graduation.cleared.actor@example.edu", "IT_ADMIN")
+    student = make_user("graduation.cleared.student@example.edu")
+    college = make_college()
+    StudentAcademicProfile.objects.create(student=student)
+
+    record = record_graduation(
+        student_id=student.pk,
+        graduated_college_id=college.pk,
+        graduation_date=date(2026, 6, 30),
+        verification_source="Registrar confirmation",
+        context=context(actor),
+    )
+
+    event = AuditEvent.objects.get(action="student_academics.graduation.recorded")
+    assert event.metadata["placement_cleared"] is False
+    assert not AuditEvent.objects.filter(action="student_academics.placement.cleared").exists()
+    student.refresh_from_db()
+    assert student.student_lifecycle_status == StudentLifecycleStatus.GRADUATED
+    assert record.graduated_college_id == college.pk
+
+
+@pytest.mark.django_db
+def test_record_graduation_validation_and_inactive_student():
+    sync_policy()
+    actor = make_user("graduation.validation.actor@example.edu", "IT_ADMIN")
+    student = make_user("graduation.validation.student@example.edu")
+    inactive = make_user("graduation.inactive.student@example.edu", active=False)
+    counselor = make_user("graduation.counselor@example.edu", "COUNSELOR")
+    college = make_college()
+    inactive_college = make_college("GRAD-OFF", active=False)
+
+    def attempt(**overrides):
+        payload = {
+            "student_id": student.pk,
+            "graduated_college_id": college.pk,
+            "graduation_date": date(2026, 6, 30),
+            "verification_source": "Registrar confirmation",
+            "context": context(actor),
+        }
+        payload.update(overrides)
+        return record_graduation(**payload)
+
+    with pytest.raises(InvalidStudentAcademicInput):
+        attempt(student_id=counselor.pk)
+    with pytest.raises(StudentAcademicNotFound):
+        attempt(student_id=uuid4())
+    with pytest.raises(StudentAcademicNotFound):
+        attempt(graduated_college_id=uuid4())
+    with pytest.raises(StudentAcademicConflict):
+        attempt(graduated_college_id=inactive_college.pk)
+    with pytest.raises(InvalidStudentAcademicInput):
+        attempt(verification_source="   ")
+    with pytest.raises(InvalidStudentAcademicInput):
+        attempt(verification_source="x" * 201)
+    with pytest.raises(InvalidStudentAcademicInput):
+        attempt(graduation_date="2026-06-30")
+
+    record = attempt(student_id=inactive.pk, verification_source="x" * 200)
+    assert record.verification_source == "x" * 200
+    inactive.refresh_from_db()
+    assert inactive.student_lifecycle_status == StudentLifecycleStatus.GRADUATED
+
+
+@pytest.mark.django_db
+def test_get_student_academic_record_aggregates_placement_periods_and_graduation():
+    sync_policy()
+    actor = make_user("record.actor@example.edu", "IT_ADMIN")
+    student = make_user("record.student@example.edu")
+    college = make_college()
+    other_college = make_college("REC-OTHER", campus_code="REC-OTHER")
+    years = {label: make_academic_year(label) for label in ("2024-2025", "2025-2026", "2026-2027")}
+    profile = set_current_placement(
+        student_id=student.pk, college_id=college.pk, context=context(actor)
+    )
+    for label, term, year_level in (
+        ("2025-2026", AcademicTerm.FIRST_SEMESTER, 3),
+        ("2026-2027", AcademicTerm.SECOND_SEMESTER, 4),
+        ("2024-2025", AcademicTerm.FIRST_SEMESTER, 2),
+        ("2026-2027", AcademicTerm.FIRST_SEMESTER, 4),
+    ):
+        record_academic_period(
+            student_id=student.pk,
+            academic_year_id=years[label].pk,
+            term=term,
+            college_id=college.pk,
+            year_level=year_level,
+            enrollment_status=EnrollmentStatus.ENROLLED,
+            context=context(actor),
+        )
+
+    record = get_student_academic_record(student_id=student.pk)
+
+    assert record.student.pk == student.pk
+    assert record.lifecycle_status == StudentLifecycleStatus.CURRENT
+    assert record.placement is not None
+    assert record.placement.pk == profile.pk
+    assert [(item.academic_year.label, item.term) for item in record.periods] == [
+        ("2026-2027", "FIRST_SEMESTER"),
+        ("2026-2027", "SECOND_SEMESTER"),
+        ("2025-2026", "FIRST_SEMESTER"),
+        ("2024-2025", "FIRST_SEMESTER"),
+    ]
+    assert record.graduation is None
+
+    record_graduation(
+        student_id=student.pk,
+        graduated_college_id=other_college.pk,
+        graduation_date=date(2026, 6, 30),
+        verification_source="Registrar confirmation",
+        context=context(actor),
+    )
+    graduated = get_student_academic_record(student_id=student.pk)
+    assert graduated.placement is None
+    assert graduated.lifecycle_status == StudentLifecycleStatus.GRADUATED
+    assert graduated.graduation is not None
+    assert graduated.graduation.graduated_college_id == other_college.pk
+
+
+@pytest.mark.django_db
+def test_get_student_academic_record_handles_absent_profile_and_invalid_students():
+    sync_policy()
+    student = make_user("record.empty@example.edu")
+    cleared = make_user("record.cleared@example.edu")
+    college = make_college()
+    StudentAcademicProfile.objects.create(student=cleared, current_college=college)
+    clear_current_placement(
+        student_id=cleared.pk,
+        context=context(make_user("record.clear.actor@example.edu", "IT_ADMIN")),
+    )
+
+    assert get_student_academic_record(student_id=student.pk).placement is None
+    assert get_student_academic_record(student_id=cleared.pk).placement is None
+    assert get_student_academic_record(student_id=student.pk).periods == ()
+    assert get_student_academic_record(student_id=student.pk).graduation is None
+
+    with pytest.raises(StudentAcademicNotFound):
+        get_student_academic_record(student_id=uuid4())
+    with pytest.raises(InvalidStudentAcademicInput):
+        get_student_academic_record(
+            student_id=make_user("record.counselor@example.edu", "COUNSELOR").pk
+        )
+
+
+@pytest.mark.django_db
+def test_record_http_authorization_mfa_errors_and_round_trip():
+    sync_policy()
+    admin = make_user("record.http.admin@example.edu", "IT_ADMIN")
+    student = make_user("record.http.student@example.edu")
+    counselor = make_user("record.http.counselor@example.edu", "COUNSELOR")
+    college = make_college()
+    inactive = make_college("HTTP-OFF", active=False)
+    year = make_academic_year()
+    period_payload = {
+        "academic_year_id": str(year.pk),
+        "term": "FIRST_SEMESTER",
+        "college_id": str(college.pk),
+        "year_level": 2,
+        "enrollment_status": "ENROLLED",
+    }
+    graduation_payload = {
+        "graduated_college_id": str(college.pk),
+        "graduation_date": "2026-06-30",
+        "verification_source": "Registrar confirmation",
+    }
+
+    assert Client().get(f"{BASE}/students/{student.pk}/record").status_code == 401
+    assert auth_client(counselor).get(f"{BASE}/students/{student.pk}/record").status_code == 403
+
+    client = auth_client(admin)
+    headers = csrf(client)
+    empty = client.get(f"{BASE}/students/{student.pk}/record")
+    assert empty.status_code == 200
+    assert empty.json() == {
+        "student": {
+            "id": str(student.pk),
+            "institutional_id": None,
+            "full_name": "Test User",
+            "email": student.email,
+            "role": "STUDENT",
+            "is_active": True,
+            "responsibility_scope": None,
+        },
+        "lifecycle_status": "CURRENT",
+        "placement": None,
+        "periods": [],
+        "graduation": None,
+    }
+
+    stale = auth_client(admin, recent_mfa=False)
+    denied = stale.put(
+        f"{BASE}/students/{student.pk}/periods",
+        data=period_payload,
+        content_type="application/json",
+        **csrf(stale),
+    )
+    assert denied.status_code == 403
+
+    unknown_key = client.put(
+        f"{BASE}/students/{student.pk}/periods",
+        data={**period_payload, "program_id": str(uuid4())},
+        content_type="application/json",
+        **headers,
+    )
+    assert unknown_key.status_code == 422
+
+    period_created = client.put(
+        f"{BASE}/students/{student.pk}/periods",
+        data=period_payload,
+        content_type="application/json",
+        **headers,
+    )
+    assert period_created.status_code == 200
+    assert period_created.json()["academic_year"] == {
+        "id": str(year.pk),
+        "label": "2026-2027",
+        "is_current": False,
+    }
+    assert period_created.json()["enrollment_status"] == "ENROLLED"
+
+    conflict = client.put(
+        f"{BASE}/students/{student.pk}/periods",
+        data={**period_payload, "college_id": str(inactive.pk)},
+        content_type="application/json",
+        **headers,
+    )
+    assert conflict.status_code == 409
+
+    graduation_created = client.put(
+        f"{BASE}/students/{student.pk}/graduation",
+        data=graduation_payload,
+        content_type="application/json",
+        **headers,
+    )
+    assert graduation_created.status_code == 200
+    assert graduation_created.json()["verified_by"]["id"] == str(admin.pk)
+
+    aggregate = client.get(f"{BASE}/students/{student.pk}/record").json()
+    assert aggregate["lifecycle_status"] == "GRADUATED"
+    assert aggregate["placement"] is None
+    assert len(aggregate["periods"]) == 1
+    assert aggregate["graduation"]["graduation_date"] == "2026-06-30"
+
+    assert client.get(f"{BASE}/students/{uuid4()}/record").status_code == 404
+    assert client.get(f"{BASE}/students/{counselor.pk}/record").status_code == 422
+
+
+@pytest.mark.django_db
+def test_no_delete_routes_exist_for_periods_or_graduation():
+    sync_policy()
+    admin = make_user("record.delete.admin@example.edu", "IT_ADMIN")
+    student = make_user("record.delete.student@example.edu")
+    client = auth_client(admin)
+    headers = csrf(client)
+
+    assert client.delete(f"{BASE}/students/{student.pk}/periods", **headers).status_code == 405
+    assert client.delete(f"{BASE}/students/{student.pk}/graduation", **headers).status_code == 405
+
+
+@pytest.mark.django_db
+def test_audit_failure_rolls_back_graduation_placement_and_lifecycle(monkeypatch):
+    sync_policy()
+    actor = make_user("graduation.rollback.actor@example.edu", "IT_ADMIN")
+    student = make_user("graduation.rollback.student@example.edu")
+    college = make_college()
+    profile = StudentAcademicProfile.objects.create(student=student, current_college=college)
+
+    def failed_audit(*args, **kwargs):
+        raise RuntimeError("Synthetic audit failure")
+
+    monkeypatch.setattr("compass.student_academics.services.record_event", failed_audit)
+    with pytest.raises(RuntimeError, match="Synthetic audit failure"):
+        record_graduation(
+            student_id=student.pk,
+            graduated_college_id=college.pk,
+            graduation_date=date(2026, 6, 30),
+            verification_source="Registrar confirmation",
+            context=context(actor),
+        )
+
+    assert not StudentGraduationRecord.objects.exists()
+    profile.refresh_from_db()
+    assert profile.current_college_id == college.pk
+    student.refresh_from_db()
+    assert student.student_lifecycle_status == StudentLifecycleStatus.CURRENT
+    assert not AuditEvent.objects.filter(action="student_academics.graduation.recorded").exists()
+
+
+@pytest.mark.django_db
+def test_profile_save_failure_rolls_back_graduation_without_audit(monkeypatch):
+    sync_policy()
+    actor = make_user("graduation.save.actor@example.edu", "IT_ADMIN")
+    student = make_user("graduation.save.student@example.edu")
+    college = make_college()
+    StudentAcademicProfile.objects.create(student=student, current_college=college)
+
+    def failed_save(self, *args, **kwargs):
+        raise RuntimeError("Synthetic profile failure")
+
+    monkeypatch.setattr(StudentAcademicProfile, "save", failed_save)
+    with pytest.raises(RuntimeError, match="Synthetic profile failure"):
+        record_graduation(
+            student_id=student.pk,
+            graduated_college_id=college.pk,
+            graduation_date=date(2026, 6, 30),
+            verification_source="Registrar confirmation",
+            context=context(actor),
+        )
+
+    assert not StudentGraduationRecord.objects.exists()
+    student.refresh_from_db()
+    assert student.student_lifecycle_status == StudentLifecycleStatus.CURRENT
+    assert not AuditEvent.objects.filter(action="student_academics.graduation.recorded").exists()
+    assert not AuditEvent.objects.filter(action="student_academics.placement.cleared").exists()
+
+
+@pytest.mark.django_db
+def test_clearing_an_already_cleared_profile_is_a_noop_without_audit():
+    sync_policy()
+    actor = make_user("cleared.noop.actor@example.edu", "IT_ADMIN")
+    student = make_user("cleared.noop.student@example.edu")
+    profile = StudentAcademicProfile.objects.create(student=student)
+    updated_at = profile.updated_at
+
+    assert clear_current_placement(student_id=student.pk, context=context(actor)) is False
+
+    profile.refresh_from_db()
+    assert profile.updated_at == updated_at
+    assert not AuditEvent.objects.filter(action="student_academics.placement.cleared").exists()
+
+
+@pytest.mark.django_db
+def test_list_current_placements_excludes_non_student_profiles():
+    sync_policy()
+    counselor = make_user("list.nonstudent@example.edu", "COUNSELOR")
+    college = make_college()
+    StudentAcademicProfile.objects.create(student=counselor, current_college=college)
+
+    assert list_current_placements().items == ()
+    assert list_current_placements(student_id=counselor.pk).items == ()

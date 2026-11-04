@@ -71,6 +71,113 @@
         "title": "AcademicClassification",
         "type": "string"
       },
+      "AcademicPeriodRecordRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year_id": {
+            "format": "uuid",
+            "title": "Academic Year Id",
+            "type": "string"
+          },
+          "college_id": {
+            "format": "uuid",
+            "title": "College Id",
+            "type": "string"
+          },
+          "enrollment_status": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/EnrollmentStatus"
+              }
+            ],
+            "default": "UNKNOWN"
+          },
+          "term": {
+            "$ref": "#/components/schemas/AcademicTerm"
+          },
+          "year_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
+          }
+        },
+        "required": [
+          "academic_year_id",
+          "term",
+          "college_id"
+        ],
+        "title": "AcademicPeriodRecordRequest",
+        "type": "object"
+      },
+      "AcademicPeriodRecordResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "academic_year": {
+            "$ref": "#/components/schemas/AcademicYearResponse"
+          },
+          "college": {
+            "$ref": "#/components/schemas/CollegeSummary"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "enrollment_status": {
+            "$ref": "#/components/schemas/EnrollmentStatus"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "term": {
+            "$ref": "#/components/schemas/AcademicTerm"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "year_level": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Year Level"
+          }
+        },
+        "required": [
+          "id",
+          "academic_year",
+          "term",
+          "college",
+          "year_level",
+          "enrollment_status",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "AcademicPeriodRecordResponse",
+        "type": "object"
+      },
+      "AcademicTerm": {
+        "enum": [
+          "FIRST_SEMESTER",
+          "SECOND_SEMESTER"
+        ],
+        "title": "AcademicTerm",
+        "type": "string"
+      },
       "AcademicYearCreateRequest": {
         "additionalProperties": false,
         "properties": {
@@ -10837,6 +10944,15 @@
         "title": "EncounterCollectionStudent",
         "type": "object"
       },
+      "EnrollmentStatus": {
+        "enum": [
+          "UNKNOWN",
+          "ENROLLED",
+          "NOT_ENROLLED"
+        ],
+        "title": "EnrollmentStatus",
+        "type": "string"
+      },
       "EnvironmentCategoryResponse": {
         "additionalProperties": false,
         "properties": {
@@ -17740,6 +17856,91 @@
           "title"
         ],
         "title": "GraduateTracerTrainingPayload",
+        "type": "object"
+      },
+      "GraduationRecordRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "graduated_college_id": {
+            "format": "uuid",
+            "title": "Graduated College Id",
+            "type": "string"
+          },
+          "graduation_date": {
+            "format": "date",
+            "title": "Graduation Date",
+            "type": "string"
+          },
+          "verification_source": {
+            "title": "Verification Source",
+            "type": "string"
+          }
+        },
+        "required": [
+          "graduated_college_id",
+          "graduation_date",
+          "verification_source"
+        ],
+        "title": "GraduationRecordRequest",
+        "type": "object"
+      },
+      "GraduationRecordResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "graduated_college": {
+            "$ref": "#/components/schemas/CollegeSummary"
+          },
+          "graduation_date": {
+            "format": "date",
+            "title": "Graduation Date",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "verification_source": {
+            "title": "Verification Source",
+            "type": "string"
+          },
+          "verified_at": {
+            "format": "date-time",
+            "title": "Verified At",
+            "type": "string"
+          },
+          "verified_by": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/OrganizationPersonSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "graduated_college",
+          "graduation_date",
+          "verification_source",
+          "verified_by",
+          "verified_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "GraduationRecordResponse",
         "type": "object"
       },
       "GroupSessionCancelRequest": {
@@ -29132,6 +29333,60 @@
         "title": "StatusValue",
         "type": "string"
       },
+      "StudentAcademicRecordResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "graduation": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GraduationRecordResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "lifecycle_status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/StudentLifecycleStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "periods": {
+            "items": {
+              "$ref": "#/components/schemas/AcademicPeriodRecordResponse"
+            },
+            "title": "Periods",
+            "type": "array"
+          },
+          "placement": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PlacementResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "student": {
+            "$ref": "#/components/schemas/OrganizationPersonSummary"
+          }
+        },
+        "required": [
+          "student",
+          "lifecycle_status",
+          "placement",
+          "periods",
+          "graduation"
+        ],
+        "title": "StudentAcademicRecordResponse",
+        "type": "object"
+      },
       "StudentActionItem": {
         "additionalProperties": false,
         "properties": {
@@ -29478,6 +29733,15 @@
           "GRADUATED"
         ],
         "title": "StudentLifecycleCode",
+        "type": "string"
+      },
+      "StudentLifecycleStatus": {
+        "enum": [
+          "CURRENT",
+          "GRADUATED",
+          "FORMER"
+        ],
+        "title": "StudentLifecycleStatus",
         "type": "string"
       },
       "StudentLifecycleUpdateRequest": {
@@ -70682,6 +70946,202 @@
         ]
       }
     },
+    "/api/v1/student-academics/students/{student_id}/graduation": {
+      "put": {
+        "operationId": "studentAcademicsRecordGraduation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GraduationRecordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraduationRecordResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Graduation Record",
+        "tags": [
+          "student-academics"
+        ]
+      }
+    },
+    "/api/v1/student-academics/students/{student_id}/periods": {
+      "put": {
+        "operationId": "studentAcademicsRecordPeriod",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcademicPeriodRecordRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcademicPeriodRecordResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Period Record",
+        "tags": [
+          "student-academics"
+        ]
+      }
+    },
     "/api/v1/student-academics/students/{student_id}/placement": {
       "delete": {
         "operationId": "studentAcademicsClearPlacement",
@@ -70861,6 +71321,84 @@
           }
         ],
         "summary": "Placement Set",
+        "tags": [
+          "student-academics"
+        ]
+      }
+    },
+    "/api/v1/student-academics/students/{student_id}/record": {
+      "get": {
+        "operationId": "studentAcademicsGetStudentRecord",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "student_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Student Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentAcademicRecordResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Student Record",
         "tags": [
           "student-academics"
         ]
