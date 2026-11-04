@@ -5,8 +5,9 @@ recorded there as **Open**, with institutional owners.
 **Status of this file:** this slice applies the task's **provisional engineering defaults** for
 D-SAR-09, D-SAR-10 and D-SAR-11 so academic periods and graduation can be implemented without
 inventing institutional policy. These are **not** UCN, GCO, Registrar, DPO, Records or IT approvals.
-The implementation is destructive to the repository only; it is uncommitted and was not deployed or
-run against a shared environment.
+The implementation is destructive to the repository only; it was merged into
+`integration/ux15-modernization` and pushed to `origin` without a PR, and was not deployed or run
+against a shared environment.
 
 ## 1. Applied defaults — D-SAR-09 to D-SAR-11
 

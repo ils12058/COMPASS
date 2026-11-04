@@ -1,7 +1,8 @@
 # SAR-2B + SAR-2C — Academic Periods, Graduation and the Student Academic Record workspace
 
-**Status:** Implemented and validated in the working tree. **Not committed, merged, pushed,
-deployed or run against any shared environment.**
+**Status:** Implemented and validated on a feature branch. **Merged into
+`integration/ux15-modernization` and pushed to `origin` without a PR; not deployed or run against any
+shared environment.**
 **Branch:** `integration/ux15-modernization`.
 **Base:** `b1ccd59b8d8d45d5b80789eb908eac1a0586c0e1` (SAR-2A merge commit).
 **Date:** 2026-11-04.

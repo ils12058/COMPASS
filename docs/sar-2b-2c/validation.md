@@ -113,4 +113,5 @@ Commands were run from the repository root.
 - No data migration or backfill rehearsal, because neither exists in this slice.
 - The temporary `organization.manage` authorization boundary and D-SAR-09/10/11 defaults were not
   reviewed by UCN, GCO, Registrar, DPO, Records or IT. D-SAR-05 and D-SAR-12..20 remain open.
-- No commit, merge or push was performed; the changes exist only in the working tree.
+- The four-commit split was merged into `integration/ux15-modernization` and pushed to `origin`;
+  no PR, deployment, staging seed run or production/staging contact followed.
