@@ -20,7 +20,7 @@ import type { CsvImportResponse } from "@/lib/api/generated/model";
 import { CompassApiError } from "@/lib/api/errors";
 
 const template =
-  "institutional_id,email,first_name,middle_name,last_name,suffix,role,faculty_college_id\n";
+  "institutional_id,email,first_name,middle_name,last_name,suffix,role,faculty_college_id,campus_code,college_code\n";
 
 const rowActionLabels: Record<string, [review: string, committed: string]> = {
   CREATE: ["Create", "Created"],
@@ -171,8 +171,11 @@ export function ImportAccounts() {
         <PanelBody className="py-5">
         <p className="text-sm text-muted">
           Required columns: institutional_id, email, first_name, last_name,
-          role. Optional: middle_name, suffix, faculty_college_id (Faculty only; active catalog College UUID).
-          A blank Faculty College leaves the affiliation unassigned. Existing affiliations are never changed by import. Limit: about 1 MiB and 1,000
+          role. Optional: middle_name, suffix, faculty_college_id (Faculty only; active catalog College UUID),
+          campus_code and college_code (Student only; both or neither; active catalog codes).
+          Initial placement applies only to newly created accounts, is recorded as unverified and does not confirm
+          enrollment. A blank Faculty College leaves the affiliation unassigned. Existing affiliations and placements
+          are never changed by import. <span className="font-semibold">program_code</span> is not supported. Limit: about 1 MiB and 1,000
           non-empty rows.
         </p>
         <a
@@ -290,7 +293,7 @@ export function ImportAccounts() {
             ))}
           </dl>
           <div className={dataTable.scroll}>
-            <table className={`${dataTable.table} min-w-[42rem]`}>
+            <table className={`${dataTable.table} min-w-[52rem]`}>
               <caption className="sr-only">CSV rows</caption>
               <thead className={dataTable.head}>
                 <tr>
@@ -302,6 +305,9 @@ export function ImportAccounts() {
                   </th>
                   <th scope="col" className={dataTable.headerCell}>
                     Email
+                  </th>
+                  <th scope="col" className={dataTable.headerCell}>
+                    Placement
                   </th>
                   <th scope="col" className={dataTable.headerCell}>
                     Action
@@ -320,6 +326,11 @@ export function ImportAccounts() {
                     <td className={dataTable.cell}>{row.row_number}</td>
                     <td className={dataTable.cell}>{row.institutional_id || "—"}</td>
                     <td className={dataTable.cell}>{row.email || "—"}</td>
+                    <td className={dataTable.cell}>
+                      {row.campus_code || row.college_code
+                        ? `${row.campus_code ?? "—"} · ${row.college_code ?? "—"}`
+                        : "—"}
+                    </td>
                     <td className={`${dataTable.cell} font-semibold`}>
                       {rowActionLabel(row.action, report.committed)}
                     </td>

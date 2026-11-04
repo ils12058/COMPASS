@@ -13,7 +13,7 @@ from compass.organization.access_scope import (
 )
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.service_catalog.models import Service
-from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.reads import student_is_placed_in_colleges
 
 
 class AppointmentAccessPolicy(StrEnum):
@@ -41,12 +41,7 @@ def _student_in_organizational_scope(actor: User, student_id) -> bool:
     scope = resolve_operational_responsibility_scope(actor)
     if not scope.college_ids:
         return False
-    return StudentAcademicProfile.objects.filter(
-        student_id=student_id,
-        current_college_id__in=scope.college_ids,
-        current_college__is_active=True,
-        current_college__campus__is_active=True,
-    ).exists()
+    return student_is_placed_in_colleges(student_id=student_id, college_ids=scope.college_ids)
 
 
 def appointment_management_access_allowed(actor: User, appointment) -> bool:

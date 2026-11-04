@@ -17,6 +17,8 @@ import { CompassApiError } from "@/lib/api/errors";
 
 const knownErrors: Record<string, string> = {
   permission_denied: "You do not have permission to manage accounts.",
+  academic_placement_permission_denied:
+    "The organization.manage capability is required to assign an initial Student placement.",
   institutional_designation_permission_denied:
     "You do not have permission to manage institutional designations.",
   last_account_manager:

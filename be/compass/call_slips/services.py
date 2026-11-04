@@ -55,7 +55,7 @@ from compass.referrals.services import (
     ReferralVoidConflict,
     ensure_call_slip_action,
 )
-from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.reads import student_is_placed_in_colleges
 
 from .models import (
     CallSlip,
@@ -251,12 +251,7 @@ def _student_in_scope(actor: User, student_id: UUID) -> bool:
         return True
     if not college_ids:
         return False
-    return StudentAcademicProfile.objects.filter(
-        student_id=student_id,
-        current_college_id__in=college_ids,
-        current_college__is_active=True,
-        current_college__campus__is_active=True,
-    ).exists()
+    return student_is_placed_in_colleges(student_id=student_id, college_ids=college_ids)
 
 
 def _scope_queryset(queryset, actor: User):

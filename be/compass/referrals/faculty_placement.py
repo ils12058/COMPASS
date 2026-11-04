@@ -7,7 +7,7 @@ Caller takes catalog gate and Student row lock before resolving mutable placemen
 from dataclasses import dataclass
 from uuid import UUID
 
-from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.reads import get_current_placement
 
 
 @dataclass(frozen=True)
@@ -20,22 +20,11 @@ class FacultyReferralStudentPlacement:
 def resolve_student_placement(student):
     if not student.is_active or student.role.code != "STUDENT":
         return None
-    profile = (
-        StudentAcademicProfile.objects.select_related("current_college__campus")
-        .filter(
-            student_id=student.pk,
-        )
-        .first()
-    )
-    if (
-        profile is None
-        or profile.current_college is None
-        or not profile.current_college.is_active
-        or not profile.current_college.campus.is_active
-    ):
+    facts = get_current_placement(student_id=student.pk, require_active_college=True)
+    if facts is None:
         return None
     return FacultyReferralStudentPlacement(
         student_id=student.pk,
-        college_id=profile.current_college_id,
-        revision=f"student_academics:{profile.pk}:{profile.updated_at.isoformat()}",
+        college_id=facts.college.id,
+        revision=facts.revision,
     )

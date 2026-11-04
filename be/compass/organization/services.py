@@ -33,7 +33,7 @@ from compass.organization.models import (
     Program,
     StaffSupervision,
 )
-from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.reads import get_current_placement
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
@@ -94,19 +94,14 @@ def effective_responsibility_colleges(user: User) -> tuple[College, ...]:
 def resolve_default_counselor_for_student(student: User) -> DefaultCounselorResolution:
     if not getattr(student, "pk", None) or not student.is_active or student.role.code != "STUDENT":
         return DefaultCounselorResolution(None, "UNRESOLVED", "INVALID_STUDENT")
-    profile = (
-        StudentAcademicProfile.objects.select_related("current_college__campus")
-        .filter(student_id=student.pk)
-        .first()
-    )
-    if profile is None or profile.current_college is None:
+    placement = get_current_placement(student_id=student.pk)
+    if placement is None:
         return DefaultCounselorResolution(None, "UNRESOLVED", "NO_AFFILIATION")
-    college = profile.current_college
-    if not college.is_active or not college.campus.is_active:
+    if not placement.college.is_usable:
         return DefaultCounselorResolution(None, "UNRESOLVED", "INACTIVE_ORGANIZATION")
     responsibility = (
         CounselorResponsibility.objects.select_related("counselor__role")
-        .filter(college_id=college.pk)
+        .filter(college_id=placement.college.id)
         .first()
     )
     if (
@@ -142,12 +137,7 @@ def validate_role_transition(*, user: User, new_role_code: str) -> None:
         raise OrganizationRoleTransitionConflict(
             "Remove the staff supervision relationship before changing role."
         )
-    if (
-        user.role.code == "STUDENT"
-        and StudentAcademicProfile.objects.filter(
-            student_id=user.pk, current_college__isnull=False
-        ).exists()
-    ):
+    if user.role.code == "STUDENT" and get_current_placement(student_id=user.pk) is not None:
         raise OrganizationRoleTransitionConflict(
             "Clear the student's current College placement before changing role."
         )
@@ -415,13 +405,10 @@ def list_people(
 
 def validate_account_catalog_reactivation(user: User) -> None:
     """Retained placements may not silently become operational beneath retired ancestry."""
-    if (
-        user.role.code == "STUDENT"
-        and StudentAcademicProfile.objects.filter(student_id=user.pk, current_college__isnull=False)
-        .filter(Q(current_college__is_active=False) | Q(current_college__campus__is_active=False))
-        .exists()
-    ):
-        raise OrganizationConflict("Repair the retained Student placement before reactivation.")
+    if user.role.code == "STUDENT":
+        placement = get_current_placement(student_id=user.pk)
+        if placement is not None and not placement.college.is_usable:
+            raise OrganizationConflict("Repair the retained Student placement before reactivation.")
     if (
         user.role.code == "FACULTY"
         and FacultyAffiliation.objects.filter(faculty_id=user.pk)

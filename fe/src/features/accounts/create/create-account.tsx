@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 
 import { FacultyCollegeField } from "@/features/accounts/components/faculty-college-field";
+import { usePortalSession } from "@/features/portal/components/portal-session";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import { Input } from "@/components/ui/input";
@@ -29,6 +30,7 @@ const fieldClass = "grid gap-2";
 
 export function CreateAccount() {
   const router = useRouter();
+  const session = usePortalSession();
   const create = useAccountsCreate();
   const action = useManagedAction();
   const invalidate = useInvalidateManagedAccount();
@@ -42,9 +44,38 @@ export function CreateAccount() {
     role: RoleCode.STUDENT,
     is_active: true,
   });
-  const facultyColleges = useAccountsFacultyCollegeChoices({ query: { enabled: form.role === RoleCode.FACULTY, retry: false } });
-  const selectedFacultyCollege = facultyColleges.data?.data.find((college) => college.id === form.faculty_college_id);
+  const [placementCampusId, setPlacementCampusId] = useState("");
+  const [placementCollegeId, setPlacementCollegeId] = useState("");
+  const [placementError, setPlacementError] = useState<string | null>(null);
   const [review, setReview] = useState<AccountCreateRequest | null>(null);
+  const canAssignPlacement = session.user.capabilities.includes("organization.manage");
+  const showPlacement = form.role === RoleCode.STUDENT && canAssignPlacement;
+  const collegeChoices = useAccountsFacultyCollegeChoices({
+    query: { enabled: form.role === RoleCode.FACULTY || showPlacement, retry: false },
+  });
+  const selectedFacultyCollege = collegeChoices.data?.data.find((college) => college.id === form.faculty_college_id);
+  const campuses = useMemo(() => {
+    const unique = new Map<string, { id: string; code: string; name: string }>();
+    for (const college of collegeChoices.data?.data ?? []) {
+      if (!unique.has(college.campus_id)) {
+        unique.set(college.campus_id, {
+          id: college.campus_id,
+          code: college.campus_code,
+          name: college.campus_name,
+        });
+      }
+    }
+    return [...unique.values()];
+  }, [collegeChoices.data]);
+  const placementColleges = (collegeChoices.data?.data ?? []).filter(
+    (college) => college.campus_id === placementCampusId,
+  );
+  const reviewedCampus = review?.student_campus_id
+    ? campuses.find((campus) => campus.id === review.student_campus_id)
+    : undefined;
+  const reviewedCollege = review?.student_college_id
+    ? collegeChoices.data?.data.find((college) => college.id === review.student_college_id)
+    : undefined;
 
   function change<K extends keyof AccountCreateRequest>(
     field: K,
@@ -57,7 +88,19 @@ export function CreateAccount() {
     event.preventDefault();
     action.setError(null);
     action.setNotice(null);
-    setReview({ ...form, faculty_college_id: form.role === RoleCode.FACULTY ? form.faculty_college_id || null : null });
+    const campusId = showPlacement ? placementCampusId : "";
+    const collegeId = showPlacement ? placementCollegeId : "";
+    if ((campusId === "") !== (collegeId === "")) {
+      setPlacementError("Select both Campus and College, or neither.");
+      return;
+    }
+    setPlacementError(null);
+    setReview({
+      ...form,
+      faculty_college_id: form.role === RoleCode.FACULTY ? form.faculty_college_id || null : null,
+      student_campus_id: collegeId ? campusId : null,
+      student_college_id: collegeId || null,
+    });
   }
 
   async function confirmCreate() {
@@ -158,8 +201,10 @@ export function CreateAccount() {
               id="create-role"
               value={form.role}
               onChange={(event) => {
-                if (isRoleCode(event.target.value))
+                if (isRoleCode(event.target.value)) {
                   change("role", event.target.value);
+                  setPlacementError(null);
+                }
               }}
             >
               {roles.map((role) => (
@@ -171,6 +216,65 @@ export function CreateAccount() {
           </div>
         </div>
         {form.role === RoleCode.FACULTY ? <FacultyCollegeField id="create-faculty-college" value={form.faculty_college_id ?? ""} onChange={(value) => change("faculty_college_id", value || null)} /> : null}
+        {showPlacement ? (
+          <fieldset className="grid gap-4 rounded-md border border-border p-4">
+            <legend className="px-1 text-sm font-semibold text-ink">Initial academic placement (optional)</legend>
+            <p className="text-sm text-muted">
+              Recorded as unverified. This does not confirm enrollment. Changing placement later requires the Student Academic Records workspace.
+            </p>
+            {collegeChoices.isPending ? <p role="status" className="text-sm text-muted">Loading Campus and College choices…</p> : null}
+            {collegeChoices.isError ? (
+              <p role="alert" className="text-sm text-danger">
+                Campus and College choices could not be loaded.{" "}
+                <Button variant="quiet" onClick={() => void collegeChoices.refetch()}>Retry</Button>
+              </p>
+            ) : null}
+            <div className="grid gap-5 sm:grid-cols-2">
+              <div className={fieldClass}>
+                <Label htmlFor="create-student-campus">Campus</Label>
+                <Select
+                  id="create-student-campus"
+                  value={placementCampusId}
+                  disabled={collegeChoices.isPending || collegeChoices.isError}
+                  onChange={(event) => {
+                    setPlacementCampusId(event.target.value);
+                    setPlacementCollegeId("");
+                    setPlacementError(null);
+                  }}
+                >
+                  <option value="">Not assigned</option>
+                  {campuses.map((campus) => (
+                    <option key={campus.id} value={campus.id}>
+                      {campus.code} · {campus.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className={fieldClass}>
+                <Label htmlFor="create-student-college">College</Label>
+                <Select
+                  id="create-student-college"
+                  value={placementCollegeId}
+                  disabled={!placementCampusId || collegeChoices.isPending || collegeChoices.isError}
+                  onChange={(event) => {
+                    setPlacementCollegeId(event.target.value);
+                    setPlacementError(null);
+                  }}
+                >
+                  <option value="">
+                    {placementCampusId ? "Select a College" : "Select a Campus first"}
+                  </option>
+                  {placementColleges.map((college) => (
+                    <option key={college.id} value={college.id}>
+                      {college.code} · {college.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            </div>
+            {placementError ? <p role="alert" className="text-sm text-danger">{placementError}</p> : null}
+          </fieldset>
+        ) : null}
         <label className="flex items-center gap-3 text-sm font-medium text-ink">
           <input
             type="checkbox"
@@ -233,6 +337,16 @@ export function CreateAccount() {
                   {review.is_active ? "Active" : "Disabled"}
                 </dd>
               </div>
+              {review.role === RoleCode.STUDENT ? (
+                <div>
+                  <dt className="text-muted">Initial academic placement</dt>
+                  <dd className="font-semibold text-ink">
+                    {review.student_college_id && reviewedCampus && reviewedCollege
+                      ? `${reviewedCampus.name} · ${reviewedCollege.name}`
+                      : "Not assigned"}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
             <p>
               {review.is_active
@@ -242,6 +356,9 @@ export function CreateAccount() {
             {review.role === RoleCode.FACULTY ? <p>Faculty home College: {selectedFacultyCollege ? `${selectedFacultyCollege.campus_name} · ${selectedFacultyCollege.name}` : review.faculty_college_id ? "Selected College is no longer available" : "Not assigned"}. Digital Referrals are not available.</p> : null}
             {review.role === RoleCode.STUDENT ? (
               <p>New student accounts start with current student status.</p>
+            ) : null}
+            {review.role === RoleCode.STUDENT && review.student_college_id ? (
+              <p>Initial academic placement is recorded as unverified and does not confirm enrollment.</p>
             ) : null}
           </>
         ) : null}

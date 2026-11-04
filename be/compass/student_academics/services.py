@@ -158,11 +158,18 @@ def _clear_placement_facts(
 
 @catalog_dependent_write
 def set_current_placement(
-    *, student_id: UUID, college_id: UUID, context: AuditContext
+    *,
+    student_id: UUID,
+    college_id: UUID,
+    context: AuditContext,
+    expected_campus_id: UUID | None = None,
+    allow_inactive_student: bool = False,
 ) -> StudentAcademicProfile:
     with transaction.atomic():
-        student = _lock_student(student_id, require_active=True)
+        student = _lock_student(student_id, require_active=not allow_inactive_student)
         college = _lock_active_college(college_id)
+        if expected_campus_id is not None and college.campus_id != expected_campus_id:
+            raise InvalidStudentAcademicInput("The College must belong to the selected Campus.")
         profile = (
             StudentAcademicProfile.objects.select_for_update().filter(student_id=student.pk).first()
         )

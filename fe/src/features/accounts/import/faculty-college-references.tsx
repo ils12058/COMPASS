@@ -10,19 +10,23 @@ export function FacultyCollegeReferences() {
   const query = useAccountsFacultyCollegeChoices({ query: { enabled: open, retry: false } });
   return (
     <details className="mt-4 text-sm" onToggle={(event) => setOpen(event.currentTarget.open)}>
-      <summary className="min-h-11 cursor-pointer py-3 font-semibold text-brand">Faculty College references for CSV</summary>
+      <summary className="min-h-11 cursor-pointer py-3 font-semibold text-brand">College references for CSV</summary>
       {open && query.isPending ? <p role="status">Loading College references…</p> : null}
       {open && query.isError ? <p role="alert">College references could not be loaded. <Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button></p> : null}
       {open && query.isSuccess ? query.data.data.length ? (
         <div className={dataTable.scroll}>
           <table className={dataTable.table}>
-            <caption className="sr-only">Active Faculty home College references</caption>
+            <caption className="sr-only">Active catalog College references for account provisioning</caption>
             <thead className={dataTable.head}><tr>
-              <th scope="col" className={dataTable.headerCell}>Campus / College</th>
+              <th scope="col" className={dataTable.headerCell}>campus_code</th>
+              <th scope="col" className={dataTable.headerCell}>college_code</th>
+              <th scope="col" className={dataTable.headerCell}>College</th>
               <th scope="col" className={dataTable.headerCell}>faculty_college_id</th>
             </tr></thead>
             <tbody className={dataTable.body}>{query.data.data.map((college) => <tr key={college.id} className={dataTable.row}>
-              <td className={dataTable.cell}>{college.campus_code} · {college.name}</td>
+              <td className={dataTable.cell}>{college.campus_code}</td>
+              <td className={dataTable.cell}>{college.code}</td>
+              <td className={dataTable.cell}>{college.campus_name} · {college.name}</td>
               <td className={`${dataTable.cell} select-all break-all`}>{college.id}</td>
             </tr>)}</tbody>
           </table>

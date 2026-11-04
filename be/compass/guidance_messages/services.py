@@ -28,7 +28,7 @@ from compass.organization.integrity import catalog_dependent_write
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.realtime.publish import publish_to_user_on_commit
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
-from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.reads import get_current_placement
 
 from . import content, policy
 from .errors import InvalidMessageInput, MessagesConflict, MessagesPermissionDenied, ThreadNotFound
@@ -250,25 +250,20 @@ def open_office_thread(*, actor, client_message_id, body, student_id=None, conte
         .first()
     )
     if thread is None:
-        placement = (
-            StudentAcademicProfile.objects.select_related("current_college__campus")
-            .filter(student=student)
-            .first()
-        )
+        placement = get_current_placement(student_id=student.pk)
         resolution = resolve_default_counselor_for_student(student)
         if (
             placement is None
-            or placement.current_college is None
             or resolution.counselor is None
             or not resolution.counselor.has_capability("guidance_messages.manage")
-            or placement.current_college_id
+            or placement.college.id
             not in resolve_operational_responsibility_scope(resolution.counselor).college_ids
         ):
             raise MessagesConflict("Guidance Office routing is currently unavailable.")
         thread = GuidanceThread.objects.create(
             kind=ThreadKind.OFFICE,
             student=student,
-            routing_college=placement.current_college,
+            routing_college_id=placement.college.id,
             assigned_to=resolution.counselor,
             created_by=actor,
         )

@@ -53,6 +53,7 @@ from .csv_import import (
 )
 from .services import (
     DEFAULT_PAGE_SIZE,
+    AcademicPlacementNotAuthorized,
     AccountManagementError,
     AccountNotFound,
     AccountOrdering,
@@ -144,6 +145,8 @@ class AccountCreateRequest(StrictSchema):
     suffix: str = ""
     is_active: bool = True
     faculty_college_id: UUID | None = None
+    student_campus_id: UUID | None = None
+    student_college_id: UUID | None = None
 
 
 class IdentityUpdateRequest(StrictSchema):
@@ -275,6 +278,8 @@ class MFAResetResponse(StrictSchema):
 
 class CsvImportRowResponse(StrictSchema):
     faculty_college_id: UUID | None = None
+    campus_code: str | None = None
+    college_code: str | None = None
     row_number: int
     institutional_id: str
     email: str
@@ -328,6 +333,8 @@ def _raise_management_error(exc: AccountManagementError) -> NoReturn:
                 "are required."
             ),
         ) from exc
+    if isinstance(exc, AcademicPlacementNotAuthorized):
+        raise APIError(403, "academic_placement_permission_denied", str(exc)) from exc
     if isinstance(exc, DesignationRoleConflict):
         raise APIError(409, "designation_role_conflict", str(exc)) from exc
     if isinstance(exc, AccountNotFound):
@@ -412,6 +419,8 @@ def _csv_report(report: CsvImportReport) -> dict[str, object]:
             {
                 "row_number": row.row_number,
                 "faculty_college_id": row.faculty_college_id,
+                "campus_code": row.campus_code,
+                "college_code": row.college_code,
                 "institutional_id": row.institutional_id,
                 "email": row.email,
                 "action": row.action,
@@ -558,7 +567,7 @@ class FacultyAffiliationUpdateRequest(StrictSchema):
     auth=session_auth,
     response=response_with_errors(list[FacultyCollegeChoiceResponse], 401, 403),
     operation_id="accountsFacultyCollegeChoices",
-    summary="List active catalog Colleges for institutional Faculty provisioning",
+    summary="List active catalog Colleges for account provisioning",
 )
 def faculty_college_choices(request):
     _require_management(request, recent_mfa=False)
@@ -635,6 +644,8 @@ def account_create(request, payload: AccountCreateRequest):
             role=payload.role.value,
             is_active=payload.is_active,
             faculty_college_id=payload.faculty_college_id,
+            student_campus_id=payload.student_campus_id,
+            student_college_id=payload.student_college_id,
         )
     except RecentMFARequired as exc:
         raise step_up_api_error(exc) from exc

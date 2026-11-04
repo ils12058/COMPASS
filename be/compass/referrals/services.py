@@ -46,7 +46,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
-from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.reads import student_is_placed_in_colleges
 
 from .confidential_content import (
     ReferralConfidentialContent,
@@ -233,12 +233,7 @@ def _student_in_scope(actor: User, student_id: UUID) -> bool:
         return True
     if not college_ids:
         return False
-    return StudentAcademicProfile.objects.filter(
-        student_id=student_id,
-        current_college_id__in=college_ids,
-        current_college__is_active=True,
-        current_college__campus__is_active=True,
-    ).exists()
+    return student_is_placed_in_colleges(student_id=student_id, college_ids=college_ids)
 
 
 def _queryset():

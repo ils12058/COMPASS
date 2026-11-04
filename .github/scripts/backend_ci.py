@@ -133,7 +133,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
     "student-academics": (
         "Canonical Student placement: profile model, writer services, API, and listing.",
-        ("test_student_academic_records.py",),
+        ("test_student_academic_records.py", "test_student_academic_reads.py"),
     ),
     "service-catalog": (
         "Services, canonical Counseling, provider qualification, scheduling consequences.",

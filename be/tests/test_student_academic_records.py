@@ -270,6 +270,54 @@ def test_set_rejects_inactive_student_and_non_student():
 
 
 @pytest.mark.django_db
+def test_set_rejects_mismatched_expected_campus_without_write_or_audit():
+    sync_policy()
+    actor = make_user("campus.actor@example.edu", "IT_ADMIN")
+    student = make_user("campus.student@example.edu")
+    college = make_college("CCMS", campus_code="MAIN")
+    other_campus = Campus.objects.create(code="OTHER", name="Other Campus")
+
+    with pytest.raises(InvalidStudentAcademicInput) as excinfo:
+        set_current_placement(
+            student_id=student.pk,
+            college_id=college.pk,
+            expected_campus_id=other_campus.pk,
+            context=context(actor),
+        )
+
+    assert str(excinfo.value) == "The College must belong to the selected Campus."
+    assert not StudentAcademicProfile.objects.exists()
+    assert not AuditEvent.objects.filter(action="student_academics.placement.set").exists()
+
+
+@pytest.mark.django_db
+def test_set_allows_inactive_student_only_when_explicitly_allowed():
+    sync_policy()
+    actor = make_user("inactive-writer.actor@example.edu", "IT_ADMIN")
+    inactive = make_user("inactive-writer.student@example.edu", active=False)
+    college = make_college()
+
+    with pytest.raises(InvalidStudentAcademicInput):
+        set_current_placement(
+            student_id=inactive.pk,
+            college_id=college.pk,
+            context=context(actor),
+        )
+    assert not StudentAcademicProfile.objects.exists()
+
+    profile = set_current_placement(
+        student_id=inactive.pk,
+        college_id=college.pk,
+        allow_inactive_student=True,
+        context=context(actor),
+    )
+
+    assert profile.current_college_id == college.pk
+    assert profile.placement_verification_status == PlacementVerificationStatus.UNVERIFIED
+    assert AuditEvent.objects.filter(action="student_academics.placement.set").count() == 1
+
+
+@pytest.mark.django_db
 def test_clear_allows_inactive_student_and_rejects_non_student():
     sync_policy()
     actor = make_user("clear-inactive.actor@example.edu", "IT_ADMIN")

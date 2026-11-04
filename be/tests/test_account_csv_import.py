@@ -9,9 +9,17 @@ from django.db import IntegrityError
 from django.test import Client
 from django.utils import timezone
 
-from compass.accounts.models import Role, StudentLifecycleStatus, User
+from compass.accounts.models import (
+    Capability,
+    Role,
+    StudentLifecycleStatus,
+    User,
+    UserCapabilityOverride,
+)
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
+from compass.organization.models import Campus, College
+from compass.student_academics.models import StudentAcademicProfile
 
 
 def sync_policy() -> None:
@@ -59,6 +67,27 @@ def csrf(client: Client) -> dict[str, str]:
     response = client.get("/api/v1/auth/csrf")
     assert response.status_code == 200
     return {"HTTP_X_CSRFTOKEN": response.json()["csrf_token"]}
+
+
+def make_campus_with_college(
+    *,
+    campus_code: str = "MAIN",
+    college_code: str = "CCMS",
+    campus_active: bool = True,
+    college_active: bool = True,
+) -> tuple[Campus, College]:
+    campus = Campus.objects.create(
+        code=campus_code,
+        name=f"{campus_code} Campus",
+        is_active=campus_active,
+    )
+    college = College.objects.create(
+        campus=campus,
+        code=college_code,
+        name=f"{college_code} College",
+        is_active=college_active,
+    )
+    return campus, college
 
 
 def upload(
@@ -420,3 +449,283 @@ def test_csv_row_limit_is_enforced_without_persisting_any_rows():
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "csv_import_too_large"
     assert User.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_csv_accepts_and_previews_optional_student_placement():
+    sync_policy()
+    client, _admin = admin_client()
+    campus, college = make_campus_with_college(campus_code="MAIN", college_code="CCMS")
+    csv_bytes = (
+        b"institutional_id,email,first_name,last_name,role,campus_code,college_code\n"
+        b"UCN-SAR4-101,preview.placed@example.edu,Preview,Placed,STUDENT,main,ccms\n"
+        b"UCN-SAR4-102,preview.unplaced@example.edu,Preview,Unplaced,STUDENT,,\n"
+    )
+
+    response = upload(client, csv_bytes, dry_run=True)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["valid"] is True
+    assert body["committed"] is False
+    assert body["create_count"] == 2
+    rows = {row["institutional_id"]: row for row in body["rows"]}
+    assert rows["UCN-SAR4-101"]["action"] == "CREATE"
+    assert rows["UCN-SAR4-101"]["campus_code"] == "MAIN"
+    assert rows["UCN-SAR4-101"]["college_code"] == "CCMS"
+    assert rows["UCN-SAR4-102"]["campus_code"] is None
+    assert rows["UCN-SAR4-102"]["college_code"] is None
+    assert not User.objects.filter(email="preview.placed@example.edu").exists()
+
+
+@pytest.mark.django_db
+def test_csv_commit_creates_student_placement_and_reimport_is_skip():
+    sync_policy()
+    client, admin = admin_client()
+    _campus, college = make_campus_with_college()
+    csv_bytes = (
+        b"institutional_id,email,first_name,last_name,role,campus_code,college_code\n"
+        b"UCN-SAR4-201,committed.placed@example.edu,Committed,Placed,STUDENT,MAIN,CCMS\n"
+    )
+
+    first = upload(client, csv_bytes, dry_run=False)
+
+    assert first.status_code == 200
+    body = first.json()
+    assert body["committed"] is True
+    assert body["create_count"] == 1
+    student = User.objects.get(email="committed.placed@example.edu")
+    profile = StudentAcademicProfile.objects.get(student=student)
+    assert profile.current_college_id == college.pk
+    assert profile.current_program_id is None
+    assert profile.placement_verification_status == "UNVERIFIED"
+    assert profile.placement_effective_at is None
+    assert profile.updated_by == admin
+    placement_event = AuditEvent.objects.get(
+        action="student_academics.placement.set", target_id=str(student.pk)
+    )
+    assert placement_event.metadata == {
+        "previous_college_id": None,
+        "new_college_id": str(college.pk),
+    }
+
+    second = upload(client, csv_bytes, dry_run=False)
+    assert second.status_code == 200
+    assert second.json()["create_count"] == 0
+    assert second.json()["skip_count"] == 1
+    assert StudentAcademicProfile.objects.filter(student=student).count() == 1
+
+
+@pytest.mark.django_db
+def test_csv_existing_student_with_different_placement_is_conflict():
+    sync_policy()
+    client, _admin = admin_client()
+    _campus, college = make_campus_with_college(campus_code="MAIN", college_code="CCMS")
+    _other_campus, other_college = make_campus_with_college(campus_code="NORTH", college_code="CEA")
+    existing = make_user(
+        email="placed.existing@example.edu",
+        institutional_id="UCN-SAR4-301",
+        first_name="Placed",
+        last_name="Existing",
+    )
+    StudentAcademicProfile.objects.create(student=existing, current_college=college)
+    csv_bytes = (
+        b"institutional_id,email,first_name,last_name,role,campus_code,college_code\n"
+        b"UCN-SAR4-301,placed.existing@example.edu,Placed,Existing,STUDENT,NORTH,CEA\n"
+    )
+
+    dry = upload(client, csv_bytes, dry_run=True)
+
+    assert dry.status_code == 200
+    assert dry.json()["valid"] is False
+    assert dry.json()["conflict_count"] == 1
+    row = dry.json()["rows"][0]
+    assert row["action"] == "CONFLICT"
+    assert row["message"] == "existing account has a different academic placement"
+
+    committed = upload(client, csv_bytes, dry_run=False)
+    assert committed.status_code == 409
+    assert committed.json()["error"]["code"] == "csv_import_conflict"
+    existing.refresh_from_db()
+    assert StudentAcademicProfile.objects.get(student=existing).current_college_id == college.pk
+
+
+@pytest.mark.django_db
+def test_csv_existing_student_with_same_placement_is_skip():
+    sync_policy()
+    client, _admin = admin_client()
+    _campus, college = make_campus_with_college()
+    existing = make_user(
+        email="same.placement@example.edu",
+        institutional_id="UCN-SAR4-401",
+        first_name="Same",
+        last_name="Placement",
+    )
+    StudentAcademicProfile.objects.create(student=existing, current_college=college)
+    csv_bytes = (
+        b"institutional_id,email,first_name,last_name,role,campus_code,college_code\n"
+        b"UCN-SAR4-401,same.placement@example.edu,Same,Placement,STUDENT,MAIN,CCMS\n"
+    )
+
+    dry = upload(client, csv_bytes, dry_run=True)
+    assert dry.status_code == 200
+    assert dry.json()["valid"] is True
+    assert dry.json()["skip_count"] == 1
+
+    committed = upload(client, csv_bytes, dry_run=False)
+    assert committed.status_code == 200
+    assert committed.json()["skip_count"] == 1
+    assert StudentAcademicProfile.objects.filter(student=existing).count() == 1
+
+
+@pytest.mark.django_db
+def test_csv_rejects_incomplete_unknown_inactive_or_nonstudent_placement():
+    sync_policy()
+    client, _admin = admin_client()
+    _campus, _college = make_campus_with_college(campus_code="MAIN", college_code="CCMS")
+    _inactive_campus, inactive_campus_college = make_campus_with_college(
+        campus_code="SOUTH", college_code="SBA", campus_active=False
+    )
+    _active_campus, inactive_college = make_campus_with_college(
+        campus_code="EAST", college_code="ENG", college_active=False
+    )
+    csv_bytes = (
+        b"institutional_id,email,first_name,last_name,role,campus_code,college_code\n"
+        b"UCN-SAR4-501,only.campus@example.edu,Only,Campus,STUDENT,MAIN,\n"
+        b"UCN-SAR4-502,only.college@example.edu,Only,College,STUDENT,,CCMS\n"
+        b"UCN-SAR4-503,unknown.campus@example.edu,Unknown,Campus,STUDENT,NOPE,CCMS\n"
+        b"UCN-SAR4-504,unknown.college@example.edu,Unknown,College,STUDENT,MAIN,NOPE\n"
+        b"UCN-SAR4-505,nonstudent.placed@example.edu,Nonstudent,Placed,COUNSELOR,MAIN,CCMS\n"
+        b"UCN-SAR4-506,inactive.campus@example.edu,Inactive,Campus,STUDENT,SOUTH,SBA\n"
+        b"UCN-SAR4-507,inactive.college@example.edu,Inactive,College,STUDENT,EAST,ENG\n"
+    )
+
+    dry = upload(client, csv_bytes, dry_run=True)
+
+    assert dry.status_code == 200
+    body = dry.json()
+    assert body["valid"] is False
+    assert body["invalid_count"] == 7
+    message_by_id = {
+        row["institutional_id"]: row["message"]
+        for row in body["rows"]
+        if row["action"] == "INVALID"
+    }
+    assert message_by_id["UCN-SAR4-501"] == (
+        "Provide both campus_code and college_code, or leave both blank."
+    )
+    assert message_by_id["UCN-SAR4-502"] == (
+        "Provide both campus_code and college_code, or leave both blank."
+    )
+    assert message_by_id["UCN-SAR4-503"] == "campus_code does not resolve to an active Campus."
+    assert message_by_id["UCN-SAR4-504"] == (
+        "college_code does not resolve to an active College beneath that Campus."
+    )
+    assert message_by_id["UCN-SAR4-505"] == (
+        "Only Student accounts accept an initial academic placement."
+    )
+    assert message_by_id["UCN-SAR4-506"] == "campus_code does not resolve to an active Campus."
+    assert message_by_id["UCN-SAR4-507"] == (
+        "college_code does not resolve to an active College beneath that Campus."
+    )
+
+    committed = upload(client, csv_bytes, dry_run=False)
+    assert committed.status_code == 422
+    assert committed.json()["error"]["code"] == "csv_import_invalid_rows"
+    assert not User.objects.filter(
+        email__in=[
+            "only.campus@example.edu",
+            "only.college@example.edu",
+            "unknown.campus@example.edu",
+            "unknown.college@example.edu",
+            "nonstudent.placed@example.edu",
+            "inactive.campus@example.edu",
+            "inactive.college@example.edu",
+        ]
+    ).exists()
+    assert not StudentAcademicProfile.objects.exists()
+
+
+@pytest.mark.django_db
+def test_csv_rejects_program_code_header():
+    sync_policy()
+    client, _admin = admin_client()
+    csv_bytes = (
+        b"institutional_id,email,first_name,last_name,role,program_code\n"
+        b"UCN-SAR4-601,program.code@example.edu,Program,Code,STUDENT,BSIS\n"
+    )
+
+    response = upload(client, csv_bytes, dry_run=True)
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "csv_import_unsupported_headers"
+    assert "program_code" in response.json()["error"]["message"]
+    assert not User.objects.filter(email="program.code@example.edu").exists()
+
+
+@pytest.mark.django_db
+def test_csv_placement_requires_organization_manage_in_dry_run_and_commit():
+    sync_policy()
+    client, admin = admin_client()
+    _campus, _college = make_campus_with_college()
+    UserCapabilityOverride.objects.create(
+        user=admin,
+        capability=Capability.objects.get(code="organization.manage"),
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Temporary separation of duties",
+        created_by=admin,
+    )
+    placed_csv = (
+        b"institutional_id,email,first_name,last_name,role,campus_code,college_code\n"
+        b"UCN-SAR4-701,denied.csv.placed@example.edu,Denied,Placed,STUDENT,MAIN,CCMS\n"
+    )
+    unplaced_csv = (
+        b"institutional_id,email,first_name,last_name,role\n"
+        b"UCN-SAR4-702,allowed.csv.unplaced@example.edu,Allowed,Unplaced,STUDENT\n"
+    )
+
+    dry = upload(client, placed_csv, dry_run=True)
+    assert dry.status_code == 403
+    assert dry.json()["error"]["code"] == "academic_placement_permission_denied"
+
+    committed = upload(client, placed_csv, dry_run=False)
+    assert committed.status_code == 403
+    assert committed.json()["error"]["code"] == "academic_placement_permission_denied"
+    assert not User.objects.filter(email="denied.csv.placed@example.edu").exists()
+
+    allowed = upload(client, unplaced_csv, dry_run=True)
+    assert allowed.status_code == 200
+    assert allowed.json()["valid"] is True
+
+
+@pytest.mark.django_db
+def test_csv_placement_failure_rolls_back_whole_batch(monkeypatch):
+    from compass.student_academics.services import StudentAcademicError
+
+    sync_policy()
+    client, _admin = admin_client()
+    _campus, _college = make_campus_with_college()
+    csv_bytes = (
+        b"institutional_id,email,first_name,last_name,role,campus_code,college_code\n"
+        b"UCN-SAR4-801,fails.placed@example.edu,Fails,Placed,STUDENT,MAIN,CCMS\n"
+        b"UCN-SAR4-802,fails.unplaced@example.edu,Fails,Unplaced,STUDENT,,\n"
+    )
+
+    def failing_writer(**kwargs):
+        raise StudentAcademicError("placement writer unavailable")
+
+    monkeypatch.setattr(
+        "compass.account_management.csv_import.set_current_placement", failing_writer
+    )
+
+    response = upload(client, csv_bytes, dry_run=False)
+
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "csv_import_conflict"
+    assert "placement writer unavailable" in response.json()["error"]["details"][0]["message"]
+    assert not User.objects.filter(
+        email__in=["fails.placed@example.edu", "fails.unplaced@example.edu"]
+    ).exists()
+    assert not StudentAcademicProfile.objects.exists()
+    assert not AuditEvent.objects.filter(action="account.created").exists()
+    assert not AuditEvent.objects.filter(action="account.csv_imported").exists()

@@ -12,7 +12,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
-from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.reads import get_current_placement
 
 from . import policy
 from .errors import FollowUpInvalid, FollowUpNotFound
@@ -110,15 +110,8 @@ def eligible_assignees(
     if classification == "COUNSELOR_CONFIDENTIAL":
         candidates = candidates.filter(pk=actor.pk)
     else:
-        college_id = (
-            StudentAcademicProfile.objects.filter(
-                student=student,
-                current_college__is_active=True,
-                current_college__campus__is_active=True,
-            )
-            .values_list("current_college_id", flat=True)
-            .first()
-        )
+        placement = get_current_placement(student_id=student.pk, require_active_college=True)
+        college_id = placement.college.id if placement is not None else None
         head = Q(designation_assignments__designation__code="HEAD_GUIDANCE_COUNSELOR")
         candidates = candidates.filter(
             head

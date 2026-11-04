@@ -495,6 +495,30 @@
           "role": {
             "$ref": "#/components/schemas/RoleCode"
           },
+          "student_campus_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Campus Id"
+          },
+          "student_college_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student College Id"
+          },
           "suffix": {
             "default": "",
             "title": "Suffix",
@@ -9367,6 +9391,28 @@
           "action": {
             "title": "Action",
             "type": "string"
+          },
+          "campus_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Campus Code"
+          },
+          "college_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "College Code"
           },
           "email": {
             "title": "Email",
@@ -32031,7 +32077,7 @@
             "OpaqueSessionAuth": []
           }
         ],
-        "summary": "List active catalog Colleges for institutional Faculty provisioning",
+        "summary": "List active catalog Colleges for account provisioning",
         "tags": [
           "accounts"
         ]

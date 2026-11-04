@@ -110,6 +110,10 @@ class DesignationManagementNotAuthorized(ManagementNotAuthorized):
     """The actor lacks the dedicated authority to record institutional designations."""
 
 
+class AcademicPlacementNotAuthorized(ManagementNotAuthorized):
+    """The actor may provision accounts but may not assign Student academic placement."""
+
+
 class AccountNotFound(AccountManagementError):
     """The requested account does not exist."""
 
@@ -347,6 +351,13 @@ def _assert_designation_manager(actor: User) -> None:
     if not user_has_capability(actor, INSTITUTIONAL_DESIGNATION_MANAGE_CAPABILITY):
         raise DesignationManagementNotAuthorized(
             "accounts.manage and institutional_designations.manage are required"
+        )
+
+
+def _assert_academic_placement_authorized(actor: User, *, requested: bool) -> None:
+    if requested and not actor.has_capability("organization.manage"):
+        raise AcademicPlacementNotAuthorized(
+            "The organization.manage capability is required to assign an initial Student placement."
         )
 
 
@@ -679,6 +690,8 @@ def create_account(
     suffix: str = "",
     is_active: bool = True,
     faculty_college_id=None,
+    student_campus_id=None,
+    student_college_id=None,
 ) -> User:
     cleaned_institutional_id = _clean_institutional_id(institutional_id)
     cleaned_email = _clean_email(email)
@@ -688,10 +701,14 @@ def create_account(
     cleaned_suffix = _clean_identity_text("suffix", suffix, allow_none=True)
     role_code = _canonical_role_code(role)
 
+    from compass.account_management.academic_placement import (
+        validate_initial_student_placement,
+    )
     from compass.account_management.faculty import (
         validate_faculty_college,
         write_faculty_affiliation,
     )
+    from compass.student_academics.services import StudentAcademicError, set_current_placement
 
     with transaction.atomic():
         _lock_management_mutex()
@@ -699,6 +716,12 @@ def create_account(
         _assert_manager(locked_actor)
         _assert_recent_mfa(actor=locked_actor, actor_session=actor_session)
         college = validate_faculty_college(role=role_code, college_id=faculty_college_id)
+        placement_college = validate_initial_student_placement(
+            role=role_code,
+            campus_id=student_campus_id,
+            college_id=student_college_id,
+        )
+        _assert_academic_placement_authorized(locked_actor, requested=placement_college is not None)
         role_record = Role.objects.filter(code=role_code).first()
         if role_record is None:
             raise ManagementConfigurationError(
@@ -744,6 +767,17 @@ def create_account(
             basis="ACCOUNT_CREATION",
             context=context,
         )
+        if placement_college is not None:
+            try:
+                set_current_placement(
+                    student_id=user.pk,
+                    college_id=placement_college.pk,
+                    expected_campus_id=student_campus_id,
+                    allow_inactive_student=not user.is_active,
+                    context=context,
+                )
+            except StudentAcademicError as exc:
+                raise InvalidManagementInput(str(exc)) from exc
     return user
 
 

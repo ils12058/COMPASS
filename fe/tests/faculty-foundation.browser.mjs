@@ -97,7 +97,7 @@ await check("administrator-affiliation-conflict-requires-fresh-review", `/portal
 });
 await check("csv-exposes-active-faculty-college-references", "/portal/accounts/import", { handler: managerHandler() }, async (page) => {
   await shown(page.getByRole("heading", { name: "Import accounts", exact: true }));
-  await page.getByText("Faculty College references for CSV", { exact: true }).click();
+  await page.getByText("College references for CSV", { exact: true }).click();
   await shown(page.getByRole("cell", { name: collegeId, exact: true }));
 });
 await finish();

@@ -10,7 +10,7 @@ from compass.organization.access_scope import (
     is_head_guidance,
     resolve_operational_responsibility_scope,
 )
-from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.reads import student_is_placed_in_colleges
 
 from .errors import FollowUpInvalid, FollowUpNotFound, FollowUpPermissionDenied
 from .models import FollowUpCategory, FollowUpSource, FollowUpVisibility
@@ -45,12 +45,7 @@ def in_operational_scope(actor, student_id):
     scope = resolve_operational_responsibility_scope(actor)
     if not scope.college_ids:
         return False
-    return StudentAcademicProfile.objects.filter(
-        student_id=student_id,
-        current_college_id__in=scope.college_ids,
-        current_college__is_active=True,
-        current_college__campus__is_active=True,
-    ).exists()
+    return student_is_placed_in_colleges(student_id=student_id, college_ids=scope.college_ids)
 
 
 def require_source(actor, *, kind, source_id, student_id, manage=False):

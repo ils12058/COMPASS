@@ -18,10 +18,13 @@ from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
 from compass.organization.integrity import catalog_dependent_write
 from compass.organization.models import FacultyAffiliation
+from compass.student_academics.services import StudentAcademicError, set_current_placement
 
+from .academic_placement import resolve_csv_student_placement
 from .services import (
     InvalidManagementInput,
     ManagementConfigurationError,
+    _assert_academic_placement_authorized,
     _assert_manager,
     _assert_recent_mfa,
     _canonical_role_code,
@@ -35,7 +38,9 @@ from .services import (
 MAX_CSV_BYTES = 1_048_576
 MAX_CSV_ROWS = 1_000
 REQUIRED_HEADERS = frozenset({"institutional_id", "email", "first_name", "last_name", "role"})
-OPTIONAL_HEADERS = frozenset({"middle_name", "suffix", "faculty_college_id"})
+OPTIONAL_HEADERS = frozenset(
+    {"middle_name", "suffix", "faculty_college_id", "campus_code", "college_code"}
+)
 ALLOWED_HEADERS = REQUIRED_HEADERS | OPTIONAL_HEADERS
 
 
@@ -95,6 +100,10 @@ class CsvProvisionRow:
     suffix: str
     role: str
     faculty_college_id: UUID | None
+    student_campus_id: UUID | None = None
+    student_college_id: UUID | None = None
+    campus_code: str | None = None
+    college_code: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,6 +114,8 @@ class CsvImportRowResult:
     action: str
     message: str = ""
     faculty_college_id: UUID | None = None
+    campus_code: str | None = None
+    college_code: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,6 +216,11 @@ def _parse_csv(data: bytes) -> ParsedCsv:
                     role=role,
                     college_id=raw.get("faculty_college_id", "").strip() or None,
                 )
+                placement = resolve_csv_student_placement(
+                    role=role,
+                    campus_code=raw.get("campus_code", ""),
+                    college_code=raw.get("college_code", ""),
+                )
             except InvalidManagementInput as exc:
                 issues.append(
                     CsvImportIssue(
@@ -252,6 +268,10 @@ def _parse_csv(data: bytes) -> ParsedCsv:
                     suffix=suffix,
                     role=role,
                     faculty_college_id=college.pk if college else None,
+                    student_campus_id=placement.campus_id if placement else None,
+                    student_college_id=placement.college_id if placement else None,
+                    campus_code=placement.campus_code if placement else None,
+                    college_code=placement.college_code if placement else None,
                 )
             )
     except csv.Error as exc:
@@ -283,11 +303,11 @@ def _classify_rows(
 ) -> tuple[CsvImportRowResult, ...]:
     emails = tuple(row.email for row in rows)
     institutional_ids = tuple(row.institutional_id for row in rows)
-    queryset = User.objects.select_related("role").filter(
-        Q(email__in=emails) | Q(institutional_id__in=institutional_ids)
-    )
+    queryset = User.objects.select_related(
+        "role", "student_academic_profile__current_college"
+    ).filter(Q(email__in=emails) | Q(institutional_id__in=institutional_ids))
     if lock_existing:
-        queryset = queryset.select_for_update()
+        queryset = queryset.select_for_update(of=("self",))
     existing_by_email = {user.email.casefold(): user for user in queryset}
     existing_by_id = {
         user.institutional_id.casefold(): user
@@ -312,6 +332,8 @@ def _classify_rows(
                     email=row.email,
                     action="CREATE",
                     faculty_college_id=row.faculty_college_id,
+                    campus_code=row.campus_code,
+                    college_code=row.college_code,
                 )
             )
             continue
@@ -325,18 +347,29 @@ def _classify_rows(
                     email=row.email,
                     action="CONFLICT",
                     faculty_college_id=row.faculty_college_id,
+                    campus_code=row.campus_code,
+                    college_code=row.college_code,
                     message=reason,
                 )
             )
             continue
 
         current = email_match
-        if (
+        same_identity = (
             current.is_active
             and current.role.code == row.role
             and _existing_identity(current) == _normalized_identity(row)
             and (row.role != "FACULTY" or affiliation_ids.get(current.pk) == row.faculty_college_id)
-        ):
+        )
+        current_profile = getattr(current, "student_academic_profile", None)
+        current_college_id = (
+            current_profile.current_college_id if current_profile is not None else None
+        )
+        # Omitted CSV codes mean "placement not specified" so legacy files stay idempotent.
+        placement_matches = (
+            row.student_college_id is None or current_college_id == row.student_college_id
+        )
+        if same_identity and placement_matches:
             results.append(
                 CsvImportRowResult(
                     row_number=row.row_number,
@@ -344,6 +377,8 @@ def _classify_rows(
                     email=row.email,
                     action="SKIP",
                     faculty_college_id=row.faculty_college_id,
+                    campus_code=row.campus_code,
+                    college_code=row.college_code,
                 )
             )
             continue
@@ -351,14 +386,19 @@ def _classify_rows(
         reason = "existing account is disabled"
         if current.is_active and current.role.code != row.role:
             reason = "existing account has a different role"
-        elif current.is_active:
+        elif current.is_active and not same_identity:
             reason = "existing account has different identity fields or Faculty affiliation"
+        elif current.is_active:
+            reason = "existing account has a different academic placement"
         results.append(
             CsvImportRowResult(
                 row_number=row.row_number,
                 institutional_id=row.institutional_id,
                 email=row.email,
                 action="CONFLICT",
+                faculty_college_id=row.faculty_college_id,
+                campus_code=row.campus_code,
+                college_code=row.college_code,
                 message=reason,
             )
         )
@@ -408,12 +448,14 @@ def provision_accounts_from_csv(
     dry_run: bool,
 ) -> CsvImportReport:
     parsed = _parse_csv(data)
+    placement_requested = any(row.student_college_id is not None for row in parsed.rows)
 
     if dry_run:
         with transaction.atomic():
             locked_actor, _target = _lock_users(actor_id=actor.pk)
             _assert_manager(locked_actor)
             _assert_recent_mfa(actor=locked_actor, actor_session=actor_session)
+            _assert_academic_placement_authorized(locked_actor, requested=placement_requested)
             classified = _classify_rows(parsed.rows, lock_existing=False)
         return _report(parsed, classified, committed=False)
 
@@ -427,6 +469,7 @@ def provision_accounts_from_csv(
         locked_actor, _target = _lock_users(actor_id=actor.pk)
         _assert_manager(locked_actor)
         _assert_recent_mfa(actor=locked_actor, actor_session=actor_session)
+        _assert_academic_placement_authorized(locked_actor, requested=placement_requested)
 
         classified = _classify_rows(parsed.rows, lock_existing=True)
         conflicts = tuple(item for item in classified if item.action == "CONFLICT")
@@ -476,6 +519,29 @@ def provision_accounts_from_csv(
                     target_id=user.pk,
                     metadata={"role": row.role},
                 )
+                if row.student_college_id is not None:
+                    try:
+                        set_current_placement(
+                            student_id=user.pk,
+                            college_id=row.student_college_id,
+                            expected_campus_id=row.student_campus_id,
+                            context=context,
+                        )
+                    except StudentAcademicError as exc:
+                        raise CsvImportConflict(
+                            (
+                                CsvImportRowResult(
+                                    row_number=row.row_number,
+                                    institutional_id=row.institutional_id,
+                                    email=row.email,
+                                    action="CONFLICT",
+                                    message=str(exc),
+                                    faculty_college_id=row.faculty_college_id,
+                                    campus_code=row.campus_code,
+                                    college_code=row.college_code,
+                                ),
+                            )
+                        ) from exc
         except IntegrityError as exc:
             raise CsvImportConflict(
                 (

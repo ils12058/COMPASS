@@ -59,7 +59,7 @@ from compass.notifications.services import create_notification_for_event
 from compass.organization.academic_years import get_current_academic_year
 from compass.organization.integrity import catalog_dependent_write
 from compass.organization.program_policy import AcademicClassification, get_program_policy
-from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.reads import StudentPlacementFacts, get_current_placement
 
 from .models import (
     CANONICAL_SEMESTERS,
@@ -527,22 +527,13 @@ def _require_f4_bachelors_inventory(inventory) -> str:
     return F4_YEAR_LEVEL_LABELS[academic.year_level]
 
 
-def _current_placement(student: User) -> StudentAcademicProfile:
-    profile = (
-        StudentAcademicProfile.objects.select_related("current_college__campus")
-        .filter(student_id=student.pk)
-        .first()
-    )
-    if (
-        profile is None
-        or profile.current_college is None
-        or not profile.current_college.is_active
-        or not profile.current_college.campus.is_active
-    ):
+def _current_placement(student: User) -> StudentPlacementFacts:
+    placement = get_current_placement(student_id=student.pk, require_active_college=True)
+    if placement is None:
         raise GoodMoralPlacementRequired(
             "A current active College placement is required for Current Student Good Moral."
         )
-    return profile
+    return placement
 
 
 def _graduation_prerequisite(student: User, academic_year_id: UUID):
@@ -819,7 +810,7 @@ def _create_current_student(
                     else None,
                     applicant_name_snapshot=profile.full_name.strip(),
                     year_level_snapshot=inventory_year,
-                    college_snapshot=placement.current_college.name.strip(),
+                    college_snapshot=placement.college.name.strip(),
                     course_snapshot=inventory.course_currently_enrolled.strip(),
                     major_snapshot=inventory.major.strip(),
                     semester_snapshot=term,

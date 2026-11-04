@@ -18,7 +18,7 @@ from compass.inventory.services import (
 )
 from compass.referrals.models import Referral
 from compass.routine_interviews.models import RoutineInterview
-from compass.student_academics.models import StudentAcademicProfile
+from compass.student_academics.reads import get_current_placement
 from compass.student_support.services import StudentSupportContext, build_student_support_context
 
 from .context_access import CounselingContextAccess
@@ -176,12 +176,7 @@ def _program_reference(inventory: StudentInventory | None) -> ContextProgramRefe
 
 def get_context_overview(access: CounselingContextAccess) -> CounselingContextOverview:
     student = _student(access)
-    profile = (
-        StudentAcademicProfile.objects.select_related("current_college__campus")
-        .filter(student_id=access.student_id)
-        .first()
-    )
-    placement = profile if profile is not None and profile.current_college is not None else None
+    placement = get_current_placement(student_id=access.student_id)
     try:
         _status, inventory = _inventory_source(access)
     except CurrentAcademicYearNotConfigured:
@@ -194,14 +189,14 @@ def get_context_overview(access: CounselingContextAccess) -> CounselingContextOv
     college = None
     if placement is not None:
         campus = ContextOrganizationReference(
-            id=placement.current_college.campus_id,
-            code=placement.current_college.campus.code,
-            name=placement.current_college.campus.name,
+            id=placement.college.campus_id,
+            code=placement.college.campus_code,
+            name=placement.college.campus_name,
         )
         college = ContextOrganizationReference(
-            id=placement.current_college_id,
-            code=placement.current_college.code,
-            name=placement.current_college.name,
+            id=placement.college.id,
+            code=placement.college.code,
+            name=placement.college.name,
         )
 
     routine_summary = None

@@ -83,6 +83,27 @@ def csrf_headers(client: Client) -> dict[str, str]:
     return {"HTTP_X_CSRFTOKEN": response.json()["csrf_token"]}
 
 
+def make_campus_with_college(
+    *,
+    campus_code: str = "MAIN",
+    college_code: str = "CCMS",
+    campus_active: bool = True,
+    college_active: bool = True,
+) -> tuple[Campus, College]:
+    campus = Campus.objects.create(
+        code=campus_code,
+        name=f"{campus_code} Campus",
+        is_active=campus_active,
+    )
+    college = College.objects.create(
+        campus=campus,
+        code=college_code,
+        name=f"{college_code} College",
+        is_active=college_active,
+    )
+    return campus, college
+
+
 def post_json(client: Client, path: str, payload: dict, *, headers=None):
     return client.post(
         path,
@@ -1374,3 +1395,286 @@ def test_last_manager_check_only_evaluates_accounts_that_can_hold_manage_authori
     assert candidates == {admin, granted}
     with django_assert_max_num_queries(6):
         assert management_services._active_manager_exists() is True
+
+
+@pytest.mark.django_db
+def test_account_creation_with_student_placement_is_transactional_and_unverified():
+    sync_policy()
+    client, admin, _session = make_admin_client()
+    campus, college = make_campus_with_college()
+
+    response = post_json(
+        client,
+        "/api/v1/accounts",
+        {
+            "institutional_id": "UCN-PLACE-001",
+            "email": "placed.student@example.edu",
+            "first_name": "Placed",
+            "last_name": "Student",
+            "role": "STUDENT",
+            "student_campus_id": str(campus.pk),
+            "student_college_id": str(college.pk),
+        },
+        headers=csrf_headers(client),
+    )
+
+    assert response.status_code == 201
+    created = User.objects.get(email="placed.student@example.edu")
+    profile = StudentAcademicProfile.objects.get(student=created)
+    assert profile.current_college_id == college.pk
+    assert profile.current_program_id is None
+    assert profile.placement_verification_status == "UNVERIFIED"
+    assert profile.placement_effective_at is None
+    assert profile.updated_by == admin
+    assert AuditEvent.objects.filter(action="account.created", target_id=str(created.pk)).exists()
+    placement_event = AuditEvent.objects.get(
+        action="student_academics.placement.set", target_id=str(created.pk)
+    )
+    assert placement_event.metadata == {
+        "previous_college_id": None,
+        "new_college_id": str(college.pk),
+    }
+    assert "student_college_id" not in response.json()
+    assert "student_campus_id" not in response.json()
+
+
+@pytest.mark.django_db
+def test_account_creation_without_student_placement_creates_no_profile():
+    sync_policy()
+    client, _admin, _session = make_admin_client()
+
+    response = post_json(
+        client,
+        "/api/v1/accounts",
+        {
+            "institutional_id": "UCN-PLACE-002",
+            "email": "unplaced.student@example.edu",
+            "first_name": "Unplaced",
+            "last_name": "Student",
+            "role": "STUDENT",
+        },
+        headers=csrf_headers(client),
+    )
+
+    assert response.status_code == 201
+    created = User.objects.get(email="unplaced.student@example.edu")
+    assert not StudentAcademicProfile.objects.filter(student=created).exists()
+
+
+@pytest.mark.django_db
+def test_account_creation_rejects_incomplete_mismatched_or_inactive_student_placement():
+    sync_policy()
+    client, _admin, _session = make_admin_client()
+    campus, college = make_campus_with_college(campus_code="MAIN", college_code="CCMS")
+    other_campus, other_college = make_campus_with_college(campus_code="NORTH", college_code="CEA")
+    _inactive_campus, inactive_campus_college = make_campus_with_college(
+        campus_code="SOUTH", college_code="SBA", campus_active=False
+    )
+    inactive_campus, inactive_college = make_campus_with_college(
+        campus_code="EAST", college_code="ENG", campus_active=False
+    )
+
+    cases = [
+        (
+            {"student_campus_id": str(campus.pk)},
+            "Select both Campus and College, or neither.",
+        ),
+        (
+            {"student_college_id": str(college.pk)},
+            "Select both Campus and College, or neither.",
+        ),
+        (
+            {
+                "student_campus_id": str(campus.pk),
+                "student_college_id": str(other_college.pk),
+            },
+            "The College must belong to the selected Campus.",
+        ),
+        (
+            {
+                "student_campus_id": str(other_campus.pk),
+                "student_college_id": str(college.pk),
+            },
+            "The College must belong to the selected Campus.",
+        ),
+        (
+            {
+                "student_campus_id": str(other_campus.pk),
+                "student_college_id": str(inactive_campus_college.pk),
+            },
+            "Select an active College beneath an active Campus.",
+        ),
+        (
+            {
+                "student_campus_id": str(inactive_campus.pk),
+                "student_college_id": str(inactive_college.pk),
+            },
+            "Select an active Campus.",
+        ),
+    ]
+    for index, (placement, message) in enumerate(cases):
+        response = post_json(
+            client,
+            "/api/v1/accounts",
+            {
+                "institutional_id": f"UCN-PLACE-BAD-{index}",
+                "email": f"invalid.placement.{index}@example.edu",
+                "first_name": "Invalid",
+                "last_name": "Placement",
+                "role": "STUDENT",
+                **placement,
+            },
+            headers=csrf_headers(client),
+        )
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "invalid_account_request"
+        assert message in response.json()["error"]["message"]
+        assert not User.objects.filter(email=f"invalid.placement.{index}@example.edu").exists()
+        assert not StudentAcademicProfile.objects.exists()
+
+
+@pytest.mark.django_db
+def test_account_creation_rejects_student_placement_for_non_student_roles():
+    sync_policy()
+    client, _admin, _session = make_admin_client()
+    campus, college = make_campus_with_college()
+
+    response = post_json(
+        client,
+        "/api/v1/accounts",
+        {
+            "institutional_id": "UCN-PLACE-COUNSELOR",
+            "email": "placed.counselor@example.edu",
+            "first_name": "Placed",
+            "last_name": "Counselor",
+            "role": "COUNSELOR",
+            "student_campus_id": str(campus.pk),
+            "student_college_id": str(college.pk),
+        },
+        headers=csrf_headers(client),
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_account_request"
+    assert (
+        "Only Student accounts accept an initial academic placement."
+        in (response.json()["error"]["message"])
+    )
+    assert not User.objects.filter(email="placed.counselor@example.edu").exists()
+    assert not StudentAcademicProfile.objects.exists()
+
+
+@pytest.mark.django_db
+def test_account_creation_requires_organization_manage_for_initial_placement():
+    sync_policy()
+    client, admin, _session = make_admin_client()
+    campus, college = make_campus_with_college()
+    UserCapabilityOverride.objects.create(
+        user=admin,
+        capability=Capability.objects.get(code="organization.manage"),
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Temporary separation of duties",
+        created_by=admin,
+    )
+
+    forbidden = post_json(
+        client,
+        "/api/v1/accounts",
+        {
+            "institutional_id": "UCN-PLACE-DENIED",
+            "email": "denied.placement@example.edu",
+            "first_name": "Denied",
+            "last_name": "Placement",
+            "role": "STUDENT",
+            "student_campus_id": str(campus.pk),
+            "student_college_id": str(college.pk),
+        },
+        headers=csrf_headers(client),
+    )
+
+    assert forbidden.status_code == 403
+    assert forbidden.json()["error"]["code"] == "academic_placement_permission_denied"
+    assert not User.objects.filter(email="denied.placement@example.edu").exists()
+    assert not StudentAcademicProfile.objects.exists()
+
+    allowed = post_json(
+        client,
+        "/api/v1/accounts",
+        {
+            "institutional_id": "UCN-PLACE-ALLOWED",
+            "email": "allowed.placement@example.edu",
+            "first_name": "Allowed",
+            "last_name": "Placement",
+            "role": "STUDENT",
+        },
+        headers=csrf_headers(client),
+    )
+    assert allowed.status_code == 201
+    created = User.objects.get(email="allowed.placement@example.edu")
+    assert not StudentAcademicProfile.objects.filter(student=created).exists()
+
+
+@pytest.mark.django_db
+def test_disabled_student_account_can_receive_initial_placement():
+    sync_policy()
+    client, _admin, _session = make_admin_client()
+    campus, college = make_campus_with_college()
+
+    response = post_json(
+        client,
+        "/api/v1/accounts",
+        {
+            "institutional_id": "UCN-PLACE-DISABLED",
+            "email": "disabled.placed@example.edu",
+            "first_name": "Disabled",
+            "last_name": "Placed",
+            "role": "STUDENT",
+            "is_active": False,
+            "student_campus_id": str(campus.pk),
+            "student_college_id": str(college.pk),
+        },
+        headers=csrf_headers(client),
+    )
+
+    assert response.status_code == 201
+    created = User.objects.get(email="disabled.placed@example.edu")
+    assert created.is_active is False
+    profile = StudentAcademicProfile.objects.get(student=created)
+    assert profile.current_college_id == college.pk
+    assert profile.placement_verification_status == "UNVERIFIED"
+
+
+@pytest.mark.django_db
+def test_account_creation_rolls_back_when_placement_write_fails(monkeypatch):
+    from compass.student_academics.services import StudentAcademicError
+
+    sync_policy()
+    client, _admin, _session = make_admin_client()
+    campus, college = make_campus_with_college()
+
+    def failing_writer(**kwargs):
+        raise StudentAcademicError("placement writer unavailable")
+
+    monkeypatch.setattr("compass.student_academics.services.set_current_placement", failing_writer)
+
+    response = post_json(
+        client,
+        "/api/v1/accounts",
+        {
+            "institutional_id": "UCN-PLACE-FAIL",
+            "email": "failed.placement@example.edu",
+            "first_name": "Failed",
+            "last_name": "Placement",
+            "role": "STUDENT",
+            "student_campus_id": str(campus.pk),
+            "student_college_id": str(college.pk),
+        },
+        headers=csrf_headers(client),
+    )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_account_request"
+    assert "placement writer unavailable" in response.json()["error"]["message"]
+    assert not User.objects.filter(email="failed.placement@example.edu").exists()
+    assert not StudentAcademicProfile.objects.exists()
+    assert not AuditEvent.objects.filter(action="account.created").exists()
