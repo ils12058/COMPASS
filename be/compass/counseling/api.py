@@ -19,6 +19,13 @@ from compass.common.errors import APIError
 from compass.common.institutional_time import to_institution_time
 from compass.service_catalog.api import DeliveryMode
 
+from .finish_service import (
+    CounselingAppointmentClosed,
+    CounselingFinishConflict,
+    CounselingFinishECounselingAccessOpen,
+    CounselingFinishLifecycleConflict,
+    finish_counseling_appointment,
+)
 from .services import (
     DEFAULT_PAGE_SIZE,
     CounselingAppointmentAlreadyUsed,
@@ -92,6 +99,27 @@ class CounselingUpdateRequest(StrictSchema):
     delivery_mode: DeliveryMode | None = None
     started_at: datetime | None = None
     ended_at: datetime | None = None
+
+
+class CounselingFinishRequest(StrictSchema):
+    actual_started_at: datetime
+    actual_ended_at: datetime
+    counseling_occurred: bool
+
+
+class CounselingFinishEncounterResult(StrEnum):
+    CREATED = "CREATED"
+    EXISTING = "EXISTING"
+
+
+class CounselingFinishResponse(StrictSchema):
+    appointment_id: UUID
+    appointment_status: AppointmentStatus
+    encounter_id: UUID
+    encounter_result: CounselingFinishEncounterResult
+    routine_interview_id: UUID | None
+    routine_interview_linked: bool
+    already_finished: bool
 
 
 class StudentSessionSummaryPutRequest(StrictSchema):
@@ -287,6 +315,14 @@ def _raise(exc: CounselingError) -> NoReturn:
         raise APIError(409, "counseling_service_not_configured", str(exc)) from exc
     if isinstance(exc, CounselingNotPermitted):
         raise APIError(409, "counseling_not_permitted", str(exc)) from exc
+    if isinstance(exc, CounselingAppointmentClosed):
+        raise APIError(409, "counseling_appointment_closed", str(exc)) from exc
+    if isinstance(exc, CounselingFinishConflict):
+        raise APIError(409, "counseling_finish_conflict", str(exc)) from exc
+    if isinstance(exc, CounselingFinishLifecycleConflict):
+        raise APIError(409, "appointment_lifecycle_conflict", str(exc)) from exc
+    if isinstance(exc, CounselingFinishECounselingAccessOpen):
+        raise APIError(409, "ecounseling_access_open", str(exc)) from exc
     raise APIError(
         500, "internal_error", "The Counseling operation could not be completed."
     ) from exc
@@ -603,6 +639,39 @@ def counseling_create_encounter(request, payload: CounselingCreateRequest):
     except CounselingError as exc:
         _raise(exc)
     return 201, _encounter(item)
+
+
+@router.post(
+    "/appointments/{appointment_id}/finish",
+    response=response_with_errors(CounselingFinishResponse, 401, 403, 404, 409, 422),
+    auth=session_auth,
+    operation_id="counselingFinishAppointment",
+)
+def counseling_finish_appointment(request, appointment_id: UUID, payload: CounselingFinishRequest):
+    _require_counselor(request, "counseling.manage_assigned")
+    _require_counselor(request, "appointments.manage")
+    try:
+        result = finish_counseling_appointment(
+            appointment_id=appointment_id,
+            counselor=request.auth_user,
+            counseling_occurred=payload.counseling_occurred,
+            actual_started_at=payload.actual_started_at,
+            actual_ended_at=payload.actual_ended_at,
+            context=_context(request),
+        )
+    except CounselingError as exc:
+        _raise(exc)
+    return {
+        "appointment_id": result.appointment.pk,
+        "appointment_status": result.appointment.status,
+        "encounter_id": result.encounter.pk,
+        "encounter_result": result.encounter_result,
+        "routine_interview_id": (
+            result.routine_interview.pk if result.routine_interview is not None else None
+        ),
+        "routine_interview_linked": result.routine_interview is not None,
+        "already_finished": result.already_finished,
+    }
 
 
 @router.get(

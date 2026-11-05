@@ -7556,6 +7556,92 @@
         "title": "CounselingEntryMode",
         "type": "string"
       },
+      "CounselingFinishEncounterResult": {
+        "enum": [
+          "CREATED",
+          "EXISTING"
+        ],
+        "title": "CounselingFinishEncounterResult",
+        "type": "string"
+      },
+      "CounselingFinishRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "actual_ended_at": {
+            "format": "date-time",
+            "title": "Actual Ended At",
+            "type": "string"
+          },
+          "actual_started_at": {
+            "format": "date-time",
+            "title": "Actual Started At",
+            "type": "string"
+          },
+          "counseling_occurred": {
+            "title": "Counseling Occurred",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "actual_started_at",
+          "actual_ended_at",
+          "counseling_occurred"
+        ],
+        "title": "CounselingFinishRequest",
+        "type": "object"
+      },
+      "CounselingFinishResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "already_finished": {
+            "title": "Already Finished",
+            "type": "boolean"
+          },
+          "appointment_id": {
+            "format": "uuid",
+            "title": "Appointment Id",
+            "type": "string"
+          },
+          "appointment_status": {
+            "$ref": "#/components/schemas/AppointmentStatus"
+          },
+          "encounter_id": {
+            "format": "uuid",
+            "title": "Encounter Id",
+            "type": "string"
+          },
+          "encounter_result": {
+            "$ref": "#/components/schemas/CounselingFinishEncounterResult"
+          },
+          "routine_interview_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Routine Interview Id"
+          },
+          "routine_interview_linked": {
+            "title": "Routine Interview Linked",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "appointment_id",
+          "appointment_status",
+          "encounter_id",
+          "encounter_result",
+          "routine_interview_id",
+          "routine_interview_linked",
+          "already_finished"
+        ],
+        "title": "CounselingFinishResponse",
+        "type": "object"
+      },
       "CounselingStudentPageResponse": {
         "additionalProperties": false,
         "properties": {
@@ -42179,6 +42265,104 @@
           }
         ],
         "summary": "Counseling List Appointment Candidates",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/appointments/{appointment_id}/finish": {
+      "post": {
+        "operationId": "counselingFinishAppointment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "appointment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Appointment Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CounselingFinishRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingFinishResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling Finish Appointment",
         "tags": [
           "counseling"
         ]

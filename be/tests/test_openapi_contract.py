@@ -305,6 +305,7 @@ EXPECTED_OPERATION_IDS = {
     "appointmentsListRescheduleSlots",
     "appointmentsListReassignmentCandidates",
     "counselingCreateEncounter",
+    "counselingFinishAppointment",
     "counselingGetEncounterCreationOptions",
     "counselingListAppointmentCandidates",
     "counselingListEncounterAppointmentCandidates",
@@ -2961,6 +2962,54 @@ def test_counseling_frontend_readiness_openapi_contract() -> None:
         "support_profile",
         "student_session_summary",
     ):
+        assert forbidden not in serialized
+
+
+def test_counseling_finish_contract_is_closed_identifier_only_and_idempotent() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+
+    operation = _operation(
+        schema, "/api/v1/counseling/appointments/{appointment_id}/finish", "post"
+    )
+    assert operation["operationId"] == "counselingFinishAppointment"
+    assert operation["tags"] == ["counseling"]
+    assert operation["security"] == [{"OpaqueSessionAuth": []}]
+    assert {200, 401, 403, 404, 409, 422} <= _response_statuses(operation)
+    for status in {401, 403, 404, 409, 422}:
+        error = operation["responses"][str(status)]["content"]["application/json"]["schema"]
+        assert error["$ref"].endswith("/APIErrorResponse")
+
+    request = schemas["CounselingFinishRequest"]
+    assert request["additionalProperties"] is False
+    assert set(request["properties"]) == {
+        "actual_started_at",
+        "actual_ended_at",
+        "counseling_occurred",
+    }
+    assert set(request["required"]) == {
+        "actual_started_at",
+        "actual_ended_at",
+        "counseling_occurred",
+    }
+
+    response = schemas["CounselingFinishResponse"]
+    assert response["additionalProperties"] is False
+    assert set(response["properties"]) == {
+        "appointment_id",
+        "appointment_status",
+        "encounter_id",
+        "encounter_result",
+        "routine_interview_id",
+        "routine_interview_linked",
+        "already_finished",
+    }
+    assert set(response["required"]) == set(response["properties"])
+    assert schemas["CounselingFinishEncounterResult"]["enum"] == ["CREATED", "EXISTING"]
+    assert "request_key" not in request["properties"]
+
+    serialized = json.dumps({"request": request, "response": response}).lower()
+    for forbidden in ("student", "email", "phone", "address", "history", "reason", "audit"):
         assert forbidden not in serialized
 
 
