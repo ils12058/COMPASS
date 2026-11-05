@@ -7,7 +7,7 @@ const { check, shown, hidden, noHorizontalOverflow, screenshot, finish } = await
 const id = "11111111-1111-4111-8111-111111111111";
 const studentId = "22222222-2222-4222-8222-222222222222";
 const sourceId = "33333333-3333-4333-8333-333333333333";
-function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_ENCOUNTER", recoverable = false, empty = "none" } = {}) {
+function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_ENCOUNTER", sourceUnavailable = false, recoverable = false, empty = "none" } = {}) {
   const staff = { ...user(role), capabilities: [...user(role).capabilities, "guidance_followups.view", "guidance_followups.manage"] };
   const confidential = source && sourceKind !== "REFERRAL";
   const category = source ? sourceKind === "REFERRAL" ? "REFERRAL_ACTION" : "COUNSELING" : "ADMINISTRATIVE";
@@ -15,8 +15,8 @@ function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_EN
     assigned_to_name: "Synthetic Counselor", category,
     visibility: confidential ? "COUNSELOR_CONFIDENTIAL" : "OPERATIONAL", due_at: "2026-10-20T02:00:00Z",
     status: "PENDING", overdue: false, version: 1, created_at: "2026-10-17T00:00:00Z", updated_at: "2026-10-17T00:00:00Z",
-    description: "Protected synthetic description", outcome: null, source: source ? { kind: sourceKind, id: sourceId } : null,
-    source_unavailable: false, completed_at: null, completed_by_name: null, cancelled_at: null, cancelled_by_name: null,
+    description: "Protected synthetic description", outcome: null, source: source && !sourceUnavailable ? { kind: sourceKind, id: sourceId } : null,
+    source_unavailable: sourceUnavailable, completed_at: null, completed_by_name: null, cancelled_at: null, cancelled_by_name: null,
     events: [
       { id: "created-event", kind: "CREATED", revision: 1, actor_id: staff.id, actor_name: "Synthetic Counselor", created_at: "2026-10-14T00:00:00Z", old_assignee_id: null, new_assignee_id: staff.id, old_due_at: null, new_due_at: "2026-10-19T02:00:00Z", remarks: null },
       { id: "due-change-event", kind: "UPDATED", revision: 2, actor_id: staff.id, actor_name: "Synthetic Counselor", created_at: "2026-10-15T00:00:00Z", old_assignee_id: null, new_assignee_id: null, old_due_at: "2026-10-19T02:00:00Z", new_due_at: "2026-10-20T02:00:00Z", remarks: null },
@@ -28,10 +28,25 @@ function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_EN
   const page = items => ({ items, page: 1, page_size: 20, has_next: false });
   const handler = async ({ pathname, method, request, reply, url }) => {
     if (pathname === "/api/v1/auth/session") { await reply(sessionFor(staff)); return true; }
+    if (sourceUnavailable && pathname === `/api/v1/counseling/encounters/${sourceId}`) {
+      await reply({
+        id: sourceId,
+        student: { id: studentId, display_name: "Synthetic Student", profile_photo_url: null, profile_photo_updated_at: null },
+        counselor: { id: staff.id, display_name: "Synthetic Counselor", profile_photo_url: null, profile_photo_updated_at: null },
+        service: { id: "service-source-unavailable", code: "COUNSELING", name: "Counseling" },
+        appointment: null, entry_mode: "WALK_IN", delivery_mode: "IN_PERSON",
+        started_at: "2026-10-17T01:00:00Z", ended_at: "2026-10-17T02:00:00Z",
+        created_at: "2026-10-17T02:00:00Z", updated_at: "2026-10-17T02:00:00Z",
+      });
+      return true;
+    }
     if (!pathname.startsWith("/api/v1/guidance-followups")) return false;
     if (pathname.endsWith("/eligible-students")) { await reply(page([{ id: studentId, display_name: "Synthetic Student", institutional_id: "TEST-2026" }])); return true; }
     if (pathname.endsWith("/eligible-assignees")) { await reply(page([{ id: staff.id, display_name: "Synthetic Counselor" }])); return true; }
-    if (pathname.endsWith("/context")) { await reply({ source_kind: sourceKind, source_id: sourceId, student_id: studentId, student_name: "Synthetic Student", category, visibility: confidential ? "COUNSELOR_CONFIDENTIAL" : "OPERATIONAL", can_create: true }); return true; }
+    if (pathname.endsWith("/context")) {
+      if (sourceUnavailable) { await reply({ error: { code: "followup_not_found", message: "The requested record is unavailable." } }, 404); return true; }
+      await reply({ source_kind: sourceKind, source_id: sourceId, student_id: studentId, student_name: "Synthetic Student", category, visibility: confidential ? "COUNSELOR_CONFIDENTIAL" : "OPERATIONAL", can_create: true }); return true;
+    }
     if (pathname.endsWith("/recoverable")) { await reply({ ...page(recovery ? [{ ...item, assigned_to_id: "inactive-staff", assigned_to_name: "Inactive Staff" }] : []), ordering: "EARLIEST_DUE" }); return true; }
     if (pathname.endsWith("/report")) {
       const counts = empty === "no-assigned" ? { pending: 0, completed: 0, cancelled: 0, overdue: 0, due_soon: 0 }
@@ -415,6 +430,36 @@ for (const [sourceKind, category, visibility] of [
     await noHorizontalOverflow(page);
   });
 }
+{
+  const fixture = world("COUNSELOR", { sourceUnavailable: true });
+  await check("An unavailable related record is explained without a broken link and the task stays actionable", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
+    await shown(page.getByText("The related record is no longer available to your account. This follow-up remains open and keeps its own status. Review whether the work is still needed. Completing or cancelling it records your reason but does not change the related record.", { exact: true }));
+    assert.equal(await page.getByRole("link", { name: "Open related record", exact: true }).count(), 0, "no broken source link");
+    const activity = page.getByRole("button", { name: "Record activity", exact: true });
+    await shown(activity);
+    assert.equal(await activity.isEnabled(), true, "the task remains actionable");
+    await activity.click();
+    await shown(page.getByLabel("Activity or update", { exact: true }));
+    assert.equal(fixture.writes.length, 0);
+    await noHorizontalOverflow(page); await screenshot(page, "detail-source-unavailable-desktop");
+  });
+}
+{
+  const fixture = world("COUNSELOR", { sourceUnavailable: true });
+  await check("An unavailable linked source shows a generic context message without count, task link or create link", `/portal/counseling/encounters/${sourceId}`, { handler: fixture.handler }, async page => {
+    await shown(page.getByRole("heading", { name: "Counseling Encounter", exact: true }));
+    const message = page.getByText("Linked follow-ups are not available for this record.", { exact: true });
+    await shown(message);
+    const panel = page.locator("section").filter({ has: message });
+    assert.equal(await panel.count(), 1);
+    assert.equal(await panel.getByRole("heading").count(), 0, "no source title or count");
+    assert.equal(await panel.getByRole("link").count(), 0, "no task link or create link");
+    assert.equal(await panel.getByRole("button").count(), 0);
+    assert.equal(await panel.getByText(/^\d+$/).count(), 0, "no count");
+    assert.equal(await page.getByRole("heading", { name: "Linked follow-ups", exact: true }).count(), 0);
+    await noHorizontalOverflow(page); await screenshot(page, "encounter-source-unavailable-desktop");
+  });
+}
 for (const role of ["STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
   const fixture = world(role);
   await check(`${role} has no Follow-Up workspace even with capability strings`, `/portal/follow-ups/${id}`, { handler: fixture.handler }, async (page, { requests }) => {
@@ -429,6 +474,8 @@ for (const role of ["STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
     await help.focus(); await page.keyboard.press("Enter");
     await shown(page.getByRole("heading", { name: "Confidentiality", exact: true }));
     await shown(page.getByText(/Follow-Ups do not automatically contact the Student/));
+    await shown(page.getByRole("heading", { name: "When a related record becomes unavailable", exact: true }));
+    await shown(page.getByText("The follow-up keeps its own status and remains independently owned. Only the link to the related record becomes unavailable. Completing or cancelling the follow-up records your decision and does not change the related record.", { exact: true }));
     await page.keyboard.press("Escape");
     assert.equal(await help.evaluate(el => el === document.activeElement), true);
   });

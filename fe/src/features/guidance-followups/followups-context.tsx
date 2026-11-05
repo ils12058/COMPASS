@@ -3,7 +3,7 @@ import { useFollowupsFreshness, followupQueryFreshness } from "./followups-data"
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Panel, PanelHeader } from "@/components/ui/panel";
+import { Panel, PanelHeader, PanelMessage } from "@/components/ui/panel";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useGuidanceFollowupsGetContext, useGuidanceFollowupsList } from "@/lib/api/generated/guidance-followups/guidance-followups";
@@ -18,7 +18,8 @@ export function FollowupsContext({ kind, id }: { kind: SourceKind; id: string })
   const context = useGuidanceFollowupsGetContext({ source_kind: kind, source_id: id }, { query: { ...followupQueryFreshness, enabled: access.view, retry: false } });
   const query = useGuidanceFollowupsList({ source_kind: kind, source_id: id, page, page_size: 10 }, { query: { ...followupQueryFreshness, enabled: access.view && context.isSuccess, retry: false } });
   if (!access.view) return null;
-  if (context.isError || context.isPending) return null;
+  if (context.isPending) return null;
+  if (context.isError) return <Panel className="mt-5"><PanelMessage role="status">Linked follow-ups are not available for this record.</PanelMessage></Panel>;
   const counseling = kind === "COUNSELING_ENCOUNTER" || kind === "ROUTINE_INTERVIEW";
   const sourceLabel = kind === "COUNSELING_ENCOUNTER" ? "this Counseling Encounter" : kind === "ROUTINE_INTERVIEW" ? "this Routine Interview" : "this Referral";
   const actionLabel = kind === "REFERRAL" ? "Create referral follow-up" : "Create counseling follow-up";

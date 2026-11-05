@@ -275,6 +275,354 @@ def test_referral_source_keeps_operational_scope(world):
     assert services.followup_detail(actor=gss, item=item)["source"] is None
 
 
+def test_referral_void_preserves_operational_task_across_workspaces(world):
+    from compass.guidance_followups.integration import pending_followups
+    from compass.guidance_followups.workspace import reporting
+    from compass.referrals.services import void_referral
+    from compass.work_queue.services import list_work
+    from tests.test_appointment_management_scope import auth_client
+
+    counselor, _, gss, student, *_ = world
+    source = create_for(
+        counselor,
+        student,
+        key="fup-void-operational-source",
+        fingerprint="b" * 64,
+    )
+    completed = create(
+        world,
+        actor=gss,
+        student=student,
+        source_kind="REFERRAL",
+        source_id=source.pk,
+        category="REFERRAL_ACTION",
+    )
+    cancelled = create(
+        world,
+        actor=gss,
+        student=student,
+        source_kind="REFERRAL",
+        source_id=source.pk,
+        category="REFERRAL_ACTION",
+    )
+    events_before = GuidanceFollowUpEvent.objects.count()
+    audits_before = AuditEvent.objects.filter(action__startswith="guidance_followup.").count()
+
+    void_referral(
+        actor=counselor,
+        referral_id=source.pk,
+        reason="Synthetic source void",
+        context=context(counselor),
+    )
+
+    assert GuidanceFollowUpEvent.objects.count() == events_before
+    assert (
+        AuditEvent.objects.filter(action__startswith="guidance_followup.").count() == audits_before
+    )
+    assert {row.pk for row in services.list_followups(actor=gss).items} == {
+        completed.pk,
+        cancelled.pk,
+    }
+    assert reporting(actor=gss)["pending"] == 2
+    work = [row for row in list_work(actor=gss).items if row.kind == "GUIDANCE_FOLLOW_UP"]
+    assert {row.source_id for row in work} == {completed.pk, cancelled.pk}
+    assert {row.pk for row in pending_followups(actor=gss, limit=20)} == {
+        completed.pk,
+        cancelled.pk,
+    }
+    detail = auth_client(gss).get(f"/api/v1/guidance-followups/{completed.pk}").json()
+    assert detail["source"] is None
+    assert detail["source_unavailable"] is True
+    assert detail["status"] == "PENDING"
+
+    updated = services.update_followup(
+        actor=gss,
+        followup_id=completed.pk,
+        expected_version=1,
+        due_at=completed.due_at + timedelta(days=1),
+        context=context(gss),
+    )
+    assert updated.version == 2
+    recorded, _ = services.record_activity(
+        actor=gss,
+        followup_id=completed.pk,
+        expected_version=2,
+        remarks="Coordination continues after the source became unavailable.",
+        context=context(gss),
+    )
+    assert recorded.version == 3
+    reassigned = services.reassign_followup(
+        actor=gss,
+        followup_id=completed.pk,
+        expected_version=3,
+        assigned_to_id=counselor.pk,
+        context=context(gss),
+    )
+    assert reassigned.assigned_to_id == counselor.pk
+    completed_item = services.complete_followup(
+        actor=counselor,
+        followup_id=completed.pk,
+        expected_version=4,
+        outcome="Coordination completed without the related record.",
+        context=context(counselor),
+    )
+    assert completed_item.status == FollowUpStatus.COMPLETED
+    cancelled_item = services.cancel_followup(
+        actor=gss,
+        followup_id=cancelled.pk,
+        expected_version=1,
+        reason="The related record is no longer available.",
+        context=context(gss),
+    )
+    assert cancelled_item.status == FollowUpStatus.CANCELLED
+
+
+def test_referral_void_makes_source_filter_and_context_unavailable(world):
+    from compass.referrals.services import void_referral
+    from tests.test_appointment_management_scope import auth_client
+
+    counselor, _, gss, student, *_ = world
+    source = create_for(
+        counselor,
+        student,
+        key="fup-void-filter-source",
+        fingerprint="c" * 64,
+    )
+    item = create(
+        world,
+        actor=gss,
+        student=student,
+        source_kind="REFERRAL",
+        source_id=source.pk,
+        category="REFERRAL_ACTION",
+    )
+    void_referral(
+        actor=counselor,
+        referral_id=source.pk,
+        reason="Synthetic source void",
+        context=context(counselor),
+    )
+    client = auth_client(gss)
+    filtered = client.get(
+        f"/api/v1/guidance-followups?source_kind=REFERRAL&source_id={source.pk}"
+    )
+    source_context = client.get(
+        f"/api/v1/guidance-followups/context?source_kind=REFERRAL&source_id={source.pk}"
+    )
+    for response in (filtered, source_context):
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "followup_not_found"
+        body = response.content.decode()
+        for secret in (
+            student.get_full_name(),
+            source.reference_code,
+            "Source referral reason",
+            "Prof. Source Referrer",
+            str(item.pk),
+        ):
+            assert secret not in body
+
+
+def test_confidential_source_loss_orphans_task_without_recovery(world):
+    from compass.accounts.models import Designation, UserDesignation
+    from compass.guidance_followups.integration import pending_followups
+    from compass.guidance_followups.recovery import list_recoverable
+    from compass.guidance_followups.workspace import reporting
+    from compass.work_queue.services import list_work
+
+    counselor, head, _, student, *_ = world
+    service = Service.objects.create(code="FUP_SOURCE_LOSS", name="Counseling", is_active=True)
+    encounter = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=timezone.now() - timedelta(hours=1),
+        ended_at=timezone.now(),
+    )
+    item = create(
+        world,
+        source_kind="COUNSELING_ENCOUNTER",
+        source_id=encounter.pk,
+        category="COUNSELING",
+    )
+    CounselingEncounter.objects.filter(pk=encounter.pk).update(counselor=head)
+    UserDesignation.objects.create(
+        user=head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    )
+
+    with pytest.raises(FollowUpNotFound):
+        services.followup_detail(actor=counselor, item=item)
+    with pytest.raises(FollowUpNotFound):
+        services.update_followup(
+            actor=counselor,
+            followup_id=item.pk,
+            expected_version=1,
+            description="Changed",
+            context=context(counselor),
+        )
+    with pytest.raises(FollowUpNotFound):
+        services.record_activity(
+            actor=counselor,
+            followup_id=item.pk,
+            expected_version=1,
+            remarks="Progress",
+            context=context(counselor),
+        )
+    with pytest.raises(FollowUpNotFound):
+        services.reassign_followup(
+            actor=counselor,
+            followup_id=item.pk,
+            expected_version=1,
+            assigned_to_id=counselor.pk,
+            context=context(counselor),
+        )
+    with pytest.raises(FollowUpNotFound):
+        services.complete_followup(
+            actor=counselor,
+            followup_id=item.pk,
+            expected_version=1,
+            outcome="Outcome",
+            context=context(counselor),
+        )
+    with pytest.raises(FollowUpNotFound):
+        services.cancel_followup(
+            actor=counselor,
+            followup_id=item.pk,
+            expected_version=1,
+            reason="Reason",
+            context=context(counselor),
+        )
+    assert not services.list_followups(actor=counselor).items
+    assert reporting(actor=counselor)["pending"] == 0
+    assert not [row for row in list_work(actor=counselor).items if row.kind == "GUIDANCE_FOLLOW_UP"]
+    assert not pending_followups(actor=counselor, limit=20)
+    assert not list_recoverable(actor=counselor)["items"]
+    assert not list_recoverable(actor=head)["items"]
+    item.refresh_from_db()
+    assert item.status == FollowUpStatus.PENDING
+
+
+def test_head_operational_list_remains_assignment_scoped(world):
+    from compass.accounts.models import Designation, User, UserDesignation
+    from compass.guidance_followups.recovery import list_recoverable
+    from compass.guidance_followups.workspace import reporting
+
+    counselor, head, gss, student, *_ = world
+    UserDesignation.objects.create(
+        user=head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
+    )
+    own = create(world, actor=head, assignee=head)
+    gss_task = create(world, actor=gss, assignee=gss)
+    service = Service.objects.create(code="FUP_HEAD_SCOPE", name="Counseling", is_active=True)
+    encounter = CounselingEncounter.objects.create(
+        student=student,
+        counselor=counselor,
+        service=service,
+        entry_mode="WALK_IN",
+        delivery_mode="IN_PERSON",
+        started_at=timezone.now() - timedelta(hours=1),
+        ended_at=timezone.now(),
+    )
+    confidential = create(
+        world,
+        source_kind="COUNSELING_ENCOUNTER",
+        source_id=encounter.pk,
+        category="COUNSELING",
+    )
+
+    assert [row.pk for row in services.list_followups(actor=head).items] == [own.pk]
+    assert reporting(actor=head)["pending"] == 1
+    User.objects.filter(pk=gss.pk).update(is_active=False)
+    recoverable = [row.pk for row in list_recoverable(actor=head)["items"]]
+    assert recoverable == [gss_task.pk]
+    assert confidential.pk not in recoverable
+
+
+def test_completion_does_not_change_referral_state(world):
+    counselor, _, _, student, *_ = world
+    source = create_for(
+        counselor,
+        student,
+        key="fup-completion-source",
+        fingerprint="d" * 64,
+    )
+    item = create(
+        world,
+        source_kind="REFERRAL",
+        source_id=source.pk,
+        category="REFERRAL_ACTION",
+    )
+    referral_before = Referral.objects.filter(pk=source.pk).values().get()
+    actions_before = list(Referral.objects.get(pk=source.pk).actions.values())
+    referral_audits_before = AuditEvent.objects.filter(action__startswith="referrals.").count()
+    followup_audits_before = AuditEvent.objects.filter(
+        action="guidance_followup.completed"
+    ).count()
+
+    completed = services.complete_followup(
+        actor=counselor,
+        followup_id=item.pk,
+        expected_version=1,
+        outcome="Referral coordination completed.",
+        context=context(counselor),
+    )
+
+    assert completed.status == FollowUpStatus.COMPLETED
+    assert Referral.objects.filter(pk=source.pk).values().get() == referral_before
+    assert list(Referral.objects.get(pk=source.pk).actions.values()) == actions_before
+    assert AuditEvent.objects.filter(action__startswith="referrals.").count() == (
+        referral_audits_before
+    )
+    assert AuditEvent.objects.filter(action="guidance_followup.completed").count() == (
+        followup_audits_before + 1
+    )
+    assert item.events.filter(kind=FollowUpEventType.COMPLETED).count() == 1
+
+
+def test_source_loss_does_not_create_material_notification(world, settings):
+    from compass.guidance_followups.integration import (
+        current_events,
+        followup_notification_is_current,
+        material_events,
+    )
+    from compass.notifications.models import Notification
+    from compass.referrals.services import void_referral
+
+    counselor, _, _, student, *_ = world
+    settings.GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = True
+    source = create_for(
+        counselor,
+        student,
+        key="fup-notification-source",
+        fingerprint="e" * 64,
+    )
+    item = create(
+        world,
+        source_kind="REFERRAL",
+        source_id=source.pk,
+        category="REFERRAL_ACTION",
+    )
+    notice = Notification.objects.get(target_id=item.pk)
+    materials = material_events().count()
+    current = current_events(actor=counselor).count()
+    notices = Notification.objects.filter(target_id=item.pk).count()
+    assert followup_notification_is_current(notice) is True
+
+    void_referral(
+        actor=counselor,
+        referral_id=source.pk,
+        reason="Synthetic source void",
+        context=context(counselor),
+    )
+
+    assert material_events().count() == materials
+    assert current_events(actor=counselor).count() == current
+    assert Notification.objects.filter(target_id=item.pk).count() == notices
+    assert followup_notification_is_current(notice) is True
+
+
 def test_missing_key_tamper_and_cross_record_ciphertext(world, settings):
     counselor, _, _, student, *_ = world
     one = create(world)
