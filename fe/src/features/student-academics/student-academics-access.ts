@@ -14,6 +14,10 @@ export function canManageStudentAcademics(user: CapabilityUser): boolean {
   return hasCapability(user, "student_academics.manage");
 }
 
+export function canImportStudentAcademics(user: CapabilityUser): boolean {
+  return hasCapability(user, "student_academics.import");
+}
+
 export function canViewOwnAcademicRecord(user: CapabilityUser): boolean {
   return user.role === "STUDENT" && hasCapability(user, "student_academics.view_self");
 }

@@ -463,7 +463,11 @@ def test_student_academics_capabilities_resolve_and_dependency_holds():
 
     admin = make_user("academics-admin@example.edu", "IT_ADMIN")
     admin_effective = effective_capabilities(admin)
-    assert {"student_academics.view", "student_academics.manage"} <= admin_effective
+    assert {
+        "student_academics.view",
+        "student_academics.manage",
+        "student_academics.import",
+    } <= admin_effective
 
     head = make_user("academics-head@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
@@ -471,13 +475,18 @@ def test_student_academics_capabilities_resolve_and_dependency_holds():
         designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
     )
     head_effective = effective_capabilities(head)
-    assert {"student_academics.view", "student_academics.manage"} <= head_effective
+    assert {
+        "student_academics.view",
+        "student_academics.manage",
+        "student_academics.import",
+    } <= head_effective
 
     student = make_user("academics-student@example.edu", "STUDENT")
     student_effective = effective_capabilities(student)
     assert "student_academics.view_self" in student_effective
     assert "student_academics.view" not in student_effective
     assert "student_academics.manage" not in student_effective
+    assert "student_academics.import" not in student_effective
 
     for role_code in (
         "COUNSELOR",
@@ -489,6 +498,7 @@ def test_student_academics_capabilities_resolve_and_dependency_holds():
         assert {
             "student_academics.view",
             "student_academics.manage",
+            "student_academics.import",
             "student_academics.view_self",
         }.isdisjoint(effective_capabilities(user))
 
@@ -500,6 +510,14 @@ def test_student_academics_capabilities_resolve_and_dependency_holds():
         {"student_academics.manage", "student_academics.view"}
     ) == frozenset({"student_academics.manage", "student_academics.view"})
 
+    assert capability_policy.required_capabilities("student_academics.import") == frozenset(
+        {"student_academics.view"}
+    )
+    assert resolve_capability_dependencies({"student_academics.import"}) == frozenset()
+    assert resolve_capability_dependencies(
+        {"student_academics.import", "student_academics.view"}
+    ) == frozenset({"student_academics.import", "student_academics.view"})
+
     delegated = make_user("academics-delegated@example.edu", "INSTITUTIONAL_OFFICER")
     set_user_capability_override(
         user=delegated,
@@ -510,3 +528,14 @@ def test_student_academics_capabilities_resolve_and_dependency_holds():
     delegated_effective = effective_capabilities(delegated)
     assert "student_academics.manage" not in delegated_effective
     assert "student_academics.view" not in delegated_effective
+
+    import_delegated = make_user("academics-import-delegated@example.edu", "INSTITUTIONAL_OFFICER")
+    set_user_capability_override(
+        user=import_delegated,
+        capability="student_academics.import",
+        effect=UserCapabilityOverride.Effect.GRANT,
+        reason="Synthetic import-only grant",
+    )
+    import_delegated_effective = effective_capabilities(import_delegated)
+    assert "student_academics.import" not in import_delegated_effective
+    assert "student_academics.view" not in import_delegated_effective

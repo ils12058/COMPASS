@@ -1,13 +1,13 @@
 "use client";
 
-import { Link2, Search } from "lucide-react";
+import { Link2, Search, Upload } from "lucide-react";
 import Link from "next/link";
 
 import { useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
-import { PageAction } from "@/components/ui/page-action";
+import { PageAction, PageActionLink } from "@/components/ui/page-action";
 import { Button } from "@/components/ui/button";
 import { ConsequentialActionDialog } from "@/components/ui/consequential-action-dialog";
 import {
@@ -35,7 +35,10 @@ import {
   replaceQueryParam,
 } from "@/features/organization/components/organization-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
-import { canManageStudentAcademics } from "@/features/student-academics/student-academics-access";
+import {
+  canImportStudentAcademics,
+  canManageStudentAcademics,
+} from "@/features/student-academics/student-academics-access";
 import {
   getStudentAcademicsListPlacementsQueryKey,
   useStudentAcademicsClearPlacement,
@@ -68,6 +71,7 @@ function VerificationBadge({ status }: { status: PlacementVerificationStatus }) 
 export function StudentAcademicRecordsPage() {
   const { user } = usePortalSession();
   const canManage = canManageStudentAcademics(user);
+  const canImport = canImportStudentAcademics(user);
   const canViewStructure = user.capabilities.includes("organization.structure.view");
   const router = useRouter();
   const pathname = usePathname();
@@ -306,6 +310,15 @@ export function StudentAcademicRecordsPage() {
           <>
             {canManage && structureReady ? (
               <PageAction icon={Link2} label="Assign" labelDetail="placement" onClick={() => openSet()} />
+            ) : null}
+            {canImport ? (
+              <PageActionLink
+                href="/portal/organization/student-academics/import"
+                icon={Upload}
+                label="Import"
+                labelDetail="academic roster"
+                variant="secondary"
+              />
             ) : null}
             <PageAction
               icon={Search}

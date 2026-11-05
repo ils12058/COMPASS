@@ -29,8 +29,8 @@ const user = (role, capabilities, extra = {}) => ({ id: "00000000-0000-4000-8000
 const student = user("STUDENT", ["accounts.view", "organization.structure.view", "services.catalog.view", "availability.view", "appointments.view_self", "appointments.manage_self", "inventory.view_self", "inventory.manage_self", "exit_interviews.view_self", "exit_interviews.manage_self", "routine_interviews.view_self", "routine_interviews.manage_self", "student_session_summaries.view_self", "call_slips.view_self", "good_moral.view_self", "good_moral.request_self", "feedback.submit_customer_feedback", "feedback.submit_csm", "graduate_tracer.view_self", "graduate_tracer.manage_self", "student_academics.view_self"]);
 const staff = user("GUIDANCE_SERVICES_STAFF", ["exit_interviews.manage_opportunities", "academic_years.view", "institutional_forms.view", "good_moral.view", "good_moral.prepare", "accounts.view", "organization.structure.view", "services.catalog.view", "availability.view", "appointments.view_self", "appointments.manage", "referrals.view", "referrals.manage", "call_slips.view", "call_slips.manage", "announcements.manage", "resources.manage"]);
 const counselor = user("COUNSELOR", [...staff.capabilities.filter((code) => code !== "exit_interviews.manage_opportunities"), "academic_years.view", "institutional_forms.view", "availability.manage_self", "inventory.view", "inventory.reopen", "counseling.view_assigned", "counseling.manage_assigned", "routine_interviews.view_assigned", "reports.view", "good_moral.view", "good_moral.manage", "good_moral.issue"]);
-const head = { ...counselor, designations: ["HEAD_GUIDANCE_COUNSELOR"], capabilities: [...counselor.capabilities, "exit_interviews.manage_opportunities", "organization.manage", "services.manage", "availability.manage", "academic_years.manage", "exit_interviews.view", "feedback.view_customer_feedback", "feedback.view_csm", "graduate_tracer.view", "student_academics.view", "student_academics.manage"] };
-const it = user("IT_ADMIN", ["accounts.view", "accounts.manage", "platform_operations.view", "platform_operations.manage", "organization.structure.view", "organization.manage", "services.catalog.view", "services.manage", "availability.view", "availability.manage", "student_academics.view", "student_academics.manage"]);
+const head = { ...counselor, designations: ["HEAD_GUIDANCE_COUNSELOR"], capabilities: [...counselor.capabilities, "exit_interviews.manage_opportunities", "organization.manage", "services.manage", "availability.manage", "academic_years.manage", "exit_interviews.view", "feedback.view_customer_feedback", "feedback.view_csm", "graduate_tracer.view", "student_academics.view", "student_academics.manage", "student_academics.import"] };
+const it = user("IT_ADMIN", ["accounts.view", "accounts.manage", "platform_operations.view", "platform_operations.manage", "organization.structure.view", "organization.manage", "services.catalog.view", "services.manage", "availability.view", "availability.manage", "student_academics.view", "student_academics.manage", "student_academics.import"]);
 const dpo = user("INSTITUTIONAL_OFFICER", ["privacy_governance.view", "privacy_governance.manage", "privacy_governance.retention.view", "privacy_governance.activity.export"], { designations: ["DPO"] });
 const hrefs = (account) => commands.portalCommandDestinations(account).map((item) => item.href);
 
@@ -94,6 +94,15 @@ test("GSS, Counselor, and Head Guidance keep their distinct scheduling and opera
   assert.ok(!hrefs(counselor).includes("/portal/organization/student-academics"));
   for (const path of ["/portal/organization/responsibilities", "/portal/organization/student-academics", "/portal/availability/office", "/portal/availability/providers", "/portal/feedback/csm/responses"]) assert.ok(hrefs(head).includes(path));
   assert.ok(!hrefs(head).some((path) => /^\/portal\/(platform|privacy|accounts)/.test(path)));
+});
+
+test("Academic roster import destination requires the import capability and its parent workspace", () => {
+  const path = "/portal/organization/student-academics/import";
+  assert.ok(hrefs(head).includes(path));
+  assert.ok(hrefs(it).includes(path));
+  assert.ok(!hrefs(user("COUNSELOR", ["organization.structure.view", "student_academics.view"])).includes(path));
+  assert.ok(!hrefs(user("COUNSELOR", ["organization.structure.view", "student_academics.manage"])).includes(path));
+  assert.ok(!hrefs(user("COUNSELOR", ["student_academics.import"])).includes(path));
 });
 
 test("reference structure, catalog reads, and submission access never imply management access", () => {

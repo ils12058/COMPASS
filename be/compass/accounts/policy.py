@@ -351,6 +351,13 @@ CAPABILITY_DEFINITIONS = (
         ),
     ),
     CapabilityDefinition(
+        code="student_academics.import",
+        name="Import Student academic roster",
+        description=(
+            "Validate and apply approved CSV College placements for existing Student accounts."
+        ),
+    ),
+    CapabilityDefinition(
         code="student_academics.view_self",
         name="View own Student academic record",
         description="View the authenticated Student's own academic placement and record.",
@@ -637,6 +644,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "organization.manage",
             "student_academics.view",
             "student_academics.manage",
+            "student_academics.import",
             "services.catalog.view",
             "services.manage",
             "availability.view",
@@ -757,6 +765,7 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "organization.manage",
             "student_academics.view",
             "student_academics.manage",
+            "student_academics.import",
             "services.manage",
             "availability.manage",
             "appointments.manage",
@@ -796,6 +805,7 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "referrals.submit_self": frozenset({"referrals.view_submitted_self"}),
     "student_academics.manage": frozenset({"student_academics.view"}),
+    "student_academics.import": frozenset({"student_academics.view"}),
     "organization.catalog.manage": frozenset({"organization.structure.view"}),
     "counseling.handoff.manage_own": frozenset(
         {"counseling.continuity.view", "counseling.view_assigned"}

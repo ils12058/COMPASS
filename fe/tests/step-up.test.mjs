@@ -110,6 +110,8 @@ test("step-up handling stays on the features whose actions keep it", () => {
     "appointments/appointment-reminders.tsx",
     // FUP-1A preserves recent MFA for all Follow-Up lifecycle writes.
     "guidance-followups/",
+    // SAR-7 requires recent MFA for roster validation and commit.
+    "student-academics/roster-import/",
   ];
   const offenders = sourceFiles(featuresRoot)
     .map((file) => path.relative(featuresRoot, file))

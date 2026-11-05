@@ -10,6 +10,7 @@ import {
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
 import {
+  canImportStudentAcademics,
   canViewOwnAcademicRecord,
   canViewStudentAcademics,
 } from "@/features/student-academics/student-academics-access";
@@ -50,6 +51,15 @@ export function StudentAcademicRecordsGate({ children }: { children: ReactNode }
   return canViewStudentAcademics(user) ? children : (
     <WorkspaceUnavailable title="Student Academic Records unavailable">
       You don’t have access to Student academic records.
+    </WorkspaceUnavailable>
+  );
+}
+
+export function StudentAcademicRosterImportGate({ children }: { children: ReactNode }) {
+  const { user } = usePortalSession();
+  return canImportStudentAcademics(user) ? children : (
+    <WorkspaceUnavailable title="Academic roster import unavailable">
+      You don’t have access to import academic rosters.
     </WorkspaceUnavailable>
   );
 }

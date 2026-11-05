@@ -4844,6 +4844,7 @@
           "routine_interviews.view_self",
           "services.catalog.view",
           "services.manage",
+          "student_academics.import",
           "student_academics.manage",
           "student_academics.view",
           "student_academics.view_self",
@@ -27306,6 +27307,127 @@
         "title": "RoleUpdateRequest",
         "type": "object"
       },
+      "RosterImportResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "committed": {
+            "title": "Committed",
+            "type": "boolean"
+          },
+          "conflict_count": {
+            "title": "Conflict Count",
+            "type": "integer"
+          },
+          "invalid_count": {
+            "title": "Invalid Count",
+            "type": "integer"
+          },
+          "noop_count": {
+            "title": "Noop Count",
+            "type": "integer"
+          },
+          "rows": {
+            "items": {
+              "$ref": "#/components/schemas/RosterImportRowResponse"
+            },
+            "title": "Rows",
+            "type": "array"
+          },
+          "set_count": {
+            "title": "Set Count",
+            "type": "integer"
+          },
+          "total_rows": {
+            "title": "Total Rows",
+            "type": "integer"
+          },
+          "valid": {
+            "title": "Valid",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "valid",
+          "committed",
+          "total_rows",
+          "set_count",
+          "noop_count",
+          "conflict_count",
+          "invalid_count",
+          "rows"
+        ],
+        "title": "RosterImportResponse",
+        "type": "object"
+      },
+      "RosterImportRowResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "campus_code": {
+            "title": "Campus Code",
+            "type": "string"
+          },
+          "college_code": {
+            "title": "College Code",
+            "type": "string"
+          },
+          "current_college_code": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current College Code"
+          },
+          "institutional_id": {
+            "title": "Institutional Id",
+            "type": "string"
+          },
+          "message": {
+            "title": "Message",
+            "type": "string"
+          },
+          "row_number": {
+            "title": "Row Number",
+            "type": "integer"
+          },
+          "student_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Student Id"
+          },
+          "student_name": {
+            "title": "Student Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "row_number",
+          "institutional_id",
+          "student_id",
+          "student_name",
+          "current_college_code",
+          "campus_code",
+          "college_code",
+          "action",
+          "message"
+        ],
+        "title": "RosterImportRowResponse",
+        "type": "object"
+      },
       "RoutineAcademicYearSummary": {
         "additionalProperties": false,
         "properties": {
@@ -32629,6 +32751,7 @@
                 "routine_interviews.view_self",
                 "services.catalog.view",
                 "services.manage",
+                "student_academics.import",
                 "student_academics.manage",
                 "student_academics.view",
                 "student_academics.view_self",
@@ -32820,6 +32943,7 @@
                 "routine_interviews.view_self",
                 "services.catalog.view",
                 "services.manage",
+                "student_academics.import",
                 "student_academics.manage",
                 "student_academics.view",
                 "student_academics.view_self",
@@ -70946,6 +71070,105 @@
         "summary": "Withdraw a fixed-date appointment slot",
         "tags": [
           "services"
+        ]
+      }
+    },
+    "/api/v1/student-academics/imports/csv": {
+      "post": {
+        "operationId": "studentAcademicsImportRosterCsv",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "dry_run",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Dry Run",
+              "type": "boolean"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "title": "File",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RosterImportResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Validate or commit an approved Student academic roster CSV",
+        "tags": [
+          "student-academics"
         ]
       }
     },

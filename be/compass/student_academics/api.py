@@ -6,7 +6,8 @@ from datetime import date, datetime
 from typing import NoReturn
 from uuid import UUID
 
-from ninja import Router
+from ninja import File, Router
+from ninja.files import UploadedFile
 
 from compass.accounts.models import StudentLifecycleStatus
 from compass.authentication.api import session_auth
@@ -27,6 +28,16 @@ from compass.student_academics.models import (
     AcademicTerm,
     EnrollmentStatus,
     PlacementVerificationStatus,
+)
+from compass.student_academics.roster_import import (
+    MAX_CSV_BYTES,
+    RosterImportConflict,
+    RosterImportDuplicateIdentity,
+    RosterImportInvalidRows,
+    RosterImportMalformed,
+    RosterImportTooLarge,
+    RosterImportUnsupportedHeaders,
+    import_student_academic_roster,
 )
 from compass.student_academics.services import (
     DEFAULT_PAGE_SIZE,
@@ -106,6 +117,29 @@ class StudentAcademicRecordResponse(StrictSchema):
     graduation: GraduationRecordResponse | None
 
 
+class RosterImportRowResponse(StrictSchema):
+    row_number: int
+    institutional_id: str
+    student_id: UUID | None
+    student_name: str
+    current_college_code: str | None
+    campus_code: str
+    college_code: str
+    action: str
+    message: str
+
+
+class RosterImportResponse(StrictSchema):
+    valid: bool
+    committed: bool
+    total_rows: int
+    set_count: int
+    noop_count: int
+    conflict_count: int
+    invalid_count: int
+    rows: list[RosterImportRowResponse]
+
+
 def _raise(exc: StudentAcademicError) -> NoReturn:
     if isinstance(exc, StudentAcademicNotFound):
         raise APIError(404, "student_academic_not_found", str(exc)) from exc
@@ -168,6 +202,43 @@ def _record_payload(record) -> dict[str, object]:
         "periods": [_period(item) for item in record.periods],
         "graduation": _graduation(record.graduation) if record.graduation is not None else None,
     }
+
+
+def _roster_report_payload(report) -> dict[str, object]:
+    return {
+        "valid": report.valid,
+        "committed": report.committed,
+        "total_rows": report.total_rows,
+        "set_count": report.set_count,
+        "noop_count": report.noop_count,
+        "conflict_count": report.conflict_count,
+        "invalid_count": report.invalid_count,
+        "rows": [
+            {
+                "row_number": row.row_number,
+                "institutional_id": row.institutional_id,
+                "student_id": row.student_id,
+                "student_name": row.student_name,
+                "current_college_code": row.current_college_code,
+                "campus_code": row.campus_code,
+                "college_code": row.college_code,
+                "action": row.action,
+                "message": row.message,
+            }
+            for row in report.rows
+        ],
+    }
+
+
+def _roster_issue_details(issues) -> list[dict[str, object]]:
+    return [
+        {
+            "row_number": issue.row_number,
+            "institutional_id": issue.institutional_id,
+            "message": issue.message,
+        }
+        for issue in issues
+    ]
 
 
 @router.get(
@@ -317,3 +388,60 @@ def graduation_record(request, student_id: UUID, payload: GraduationRecordReques
     except StudentAcademicError as exc:
         _raise(exc)
     return _graduation(item)
+
+
+@router.post(
+    "/imports/csv",
+    response=response_with_errors(RosterImportResponse, 401, 403, 409, 422),
+    auth=session_auth,
+    operation_id="studentAcademicsImportRosterCsv",
+    summary="Validate or commit an approved Student academic roster CSV",
+)
+def roster_csv_import(
+    request,
+    file: File[UploadedFile],
+    dry_run: bool = True,
+):
+    _require(request, "student_academics.import", recent_mfa=True)
+    data = file.read(MAX_CSV_BYTES + 1)
+    try:
+        report = import_student_academic_roster(
+            context=_context(request),
+            data=data,
+            dry_run=dry_run,
+        )
+    except RosterImportTooLarge as exc:
+        raise APIError(422, "csv_import_too_large", str(exc)) from exc
+    except RosterImportUnsupportedHeaders as exc:
+        raise APIError(422, "csv_import_unsupported_headers", str(exc)) from exc
+    except RosterImportMalformed as exc:
+        raise APIError(422, "csv_import_malformed", str(exc)) from exc
+    except RosterImportDuplicateIdentity as exc:
+        raise APIError(
+            422,
+            "csv_import_duplicate_identity",
+            str(exc),
+            details=_roster_issue_details(exc.issues),
+        ) from exc
+    except RosterImportInvalidRows as exc:
+        raise APIError(
+            422,
+            "csv_import_invalid_rows",
+            str(exc),
+            details=_roster_issue_details(exc.issues),
+        ) from exc
+    except RosterImportConflict as exc:
+        raise APIError(
+            409,
+            "csv_import_conflict",
+            str(exc),
+            details=[
+                {
+                    "row_number": row.row_number,
+                    "institutional_id": row.institutional_id,
+                    "message": row.message,
+                }
+                for row in exc.rows
+            ],
+        ) from exc
+    return _roster_report_payload(report)
