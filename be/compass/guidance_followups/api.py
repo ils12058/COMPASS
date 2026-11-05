@@ -18,7 +18,7 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 from compass.common.idempotency import request_fingerprint
 
-from . import workspace
+from . import policy, workspace
 from .errors import (
     FollowUpConflict,
     FollowUpContentUnavailable,
@@ -146,6 +146,7 @@ class FollowUpSummary(StrictSchema):
     due_at: datetime
     status: StatusValue
     overdue: bool
+    source_unavailable: bool
     version: int
     created_at: datetime
     updated_at: datetime
@@ -224,7 +225,7 @@ def _raise(exc: FollowUpError) -> NoReturn:
     ) from exc
 
 
-def _summary(item):
+def _summary(item, source_unavailable):
     from django.utils import timezone
 
     student_photo = profile_photo_projection(item.student)
@@ -244,34 +245,63 @@ def _summary(item):
         "due_at": item.due_at,
         "status": item.status,
         "overdue": item.status == "PENDING" and item.due_at < timezone.now(),
+        "source_unavailable": source_unavailable,
         "version": item.version,
         "created_at": item.created_at,
         "updated_at": item.updated_at,
     }
 
 
+def _summaries(actor, items):
+    visibility = {}
+
+    def source_unavailable(item):
+        if not item.source_kind or not item.source_id:
+            return False
+        key = (item.source_kind, item.source_id)
+        if key not in visibility:
+            visibility[key] = policy.source_is_visible(
+                actor,
+                kind=item.source_kind,
+                source_id=item.source_id,
+                student_id=item.student_id,
+            )
+        return not visibility[key]
+
+    return [_summary(item, source_unavailable(item)) for item in items]
+
+
 def _detail(actor, item):
     extra = followup_detail(actor=actor, item=item)
+    source_unavailable = bool(item.source_id is not None and extra["source"] is None)
     return {
-        **_summary(item),
+        **_summary(item, source_unavailable),
         **extra,
         "completed_at": item.completed_at,
         "completed_by_name": item.completed_by.get_full_name() if item.completed_by else None,
         "cancelled_at": item.cancelled_at,
         "cancelled_by_name": item.cancelled_by.get_full_name() if item.cancelled_by else None,
-        "source_unavailable": bool(item.source_id is not None and extra["source"] is None),
     }
 
 
 def _detail_or_receipt(actor, item):
     if item.assigned_to_id == actor.pk:
         return _detail(actor, item)
+    source_unavailable = bool(
+        item.source_kind
+        and item.source_id
+        and not policy.source_is_visible(
+            actor,
+            kind=item.source_kind,
+            source_id=item.source_id,
+            student_id=item.student_id,
+        )
+    )
     return {
-        **_summary(item),
+        **_summary(item, source_unavailable),
         "description": None,
         "outcome": None,
         "source": None,
-        "source_unavailable": bool(item.source_id),
         "events": [],
         "events_has_next": False,
         "completed_at": None,
@@ -348,7 +378,7 @@ def recoverable(request, page: int = 1, page_size: int = 20):
         result = list_recoverable(actor=request.auth_user, page=page, page_size=page_size)
         return {
             **result,
-            "items": [_summary(row) for row in result["items"]],
+            "items": _summaries(request.auth_user, result["items"]),
             "ordering": "EARLIEST_DUE",
         }
     except FollowUpError as exc:
@@ -483,7 +513,7 @@ def guidance_followups_list(request, query: Query[FollowUpQuery]):
         result = list_followups(actor=request.auth_user, **query.model_dump())
         return {
             "ordering": query.ordering or FollowUpOrdering.EARLIEST_DUE,
-            "items": [_summary(item) for item in result.items],
+            "items": _summaries(request.auth_user, result.items),
             "page": result.page,
             "page_size": result.page_size,
             "has_next": result.has_next,

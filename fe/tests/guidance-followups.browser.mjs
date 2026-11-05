@@ -7,7 +7,7 @@ const { check, shown, hidden, noHorizontalOverflow, screenshot, finish } = await
 const id = "11111111-1111-4111-8111-111111111111";
 const studentId = "22222222-2222-4222-8222-222222222222";
 const sourceId = "33333333-3333-4333-8333-333333333333";
-function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_ENCOUNTER", sourceUnavailable = false, recoverable = false, empty = "none" } = {}) {
+function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_ENCOUNTER", sourceUnavailable = false, listAvailability = null, recoverable = false, empty = "none" } = {}) {
   const staff = { ...user(role), capabilities: [...user(role).capabilities, "guidance_followups.view", "guidance_followups.manage"] };
   const confidential = source && sourceKind !== "REFERRAL";
   const category = source ? sourceKind === "REFERRAL" ? "REFERRAL_ACTION" : "COUNSELING" : "ADMINISTRATIVE";
@@ -60,8 +60,14 @@ function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_EN
         const requestedStatus = url.searchParams.get("status");
         const matchesStatus = !requestedStatus || requestedStatus === item.status;
         const overdueItem = { ...item, id: "overdue-synthetic", student_id: "overdue-student", student_name: "Synthetic Overdue Student", due_at: "2026-10-17T00:00:00Z", overdue: true };
+        const mixedItems = [
+          { ...item, id: "unavailable-source-row", student_name: "Synthetic Unavailable Student", source: null, source_unavailable: true },
+          { ...item, id: "readable-source-row", student_name: "Synthetic Readable Student", source: { kind: sourceKind, id: sourceId }, source_unavailable: false },
+          { ...item, id: "standalone-row", student_name: "Synthetic Standalone Student", source: null, source_unavailable: false },
+        ];
+        const items = listAvailability === "mixed" ? mixedItems : [item, overdueItem];
         await reply({
-          ...page(matchesStatus && empty === "none" ? [item, overdueItem] : []),
+          ...page(matchesStatus && empty === "none" ? items : []),
           page: requestedPage,
           has_next: matchesStatus && empty === "none" && requestedPage === 1,
           ordering: url.searchParams.get("ordering") ?? "EARLIEST_DUE",
@@ -310,6 +316,35 @@ for (const [empty, title, description] of [
   });
 }
 {
+  const fixture = world("COUNSELOR", { source: true, listAvailability: "mixed" });
+  await check("Follow-Up list marks only an unavailable related record without exposing source identity", "/portal/follow-ups", { handler: fixture.handler }, async page => {
+    await shown(page.getByRole("link", { name: "Synthetic Unavailable Student", exact: true }));
+    const unavailable = page.getByRole("row").filter({ hasText: "Synthetic Unavailable Student" });
+    await shown(unavailable.getByText("Related record unavailable", { exact: true }));
+    assert.equal(await page.getByText("Related record unavailable", { exact: true }).count(), 1);
+    for (const name of ["Synthetic Readable Student", "Synthetic Standalone Student"]) {
+      const row = page.getByRole("row").filter({ hasText: name });
+      await shown(row);
+      assert.equal(await row.getByText("Related record unavailable", { exact: true }).count(), 0, `${name} has no unavailable indicator`);
+    }
+    assert.equal(await page.getByRole("link", { name: "Open related record", exact: true }).count(), 0, "the list exposes no source link");
+    assert.equal(await page.getByText(sourceId, { exact: false }).count(), 0, "the list exposes no source identity");
+    assert.equal(await page.getByText("COUNSELING_ENCOUNTER", { exact: false }).count(), 0, "the list exposes no source kind");
+    await shown(unavailable.getByRole("link", { name: "Synthetic Unavailable Student", exact: true }));
+    await noHorizontalOverflow(page);
+    await screenshot(page, "followups-source-availability-desktop");
+  });
+}
+{
+  const fixture = world();
+  await check("Follow-Up report explains source availability without a per-task projection", "/portal/follow-ups/report", { handler: fixture.handler }, async page => {
+    await shown(page.getByRole("heading", { name: "Workload", exact: true }));
+    await shown(page.getByText("Source availability is shown on each follow-up. This report counts only follow-ups you can access and does not include related-record details.", { exact: true }));
+    assert.equal(await page.getByText("Related record unavailable", { exact: true }).count(), 0);
+    await noHorizontalOverflow(page);
+  });
+}
+{
   const fixture = world();
   await check("Primary actions, secondary actions, task hierarchy, chronological history and conflict review remain clear", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
     await shown(page.getByRole("heading", { name: "What needs to be done?", exact: true }));
@@ -346,6 +381,7 @@ for (const [empty, title, description] of [
     await shown(page.getByRole("heading", { name: "Completion outcome", exact: true }));
     await shown(page.getByText("Due date changed", { exact: false }));
     await shown(page.getByText("Completed · Synthetic Counselor", { exact: true }));
+    await shown(page.getByText("Completing this follow-up ends this task. It does not close the related record. If more work is needed, create a new follow-up.", { exact: true }));
     assert.equal(await page.getByRole("button", { name: "More actions", exact: true }).count(), 0, "terminal records have no mutation menu");
     await noHorizontalOverflow(page); await screenshot(page, "detail-completed-desktop");
     assert.equal(fixture.writes.length, 3); assert.ok(fixture.writes.every(row => row.key));
@@ -476,6 +512,8 @@ for (const role of ["STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
     await shown(page.getByText(/Follow-Ups do not automatically contact the Student/));
     await shown(page.getByRole("heading", { name: "When a related record becomes unavailable", exact: true }));
     await shown(page.getByText("The follow-up keeps its own status and remains independently owned. Only the link to the related record becomes unavailable. Completing or cancelling the follow-up records your decision and does not change the related record.", { exact: true }));
+    await shown(page.getByRole("heading", { name: "Completion and further action", exact: true }));
+    await shown(page.getByText("Completing a follow-up ends that task. It does not close the related record. If more work is needed, create a new follow-up.", { exact: true }));
     await page.keyboard.press("Escape");
     assert.equal(await help.evaluate(el => el === document.activeElement), true);
   });

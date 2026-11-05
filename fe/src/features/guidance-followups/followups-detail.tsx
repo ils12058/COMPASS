@@ -78,7 +78,7 @@ export function FollowupsDetail({ id }: { id: string }) {
       <PanelSection title="Responsible staff member" titleId="followup-assignee">
         <p className="flex items-center gap-2"><PersonAvatar displayName={item.assigned_to_name} photoUrl={item.assigned_to_profile_photo_url} photoUpdatedAt={item.assigned_to_profile_photo_updated_at} size="compact" />{item.assigned_to_name}</p>
       </PanelSection>
-      {item.status === "COMPLETED" ? <PanelSection title="Completion outcome" titleId="followup-completion"><p className="whitespace-pre-wrap break-words">{item.outcome}</p><p className="mt-2 text-sm text-muted">Completed by {item.completed_by_name} · {item.completed_at ? formatInstitutionalDateTime(item.completed_at) : ""}</p></PanelSection> : item.status === "CANCELLED" ? <PanelSection title="Cancellation details" titleId="followup-cancellation">
+      {item.status === "COMPLETED" ? <PanelSection title="Completion outcome" titleId="followup-completion"><p className="whitespace-pre-wrap break-words">{item.outcome}</p><p className="mt-2 text-sm text-muted">Completed by {item.completed_by_name} · {item.completed_at ? formatInstitutionalDateTime(item.completed_at) : ""}</p><p className="mt-2 text-sm text-muted">Completing this follow-up ends this task. It does not close the related record. If more work is needed, create a new follow-up.</p></PanelSection> : item.status === "CANCELLED" ? <PanelSection title="Cancellation details" titleId="followup-cancellation">
         <p>Cancelled by {item.cancelled_by_name} · {item.cancelled_at ? formatInstitutionalDateTime(item.cancelled_at) : ""}</p>
         {cancellation?.remarks ? <p className="mt-2 whitespace-pre-wrap break-words">{cancellation.remarks}</p> : null}
       </PanelSection> : null}

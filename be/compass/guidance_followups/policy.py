@@ -251,16 +251,24 @@ def require_followup(actor, followup, *, manage=False):
     return followup
 
 
+def source_is_visible(actor, *, kind, source_id, student_id):
+    if not kind or not source_id:
+        return False
+    try:
+        require_source(actor, kind=kind, source_id=source_id, student_id=student_id)
+    except FollowUpNotFound:
+        return False
+    return True
+
+
 def visible_source(actor, followup):
     if not followup.source_kind or not followup.source_id:
         return None
-    try:
-        require_source(
-            actor,
-            kind=followup.source_kind,
-            source_id=followup.source_id,
-            student_id=followup.student_id,
-        )
-    except FollowUpNotFound:
+    if not source_is_visible(
+        actor,
+        kind=followup.source_kind,
+        source_id=followup.source_id,
+        student_id=followup.student_id,
+    ):
         return None
     return {"kind": followup.source_kind, "id": followup.source_id}

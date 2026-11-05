@@ -423,6 +423,158 @@ def test_referral_void_makes_source_filter_and_context_unavailable(world):
             assert secret not in body
 
 
+def test_list_projects_source_unavailable_for_voided_referral(world):
+    from compass.referrals.services import void_referral
+    from tests.test_appointment_management_scope import auth_client
+
+    counselor, _, gss, student, *_ = world
+    source = create_for(
+        counselor,
+        student,
+        key="fup-list-unavailable-source",
+        fingerprint="f" * 64,
+    )
+    item = create(
+        world,
+        actor=gss,
+        student=student,
+        source_kind="REFERRAL",
+        source_id=source.pk,
+        category="REFERRAL_ACTION",
+    )
+    client = auth_client(gss)
+    before = client.get("/api/v1/guidance-followups")
+    assert before.status_code == 200
+    row = next(row for row in before.json()["items"] if row["id"] == str(item.pk))
+    assert row["source_unavailable"] is False
+
+    void_referral(
+        actor=counselor,
+        referral_id=source.pk,
+        reason="Synthetic source void",
+        context=context(counselor),
+    )
+
+    after = client.get("/api/v1/guidance-followups")
+    assert after.status_code == 200
+    rows = [row for row in after.json()["items"] if row["id"] == str(item.pk)]
+    assert len(rows) == 1
+    assert rows[0]["status"] == "PENDING"
+    assert rows[0]["source_unavailable"] is True
+    assert {"source", "source_id", "source_kind", "source_title", "source_reference_code"}.isdisjoint(
+        rows[0]
+    )
+
+
+def test_list_source_unavailable_false_for_readable_and_source_free(world):
+    from tests.test_appointment_management_scope import auth_client
+
+    counselor, _, gss, student, *_ = world
+    source = create_for(
+        counselor,
+        student,
+        key="fup-list-readable-source",
+        fingerprint="7" * 64,
+    )
+    linked = create(
+        world,
+        actor=gss,
+        student=student,
+        source_kind="REFERRAL",
+        source_id=source.pk,
+        category="REFERRAL_ACTION",
+    )
+    standalone = create(world, actor=gss, student=student)
+
+    response = auth_client(gss).get("/api/v1/guidance-followups")
+    assert response.status_code == 200
+    rows = {row["id"]: row for row in response.json()["items"]}
+    assert rows[str(linked.pk)]["source_unavailable"] is False
+    assert rows[str(standalone.pk)]["source_unavailable"] is False
+
+
+def test_list_and_detail_agree_on_source_unavailable(world):
+    from compass.referrals.services import void_referral
+    from tests.test_appointment_management_scope import auth_client
+
+    counselor, _, gss, student, *_ = world
+    source = create_for(
+        counselor,
+        student,
+        key="fup-list-detail-agreement-source",
+        fingerprint="8" * 64,
+    )
+    item = create(
+        world,
+        actor=gss,
+        student=student,
+        source_kind="REFERRAL",
+        source_id=source.pk,
+        category="REFERRAL_ACTION",
+    )
+    void_referral(
+        actor=counselor,
+        referral_id=source.pk,
+        reason="Synthetic source void",
+        context=context(counselor),
+    )
+
+    client = auth_client(gss)
+    list_row = next(
+        row
+        for row in client.get("/api/v1/guidance-followups").json()["items"]
+        if row["id"] == str(item.pk)
+    )
+    detail = client.get(f"/api/v1/guidance-followups/{item.pk}").json()
+    assert list_row["source_unavailable"] is detail["source_unavailable"] is True
+    assert detail["source"] is None
+
+
+def test_source_unavailable_projection_does_not_leak_source_identity(world):
+    from compass.referrals.services import void_referral
+    from tests.test_appointment_management_scope import auth_client
+
+    counselor, _, gss, student, *_ = world
+    source = create_for(
+        counselor,
+        student,
+        key="fup-list-identity-source",
+        fingerprint="9" * 64,
+        reason="Synthetic protected referral reason",
+        referrer_name="Synthetic Protected Referrer",
+    )
+    item = create(
+        world,
+        actor=gss,
+        student=student,
+        source_kind="REFERRAL",
+        source_id=source.pk,
+        category="REFERRAL_ACTION",
+    )
+    void_referral(
+        actor=counselor,
+        referral_id=source.pk,
+        reason="Synthetic source void",
+        context=context(counselor),
+    )
+
+    response = auth_client(gss).get("/api/v1/guidance-followups")
+    assert response.status_code == 200
+    row = next(row for row in response.json()["items"] if row["id"] == str(item.pk))
+    assert row["source_unavailable"] is True
+    assert {"source", "source_id", "source_kind", "source_title", "source_reference_code"}.isdisjoint(
+        row
+    )
+    body = response.content.decode()
+    for secret in (
+        str(source.pk),
+        source.reference_code,
+        "Synthetic protected referral reason",
+        "Synthetic Protected Referrer",
+    ):
+        assert secret not in body
+
+
 def test_confidential_source_loss_orphans_task_without_recovery(world):
     from compass.accounts.models import Designation, UserDesignation
     from compass.guidance_followups.integration import pending_followups

@@ -13377,6 +13377,7 @@
           "due_at",
           "status",
           "overdue",
+          "source_unavailable",
           "version",
           "created_at",
           "updated_at",
@@ -13387,7 +13388,6 @@
           "description",
           "outcome",
           "source",
-          "source_unavailable",
           "events",
           "events_has_next"
         ],
@@ -13821,6 +13821,10 @@
             "title": "Overdue",
             "type": "boolean"
           },
+          "source_unavailable": {
+            "title": "Source Unavailable",
+            "type": "boolean"
+          },
           "status": {
             "$ref": "#/components/schemas/StatusValue"
           },
@@ -13884,6 +13888,7 @@
           "due_at",
           "status",
           "overdue",
+          "source_unavailable",
           "version",
           "created_at",
           "updated_at"
