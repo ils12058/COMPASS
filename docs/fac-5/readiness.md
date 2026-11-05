@@ -1,5 +1,15 @@
 # FAC-5 readiness assessment and remaining decisions
 
+> **Superseding implementation note (FUP-3A, 2026-11-05).** FUP-3A now installs code-owned
+> provisional providers for Student lookup, digital submission, GCO acknowledgment, administrative
+> closure and Faculty tracking. The statement below that “actual providers remain None” remains
+> true for institutionally approved adapters, but is superseded for those five default providers
+> only: they return `PROVISIONAL` policies backed by fixed code-owned Audit evidence
+> (`authority=CODE_OWNED_PENDING_INSTITUTIONAL_APPROVAL`). This is not institutional approval.
+> FAC-D1–D8 remain unresolved, FAC-D8 notices remain inactive, and no UAT, activation or
+> deployment is represented. The original verdict is retained unchanged. See
+> [`../fup-2b-3a/`](../fup-2b-3a/README.md).
+
 **Technically validated where demonstrated; institutional activation and deployment
 remain blocked pending the specified approvals.** No institutional approval, human UAT,
 controlled staging execution or deployment is represented by this package.

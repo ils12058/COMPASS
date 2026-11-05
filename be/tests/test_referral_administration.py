@@ -179,7 +179,8 @@ def test_gss_actual_supervised_ccms_scope_not_faculty_home_college(world):
     assert result["faculty_home_college"] == world.cas.name
 
 
-def test_independent_production_providers_unavailable_even_with_audit_rows(world, monkeypatch):
+def test_missing_acknowledgment_or_closure_provider_denies_transition(world, monkeypatch):
+    """Monkeypatches providers to None; it does not claim the production provider is None."""
     pk = submit(world)[0]["id"]
     monkeypatch.setattr(policy, "get_approved_acknowledgment_policy", lambda: None)
     context = administration.get_administration(

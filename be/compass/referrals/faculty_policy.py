@@ -1,8 +1,10 @@
-"""Faculty domain approval, independent of capabilities and paper-form identity.
+"""Faculty domain approval or the code-owned provisional path.
 
-No approved provider is deployed. A future reviewed adapter must resolve actual
-institutional evidence and its matching Audit decision; a flag, database GRANT,
-or an arbitrary Audit row cannot install that adapter. Tests use isolated policies.
+No institutionally approved provider is deployed. FUP-3A installs a code-owned
+provisional policy so the canonical journey is available by default; this is not
+institutional approval. A future reviewed adapter must resolve actual institutional
+evidence and its matching APPROVED Audit decision; a flag, database GRANT, or an
+arbitrary Audit row cannot install that adapter. Tests use isolated policies.
 """
 
 import hashlib
@@ -49,7 +51,7 @@ class FacultyPolicyEvidence:
                 values[key] = value.astimezone(UTC).isoformat()
         return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
 
-    def validate_evidence(self, now, kind):
+    def _validate_structure(self, now):
         identifiers = (self.version, self.evidence_reference)
         dates = (self.valid_from, self.valid_until)
         scopes = (self.faculty_ids, self.student_college_ids)
@@ -71,6 +73,8 @@ class FacultyPolicyEvidence:
             or not isinstance(self.activation_event_id, UUID)
         ):
             raise FacultyReferralError("policy_unconfirmed")
+
+    def _validate_activation(self, now, kind):
         event = AuditEvent.objects.filter(
             pk=self.activation_event_id,
             action=REFERRAL_FACULTY_POLICY_RECORDED,
@@ -88,6 +92,10 @@ class FacultyPolicyEvidence:
             event.metadata.get(key) != value for key, value in expected.items()
         ):
             raise FacultyReferralError("policy_unconfirmed")
+
+    def validate_evidence(self, now, kind):
+        self._validate_structure(now)
+        self._validate_activation(now, kind)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -145,11 +153,17 @@ class ApprovedFacultySubmissionPolicy(FacultyPolicyEvidence):
 
 
 def get_approved_lookup_policy() -> ApprovedFacultyStudentLookupPolicy | None:
-    return None
+    """Return the code-owned provisional policy until an approved adapter exists."""
+    from compass.referrals.provisional_activation import provisional_lookup_policy
+
+    return provisional_lookup_policy()
 
 
 def get_approved_submission_policy() -> ApprovedFacultySubmissionPolicy | None:
-    return None
+    """Return the code-owned provisional policy until an approved adapter exists."""
+    from compass.referrals.provisional_activation import provisional_submission_policy
+
+    return provisional_submission_policy()
 
 
 def require_lookup_policy(now):

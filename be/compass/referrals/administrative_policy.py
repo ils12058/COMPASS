@@ -1,4 +1,10 @@
-"""Independent institutional authority; no production approval adapters are installed."""
+"""Independent institutional authority or the code-owned provisional path.
+
+No institutionally approved adapter is installed. FUP-3A installs code-owned
+provisional acknowledgment, closure and Faculty-tracking policies so the canonical
+journey is available by default; this is not institutional approval. Faculty notices
+remain inactive.
+"""
 
 import hashlib
 import json
@@ -53,7 +59,7 @@ class ApprovedAdministrativePolicy:
                 values[key] = value.astimezone(UTC).isoformat()
         return hashlib.sha256(json.dumps(values, sort_keys=True).encode()).hexdigest()
 
-    def validate(self, now, kind):
+    def _validate_structure(self, now, kind):
         references = (self.version, self.evidence_reference, self.contract_evidence_reference)
         scopes = (self.actor_ids, self.student_college_ids)
         permitted_roles = (
@@ -87,6 +93,8 @@ class ApprovedAdministrativePolicy:
             or not isinstance(self.activation_event_id, UUID)
         ):
             raise AdministrativeReferralError("policy_unconfirmed")
+
+    def _validate_activation(self, now, kind):
         event = AuditEvent.objects.filter(
             pk=self.activation_event_id,
             action=POLICY_RECORDED,
@@ -105,20 +113,36 @@ class ApprovedAdministrativePolicy:
         ):
             raise AdministrativeReferralError("policy_unconfirmed")
 
+    def validate(self, now, kind):
+        self._validate_structure(now, kind)
+        self._validate_activation(now, kind)
+
 
 def get_approved_acknowledgment_policy() -> ApprovedAdministrativePolicy | None:
-    return None
+    """Return the code-owned provisional policy until an approved adapter exists."""
+    from compass.referrals.provisional_activation import provisional_acknowledgment_policy
+
+    return provisional_acknowledgment_policy()
 
 
 def get_approved_closure_policy() -> ApprovedAdministrativePolicy | None:
-    return None
+    """Return the code-owned provisional policy until an approved adapter exists."""
+    from compass.referrals.provisional_activation import provisional_closure_policy
+
+    return provisional_closure_policy()
 
 
 def get_approved_tracking_disclosure_policy() -> ApprovedAdministrativePolicy | None:
-    return None
+    """Return the code-owned provisional policy until an approved adapter exists."""
+    from compass.referrals.provisional_activation import (
+        provisional_tracking_disclosure_policy,
+    )
+
+    return provisional_tracking_disclosure_policy()
 
 
 def get_approved_faculty_notice_policy() -> ApprovedAdministrativePolicy | None:
+    """Inactive: FAC-D8 notices require separate institutional approval."""
     return None
 
 

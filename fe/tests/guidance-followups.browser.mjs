@@ -7,16 +7,17 @@ const { check, shown, hidden, noHorizontalOverflow, screenshot, finish } = await
 const id = "11111111-1111-4111-8111-111111111111";
 const studentId = "22222222-2222-4222-8222-222222222222";
 const sourceId = "33333333-3333-4333-8333-333333333333";
-function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_ENCOUNTER", sourceUnavailable = false, listAvailability = null, recoverable = false, empty = "none" } = {}) {
-  const staff = { ...user(role), capabilities: [...user(role).capabilities, "guidance_followups.view", "guidance_followups.manage"] };
+function world(role = "COUNSELOR", { source = false, sourceKind = "COUNSELING_ENCOUNTER", sourceUnavailable = false, listAvailability = null, recoverable = false, empty = "none", completed = false, cancelled = false, manage = true } = {}) {
+  const staff = { ...user(role), capabilities: [...user(role).capabilities, "guidance_followups.view", ...(manage ? ["guidance_followups.manage"] : [])] };
   const confidential = source && sourceKind !== "REFERRAL";
   const category = source ? sourceKind === "REFERRAL" ? "REFERRAL_ACTION" : "COUNSELING" : "ADMINISTRATIVE";
+  const status = completed ? "COMPLETED" : cancelled ? "CANCELLED" : "PENDING";
   let item = { id, student_id: studentId, student_name: "Synthetic Student", assigned_to_id: staff.id,
     assigned_to_name: "Synthetic Counselor", category,
     visibility: confidential ? "COUNSELOR_CONFIDENTIAL" : "OPERATIONAL", due_at: "2026-10-20T02:00:00Z",
-    status: "PENDING", overdue: false, version: 1, created_at: "2026-10-17T00:00:00Z", updated_at: "2026-10-17T00:00:00Z",
-    description: "Protected synthetic description", outcome: null, source: source && !sourceUnavailable ? { kind: sourceKind, id: sourceId } : null,
-    source_unavailable: sourceUnavailable, completed_at: null, completed_by_name: null, cancelled_at: null, cancelled_by_name: null,
+    status, overdue: false, version: 1, created_at: "2026-10-17T00:00:00Z", updated_at: "2026-10-17T00:00:00Z",
+    description: "Protected synthetic description", outcome: completed ? "Synthetic completion outcome" : null, source: source && !sourceUnavailable ? { kind: sourceKind, id: sourceId } : null,
+    source_unavailable: sourceUnavailable, completed_at: completed ? "2026-10-18T02:00:00Z" : null, completed_by_name: completed ? "Synthetic Counselor" : null, cancelled_at: cancelled ? "2026-10-18T02:00:00Z" : null, cancelled_by_name: cancelled ? "Synthetic Counselor" : null,
     events: [
       { id: "created-event", kind: "CREATED", revision: 1, actor_id: staff.id, actor_name: "Synthetic Counselor", created_at: "2026-10-14T00:00:00Z", old_assignee_id: null, new_assignee_id: staff.id, old_due_at: null, new_due_at: "2026-10-19T02:00:00Z", remarks: null },
       { id: "due-change-event", kind: "UPDATED", revision: 2, actor_id: staff.id, actor_name: "Synthetic Counselor", created_at: "2026-10-15T00:00:00Z", old_assignee_id: null, new_assignee_id: null, old_due_at: "2026-10-19T02:00:00Z", new_due_at: "2026-10-20T02:00:00Z", remarks: null },
@@ -388,6 +389,48 @@ for (const [empty, title, description] of [
   });
 }
 {
+  const fixture = world("COUNSELOR", { source: true, sourceKind: "REFERRAL", completed: true });
+  await check("A completed follow-up offers one explicit next-task link to its readable source", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
+    await shown(page.getByRole("heading", { name: "What happens next", exact: true }));
+    await shown(page.getByText("Create a new task when more work is needed. It gets its own responsible staff member and due date. It does not reopen this follow-up or change the related record.", { exact: true }));
+    const action = page.getByRole("link", { name: "Create next follow-up", exact: true });
+    await shown(action);
+    assert.equal(await action.count(), 1);
+    const href = await action.getAttribute("href");
+    assert.equal(href, `/portal/follow-ups/new?source_kind=REFERRAL&source_id=${sourceId}`);
+    const query = new URLSearchParams(href.split("?")[1]);
+    assert.deepEqual([...query.keys()], ["source_kind", "source_id"]);
+    for (const forbidden of ["category", "visibility", "assigned_to_id", "due_at", "description", "outcome", "status", "version", "predecessor", "successor"]) {
+      assert.equal(query.has(forbidden), false, `${forbidden} is never copied into the create link`);
+    }
+    await noHorizontalOverflow(page); await screenshot(page, "detail-completed-next-action-desktop");
+  });
+}
+{
+  const fixture = world("COUNSELOR", { source: true, sourceUnavailable: true, completed: true });
+  await check("An unavailable related record starts the next task as a standalone follow-up", `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
+    await shown(page.getByRole("heading", { name: "What happens next", exact: true }));
+    const href = await page.getByRole("link", { name: "Create next follow-up", exact: true }).getAttribute("href");
+    assert.equal(href, `/portal/follow-ups/new?student_id=${studentId}&student_name=Synthetic%20Student`);
+    const query = new URLSearchParams(href.split("?")[1]);
+    assert.deepEqual([...query.keys()], ["student_id", "student_name"]);
+    for (const forbidden of ["source_kind", "source_id", "category", "visibility", "assigned_to_id", "due_at"]) {
+      assert.equal(query.has(forbidden), false, `${forbidden} is never copied into the create link`);
+    }
+    await noHorizontalOverflow(page);
+  });
+}
+for (const [fixture, reason] of [
+  [world("COUNSELOR", { completed: true, manage: false }), "a view-only account"],
+  [world("COUNSELOR"), "a Pending follow-up"],
+  [world("COUNSELOR", { cancelled: true }), "a cancelled follow-up"],
+]) {
+  await check(`No next-task action is offered for ${reason}`, `/portal/follow-ups/${id}`, { handler: fixture.handler }, async page => {
+    assert.equal(await page.getByRole("heading", { name: "What happens next", exact: true }).count(), 0);
+    assert.equal(await page.getByRole("link", { name: "Create next follow-up", exact: true }).count(), 0);
+  });
+}
+{
   const fixture = world("COUNSELOR", { source: true });
   await check("Counseling context uses only its canonical Encounter and locks classification", `/portal/follow-ups/new?source_kind=COUNSELING_ENCOUNTER&source_id=${sourceId}`, { handler: fixture.handler }, async (page, { requests }) => {
     await shown(page.getByText(/Counselor-confidential/));
@@ -514,6 +557,8 @@ for (const role of ["STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
     await shown(page.getByText("The follow-up keeps its own status and remains independently owned. Only the link to the related record becomes unavailable. Completing or cancelling the follow-up records your decision and does not change the related record.", { exact: true }));
     await shown(page.getByRole("heading", { name: "Completion and further action", exact: true }));
     await shown(page.getByText("Completing a follow-up ends that task. It does not close the related record. If more work is needed, create a new follow-up.", { exact: true }));
+    await shown(page.getByRole("heading", { name: "Creating the next follow-up", exact: true }));
+    await shown(page.getByText("The next follow-up is a separate task with its own responsible staff member and due date. When the related record is still available, the new task is linked to it and takes its classification from that record. When the related record is unavailable, the new task is created without a link and does not inherit the earlier task's confidential classification.", { exact: true }));
     await page.keyboard.press("Escape");
     assert.equal(await help.evaluate(el => el === document.activeElement), true);
   });

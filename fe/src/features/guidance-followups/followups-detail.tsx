@@ -10,7 +10,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { FollowupsHelp } from "./followups-help";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
 import { Panel, PanelHeader, PanelSection, PanelFooter } from "@/components/ui/panel";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { PageAction, PageActionGroup } from "@/components/ui/page-action";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -28,7 +28,7 @@ import { useGuidanceFollowupsHistory, useGuidanceFollowupsGet, useGuidanceFollow
 import { Category, type FollowUpDetail } from "@/lib/api/generated/model";
 import { CompassApiError } from "@/lib/api/errors";
 import { formatInstitutionalDateTime, isoToInstitutionalDateTimeInput, institutionalDateTimeInputToISO } from "@/lib/institutional-time";
-import { followupAccess, FollowupRestricted, FollowupFailure, followupError, categoryLabel, statusLabel, sourceDestination } from "./followups-shared";
+import { followupAccess, FollowupRestricted, FollowupFailure, followupError, categoryLabel, statusLabel, sourceDestination, nextFollowupHref } from "./followups-shared";
 
 type Action = "edit" | "reschedule" | "reassign" | "activity" | "complete" | "cancel";
 const actionLabel: Record<Action, string> = { edit: "Edit task details", reschedule: "Change due date", reassign: "Reassign", activity: "Record activity", complete: "Mark complete", cancel: "Cancel follow-up" };
@@ -83,6 +83,7 @@ export function FollowupsDetail({ id }: { id: string }) {
         {cancellation?.remarks ? <p className="mt-2 whitespace-pre-wrap break-words">{cancellation.remarks}</p> : null}
       </PanelSection> : null}
     </Panel>
+    {access.manage && item.status === "COMPLETED" ? <Panel className="mt-5"><PanelSection title="What happens next" titleId="followup-next-action"><p>Create a new task when more work is needed. It gets its own responsible staff member and due date. It does not reopen this follow-up or change the related record.</p><p className="mt-3"><Link href={nextFollowupHref(item)} className={buttonVariants({ variant: "secondary" })}>Create next follow-up</Link></p></PanelSection></Panel> : null}
     {access.manage && item.status === "PENDING" ? <Panel className="mt-5"><PanelHeader title="Next actions" /><div className="space-y-4 p-5">
       <PageActionGroup aria-label="Primary follow-up actions">
         <PageAction icon={ClipboardPenLine} label="Record activity" variant="secondary" disabled={query.isFetching || Boolean(action)} onClick={event => beginAction("activity", event.currentTarget)} />

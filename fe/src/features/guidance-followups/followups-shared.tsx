@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import type { Category, SourceReference } from "@/lib/api/generated/model";
+import type { Category, FollowUpDetail, SourceReference } from "@/lib/api/generated/model";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { Button } from "@/components/ui/button";
 import { PanelMessage } from "@/components/ui/panel";
@@ -12,6 +12,12 @@ export const statusLabel = (status: string) => ({ PENDING: "Pending", COMPLETED:
 export function sourceDestination(source: SourceReference) {
   const root = { COUNSELING_ENCOUNTER: "/portal/counseling/encounters/", REFERRAL: "/portal/referrals/", ROUTINE_INTERVIEW: "/portal/routine-interviews/" }[source.kind];
   return root + encodeURIComponent(source.id);
+}
+export function nextFollowupHref(item: Pick<FollowUpDetail, "source" | "student_id" | "student_name">) {
+  const reference = item.source
+    ? `source_kind=${encodeURIComponent(item.source.kind)}&source_id=${encodeURIComponent(item.source.id)}`
+    : `student_id=${encodeURIComponent(item.student_id)}&student_name=${encodeURIComponent(item.student_name)}`;
+  return `/portal/follow-ups/new?${reference}`;
 }
 export function followupError(error: unknown) {
   if (error instanceof CompassApiError) {

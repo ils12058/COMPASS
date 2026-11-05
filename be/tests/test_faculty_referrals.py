@@ -140,7 +140,10 @@ def test_cross_college_submission_encrypted_and_server_provenance(world):
     )
 
 
-def test_actual_provider_defaults_deny_digital_form_and_lookup(world, monkeypatch):
+def test_missing_lookup_or_submission_provider_denies_confirmation_and_submission(
+    world, monkeypatch
+):
+    """A monkeypatched-to-None provider must fail closed; this is not the production default."""
     ticket = confirm(world)["confirmation"]
     monkeypatch.setattr(faculty_policy, "get_approved_lookup_policy", lambda: None)
     with pytest.raises(FacultyReferralError, match="unavailable") as exc:
