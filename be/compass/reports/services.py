@@ -39,6 +39,7 @@ from compass.organization.access_scope import (
     resolve_operational_responsibility_scope,
 )
 from compass.organization.models import AcademicYear, Campus, College, Program
+from compass.student_academics.models import StudentAcademicProfile
 from compass.student_support.models import ParentLifeStatus, StudentSupportProfile
 
 from .policy import build_disclosure_warnings
@@ -71,6 +72,16 @@ HISTORICAL_COVERAGE_NOTE = (
     "reporting scope, but authoritative Without Individual Inventory coverage cannot be "
     "reconstructed because COMPASS has no historical enrollment or eligibility roster for that "
     "Academic Year. Today's Current Students are never used as a historical denominator."
+)
+PLACEMENT_PRECEDENCE_NOTE = (
+    "Student College affiliation is taken from the Student's current academic placement. The "
+    "Program recorded on an Individual Inventory describes what the Student reported on that "
+    "form and is never used to infer current College affiliation. Differences are reported here "
+    "and are not reconciled automatically."
+)
+HISTORICAL_ALIGNMENT_NOTE = (
+    "Historical coverage counts Inventory records; today's placement is not used to classify a "
+    "historical Academic Year."
 )
 
 PARENT_INCOME_BAND_LABELS = {
@@ -1047,6 +1058,26 @@ def _coverage(
                 "student_id", flat=True
             )
         )
+        placements = dict(
+            StudentAcademicProfile.objects.filter(student_id__in=eligible_ids).values_list(
+                "student_id", "current_college_id"
+            )
+        )
+        current_with_placement_count = sum(
+            1 for college_id in placements.values() if college_id is not None
+        )
+        submitted_rows = inventory_queryset.filter(submitted_at__isnull=False)
+        submitted_inventory_count = submitted_rows.count()
+        submitted_with_program_count = submitted_rows.filter(program__isnull=False).count()
+        submitted_without_program_count = submitted_inventory_count - submitted_with_program_count
+        program_rows = submitted_rows.filter(program__isnull=False).values_list(
+            "student_id", "program__college_id"
+        )
+        placement_program_match_count = sum(
+            1
+            for student_id, program_college_id in program_rows
+            if placements.get(student_id) == program_college_id
+        )
         return {
             "mode": "CURRENT",
             "eligible_student_count": eligible_count,
@@ -1060,6 +1091,18 @@ def _coverage(
                 profile_ids=profile_student_ids,
                 coverage_submitted_ids=submitted_student_ids,
             ),
+            "academic_alignment": {
+                "current_student_count": eligible_count,
+                "current_with_placement_count": current_with_placement_count,
+                "current_without_placement_count": eligible_count - current_with_placement_count,
+                "submitted_inventory_count": submitted_inventory_count,
+                "submitted_with_program_count": submitted_with_program_count,
+                "submitted_without_program_count": submitted_without_program_count,
+                "placement_program_match_count": placement_program_match_count,
+                "placement_program_mismatch_count": submitted_with_program_count
+                - placement_program_match_count,
+                "precedence_note": PLACEMENT_PRECEDENCE_NOTE,
+            },
         }
 
     inventory_queryset = StudentInventory.objects.filter(academic_year_id=filters.academic_year.pk)
@@ -1076,6 +1119,10 @@ def _coverage(
         historical_ignored.append("campus_id")
     if filters.college is not None:
         historical_ignored.append("college_id")
+    submitted_inventory_count = len(submitted_inventory_ids)
+    submitted_with_program_count = inventory_queryset.filter(
+        pk__in=submitted_inventory_ids, program__isnull=False
+    ).count()
     return {
         "mode": "HISTORICAL_LIMITED",
         "eligible_student_count": None,
@@ -1090,6 +1137,18 @@ def _coverage(
             profile_ids=set(population_ids),
             coverage_submitted_ids=submitted_inventory_ids,
         ),
+        "academic_alignment": {
+            "current_student_count": None,
+            "current_with_placement_count": None,
+            "current_without_placement_count": None,
+            "submitted_inventory_count": submitted_inventory_count,
+            "submitted_with_program_count": submitted_with_program_count,
+            "submitted_without_program_count": submitted_inventory_count
+            - submitted_with_program_count,
+            "placement_program_match_count": None,
+            "placement_program_mismatch_count": None,
+            "precedence_note": PLACEMENT_PRECEDENCE_NOTE,
+        },
     }
 
 

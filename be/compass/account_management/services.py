@@ -355,9 +355,10 @@ def _assert_designation_manager(actor: User) -> None:
 
 
 def _assert_academic_placement_authorized(actor: User, *, requested: bool) -> None:
-    if requested and not actor.has_capability("organization.manage"):
+    if requested and not actor.has_capability("student_academics.manage"):
         raise AcademicPlacementNotAuthorized(
-            "The organization.manage capability is required to assign an initial Student placement."
+            "The student_academics.manage capability is required to assign an initial "
+            "Student placement."
         )
 
 

@@ -19,7 +19,9 @@ from compass.common.institutional_time import to_institution_time
 
 from .filenames import safe_report_filename_part
 from .services import (
+    HISTORICAL_ALIGNMENT_NOTE,
     PARENT_INCOME_LEGEND_NOTE,
+    PLACEMENT_PRECEDENCE_NOTE,
     ReportAccessScope,
     ReportError,
     build_student_profiling_report,
@@ -346,6 +348,110 @@ def _reconciliation_rows(coverage: dict[str, object]) -> list[tuple[str, int]]:
     ]
 
 
+def _alignment_rows(coverage: dict[str, object]) -> list[tuple[str, int | str]]:
+    mode = str(coverage.get("mode") or "")
+    raw = _require_dict(coverage.get("academic_alignment"), "academic alignment")
+    values: dict[str, int] = {}
+
+    def count(key: str) -> int:
+        value = raw.get(key)
+        if type(value) is not int or value < 0:
+            raise StudentProfilingWorkbookUnavailable(
+                "The Student Profiling academic alignment is invalid."
+            )
+        return value
+
+    for key in (
+        "submitted_inventory_count",
+        "submitted_with_program_count",
+        "submitted_without_program_count",
+    ):
+        values[key] = count(key)
+    if (
+        values["submitted_with_program_count"] + values["submitted_without_program_count"]
+        != values["submitted_inventory_count"]
+    ):
+        raise StudentProfilingWorkbookUnavailable(
+            "The Student Profiling academic alignment is inconsistent."
+        )
+    inventory_rows: list[tuple[str, int | str]] = [
+        ("Submitted Inventories", values["submitted_inventory_count"]),
+        (
+            "Submitted Inventories with a recorded Program",
+            values["submitted_with_program_count"],
+        ),
+        (
+            "Submitted Inventories without a recorded Program",
+            values["submitted_without_program_count"],
+        ),
+    ]
+    match_label = (
+        "Submitted Inventories whose Program College matches the Student's current placement"
+    )
+    mismatch_label = (
+        "Submitted Inventories whose Program College differs from the Student's current placement"
+    )
+    if mode == "CURRENT":
+        for key in (
+            "current_student_count",
+            "current_with_placement_count",
+            "current_without_placement_count",
+            "placement_program_match_count",
+            "placement_program_mismatch_count",
+        ):
+            values[key] = count(key)
+        if (
+            values["current_with_placement_count"] + values["current_without_placement_count"]
+            != values["current_student_count"]
+        ):
+            raise StudentProfilingWorkbookUnavailable(
+                "The Student Profiling academic alignment is inconsistent."
+            )
+        if (
+            values["placement_program_match_count"] + values["placement_program_mismatch_count"]
+            != values["submitted_with_program_count"]
+        ):
+            raise StudentProfilingWorkbookUnavailable(
+                "The Student Profiling academic alignment is inconsistent."
+            )
+        return [
+            ("Current Students in coverage scope", values["current_student_count"]),
+            (
+                "Current Students with an academic placement",
+                values["current_with_placement_count"],
+            ),
+            (
+                "Current Students without an academic placement",
+                values["current_without_placement_count"],
+            ),
+            *inventory_rows,
+            (match_label, values["placement_program_match_count"]),
+            (mismatch_label, values["placement_program_mismatch_count"]),
+        ]
+    if mode == "HISTORICAL_LIMITED":
+        for key in (
+            "current_student_count",
+            "current_with_placement_count",
+            "current_without_placement_count",
+            "placement_program_match_count",
+            "placement_program_mismatch_count",
+        ):
+            if raw.get(key) is not None:
+                raise StudentProfilingWorkbookUnavailable(
+                    "The Student Profiling academic alignment is invalid."
+                )
+        unavailable = "Not available from current COMPASS data"
+        return [
+            ("Current Students in coverage scope", unavailable),
+            ("Current Students with an academic placement", unavailable),
+            ("Current Students without an academic placement", unavailable),
+            *inventory_rows,
+            (match_label, unavailable),
+            (mismatch_label, unavailable),
+        ]
+    raise StudentProfilingWorkbookUnavailable("The Student Profiling coverage mode is unsupported.")
+
+
 def _coverage_ignored_note(coverage: dict[str, object]) -> str | None:
     raw_filters = coverage.get("ignored_filters", [])
     if not isinstance(raw_filters, list):
@@ -584,6 +690,23 @@ def _build_summary_sheet(
         "coverage Inventories outside the profile record a Program, College, Campus, or Year "
         "Level outside the selected profile filters, or no Program.",
     )
+
+    row += 2
+    _summary_heading(worksheet, row, "Academic Placement and Inventory Alignment")
+    row += 1
+    for label, value in _alignment_rows(coverage):
+        _write_text(worksheet, row, 1, label, bold=True, wrap=True)
+        if isinstance(value, int):
+            _write_table_number(worksheet, row, 2, value, number_format="#,##0")
+        else:
+            _write_text(worksheet, row, 2, value, wrap=True)
+            _set_summary_row_height(worksheet, row, value)
+        worksheet.merge_cells(start_row=row, start_column=2, end_row=row, end_column=SUMMARY_WIDTH)
+        row += 1
+    _write_note(worksheet, row, PLACEMENT_PRECEDENCE_NOTE)
+    if coverage.get("mode") == "HISTORICAL_LIMITED":
+        row += 1
+        _write_note(worksheet, row, HISTORICAL_ALIGNMENT_NOTE)
 
     row += 2
     _summary_heading(worksheet, row, "Program Legend / Program Columns")

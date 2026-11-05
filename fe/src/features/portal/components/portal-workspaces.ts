@@ -38,6 +38,7 @@ import { getGuidanceMessagesAccess } from "@/features/guidance-messages/guidance
 import { getExitInterviewAccess } from "@/features/exit-interviews/exit-interviews-access";
 import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
 import { canAttemptReports } from "@/features/reports/reports-access";
+import { canViewOwnAcademicRecord } from "@/features/student-academics/student-academics-access";
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { hasPrivacyGovernanceWorkspace } from "@/features/privacy-governance/privacy-governance-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
@@ -111,6 +112,7 @@ export function portalWorkspaceGroups(user: UserSummary, facultyAvailability?: F
       ? "Exit Interview access"
       : "Exit Interviews";
   const hasGraduateTracer = getGraduateTracerAccess(user).hasWorkspace;
+  const hasMyAcademicRecord = canViewOwnAcademicRecord(user);
   const hasPlatformOperations = user.capabilities.includes(
     "platform_operations.view",
   );
@@ -152,6 +154,7 @@ export function portalWorkspaceGroups(user: UserSummary, facultyAvailability?: F
         { href: "/portal/referrals", label: "Referrals", icon: Forward, visible: hasReferrals },
         { href: "/portal/call-slips", label: "Call Slips", icon: ScrollText, visible: hasCallSlips },
         { href: "/portal/inventory", label: "Individual Inventory", icon: ClipboardList, visible: hasInventory },
+        { href: "/portal/academic-record", label: "Academic Record", icon: GraduationCap, visible: hasMyAcademicRecord },
       ],
     },
     {

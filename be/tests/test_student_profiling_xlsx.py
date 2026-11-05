@@ -27,6 +27,8 @@ from compass.reports.pdf import (
 )
 from compass.reports.services import (
     GLOBAL_REPORT_ACCESS_SCOPE,
+    HISTORICAL_ALIGNMENT_NOTE,
+    PLACEMENT_PRECEDENCE_NOTE,
     InvalidReportFilter,
     ReportAccessScope,
     ReportConfigurationConflict,
@@ -381,6 +383,12 @@ def test_summary_preserves_timezone_context_current_coverage_and_methodology(mon
         "Without Individual Inventory",
         "Reconciliation of Coverage and Profile Population",
         "Submitted in coverage but outside the profile population",
+        "Academic Placement and Inventory Alignment",
+        "Current Students in coverage scope",
+        "Current Students with an academic placement",
+        "Current Students without an academic placement",
+        "Submitted Inventories whose Program College matches the Student's current placement",
+        PLACEMENT_PRECEDENCE_NOTE,
         "CANONICAL CURRENT COVERAGE NOTE.",
         "Coverage filters not applicable to missing-Inventory classification: Program, Year Level",
         "Program Legend / Program Columns",
@@ -433,6 +441,61 @@ def test_historical_summary_does_not_fabricate_eligible_or_missing_counts(monkey
     assert "Not available from current COMPASS data" in values
     assert "CANONICAL HISTORICAL METHODOLOGY NOTE." in values
     assert "CANONICAL CURRENT COVERAGE NOTE." not in values
+    assert "Academic Placement and Inventory Alignment" in values
+    assert PLACEMENT_PRECEDENCE_NOTE in values
+    assert HISTORICAL_ALIGNMENT_NOTE in values
+
+    summary = workbook["Summary"]
+    pairs = {
+        row[0].value: row[1].value for row in summary.iter_rows() if isinstance(row[0].value, str)
+    }
+    assert pairs["Current Students in coverage scope"] == (
+        "Not available from current COMPASS data"
+    )
+    assert pairs[
+        "Submitted Inventories whose Program College matches the Student's current placement"
+    ] == ("Not available from current COMPASS data")
+    assert pairs["Submitted Inventories"] == 2
+
+
+def test_summary_alignment_reports_placement_and_program_differences(monkeypatch):
+    report = synthetic_report(program_count=2, submitted_count=6)
+    report["inventory_coverage"]["academic_alignment"].update(
+        {
+            "current_student_count": 8,
+            "current_with_placement_count": 6,
+            "current_without_placement_count": 2,
+            "submitted_inventory_count": 6,
+            "submitted_with_program_count": 6,
+            "submitted_without_program_count": 0,
+            "placement_program_match_count": 4,
+            "placement_program_mismatch_count": 2,
+        }
+    )
+    workbook = workbook_from_report(monkeypatch, report)
+    summary = workbook["Summary"]
+    pairs = {
+        row[0].value: row[1].value for row in summary.iter_rows() if isinstance(row[0].value, str)
+    }
+
+    assert "Academic Placement and Inventory Alignment" in workbook_values(workbook)
+    assert pairs["Current Students in coverage scope"] == 8
+    assert pairs["Current Students with an academic placement"] == 6
+    assert pairs["Current Students without an academic placement"] == 2
+    assert pairs["Submitted Inventories"] == 6
+    assert pairs["Submitted Inventories with a recorded Program"] == 6
+    assert pairs["Submitted Inventories without a recorded Program"] == 0
+    assert (
+        pairs["Submitted Inventories whose Program College matches the Student's current placement"]
+        == 4
+    )
+    assert (
+        pairs[
+            "Submitted Inventories whose Program College differs from the Student's current "
+            "placement"
+        ]
+        == 2
+    )
 
 
 def test_section_sheet_uses_all_programs_key_lookup_and_canonical_percentage(monkeypatch):

@@ -6,7 +6,7 @@ export function catalogFixture({catalog=true,relationships=false,role="COUNSELOR
  const campus={id:ids.campus,code:"MAIN",name:"Main Campus",is_active:true,resource_version:1};
  const college={id:ids.college,code:"COMP",name:"College of Computing",campus,is_active:true,resource_version:1};
  const program={id:ids.program,code:"BSIS",name:"Information Systems",college,is_active:true,resource_version:1,academic_classification:"BACHELORS",year_level_policy_status:"CONFIGURED",applicable_year_levels:[1,3,5]};
- const actor={...user(role),capabilities:["organization.structure.view",...(catalog && !readonly?["organization.catalog.manage"]:[]),...(relationships?["organization.manage"]:[])]};
+ const actor={...user(role),capabilities:["organization.structure.view",...(catalog && !readonly?["organization.catalog.manage"]:[]),...(relationships?["organization.manage","student_academics.view","student_academics.manage"]:[])]};
  const student={id:ids.student,full_name:"Maria Santos",institutional_id:"2024-00123",email:"maria.santos@example.test",is_active:true,responsibility_scope:null,role:"STUDENT"};
  const placement={student,college,verification_status:"VERIFIED"};
  const studentRecord={student,lifecycle_status:"CURRENT",placement:structuredClone(placement),periods:[],graduation:null};

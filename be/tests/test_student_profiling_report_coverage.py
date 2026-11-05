@@ -20,6 +20,7 @@ from compass.reports.pdf import render_student_profiling_pdf
 from compass.reports.services import (
     GLOBAL_REPORT_ACCESS_SCOPE,
     LEGACY_KEY,
+    PLACEMENT_PRECEDENCE_NOTE,
     ReportAccessDenied,
     ReportAccessScope,
     build_student_profiling_report,
@@ -413,6 +414,17 @@ def test_reconciliation_exposes_current_placement_that_differs_from_inventory_pr
         "profile_only_count": 1,
         "coverage_only_count": 1,
     }
+    assert coverage["academic_alignment"] == {
+        "current_student_count": 2,
+        "current_with_placement_count": 2,
+        "current_without_placement_count": 0,
+        "submitted_inventory_count": 2,
+        "submitted_with_program_count": 2,
+        "submitted_without_program_count": 0,
+        "placement_program_match_count": 1,
+        "placement_program_mismatch_count": 1,
+        "precedence_note": PLACEMENT_PRECEDENCE_NOTE,
+    }
     assert "rather than the Program recorded on the Inventory" in coverage["scope_note"]
 
     cas_report = build_student_profiling_report(
@@ -421,6 +433,77 @@ def test_reconciliation_exposes_current_placement_that_differs_from_inventory_pr
     assert cas_report["report_context"]["submitted_inventory_count"] == 1
     assert cas_report["inventory_coverage"]["eligible_student_count"] == 0
     assert cas_report["inventory_coverage"]["reconciliation"]["profile_only_count"] == 1
+
+
+@pytest.mark.django_db
+def test_academic_alignment_reports_current_students_without_placement():
+    sync_policy()
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    revision = make_revision("alignment-unplaced")
+    _, college, program = make_organization("AL-UNPLACED")
+    placed = make_user("alignment-placed@example.edu")
+    StudentAcademicProfile.objects.create(student=placed, current_college=college)
+    make_inventory(student=placed, academic_year=year, revision=revision, program=program)
+    unplaced = make_user("alignment-unplaced@example.edu")
+    StudentAcademicProfile.objects.create(student=unplaced)
+
+    report = build_student_profiling_report(access_scope=GLOBAL_REPORT_ACCESS_SCOPE)
+    coverage = report["inventory_coverage"]
+    alignment = coverage["academic_alignment"]
+
+    assert coverage["eligible_student_count"] == 2
+    assert coverage["missing_count"] == 1
+    assert alignment["current_student_count"] == 2
+    assert alignment["current_with_placement_count"] == 1
+    assert alignment["current_without_placement_count"] == 1
+    assert alignment["submitted_inventory_count"] == 1
+    assert alignment["submitted_with_program_count"] == 1
+    assert alignment["submitted_without_program_count"] == 0
+    assert alignment["placement_program_match_count"] == 1
+    assert alignment["placement_program_mismatch_count"] == 0
+    assert alignment["precedence_note"] == PLACEMENT_PRECEDENCE_NOTE
+
+
+@pytest.mark.django_db
+def test_academic_alignment_is_not_applicable_for_historical_years():
+    sync_policy()
+    AcademicYear.objects.create(label="2026-2027", is_current=True)
+    historical = AcademicYear.objects.create(label="2025-2026")
+    revision = make_revision("alignment-historical")
+    _, college, program = make_organization("AL-HIST")
+    for index, inventory_program in enumerate((program, program, None)):
+        make_inventory(
+            student=make_user(f"alignment-historical-{index}@example.edu"),
+            academic_year=historical,
+            revision=revision,
+            program=inventory_program,
+        )
+
+    report = build_student_profiling_report(
+        access_scope=GLOBAL_REPORT_ACCESS_SCOPE,
+        academic_year_id=historical.pk,
+        college_id=college.pk,
+    )
+    coverage = report["inventory_coverage"]
+    alignment = coverage["academic_alignment"]
+
+    assert coverage["mode"] == "HISTORICAL_LIMITED"
+    assert coverage["reconciliation"] == {
+        "profile_submitted_count": 2,
+        "coverage_submitted_count": 3,
+        "in_both_count": 2,
+        "profile_only_count": 0,
+        "coverage_only_count": 1,
+    }
+    assert alignment["current_student_count"] is None
+    assert alignment["current_with_placement_count"] is None
+    assert alignment["current_without_placement_count"] is None
+    assert alignment["placement_program_match_count"] is None
+    assert alignment["placement_program_mismatch_count"] is None
+    assert alignment["submitted_inventory_count"] == 3
+    assert alignment["submitted_with_program_count"] == 2
+    assert alignment["submitted_without_program_count"] == 1
+    assert alignment["precedence_note"] == PLACEMENT_PRECEDENCE_NOTE
 
 
 @pytest.mark.django_db

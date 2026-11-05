@@ -62,6 +62,95 @@
         "title": "APIErrorResponse",
         "type": "object"
       },
+      "AcademicAlignment": {
+        "additionalProperties": false,
+        "properties": {
+          "current_student_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Student Count"
+          },
+          "current_with_placement_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current With Placement Count"
+          },
+          "current_without_placement_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current Without Placement Count"
+          },
+          "placement_program_match_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placement Program Match Count"
+          },
+          "placement_program_mismatch_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Placement Program Mismatch Count"
+          },
+          "precedence_note": {
+            "title": "Precedence Note",
+            "type": "string"
+          },
+          "submitted_inventory_count": {
+            "title": "Submitted Inventory Count",
+            "type": "integer"
+          },
+          "submitted_with_program_count": {
+            "title": "Submitted With Program Count",
+            "type": "integer"
+          },
+          "submitted_without_program_count": {
+            "title": "Submitted Without Program Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "current_student_count",
+          "current_with_placement_count",
+          "current_without_placement_count",
+          "submitted_inventory_count",
+          "submitted_with_program_count",
+          "submitted_without_program_count",
+          "placement_program_match_count",
+          "placement_program_mismatch_count",
+          "precedence_note"
+        ],
+        "title": "AcademicAlignment",
+        "type": "object"
+      },
       "AcademicClassification": {
         "enum": [
           "BACHELORS",
@@ -4755,6 +4844,9 @@
           "routine_interviews.view_self",
           "services.catalog.view",
           "services.manage",
+          "student_academics.manage",
+          "student_academics.view",
+          "student_academics.view_self",
           "student_session_summaries.manage_assigned",
           "student_session_summaries.view_assigned",
           "student_session_summaries.view_self",
@@ -20275,6 +20367,9 @@
       "InventoryCoverage": {
         "additionalProperties": false,
         "properties": {
+          "academic_alignment": {
+            "$ref": "#/components/schemas/AcademicAlignment"
+          },
           "applied_filters": {
             "items": {
               "type": "string"
@@ -20339,7 +20434,8 @@
           "applied_filters",
           "ignored_filters",
           "scope_note",
-          "reconciliation"
+          "reconciliation",
+          "academic_alignment"
         ],
         "title": "InventoryCoverage",
         "type": "object"
@@ -32533,6 +32629,9 @@
                 "routine_interviews.view_self",
                 "services.catalog.view",
                 "services.manage",
+                "student_academics.manage",
+                "student_academics.view",
+                "student_academics.view_self",
                 "student_session_summaries.manage_assigned",
                 "student_session_summaries.view_assigned",
                 "student_session_summaries.view_self",
@@ -32721,6 +32820,9 @@
                 "routine_interviews.view_self",
                 "services.catalog.view",
                 "services.manage",
+                "student_academics.manage",
+                "student_academics.view",
+                "student_academics.view_self",
                 "student_session_summaries.manage_assigned",
                 "student_session_summaries.view_assigned",
                 "student_session_summaries.view_self",
@@ -70844,6 +70946,53 @@
         "summary": "Withdraw a fixed-date appointment slot",
         "tags": [
           "services"
+        ]
+      }
+    },
+    "/api/v1/student-academics/me/record": {
+      "get": {
+        "operationId": "studentAcademicsGetMyRecord",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StudentAcademicRecordResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "My Record",
+        "tags": [
+          "student-academics"
         ]
       }
     },

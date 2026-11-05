@@ -339,6 +339,23 @@ CAPABILITY_DEFINITIONS = (
         ),
     ),
     CapabilityDefinition(
+        code="student_academics.view",
+        name="View Student academic records",
+        description="View Student academic placement, periods and graduation records.",
+    ),
+    CapabilityDefinition(
+        code="student_academics.manage",
+        name="Manage Student academic records",
+        description=(
+            "Set or clear Student academic placement and record academic periods and graduation."
+        ),
+    ),
+    CapabilityDefinition(
+        code="student_academics.view_self",
+        name="View own Student academic record",
+        description="View the authenticated Student's own academic placement and record.",
+    ),
+    CapabilityDefinition(
         code="inventory.view_self",
         name="View own individual inventory",
         description="View the authenticated Student's own annual Individual Inventory records.",
@@ -618,6 +635,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "platform_operations.manage",
             "organization.structure.view",
             "organization.manage",
+            "student_academics.view",
+            "student_academics.manage",
             "services.catalog.view",
             "services.manage",
             "availability.view",
@@ -707,6 +726,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "appointments.manage_self",
             "inventory.view_self",
             "inventory.manage_self",
+            "student_academics.view_self",
             "exit_interviews.view_self",
             "exit_interviews.manage_self",
             "routine_interviews.view_self",
@@ -735,6 +755,8 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "assessment_records.view",
             "assessment_records.manage",
             "organization.manage",
+            "student_academics.view",
+            "student_academics.manage",
             "services.manage",
             "availability.manage",
             "appointments.manage",
@@ -773,6 +795,7 @@ CAPABILITY_CODES = frozenset(definition.code for definition in CAPABILITY_DEFINI
 # create prerequisite authority or rewrite persisted grants/overrides.
 CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "referrals.submit_self": frozenset({"referrals.view_submitted_self"}),
+    "student_academics.manage": frozenset({"student_academics.view"}),
     "organization.catalog.manage": frozenset({"organization.structure.view"}),
     "counseling.handoff.manage_own": frozenset(
         {"counseling.continuity.view", "counseling.view_assigned"}

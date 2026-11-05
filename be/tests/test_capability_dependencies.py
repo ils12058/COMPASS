@@ -455,3 +455,58 @@ def test_required_capability_helper_is_policy_owned_and_specific():
         {"good_moral.issue"},
     ) == {"good_moral.view"}
     assert capability_policy.required_capabilities("availability.manage") == frozenset()
+
+
+@pytest.mark.django_db
+def test_student_academics_capabilities_resolve_and_dependency_holds():
+    sync_policy()
+
+    admin = make_user("academics-admin@example.edu", "IT_ADMIN")
+    admin_effective = effective_capabilities(admin)
+    assert {"student_academics.view", "student_academics.manage"} <= admin_effective
+
+    head = make_user("academics-head@example.edu", "COUNSELOR")
+    UserDesignation.objects.create(
+        user=head,
+        designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
+    )
+    head_effective = effective_capabilities(head)
+    assert {"student_academics.view", "student_academics.manage"} <= head_effective
+
+    student = make_user("academics-student@example.edu", "STUDENT")
+    student_effective = effective_capabilities(student)
+    assert "student_academics.view_self" in student_effective
+    assert "student_academics.view" not in student_effective
+    assert "student_academics.manage" not in student_effective
+
+    for role_code in (
+        "COUNSELOR",
+        "GUIDANCE_SERVICES_STAFF",
+        "FACULTY",
+        "INSTITUTIONAL_OFFICER",
+    ):
+        user = make_user(f"academics-{role_code.lower()}@example.edu", role_code)
+        assert {
+            "student_academics.view",
+            "student_academics.manage",
+            "student_academics.view_self",
+        }.isdisjoint(effective_capabilities(user))
+
+    assert capability_policy.required_capabilities("student_academics.manage") == frozenset(
+        {"student_academics.view"}
+    )
+    assert resolve_capability_dependencies({"student_academics.manage"}) == frozenset()
+    assert resolve_capability_dependencies(
+        {"student_academics.manage", "student_academics.view"}
+    ) == frozenset({"student_academics.manage", "student_academics.view"})
+
+    delegated = make_user("academics-delegated@example.edu", "INSTITUTIONAL_OFFICER")
+    set_user_capability_override(
+        user=delegated,
+        capability="student_academics.manage",
+        effect=UserCapabilityOverride.Effect.GRANT,
+        reason="Synthetic manage-only grant",
+    )
+    delegated_effective = effective_capabilities(delegated)
+    assert "student_academics.manage" not in delegated_effective
+    assert "student_academics.view" not in delegated_effective

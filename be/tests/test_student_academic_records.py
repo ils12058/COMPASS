@@ -9,7 +9,13 @@ from django.db import IntegrityError, transaction
 from django.test import Client
 from django.utils import timezone
 
-from compass.accounts.models import Role, StudentLifecycleStatus, User
+from compass.accounts.models import (
+    Capability,
+    Role,
+    StudentLifecycleStatus,
+    User,
+    UserCapabilityOverride,
+)
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
@@ -439,7 +445,7 @@ def test_list_excludes_cleared_and_unplaced_students_with_filters_search_and_pag
 
 
 @pytest.mark.django_db
-def test_list_requires_organization_manage_and_returns_unverified_projection():
+def test_list_requires_student_academics_view_and_returns_unverified_projection():
     sync_policy()
     admin = make_user("list.admin@example.edu", "IT_ADMIN")
     student = make_user("list.student@example.edu")
@@ -449,6 +455,9 @@ def test_list_requires_organization_manage_and_returns_unverified_projection():
 
     counselor_denied = auth_client(counselor).get(f"{BASE}/placements")
     assert counselor_denied.status_code == 403
+    assert counselor_denied.json()["error"]["message"] == (
+        "The student_academics.view capability is required."
+    )
 
     student_denied = auth_client(make_user("list.other@example.edu")).get(f"{BASE}/placements")
     assert student_denied.status_code == 403
@@ -487,6 +496,99 @@ def test_list_requires_organization_manage_and_returns_unverified_projection():
             "verification_status": "UNVERIFIED",
         }
     ]
+
+
+@pytest.mark.django_db
+def test_view_only_capability_cannot_write_and_does_not_audit():
+    sync_policy()
+    viewer = make_user("viewer.academic@example.edu", "IT_ADMIN")
+    student = make_user("viewer.target@example.edu")
+    college = make_college()
+    year = make_academic_year()
+    UserCapabilityOverride.objects.create(
+        user=viewer,
+        capability=Capability.objects.get(code="student_academics.manage"),
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Temporary view-only separation",
+    )
+    client = auth_client(viewer)
+    headers = csrf(client)
+
+    assert client.get(f"{BASE}/placements").status_code == 200
+    assert client.get(f"{BASE}/students/{student.pk}/record").status_code == 200
+
+    audit_count = AuditEvent.objects.count()
+    denied_set = client.put(
+        f"{BASE}/students/{student.pk}/placement",
+        data={"college_id": str(college.pk)},
+        content_type="application/json",
+        **headers,
+    )
+    assert denied_set.status_code == 403
+    assert denied_set.json()["error"]["code"] == "permission_denied"
+    assert denied_set.json()["error"]["message"] == (
+        "The student_academics.manage capability is required."
+    )
+    assert client.delete(f"{BASE}/students/{student.pk}/placement", **headers).status_code == 403
+    assert (
+        client.put(
+            f"{BASE}/students/{student.pk}/periods",
+            data={
+                "academic_year_id": str(year.pk),
+                "term": "FIRST_SEMESTER",
+                "college_id": str(college.pk),
+                "year_level": 2,
+                "enrollment_status": "ENROLLED",
+            },
+            content_type="application/json",
+            **headers,
+        ).status_code
+        == 403
+    )
+    assert (
+        client.put(
+            f"{BASE}/students/{student.pk}/graduation",
+            data={
+                "graduated_college_id": str(college.pk),
+                "graduation_date": "2026-06-30",
+                "verification_source": "Registrar confirmation",
+            },
+            content_type="application/json",
+            **headers,
+        ).status_code
+        == 403
+    )
+    assert AuditEvent.objects.count() == audit_count
+    assert not StudentAcademicProfile.objects.exists()
+
+
+@pytest.mark.django_db
+def test_organization_manage_alone_cannot_read_academic_records():
+    sync_policy()
+    admin = make_user("org.manage.only@example.edu", "IT_ADMIN")
+    student = make_user("org.manage.target@example.edu")
+    UserCapabilityOverride.objects.create(
+        user=admin,
+        capability=Capability.objects.get(code="student_academics.view"),
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Scoped outside academic records",
+    )
+    assert admin.has_capability("organization.manage")
+    assert not admin.has_capability("student_academics.view")
+    assert not admin.has_capability("student_academics.manage")
+
+    client = auth_client(admin)
+    placements = client.get(f"{BASE}/placements")
+    assert placements.status_code == 403
+    assert placements.json()["error"]["message"] == (
+        "The student_academics.view capability is required."
+    )
+
+    record = client.get(f"{BASE}/students/{student.pk}/record")
+    assert record.status_code == 403
+    assert record.json()["error"]["message"] == (
+        "The student_academics.view capability is required."
+    )
 
 
 @pytest.mark.django_db
@@ -1211,6 +1313,79 @@ def test_get_student_academic_record_handles_absent_profile_and_invalid_students
         get_student_academic_record(
             student_id=make_user("record.counselor@example.edu", "COUNSELOR").pk
         )
+
+
+@pytest.mark.django_db
+def test_my_record_requires_student_self_view_and_returns_own_record():
+    sync_policy()
+    actor = make_user("self.actor@example.edu", "IT_ADMIN")
+    student = make_user("self.record@example.edu")
+    other = make_user("self.other@example.edu")
+    college = make_college()
+    year = make_academic_year()
+    set_current_placement(
+        student_id=student.pk,
+        college_id=college.pk,
+        context=context(actor),
+    )
+    record_academic_period(
+        student_id=student.pk,
+        academic_year_id=year.pk,
+        term=AcademicTerm.FIRST_SEMESTER,
+        college_id=college.pk,
+        year_level=1,
+        enrollment_status=EnrollmentStatus.ENROLLED,
+        context=context(actor),
+    )
+
+    assert Client().get(f"{BASE}/me/record").status_code == 401
+
+    counselor = make_user("self.counselor@example.edu", "COUNSELOR")
+    denied = auth_client(counselor).get(f"{BASE}/me/record")
+    assert denied.status_code == 403
+    assert denied.json()["error"]["code"] == "permission_denied"
+    assert denied.json()["error"]["message"] == (
+        "The student_academics.view_self capability is required."
+    )
+
+    UserCapabilityOverride.objects.create(
+        user=counselor,
+        capability=Capability.objects.get(code="student_academics.view_self"),
+        effect=UserCapabilityOverride.Effect.GRANT,
+        reason="Synthetic self-view grant",
+    )
+    non_student = auth_client(counselor).get(f"{BASE}/me/record")
+    assert non_student.status_code == 403
+    assert non_student.json()["error"]["message"] == (
+        "Academic record self-view is available only to Student accounts."
+    )
+
+    response = auth_client(student).get(f"{BASE}/me/record")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["student"]["id"] == str(student.pk)
+    assert payload["placement"]["college"]["id"] == str(college.pk)
+    assert payload["placement"]["verification_status"] == "UNVERIFIED"
+    assert len(payload["periods"]) == 1
+    assert payload["graduation"] is None
+
+    empty = auth_client(other).get(f"{BASE}/me/record")
+    assert empty.status_code == 200
+    assert empty.json()["placement"] is None
+    assert empty.json()["periods"] == []
+    assert empty.json()["graduation"] is None
+
+    UserCapabilityOverride.objects.create(
+        user=student,
+        capability=Capability.objects.get(code="student_academics.view_self"),
+        effect=UserCapabilityOverride.Effect.REVOKE,
+        reason="Synthetic self-view revocation",
+    )
+    revoked = auth_client(student).get(f"{BASE}/me/record")
+    assert revoked.status_code == 403
+    assert revoked.json()["error"]["message"] == (
+        "The student_academics.view_self capability is required."
+    )
 
 
 @pytest.mark.django_db

@@ -274,6 +274,32 @@ def test_f4_creation_uses_locked_current_student_inventory_year_and_local_text_s
 
 
 @pytest.mark.django_db
+def test_f4_college_snapshot_uses_placement_not_inventory_program_college():
+    sync_policy()
+    student = make_user("f4.placement.precedence@example.edu")
+    placement = make_placement(student, code="CAS")
+    year = make_academic_year()
+    inventory = make_inventory(
+        student,
+        year,
+        program_code="BSIS",
+        program_college_code="CCMS",
+    )
+    assert inventory.program is not None
+    assert inventory.program.college_id != placement.current_college_id
+
+    item = create_my_current_student(
+        student=student,
+        year_level="4th Year",
+        semester="First Semester",
+        context=AuditContext.user(student),
+    )
+
+    assert item.college_snapshot == "CAS College"
+    assert item.college_snapshot != inventory.program.college.name
+
+
+@pytest.mark.django_db
 def test_f4_year_level_is_derived_from_inventory_and_explicit_mismatch_is_rejected():
     sync_policy()
     student = make_user("inventory.year.level@example.edu")

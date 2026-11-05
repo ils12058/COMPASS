@@ -48,7 +48,7 @@ export function CreateAccount() {
   const [placementCollegeId, setPlacementCollegeId] = useState("");
   const [placementError, setPlacementError] = useState<string | null>(null);
   const [review, setReview] = useState<AccountCreateRequest | null>(null);
-  const canAssignPlacement = session.user.capabilities.includes("organization.manage");
+  const canAssignPlacement = session.user.capabilities.includes("student_academics.manage");
   const showPlacement = form.role === RoleCode.STUDENT && canAssignPlacement;
   const collegeChoices = useAccountsFacultyCollegeChoices({
     query: { enabled: form.role === RoleCode.FACULTY || showPlacement, retry: false },

@@ -160,6 +160,16 @@ def _graduation(record) -> dict[str, object]:
     }
 
 
+def _record_payload(record) -> dict[str, object]:
+    return {
+        "student": _person(record.student),
+        "lifecycle_status": record.lifecycle_status,
+        "placement": _placement(record.placement) if record.placement is not None else None,
+        "periods": [_period(item) for item in record.periods],
+        "graduation": _graduation(record.graduation) if record.graduation is not None else None,
+    }
+
+
 @router.get(
     "/placements",
     response=response_with_errors(PlacementListResponse, 401, 403, 422),
@@ -175,7 +185,7 @@ def placements(
     page: int = 1,
     page_size: int = DEFAULT_PAGE_SIZE,
 ):
-    _require(request, "organization.manage")
+    _require(request, "student_academics.view")
     try:
         result = list_current_placements(
             student_id=student_id,
@@ -195,6 +205,27 @@ def placements(
     }
 
 
+@router.get(
+    "/me/record",
+    response=response_with_errors(StudentAcademicRecordResponse, 401, 403),
+    auth=session_auth,
+    operation_id="studentAcademicsGetMyRecord",
+)
+def my_record(request):
+    _require(request, "student_academics.view_self")
+    if request.auth_user.role.code != "STUDENT":
+        raise APIError(
+            403,
+            "permission_denied",
+            "Academic record self-view is available only to Student accounts.",
+        )
+    try:
+        record = get_student_academic_record(student_id=request.auth_user.pk)
+    except StudentAcademicError as exc:
+        _raise(exc)
+    return _record_payload(record)
+
+
 @router.put(
     "/students/{student_id}/placement",
     response=response_with_errors(PlacementResponse, 401, 403, 404, 409, 422),
@@ -202,7 +233,7 @@ def placements(
     operation_id="studentAcademicsSetPlacement",
 )
 def placement_set(request, student_id: UUID, payload: PlacementRequest):
-    _require(request, "organization.manage", recent_mfa=True)
+    _require(request, "student_academics.manage", recent_mfa=True)
     try:
         item = set_current_placement(
             student_id=student_id,
@@ -221,7 +252,7 @@ def placement_set(request, student_id: UUID, payload: PlacementRequest):
     operation_id="studentAcademicsClearPlacement",
 )
 def placement_clear(request, student_id: UUID):
-    _require(request, "organization.manage", recent_mfa=True)
+    _require(request, "student_academics.manage", recent_mfa=True)
     try:
         removed = clear_current_placement(student_id=student_id, context=_context(request))
     except StudentAcademicError as exc:
@@ -236,18 +267,12 @@ def placement_clear(request, student_id: UUID):
     operation_id="studentAcademicsGetStudentRecord",
 )
 def student_record(request, student_id: UUID):
-    _require(request, "organization.manage")
+    _require(request, "student_academics.view")
     try:
         record = get_student_academic_record(student_id=student_id)
     except StudentAcademicError as exc:
         _raise(exc)
-    return {
-        "student": _person(record.student),
-        "lifecycle_status": record.lifecycle_status,
-        "placement": _placement(record.placement) if record.placement is not None else None,
-        "periods": [_period(item) for item in record.periods],
-        "graduation": _graduation(record.graduation) if record.graduation is not None else None,
-    }
+    return _record_payload(record)
 
 
 @router.put(
@@ -257,7 +282,7 @@ def student_record(request, student_id: UUID):
     operation_id="studentAcademicsRecordPeriod",
 )
 def period_record(request, student_id: UUID, payload: AcademicPeriodRecordRequest):
-    _require(request, "organization.manage", recent_mfa=True)
+    _require(request, "student_academics.manage", recent_mfa=True)
     try:
         item = record_academic_period(
             student_id=student_id,
@@ -280,7 +305,7 @@ def period_record(request, student_id: UUID, payload: AcademicPeriodRecordReques
     operation_id="studentAcademicsRecordGraduation",
 )
 def graduation_record(request, student_id: UUID, payload: GraduationRecordRequest):
-    _require(request, "organization.manage", recent_mfa=True)
+    _require(request, "student_academics.manage", recent_mfa=True)
     try:
         item = record_graduation(
             student_id=student_id,

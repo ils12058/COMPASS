@@ -9,6 +9,10 @@ import {
 } from "@/features/institution-configuration/institution-access";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { WorkspaceUnavailable } from "@/features/portal/components/workspace-unavailable";
+import {
+  canViewOwnAcademicRecord,
+  canViewStudentAcademics,
+} from "@/features/student-academics/student-academics-access";
 
 export function OrganizationGate({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
@@ -43,9 +47,18 @@ export function OrganizationRelationshipsGate({ children }: { children: ReactNod
 
 export function StudentAcademicRecordsGate({ children }: { children: ReactNode }) {
   const { user } = usePortalSession();
-  return canManageOrganization(user) ? children : (
+  return canViewStudentAcademics(user) ? children : (
     <WorkspaceUnavailable title="Student Academic Records unavailable">
       You don’t have access to Student academic records.
+    </WorkspaceUnavailable>
+  );
+}
+
+export function MyAcademicRecordGate({ children }: { children: ReactNode }) {
+  const { user } = usePortalSession();
+  return canViewOwnAcademicRecord(user) ? children : (
+    <WorkspaceUnavailable title="Academic record unavailable">
+      You don’t have access to your academic record.
     </WorkspaceUnavailable>
   );
 }

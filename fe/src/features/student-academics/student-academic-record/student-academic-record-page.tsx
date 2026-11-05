@@ -32,6 +32,7 @@ import {
   TableSkeleton,
 } from "@/features/organization/components/organization-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { canManageStudentAcademics } from "@/features/student-academics/student-academics-access";
 import {
   getStudentAcademicsGetStudentRecordQueryKey,
   getStudentAcademicsListPlacementsQueryKey,
@@ -115,6 +116,7 @@ function VerificationBadge({
 
 export function StudentAcademicRecordPage({ studentId }: { studentId: string }) {
   const { user } = usePortalSession();
+  const canManage = canManageStudentAcademics(user);
   const canViewStructure = user.capabilities.includes("organization.structure.view");
   const canViewAcademicYears = user.capabilities.includes("academic_years.view");
   const queryClient = useQueryClient();
@@ -348,7 +350,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
         }
       />
 
-      {structureUnavailable ? (
+      {canManage && structureUnavailable ? (
         <Notice role="status" tone="warning" className="mb-5">
           Organization structure is unavailable to this account, so College choices
           cannot be loaded. Period and graduation forms are unavailable; recorded
@@ -398,17 +400,19 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
               : `${data.periods.length} recorded`
           }
           actions={
-            <Button
-              variant="secondary"
-              disabled={!periodFormReady}
-              onClick={openBlankPeriod}
-            >
-              <Plus size={16} aria-hidden="true" />
-              Record period
-            </Button>
+            canManage ? (
+              <Button
+                variant="secondary"
+                disabled={!periodFormReady}
+                onClick={openBlankPeriod}
+              >
+                <Plus size={16} aria-hidden="true" />
+                Record period
+              </Button>
+            ) : undefined
           }
         />
-        {yearsUnavailable ? (
+        {canManage && yearsUnavailable ? (
           <Notice role="status" tone="warning" className="mx-4 my-4 sm:mx-5">
             Academic Years are unavailable to this account, so academic periods
             cannot be recorded.
@@ -447,7 +451,7 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
                     scope="col"
                     className={`${dataTable.headerCell} text-right`}
                   >
-                    Action
+                    {canManage ? "Action" : ""}
                   </th>
                 </tr>
               </thead>
@@ -475,13 +479,15 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
                     </td>
                     <td className={`${dataTable.cell} py-2`}>
                       <div className="flex justify-end">
-                        <Button
-                          variant="quiet"
-                          disabled={!periodFormReady}
-                          onClick={() => openPeriodUpdate(item)}
-                        >
-                          Update
-                        </Button>
+                        {canManage ? (
+                          <Button
+                            variant="quiet"
+                            disabled={!periodFormReady}
+                            onClick={() => openPeriodUpdate(item)}
+                          >
+                            Update
+                          </Button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>
@@ -497,14 +503,16 @@ export function StudentAcademicRecordPage({ studentId }: { studentId: string }) 
           title="Graduation"
           titleId="graduation-heading"
           actions={
-            <Button
-              variant="secondary"
-              disabled={!graduationFormReady}
-              onClick={openGraduationForm}
-            >
-              <GraduationCap size={16} aria-hidden="true" />
-              {data.graduation ? "Update graduation" : "Record graduation"}
-            </Button>
+            canManage ? (
+              <Button
+                variant="secondary"
+                disabled={!graduationFormReady}
+                onClick={openGraduationForm}
+              >
+                <GraduationCap size={16} aria-hidden="true" />
+                {data.graduation ? "Update graduation" : "Record graduation"}
+              </Button>
+            ) : undefined
           }
         />
         {data.graduation ? (

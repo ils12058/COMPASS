@@ -11,6 +11,7 @@ import { canManageOrganization, canViewOrganizationStructure } from "@/features/
 import { getInventoryAccess } from "@/features/inventory/inventory-access";
 import { canManagePrivacyGovernance, canViewPrivacyGovernance, canViewRetention } from "@/features/privacy-governance/privacy-governance-access";
 import { getReferralAccess } from "@/features/referrals/referrals-access";
+import { canViewStudentAcademics } from "@/features/student-academics/student-academics-access";
 import { portalWorkspaceGroups } from "@/features/portal/components/portal-workspaces";
 import type { FacultyReferralAvailability, UserSummary } from "@/lib/api/generated/model";
 
@@ -88,7 +89,7 @@ export function portalCommandDestinations(user: UserSummary, facultyAvailability
   deep("/portal/reports", "/graduate-tracer", "Graduate Tracer", true, ["graduate tracer report"]);
   deep("/portal/organization", "", "Structure", canViewOrganizationStructure(user), ["campus", "college", "program"]);
   deep("/portal/organization", "/responsibilities", "Responsibilities", canManageOrganization(user), ["responsibility", "supervision", "staff assignment"]);
-  deep("/portal/organization", "/student-academics", "Student Academic Records", canManageOrganization(user), ["student placement", "student academic records", "college"]);
+  deep("/portal/organization", "/student-academics", "Student Academic Records", canViewStudentAcademics(user), ["student placement", "student academic records", "college"]);
   deep("/portal/accounts", "/new", "Create account"); // Accounts layout requires accounts.manage.
   deep("/portal/accounts", "/import", "Import accounts");
   const privacyView = canViewPrivacyGovernance(user);

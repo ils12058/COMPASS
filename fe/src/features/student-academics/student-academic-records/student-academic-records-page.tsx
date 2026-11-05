@@ -35,6 +35,7 @@ import {
   replaceQueryParam,
 } from "@/features/organization/components/organization-shared";
 import { usePortalSession } from "@/features/portal/components/portal-session";
+import { canManageStudentAcademics } from "@/features/student-academics/student-academics-access";
 import {
   getStudentAcademicsListPlacementsQueryKey,
   useStudentAcademicsClearPlacement,
@@ -66,6 +67,7 @@ function VerificationBadge({ status }: { status: PlacementVerificationStatus }) 
 
 export function StudentAcademicRecordsPage() {
   const { user } = usePortalSession();
+  const canManage = canManageStudentAcademics(user);
   const canViewStructure = user.capabilities.includes("organization.structure.view");
   const router = useRouter();
   const pathname = usePathname();
@@ -302,7 +304,7 @@ export function StudentAcademicRecordsPage() {
         }
         action={
           <>
-            {structureReady ? (
+            {canManage && structureReady ? (
               <PageAction icon={Link2} label="Assign" labelDetail="placement" onClick={() => openSet()} />
             ) : null}
             <PageAction
@@ -439,7 +441,7 @@ export function StudentAcademicRecordsPage() {
                     Verification
                   </th>
                   <th scope="col" className={`${dataTable.headerCell} text-right`}>
-                    Action
+                    {canManage ? "Action" : ""}
                   </th>
                 </tr>
               </thead>
@@ -470,7 +472,7 @@ export function StudentAcademicRecordsPage() {
                     </td>
                     <td className={`${dataTable.cell} py-2`}>
                       <div className="flex justify-end gap-1">
-                        {structureReady ? (
+                        {canManage && structureReady ? (
                           <Button
                             variant="quiet"
                             onClick={() =>
@@ -480,17 +482,19 @@ export function StudentAcademicRecordsPage() {
                             Update placement
                           </Button>
                         ) : null}
-                        <Button
-                          variant="quiet"
-                          onClick={() =>
-                            setRemoval({
-                              student: item.student,
-                              college: item.college,
-                            })
-                          }
-                        >
-                          Clear placement
-                        </Button>
+                        {canManage ? (
+                          <Button
+                            variant="quiet"
+                            onClick={() =>
+                              setRemoval({
+                                student: item.student,
+                                college: item.college,
+                              })
+                            }
+                          >
+                            Clear placement
+                          </Button>
+                        ) : null}
                       </div>
                     </td>
                   </tr>

@@ -10,6 +10,7 @@ import pytest
 from django.core.management import call_command
 from django.test import Client
 from django.utils import timezone
+from django.utils.html import escape
 from playwright.sync_api import sync_playwright
 from pypdf import PdfReader
 
@@ -39,6 +40,7 @@ from compass.reports.services import (
     LEGACY_KEY,
     LEGACY_LABEL,
     LEGACY_PROGRAM_KEY,
+    PLACEMENT_PRECEDENCE_NOTE,
     InvalidReportFilter,
     ReportAccessScope,
     ReportConfigurationConflict,
@@ -338,6 +340,30 @@ def synthetic_report(
         "profile_only_count": 0,
         "coverage_only_count": 0,
     }
+    if mode == "CURRENT":
+        coverage["academic_alignment"] = {
+            "current_student_count": submitted_count + 3,
+            "current_with_placement_count": submitted_count + 2,
+            "current_without_placement_count": 1,
+            "submitted_inventory_count": submitted_count,
+            "submitted_with_program_count": submitted_count - legacy_inventories,
+            "submitted_without_program_count": legacy_inventories,
+            "placement_program_match_count": submitted_count - legacy_inventories,
+            "placement_program_mismatch_count": 0,
+            "precedence_note": PLACEMENT_PRECEDENCE_NOTE,
+        }
+    else:
+        coverage["academic_alignment"] = {
+            "current_student_count": None,
+            "current_with_placement_count": None,
+            "current_without_placement_count": None,
+            "submitted_inventory_count": submitted_count,
+            "submitted_with_program_count": submitted_count - legacy_inventories,
+            "submitted_without_program_count": legacy_inventories,
+            "placement_program_match_count": None,
+            "placement_program_mismatch_count": None,
+            "precedence_note": PLACEMENT_PRECEDENCE_NOTE,
+        }
 
     if scope_colleges is None:
         reporting_scope = {"is_global": True, "colleges": []}
@@ -896,6 +922,48 @@ def test_reconciliation_table_explains_population_differences():
         build_student_profiling_print_context(report)
 
 
+def test_alignment_table_publishes_placement_precedence_and_reports_differences():
+    report = synthetic_report(colleges=[("CCMS", 2)], submitted_count=6)
+    report["inventory_coverage"]["academic_alignment"].update(
+        {
+            "current_student_count": 8,
+            "current_with_placement_count": 6,
+            "current_without_placement_count": 2,
+            "submitted_inventory_count": 6,
+            "submitted_with_program_count": 6,
+            "submitted_without_program_count": 0,
+            "placement_program_match_count": 4,
+            "placement_program_mismatch_count": 2,
+        }
+    )
+    profile = profile_of(report)
+    alignment = profile["coverage"]["alignment"]
+    assert alignment["title"] == "Academic Placement and Inventory Alignment"
+    rows = {cell_texts(row)[0]: cell_texts(row)[1] for row in alignment["rows"]}
+    assert rows["Current Students in coverage scope"] == "8"
+    assert rows["Current Students with an academic placement"] == "6"
+    assert rows["Current Students without an academic placement"] == "2"
+    assert rows["Submitted Inventories"] == "6"
+    assert (
+        rows["Submitted Inventories whose Program College matches the Student's current placement"]
+        == "4"
+    )
+    assert (
+        rows[
+            "Submitted Inventories whose Program College differs from the Student's current "
+            "placement"
+        ]
+        == "2"
+    )
+    assert alignment["notes"] == [PLACEMENT_PRECEDENCE_NOTE]
+
+    html = rendered_html(report)
+    assert "3.4 Academic Placement and Inventory Alignment" in html
+    assert "Current Students in coverage scope" in html
+    assert "Submitted Inventories without a recorded Program" in html
+    assert escape(PLACEMENT_PRECEDENCE_NOTE) in html
+
+
 def test_filter_table_and_metadata_distinguish_selected_filters_from_reporting_scope():
     report = synthetic_report(
         colleges=[("CAS", 1), ("CCMS", 2)],
@@ -956,6 +1024,7 @@ def test_empty_report_prints_context_and_coverage_without_tables_or_percentages(
         "missing_program_key",
         "denominator",
         "coverage_states",
+        "alignment",
     ],
 )
 def test_inconsistent_canonical_values_are_never_printed(corrupt):
@@ -974,6 +1043,8 @@ def test_inconsistent_canonical_values_are_never_printed(corrupt):
         report["sections"]["age"]["denominator"] = 11
     elif corrupt == "coverage_states":
         report["inventory_coverage"]["missing_count"] = 9
+    elif corrupt == "alignment":
+        report["inventory_coverage"]["academic_alignment"]["placement_program_mismatch_count"] += 1
     with pytest.raises(StudentProfilingDocumentUnavailable):
         build_student_profiling_print_context(report)
 
@@ -1087,7 +1158,7 @@ def test_render_service_calls_canonical_builder_once_and_preserves_filter_argume
 
     def fake_renderer(template_key, template_version, *, context):
         assert template_key == "student_profiling_report"
-        assert template_version == 1
+        assert template_version == 2
         assert context["student_profile"]["parts"]
         assert context["document_pdf_footer_label"].startswith("Student Profile Report")
         return DocumentRenderResult(
@@ -1138,6 +1209,15 @@ def _historical(report: dict[str, object]) -> dict[str, object]:
             "eligible_student_count": None,
             "missing_count": None,
             "scope_note": "CANONICAL HISTORICAL COVERAGE SCOPE NOTE.",
+        }
+    )
+    coverage["academic_alignment"].update(
+        {
+            "current_student_count": None,
+            "current_with_placement_count": None,
+            "current_without_placement_count": None,
+            "placement_program_match_count": None,
+            "placement_program_mismatch_count": None,
         }
     )
     report["methodology"]["historical_coverage_note"] = "CANONICAL HISTORICAL METHODOLOGY NOTE."

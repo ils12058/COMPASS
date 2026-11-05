@@ -664,13 +664,13 @@ def test_csv_rejects_program_code_header():
 
 
 @pytest.mark.django_db
-def test_csv_placement_requires_organization_manage_in_dry_run_and_commit():
+def test_csv_placement_requires_student_academics_manage_in_dry_run_and_commit():
     sync_policy()
     client, admin = admin_client()
     _campus, _college = make_campus_with_college()
     UserCapabilityOverride.objects.create(
         user=admin,
-        capability=Capability.objects.get(code="organization.manage"),
+        capability=Capability.objects.get(code="student_academics.manage"),
         effect=UserCapabilityOverride.Effect.REVOKE,
         reason="Temporary separation of duties",
         created_by=admin,
@@ -696,6 +696,43 @@ def test_csv_placement_requires_organization_manage_in_dry_run_and_commit():
     allowed = upload(client, unplaced_csv, dry_run=True)
     assert allowed.status_code == 200
     assert allowed.json()["valid"] is True
+
+
+@pytest.mark.django_db
+def test_csv_placement_rejects_manager_without_student_academics_manage():
+    sync_policy()
+    manager = make_user(email="csv-placement-manager@example.edu", role="COUNSELOR")
+    for code in ("accounts.manage", "organization.manage"):
+        UserCapabilityOverride.objects.create(
+            user=manager,
+            capability=Capability.objects.get(code=code),
+            effect=UserCapabilityOverride.Effect.GRANT,
+            reason="Temporary CSV duty",
+            created_by=manager,
+        )
+    now = timezone.now()
+    issued = create_auth_session(manager, now=now, mfa_verified_at=now)
+    client = Client()
+    client.cookies["compass_session"] = issued.token
+    make_campus_with_college()
+    placed_csv = (
+        b"institutional_id,email,first_name,last_name,role,campus_code,college_code\n"
+        b"UCN-SAR4-711,denied.csv.manager@example.edu,Denied,Manager,STUDENT,MAIN,CCMS\n"
+    )
+
+    dry = upload(client, placed_csv, dry_run=True)
+    assert dry.status_code == 403
+    assert dry.json()["error"]["code"] == "academic_placement_permission_denied"
+    assert dry.json()["error"]["message"] == (
+        "The student_academics.manage capability is required to assign an initial Student "
+        "placement."
+    )
+
+    committed = upload(client, placed_csv, dry_run=False)
+    assert committed.status_code == 403
+    assert committed.json()["error"]["code"] == "academic_placement_permission_denied"
+    assert not User.objects.filter(email="denied.csv.manager@example.edu").exists()
+    assert not StudentAcademicProfile.objects.exists()
 
 
 @pytest.mark.django_db

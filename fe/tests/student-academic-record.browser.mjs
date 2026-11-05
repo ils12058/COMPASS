@@ -99,4 +99,19 @@ function academicFixture({years=true}={}){
  });
 }
 
+{
+ const f=academicFixture();
+ f.state.actor.capabilities=f.state.actor.capabilities.filter((capability)=>capability!=="student_academics.manage");
+ f.studentRecord.periods=[{id:"period-existing",academic_year:f.state.academicYears[0],term:"SECOND_SEMESTER",college:f.college,year_level:3,enrollment_status:"ENROLLED",created_at:"2026-07-01T00:00:00Z",updated_at:"2026-07-01T00:00:00Z"}];
+ await h.check("05 View-only access shows the record without write controls",detailPath,{handler:f.handler},async(page)=>{
+  await h.shown(page.getByRole("heading",{name:"Maria Santos",exact:true}));
+  await h.shown(page.locator("section[aria-labelledby='current-placement-heading']").getByText("College of Computing",{exact:true}));
+  assert.equal(await page.getByRole("button",{name:"Record period",exact:true}).count(),0);
+  assert.equal(await page.getByRole("button",{name:"Update",exact:true}).count(),0);
+  assert.equal(await page.getByRole("button",{name:"Record graduation",exact:true}).count(),0);
+  assert.equal(await page.getByRole("columnheader",{name:"Action",exact:true}).count(),0);
+  assert.equal(f.state.writes.length,0);
+ });
+}
+
 await h.finish();

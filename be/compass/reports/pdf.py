@@ -20,9 +20,11 @@ from compass.documents.rendering import DocumentRenderError, render_document_pdf
 
 from .filenames import safe_report_filename_part
 from .services import (
+    HISTORICAL_ALIGNMENT_NOTE,
     LEGACY_KEY,
     LEGACY_LABEL,
     PARENT_INCOME_LEGEND_NOTE,
+    PLACEMENT_PRECEDENCE_NOTE,
     ReportAccessScope,
     ReportError,
     build_student_profiling_report,
@@ -32,7 +34,7 @@ from .services import (
 )
 
 TEMPLATE_KEY = "student_profiling_report"
-TEMPLATE_VERSION = 1
+TEMPLATE_VERSION = 2
 
 REPORT_TITLE = "STUDENT PROFILE REPORT"
 REPORT_SUBTITLE = "Individual Inventory-Based Student Profiling"
@@ -546,6 +548,120 @@ def _count_row(label: str, value: int, kind: str = "data") -> dict[str, object]:
     return _row([_cell(label), _cell(_count_text(value), numeric=True)], kind)
 
 
+ALIGNMENT_TITLE = "Academic Placement and Inventory Alignment"
+
+
+def _alignment_table(coverage: dict[str, object], mode: str) -> dict[str, object]:
+    raw = _require_dict(coverage.get("academic_alignment"), "academic alignment")
+    inventory_count = _require_count(
+        raw.get("submitted_inventory_count"), "academic alignment submitted Inventory count"
+    )
+    with_program = _require_count(
+        raw.get("submitted_with_program_count"), "academic alignment Program presence count"
+    )
+    without_program = _require_count(
+        raw.get("submitted_without_program_count"), "academic alignment Program absence count"
+    )
+    if with_program + without_program != inventory_count:
+        raise _unavailable("academic alignment Program presence does not reconcile.")
+    inventory_rows = [
+        _count_row("Submitted Inventories", inventory_count),
+        _count_row("Submitted Inventories with a recorded Program", with_program),
+        _count_row("Submitted Inventories without a recorded Program", without_program),
+    ]
+    unavailable = [
+        _row(
+            [
+                _cell(label),
+                _cell(NOT_AVAILABLE_HISTORICAL),
+            ]
+        )
+        for label in (
+            "Current Students in coverage scope",
+            "Current Students with an academic placement",
+            "Current Students without an academic placement",
+        )
+    ]
+    if mode == "CURRENT":
+        current = _require_count(
+            raw.get("current_student_count"), "academic alignment current Student count"
+        )
+        with_placement = _require_count(
+            raw.get("current_with_placement_count"), "academic alignment placed Student count"
+        )
+        without_placement = _require_count(
+            raw.get("current_without_placement_count"), "academic alignment unplaced Student count"
+        )
+        matched = _require_count(
+            raw.get("placement_program_match_count"), "academic alignment match count"
+        )
+        mismatched = _require_count(
+            raw.get("placement_program_mismatch_count"), "academic alignment mismatch count"
+        )
+        if with_placement + without_placement != current:
+            raise _unavailable("academic alignment placement states do not reconcile.")
+        if matched + mismatched != with_program:
+            raise _unavailable("academic alignment Program comparison does not reconcile.")
+        rows = [
+            _count_row("Current Students in coverage scope", current),
+            _count_row("Current Students with an academic placement", with_placement),
+            _count_row("Current Students without an academic placement", without_placement),
+            *inventory_rows,
+            _count_row(
+                "Submitted Inventories whose Program College matches the Student's current "
+                "placement",
+                matched,
+            ),
+            _count_row(
+                "Submitted Inventories whose Program College differs from the Student's current "
+                "placement",
+                mismatched,
+            ),
+        ]
+        notes = [PLACEMENT_PRECEDENCE_NOTE]
+    elif mode == "HISTORICAL_LIMITED":
+        for key in (
+            "current_student_count",
+            "current_with_placement_count",
+            "current_without_placement_count",
+            "placement_program_match_count",
+            "placement_program_mismatch_count",
+        ):
+            if raw.get(key) is not None:
+                raise _unavailable("academic alignment placement counts are unavailable.")
+        rows = [
+            *unavailable,
+            *inventory_rows,
+            _row(
+                [
+                    _cell(
+                        "Submitted Inventories whose Program College matches the Student's "
+                        "current placement"
+                    ),
+                    _cell(NOT_AVAILABLE_HISTORICAL),
+                ]
+            ),
+            _row(
+                [
+                    _cell(
+                        "Submitted Inventories whose Program College differs from the Student's "
+                        "current placement"
+                    ),
+                    _cell(NOT_AVAILABLE_HISTORICAL),
+                ]
+            ),
+        ]
+        notes = [f"{PLACEMENT_PRECEDENCE_NOTE} {HISTORICAL_ALIGNMENT_NOTE}"]
+    else:
+        raise _unavailable("coverage mode is unsupported.")
+    return _table(
+        title=ALIGNMENT_TITLE,
+        columns=[_column("Measure", "74%"), _column("Count", "26%", numeric=True)],
+        rows=rows,
+        notes=notes,
+    )
+
+
 def _coverage_tables(
     coverage: dict[str, object],
     methodology: dict[str, object],
@@ -642,6 +758,7 @@ def _coverage_tables(
             columns=[_column("Population", "80%"), _column("Count", "20%", numeric=True)],
             rows=reconciliation_rows,
         ),
+        "alignment": _alignment_table(coverage, mode),
     }
 
 

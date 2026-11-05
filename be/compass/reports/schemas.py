@@ -116,6 +116,18 @@ class PopulationReconciliation(StrictSchema):
     coverage_only_count: int
 
 
+class AcademicAlignment(StrictSchema):
+    current_student_count: int | None
+    current_with_placement_count: int | None
+    current_without_placement_count: int | None
+    submitted_inventory_count: int
+    submitted_with_program_count: int
+    submitted_without_program_count: int
+    placement_program_match_count: int | None
+    placement_program_mismatch_count: int | None
+    precedence_note: str
+
+
 class InventoryCoverage(StrictSchema):
     mode: CoverageModeValue
     eligible_student_count: int | None
@@ -126,6 +138,7 @@ class InventoryCoverage(StrictSchema):
     ignored_filters: list[str]
     scope_note: str
     reconciliation: PopulationReconciliation
+    academic_alignment: AcademicAlignment
 
 
 class Methodology(StrictSchema):

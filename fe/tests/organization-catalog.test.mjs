@@ -21,9 +21,10 @@ const account = (role, capabilities) => ({ id: "actor", role, capabilities, desi
 for (const [name, role, capabilities, enter, edit, relationships] of [
   ["Catalog only", "COUNSELOR", ["organization.structure.view", "organization.catalog.manage"], true,true,false],
   ["Relationships only", "COUNSELOR", ["organization.structure.view", "organization.manage"], true,false,true],
-  ["Both", "IT_ADMIN", ["organization.structure.view", "organization.manage", "organization.catalog.manage"], true,true,true],
+  ["Both", "IT_ADMIN", ["organization.structure.view", "organization.manage", "organization.catalog.manage", "student_academics.view", "student_academics.manage"], true,true,true],
   ["Staff reference viewer", "GUIDANCE_SERVICES_STAFF", ["organization.structure.view"], true,false,false],
   ["Student selector reader", "STUDENT", ["organization.structure.view"], false,false,false],
+  ["Academic records viewer", "COUNSELOR", ["organization.structure.view", "student_academics.view"], true,false,false],
   ["Unsupported Catalog grant", "INSTITUTIONAL_OFFICER", ["organization.structure.view", "organization.catalog.manage"], false,false,false],
   ["Missing structure dependency", "IT_ADMIN", ["organization.catalog.manage"], false,false,false],
   ["Revoked Catalog capability", "COUNSELOR", ["organization.structure.view"], true,false,false],
@@ -34,7 +35,7 @@ for (const [name, role, capabilities, enter, edit, relationships] of [
   assert.equal(dock.includes("/portal/organization"),enter);
   const commands = portalCommandDestinations(user).map((item) => item.href);
   assert.equal(commands.includes("/portal/organization/responsibilities"),enter && relationships);
-  assert.equal(commands.includes("/portal/organization/student-academics"),enter && relationships);
+  assert.equal(commands.includes("/portal/organization/student-academics"),capabilities.includes("student_academics.view"));
 });
 for (const [levels,status,result] of [[[1,3,5],"CONFIGURED","1st, 3rd and 5th Year"],[[1,2,3,4],"CONFIGURED","1st–4th Year"],[[1,3],"CONFIGURED","1st and 3rd Year"],[[10],"CONFIGURED","10th Year"],[null,"PENDING_POLICY","Year levels not set"]]) test(`Actual Year Levels: ${JSON.stringify(levels)}`,()=>assert.equal(levelsLabel(levels,status),result));
 test("Unknown classification is explicit, never inferred from a Program name",()=>assert.equal(academicProgramLabel({...program, name:"Bachelor of Something",academic_classification:null,year_level_policy_status:"PENDING_POLICY",applicable_year_levels:null}),"Classification not set · Year levels not set"));

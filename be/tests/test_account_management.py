@@ -1565,13 +1565,13 @@ def test_account_creation_rejects_student_placement_for_non_student_roles():
 
 
 @pytest.mark.django_db
-def test_account_creation_requires_organization_manage_for_initial_placement():
+def test_account_creation_requires_student_academics_manage_for_initial_placement():
     sync_policy()
     client, admin, _session = make_admin_client()
     campus, college = make_campus_with_college()
     UserCapabilityOverride.objects.create(
         user=admin,
-        capability=Capability.objects.get(code="organization.manage"),
+        capability=Capability.objects.get(code="student_academics.manage"),
         effect=UserCapabilityOverride.Effect.REVOKE,
         reason="Temporary separation of duties",
         created_by=admin,
@@ -1594,6 +1594,10 @@ def test_account_creation_requires_organization_manage_for_initial_placement():
 
     assert forbidden.status_code == 403
     assert forbidden.json()["error"]["code"] == "academic_placement_permission_denied"
+    assert forbidden.json()["error"]["message"] == (
+        "The student_academics.manage capability is required to assign an initial Student "
+        "placement."
+    )
     assert not User.objects.filter(email="denied.placement@example.edu").exists()
     assert not StudentAcademicProfile.objects.exists()
 

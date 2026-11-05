@@ -11,13 +11,16 @@ from compass.exit_interviews.opportunities import list_eligible_students as list
 from compass.operational_students import list_scoped_operational_students
 from compass.organization.access_scope import resolve_operational_responsibility_scope
 from compass.organization.models import (
+    AcademicYear,
     Campus,
     College,
     CounselorResponsibility,
+    Program,
     StaffSupervision,
 )
 from compass.referrals.services import list_eligible_students as list_referral_students
 from compass.student_academics.models import StudentAcademicProfile
+from tests.test_student_profiling_reports import make_inventory, make_revision
 
 
 def list_handled_students(*, actor, **kwargs):
@@ -128,6 +131,35 @@ def test_college_picker_preserves_scope_and_projection_after_lifecycle_filter(li
     assert [item.id for item in list_students(actor=counselor, search="current").items] == [
         current.pk
     ]
+
+
+@pytest.mark.django_db
+def test_operational_lists_follow_placement_college_not_inventory_program_college():
+    call_command("sync_identity_policy", verbosity=0)
+    campus = Campus.objects.create(code="MAIN", name="Main Campus")
+    placement_college = College.objects.create(campus=campus, code="PLA", name="Placement College")
+    program_college = College.objects.create(campus=campus, code="PGB", name="Program College")
+    program = Program.objects.create(
+        college=program_college,
+        code="PGB-1",
+        name="Program B",
+    )
+    student = _user("placement-precedence@example.edu")
+    StudentAcademicProfile.objects.create(student=student, current_college=placement_college)
+    year = AcademicYear.objects.create(label="2026-2027", is_current=True)
+    make_inventory(
+        student=student,
+        academic_year=year,
+        revision=make_revision("operational-precedence"),
+        program=program,
+    )
+
+    included = list_scoped_operational_students(college_ids=(placement_college.pk,), page_size=50)
+    assert [item.id for item in included.items] == [student.pk]
+    assert included.items[0].college.code == "PLA"
+
+    excluded = list_scoped_operational_students(college_ids=(program_college.pk,), page_size=50)
+    assert excluded.items == ()
 
 
 @pytest.mark.django_db

@@ -276,7 +276,10 @@
   <h3 class="sp-subsection">3.3 {{ student_profile.coverage.reconciliation.title }}</h3>
   {% include "documents/reports/_student_profile_table.html" with table=student_profile.coverage.reconciliation show_heading=False %}
 
-  <h3 class="sp-subsection">3.4 {{ student_profile.filters.title }}</h3>
+  <h3 class="sp-subsection">3.4 {{ student_profile.coverage.alignment.title }}</h3>
+  {% include "documents/reports/_student_profile_table.html" with table=student_profile.coverage.alignment show_heading=False %}
+
+  <h3 class="sp-subsection">3.5 {{ student_profile.filters.title }}</h3>
   {% include "documents/reports/_student_profile_table.html" with table=student_profile.filters show_heading=False %}
 
   {% if student_profile.disclosure_warning_messages %}

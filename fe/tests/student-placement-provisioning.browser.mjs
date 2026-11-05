@@ -23,7 +23,7 @@ const createdStudent = {
   created_at: "2026-11-04T00:00:00Z", updated_at: "2026-11-04T00:00:00Z", mfa_enabled: false, profile_photo_url: null, profile_photo_updated_at: null, faculty_affiliation: null,
 };
 const sessionWith = (capabilities) => sessionFor({ ...user("IT_ADMIN"), capabilities, designations: [] });
-const manager = sessionWith(["accounts.manage", "accounts.view", "organization.manage"]);
+const manager = sessionWith(["accounts.manage", "accounts.view", "student_academics.manage"]);
 const limitedManager = sessionWith(["accounts.manage", "accounts.view"]);
 const csvReport = {
   valid: true, committed: false, total_rows: 2, create_count: 1, skip_count: 1, conflict_count: 0, invalid_count: 0,
@@ -44,7 +44,7 @@ function handler({ session = manager, onCreate = null, onImport = null } = {}) {
   };
 }
 
-await check("manager-with-organization-manage-reviews-and-posts-student-placement", "/portal/accounts/new", {
+await check("manager-with-student-academics-manage-reviews-and-posts-student-placement", "/portal/accounts/new", {
   viewport: { width: 390, height: 1000 }, handler: handler({
     onCreate: async (body, reply) => {
       assert.equal(body.role, "STUDENT");
@@ -91,7 +91,7 @@ await check("manager-with-organization-manage-reviews-and-posts-student-placemen
   await page.waitForURL(new RegExp(`/portal/accounts/${createdId}$`));
 });
 
-await check("manager-without-organization-manage-cannot-see-or-post-placement", "/portal/accounts/new", {
+await check("manager-without-placement-capability-cannot-see-or-post-placement", "/portal/accounts/new", {
   handler: handler({
     session: limitedManager,
     onCreate: async (body, reply) => {
@@ -152,7 +152,7 @@ await check("csv-import-documents-and-previews-placement-code-columns", "/portal
 
 await check("placement-authorization-failure-uses-placement-message", "/portal/accounts/new", { handler: handler({
   onCreate: async (_body, reply) => {
-    await reply({ error: { code: "academic_placement_permission_denied", message: "The organization.manage capability is required to assign an initial Student placement." } }, 403);
+    await reply({ error: { code: "academic_placement_permission_denied", message: "The student_academics.manage capability is required to assign an initial Student placement." } }, 403);
   },
 }) }, async (page) => {
   await shown(page.getByRole("heading", { name: "Create account", exact: true }));
@@ -166,7 +166,7 @@ await check("placement-authorization-failure-uses-placement-message", "/portal/a
   const dialog = page.getByRole("alertdialog");
   await shown(dialog);
   await dialog.getByRole("button", { name: "Create account", exact: true }).click();
-  await shown(dialog.getByText("The organization.manage capability is required to assign an initial Student placement."));
+  await shown(dialog.getByText("The student_academics.manage capability is required to assign an initial Student placement."));
 });
 
 await finish();
