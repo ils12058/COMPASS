@@ -11,19 +11,19 @@ from django.db.models.lookups import LessThanOrEqual
 class ThreadKind(models.TextChoices):
     OFFICE = "OFFICE", "Guidance Office"
     COUNSELING = "COUNSELING", "Counseling"
+    FACULTY_INQUIRY = "FACULTY_INQUIRY", "Faculty inquiry"
 
 
 class ReservedThreadKind(models.TextChoices):
-    """Kind codes reserved by GMSG-0 for the families Proposal #10 adds later.
+    """Kind codes whose families GMSG-3..5 will add.
 
-    Deliberately NOT members of `ThreadKind`: `ThreadKind` is the wire enum exposed by
-    `GuidanceThreadResponse`, `StudentActionItem` and `WorkItem`, so adding a member here would
-    change `contracts/openapi.json`. These codes are admitted only by the generalized database
-    CHECK, whose branch for each one requires `student` to be null — and `student` is still
-    `NOT NULL`, so no code path can create a reserved thread. `policy` denies every one of them.
+    These codes are admitted by the generalized database CHECK, denied for every actor by
+    `policy._RULES`, and have no service function and no endpoint. Since 0003 made `student`
+    nullable they are no longer blocked by a NOT NULL column, so uncreatability here is a policy
+    guarantee only: a direct ORM insert with a satisfiable CHECK branch would now store the row.
+    `policy` still refuses to read, route or answer it, and nothing in the product can create one.
     """
 
-    FACULTY_INQUIRY = "FACULTY_INQUIRY", "Faculty inquiry"
     REFERRAL_COORDINATION = "REFERRAL_COORDINATION", "Referral coordination"
     COUNSELOR_DIRECT = "COUNSELOR_DIRECT", "Counselor direct"
     COUNSELOR_CASE_COORDINATION = "COUNSELOR_CASE_COORDINATION", "Counselor case coordination"
@@ -32,8 +32,9 @@ class ReservedThreadKind(models.TextChoices):
 ALL_THREAD_KINDS = frozenset(ThreadKind.values) | frozenset(ReservedThreadKind.values)
 
 # GMSG-0 §6.1 family allowlists: per kind, the columns a row must set and the columns it must leave
-# null. A column in neither list is deliberately unconstrained. Only these six codes appear here, so
-# a row of any other kind matches no branch and is rejected by the CHECK.
+# null. A column in neither list is deliberately unconstrained, except for FACULTY_INQUIRY, whose
+# branch accounts for every family column. Only these six codes appear here, so a row of any other
+# kind matches no branch and is rejected by the CHECK.
 _FAMILY_SHAPE: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
     "OFFICE": (
         ("student", "routing_college"),
@@ -67,6 +68,8 @@ _FAMILY_SHAPE: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
             "student",
             "counselor",
             "relationship_appointment",
+            "routing_college",
+            "assigned_to",
             "direct_first_user",
             "direct_second_user",
             "student_subject",
@@ -136,8 +139,14 @@ class GuidanceThread(models.Model):
     status = models.CharField(
         max_length=16, choices=ThreadStatus.choices, default=ThreadStatus.OPEN
     )
+    # Nullable from 0003: a Faculty inquiry is about a Student without making the Student a
+    # participant. The OFFICE and COUNSELING branches of `gm_thread_family_shape` still require it.
     student = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="guidance_threads"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="guidance_threads",
     )
     routing_college = models.ForeignKey(
         "organization.College", on_delete=models.PROTECT, null=True, blank=True
@@ -230,7 +239,12 @@ class GuidanceThread(models.Model):
             models.Index(
                 fields=("routing_college", "-last_message_at", "-id"),
                 name="gm_office_directory_idx",
-            )
+            ),
+            models.Index(
+                fields=("requester", "-last_message_at", "-id"),
+                name="gm_inquiry_requester_idx",
+                condition=models.Q(kind="FACULTY_INQUIRY"),
+            ),
         ]
         constraints = [
             models.CheckConstraint(

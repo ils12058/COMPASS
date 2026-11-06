@@ -59,7 +59,7 @@ const student = account("STUDENT", ["guidance_messages.view_self", "guidance_mes
 const counselor = account("COUNSELOR", ["guidance_messages.view", "guidance_messages.manage"]);
 const thread = (overrides = {}) => ({
   id: THREAD, kind: "OFFICE", status: "OPEN",
-  student: person("student", "Maria Santos"), counselor: null,
+  student: person("student", "Maria Santos"), counselor: null, requester: null,
   routing_college: { id: "college", code: "CCMS", name: "College of Computing" },
   assigned_to: person("staff", "Lea Ramos"), relationship_appointment_id: null,
   created_at: "2026-10-09T01:00:00Z", last_message_at: "2026-10-09T02:00:00Z",
@@ -78,14 +78,42 @@ test("Messages access pairs each identity with its own capability", () => {
   assert.deepEqual(
     { ...getGuidanceMessagesAccess(student) },
     {
-      isStudent: true, isStaff: false, canViewSelf: true, canManageSelf: true, canViewStaff: false, canManageStaff: false,
-      hasWorkspace: true, canWrite: true, canUseTemplates: false, canManageTemplates: false,
+      isStudent: true, isStaff: false, isFaculty: false, viewer: "student",
+      canViewSelf: true, canManageSelf: true, canViewStaff: false, canManageStaff: false,
+      canViewInquirySelf: false, canManageInquirySelf: false, canIntake: false,
+      hasWorkspace: true, canWrite: true, canStart: true, canUseTemplates: false, canManageTemplates: false,
     },
   );
   assert.equal(getGuidanceMessagesAccess(counselor).canManageStaff, true);
   assert.equal(getGuidanceMessagesAccess(account("GUIDANCE_SERVICES_STAFF", ["guidance_messages.view"])).canWrite, false, "View without manage reads only");
   assert.equal(getGuidanceMessagesAccess(account("STUDENT", ["guidance_messages.view"])).hasWorkspace, false, "A Student needs view_self");
   assert.equal(getGuidanceMessagesAccess(account("COUNSELOR", ["guidance_messages.view_self"])).hasWorkspace, false, "Staff need view");
+  const faculty = account("FACULTY", ["guidance_messages.inquiry_view_self", "guidance_messages.inquiry_manage_self"]);
+  assert.deepEqual(
+    { ...getGuidanceMessagesAccess(faculty) },
+    {
+      isStudent: false, isStaff: false, isFaculty: true, viewer: "faculty",
+      canViewSelf: false, canManageSelf: false, canViewStaff: false, canManageStaff: false,
+      canViewInquirySelf: true, canManageInquirySelf: true, canIntake: false,
+      hasWorkspace: true, canWrite: true, canStart: true, canUseTemplates: false, canManageTemplates: false,
+    },
+  );
+  const readOnlyFaculty = getGuidanceMessagesAccess(account("FACULTY", ["guidance_messages.inquiry_view_self"]));
+  assert.deepEqual(
+    [readOnlyFaculty.hasWorkspace, readOnlyFaculty.canWrite, readOnlyFaculty.canStart],
+    [true, false, false],
+    "A Faculty member who can only read cannot write or start",
+  );
+  assert.equal(
+    getGuidanceMessagesAccess(account("FACULTY", ["guidance_messages.inquiry_manage_self"])).hasWorkspace,
+    false,
+    "manage_self without view_self is not enough",
+  );
+  assert.equal(getGuidanceMessagesAccess(account("STUDENT", ["guidance_messages.inquiry_view_self"])).canViewInquirySelf, false, "Only Faculty holds the inquiry capabilities");
+  const intake = account("COUNSELOR", ["guidance_messages.view", "guidance_messages.manage", "guidance_messages.intake"], { designations: ["GENERAL_GUIDANCE_INTAKE"] });
+  assert.equal(getGuidanceMessagesAccess(intake).canIntake, true);
+  assert.equal(getGuidanceMessagesAccess(counselor).canIntake, false, "Intake needs its own capability");
+  assert.equal(getGuidanceMessagesAccess(account("IT_ADMIN", ["guidance_messages.intake"])).canIntake, false, "Only Guidance staff hold intake");
   for (const other of [
     account("IT_ADMIN", ["accounts.manage", "platform_operations.view"]),
     account("IT_ADMIN", ["privacy.governance.view"], { designations: ["DPO"] }),
@@ -95,6 +123,20 @@ test("Messages access pairs each identity with its own capability", () => {
     assert.equal(getGuidanceMessagesAccess(other).hasWorkspace, false, `${other.role} ${other.designations} has no Messages`);
     assert.ok(!portalWorkspaceGroups(other).some((group) => group.links.some((link) => link.href === "/portal/messages")));
   }
+});
+
+test("Faculty and intake staff reach Messages through the workspace and its commands", () => {
+  const faculty = account("FACULTY", ["guidance_messages.inquiry_view_self", "guidance_messages.inquiry_manage_self"]);
+  const groups = portalWorkspaceGroups(faculty);
+  assert.deepEqual(groups.map((group) => group.label), ["Communication"], "Referrals first, then Communication");
+  assert.deepEqual(groups[0].links.map((link) => link.href), ["/portal/messages"]);
+  const commands = (user) => portalCommandDestinations(user).map((destination) => destination.href);
+  assert.ok(commands(faculty).includes("/portal/messages/new"));
+  assert.ok(!commands(account("FACULTY", [])).some((href) => href.startsWith("/portal/messages")));
+  assert.deepEqual(portalWorkspaceGroups(account("FACULTY", [])), []);
+  const intake = account("GUIDANCE_SERVICES_STAFF", ["guidance_messages.view", "guidance_messages.manage", "guidance_messages.intake"], { designations: ["GENERAL_GUIDANCE_INTAKE"] });
+  assert.ok(portalWorkspaceGroups(intake).some((group) => group.links.some((link) => link.href === "/portal/messages")));
+  assert.equal(getGuidanceMessagesAccess(intake).viewer, "staff");
 });
 
 test("Messages is a daily workspace placed before administration", () => {
@@ -126,6 +168,16 @@ test("conversation labels use human wording from each reader's side", () => {
   assert.equal(threadSubtitle(counseling, "staff"), "Counseling");
   assert.deepEqual(threadRoutingFacts(office, "staff"), { college: "College of Computing", assignedTo: "Lea Ramos" });
   assert.deepEqual(threadRoutingFacts(office, "student"), { college: null, assignedTo: null });
+  const inquiry = thread({
+    kind: "FACULTY_INQUIRY", student: null, counselor: null, routing_college: null, assigned_to: null,
+    requester: person("faculty", "Ramon Reyes"),
+  });
+  assert.equal(threadTitle(inquiry, "faculty"), "Guidance Office", "Faculty write to the Office, not a person");
+  assert.equal(threadSubtitle(inquiry, "faculty"), null);
+  assert.equal(threadTitle(inquiry, "staff"), "Ramon Reyes");
+  assert.equal(threadSubtitle(inquiry, "staff"), "Faculty inquiry");
+  assert.deepEqual(threadRoutingFacts(inquiry, "staff"), { college: null, assignedTo: null }, "Inquiries carry no Office routing");
+  assert.equal(threadTitle({ ...inquiry, requester: person("f", "  ") }, "staff"), "Faculty");
   assert.deepEqual(threadRoutingFacts(counseling, "staff"), { college: null, assignedTo: null });
   assert.equal(threadStatusLabel("RESOLVED"), "Resolved");
   assert.equal(unreadLabel(0), null);
@@ -185,11 +237,12 @@ test("send and status errors say what happened without backend jargon", () => {
   assert.match(describeSendError(new TypeError("x"), "thread"), /could not be confirmed/);
   assert.match(describeSendError(apiError(409), "thread"), /resolved, so your message was not sent/);
   assert.match(describeSendError(apiError(409), "staff-office"), /no available Guidance Office routing/);
+  assert.match(describeSendError(apiError(409), "faculty-inquiry"), /Your inquiry could not be started/);
   assert.match(describeSendError(apiError(404), "student-counseling"), /choose another recipient/);
   assert.match(describeSendError(apiError(422), "thread"), /4,000 characters/);
   assert.match(describeSendError(new AccountChangedError(), "thread"), /account changed/);
   assert.match(describeStatusChangeError(apiError(409), "reopen"), /already has an open Guidance Office conversation/);
-  for (const text of [describeSendError(apiError(409), "thread"), describeSendError(apiError(404), "thread")]) {
+  for (const text of [describeSendError(apiError(409), "thread"), describeSendError(apiError(404), "thread"), describeSendError(apiError(409), "faculty-inquiry")]) {
     assert.ok(!/thread|client_message_id|OFFICE/.test(text), text);
   }
 });

@@ -107,11 +107,10 @@ function MessagesFrame({
     else focusHeading(MESSAGES_HEADING_ID);
   }, [isSplit, route]);
 
-  const canStart = access.canManageSelf || access.canManageStaff;
   const value = useMemo<GuidanceWorkspaceValue>(
     () => ({
       access,
-      viewer: access.isStudent ? "student" : "staff",
+      viewer: access.viewer,
       currentUserId,
       moves: route.moves,
       isSplit,
@@ -158,7 +157,7 @@ function MessagesFrame({
                     Templates
                   </GuardedPortalLink>
                 ) : null}
-                {canStart ? (
+                {access.canStart ? (
                   <GuardedPortalLink
                     href="/portal/messages/new"
                     aria-current={segment === "new" ? "page" : undefined}
@@ -174,7 +173,7 @@ function MessagesFrame({
               access={access}
               activeThreadId={activeThreadId}
               currentUserId={currentUserId}
-              canStart={canStart}
+              canStart={access.canStart}
             />
           </div>
           <div

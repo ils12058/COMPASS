@@ -54,16 +54,21 @@ def reserved_row(world, kind):
     )
 
 
-def actors(world):
-    """Every role the messaging surface knows, plus the three denied at the role gate."""
+def faculty_actor():
+    """A synthetic Faculty account: no password, because a profile ciphertext would fail a check."""
     email = "gm-kinds-faculty@example.edu"
-    faculty = User.objects.filter(email=email).first() or User.objects.create_user(
+    return User.objects.filter(email=email).first() or User.objects.create_user(
         email=email,
         password=None,
         role=Role.objects.get(code="FACULTY"),
         first_name="Synthetic",
         last_name="Faculty",
     )
+
+
+def actors(world):
+    """Every role the messaging surface knows, plus the three denied at the role gate."""
+    faculty = faculty_actor()
     UserCapabilityOverride.objects.get_or_create(
         user=world.admin,
         capability=Capability.objects.get(code="guidance_messages.manage"),
@@ -137,20 +142,26 @@ def result(function, *args, **kwargs):
 
 
 def test_kind_catalog_is_explicit_and_closed():
-    assert ThreadKind.choices == [("OFFICE", "Guidance Office"), ("COUNSELING", "Counseling")]
+    assert ThreadKind.choices == [
+        ("OFFICE", "Guidance Office"),
+        ("COUNSELING", "Counseling"),
+        ("FACULTY_INQUIRY", "Faculty inquiry"),
+    ]
     assert list(ReservedThreadKind.values) == [
-        "FACULTY_INQUIRY",
         "REFERRAL_COORDINATION",
         "COUNSELOR_DIRECT",
         "COUNSELOR_CASE_COORDINATION",
     ]
     assert not set(ReservedThreadKind.values) & set(ThreadKind.values)
-    assert ALL_THREAD_KINDS == frozenset({"OFFICE", "COUNSELING", *ReservedThreadKind.values})
+    assert ALL_THREAD_KINDS == frozenset(
+        {"OFFICE", "COUNSELING", "FACULTY_INQUIRY", *ReservedThreadKind.values}
+    )
     assert len(ALL_THREAD_KINDS) == 6
     assert set(policy._RULES) == set(ALL_THREAD_KINDS)
     assert [kind for kind, rule in policy._RULES.items() if rule is not None] == [
         ThreadKind.OFFICE,
         ThreadKind.COUNSELING,
+        ThreadKind.FACULTY_INQUIRY,
     ]
     assert all(policy._RULES[code] is None for code in ReservedThreadKind.values)
 
@@ -174,7 +185,7 @@ def test_legacy_shapes_still_insert_with_all_new_columns_null(world):
     for thread in (office_thread, counseling_thread):
         for name in NEW_COLUMNS:
             assert getattr(thread, name) is None, (thread.kind, name)
-    assert GuidanceThread._meta.get_field("student").null is False
+    assert GuidanceThread._meta.get_field("student").null is True
     assert all(GuidanceThread._meta.get_field(name).null for name in NEW_COLUMNS)
 
     for actor in (world.student, world.counselor, world.gss, world.head):
@@ -217,16 +228,43 @@ def test_reserved_kinds_are_rejected_by_postgresql(world, code):
     assert not GuidanceThread.objects.filter(kind=code).exists()
 
 
-def test_reserved_kinds_need_a_row_the_student_column_forbids(world):
-    # Each reserved branch is satisfiable only with `student` null, and `student` is NOT NULL. That
-    # column, not a service check, is what keeps every reserved family uncreatable in GMSG-1.
+def test_inquiry_shape_inserts_with_a_requester_and_no_student(world):
+    """GMSG-2 W3: the FACULTY_INQUIRY branch needs a requester and forbids the Student columns."""
     with pytest.raises(IntegrityError), transaction.atomic():
         GuidanceThread.objects.create(
-            kind=ReservedThreadKind.FACULTY_INQUIRY,
-            student=None,
-            requester=world.counselor,
+            kind=ThreadKind.FACULTY_INQUIRY,
+            requester=faculty_actor(),
+            student=world.student,
             created_by=world.counselor,
         )
+    thread = GuidanceThread.objects.create(
+        kind=ThreadKind.FACULTY_INQUIRY, requester=faculty_actor(), created_by=world.counselor
+    )
+    thread.refresh_from_db()
+    assert thread.requester_id == faculty_actor().pk
+    for name in (*NEW_COLUMNS[1:], "routing_college", "assigned_to"):
+        assert getattr(thread, name) is None, name
+
+
+def test_reserved_kinds_are_uncreatable_by_policy_only(world):
+    """What 0003 changed, stated plainly.
+
+    GMSG-1 relied on `student NOT NULL` to make each reserved branch unsatisfiable. `student` is
+    now nullable, so a direct ORM insert shaped to the CHECK can store one of these rows: their
+    database-level uncreatability is gone. What remains is the policy guarantee, and it is the
+    product guarantee that matters — `_RULES` has no rule for them, so every read, write, per-thread
+    check and routing candidate denies them before consulting any column, and their code is not in
+    `ThreadKind`, so no response schema or endpoint can even express one. GMSG-3..5 replace this
+    with real family rules.
+    """
+    for code in ReservedThreadKind.values:
+        assert policy._RULES[code] is None
+        assert code not in set(ThreadKind.values)
+        thread = reserved_row(world, code)
+        for actor in actors(world):
+            assert result(policy.require_actor, actor, kind=code) == ("denied", "capability")
+            assert result(policy.require_thread, actor, thread) == ("denied", "thread")
+        assert policy.recipient_ids(thread) == ()
 
 
 @pytest.mark.parametrize("code", UNCREATABLE_CODES)
@@ -292,3 +330,14 @@ def test_new_constraints_are_installed_in_postgresql():
     assert "relationship_case_grant_id" in definitions["gm_case_grant_subject_unique"]
     assert "student_subject_id" in definitions["gm_case_grant_subject_unique"]
     assert "'COUNSELOR_CASE_COORDINATION'" in definitions["gm_case_grant_subject_unique"]
+
+    inquiry_index = definitions["gm_inquiry_requester_idx"]
+    assert "gm_inquiry_requester_idx" in installed
+    assert inquiry_index.startswith("CREATE INDEX gm_inquiry_requester_idx")
+    assert "(requester_id, last_message_at DESC, id DESC)" in inquiry_index
+    assert "'FACULTY_INQUIRY'" in inquiry_index
+    # PostgreSQL normalizes the decompiled CHECK without quoting, so the branch text is matched raw.
+    inquiry_branch = next(part for part in shape.split(" OR ") if "'FACULTY_INQUIRY'" in part)
+    for column in ("student_id", "routing_college_id", "assigned_to_id", "counselor_id"):
+        assert f"{column} IS NULL" in inquiry_branch, column
+    assert "requester_id IS NOT NULL" in inquiry_branch

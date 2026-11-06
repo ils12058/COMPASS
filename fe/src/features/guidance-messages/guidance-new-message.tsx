@@ -27,6 +27,7 @@ import { CanonicalPagination } from "@/features/portal/components/canonical-pagi
 import { EligibleStudentPicker, type EligibleStudentOption } from "@/features/portal/components/eligible-student-picker";
 import {
   guidanceMessagesOpenCounselingThread,
+  guidanceMessagesOpenFacultyInquiry,
   guidanceMessagesOpenMyOfficeThread,
   guidanceMessagesOpenStudentOfficeThread,
   useGuidanceMessagesEligibleStudents,
@@ -75,14 +76,20 @@ export function GuidanceNewMessage() {
   }, [workspace]);
 
   const { access } = workspace;
-  if (access.isStudent ? !access.canManageSelf : !access.canManageStaff) {
+  const canStart = access.isStudent
+    ? access.canManageSelf
+    : access.isFaculty
+      ? access.canManageInquirySelf
+      : access.canManageStaff;
+  if (!canStart) {
     return (
       <ConversationFrame title="New message">
         <PanelMessage>Your account cannot start Guidance conversations.</PanelMessage>
       </ConversationFrame>
     );
   }
-  return access.isStudent ? <StudentNewMessage /> : <StaffNewMessage />;
+  if (access.isStudent) return <StudentNewMessage />;
+  return access.isFaculty ? <FacultyNewMessage /> : <StaffNewMessage />;
 }
 
 function useNavigateToThread() {
@@ -188,6 +195,53 @@ function StudentNewMessage() {
       <GuidanceMessageComposer
         target={recipient}
         label={`Message to ${recipientName}`}
+        send={send}
+        describeError={describe}
+        onSent={navigate}
+        onPendingChange={setLocked}
+      />
+    </ConversationFrame>
+  );
+}
+
+function FacultyNewMessage() {
+  const opened = useOpenedThread();
+  const navigate = useNavigateToThread();
+  const [locked, setLocked] = useState(false);
+  // The Guidance Office is the only recipient, so no recipient search runs here.
+  const open = useMutation({
+    mutationFn: (intent: SendIntent) =>
+      guidanceMessagesOpenFacultyInquiry({ client_message_id: intent.clientMessageId, body: intent.body }),
+    onSuccess: (response) => opened(response.data),
+  });
+  const send = useCallback((intent: SendIntent) => open.mutateAsync(intent), [open]);
+  const describe = useCallback((error: unknown) => describeSendError(error, "faculty-inquiry"), []);
+
+  return (
+    <ConversationFrame title="New message">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <fieldset disabled={locked} className="min-w-0">
+          <legend className="text-sm font-semibold text-ink">To</legend>
+          <ul className="mt-2 divide-y divide-border rounded-sm border border-border">
+            <li>
+              <RecipientOption
+                name="guidance-recipient"
+                checked
+                onSelect={() => undefined}
+                title={GUIDANCE_OFFICE_LABEL}
+                detail="Guidance and Counseling Office"
+              />
+            </li>
+          </ul>
+        </fieldset>
+        <p className="mt-4 text-sm text-muted">
+          Your inquiry goes to the Guidance Office, which reads it and replies. Keep five or fewer
+          inquiries open at a time.
+        </p>
+      </div>
+      <GuidanceMessageComposer
+        target={OFFICE_TARGET}
+        label={`Message to ${GUIDANCE_OFFICE_LABEL}`}
         send={send}
         describeError={describe}
         onSent={navigate}

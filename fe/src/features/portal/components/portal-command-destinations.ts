@@ -71,7 +71,7 @@ export function portalCommandDestinations(user: UserSummary, facultyAvailability
   deep("/portal/appointments", "/book", "Book appointment", appointments.canBook, ["booking"]);
   deep("/portal/appointments", "/manage", "Manage appointments", appointments.canManage, ["calendar", "schedule"]);
   const messages = getGuidanceMessagesAccess(user);
-  deep("/portal/messages", "/new", "New message", messages.canManageSelf || messages.canManageStaff, ["chat", "write"]);
+  deep("/portal/messages", "/new", "New message", messages.canStart, ["chat", "write"]);
   deep("/portal/availability", "/me", "My availability", canUseSelfAvailability(user), ["schedule"]);
   deep("/portal/availability", "/office", "Office", canManageAvailability(user), ["office availability", "schedule"]);
   deep("/portal/availability", "/providers", "Counselors", canManageAvailability(user), ["counselor availability", "schedule"]);

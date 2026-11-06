@@ -73,10 +73,22 @@ DESIGNATION_DEFINITIONS = (
         name="Data Protection Officer",
         description="Institutional designation for the data protection officer appointment.",
     ),
+    DesignationDefinition(
+        code="GENERAL_GUIDANCE_INTAKE",
+        name="General Guidance Intake",
+        description="Institutional designation for general Guidance Office intake.",
+    ),
 )
 
 # Faculty receives only its own submission functions; domain approval is independent.
-FACULTY_CAPABILITY_CEILING = frozenset({"referrals.submit_self", "referrals.view_submitted_self"})
+FACULTY_CAPABILITY_CEILING = frozenset(
+    {
+        "referrals.submit_self",
+        "referrals.view_submitted_self",
+        "guidance_messages.inquiry_view_self",
+        "guidance_messages.inquiry_manage_self",
+    }
+)
 
 
 def faculty_capability_eligible(role_code: str, capability_code: str) -> bool:
@@ -172,6 +184,21 @@ CAPABILITY_DEFINITIONS = (
         code="guidance_messages.templates.manage",
         name="Manage Guidance Message templates",
         description="Create, edit, archive and restore shared generic Message templates.",
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.inquiry_view_self",
+        name="View own Faculty inquiries",
+        description="View own Guidance Office inquiries.",
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.inquiry_manage_self",
+        name="Manage own Faculty inquiries",
+        description="Start, send and resolve own Guidance Office inquiries.",
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.intake",
+        name="Handle general Guidance Office intake",
+        description="Read and answer Faculty inquiries addressed to the Guidance Office.",
     ),
     CapabilityDefinition(
         code="activity.supervised_staff.view",
@@ -789,11 +816,13 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "privacy_governance.manage",
         }
     ),
+    "GENERAL_GUIDANCE_INTAKE": frozenset({"guidance_messages.intake"}),
 }
 
 DESIGNATION_ROLE_COMPATIBILITY: dict[str, frozenset[str]] = {
     "HEAD_GUIDANCE_COUNSELOR": frozenset({"COUNSELOR"}),
     "DPO": frozenset({"INSTITUTIONAL_OFFICER"}),
+    "GENERAL_GUIDANCE_INTAKE": frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}),
 }
 
 ROLE_CODES = frozenset(definition.code for definition in ROLE_DEFINITIONS)
@@ -819,6 +848,7 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "assessment_records.manage": frozenset({"assessment_records.view"}),
     "guidance_messages.manage_self": frozenset({"guidance_messages.view_self"}),
     "guidance_messages.manage": frozenset({"guidance_messages.view"}),
+    "guidance_messages.inquiry_manage_self": frozenset({"guidance_messages.inquiry_view_self"}),
     "guidance_messages.templates.manage": frozenset({"guidance_messages.manage"}),
     "privacy_governance.activity.export": frozenset({"privacy_governance.view"}),
     "routine_interviews.manage_self": frozenset({"routine_interviews.view_self"}),

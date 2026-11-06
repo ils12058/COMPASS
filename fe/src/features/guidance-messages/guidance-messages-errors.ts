@@ -4,7 +4,8 @@ import { AccountChangedError } from "@/lib/query/account-ownership";
 // What a failed Guidance Messages action means to the reader. Backend messages are not shown as
 // they are: they name internal concepts ("Guidance thread"), and none of them carries content.
 
-export type GuidanceSendContext = "thread" | "student-office" | "student-counseling" | "staff-office";
+export type GuidanceSendContext =
+  "thread" | "student-office" | "student-counseling" | "staff-office" | "faculty-inquiry";
 
 function status(error: unknown): number | null {
   return error instanceof CompassApiError ? error.status : null;
@@ -36,6 +37,9 @@ export function describeSendError(error: unknown, context: GuidanceSendContext):
     return "This conversation is no longer available. Your message was not sent.";
   }
   if (code === 409) {
+    if (context === "faculty-inquiry") {
+      return "Your inquiry could not be started because the Guidance Office cannot receive it right now. Your message was not sent; try again later.";
+    }
     if (context === "student-office") {
       return "The Guidance Office cannot receive messages from your account right now. Your message was not sent; try again later or visit the Guidance Office.";
     }

@@ -50,8 +50,9 @@ class GuidanceThreadResponse(StrictSchema):
     id: UUID
     kind: ThreadKind
     status: ThreadStatus
-    student: GuidancePerson
+    student: GuidancePerson | None
     counselor: GuidancePerson | None
+    requester: GuidancePerson | None
     routing_college: GuidanceCollege | None
     assigned_to: GuidancePerson | None
     relationship_appointment_id: UUID | None
@@ -227,22 +228,25 @@ def _person(user):
 
 
 def _thread(thread, actor):
+    # D-GMSG-22: Office handling identity and College routing are staff-only payload.
+    staff_viewer = actor.role.code in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
     return GuidanceThreadResponse(
         id=thread.pk,
         kind=thread.kind,
         status=thread.status,
         student=_person(thread.student),
         counselor=_person(thread.counselor),
+        requester=_person(thread.requester),
         routing_college=(
             GuidanceCollege(
                 id=thread.routing_college_id,
                 code=thread.routing_college.code,
                 name=thread.routing_college.name,
             )
-            if thread.routing_college_id and actor.role.code != "STUDENT"
+            if thread.routing_college_id and staff_viewer
             else None
         ),
-        assigned_to=_person(thread.assigned_to),
+        assigned_to=_person(thread.assigned_to) if staff_viewer else None,
         relationship_appointment_id=thread.relationship_appointment_id,
         created_at=thread.created_at,
         last_message_at=thread.last_message_at,
@@ -509,6 +513,25 @@ def open_counseling(
         services.open_counseling_thread(
             actor=request.auth_user,
             appointment_id=appointment_id,
+            **payload.model_dump(),
+            context=AuditContext.from_request(request, actor=request.auth_user),
+        ),
+        request.auth_user,
+    )
+
+
+@router.post(
+    "/faculty-inquiry",
+    response=response_with_errors(GuidanceOpenResponse, *ERRORS),
+    operation_id="guidanceMessagesOpenFacultyInquiry",
+)
+@_safe
+def open_faculty_inquiry(request, response: HttpResponse, payload: GuidanceSendRequest):
+    if request.auth_user.role.code != "FACULTY":
+        raise MessagesPermissionDenied()
+    return _open(
+        services.open_faculty_inquiry(
+            actor=request.auth_user,
             **payload.model_dump(),
             context=AuditContext.from_request(request, actor=request.auth_user),
         ),

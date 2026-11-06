@@ -30,7 +30,7 @@ import {
 import { useManagedAccount } from "@/features/accounts/detail/account-detail-frame";
 import {
   accountName,
-  compatibleDesignation,
+  compatibleDesignations,
   designationLabels,
   formatAccountDate,
   isDesignationCode,
@@ -119,7 +119,7 @@ export function AccountAccess() {
     removeDesignation.isPending ||
     setOverride.isPending ||
     removeOverride.isPending;
-  const eligibleDesignation = compatibleDesignation(account.role);
+  const eligibleDesignations = compatibleDesignations(account.role);
   const currentDesignations =
     assignedData?.designations ?? account.designations;
   const capabilities = effectiveData?.capabilities ?? [];
@@ -409,20 +409,17 @@ export function AccountAccess() {
               </p>
             ) : mayManageDesignations && !assigned.isError ? (
               <div className="mt-4 flex flex-wrap gap-2">
-                {eligibleDesignation &&
-                !currentDesignations.includes(eligibleDesignation) ? (
-                  <Button
-                    variant="secondary"
-                    onClick={() =>
-                      setConfirm({
-                        kind: "assign",
-                        designation: eligibleDesignation,
-                      })
-                    }
-                  >
-                    Assign {designationLabels[eligibleDesignation]}
-                  </Button>
-                ) : null}
+                {eligibleDesignations
+                  .filter((designation) => !currentDesignations.includes(designation))
+                  .map((designation) => (
+                    <Button
+                      key={designation}
+                      variant="secondary"
+                      onClick={() => setConfirm({ kind: "assign", designation })}
+                    >
+                      Assign {designationLabels[designation]}
+                    </Button>
+                  ))}
                 {currentDesignations.map((designation) => (
                   <Button
                     key={designation}
@@ -434,7 +431,7 @@ export function AccountAccess() {
                     Remove {designationLabels[designation]}
                   </Button>
                 ))}
-                {!eligibleDesignation && currentDesignations.length === 0 ? (
+                {eligibleDesignations.length === 0 && currentDesignations.length === 0 ? (
                   <p className="text-sm text-muted">
                     No institutional designation is compatible with this role.
                   </p>

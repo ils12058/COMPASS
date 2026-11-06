@@ -146,12 +146,13 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert set(Designation.objects.values_list("code", flat=True)) == {
         "HEAD_GUIDANCE_COUNSELOR",
         "DPO",
+        "GENERAL_GUIDANCE_INTAKE",
     }
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
     assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
     assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 105
-    assert DesignationCapability.objects.count() == 23
+    assert RoleCapability.objects.count() == 107
+    assert DesignationCapability.objects.count() == 24
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
     second_output = StringIO()
@@ -161,10 +162,10 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert "capabilities created=0 updated=0" in second_output.getvalue()
     assert "role grants created=0" in second_output.getvalue()
     assert Role.objects.count() == 6
-    assert Designation.objects.count() == 2
+    assert Designation.objects.count() == 3
     assert Capability.objects.count() == len(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 105
-    assert DesignationCapability.objects.count() == 23
+    assert RoleCapability.objects.count() == 107
+    assert DesignationCapability.objects.count() == 24
 
 
 @pytest.mark.django_db

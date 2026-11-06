@@ -97,7 +97,12 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
   }
 
   const resolved = thread.status === "RESOLVED";
-  const staffCanChangeStatus = viewer === "staff" && access.canManageStaff;
+  // Inquiries are resolved by intake staff or by the Faculty member who wrote them; every other
+  // conversation is resolved only by staff with Messages manage.
+  const canChangeStatus =
+    (viewer === "staff" && access.canManageStaff && thread.kind !== "FACULTY_INQUIRY") ||
+    (viewer === "staff" && access.canIntake && thread.kind === "FACULTY_INQUIRY") ||
+    (viewer === "faculty" && access.canManageInquirySelf && thread.kind === "FACULTY_INQUIRY");
 
   return (
     <ConversationFrame
@@ -108,11 +113,15 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
           viewer={viewer}
           currentUserId={currentUserId}
           // Office handler assignment is workflow ownership for staff who manage the conversation.
-          canAssign={staffCanChangeStatus && thread.kind === "OFFICE"}
+          canAssign={canChangeStatus && thread.kind === "OFFICE"}
           onAssigned={workspace.showStatus}
         />
       }
-      actions={staffCanChangeStatus ? <ThreadStatusControl thread={thread} onChanged={workspace.showStatus} /> : null}
+      actions={
+        canChangeStatus ? (
+          <ThreadStatusControl thread={thread} viewer={viewer} onChanged={workspace.showStatus} />
+        ) : null
+      }
     >
       <ConversationHistoryRegion state={state} currentUserId={currentUserId} />
       {!access.canWrite ? (

@@ -15,7 +15,7 @@ import { cacheThread, useConversationHistory, useMarkThreadRead } from "@/featur
 import { GuidanceMessageList } from "@/features/guidance-messages/guidance-message-list";
 import { guidanceDirectoryQueryFamily } from "@/features/guidance-messages/guidance-messages-cache";
 import { describeOlderError, describeStatusChangeError } from "@/features/guidance-messages/guidance-messages-errors";
-import { personName, type GuidanceViewer } from "@/features/guidance-messages/guidance-messages-presentation";
+import { GUIDANCE_OFFICE_LABEL, personName, type GuidanceViewer } from "@/features/guidance-messages/guidance-messages-presentation";
 import {
   ConversationSkeleton,
   isConcealingError,
@@ -159,7 +159,7 @@ export function ResolvedNote({ thread, viewer }: { thread: GuidanceThreadRespons
           </GuardedPortalLink>
           .
         </>
-      ) : viewer === "staff" ? (
+      ) : viewer === "staff" || (viewer === "faculty" && thread.kind === "FACULTY_INQUIRY") ? (
         "Reopen it to send more messages."
       ) : null}
     </p>
@@ -183,15 +183,19 @@ export function ResolvedBadge() {
 }
 
 /**
- * Resolve and Reopen for Guidance staff. One button changes between the two, so focus stays put
- * after either. Resolving asks first; reopening is direct. The backend still decides both.
+ * Resolve and Reopen for the people who may end a conversation: Guidance staff for Office and
+ * Counseling threads, intake staff and the writing Faculty member for an inquiry. One button
+ * changes between the two, so focus stays put after either. Resolving asks first; reopening is
+ * direct. The backend still decides both.
  */
 export function ThreadStatusControl({
   thread,
+  viewer,
   onChanged,
   compact = false,
 }: {
   thread: GuidanceThreadResponse;
+  viewer: GuidanceViewer;
   /** Confirms a completed change, such as through the page's ActionStatus. */
   onChanged?: (text: string) => void;
   compact?: boolean;
@@ -213,14 +217,20 @@ export function ThreadStatusControl({
     onSuccess: settle,
   });
   const resolved = thread.status === "RESOLVED";
-  const student = personName(thread.student, "The Student");
+  const inquiry = thread.kind === "FACULTY_INQUIRY";
+  const noun = inquiry ? "inquiry" : "conversation";
+  const target = inquiry
+    ? viewer === "faculty"
+      ? GUIDANCE_OFFICE_LABEL
+      : personName(thread.requester, "The Faculty member")
+    : personName(thread.student, "The Student");
 
   return (
     <div className="flex flex-col items-end gap-1">
       <Button
         variant="secondary"
         className={cn("min-h-10", compact && "px-3")}
-        aria-label={compact ? (resolved ? "Reopen conversation" : "Resolve conversation") : undefined}
+        aria-label={compact ? (resolved ? `Reopen ${noun}` : `Resolve ${noun}`) : undefined}
         disabled={reopen.isPending}
         onClick={() => {
           if (!resolved) {
@@ -236,8 +246,8 @@ export function ThreadStatusControl({
         }}
       >
         {resolved
-          ? reopen.isPending ? "Reopening…" : compact ? "Reopen" : "Reopen conversation"
-          : compact ? "Resolve" : "Resolve conversation"}
+          ? reopen.isPending ? "Reopening…" : compact ? "Reopen" : `Reopen ${noun}`
+          : compact ? "Resolve" : `Resolve ${noun}`}
       </Button>
       {reopenError && resolved ? (
         <p role="alert" className="max-w-xs text-right text-sm text-danger">
@@ -246,8 +256,8 @@ export function ThreadStatusControl({
       ) : null}
       <ConsequentialActionDialog
         open={confirming}
-        title="Resolve this conversation?"
-        confirmLabel="Resolve conversation"
+        title={inquiry ? "Resolve this inquiry?" : "Resolve this conversation?"}
+        confirmLabel={`Resolve ${noun}`}
         pendingLabel="Resolving…"
         pending={resolve.isPending}
         error={resolve.isError ? describeStatusChangeError(resolve.error, "resolve") : null}
@@ -262,7 +272,7 @@ export function ThreadStatusControl({
         }
       >
         <p>
-          {student} will not be able to send messages here until the conversation is reopened. Its
+          {target} will not be able to send messages here until the {noun} is reopened. Its
           messages stay readable.
         </p>
         {thread.kind === "OFFICE" ? (

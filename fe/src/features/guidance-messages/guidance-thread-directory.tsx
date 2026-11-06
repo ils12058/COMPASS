@@ -43,7 +43,7 @@ export function GuidanceThreadDirectory({
   currentUserId: string;
   canStart: boolean;
 }) {
-  const viewer: GuidanceViewer = access.isStudent ? "student" : "staff";
+  const viewer = access.viewer;
   const directory = useInfiniteQuery({
     queryKey: guidanceDirectoryQueryKey(),
     queryFn: ({ pageParam, signal }) =>
@@ -91,6 +91,11 @@ export function GuidanceThreadDirectory({
             <span className="block font-semibold text-ink">No messages yet.</span>
             You can write to the Guidance Office, or to your Counselor once you have a Counseling
             appointment.
+          </>
+        ) : viewer === "faculty" ? (
+          <>
+            <span className="block font-semibold text-ink">No inquiries yet.</span>
+            Write to the Guidance Office when you need guidance about a student.
           </>
         ) : (
           "No Guidance conversations are available in your current workload."

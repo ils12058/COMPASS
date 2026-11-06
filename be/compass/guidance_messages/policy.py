@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from django.db.models import Q
 
 from compass.accounts.models import StudentLifecycleStatus, User
+from compass.accounts.services import effective_capabilities
 from compass.appointments.models import AppointmentStatus
 from compass.organization.access_scope import (
     HEAD_GUIDANCE_DESIGNATION,
@@ -29,18 +30,30 @@ class _KindRule:
     college_scoped: bool
     counselor_participant: bool
     office_staff_recipients: bool
+    requester_participant: bool = False
+    endpoint_staff_recipients: bool = False
+    staff_capability: str | None = None
 
 
 # Every kind the database can hold has an entry, so visibility, per-thread access and push routing
 # all read one table. `None` means reserved: denied for every role without consulting any resource
 # column. It replaces the old "anything not Counseling is College-scoped Office" fallthrough, which
 # would otherwise have disclosed each new kind to every staff member in its College on creation.
-# GMSG-2..5 turn a `None` into a rule only when that kind becomes creatable and its participants are
-# actually decided.
+# GMSG-2 gave FACULTY_INQUIRY its rule; GMSG-3..5 turn a `None` into a rule only when that kind
+# becomes creatable and its participants are actually decided.
 _RULES: dict[str, _KindRule | None] = {
     ThreadKind.OFFICE: _KindRule(True, frozenset(STAFF_ROLES), True, False, True),
     ThreadKind.COUNSELING: _KindRule(True, frozenset({"COUNSELOR"}), False, True, False),
-    ReservedThreadKind.FACULTY_INQUIRY: None,
+    ThreadKind.FACULTY_INQUIRY: _KindRule(
+        student_participant=False,
+        staff_roles=frozenset(STAFF_ROLES),
+        college_scoped=False,
+        counselor_participant=False,
+        office_staff_recipients=False,
+        requester_participant=True,
+        endpoint_staff_recipients=True,
+        staff_capability="guidance_messages.intake",
+    ),
     ReservedThreadKind.REFERRAL_COORDINATION: None,
     ReservedThreadKind.COUNSELOR_DIRECT: None,
     ReservedThreadKind.COUNSELOR_CASE_COORDINATION: None,
@@ -57,29 +70,59 @@ def current_actor(actor, *, lock=False):
     return user
 
 
-def require_actor(actor, *, manage=False, staff_only=False):
+def require_actor(actor, *, manage=False, staff_only=False, kind=None, codes=None):
+    """Whether `actor` may act at all, optionally scoped to one thread kind.
+
+    `kind=None` is the directory question: a Faculty member holding only the self-inquiry
+    capabilities must be able to load. A kind with no rule denies before any capability lookup.
+    `codes` is the actor's already-resolved capability set; callers that check several codes for the
+    same actor pass it so one lookup is enough.
+    """
+    if codes is None:
+        codes = effective_capabilities(actor)
     suffix = "manage" if manage else "view"
-    if actor.role.code == "STUDENT" and not staff_only:
+    rule = _RULES.get(kind) if kind is not None else None
+    if kind is not None and rule is None:
+        raise MessagesPermissionDenied()
+    if actor.role.code == "STUDENT" and not staff_only and (
+        rule is None or rule.student_participant
+    ):
         code = f"guidance_messages.{suffix}_self"
-    elif actor.role.code in STAFF_ROLES:
-        code = f"guidance_messages.{suffix}"
+    elif actor.role.code in STAFF_ROLES and (
+        rule is None or actor.role.code in rule.staff_roles
+    ):
+        if rule is not None and rule.staff_capability:
+            code = rule.staff_capability
+        else:
+            code = f"guidance_messages.{suffix}"
+    elif actor.role.code == "FACULTY" and not staff_only and (
+        rule is None or kind == ThreadKind.FACULTY_INQUIRY
+    ):
+        code = f"guidance_messages.inquiry_{suffix}_self"
     else:
         raise MessagesPermissionDenied()
-    if not actor.has_capability(code):
+    if code not in codes:
         raise MessagesPermissionDenied()
 
 
 def authorized_threads(actor, *, manage=False):
-    require_actor(actor, manage=manage)
+    codes = effective_capabilities(actor)
+    require_actor(actor, manage=manage, codes=codes)
     visible = Q()
     if actor.role.code == "STUDENT":
         for kind, rule in _RULES.items():
             if rule is not None and rule.student_participant:
                 visible |= Q(kind=kind, student_id=actor.pk)
+    elif actor.role.code == "FACULTY":
+        visible |= Q(kind=ThreadKind.FACULTY_INQUIRY, requester_id=actor.pk)
     else:
         scope = resolve_general_guidance_college_scope(actor)
         for kind, rule in _RULES.items():
             if rule is None or actor.role.code not in rule.staff_roles:
+                continue
+            if rule.staff_capability:
+                if rule.staff_capability in codes:
+                    visible |= Q(kind=kind)
                 continue
             if rule.college_scoped:
                 visible |= Q(kind=kind, routing_college_id__in=scope.college_ids)
@@ -91,18 +134,21 @@ def authorized_threads(actor, *, manage=False):
 
 
 def require_thread(actor, thread, *, manage=False, staff_only=False):
-    try:
-        require_actor(actor, manage=manage, staff_only=staff_only)
-    except MessagesPermissionDenied:
-        raise ThreadNotFound() from None
     rule = _RULES.get(thread.kind)
     if rule is None:
         raise ThreadNotFound()
+    try:
+        require_actor(actor, manage=manage, staff_only=staff_only, kind=thread.kind)
+    except MessagesPermissionDenied:
+        raise ThreadNotFound() from None
     if actor.role.code == "STUDENT":
         allowed = rule.student_participant and thread.student_id == actor.pk
+    elif actor.role.code == "FACULTY":
+        allowed = rule.requester_participant and thread.requester_id == actor.pk
     else:
         allowed = actor.role.code in rule.staff_roles and (
-            (
+            bool(rule.staff_capability)
+            or (
                 rule.college_scoped
                 and thread.routing_college_id
                 in resolve_general_guidance_college_scope(actor).college_ids
@@ -190,16 +236,38 @@ def eligible_handlers(thread):
     return [user for user in users if eligible_handler(user, thread)]
 
 
+def intake_staff_candidates():
+    """Finite superset: active staff; caller re-checks effective capability."""
+    return Q(role__code__in=STAFF_ROLES, is_active=True)
+
+
+def has_intake_staff():
+    return any(
+        user.has_capability("guidance_messages.intake")
+        for user in User.objects.filter(is_active=True, role__code__in=STAFF_ROLES)
+        .select_related("role")
+        .distinct()
+    )
+
+
 def recipient_ids(thread):
     """Finite routing candidates, then the same current content authorization as HTTP."""
     rule = _RULES.get(thread.kind)
     if rule is None:
         return ()
-    candidates = Q(pk=thread.student_id)
-    if rule.counselor_participant:
+    candidates = Q()
+    if rule.student_participant and thread.student_id:
+        candidates |= Q(pk=thread.student_id)
+    if rule.counselor_participant and thread.counselor_id:
         candidates |= Q(pk=thread.counselor_id)
+    if rule.requester_participant and thread.requester_id:
+        candidates |= Q(pk=thread.requester_id)
     if rule.office_staff_recipients:
         candidates |= office_staff_candidates(thread)
+    if rule.endpoint_staff_recipients:
+        candidates |= intake_staff_candidates()
+    if not candidates:
+        return ()
     recipients = []
     for user in (
         User.objects.filter(candidates, is_active=True).select_related("role").distinct().iterator()

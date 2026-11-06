@@ -53,6 +53,7 @@ def test_existing_thread_resolves_for_persisted_participants(world, actor):  # n
         "status",
         "student",
         "counselor",
+        "requester",
         "routing_college",
         "assigned_to",
         "relationship_appointment_id",

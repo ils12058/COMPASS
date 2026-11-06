@@ -4836,6 +4836,9 @@
           "graduate_tracer.view_self",
           "guidance_followups.manage",
           "guidance_followups.view",
+          "guidance_messages.inquiry_manage_self",
+          "guidance_messages.inquiry_view_self",
+          "guidance_messages.intake",
           "guidance_messages.manage",
           "guidance_messages.manage_self",
           "guidance_messages.templates.manage",
@@ -10327,6 +10330,7 @@
       "DesignationCode": {
         "enum": [
           "DPO",
+          "GENERAL_GUIDANCE_INTAKE",
           "HEAD_GUIDANCE_COUNSELOR"
         ],
         "title": "DesignationCode",
@@ -19903,6 +19907,16 @@
             ],
             "title": "Relationship Appointment Id"
           },
+          "requester": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidancePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "routing_college": {
             "anyOf": [
               {
@@ -19917,7 +19931,14 @@
             "$ref": "#/components/schemas/ThreadStatus"
           },
           "student": {
-            "$ref": "#/components/schemas/GuidancePerson"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidancePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "unread_count": {
             "title": "Unread Count",
@@ -19930,6 +19951,7 @@
           "status",
           "student",
           "counselor",
+          "requester",
           "routing_college",
           "assigned_to",
           "relationship_appointment_id",
@@ -31289,7 +31311,8 @@
       "ThreadKind": {
         "enum": [
           "OFFICE",
-          "COUNSELING"
+          "COUNSELING",
+          "FACULTY_INQUIRY"
         ],
         "title": "ThreadKind",
         "type": "string"
@@ -32936,6 +32959,9 @@
                 "graduate_tracer.view_self",
                 "guidance_followups.manage",
                 "guidance_followups.view",
+                "guidance_messages.inquiry_manage_self",
+                "guidance_messages.inquiry_view_self",
+                "guidance_messages.intake",
                 "guidance_messages.manage",
                 "guidance_messages.manage_self",
                 "guidance_messages.templates.manage",
@@ -33128,6 +33154,9 @@
                 "graduate_tracer.view_self",
                 "guidance_followups.manage",
                 "guidance_followups.view",
+                "guidance_messages.inquiry_manage_self",
+                "guidance_messages.inquiry_view_self",
+                "guidance_messages.intake",
                 "guidance_messages.manage",
                 "guidance_messages.manage_self",
                 "guidance_messages.templates.manage",
@@ -33366,6 +33395,7 @@
             "schema": {
               "enum": [
                 "DPO",
+                "GENERAL_GUIDANCE_INTAKE",
                 "HEAD_GUIDANCE_COUNSELOR"
               ],
               "title": "DesignationCode",
@@ -33465,6 +33495,7 @@
             "schema": {
               "enum": [
                 "DPO",
+                "GENERAL_GUIDANCE_INTAKE",
                 "HEAD_GUIDANCE_COUNSELOR"
               ],
               "title": "DesignationCode",
@@ -55582,6 +55613,103 @@
           }
         ],
         "summary": "Eligible Students",
+        "tags": [
+          "guidance-messages"
+        ]
+      }
+    },
+    "/api/v1/guidance-messages/faculty-inquiry": {
+      "post": {
+        "operationId": "guidanceMessagesOpenFacultyInquiry",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuidanceSendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceOpenResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Open Faculty Inquiry",
         "tags": [
           "guidance-messages"
         ]

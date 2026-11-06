@@ -176,7 +176,7 @@ function ContextualHost({
   }, []);
   const toggle = useCallback(() => setRequestedOpen((current) => !current), []);
 
-  const viewer: GuidanceViewer = access.isStudent ? "student" : "staff";
+  const viewer = access.viewer;
   const value: ContextualMessagesValue = {
     available,
     open,
@@ -360,7 +360,7 @@ function ContextualPanel({
         </div>
         <div className="flex shrink-0 items-start gap-1">
           {shown && viewer === "staff" && access.canManageStaff ? (
-            <ThreadStatusControl thread={shown} compact onChanged={setStatus} />
+            <ThreadStatusControl thread={shown} viewer={viewer} compact onChanged={setStatus} />
           ) : null}
           {mode === "docked" ? (
             <button

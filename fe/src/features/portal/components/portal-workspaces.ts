@@ -78,7 +78,14 @@ export function portalWorkspaceGroups(user: UserSummary, facultyAvailability?: F
     const links: PortalWorkspaceLink[] = [];
     if (access.submit && facultySubmissionAvailable(facultyAvailability)) links.push({ href: facultySubmitPath, label: "Submit Referral", icon: Forward });
     if (access.read && facultyAvailability?.can_view_submissions) links.push({ href: facultyReferralsPath, label: "My Referrals", icon: FileText });
-    return links.length ? [{ label: "Referrals", links }] : [];
+    // Guidance Office inquiries only: the workspace gate decides, and templates stay staff-only.
+    const messages: PortalWorkspaceLink[] = getGuidanceMessagesAccess(user).hasWorkspace
+      ? [{ href: "/portal/messages", label: "Messages", icon: MessageCircle }]
+      : [];
+    const groups: PortalWorkspaceGroup[] = [];
+    if (links.length) groups.push({ label: "Referrals", links });
+    if (messages.length) groups.push({ label: "Communication", links: messages });
+    return groups;
   }
   const canManageAccounts = user.capabilities.includes("accounts.manage");
   const hasOrganization = canEnterOrganization(user);

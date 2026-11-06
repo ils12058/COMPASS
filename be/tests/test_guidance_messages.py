@@ -147,15 +147,26 @@ def test_role_grants_dependencies_and_no_designation_content():
             "guidance_messages.view" + suffix,
             "guidance_messages.manage" + suffix,
         } <= ROLE_CAPABILITY_GRANTS[role]
+    assert {
+        "guidance_messages.inquiry_view_self",
+        "guidance_messages.inquiry_manage_self",
+    } <= ROLE_CAPABILITY_GRANTS["FACULTY"]
     for role in ["IT_ADMIN", "INSTITUTIONAL_OFFICER"]:
         assert not any(
             code.startswith("guidance_messages.") for code in ROLE_CAPABILITY_GRANTS[role]
         )
-    for grants in DESIGNATION_CAPABILITY_GRANTS.values():
-        assert not any(code.startswith("guidance_messages.") for code in grants)
+    for designation, grants in DESIGNATION_CAPABILITY_GRANTS.items():
+        messages = {code for code in grants if code.startswith("guidance_messages.")}
+        if designation == "GENERAL_GUIDANCE_INTAKE":
+            assert messages == {"guidance_messages.intake"}
+        else:
+            assert not messages
     assert CAPABILITY_DEPENDENCIES["guidance_messages.manage"] == {"guidance_messages.view"}
     assert CAPABILITY_DEPENDENCIES["guidance_messages.manage_self"] == {
         "guidance_messages.view_self"
+    }
+    assert CAPABILITY_DEPENDENCIES["guidance_messages.inquiry_manage_self"] == {
+        "guidance_messages.inquiry_view_self"
     }
 
 

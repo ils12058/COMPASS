@@ -42,6 +42,7 @@ from .models import (
 
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
+MAX_OPEN_FACULTY_INQUIRIES = 5
 
 
 def _audit(actor, action, thread, *, context=None, **metadata):
@@ -94,9 +95,9 @@ def _directory(query, actor):
         .annotate(count=Count("pk"))
         .values("count")
     )
-    return query.select_related("student", "counselor", "assigned_to", "routing_college").annotate(
-        own_unread_count=Coalesce(Subquery(unread), Value(0))
-    )
+    return query.select_related(
+        "student", "counselor", "assigned_to", "routing_college", "requester"
+    ).annotate(own_unread_count=Coalesce(Subquery(unread), Value(0)))
 
 
 def list_threads(*, actor, page=1, page_size=DEFAULT_PAGE_SIZE):
@@ -215,7 +216,9 @@ def send_message(*, actor, thread_id, client_message_id, body, context=None):
 @transaction.atomic
 def open_office_thread(*, actor, client_message_id, body, student_id=None, context=None):
     actor = policy.current_actor(actor, lock=True)
-    policy.require_actor(actor, manage=True, staff_only=student_id is not None)
+    policy.require_actor(
+        actor, manage=True, staff_only=student_id is not None, kind=ThreadKind.OFFICE
+    )
     _client_id(client_message_id)
     if actor.role.code == "STUDENT":
         student = actor
@@ -284,7 +287,7 @@ def open_office_thread(*, actor, client_message_id, body, student_id=None, conte
 @transaction.atomic
 def open_counseling_thread(*, actor, appointment_id, client_message_id, body, context=None):
     actor = policy.current_actor(actor, lock=True)
-    policy.require_actor(actor, manage=True)
+    policy.require_actor(actor, manage=True, kind=ThreadKind.COUNSELING)
     appointment = (
         Appointment.objects.select_related("student__role", "provider__role", "service")
         .select_for_update(of=("self",))
@@ -325,6 +328,39 @@ def open_counseling_thread(*, actor, appointment_id, client_message_id, body, co
     return thread, message
 
 
+@transaction.atomic
+def open_faculty_inquiry(*, actor, client_message_id, body, context=None):
+    actor = policy.current_actor(actor, lock=True)
+    policy.require_actor(actor, manage=True, kind=ThreadKind.FACULTY_INQUIRY)
+    _client_id(client_message_id)
+    prior = (
+        GuidanceMessage.objects.filter(sender=actor, client_message_id=client_message_id)
+        .select_related("thread")
+        .first()
+    )
+    if prior is not None:
+        if prior.thread.kind != ThreadKind.FACULTY_INQUIRY:
+            raise MessagesConflict("client_message_id has already been used for another thread.")
+        policy.require_thread(actor, prior.thread, manage=True)
+        return prior.thread, prior
+    if not policy.has_intake_staff():
+        raise MessagesConflict("Guidance Office intake is currently unavailable.")
+    open_count = GuidanceThread.objects.filter(
+        kind=ThreadKind.FACULTY_INQUIRY, status=ThreadStatus.OPEN, requester=actor
+    ).count()
+    if open_count >= MAX_OPEN_FACULTY_INQUIRIES:
+        raise MessagesConflict("You already have 5 open Guidance Office inquiries.")
+    thread = GuidanceThread.objects.create(
+        kind=ThreadKind.FACULTY_INQUIRY, requester=actor, created_by=actor
+    )
+    policy.require_thread(actor, thread, manage=True)
+    _audit(actor, GUIDANCE_MESSAGES_THREAD_CREATED, thread, context=context)
+    message = _send_locked(
+        actor=actor, thread=thread, client_message_id=client_message_id, body=body, context=context
+    )
+    return thread, message
+
+
 def appointment_context(*, actor, appointment_id):
     """Resolve an Appointment's Counseling thread for a contextual surface (ADR-103).
 
@@ -343,7 +379,7 @@ def appointment_context(*, actor, appointment_id):
     if existing is not None:
         return get_thread(actor=actor, thread_id=existing), False
     try:
-        policy.require_actor(actor, manage=True)
+        policy.require_actor(actor, manage=True, kind=ThreadKind.COUNSELING)
     except MessagesPermissionDenied:
         raise ThreadNotFound() from None
     appointment = (
@@ -381,9 +417,13 @@ def mark_read(*, actor, thread_id, sequence):
 def set_status(*, actor, thread_id, resolved, context=None):
     actor = policy.current_actor(actor, lock=True)
     snapshot = get_thread(actor=actor, thread_id=thread_id)
-    policy.require_thread(actor, snapshot, manage=True, staff_only=True)
-    User.objects.select_for_update(of=("self",), no_key=True).get(pk=snapshot.student_id)
-    thread = _lock_thread(actor, thread_id, staff_only=True)
+    if snapshot.kind == ThreadKind.FACULTY_INQUIRY:
+        policy.require_thread(actor, snapshot, manage=True)
+        thread = _lock_thread(actor, thread_id)
+    else:
+        policy.require_thread(actor, snapshot, manage=True, staff_only=True)
+        User.objects.select_for_update(of=("self",), no_key=True).get(pk=snapshot.student_id)
+        thread = _lock_thread(actor, thread_id, staff_only=True)
     status = ThreadStatus.RESOLVED if resolved else ThreadStatus.OPEN
     if thread.status == status:
         return thread

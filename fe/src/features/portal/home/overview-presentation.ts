@@ -6,7 +6,7 @@ import { getGoodMoralAccess } from "@/features/good-moral/good-moral-access";
 import { getRoutineInterviewAccess } from "@/features/routine-interviews/routine-interviews-access";
 import { designationLabels, isDesignationCode } from "@/features/accounts/presentation";
 import { userRoleLabel } from "@/features/portal/components/portal-presentation";
-import { DesignationCode, type OverviewSummaryResponse, type UserSummary } from "@/lib/api/generated/model";
+import { DesignationCode, RoleCode, type OverviewSummaryResponse, type UserSummary } from "@/lib/api/generated/model";
 import { INSTITUTION_TIME_ZONE } from "@/lib/institutional-time";
 
 export type OverviewMetric = {
@@ -177,12 +177,17 @@ export function formatOverviewDate(now: Date): string {
   }).format(now);
 }
 
+// The roles that may hold each designation, mirroring the backend's designation compatibility.
+const DESIGNATION_ROLES: Record<DesignationCode, readonly RoleCode[]> = {
+  [DesignationCode.HEAD_GUIDANCE_COUNSELOR]: [RoleCode.COUNSELOR],
+  [DesignationCode.DPO]: [RoleCode.INSTITUTIONAL_OFFICER],
+  [DesignationCode.GENERAL_GUIDANCE_INTAKE]: [RoleCode.COUNSELOR, RoleCode.GUIDANCE_SERVICES_STAFF],
+};
+
 export function getOverviewRoleContext(user: UserSummary): string | null {
-  const designation = user.designations
+  const held = user.designations
     .filter(isDesignationCode)
-    .find((code) =>
-      (code === DesignationCode.HEAD_GUIDANCE_COUNSELOR && user.role === "COUNSELOR") ||
-      (code === DesignationCode.DPO && user.role === "INSTITUTIONAL_OFFICER"),
-    );
-  return designation ? userRoleLabel(user.role) + " · " + designationLabels[designation] : null;
+    .filter((code) => DESIGNATION_ROLES[code].includes(user.role));
+  if (!held.length) return null;
+  return [userRoleLabel(user.role), ...held.map((code) => designationLabels[code])].join(" · ");
 }

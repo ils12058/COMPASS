@@ -23,6 +23,7 @@ export const roleLabels: Record<RoleCode, string> = {
 export const designationLabels: Record<DesignationCode, string> = {
   [DesignationCode.HEAD_GUIDANCE_COUNSELOR]: "Head Guidance Counselor",
   [DesignationCode.DPO]: "Data Protection Officer",
+  [DesignationCode.GENERAL_GUIDANCE_INTAKE]: "General Guidance Intake",
 };
 
 export const lifecycleLabels: Record<StudentLifecycleCode, string> = {
@@ -65,9 +66,11 @@ export function formatAccountDate(value: string | null): string {
   return formatted === value ? "Not available" : formatted;
 }
 
-export function compatibleDesignation(role: RoleCode): DesignationCode | null {
-  if (role === RoleCode.COUNSELOR)
-    return DesignationCode.HEAD_GUIDANCE_COUNSELOR;
-  if (role === RoleCode.INSTITUTIONAL_OFFICER) return DesignationCode.DPO;
-  return null;
+/** Every institutional designation this role may hold, in the order the account UI offers them. */
+export function compatibleDesignations(role: RoleCode): DesignationCode[] {
+  if (role === RoleCode.COUNSELOR) {
+    return [DesignationCode.HEAD_GUIDANCE_COUNSELOR, DesignationCode.GENERAL_GUIDANCE_INTAKE];
+  }
+  if (role === RoleCode.INSTITUTIONAL_OFFICER) return [DesignationCode.DPO];
+  return [];
 }

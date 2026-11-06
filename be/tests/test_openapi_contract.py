@@ -117,6 +117,7 @@ EXPECTED_OPERATION_IDS = {
     "guidanceMessagesOpenMyOfficeThread",
     "guidanceMessagesOpenStudentOfficeThread",
     "guidanceMessagesOpenCounselingThread",
+    "guidanceMessagesOpenFacultyInquiry",
     "guidanceMessagesGetAppointmentContext",
     "guidanceMessagesGetThread",
     "guidanceMessagesListMessages",
@@ -2118,7 +2119,11 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
         "IT_ADMIN",
         "STUDENT",
     ]
-    assert schemas["DesignationCode"]["enum"] == ["DPO", "HEAD_GUIDANCE_COUNSELOR"]
+    assert schemas["DesignationCode"]["enum"] == [
+        "DPO",
+        "GENERAL_GUIDANCE_INTAKE",
+        "HEAD_GUIDANCE_COUNSELOR",
+    ]
     assert schemas["CapabilityCode"]["enum"] == sorted(
         [
             "guidance_followups.view",
@@ -2128,6 +2133,9 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "guidance_messages.view",
             "guidance_messages.manage",
             "guidance_messages.templates.manage",
+            "guidance_messages.intake",
+            "guidance_messages.inquiry_view_self",
+            "guidance_messages.inquiry_manage_self",
             "assessment_records.view",
             "assessment_records.manage",
             "accounts.manage",

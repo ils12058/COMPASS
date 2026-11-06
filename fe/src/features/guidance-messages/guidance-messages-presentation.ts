@@ -9,13 +9,14 @@ import type {
 // Human wording for Guidance Messages. Backend enums, IDs and sequence cursors never reach the
 // screen; a Student addresses the Guidance Office as an office, while staff see the Student.
 
-export type GuidanceViewer = "student" | "staff";
+export type GuidanceViewer = "student" | "faculty" | "staff";
 
 export const GUIDANCE_OFFICE_LABEL = "Guidance Office";
 
 const KIND_LABELS: Record<ThreadKind, string> = {
   OFFICE: GUIDANCE_OFFICE_LABEL,
   COUNSELING: "Counseling",
+  FACULTY_INQUIRY: "Faculty inquiry",
 };
 
 const STATUS_LABELS: Record<ThreadStatus, string> = {
@@ -47,16 +48,26 @@ export function personName(person: GuidancePerson | null | undefined, fallback: 
 
 /** Who the conversation is with, from the reader's side. */
 export function threadTitle(thread: GuidanceThreadResponse, viewer: GuidanceViewer): string {
-  if (viewer === "staff") return personName(thread.student, "Student");
-  return thread.kind === "OFFICE" ? GUIDANCE_OFFICE_LABEL : personName(thread.counselor, "Counselor");
+  if (viewer === "staff") {
+    return thread.kind === "FACULTY_INQUIRY"
+      ? personName(thread.requester, "Faculty")
+      : personName(thread.student, "Student");
+  }
+  return thread.kind === "COUNSELING"
+    ? personName(thread.counselor, "Counselor")
+    : GUIDANCE_OFFICE_LABEL;
 }
 
 /**
- * The short line under the title. A Student's Office conversation is already titled "Guidance
- * Office", so it has none; everything else names the kind of conversation.
+ * The short line under the title. A Student's Office conversation and a Faculty member's own
+ * inquiry are already titled "Guidance Office", so they have none; everything else names the kind.
  */
-export function threadSubtitle(thread: GuidanceThreadResponse, viewer: GuidanceViewer): string | null {
+export function threadSubtitle(
+  thread: GuidanceThreadResponse,
+  viewer: GuidanceViewer,
+): string | null {
   if (viewer === "student" && thread.kind === "OFFICE") return null;
+  if (viewer === "faculty" && thread.kind === "FACULTY_INQUIRY") return null;
   return threadKindLabel(thread.kind);
 }
 
