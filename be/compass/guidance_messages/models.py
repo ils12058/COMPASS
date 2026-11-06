@@ -13,6 +13,118 @@ class ThreadKind(models.TextChoices):
     COUNSELING = "COUNSELING", "Counseling"
 
 
+class ReservedThreadKind(models.TextChoices):
+    """Kind codes reserved by GMSG-0 for the families Proposal #10 adds later.
+
+    Deliberately NOT members of `ThreadKind`: `ThreadKind` is the wire enum exposed by
+    `GuidanceThreadResponse`, `StudentActionItem` and `WorkItem`, so adding a member here would
+    change `contracts/openapi.json`. These codes are admitted only by the generalized database
+    CHECK, whose branch for each one requires `student` to be null — and `student` is still
+    `NOT NULL`, so no code path can create a reserved thread. `policy` denies every one of them.
+    """
+
+    FACULTY_INQUIRY = "FACULTY_INQUIRY", "Faculty inquiry"
+    REFERRAL_COORDINATION = "REFERRAL_COORDINATION", "Referral coordination"
+    COUNSELOR_DIRECT = "COUNSELOR_DIRECT", "Counselor direct"
+    COUNSELOR_CASE_COORDINATION = "COUNSELOR_CASE_COORDINATION", "Counselor case coordination"
+
+
+ALL_THREAD_KINDS = frozenset(ThreadKind.values) | frozenset(ReservedThreadKind.values)
+
+# GMSG-0 §6.1 family allowlists: per kind, the columns a row must set and the columns it must leave
+# null. A column in neither list is deliberately unconstrained. Only these six codes appear here, so
+# a row of any other kind matches no branch and is rejected by the CHECK.
+_FAMILY_SHAPE: dict[str, tuple[tuple[str, ...], tuple[str, ...]]] = {
+    "OFFICE": (
+        ("student", "routing_college"),
+        (
+            "counselor",
+            "relationship_appointment",
+            "requester",
+            "direct_first_user",
+            "direct_second_user",
+            "student_subject",
+            "relationship_referral",
+            "relationship_case_grant",
+        ),
+    ),
+    "COUNSELING": (
+        ("student", "counselor", "relationship_appointment"),
+        (
+            "routing_college",
+            "assigned_to",
+            "requester",
+            "direct_first_user",
+            "direct_second_user",
+            "student_subject",
+            "relationship_referral",
+            "relationship_case_grant",
+        ),
+    ),
+    "FACULTY_INQUIRY": (
+        ("requester",),
+        (
+            "student",
+            "counselor",
+            "relationship_appointment",
+            "direct_first_user",
+            "direct_second_user",
+            "student_subject",
+            "relationship_referral",
+            "relationship_case_grant",
+        ),
+    ),
+    "REFERRAL_COORDINATION": (
+        ("requester", "relationship_referral", "student_subject", "routing_college"),
+        (
+            "student",
+            "counselor",
+            "relationship_appointment",
+            "direct_first_user",
+            "direct_second_user",
+            "relationship_case_grant",
+        ),
+    ),
+    "COUNSELOR_DIRECT": (
+        ("direct_first_user", "direct_second_user"),
+        (
+            "student",
+            "requester",
+            "student_subject",
+            "relationship_referral",
+            "relationship_case_grant",
+            "counselor",
+            "relationship_appointment",
+            "routing_college",
+            "assigned_to",
+        ),
+    ),
+    "COUNSELOR_CASE_COORDINATION": (
+        ("relationship_case_grant", "student_subject"),
+        (
+            "student",
+            "requester",
+            "direct_first_user",
+            "direct_second_user",
+            "relationship_referral",
+            "counselor",
+            "relationship_appointment",
+            "routing_college",
+            "assigned_to",
+        ),
+    ),
+}
+
+
+def _family_shape_condition():
+    branches = []
+    for kind, (required, forbidden) in _FAMILY_SHAPE.items():
+        columns = {f"{name}__isnull": False for name in required}
+        columns.update({f"{name}__isnull": True for name in forbidden})
+        branches.append(models.Q(kind=kind, **columns))
+    return models.Q(*branches, _connector=models.Q.OR)
+
+
 class ThreadStatus(models.TextChoices):
     OPEN = "OPEN", "Open"
     RESOLVED = "RESOLVED", "Resolved"
@@ -20,7 +132,7 @@ class ThreadStatus(models.TextChoices):
 
 class GuidanceThread(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    kind = models.CharField(max_length=16, choices=ThreadKind.choices)
+    kind = models.CharField(max_length=32, choices=ThreadKind.choices)
     status = models.CharField(
         max_length=16, choices=ThreadStatus.choices, default=ThreadStatus.OPEN
     )
@@ -66,6 +178,50 @@ class GuidanceThread(models.Model):
         related_name="resolved_guidance_threads",
     )
     resolved_at = models.DateTimeField(null=True, blank=True)
+    # Reserved-family participants and sources. Legacy kinds must leave all six null, enforced by
+    # `_FAMILY_SHAPE`; no service path sets them yet, and no existing field or constraint moved.
+    requester = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="requested_guidance_threads",
+    )
+    direct_first_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="direct_first_guidance_threads",
+    )
+    direct_second_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="direct_second_guidance_threads",
+    )
+    student_subject = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="subject_guidance_threads",
+    )
+    relationship_referral = models.ForeignKey(
+        "referrals.Referral",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="referral_guidance_threads",
+    )
+    relationship_case_grant = models.ForeignKey(
+        "counseling.CounselorCaseContinuityGrant",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="case_grant_guidance_threads",
+    )
 
     class Meta:
         default_permissions = ()
@@ -78,22 +234,7 @@ class GuidanceThread(models.Model):
         ]
         constraints = [
             models.CheckConstraint(
-                condition=(
-                    models.Q(
-                        kind="OFFICE",
-                        routing_college__isnull=False,
-                        counselor__isnull=True,
-                        relationship_appointment__isnull=True,
-                    )
-                    | models.Q(
-                        kind="COUNSELING",
-                        routing_college__isnull=True,
-                        counselor__isnull=False,
-                        relationship_appointment__isnull=False,
-                        assigned_to__isnull=True,
-                    )
-                ),
-                name="gm_thread_family_shape",
+                condition=_family_shape_condition(), name="gm_thread_family_shape"
             ),
             models.CheckConstraint(
                 condition=(
@@ -111,6 +252,34 @@ class GuidanceThread(models.Model):
                 fields=("student",),
                 condition=models.Q(kind="OFFICE", status="OPEN"),
                 name="gm_one_open_office_per_student",
+            ),
+            # A Counselor pair is stored once in canonical order, so the pair uniqueness below has
+            # one row shape to match. Both columns are always null for every creatable kind today.
+            models.CheckConstraint(
+                condition=(
+                    models.Q(direct_first_user__isnull=True, direct_second_user__isnull=True)
+                    | models.Q(
+                        direct_first_user__isnull=False,
+                        direct_second_user__isnull=False,
+                        direct_first_user__lt=models.F("direct_second_user"),
+                    )
+                ),
+                name="gm_direct_pair_ordered",
+            ),
+            models.UniqueConstraint(
+                fields=("relationship_referral",),
+                condition=models.Q(kind="REFERRAL_COORDINATION"),
+                name="gm_one_thread_per_referral",
+            ),
+            models.UniqueConstraint(
+                fields=("direct_first_user", "direct_second_user"),
+                condition=models.Q(kind="COUNSELOR_DIRECT"),
+                name="gm_direct_pair_unique",
+            ),
+            models.UniqueConstraint(
+                fields=("relationship_case_grant", "student_subject"),
+                condition=models.Q(kind="COUNSELOR_CASE_COORDINATION"),
+                name="gm_case_grant_subject_unique",
             ),
         ]
 

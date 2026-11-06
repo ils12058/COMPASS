@@ -40,6 +40,7 @@
     "group_sessions/migrations/0003_group_session_scheduling_and_external_facilitators.py",
     "guidance_followups/migrations/0001_initial.py",
     "guidance_followups/migrations/0002_guidancefollowupmutation.py",
+    "guidance_messages/migrations/0002_kinds_and_participants.py",
     "service_catalog/migrations/0002_booking_pathways.py",
     "service_catalog/migrations/0003_fixed_date_slots.py",
     "service_catalog/migrations/0004_serviceappointmentslot_withdrawn_at_and_more.py",

@@ -1,4 +1,6 @@
-"""Office visibility composes College scope and capability; Counseling stays relationship-only."""
+"""Authorization is a kind-explicit matrix: a kind with no rule is denied, never inferred."""
+
+from dataclasses import dataclass
 
 from django.db.models import Q
 
@@ -12,10 +14,37 @@ from compass.organization.models import CounselorResponsibility, StaffSupervisio
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 
 from .errors import MessagesPermissionDenied, ThreadNotFound
-from .models import GuidanceThread, ThreadKind
+from .models import GuidanceThread, ReservedThreadKind, ThreadKind
 
 STAFF_ROLES = {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
 RELATIONSHIP_STATUSES = {AppointmentStatus.SCHEDULED, AppointmentStatus.COMPLETED}
+
+
+@dataclass(frozen=True)
+class _KindRule:
+    """Who a thread of one kind is about, and which staff relation reaches it."""
+
+    student_participant: bool
+    staff_roles: frozenset[str]
+    college_scoped: bool
+    counselor_participant: bool
+    office_staff_recipients: bool
+
+
+# Every kind the database can hold has an entry, so visibility, per-thread access and push routing
+# all read one table. `None` means reserved: denied for every role without consulting any resource
+# column. It replaces the old "anything not Counseling is College-scoped Office" fallthrough, which
+# would otherwise have disclosed each new kind to every staff member in its College on creation.
+# GMSG-2..5 turn a `None` into a rule only when that kind becomes creatable and its participants are
+# actually decided.
+_RULES: dict[str, _KindRule | None] = {
+    ThreadKind.OFFICE: _KindRule(True, frozenset(STAFF_ROLES), True, False, True),
+    ThreadKind.COUNSELING: _KindRule(True, frozenset({"COUNSELOR"}), False, True, False),
+    ReservedThreadKind.FACULTY_INQUIRY: None,
+    ReservedThreadKind.REFERRAL_COORDINATION: None,
+    ReservedThreadKind.COUNSELOR_DIRECT: None,
+    ReservedThreadKind.COUNSELOR_CASE_COORDINATION: None,
+}
 
 
 def current_actor(actor, *, lock=False):
@@ -42,14 +71,23 @@ def require_actor(actor, *, manage=False, staff_only=False):
 
 def authorized_threads(actor, *, manage=False):
     require_actor(actor, manage=manage)
-    query = GuidanceThread.objects.all()
+    visible = Q()
     if actor.role.code == "STUDENT":
-        return query.filter(student_id=actor.pk)
-    scope = resolve_general_guidance_college_scope(actor)
-    allowed = Q(kind=ThreadKind.OFFICE, routing_college_id__in=scope.college_ids)
-    if actor.role.code == "COUNSELOR":
-        allowed |= Q(kind=ThreadKind.COUNSELING, counselor_id=actor.pk)
-    return query.filter(allowed)
+        for kind, rule in _RULES.items():
+            if rule is not None and rule.student_participant:
+                visible |= Q(kind=kind, student_id=actor.pk)
+    else:
+        scope = resolve_general_guidance_college_scope(actor)
+        for kind, rule in _RULES.items():
+            if rule is None or actor.role.code not in rule.staff_roles:
+                continue
+            if rule.college_scoped:
+                visible |= Q(kind=kind, routing_college_id__in=scope.college_ids)
+            if rule.counselor_participant:
+                visible |= Q(kind=kind, counselor_id=actor.pk)
+    if not visible:
+        return GuidanceThread.objects.none()
+    return GuidanceThread.objects.filter(visible)
 
 
 def require_thread(actor, thread, *, manage=False, staff_only=False):
@@ -57,13 +95,19 @@ def require_thread(actor, thread, *, manage=False, staff_only=False):
         require_actor(actor, manage=manage, staff_only=staff_only)
     except MessagesPermissionDenied:
         raise ThreadNotFound() from None
+    rule = _RULES.get(thread.kind)
+    if rule is None:
+        raise ThreadNotFound()
     if actor.role.code == "STUDENT":
-        allowed = thread.student_id == actor.pk
-    elif thread.kind == ThreadKind.COUNSELING:
-        allowed = actor.role.code == "COUNSELOR" and thread.counselor_id == actor.pk
+        allowed = rule.student_participant and thread.student_id == actor.pk
     else:
-        allowed = (
-            thread.routing_college_id in resolve_general_guidance_college_scope(actor).college_ids
+        allowed = actor.role.code in rule.staff_roles and (
+            (
+                rule.college_scoped
+                and thread.routing_college_id
+                in resolve_general_guidance_college_scope(actor).college_ids
+            )
+            or (rule.counselor_participant and thread.counselor_id == actor.pk)
         )
     if not allowed:
         raise ThreadNotFound()
@@ -148,10 +192,13 @@ def eligible_handlers(thread):
 
 def recipient_ids(thread):
     """Finite routing candidates, then the same current content authorization as HTTP."""
+    rule = _RULES.get(thread.kind)
+    if rule is None:
+        return ()
     candidates = Q(pk=thread.student_id)
-    if thread.kind == ThreadKind.COUNSELING:
+    if rule.counselor_participant:
         candidates |= Q(pk=thread.counselor_id)
-    else:
+    if rule.office_staff_recipients:
         candidates |= office_staff_candidates(thread)
     recipients = []
     for user in (
