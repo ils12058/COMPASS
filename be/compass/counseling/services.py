@@ -188,6 +188,25 @@ def _normalize_actual_times(
     return normalized_start, normalized_end
 
 
+def appointment_encounter_matches(appointment: Appointment) -> bool:
+    """Whether an Encounter records this Appointment's own Counseling session.
+
+    The identity rule matches what finishing accepts — the same Student, Counselor, Service and
+    delivery mode with an ``APPOINTMENT`` origin — minus the actual times, which a projection cannot
+    know. Finishing still compares them, so a record with different times is never silently treated
+    as this Appointment's documentation. Every surface that says "recorded" answers through here.
+    """
+
+    return CounselingEncounter.objects.filter(
+        appointment_id=appointment.pk,
+        student_id=appointment.student_id,
+        counselor_id=appointment.provider_id,
+        service_id=appointment.service_id,
+        delivery_mode=appointment.delivery_mode,
+        entry_mode=CounselingEntryMode.APPOINTMENT,
+    ).exists()
+
+
 def appointment_encounter_recorded(
     *,
     actor: User,
@@ -197,8 +216,7 @@ def appointment_encounter_recorded(
     """Whether this Appointment has a recorded Appointment-origin Encounter.
 
     ``None`` means the fact is not exposed to this actor. This is a UI projection only; the
-    finish request revalidates under locks. Actual times are deliberately not compared: the
-    field says a valid Encounter exists, while finishing still requires matching times.
+    finish request revalidates under locks.
     """
 
     current = at or timezone.now()
@@ -211,14 +229,7 @@ def appointment_encounter_recorded(
         or not actor.has_capability("counseling.view_assigned", at=current)
     ):
         return None
-    return CounselingEncounter.objects.filter(
-        appointment_id=appointment.pk,
-        student_id=appointment.student_id,
-        counselor_id=appointment.provider_id,
-        service_id=appointment.service_id,
-        delivery_mode=appointment.delivery_mode,
-        entry_mode=CounselingEntryMode.APPOINTMENT,
-    ).exists()
+    return appointment_encounter_matches(appointment)
 
 
 def _validate_page(page: int, page_size: int) -> tuple[int, int]:

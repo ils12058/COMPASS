@@ -5,12 +5,12 @@ import { ContextHelp, type HelpSection } from "@/components/ui/context-help";
 
 const callAndDevices: HelpSection = {
   heading: "Call and devices",
-  content: "Use Check devices before joining to test your camera, microphone, and speaker locally on your device, or use Devices during a call to switch them. If the browser blocks your camera or microphone, allow access in its site settings, then rejoin. You can leave and rejoin while the session is open; leaving doesn’t complete the Appointment, and it doesn’t stop recording or transcription.",
+  content: "Use Check devices before joining to test your camera, microphone, and speaker locally on your device, or use Devices during a call to switch them. If the browser blocks your camera or microphone, allow access in its site settings, then rejoin. You can leave and rejoin while the session is open; leaving doesn’t complete the Appointment or record the Counseling Encounter; use Finish counseling when the session ends, and it doesn’t stop recording or transcription.",
 };
 
 const encounterRecords: HelpSection = {
   heading: "Encounter records",
-  content: "Recording a Counseling Encounter documents that counseling took place. It is separate from recording audio or video and from completing the Appointment.",
+  content: "Finishing counseling records the Counseling Encounter and completes the Appointment in one action. It is separate from recording audio or video, and it is available once the online access period has ended.",
 };
 
 export const ecounselingHelpSections: readonly HelpSection[] = [

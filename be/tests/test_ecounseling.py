@@ -22,7 +22,8 @@ from compass.appointments.models import Appointment, AppointmentStatus
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
-from compass.counseling.models import CounselingEncounter
+from compass.counseling.models import CounselingEncounter, CounselingEntryMode
+from compass.counseling.services import appointment_encounter_recorded
 from compass.ecounseling.models import DailyWebhookReceipt, ECounselingRoom
 from compass.ecounseling.services import (
     ECounselingAppointmentNotEligible,
@@ -37,7 +38,7 @@ from compass.ecounseling.services import (
     process_daily_webhook,
 )
 from compass.integrations.daily import DailyUnavailable
-from compass.service_catalog.services import set_service_active
+from compass.service_catalog.services import create_service, set_service_active
 from tests.canonical_service_helpers import legacy_counseling_service
 
 
@@ -653,3 +654,207 @@ def test_non_current_student_can_read_ecounseling_workspace_but_cannot_join(stat
             context=context(student),
             daily_client=FakeDailyClient(),
         )
+
+
+def _link_encounter(
+    appointment: Appointment,
+    *,
+    counselor: User,
+    entry_mode: str,
+    student: User | None = None,
+    service=None,
+    delivery_mode: str | None = None,
+) -> CounselingEncounter:
+    # These cases are about what the projection reports, so the row is linked directly rather than
+    # through the recording flow, which refuses some of them by design.
+    return CounselingEncounter.objects.create(
+        student=student or appointment.student,
+        counselor=counselor,
+        service=service or appointment.service,
+        appointment=appointment,
+        entry_mode=entry_mode,
+        delivery_mode=delivery_mode or appointment.delivery_mode,
+        started_at=appointment.starts_at,
+        ended_at=appointment.starts_at + timedelta(minutes=40),
+        created_by=counselor,
+    )
+
+
+def _counselor_workspace(counselor: User, appointment: Appointment) -> dict[str, object]:
+    with override_settings(DAILY_ENABLED=True):
+        return get_counselor_workspace(counselor=counselor, appointment_id=appointment.pk)
+
+
+@pytest.mark.django_db
+def test_counselor_workspace_recorded_is_this_appointments_own_counseling_match():
+    sync_policy()
+    admin = make_user("recorded-admin@example.edu", "IT_ADMIN")
+    student = make_user("recorded-student@example.edu", "STUDENT")
+    counselor = make_user("recorded-counselor@example.edu", "COUNSELOR")
+    other_counselor = make_user("recorded-other-counselor@example.edu", "COUNSELOR")
+    other_student = make_user("recorded-other-student@example.edu", "STUDENT")
+    service = create_counseling_service(admin)
+    appointment = make_appointment(student=student, counselor=counselor, service=service)
+    career_service = create_service(
+        code="CAREER_GUIDANCE",
+        name="Recorded Projection Career Guidance",
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
+        cancellation_cutoff_minutes=30,
+        delivery_modes=["IN_PERSON", "ONLINE"],
+        context=context(admin),
+    )
+
+    before = _counselor_workspace(counselor, appointment)
+    assert before["counseling_encounter"] is None
+    assert before["provider_readiness"]["join_state"] == ECounselingJoinState.OPEN
+    field_names = set(before)
+
+    # A matching Appointment-origin Encounter is the record this session still owes.
+    matching = _link_encounter(
+        appointment,
+        counselor=counselor,
+        entry_mode=CounselingEntryMode.APPOINTMENT,
+    )
+    recorded = _counselor_workspace(counselor, appointment)
+    assert recorded["counseling_encounter"] == {"id": matching.pk, "recorded": True}
+    assert set(recorded) == field_names
+    # Documentation changes nothing about readiness: join_state stays purely descriptive.
+    assert recorded["provider_readiness"] == before["provider_readiness"]
+    matching.delete()
+
+    # A linked Encounter from another origin keeps its id for review but is not this record.
+    for entry_mode in (CounselingEntryMode.WALK_IN, CounselingEntryMode.REFERRED):
+        linked = _link_encounter(appointment, counselor=counselor, entry_mode=entry_mode)
+        body = _counselor_workspace(counselor, appointment)
+        assert body["counseling_encounter"] == {"id": linked.pk, "recorded": False}, entry_mode
+        assert set(body) == field_names
+        linked.delete()
+
+    for label, overrides in (
+        ("delivery mode", {"delivery_mode": "IN_PERSON"}),
+        ("student", {"student": other_student}),
+        ("service", {"service": career_service}),
+    ):
+        linked = _link_encounter(
+            appointment,
+            counselor=counselor,
+            entry_mode=CounselingEntryMode.APPOINTMENT,
+            **overrides,
+        )
+        body = _counselor_workspace(counselor, appointment)
+        assert body["counseling_encounter"] == {"id": linked.pk, "recorded": False}, label
+        linked.delete()
+
+    # Another Counselor's Encounter is never surfaced here, not even as an id.
+    theirs = _link_encounter(
+        appointment,
+        counselor=other_counselor,
+        entry_mode=CounselingEntryMode.APPOINTMENT,
+    )
+    assert _counselor_workspace(counselor, appointment)["counseling_encounter"] is None
+    theirs.delete()
+    assert CounselingEncounter.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_appointment_detail_and_ecounseling_workspace_agree_on_the_documentation_fact():
+    sync_policy()
+    admin = make_user("parity-admin@example.edu", "IT_ADMIN")
+    student = make_user("parity-student@example.edu", "STUDENT")
+    counselor = make_user("parity-counselor@example.edu", "COUNSELOR")
+    service = create_counseling_service(admin)
+    appointment = make_appointment(student=student, counselor=counselor, service=service)
+    client = auth_client(counselor)
+
+    def detail_recorded(target: Appointment):
+        response = client.get(f"/api/v1/appointments/{target.pk}")
+        assert response.status_code == 200
+        return response.json()["counseling_encounter_recorded"]
+
+    def workspace_recorded():
+        summary = _counselor_workspace(counselor, appointment)["counseling_encounter"]
+        return False if summary is None else summary["recorded"]
+
+    assert detail_recorded(appointment) is False
+    assert workspace_recorded() is False
+
+    matching = _link_encounter(
+        appointment,
+        counselor=counselor,
+        entry_mode=CounselingEntryMode.APPOINTMENT,
+    )
+    assert detail_recorded(appointment) is True
+    assert workspace_recorded() is True
+
+    matching.entry_mode = CounselingEntryMode.CALLED_IN
+    matching.save(update_fields=["entry_mode", "updated_at"])
+    assert detail_recorded(appointment) is False
+    assert workspace_recorded() is False
+    matching.delete()
+
+    # A non-Counseling Service exposes the fact on neither surface.
+    other_service = create_service(
+        code="CAREER_GUIDANCE",
+        name="Parity Career Guidance",
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
+        cancellation_cutoff_minutes=30,
+        delivery_modes=["IN_PERSON", "ONLINE"],
+        context=context(admin),
+    )
+    non_counseling = make_appointment(
+        student=student,
+        counselor=counselor,
+        service=other_service,
+    )
+    assert detail_recorded(non_counseling) is None
+    assert appointment_encounter_recorded(actor=counselor, appointment=non_counseling) is None
+    with override_settings(DAILY_ENABLED=True), pytest.raises(ECounselingAppointmentNotEligible):
+        get_counselor_workspace(counselor=counselor, appointment_id=non_counseling.pk)
+
+
+@pytest.mark.django_db
+def test_linked_non_matching_encounter_is_never_mistaken_for_a_finished_session():
+    sync_policy()
+    admin = make_user("mismatch-admin@example.edu", "IT_ADMIN")
+    student = make_user("mismatch-student@example.edu", "STUDENT")
+    counselor = make_user("mismatch-counselor@example.edu", "COUNSELOR")
+    service = create_counseling_service(admin)
+    appointment = make_appointment(student=student, counselor=counselor, service=service)
+    linked = _link_encounter(
+        appointment,
+        counselor=counselor,
+        entry_mode=CounselingEntryMode.WALK_IN,
+    )
+    client = auth_client(counselor)
+
+    assert _counselor_workspace(counselor, appointment)["counseling_encounter"] == {
+        "id": linked.pk,
+        "recorded": False,
+    }
+
+    # The mismatch is checked before the access window, so the finish is refused as a conflict: the
+    # session is never completed and no second Encounter is created.
+    response = client.post(
+        f"/api/v1/counseling/appointments/{appointment.pk}/finish",
+        data=json.dumps(
+            {
+                "actual_started_at": (timezone.now() - timedelta(minutes=45)).isoformat(),
+                "actual_ended_at": (timezone.now() - timedelta(minutes=5)).isoformat(),
+                "counseling_occurred": True,
+            }
+        ),
+        content_type="application/json",
+        **csrf(client),
+    )
+    assert response.status_code == 409
+    assert response.json()["error"]["code"] == "counseling_finish_conflict"
+
+    appointment.refresh_from_db()
+    assert appointment.status == AppointmentStatus.SCHEDULED
+    assert CounselingEncounter.objects.filter(appointment=appointment).count() == 1
+    assert _counselor_workspace(counselor, appointment)["counseling_encounter"] == {
+        "id": linked.pk,
+        "recorded": False,
+    }

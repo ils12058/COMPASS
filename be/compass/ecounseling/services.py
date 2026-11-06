@@ -26,7 +26,11 @@ from compass.counseling.context_access import (
     counseling_context_available,
 )
 from compass.counseling.models import CounselingEncounter
-from compass.counseling.services import CounselingError, get_counseling_service
+from compass.counseling.services import (
+    CounselingError,
+    appointment_encounter_matches,
+    get_counseling_service,
+)
 from compass.integrations.daily import (
     DailyClient,
     DailyConfigurationError,
@@ -345,7 +349,12 @@ def get_counselor_workspace(
         }
     encounter_summary = None
     if encounter is not None and encounter.counselor_id == counselor.pk:
-        encounter_summary = {"id": encounter.pk, "recorded": True}
+        # ``id`` stays whatever Encounter is linked so review navigation keeps working, while
+        # ``recorded`` answers the same question Appointment Detail does.
+        encounter_summary = {
+            "id": encounter.pk,
+            "recorded": appointment_encounter_matches(appointment),
+        }
     from .media import get_media_projection
 
     return {

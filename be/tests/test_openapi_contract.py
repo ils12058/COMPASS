@@ -3036,6 +3036,14 @@ def test_ecounseling_join_and_context_readiness_openapi_contract() -> None:
 
     counselor_workspace = schemas["CounselorWorkspaceResponse"]
     assert counselor_workspace["properties"]["counseling_context_available"]["type"] == "boolean"
+    # CENC-3 gives `recorded` its real meaning without changing the wire shape: still one plain
+    # required boolean sitting beside the linked Encounter id.
+    encounter_summary = schemas["CounselingEncounterWorkspaceSummary"]
+    assert set(encounter_summary["properties"]) == {"id", "recorded"}
+    assert encounter_summary["properties"]["recorded"]["type"] == "boolean"
+    assert "anyOf" not in encounter_summary["properties"]["recorded"]
+    assert set(encounter_summary["required"]) == {"id", "recorded"}
+    assert encounter_summary["additionalProperties"] is False
     # Only the assigned Counselor's projection carries the Student's Institutional ID.
     assert counselor_workspace["properties"]["student"]["$ref"].endswith(
         "/CounselorWorkspaceStudentSummary"
