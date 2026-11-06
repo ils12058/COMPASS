@@ -56,6 +56,11 @@ import { CompassApiError } from "@/lib/api/errors";
 import { formatInstitutionalDateTime, institutionalDateInputValue } from "@/lib/institutional-time";
 import { isCounselingService } from "@/features/counseling/canonical-counseling-service";
 import { getCounselingAccess } from "@/features/counseling/counseling-access";
+import {
+  completeConfirmationDescription,
+  counselingMismatchNotice,
+  counselingReconciliationNotice,
+} from "@/features/counseling/documentation-review";
 import { finishCounselingNotice, finishCounselingState } from "@/features/counseling/finish-counseling-availability";
 import { FinishCounselingDialog } from "@/features/counseling/finish-counseling-dialog";
 import { invalidateAfterCounselingFinish } from "@/features/counseling/finish-counseling-refresh";
@@ -200,6 +205,7 @@ function ActionConfirmation({
   selfCancellation,
   referenceCode,
   error,
+  reconciliation,
   routineInterviewWillClose,
   onClose,
   onConfirm,
@@ -209,6 +215,7 @@ function ActionConfirmation({
   selfCancellation: boolean;
   referenceCode: string;
   error: string | null;
+  reconciliation: boolean;
   routineInterviewWillClose: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -225,7 +232,7 @@ function ActionConfirmation({
     },
     complete: {
       title: `Complete Appointment ${referenceCode}?`,
-      description: "This appointment will be marked completed and will no longer be scheduled.",
+      description: completeConfirmationDescription({ reconciliation }),
       confirm: "Complete appointment",
       pending: "Completing…",
       variant: "primary",
@@ -645,6 +652,12 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const canFinishCounseling = counselingAccess.canManageAssigned && access.canManage;
   const finishState = finishCounselingState(appointment, { canFinish: canFinishCounseling });
   const finishOffered = finishState === "OFFERED";
+  // Recorded means the identity rule matched. Linked means a link exists at all, so a link that
+  // fails the rule is named as needing review instead of being called a missing record.
+  const encounterRecorded = appointment.counseling_encounter_recorded === true;
+  const encounterMismatch =
+    appointment.counseling_encounter_linked === true &&
+    appointment.counseling_encounter_recorded === false;
   // Finish stands in for Complete, so a blocked Complete is not also listed as unavailable.
   const displayedUnavailable = finishOffered
     ? unavailable.filter((item) => item.action !== actionNames.complete)
@@ -697,10 +710,18 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       ) : null}
       {appointment.status === AppointmentStatus.COMPLETED &&
       appointment.counseling_encounter_recorded === false &&
-      finishOffered ? (
+      finishOffered &&
+      !encounterMismatch ? (
         <Notice role="status" tone="warning" className="mb-4">
           This Appointment is marked completed, but no Counseling Encounter is recorded for it. If the session took place, finish counseling to record it.
         </Notice>
+      ) : null}
+      {appointment.status === AppointmentStatus.COMPLETED && encounterMismatch ? (
+        <Notice role="status" tone="warning" className="mb-4">{counselingMismatchNotice}</Notice>
+      ) : null}
+      {/* Pointing at Complete only makes sense while Complete is actually available. */}
+      {appointment.status === AppointmentStatus.SCHEDULED && encounterRecorded && canComplete ? (
+        <Notice role="status" tone="info" className="mb-4">{counselingReconciliationNotice}</Notice>
       ) : null}
 
       <div className="space-y-5">
@@ -729,7 +750,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
             <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(appointment.delivery_mode)}</dd></div>
             {counseling && appointment.counseling_encounter_recorded !== null ? (
-              <div><dt className="text-xs font-semibold text-muted">Counseling encounter</dt><dd className="mt-1 text-sm text-ink">{appointment.counseling_encounter_recorded ? "Recorded" : "Not recorded"}</dd></div>
+              <div><dt className="text-xs font-semibold text-muted">Counseling encounter</dt><dd className="mt-1 text-sm text-ink">{encounterRecorded ? "Recorded" : encounterMismatch ? "Linked, needs review" : "Not recorded"}</dd></div>
             ) : null}
             {appointment.cancellation_cutoff_minutes !== null ? (
               <div><dt className="text-xs font-semibold text-muted">Student change deadline</dt><dd className="mt-1 text-sm text-ink">Students must cancel or reschedule at least {appointment.cancellation_cutoff_minutes} minutes before the appointment starts.</dd></div>
@@ -1063,6 +1084,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         selfCancellation={access.isStudent}
         referenceCode={appointment.reference_code}
         error={error?.scope === "confirm" ? error.message : null}
+        reconciliation={counseling && encounterRecorded}
         routineInterviewWillClose={Boolean(confirmationRoutineConsequence)}
         onClose={() => setConfirmAction(null)}
         onConfirm={() => void confirmMutation()}

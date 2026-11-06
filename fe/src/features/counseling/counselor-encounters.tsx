@@ -20,6 +20,8 @@ import { CanonicalPagination } from "@/features/portal/components/canonical-pagi
 import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { describeResultPage } from "@/features/portal/components/result-context";
 import type { CounselingAccess } from "@/features/counseling/counseling-access";
+import { DocumentationReviewPanel } from "@/features/counseling/documentation-review-panel";
+import { reviewPageFromParam } from "@/features/counseling/documentation-review";
 import {
   counselingDeliveryModeLabel,
   counselingEntryModeLabel,
@@ -67,6 +69,8 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
   const fromDate = searchParams.get("from_date") ?? "";
   const toDate = searchParams.get("to_date") ?? "";
   const page = positivePage(searchParams.get("page"));
+  // The worklist pages independently, so filtering the encounters must not reset it.
+  const reviewPage = reviewPageFromParam(searchParams.get("review_page"));
   const search = searchParams.get("search") ?? "";
   const hasFilters = Boolean(search || entryMode || deliveryMode || fromDate || toDate);
   const { requested: requestedOrdering, setOrdering } = useListOrdering(CounselingEncounterOrdering);
@@ -112,12 +116,15 @@ export function CounselorEncounters({ access }: { access: CounselingAccess }) {
 
       {recordOpen ? <RecordEncounterForm onCancel={() => setRecordOpen(false)} onUncertain={() => setRecordUncertain(true)} /> : null}
 
+      {recordOpen ? null : <DocumentationReviewPanel access={access} />}
+
       <section id="encounters" aria-labelledby="my-counseling-encounters-heading" className={recordOpen ? "mt-5" : undefined}>
           {/* The collection tools step aside while an encounter is being recorded. */}
           {recordOpen ? null : (
           <form action={pathname} method="get" key={searchParams.toString()} role="search" aria-label="Counseling encounters">
           {/* Applying filters keeps the reader's chosen order. */}
           {requestedOrdering ? <input type="hidden" name="ordering" value={requestedOrdering} /> : null}
+          {reviewPage > 1 ? <input type="hidden" name="review_page" value={reviewPage} /> : null}
           <FloatingListTools
             submits
             label="Counseling encounter filters"

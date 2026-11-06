@@ -9,8 +9,9 @@ from datetime import date, datetime, timedelta
 from enum import StrEnum
 from uuid import UUID
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
-from django.db.models import Exists, OuterRef, Q
+from django.db.models import Exists, OuterRef, Q, Subquery
 from django.utils import timezone
 
 from compass.accounts.models import User
@@ -153,6 +154,29 @@ class CounselingAppointmentCandidatePage:
     has_next: bool
 
 
+class CounselingDocumentationReviewReason(StrEnum):
+    """Why one of the Counselor's own Appointments may need a record or reconciliation."""
+
+    MISSING_ENCOUNTER = "MISSING_ENCOUNTER"
+    UNCOMPLETED_APPOINTMENT = "UNCOMPLETED_APPOINTMENT"
+    LINKED_CONFLICT = "LINKED_CONFLICT"
+
+
+@dataclass(frozen=True, slots=True)
+class CounselingDocumentationReviewItem:
+    appointment: Appointment
+    reason: CounselingDocumentationReviewReason
+    encounter_id: UUID | None
+
+
+@dataclass(frozen=True, slots=True)
+class CounselingDocumentationReviewPage:
+    items: tuple[CounselingDocumentationReviewItem, ...]
+    page: int
+    page_size: int
+    has_next: bool
+
+
 def _normalize_entry_mode(value: str | CounselingEntryMode) -> str:
     normalized = value.value if isinstance(value, CounselingEntryMode) else value
     if normalized not in CounselingEntryMode.values:
@@ -188,6 +212,30 @@ def _normalize_actual_times(
     return normalized_start, normalized_end
 
 
+def _encounter_identity_q(
+    *,
+    appointment_id: UUID | OuterRef,
+    student_id: UUID | OuterRef,
+    counselor_id: UUID | OuterRef,
+    service_id: UUID | OuterRef,
+    delivery_mode: str | OuterRef,
+) -> Q:
+    """The one definition of an Encounter that records an Appointment's own session.
+
+    ``OuterRef`` values let a queryset answer the same question per row, so the projection and the
+    worklist can never drift apart from each other.
+    """
+
+    return Q(
+        appointment_id=appointment_id,
+        student_id=student_id,
+        counselor_id=counselor_id,
+        service_id=service_id,
+        delivery_mode=delivery_mode,
+        entry_mode=CounselingEntryMode.APPOINTMENT,
+    )
+
+
 def appointment_encounter_matches(appointment: Appointment) -> bool:
     """Whether an Encounter records this Appointment's own Counseling session.
 
@@ -198,13 +246,33 @@ def appointment_encounter_matches(appointment: Appointment) -> bool:
     """
 
     return CounselingEncounter.objects.filter(
-        appointment_id=appointment.pk,
-        student_id=appointment.student_id,
-        counselor_id=appointment.provider_id,
-        service_id=appointment.service_id,
-        delivery_mode=appointment.delivery_mode,
-        entry_mode=CounselingEntryMode.APPOINTMENT,
+        _encounter_identity_q(
+            appointment_id=appointment.pk,
+            student_id=appointment.student_id,
+            counselor_id=appointment.provider_id,
+            service_id=appointment.service_id,
+            delivery_mode=appointment.delivery_mode,
+        )
     ).exists()
+
+
+def _encounter_fact_exposed(
+    *,
+    actor: User,
+    appointment: Appointment,
+    at: datetime | None = None,
+) -> bool:
+    """Whether this actor may see this Appointment's Counseling documentation facts at all."""
+
+    current = at or timezone.now()
+    return (
+        appointment.service.code == COUNSELING_SERVICE_CODE
+        and bool(getattr(actor, "pk", None))
+        and actor.is_active
+        and actor.role.code == "COUNSELOR"
+        and appointment.provider_id == actor.pk
+        and actor.has_capability("counseling.view_assigned", at=current)
+    )
 
 
 def appointment_encounter_recorded(
@@ -219,17 +287,22 @@ def appointment_encounter_recorded(
     finish request revalidates under locks.
     """
 
-    current = at or timezone.now()
-    if (
-        appointment.service.code != COUNSELING_SERVICE_CODE
-        or not getattr(actor, "pk", None)
-        or not actor.is_active
-        or actor.role.code != "COUNSELOR"
-        or appointment.provider_id != actor.pk
-        or not actor.has_capability("counseling.view_assigned", at=current)
-    ):
+    if not _encounter_fact_exposed(actor=actor, appointment=appointment, at=at):
         return None
     return appointment_encounter_matches(appointment)
+
+
+def appointment_encounter_linked(
+    *,
+    actor: User,
+    appointment: Appointment,
+    at: datetime | None = None,
+) -> bool | None:
+    """Any Encounter linked to this Appointment, matching or not. None when not exposed."""
+
+    if not _encounter_fact_exposed(actor=actor, appointment=appointment, at=at):
+        return None
+    return CounselingEncounter.objects.filter(appointment_id=appointment.pk).exists()
 
 
 def _validate_page(page: int, page_size: int) -> tuple[int, int]:
@@ -728,6 +801,108 @@ def list_appointment_candidates(
     rows = list(queryset[offset : offset + page_size + 1])
     return CounselingAppointmentCandidatePage(
         items=tuple(rows[:page_size]),
+        page=page,
+        page_size=page_size,
+        has_next=len(rows) > page_size,
+    )
+
+
+def _documentation_review_reason(row: Appointment) -> CounselingDocumentationReviewReason:
+    """One row, one reason: a broken link outranks everything else about the same Appointment."""
+
+    if row._has_linked and not row._has_matching:
+        return CounselingDocumentationReviewReason.LINKED_CONFLICT
+    if row.status == AppointmentStatus.SCHEDULED:
+        return CounselingDocumentationReviewReason.UNCOMPLETED_APPOINTMENT
+    return CounselingDocumentationReviewReason.MISSING_ENCOUNTER
+
+
+def list_documentation_review(
+    *,
+    counselor: User,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+    now: datetime | None = None,
+) -> CounselingDocumentationReviewPage:
+    """The Counselor's own Appointments that may need a record or a reconciliation.
+
+    Derived only: nothing here is persisted, and nothing here says Counseling took place. A linked
+    Encounter that fails the identity rule is reported as a conflict rather than treated as
+    documentation, because the link is one-to-one and cannot be corrected from this surface.
+    """
+
+    _validate_active_counselor(counselor)
+    page, page_size = _validate_page(page, page_size)
+
+    # Historical Appointments stay reviewable after the Service is deactivated, so the canonical row
+    # is resolved without requiring it to be active.
+    service = get_counseling_service(require_active=False)
+
+    current = now or timezone.now()
+    # The grace mirrors ecounseling/services.py:_join_window_bounds: while an
+    # ONLINE session's access window is still open, completing the Appointment
+    # is refused, so it is not ready here.
+    grace = timedelta(seconds=settings.ECOUNSELING_REJOIN_GRACE_SECONDS)
+
+    queryset = (
+        Appointment.objects.select_related("student", "student__role", "service")
+        .filter(
+            provider_id=counselor.pk,
+            student__is_active=True,
+            student__role__code="STUDENT",
+            service_id=service.pk,
+            status__in=(AppointmentStatus.SCHEDULED, AppointmentStatus.COMPLETED),
+        )
+        .annotate(
+            _has_linked=Exists(CounselingEncounter.objects.filter(appointment_id=OuterRef("pk"))),
+            _has_matching=Exists(
+                CounselingEncounter.objects.filter(
+                    _encounter_identity_q(
+                        appointment_id=OuterRef("pk"),
+                        student_id=OuterRef("student_id"),
+                        counselor_id=OuterRef("provider_id"),
+                        service_id=OuterRef("service_id"),
+                        delivery_mode=OuterRef("delivery_mode"),
+                    )
+                )
+            ),
+        )
+    )
+
+    ended = Q(delivery_mode=DeliveryMode.ONLINE, ends_at__lt=current - grace) | (
+        ~Q(delivery_mode=DeliveryMode.ONLINE) & Q(ends_at__lte=current)
+    )
+
+    queryset = (
+        queryset.filter(
+            Q(status=AppointmentStatus.COMPLETED, _has_linked=False)
+            | (Q(status=AppointmentStatus.SCHEDULED, _has_matching=True) & ended)
+            | Q(_has_linked=True, _has_matching=False, starts_at__lte=current)
+        )
+        # Encounter reads are assigned-only, so an Encounter owned by another Counselor stays hidden
+        # even while the conflict itself is reported.
+        .annotate(
+            _linked_encounter_id=Subquery(
+                CounselingEncounter.objects.filter(
+                    appointment_id=OuterRef("pk"),
+                    counselor_id=counselor.pk,
+                ).values("id")[:1]
+            )
+        )
+        .order_by("ends_at", "id")
+    )
+
+    offset = (page - 1) * page_size
+    rows = list(queryset[offset : offset + page_size + 1])
+    return CounselingDocumentationReviewPage(
+        items=tuple(
+            CounselingDocumentationReviewItem(
+                appointment=row,
+                reason=_documentation_review_reason(row),
+                encounter_id=row._linked_encounter_id,
+            )
+            for row in rows[:page_size]
+        ),
         page=page,
         page_size=page_size,
         has_next=len(rows) > page_size,

@@ -1761,6 +1761,17 @@
             "title": "Counseling Context Available",
             "type": "boolean"
           },
+          "counseling_encounter_linked": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counseling Encounter Linked"
+          },
           "counseling_encounter_recorded": {
             "anyOf": [
               {
@@ -1847,7 +1858,8 @@
           "created_at",
           "actions",
           "counseling_context_available",
-          "counseling_encounter_recorded"
+          "counseling_encounter_recorded",
+          "counseling_encounter_linked"
         ],
         "title": "AppointmentDetailResponse",
         "type": "object"
@@ -7257,6 +7269,108 @@
         ],
         "title": "CounselingCreateRequest",
         "type": "object"
+      },
+      "CounselingDocumentationReviewItemResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "appointment_id": {
+            "format": "uuid",
+            "title": "Appointment Id",
+            "type": "string"
+          },
+          "delivery_mode": {
+            "$ref": "#/components/schemas/DeliveryMode"
+          },
+          "encounter_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Encounter Id"
+          },
+          "ends_at": {
+            "format": "date-time",
+            "title": "Ends At",
+            "type": "string"
+          },
+          "reason": {
+            "$ref": "#/components/schemas/CounselingDocumentationReviewReason"
+          },
+          "reference_code": {
+            "title": "Reference Code",
+            "type": "string"
+          },
+          "starts_at": {
+            "format": "date-time",
+            "title": "Starts At",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/AppointmentStatus"
+          },
+          "student": {
+            "$ref": "#/components/schemas/CounselingStudentResponse"
+          }
+        },
+        "required": [
+          "appointment_id",
+          "reference_code",
+          "student",
+          "delivery_mode",
+          "starts_at",
+          "ends_at",
+          "status",
+          "reason",
+          "encounter_id"
+        ],
+        "title": "CounselingDocumentationReviewItemResponse",
+        "type": "object"
+      },
+      "CounselingDocumentationReviewPageResponse": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/CounselingDocumentationReviewItemResponse"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "CounselingDocumentationReviewPageResponse",
+        "type": "object"
+      },
+      "CounselingDocumentationReviewReason": {
+        "enum": [
+          "MISSING_ENCOUNTER",
+          "UNCOMPLETED_APPOINTMENT",
+          "LINKED_CONFLICT"
+        ],
+        "title": "CounselingDocumentationReviewReason",
+        "type": "string"
       },
       "CounselingEncounterAppointmentCandidate": {
         "additionalProperties": false,
@@ -44354,6 +44468,94 @@
           }
         ],
         "summary": "Get Selected Routine Evaluation",
+        "tags": [
+          "counseling"
+        ]
+      }
+    },
+    "/api/v1/counseling/documentation-review": {
+      "get": {
+        "operationId": "counselingListDocumentationReview",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CounselingDocumentationReviewPageResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counseling List Documentation Review",
         "tags": [
           "counseling"
         ]

@@ -47,6 +47,7 @@ from .services import (
     get_encounter_creation_options,
     get_encounter_for_actor,
     list_appointment_candidates,
+    list_documentation_review,
     list_encounter_appointment_candidates,
     list_my_encounters,
     list_students,
@@ -208,6 +209,32 @@ class CounselingAppointmentCandidate(StrictSchema):
 
 class CounselingAppointmentCandidatePage(StrictSchema):
     items: list[CounselingAppointmentCandidate]
+    page: int
+    page_size: int
+    has_next: bool
+
+
+class CounselingDocumentationReviewReason(StrEnum):
+    MISSING_ENCOUNTER = "MISSING_ENCOUNTER"
+    UNCOMPLETED_APPOINTMENT = "UNCOMPLETED_APPOINTMENT"
+    LINKED_CONFLICT = "LINKED_CONFLICT"
+
+
+class CounselingDocumentationReviewItemResponse(StrictSchema):
+    appointment_id: UUID
+    reference_code: str
+    student: CounselingStudentResponse
+    delivery_mode: DeliveryMode
+    starts_at: datetime
+    ends_at: datetime
+    status: AppointmentStatus
+    reason: CounselingDocumentationReviewReason
+    # Present only when the linked Encounter is the reader's own: Encounter reads are assigned-only.
+    encounter_id: UUID | None
+
+
+class CounselingDocumentationReviewPageResponse(StrictSchema):
+    items: list[CounselingDocumentationReviewItemResponse]
     page: int
     page_size: int
     has_next: bool
@@ -470,6 +497,52 @@ def counseling_list_appointment_candidates(
         _raise(exc)
     return {
         "items": [_appointment_candidate(item) for item in result.items],
+        "page": result.page,
+        "page_size": result.page_size,
+        "has_next": result.has_next,
+    }
+
+
+@router.get(
+    "/documentation-review",
+    response=response_with_errors(CounselingDocumentationReviewPageResponse, 401, 403, 409, 422),
+    auth=session_auth,
+    operation_id="counselingListDocumentationReview",
+)
+def counseling_list_documentation_review(
+    request,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    _require_counselor(request, "counseling.view_assigned")
+    try:
+        result = list_documentation_review(
+            counselor=request.auth_user,
+            page=page,
+            page_size=page_size,
+        )
+    except CounselingError as exc:
+        _raise(exc)
+    return {
+        "items": [
+            {
+                "appointment_id": item.appointment.pk,
+                "reference_code": item.appointment.reference_code,
+                "student": {
+                    "id": item.appointment.student_id,
+                    "display_name": item.appointment.student.get_full_name(),
+                    "institutional_id": item.appointment.student.institutional_id,
+                    **profile_photo_projection(item.appointment.student),
+                },
+                "delivery_mode": item.appointment.delivery_mode,
+                "starts_at": _institutional(item.appointment.starts_at),
+                "ends_at": _institutional(item.appointment.ends_at),
+                "status": item.appointment.status,
+                "reason": item.reason.value,
+                "encounter_id": item.encounter_id,
+            }
+            for item in result.items
+        ],
         "page": result.page,
         "page_size": result.page_size,
         "has_next": result.has_next,

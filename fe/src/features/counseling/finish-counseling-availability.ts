@@ -10,7 +10,7 @@ export type FinishCounselingState = "OFFERED" | "RECORDED" | "UNAVAILABLE";
 export function finishCounselingState(
   appointment: Pick<
     AppointmentDetailResponse,
-    "status" | "service" | "actions" | "counseling_encounter_recorded"
+    "status" | "service" | "actions" | "counseling_encounter_recorded" | "counseling_encounter_linked"
   >,
   { canFinish }: { canFinish: boolean },
 ): FinishCounselingState {
@@ -22,6 +22,9 @@ export function finishCounselingState(
     return "UNAVAILABLE";
   }
   if (appointment.counseling_encounter_recorded) return "RECORDED";
+  // A linked Encounter that does not match is already this Appointment's only link, so Finish can
+  // only be refused. Reviewing it is not something this control can do (D-CENC-21).
+  if (appointment.counseling_encounter_linked === true) return "UNAVAILABLE";
   if (appointment.status === AppointmentStatus.COMPLETED) return "OFFERED";
   if (
     appointment.status === AppointmentStatus.SCHEDULED &&

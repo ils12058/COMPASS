@@ -308,6 +308,7 @@ EXPECTED_OPERATION_IDS = {
     "counselingFinishAppointment",
     "counselingGetEncounterCreationOptions",
     "counselingListAppointmentCandidates",
+    "counselingListDocumentationReview",
     "counselingListEncounterAppointmentCandidates",
     "counselingListMyEncounters",
     "counselingGetEncounter",
@@ -3500,3 +3501,82 @@ def test_appointment_detail_encounter_record_projection_openapi_contract() -> No
     assert {"type": "boolean"} in recorded["anyOf"]
     assert {"type": "null"} in recorded["anyOf"]
     assert detail["properties"]["counseling_context_available"]["type"] == "boolean"
+
+    # The linked fact is nullable for the same reason: it is unexposed, not unknown.
+    assert "counseling_encounter_linked" in detail["properties"]
+    assert "counseling_encounter_linked" in detail["required"]
+    linked = detail["properties"]["counseling_encounter_linked"]
+    assert {"type": "boolean"} in linked["anyOf"]
+    assert {"type": "null"} in linked["anyOf"]
+    assert (
+        "counseling_encounter_linked"
+        not in schema["components"]["schemas"]["AppointmentResponse"]["properties"]
+    )
+
+
+def test_counseling_documentation_review_contract_is_a_read_only_projection() -> None:
+    schema = _generated_schema()
+    schemas = schema["components"]["schemas"]
+    path = "/api/v1/counseling/documentation-review"
+
+    assert set(schema["paths"][path]) == {"get"}
+    operation = _operation(schema, path, "get")
+    assert operation["operationId"] == "counselingListDocumentationReview"
+    assert operation["tags"] == ["counseling"]
+    assert operation["security"] == [{"OpaqueSessionAuth": []}]
+    assert _response_statuses(operation) == {200, 401, 403, 409, 422}
+    assert {parameter["name"] for parameter in operation["parameters"]} == {"page", "page_size"}
+    assert _response_schema(schema, operation) == "CounselingDocumentationReviewPageResponse"
+
+    page = schemas["CounselingDocumentationReviewPageResponse"]
+    assert page["additionalProperties"] is False
+    assert set(page["properties"]) == {"items", "page", "page_size", "has_next"}
+    assert set(page["required"]) == {"items", "page", "page_size", "has_next"}
+
+    item = schemas["CounselingDocumentationReviewItemResponse"]
+    assert item["additionalProperties"] is False
+    assert set(item["properties"]) == {
+        "appointment_id",
+        "reference_code",
+        "student",
+        "delivery_mode",
+        "starts_at",
+        "ends_at",
+        "status",
+        "reason",
+        "encounter_id",
+    }
+    assert set(item["required"]) == set(item["properties"])
+    assert item["properties"]["student"]["$ref"].endswith("/CounselingStudentResponse")
+    assert item["properties"]["status"]["$ref"].endswith("/AppointmentStatus")
+    assert item["properties"]["reason"]["$ref"].endswith("/CounselingDocumentationReviewReason")
+    encounter_id = item["properties"]["encounter_id"]
+    assert {"format": "uuid", "type": "string"} in encounter_id["anyOf"]
+    assert {"type": "null"} in encounter_id["anyOf"]
+
+    assert schemas["CounselingDocumentationReviewReason"]["enum"] == [
+        "MISSING_ENCOUNTER",
+        "UNCOMPLETED_APPOINTMENT",
+        "LINKED_CONFLICT",
+    ]
+
+    serialized = json.dumps(
+        {
+            "page": page,
+            "item": item,
+            "reason": schemas["CounselingDocumentationReviewReason"],
+        }
+    ).lower()
+    for forbidden in (
+        "ciphertext",
+        "diagnosis",
+        "summary",
+        "notes",
+        "email",
+        "phone",
+        "address",
+        "audit",
+        "support_profile",
+        "student_session_summary",
+    ):
+        assert forbidden not in serialized

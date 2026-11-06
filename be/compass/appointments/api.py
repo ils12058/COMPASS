@@ -274,6 +274,8 @@ class AppointmentDetailResponse(AppointmentResponse):
     # True when the assigned Counselor may see a recorded Appointment-origin Encounter.
     # None when the fact is not exposed to this viewer.
     counseling_encounter_recorded: bool | None
+    # True when any Encounter is linked, matching or not. None when the fact is not exposed.
+    counseling_encounter_linked: bool | None
 
 
 class AppointmentPageResponse(StrictSchema):
@@ -924,7 +926,10 @@ def appointments_get(request, appointment_id: UUID):
         CounselingContextSource,
         counseling_context_available,
     )
-    from compass.counseling.services import appointment_encounter_recorded
+    from compass.counseling.services import (
+        appointment_encounter_linked,
+        appointment_encounter_recorded,
+    )
 
     actions = appointment_actions_for(actor=request.auth_user, item=item)
     return {
@@ -935,6 +940,10 @@ def appointments_get(request, appointment_id: UUID):
             anchor_id=item.pk,
         ),
         "counseling_encounter_recorded": appointment_encounter_recorded(
+            actor=request.auth_user,
+            appointment=item,
+        ),
+        "counseling_encounter_linked": appointment_encounter_linked(
             actor=request.auth_user,
             appointment=item,
         ),

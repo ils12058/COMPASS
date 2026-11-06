@@ -186,3 +186,64 @@ test("an Appointment read that is not confirmed keeps the ordinary Record action
   assert.match(html, /Record encounter/);
   assert.doesNotMatch(html, /Finish counseling/);
 });
+
+test("a linked but non-matching Encounter is never offered Finish", () => {
+  const offered = { canFinish: true };
+  assert.equal(
+    finishCounselingState(detail({ counseling_encounter_recorded: false, counseling_encounter_linked: true }), offered),
+    "UNAVAILABLE",
+  );
+  assert.equal(
+    finishCounselingState(detail({ counseling_encounter_recorded: true, counseling_encounter_linked: true }), offered),
+    "RECORDED",
+  );
+  // An unexposed or matching link must not suppress anything on its own.
+  assert.equal(finishCounselingState(detail({ counseling_encounter_linked: false }), offered), "OFFERED");
+});
+
+test("a completed Appointment with no link keeps the missing-record warning and Finish", () => {
+  const html = detailPage(
+    detail({
+      status: "COMPLETED",
+      counseling_encounter_recorded: false,
+      counseling_encounter_linked: false,
+      actions: { ...detail().actions, complete: action(false) },
+    }),
+    finishActor,
+  );
+  assert.match(html, />Finish counseling</);
+  assert.match(html, /This Appointment is marked completed, but no Counseling Encounter is recorded for it\./);
+  assert.match(html, />Counseling encounter<\/dt><dd[^>]*>Not recorded</);
+});
+
+test("a completed Appointment with a non-matching link asks for review instead of offering Finish", () => {
+  const html = detailPage(
+    detail({
+      status: "COMPLETED",
+      counseling_encounter_recorded: false,
+      counseling_encounter_linked: true,
+      actions: { ...detail().actions, complete: action(false) },
+    }),
+    finishActor,
+  );
+  assert.match(
+    html,
+    /A Counseling Encounter is linked to this Appointment but doesn’t match its Counseling details\. This needs administrative review and can’t be corrected here\./,
+  );
+  assert.doesNotMatch(html, /no Counseling Encounter is recorded for it/);
+  assert.doesNotMatch(html, /Finish counseling/);
+  assert.match(html, />Counseling encounter<\/dt><dd[^>]*>Linked, needs review</);
+});
+
+test("a still-scheduled Appointment with its Encounter recorded points at Complete", () => {
+  const html = detailPage(
+    detail({ counseling_encounter_recorded: true, counseling_encounter_linked: true, actions: { ...detail().actions, complete: action(true) } }),
+    finishActor,
+  );
+  assert.match(
+    html,
+    /This Counseling Encounter is already recorded\. Complete the Appointment to reconcile it; this won’t create another Encounter\./,
+  );
+  assert.match(html, /Complete appointment/);
+  assert.doesNotMatch(html, />Finish counseling</);
+});
