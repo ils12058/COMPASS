@@ -4841,6 +4841,8 @@
           "guidance_messages.intake",
           "guidance_messages.manage",
           "guidance_messages.manage_self",
+          "guidance_messages.referral_manage_self",
+          "guidance_messages.referral_view_self",
           "guidance_messages.templates.manage",
           "guidance_messages.view",
           "guidance_messages.view_self",
@@ -19534,6 +19536,32 @@
         "title": "GuidanceRecipientOptions",
         "type": "object"
       },
+      "GuidanceReferralContext": {
+        "additionalProperties": false,
+        "description": "Structural only: never a Message body, preview or participant directory.",
+        "properties": {
+          "can_start": {
+            "title": "Can Start",
+            "type": "boolean"
+          },
+          "thread": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceThreadResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "thread",
+          "can_start"
+        ],
+        "title": "GuidanceReferralContext",
+        "type": "object"
+      },
       "GuidanceRelationshipOption": {
         "additionalProperties": false,
         "properties": {
@@ -19907,6 +19935,40 @@
             ],
             "title": "Relationship Appointment Id"
           },
+          "relationship_referral_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Referral Id"
+          },
+          "relationship_referral_reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Referral Reference"
+          },
+          "relationship_referral_voided": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Referral Voided"
+          },
           "requester": {
             "anyOf": [
               {
@@ -19955,6 +20017,9 @@
           "routing_college",
           "assigned_to",
           "relationship_appointment_id",
+          "relationship_referral_id",
+          "relationship_referral_reference",
+          "relationship_referral_voided",
           "created_at",
           "last_message_at",
           "last_sequence",
@@ -31312,7 +31377,8 @@
         "enum": [
           "OFFICE",
           "COUNSELING",
-          "FACULTY_INQUIRY"
+          "FACULTY_INQUIRY",
+          "REFERRAL_COORDINATION"
         ],
         "title": "ThreadKind",
         "type": "string"
@@ -32964,6 +33030,8 @@
                 "guidance_messages.intake",
                 "guidance_messages.manage",
                 "guidance_messages.manage_self",
+                "guidance_messages.referral_manage_self",
+                "guidance_messages.referral_view_self",
                 "guidance_messages.templates.manage",
                 "guidance_messages.view",
                 "guidance_messages.view_self",
@@ -33159,6 +33227,8 @@
                 "guidance_messages.intake",
                 "guidance_messages.manage",
                 "guidance_messages.manage_self",
+                "guidance_messages.referral_manage_self",
+                "guidance_messages.referral_view_self",
                 "guidance_messages.templates.manage",
                 "guidance_messages.view",
                 "guidance_messages.view_self",
@@ -55915,6 +55985,212 @@
           }
         ],
         "summary": "Recipient Options",
+        "tags": [
+          "guidance-messages"
+        ]
+      }
+    },
+    "/api/v1/guidance-messages/referrals/{referral_id}/context": {
+      "get": {
+        "operationId": "guidanceMessagesGetReferralContext",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceReferralContext"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Referral Context",
+        "tags": [
+          "guidance-messages"
+        ]
+      }
+    },
+    "/api/v1/guidance-messages/referrals/{referral_id}/referral-thread": {
+      "post": {
+        "operationId": "guidanceMessagesOpenReferralThread",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "referral_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Referral Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuidanceSendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceOpenResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Open Referral Thread",
         "tags": [
           "guidance-messages"
         ]

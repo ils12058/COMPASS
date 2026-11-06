@@ -17,9 +17,15 @@ test("Faculty navigation requires independent current availability as well as na
   assert.deepEqual(portalWorkspaceGroups(faculty, readOnly)[0].links.map(x => x.label), ["My Referrals"]);
   assert.equal(facultySubmissionAvailable(readOnly), false);
   for (const role of ["STUDENT", "COUNSELOR", "IT_ADMIN", "GUIDANCE_SERVICES_STAFF", "INSTITUTIONAL_OFFICER"]) {
-    assert.deepEqual(facultyReferralAccess({ ...faculty, role }), { read: false, submit: false });
+    assert.deepEqual(facultyReferralAccess({ ...faculty, role }), { read: false, submit: false, message: false });
   }
-  assert.deepEqual(facultyReferralAccess({ ...faculty, capabilities: ["referrals.submit_self"] }), { read: false, submit: false });
+  assert.deepEqual(facultyReferralAccess({ ...faculty, capabilities: ["referrals.submit_self"] }), { read: false, submit: false, message: false });
+  assert.deepEqual(
+    facultyReferralAccess({ role: "FACULTY", capabilities: ["referrals.view_submitted_self", "guidance_messages.referral_manage_self"] }),
+    { read: true, submit: false, message: true },
+    "Messaging is a link to Messages, not part of Referral submission",
+  );
+  assert.deepEqual(facultyReferralAccess(faculty), { read: true, submit: true, message: false });
 });
 
 test("Referral validation preserves overlong content and identifies exact field boundaries", () => {

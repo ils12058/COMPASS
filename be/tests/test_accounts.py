@@ -151,7 +151,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert set(Capability.objects.values_list("code", flat=True)) == set(CAPABILITY_CODES)
     assert {"organization.structure.view", "services.catalog.view"} <= CAPABILITY_CODES
     assert {"organization.view", "services.view"}.isdisjoint(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 107
+    assert RoleCapability.objects.count() == 109
     assert DesignationCapability.objects.count() == 24
     assert Permission.objects.filter(content_type__app_label="accounts").count() == 0
 
@@ -164,7 +164,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
     assert Role.objects.count() == 6
     assert Designation.objects.count() == 3
     assert Capability.objects.count() == len(CAPABILITY_CODES)
-    assert RoleCapability.objects.count() == 107
+    assert RoleCapability.objects.count() == 109
     assert DesignationCapability.objects.count() == 24
 
 

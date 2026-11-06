@@ -42,6 +42,7 @@
     "guidance_followups/migrations/0002_guidancefollowupmutation.py",
     "guidance_messages/migrations/0002_kinds_and_participants.py",
     "guidance_messages/migrations/0003_faculty_inquiry.py",
+    "guidance_messages/migrations/0004_referral_coordination.py",
     "service_catalog/migrations/0002_booking_pathways.py",
     "service_catalog/migrations/0003_fixed_date_slots.py",
     "service_catalog/migrations/0004_serviceappointmentslot_withdrawn_at_and_more.py",

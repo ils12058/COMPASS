@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -12,12 +13,22 @@ from django.db import connections, transaction
 from compass.audit.models import AuditEvent
 from compass.guidance_messages import services
 from compass.guidance_messages.errors import GuidanceMessageContentUnavailable
-from compass.guidance_messages.models import GuidanceMessage, GuidanceThread
+from compass.guidance_messages.models import GuidanceMessage, GuidanceThread, ThreadKind
+from compass.referrals.models import Referral
+from tests.faculty_referral_helpers import make_world, submit
 from tests.test_guidance_messages import BODY, counseling, office, world  # noqa: F401
 
 # Imported world fixture is injected by pytest.
 # ruff: noqa: F811
 pytestmark = pytest.mark.django_db(transaction=True)
+
+
+@pytest.fixture
+def referral_world(monkeypatch):
+    base = make_world(monkeypatch)
+    projection, created = submit(base)
+    assert created
+    return SimpleNamespace(**base.__dict__, referral=Referral.objects.get(pk=projection["id"]))
 
 
 def parallel(count, function):
@@ -78,6 +89,31 @@ def test_concurrent_creation_has_one_thread_and_first_message(world, kind):
     assert len({thread.pk for thread, _ in results}) == 1
     assert len({message.pk for _, message in results}) == 1
     assert GuidanceThread.objects.count() == GuidanceMessage.objects.count() == 1
+
+
+def test_concurrent_referral_open_yields_one_thread_and_one_message(referral_world):
+    key = uuid4()
+    results = parallel(
+        20,
+        lambda _: services.open_referral_thread(
+            actor=referral_world.faculty,
+            referral_id=referral_world.referral.pk,
+            client_message_id=key,
+            body=BODY,
+        ),
+    )
+    threads = [thread for thread, _ in results]
+    assert len({thread.pk for thread in threads}) == 1
+    assert len({message.pk for _, message in results}) == 1
+    thread = threads[0]
+    assert thread.kind == ThreadKind.REFERRAL_COORDINATION
+    assert GuidanceThread.objects.count() == GuidanceMessage.objects.count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action="guidance_messages.thread.created", target_id=str(thread.pk)
+        ).count()
+        == 1
+    )
 
 
 def test_distinct_concurrent_senders_have_contiguous_committed_sequences(world):

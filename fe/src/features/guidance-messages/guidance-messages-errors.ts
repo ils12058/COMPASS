@@ -5,7 +5,12 @@ import { AccountChangedError } from "@/lib/query/account-ownership";
 // they are: they name internal concepts ("Guidance thread"), and none of them carries content.
 
 export type GuidanceSendContext =
-  "thread" | "student-office" | "student-counseling" | "staff-office" | "faculty-inquiry";
+  | "thread"
+  | "student-office"
+  | "student-counseling"
+  | "staff-office"
+  | "faculty-inquiry"
+  | "referral-coordination";
 
 function status(error: unknown): number | null {
   return error instanceof CompassApiError ? error.status : null;
@@ -34,9 +39,19 @@ export function describeSendError(error: unknown, context: GuidanceSendContext):
     if (context === "staff-office") {
       return "This Student is no longer in your workload. Your message was not sent; search again and choose another Student.";
     }
+    if (context === "referral-coordination") {
+      return "This referral is no longer available to your account. Your message was not sent.";
+    }
     return "This conversation is no longer available. Your message was not sent.";
   }
   if (code === 409) {
+    if (
+      context === "referral-coordination" &&
+      error instanceof CompassApiError &&
+      readApiErrorCode(error.body) === "guidance_messages_referral_voided"
+    ) {
+      return "This referral was voided, so the conversation is read-only. Your message was not sent.";
+    }
     if (context === "faculty-inquiry") {
       return "Your inquiry could not be started because the Guidance Office cannot receive it right now. Your message was not sent; try again later.";
     }
@@ -52,6 +67,12 @@ export function describeSendError(error: unknown, context: GuidanceSendContext):
 }
 
 export function describeStatusChangeError(error: unknown, action: "resolve" | "reopen"): string {
+  if (
+    error instanceof CompassApiError &&
+    readApiErrorCode(error.body) === "guidance_messages_referral_voided"
+  ) {
+    return "This referral was voided, so this conversation cannot be resolved or reopened.";
+  }
   const code = status(error);
   if (action === "reopen" && code === 409) {
     return "This conversation cannot be reopened because the Student already has an open Guidance Office conversation.";

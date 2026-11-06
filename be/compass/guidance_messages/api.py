@@ -22,6 +22,7 @@ from .errors import (
     InvalidMessageInput,
     MessagesConflict,
     MessagesPermissionDenied,
+    ReferralVoided,
     TemplateNameTaken,
     TemplateNotFound,
     ThreadNotFound,
@@ -56,6 +57,9 @@ class GuidanceThreadResponse(StrictSchema):
     routing_college: GuidanceCollege | None
     assigned_to: GuidancePerson | None
     relationship_appointment_id: UUID | None
+    relationship_referral_id: UUID | None
+    relationship_referral_reference: str | None
+    relationship_referral_voided: bool | None
     created_at: datetime
     last_message_at: datetime | None
     last_sequence: int
@@ -124,6 +128,13 @@ class GuidanceRecipientOptions(StrictSchema):
 
 
 class GuidanceAppointmentContext(StrictSchema):
+    """Structural only: never a Message body, preview or participant directory."""
+
+    thread: GuidanceThreadResponse | None
+    can_start: bool
+
+
+class GuidanceReferralContext(StrictSchema):
     """Structural only: never a Message body, preview or participant directory."""
 
     thread: GuidanceThreadResponse | None
@@ -208,6 +219,8 @@ def _safe(function):
                 status, code = 403, "permission_denied"
             elif isinstance(exc, TemplateNameTaken):
                 status, code = 409, "guidance_message_template_name_taken"
+            elif isinstance(exc, ReferralVoided):
+                status, code = 409, "guidance_messages_referral_voided"
             elif isinstance(exc, MessagesConflict):
                 status, code = 409, "guidance_messages_conflict"
             elif isinstance(exc, (InvalidMessageInput, InvalidOperationalStudentQuery)):
@@ -230,6 +243,7 @@ def _person(user):
 def _thread(thread, actor):
     # D-GMSG-22: Office handling identity and College routing are staff-only payload.
     staff_viewer = actor.role.code in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+    referral = thread.relationship_referral if thread.relationship_referral_id else None
     return GuidanceThreadResponse(
         id=thread.pk,
         kind=thread.kind,
@@ -248,6 +262,9 @@ def _thread(thread, actor):
         ),
         assigned_to=_person(thread.assigned_to) if staff_viewer else None,
         relationship_appointment_id=thread.relationship_appointment_id,
+        relationship_referral_id=thread.relationship_referral_id,
+        relationship_referral_reference=referral.reference_code if referral else None,
+        relationship_referral_voided=(referral.voided_at is not None) if referral else None,
         created_at=thread.created_at,
         last_message_at=thread.last_message_at,
         last_sequence=thread.last_sequence,
@@ -536,6 +553,42 @@ def open_faculty_inquiry(request, response: HttpResponse, payload: GuidanceSendR
             context=AuditContext.from_request(request, actor=request.auth_user),
         ),
         request.auth_user,
+    )
+
+
+@router.post(
+    "/referrals/{referral_id}/referral-thread",
+    response=response_with_errors(GuidanceOpenResponse, *ERRORS),
+    operation_id="guidanceMessagesOpenReferralThread",
+)
+@_safe
+def open_referral_thread(
+    request, response: HttpResponse, referral_id: UUID, payload: GuidanceSendRequest
+):
+    if request.auth_user.role.code != "FACULTY":
+        raise MessagesPermissionDenied()
+    return _open(
+        services.open_referral_thread(
+            actor=request.auth_user,
+            referral_id=referral_id,
+            **payload.model_dump(),
+            context=AuditContext.from_request(request, actor=request.auth_user),
+        ),
+        request.auth_user,
+    )
+
+
+@router.get(
+    "/referrals/{referral_id}/context",
+    response=response_with_errors(GuidanceReferralContext, *ERRORS),
+    operation_id="guidanceMessagesGetReferralContext",
+)
+@_safe
+def referral_context(request, response: HttpResponse, referral_id: UUID):
+    thread, can_start = services.referral_context(actor=request.auth_user, referral_id=referral_id)
+    return GuidanceReferralContext(
+        thread=_thread(thread, request.auth_user) if thread is not None else None,
+        can_start=can_start,
     )
 
 

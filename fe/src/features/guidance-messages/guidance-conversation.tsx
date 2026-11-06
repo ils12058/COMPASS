@@ -11,6 +11,8 @@ import { useSendThreadMessage } from "@/features/guidance-messages/guidance-conv
 import {
   ComposerNote,
   ConversationHistoryRegion,
+  ReferralVoidedBadge,
+  ReferralVoidedNote,
   ResolvedBadge,
   ResolvedNote,
   ThreadStatusControl,
@@ -97,12 +99,26 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
   }
 
   const resolved = thread.status === "RESOLVED";
-  // Inquiries are resolved by intake staff or by the Faculty member who wrote them; every other
-  // conversation is resolved only by staff with Messages manage.
+  const referralVoided =
+    thread.kind === "REFERRAL_COORDINATION" && thread.relationship_referral_voided === true;
+  const readOnly = resolved || referralVoided;
+  // Inquiries are resolved by intake staff or by the Faculty member who wrote them; referral
+  // conversations by their submitter or staff in the Referral's current operational scope; every
+  // other conversation is resolved only by staff with Messages manage.
   const canChangeStatus =
-    (viewer === "staff" && access.canManageStaff && thread.kind !== "FACULTY_INQUIRY") ||
-    (viewer === "staff" && access.canIntake && thread.kind === "FACULTY_INQUIRY") ||
-    (viewer === "faculty" && access.canManageInquirySelf && thread.kind === "FACULTY_INQUIRY");
+    !referralVoided &&
+    ((viewer === "staff" &&
+      (thread.kind === "OFFICE" || thread.kind === "COUNSELING") &&
+      access.canManageStaff) ||
+      (viewer === "staff" && thread.kind === "FACULTY_INQUIRY" && access.canIntake) ||
+      (viewer === "staff" &&
+        thread.kind === "REFERRAL_COORDINATION" &&
+        access.canManageStaff &&
+        access.canManageReferralStaff) ||
+      (viewer === "faculty" && thread.kind === "FACULTY_INQUIRY" && access.canManageInquirySelf) ||
+      (viewer === "faculty" &&
+        thread.kind === "REFERRAL_COORDINATION" &&
+        access.canManageReferralSelf));
 
   return (
     <ConversationFrame
@@ -133,7 +149,11 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
           label={`Message to ${threadTitle(thread, viewer)}`}
           send={sendIntent}
           describeError={describe}
-          unavailable={resolved ? <ResolvedNote thread={thread} viewer={viewer} /> : null}
+          unavailable={
+            readOnly ? (
+              referralVoided ? <ReferralVoidedNote /> : <ResolvedNote thread={thread} viewer={viewer} />
+            ) : null
+          }
           templates={messageTemplatesFor(access)}
         />
       )}
@@ -202,11 +222,14 @@ function ThreadDetails({
   const subtitle = viewer === "student" && thread.kind === "OFFICE" ? STUDENT_OFFICE_CONTEXT : threadSubtitle(thread, viewer);
   const { college, assignedTo } = threadRoutingFacts(thread, viewer);
   const resolved = thread.status === "RESOLVED";
+  const referralVoided =
+    thread.kind === "REFERRAL_COORDINATION" && thread.relationship_referral_voided === true;
   return (
     <div className="mt-0.5 space-y-0.5 text-sm text-muted">
       <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
         <span className="break-words">{[subtitle, college].filter(Boolean).join(" · ")}</span>
         {resolved ? <ResolvedBadge /> : null}
+        {referralVoided ? <ReferralVoidedBadge /> : null}
       </p>
       {assignedTo || canAssign ? (
         <ThreadAssignment thread={thread} currentUserId={currentUserId} canChange={canAssign} onAssigned={onAssigned} />

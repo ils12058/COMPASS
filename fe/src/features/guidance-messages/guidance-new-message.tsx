@@ -3,7 +3,7 @@
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -29,8 +29,10 @@ import {
   guidanceMessagesOpenCounselingThread,
   guidanceMessagesOpenFacultyInquiry,
   guidanceMessagesOpenMyOfficeThread,
+  guidanceMessagesOpenReferralThread,
   guidanceMessagesOpenStudentOfficeThread,
   useGuidanceMessagesEligibleStudents,
+  useGuidanceMessagesGetReferralContext,
   useGuidanceMessagesRecipientOptions,
 } from "@/lib/api/generated/guidance-messages/guidance-messages";
 import type { GuidanceOpenResponse, GuidanceRelationshipOption } from "@/lib/api/generated/model";
@@ -68,12 +70,16 @@ function useOpenedThread() {
 
 export function GuidanceNewMessage() {
   const workspace = useGuidanceWorkspace();
+  const params = useSearchParams();
+  const referralId = params.get("referral");
   const focusOnOpen = useRef(workspace.moves > 0);
   useEffect(() => {
     if (!focusOnOpen.current) return;
     focusOnOpen.current = false;
     if (!workspace.isSplit()) focusHeading(CONVERSATION_HEADING_ID);
   }, [workspace]);
+
+  if (referralId) return <ReferralNewMessage referralId={referralId} />;
 
   const { access } = workspace;
   const canStart = access.isStudent
@@ -90,6 +96,120 @@ export function GuidanceNewMessage() {
   }
   if (access.isStudent) return <StudentNewMessage />;
   return access.isFaculty ? <FacultyNewMessage /> : <StaffNewMessage />;
+}
+
+/**
+ * A referral conversation starts from the Referral page, never from the generic chooser. Only the
+ * Referral id travels here; the message body is typed in this composer and nowhere else.
+ */
+function ReferralNewMessage({ referralId }: { referralId: string }) {
+  const router = useRouter();
+  const { access } = useGuidanceWorkspace();
+  const opened = useOpenedThread();
+  const navigate = useNavigateToThread();
+  const [locked, setLocked] = useState(false);
+  const context = useGuidanceMessagesGetReferralContext(referralId, { query: { retry: false } });
+  const thread = context.data?.data.thread ?? null;
+  const canStart = context.data?.data.can_start ?? false;
+
+  useEffect(() => {
+    if (thread) router.replace(`/portal/messages/${thread.id}`);
+  }, [router, thread]);
+
+  const open = useMutation({
+    mutationFn: (intent: SendIntent) =>
+      guidanceMessagesOpenReferralThread(referralId, {
+        client_message_id: intent.clientMessageId,
+        body: intent.body,
+      }),
+    onSuccess: (response) => opened(response.data),
+  });
+  const send = useCallback((intent: SendIntent) => open.mutateAsync(intent), [open]);
+  const describe = useCallback(
+    (error: unknown) => describeSendError(error, "referral-coordination"),
+    [],
+  );
+
+  if (context.isPending) {
+    return (
+      <ConversationFrame title="Message the Guidance Office">
+        <PanelMessage role="status">Checking this referral…</PanelMessage>
+      </ConversationFrame>
+    );
+  }
+  if (context.isError) {
+    const notFound = errorStatus(context.error) === 404;
+    return (
+      <ConversationFrame title="Message the Guidance Office">
+        <PanelMessage
+          role="alert"
+          action={
+            notFound ? undefined : (
+              <Button variant="secondary" onClick={() => void context.refetch()}>
+                Retry
+              </Button>
+            )
+          }
+        >
+          {notFound ? "This referral is no longer available." : "This referral could not be loaded."}
+        </PanelMessage>
+      </ConversationFrame>
+    );
+  }
+  if (thread) {
+    return (
+      <ConversationFrame title="Message the Guidance Office">
+        <PanelMessage role="status">Opening the conversation…</PanelMessage>
+      </ConversationFrame>
+    );
+  }
+  if (!access.canManageReferralSelf) {
+    return (
+      <ConversationFrame title="Message the Guidance Office">
+        <PanelMessage>Your account cannot message about this referral.</PanelMessage>
+      </ConversationFrame>
+    );
+  }
+  if (!canStart) {
+    return (
+      <ConversationFrame title="Message the Guidance Office">
+        <PanelMessage>This referral cannot receive messages right now.</PanelMessage>
+      </ConversationFrame>
+    );
+  }
+
+  return (
+    <ConversationFrame title="Message the Guidance Office">
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+        <fieldset disabled={locked} className="min-w-0">
+          <legend className="text-sm font-semibold text-ink">To</legend>
+          <ul className="mt-2 divide-y divide-border rounded-sm border border-border">
+            <li>
+              <RecipientOption
+                name="guidance-recipient"
+                checked
+                onSelect={() => undefined}
+                title={GUIDANCE_OFFICE_LABEL}
+                detail="Guidance and Counseling Office"
+              />
+            </li>
+          </ul>
+        </fieldset>
+        <p className="mt-4 text-sm text-muted">
+          This message is about the referral you submitted. It goes to the Guidance Office and
+          does not change the Referral record.
+        </p>
+      </div>
+      <GuidanceMessageComposer
+        target={`referral:${referralId}`}
+        label={`Message to ${GUIDANCE_OFFICE_LABEL}`}
+        send={send}
+        describeError={describe}
+        onSent={navigate}
+        onPendingChange={setLocked}
+      />
+    </ConversationFrame>
+  );
 }
 
 function useNavigateToThread() {

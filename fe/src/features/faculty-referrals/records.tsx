@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Forward } from "lucide-react";
 import { ContextHelp } from "@/components/ui/context-help";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { PageActionLink } from "@/components/ui/page-action";
 import { PageHeader, pageBackLinkClass } from "@/components/ui/page-header";
@@ -83,13 +83,15 @@ export function FacultyReferralDetailPage({ referralId }: { referralId: string }
 }
 
 function FacultyReferralDetail({ referralId }: { referralId: string }) {
+  const { user } = usePortalSession();
   const query = useReferralsFacultyGetMine(referralId, { query: { retry: false, refetchOnWindowFocus: true } });
   const item = safeQueryData(query)?.data;
+  const messageable = facultyReferralAccess(user).message && item !== undefined;
   return <section className={pageSheetWidth}>
     <PageHeader title="Referral details" help={<ContextHelp title="Referral tracking" sections={[{ heading: "Administrative handling", content: "Submitted records your online submission. Received by GCO records explicit receipt. Administratively Closed records completion of administrative handling; it does not establish that Counseling or other support is complete, or that the Student’s concern is resolved." }]} />} back={<GuardedPortalLink href={facultyReferralsPath} className={pageBackLinkClass}>Back to My Referrals</GuardedPortalLink>} />
     {query.isPending ? <FacultyLoading label="Loading referral details…" /> : null}
     {query.isError && !item ? <Notice role="alert" action={<Button variant="secondary" onClick={() => void query.refetch()}>Retry</Button>}>{facultyReferralError(query.error, "read")}</Notice> : null}
     {item && query.isError ? <RefreshFailureNotice onRetry={() => void query.refetch()} retrying={query.isFetching} /> : null}
-    {item ? <Panel><SubmissionFacts item={item} /><PanelMessage>{item.state === "SUBMITTED" ? "Submitted records the online submission. It does not indicate acknowledgment or review by the Guidance and Counseling Office." : item.state === "RECEIVED_BY_GCO" ? "The Guidance and Counseling Office recorded receipt of this referral." : "Administrative handling is complete. See Help for what this status means."}</PanelMessage></Panel> : null}
+    {item ? <Panel><SubmissionFacts item={item} /><PanelMessage>{item.state === "SUBMITTED" ? "Submitted records the online submission. It does not indicate acknowledgment or review by the Guidance and Counseling Office." : item.state === "RECEIVED_BY_GCO" ? "The Guidance and Counseling Office recorded receipt of this referral." : "Administrative handling is complete. See Help for what this status means."}</PanelMessage>{messageable ? <PanelMessage action={<GuardedPortalLink href={`/portal/messages/new?referral=${referralId}`} className={buttonVariants({ variant: "secondary" })}>Message Guidance Office</GuardedPortalLink>}>Ask the Guidance Office about this referral in Messages. The conversation does not change the Referral record.</PanelMessage> : null}</Panel> : null}
   </section>;
 }

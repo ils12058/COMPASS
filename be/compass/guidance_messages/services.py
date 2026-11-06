@@ -2,12 +2,13 @@
 
 from uuid import UUID
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.db.models import BigIntegerField, Count, Exists, OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from compass.accounts.models import User
+from compass.accounts.services import effective_capabilities
 from compass.appointments.models import Appointment
 from compass.audit.actions import (
     GUIDANCE_MESSAGES_MESSAGE_SENT,
@@ -27,11 +28,19 @@ from compass.organization.access_scope import (
 from compass.organization.integrity import catalog_dependent_write
 from compass.organization.services import resolve_default_counselor_for_student
 from compass.realtime.publish import publish_to_user_on_commit
+from compass.referrals.models import Referral
+from compass.referrals.services import accessible_referrals, faculty_coordination_referral
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from compass.student_academics.reads import get_current_placement
 
 from . import content, policy
-from .errors import InvalidMessageInput, MessagesConflict, MessagesPermissionDenied, ThreadNotFound
+from .errors import (
+    InvalidMessageInput,
+    MessagesConflict,
+    MessagesPermissionDenied,
+    ReferralVoided,
+    ThreadNotFound,
+)
 from .models import (
     GuidanceMessage,
     GuidanceThread,
@@ -96,7 +105,12 @@ def _directory(query, actor):
         .values("count")
     )
     return query.select_related(
-        "student", "counselor", "assigned_to", "routing_college", "requester"
+        "student",
+        "counselor",
+        "assigned_to",
+        "routing_college",
+        "requester",
+        "relationship_referral",
     ).annotate(own_unread_count=Coalesce(Subquery(unread), Value(0)))
 
 
@@ -167,6 +181,26 @@ def _replay(actor, client_message_id, thread_id):
     return message
 
 
+def _locked_referral_for(thread):
+    """Lock the source Referral and refuse a voided one. Called after the thread lock.
+
+    `void_referral` locks the same row, so a send and a void serialize here. Replay is checked
+    before this guard: returning a recorded Message is history, not a new send.
+    """
+    if thread.relationship_referral_id is None:
+        raise ThreadNotFound()
+    referral = (
+        Referral.objects.select_for_update(of=("self",))
+        .filter(pk=thread.relationship_referral_id)
+        .first()
+    )
+    if referral is None:
+        raise ThreadNotFound()
+    if referral.voided_at is not None:
+        raise ReferralVoided()
+    return referral
+
+
 def _send_locked(*, actor, thread, client_message_id, body, context):
     policy.require_thread(actor, thread, manage=True)
     _client_id(client_message_id)
@@ -175,6 +209,8 @@ def _send_locked(*, actor, thread, client_message_id, body, context):
         return replay
     if thread.status != ThreadStatus.OPEN:
         raise MessagesConflict("This Guidance thread is resolved.")
+    if thread.kind == ThreadKind.REFERRAL_COORDINATION:
+        _locked_referral_for(thread)
     body = content.validate_body(body)
     message = GuidanceMessage(
         thread=thread,
@@ -396,6 +432,117 @@ def appointment_context(*, actor, appointment_id):
     return None, True
 
 
+def referral_context(*, actor, referral_id):
+    """Resolve a Referral's coordination thread for a contextual surface.
+
+    An existing thread survives void and is authorized by its persisted participants. Starting
+    is offered only to the Faculty submitter with manage authority on a non-voided Referral.
+    Returns `(thread, can_start)`; no Message content or Referral form data is read.
+    """
+    actor = policy.current_actor(actor)
+    if actor.role.code == "FACULTY":
+        referral = faculty_coordination_referral(actor=actor, referral_id=referral_id)
+        if referral is None:
+            raise ThreadNotFound()
+    elif actor.role.code in policy.STAFF_ROLES:
+        try:
+            policy.require_actor(actor, kind=ThreadKind.REFERRAL_COORDINATION)
+        except MessagesPermissionDenied:
+            raise ThreadNotFound() from None
+        referral = accessible_referrals(actor).filter(pk=referral_id).first()
+        if referral is None:
+            raise ThreadNotFound()
+    else:
+        raise ThreadNotFound()
+    existing = (
+        GuidanceThread.objects.filter(
+            kind=ThreadKind.REFERRAL_COORDINATION, relationship_referral_id=referral.pk
+        )
+        .values_list("pk", flat=True)
+        .first()
+    )
+    if existing is not None:
+        return get_thread(actor=actor, thread_id=existing), False
+    if referral.voided_at is not None:
+        raise ThreadNotFound()
+    can_start = (
+        actor.role.code == "FACULTY"
+        and "guidance_messages.referral_manage_self" in effective_capabilities(actor)
+    )
+    return None, can_start
+
+
+@transaction.atomic
+def open_referral_thread(*, actor, referral_id, client_message_id, body, context=None):
+    actor = policy.current_actor(actor, lock=True)
+    policy.require_actor(actor, manage=True, kind=ThreadKind.REFERRAL_COORDINATION)
+    if actor.role.code != "FACULTY":
+        raise MessagesPermissionDenied()
+    _client_id(client_message_id)
+    referral = faculty_coordination_referral(actor=actor, referral_id=referral_id)
+    if referral is None:
+        raise ThreadNotFound()
+    prior = (
+        GuidanceMessage.objects.filter(sender=actor, client_message_id=client_message_id)
+        .select_related("thread")
+        .first()
+    )
+    if prior is not None:
+        if (
+            prior.thread.kind != ThreadKind.REFERRAL_COORDINATION
+            or prior.thread.relationship_referral_id != referral.pk
+        ):
+            raise MessagesConflict("client_message_id has already been used for another thread.")
+        policy.require_thread(actor, prior.thread, manage=True)
+        return prior.thread, prior
+    if referral.voided_at is not None:
+        raise ReferralVoided()
+    thread = (
+        GuidanceThread.objects.select_for_update(of=("self",))
+        .filter(kind=ThreadKind.REFERRAL_COORDINATION, relationship_referral_id=referral.pk)
+        .first()
+    )
+    created = thread is None
+    if created:
+        try:
+            with transaction.atomic():
+                thread = GuidanceThread.objects.create(
+                    kind=ThreadKind.REFERRAL_COORDINATION,
+                    requester=actor,
+                    relationship_referral=referral,
+                    student_subject=referral.student,
+                    routing_college_id=referral.student_college_at_submission_id,
+                    created_by=actor,
+                )
+        except IntegrityError:
+            # The partial unique index on relationship_referral is the creation guard: a
+            # concurrent open already committed the thread, so reuse it instead of failing.
+            thread = (
+                GuidanceThread.objects.select_for_update(of=("self",))
+                .filter(
+                    kind=ThreadKind.REFERRAL_COORDINATION,
+                    relationship_referral_id=referral.pk,
+                )
+                .first()
+            )
+            if thread is None:
+                raise
+            created = False
+    policy.require_thread(actor, thread, manage=True)
+    if created:
+        _audit(
+            actor,
+            GUIDANCE_MESSAGES_THREAD_CREATED,
+            thread,
+            context=context,
+            referral_id=str(referral.pk),
+        )
+    message = _send_locked(
+        actor=actor, thread=thread, client_message_id=client_message_id, body=body, context=context
+    )
+    return thread, message
+
+
 @transaction.atomic
 def mark_read(*, actor, thread_id, sequence):
     actor = policy.current_actor(actor)
@@ -420,6 +567,11 @@ def set_status(*, actor, thread_id, resolved, context=None):
     if snapshot.kind == ThreadKind.FACULTY_INQUIRY:
         policy.require_thread(actor, snapshot, manage=True)
         thread = _lock_thread(actor, thread_id)
+    elif snapshot.kind == ThreadKind.REFERRAL_COORDINATION:
+        policy.require_thread(actor, snapshot, manage=True)
+        thread = _lock_thread(actor, thread_id)
+        # A voided Referral makes its conversation read-only, including resolve and reopen.
+        _locked_referral_for(thread)
     else:
         policy.require_thread(actor, snapshot, manage=True, staff_only=True)
         User.objects.select_for_update(of=("self",), no_key=True).get(pk=snapshot.student_id)

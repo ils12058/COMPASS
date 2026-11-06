@@ -62,6 +62,7 @@ const thread = (overrides = {}) => ({
   student: person("student", "Maria Santos"), counselor: null, requester: null,
   routing_college: { id: "college", code: "CCMS", name: "College of Computing" },
   assigned_to: person("staff", "Lea Ramos"), relationship_appointment_id: null,
+  relationship_referral_id: null, relationship_referral_reference: null, relationship_referral_voided: null,
   created_at: "2026-10-09T01:00:00Z", last_message_at: "2026-10-09T02:00:00Z",
   last_sequence: 3, own_last_read_sequence: 1, unread_count: 2, ...overrides,
 });
@@ -80,7 +81,9 @@ test("Messages access pairs each identity with its own capability", () => {
     {
       isStudent: true, isStaff: false, isFaculty: false, viewer: "student",
       canViewSelf: true, canManageSelf: true, canViewStaff: false, canManageStaff: false,
-      canViewInquirySelf: false, canManageInquirySelf: false, canIntake: false,
+      canViewInquirySelf: false, canManageInquirySelf: false,
+      canViewReferralSelf: false, canManageReferralSelf: false, canManageReferralStaff: false,
+      canIntake: false,
       hasWorkspace: true, canWrite: true, canStart: true, canUseTemplates: false, canManageTemplates: false,
     },
   );
@@ -94,7 +97,9 @@ test("Messages access pairs each identity with its own capability", () => {
     {
       isStudent: false, isStaff: false, isFaculty: true, viewer: "faculty",
       canViewSelf: false, canManageSelf: false, canViewStaff: false, canManageStaff: false,
-      canViewInquirySelf: true, canManageInquirySelf: true, canIntake: false,
+      canViewInquirySelf: true, canManageInquirySelf: true,
+      canViewReferralSelf: false, canManageReferralSelf: false, canManageReferralStaff: false,
+      canIntake: false,
       hasWorkspace: true, canWrite: true, canStart: true, canUseTemplates: false, canManageTemplates: false,
     },
   );
@@ -110,6 +115,27 @@ test("Messages access pairs each identity with its own capability", () => {
     "manage_self without view_self is not enough",
   );
   assert.equal(getGuidanceMessagesAccess(account("STUDENT", ["guidance_messages.inquiry_view_self"])).canViewInquirySelf, false, "Only Faculty holds the inquiry capabilities");
+  const referralManager = getGuidanceMessagesAccess(account("FACULTY", ["guidance_messages.referral_view_self", "guidance_messages.referral_manage_self"]));
+  assert.deepEqual(
+    [referralManager.canViewReferralSelf, referralManager.canManageReferralSelf, referralManager.hasWorkspace, referralManager.canWrite, referralManager.canStart],
+    [true, true, true, true, false],
+    "A referral conversation starts from the Referral, not the generic chooser",
+  );
+  const referralReader = getGuidanceMessagesAccess(account("FACULTY", ["guidance_messages.referral_view_self"]));
+  assert.deepEqual(
+    [referralReader.canViewReferralSelf, referralReader.canManageReferralSelf, referralReader.hasWorkspace, referralReader.canWrite],
+    [true, false, true, false],
+    "Reading a referral conversation does not imply writing to it",
+  );
+  assert.equal(
+    getGuidanceMessagesAccess(account("COUNSELOR", ["guidance_messages.view", "guidance_messages.manage"])).canManageReferralStaff,
+    false,
+    "Staff need referrals.manage as well",
+  );
+  assert.equal(
+    getGuidanceMessagesAccess(account("COUNSELOR", ["guidance_messages.view", "guidance_messages.manage", "referrals.manage"])).canManageReferralStaff,
+    true,
+  );
   const intake = account("COUNSELOR", ["guidance_messages.view", "guidance_messages.manage", "guidance_messages.intake"], { designations: ["GENERAL_GUIDANCE_INTAKE"] });
   assert.equal(getGuidanceMessagesAccess(intake).canIntake, true);
   assert.equal(getGuidanceMessagesAccess(counselor).canIntake, false, "Intake needs its own capability");
@@ -178,6 +204,18 @@ test("conversation labels use human wording from each reader's side", () => {
   assert.equal(threadSubtitle(inquiry, "staff"), "Faculty inquiry");
   assert.deepEqual(threadRoutingFacts(inquiry, "staff"), { college: null, assignedTo: null }, "Inquiries carry no Office routing");
   assert.equal(threadTitle({ ...inquiry, requester: person("f", "  ") }, "staff"), "Faculty");
+  const referral = thread({
+    kind: "REFERRAL_COORDINATION", student: null, counselor: null, routing_college: null, assigned_to: null,
+    requester: person("faculty", "Ramon Reyes"),
+    relationship_referral_id: "referral", relationship_referral_reference: "RF-2026-0007", relationship_referral_voided: false,
+  });
+  assert.equal(threadTitle(referral, "faculty"), "Guidance Office");
+  assert.equal(threadTitle(referral, "staff"), "Ramon Reyes");
+  assert.equal(threadSubtitle(referral, "faculty"), "Referral RF-2026-0007");
+  assert.equal(threadSubtitle(referral, "staff"), "Referral RF-2026-0007");
+  assert.deepEqual(threadRoutingFacts(referral, "staff"), { college: null, assignedTo: null }, "A submission snapshot is not current routing");
+  assert.ok(!threadTitle(referral, "staff").includes("Maria Santos"), "The Student is never a referral participant");
+  assert.equal(threadSubtitle({ ...referral, relationship_referral_reference: "  " }, "staff"), "Referral coordination");
   assert.deepEqual(threadRoutingFacts(counseling, "staff"), { college: null, assignedTo: null });
   assert.equal(threadStatusLabel("RESOLVED"), "Resolved");
   assert.equal(unreadLabel(0), null);
@@ -238,6 +276,11 @@ test("send and status errors say what happened without backend jargon", () => {
   assert.match(describeSendError(apiError(409), "thread"), /resolved, so your message was not sent/);
   assert.match(describeSendError(apiError(409), "staff-office"), /no available Guidance Office routing/);
   assert.match(describeSendError(apiError(409), "faculty-inquiry"), /Your inquiry could not be started/);
+  assert.match(describeSendError(apiError(409, "guidance_messages_referral_voided"), "referral-coordination"), /voided/);
+  assert.match(describeSendError(apiError(409, "guidance_messages_referral_voided"), "referral-coordination"), /read-only/);
+  assert.match(describeSendError(apiError(409, "guidance_messages_conflict"), "referral-coordination"), /resolved, so your message was not sent/);
+  assert.match(describeStatusChangeError(apiError(409, "guidance_messages_referral_voided"), "resolve"), /voided/);
+  assert.match(describeStatusChangeError(apiError(409, "guidance_messages_referral_voided"), "reopen"), /voided/);
   assert.match(describeSendError(apiError(404), "student-counseling"), /choose another recipient/);
   assert.match(describeSendError(apiError(422), "thread"), /4,000 characters/);
   assert.match(describeSendError(new AccountChangedError(), "thread"), /account changed/);

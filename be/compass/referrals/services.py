@@ -610,6 +610,31 @@ def get_referral(*, actor: User, referral_id: UUID) -> Referral:
     return item
 
 
+def accessible_referrals(actor: User):
+    """Referrals the actor currently operates on. Includes voided ones: history stays readable."""
+    _validate_operational_actor(actor)
+    return _scope_queryset(Referral.objects.all(), actor)
+
+
+def faculty_coordination_referral(*, actor: User, referral_id: UUID) -> Referral | None:
+    """The Faculty member's own FACULTY_PORTAL submission, for messaging only.
+
+    Provisional: does not re-require an approved submission policy, submission session, or
+    tracking availability. Authorization is submitter identity plus the messaging capability.
+    """
+    if not getattr(actor, "pk", None) or not actor.is_active or actor.role.code != "FACULTY":
+        return None
+    return (
+        _queryset()
+        .filter(
+            pk=referral_id,
+            submission_channel=ReferralSubmissionChannel.FACULTY_PORTAL,
+            submitted_by_id=actor.pk,
+        )
+        .first()
+    )
+
+
 _REFERRAL_ACTION_LABELS = {
     ReferralActionType.CALL_PARENT_GUARDIAN: "Call the Parent/Guardian",
     ReferralActionType.SEND_PARENT_NOTIFICATION_LETTER: ('Send "Parent Notification Letter"'),

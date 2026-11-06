@@ -12,19 +12,20 @@ class ThreadKind(models.TextChoices):
     OFFICE = "OFFICE", "Guidance Office"
     COUNSELING = "COUNSELING", "Counseling"
     FACULTY_INQUIRY = "FACULTY_INQUIRY", "Faculty inquiry"
+    REFERRAL_COORDINATION = "REFERRAL_COORDINATION", "Referral coordination"
 
 
 class ReservedThreadKind(models.TextChoices):
-    """Kind codes whose families GMSG-3..5 will add.
+    """Kind codes whose families GMSG-4..5 will add; REFERRAL_COORDINATION is now creatable.
 
-    These codes are admitted by the generalized database CHECK, denied for every actor by
-    `policy._RULES`, and have no service function and no endpoint. Since 0003 made `student`
-    nullable they are no longer blocked by a NOT NULL column, so uncreatability here is a policy
-    guarantee only: a direct ORM insert with a satisfiable CHECK branch would now store the row.
-    `policy` still refuses to read, route or answer it, and nothing in the product can create one.
+    COUNSELOR_DIRECT and COUNSELOR_CASE_COORDINATION are admitted by the generalized database
+    CHECK, denied for every actor by `policy._RULES`, and have no service function and no endpoint.
+    Since 0003 made `student` nullable they are no longer blocked by a NOT NULL column, so
+    uncreatability here is a policy guarantee only: a direct ORM insert with a satisfiable CHECK
+    branch would now store the row. REFERRAL_COORDINATION remains creatable only through
+    `services.open_referral_thread`, one thread per Referral.
     """
 
-    REFERRAL_COORDINATION = "REFERRAL_COORDINATION", "Referral coordination"
     COUNSELOR_DIRECT = "COUNSELOR_DIRECT", "Counselor direct"
     COUNSELOR_CASE_COORDINATION = "COUNSELOR_CASE_COORDINATION", "Counselor case coordination"
 

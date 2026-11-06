@@ -159,11 +159,17 @@ export function ResolvedNote({ thread, viewer }: { thread: GuidanceThreadRespons
           </GuardedPortalLink>
           .
         </>
-      ) : viewer === "staff" || (viewer === "faculty" && thread.kind === "FACULTY_INQUIRY") ? (
+      ) : viewer === "staff" ||
+        (viewer === "faculty" &&
+          (thread.kind === "FACULTY_INQUIRY" || thread.kind === "REFERRAL_COORDINATION")) ? (
         "Reopen it to send more messages."
       ) : null}
     </p>
   );
+}
+
+export function ReferralVoidedNote() {
+  return <p>This referral was voided, so this conversation is read-only.</p>;
 }
 
 export function ComposerNote({ children }: { children: ReactNode }) {
@@ -178,6 +184,14 @@ export function ResolvedBadge() {
   return (
     <span className="inline-flex rounded-full border border-border bg-surface-muted px-2 py-0.5 text-xs font-semibold text-muted">
       Resolved
+    </span>
+  );
+}
+
+export function ReferralVoidedBadge() {
+  return (
+    <span className="inline-flex rounded-full border border-border bg-surface-muted px-2 py-0.5 text-xs font-semibold text-muted">
+      Referral voided
     </span>
   );
 }
@@ -218,12 +232,19 @@ export function ThreadStatusControl({
   });
   const resolved = thread.status === "RESOLVED";
   const inquiry = thread.kind === "FACULTY_INQUIRY";
+  const referral = thread.kind === "REFERRAL_COORDINATION";
+  // A voided Referral keeps its history readable but freezes status changes (provisional).
+  if (referral && thread.relationship_referral_voided === true) return null;
   const noun = inquiry ? "inquiry" : "conversation";
   const target = inquiry
     ? viewer === "faculty"
       ? GUIDANCE_OFFICE_LABEL
       : personName(thread.requester, "The Faculty member")
-    : personName(thread.student, "The Student");
+    : referral
+      ? viewer === "faculty"
+        ? GUIDANCE_OFFICE_LABEL
+        : personName(thread.requester, "The Faculty member")
+      : personName(thread.student, "The Student");
 
   return (
     <div className="flex flex-col items-end gap-1">
@@ -275,6 +296,9 @@ export function ThreadStatusControl({
           {target} will not be able to send messages here until the {noun} is reopened. Its
           messages stay readable.
         </p>
+        {referral ? (
+          <p>This resolves only the conversation. It does not change the Referral record.</p>
+        ) : null}
         {thread.kind === "OFFICE" ? (
           <p>If they write to the Guidance Office again, a new conversation starts.</p>
         ) : null}

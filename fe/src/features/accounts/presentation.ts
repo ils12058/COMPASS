@@ -71,6 +71,7 @@ export function compatibleDesignations(role: RoleCode): DesignationCode[] {
   if (role === RoleCode.COUNSELOR) {
     return [DesignationCode.HEAD_GUIDANCE_COUNSELOR, DesignationCode.GENERAL_GUIDANCE_INTAKE];
   }
+  if (role === RoleCode.GUIDANCE_SERVICES_STAFF) return [DesignationCode.GENERAL_GUIDANCE_INTAKE];
   if (role === RoleCode.INSTITUTIONAL_OFFICER) return [DesignationCode.DPO];
   return [];
 }

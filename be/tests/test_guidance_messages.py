@@ -150,6 +150,8 @@ def test_role_grants_dependencies_and_no_designation_content():
     assert {
         "guidance_messages.inquiry_view_self",
         "guidance_messages.inquiry_manage_self",
+        "guidance_messages.referral_view_self",
+        "guidance_messages.referral_manage_self",
     } <= ROLE_CAPABILITY_GRANTS["FACULTY"]
     for role in ["IT_ADMIN", "INSTITUTIONAL_OFFICER"]:
         assert not any(
@@ -167,6 +169,12 @@ def test_role_grants_dependencies_and_no_designation_content():
     }
     assert CAPABILITY_DEPENDENCIES["guidance_messages.inquiry_manage_self"] == {
         "guidance_messages.inquiry_view_self"
+    }
+    assert CAPABILITY_DEPENDENCIES["guidance_messages.referral_view_self"] == {
+        "referrals.view_submitted_self"
+    }
+    assert CAPABILITY_DEPENDENCIES["guidance_messages.referral_manage_self"] == {
+        "guidance_messages.referral_view_self"
     }
 
 

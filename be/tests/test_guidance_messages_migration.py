@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import copy
 import uuid
+from datetime import date
 
 import pytest
-from django.db import connection, connections
+from django.db import IntegrityError, connection, connections, transaction
 from django.db.migrations.executor import MigrationExecutor
 
 BASE = ("guidance_messages", "0001_canonical_baseline")
 TARGET_0002 = ("guidance_messages", "0002_kinds_and_participants")
 TARGET = ("guidance_messages", "0003_faculty_inquiry")
+TARGET_0004 = ("guidance_messages", "0004_referral_coordination")
 THREAD_TABLE = "guidance_messages_guidancethread"
 INQUIRY_INDEX = "gm_inquiry_requester_idx"
 KIND_CODES = (
@@ -339,3 +341,101 @@ def test_reverse_with_an_inquiry_fails_and_leaves_row_and_schema_intact(baseline
     inquiry_branch = family_shape_branches(db)["FACULTY_INQUIRY"]
     assert "(routing_college_id IS NULL)" in inquiry_branch
     assert "(assigned_to_id IS NULL)" in inquiry_branch
+
+
+def seed_referral_source(db, apps):
+    """A minimal legacy-shaped Referral plus the requester a referral thread needs."""
+    alias = db.alias
+
+    def manager(app, model):
+        return apps.get_model(app, model).objects.using(alias)
+
+    faculty, _ = manager("accounts", "Role").get_or_create(
+        code="FACULTY", defaults={"name": "Faculty"}
+    )
+    requester = manager("accounts", "User").create(
+        role_id=faculty.pk,
+        email="gm-referral-requester@example.invalid",
+        first_name="Synthetic",
+        last_name="Faculty",
+        profile_confidential_content_ciphertext="preservation-sentinel",
+    )
+    student = manager("accounts", "User").get(email="gm-migration@example.invalid")
+    college = manager("organization", "College").get(code="GMMIG-C")
+    family = manager("institutional_forms", "FormFamily").create(
+        key="gm-migration-referral", title="Synthetic Referral Family"
+    )
+    revision = manager("institutional_forms", "FormRevision").create(
+        family_id=family.pk, internal_schema_version=1
+    )
+    referral = manager("referrals", "Referral").create(
+        reference_code="GMMIG-REF-1",
+        student_id=student.pk,
+        student_name_snapshot="Synthetic Student",
+        course_year_block_snapshot="Synthetic Program 1-1",
+        confidential_content_ciphertext="preservation-sentinel",
+        referred_on=date(2026, 11, 6),
+        form_revision_id=revision.pk,
+    )
+    return requester.pk, student.pk, college.pk, referral.pk
+
+
+@pytest.mark.django_db(transaction=True)
+def test_0004_activates_referral_coordination_without_schema_change(baseline_database):
+    db, apps = baseline_database
+    thread_pk, message_pk = seed_legacy_rows(db, apps)
+    MigrationExecutor(db).migrate([TARGET])
+    before = snapshot(db, state_at(db, TARGET), thread_pk, message_pk)
+
+    MigrationExecutor(db).migrate([TARGET_0004])
+    state = state_at(db, TARGET_0004)
+    assert applied_guidance_messages(db) == {
+        "0001_canonical_baseline",
+        "0002_kinds_and_participants",
+        "0003_faculty_inquiry",
+        "0004_referral_coordination",
+    }
+    thread_model = state.get_model("guidance_messages", "GuidanceThread")
+    choices = dict(thread_model._meta.get_field("kind").choices)
+    assert choices["REFERRAL_COORDINATION"] == "Referral coordination"
+    assert snapshot(db, state, thread_pk, message_pk) == before
+
+    requester_pk, student_pk, college_pk, referral_pk = seed_referral_source(db, state)
+    threads = thread_model.objects.using(db.alias)
+    with pytest.raises(IntegrityError), transaction.atomic(using=db.alias):
+        threads.create(
+            kind="REFERRAL_COORDINATION",
+            requester_id=requester_pk,
+            relationship_referral_id=referral_pk,
+            routing_college_id=college_pk,
+            created_by_id=requester_pk,
+        )
+    thread = threads.create(
+        kind="REFERRAL_COORDINATION",
+        requester_id=requester_pk,
+        relationship_referral_id=referral_pk,
+        student_subject_id=student_pk,
+        routing_college_id=college_pk,
+        created_by_id=requester_pk,
+        last_sequence=1,
+    )
+    stored = threads.get(pk=thread.pk)
+    assert stored.requester_id == requester_pk
+    assert stored.relationship_referral_id == referral_pk
+    assert stored.student_subject_id == student_pk
+    assert stored.routing_college_id == college_pk
+
+    MigrationExecutor(db).migrate([TARGET])
+    assert applied_guidance_messages(db) == {
+        "0001_canonical_baseline",
+        "0002_kinds_and_participants",
+        "0003_faculty_inquiry",
+    }
+    reversed_state = state_at(db, TARGET)
+    kept = (
+        reversed_state.get_model("guidance_messages", "GuidanceThread")
+        .objects.using(db.alias)
+        .get(pk=thread.pk)
+    )
+    assert kept.kind == "REFERRAL_COORDINATION"
+    assert kept.relationship_referral_id == referral_pk

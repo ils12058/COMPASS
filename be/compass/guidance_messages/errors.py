@@ -30,6 +30,11 @@ class TemplateNameTaken(MessagesConflict):
         super().__init__("A Message template with this name already exists.")
 
 
+class ReferralVoided(MessagesConflict):
+    def __init__(self):
+        super().__init__("This Referral was voided, so its conversation is read-only.")
+
+
 class GuidanceMessageContentUnavailable(GuidanceMessagesError):
     def __init__(self):
         super().__init__("Guidance Message confidential content is unavailable.")

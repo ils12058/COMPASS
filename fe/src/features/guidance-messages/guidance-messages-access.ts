@@ -4,8 +4,8 @@ import type { GuidanceViewer } from "./guidance-messages-presentation";
 // Presentation only (ADR-102). The API decides every thread: College scope, supervision, Head
 // fallback and exact Counseling participation are never repeated here. A Student reads their own
 // conversations; Counselors and Guidance Services Staff read the ones their workload allows; a
-// Faculty member reads only the Guidance Office inquiries they wrote. IT Admin, Institutional
-// Officers, Head and DPO designations add nothing.
+// Faculty member reads the Guidance Office inquiries they wrote and the referral conversations
+// they started. IT Admin, Institutional Officers, Head and DPO designations add nothing.
 export type GuidanceMessagesAccess = {
   isStudent: boolean;
   isStaff: boolean;
@@ -24,6 +24,12 @@ export type GuidanceMessagesAccess = {
   canViewInquirySelf: boolean;
   /** Faculty: may write, resolve and reopen their own inquiries. */
   canManageInquirySelf: boolean;
+  /** Faculty: may open the workspace for referral conversations they started. */
+  canViewReferralSelf: boolean;
+  /** Faculty: may write to the referral conversations of their own submissions. */
+  canManageReferralSelf: boolean;
+  /** Staff: may reply to referral conversations inside their current Referral scope. */
+  canManageReferralStaff: boolean;
   /** Staff with the intake designation: receive and answer Faculty inquiries. */
   canIntake: boolean;
   hasWorkspace: boolean;
@@ -49,6 +55,14 @@ export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAc
     isFaculty && user.capabilities.includes("guidance_messages.inquiry_view_self");
   const canManageInquirySelf =
     canViewInquirySelf && user.capabilities.includes("guidance_messages.inquiry_manage_self");
+  const canViewReferralSelf =
+    isFaculty && user.capabilities.includes("guidance_messages.referral_view_self");
+  const canManageReferralSelf =
+    canViewReferralSelf && user.capabilities.includes("guidance_messages.referral_manage_self");
+  const canManageReferralStaff =
+    isStaff &&
+    user.capabilities.includes("guidance_messages.manage") &&
+    user.capabilities.includes("referrals.manage");
   const canIntake = isStaff && user.capabilities.includes("guidance_messages.intake");
   const canManageTemplates =
     canManageStaff && user.capabilities.includes("guidance_messages.templates.manage");
@@ -64,9 +78,20 @@ export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAc
     canManageStaff,
     canViewInquirySelf,
     canManageInquirySelf,
+    canViewReferralSelf,
+    canManageReferralSelf,
+    canManageReferralStaff,
     canIntake,
-    hasWorkspace: canViewSelf || canViewStaff || canViewInquirySelf || canIntake,
-    canWrite: canManageSelf || canManageStaff || canManageInquirySelf || canIntake,
+    hasWorkspace:
+      canViewSelf || canViewStaff || canViewInquirySelf || canViewReferralSelf || canIntake,
+    canWrite:
+      canManageSelf ||
+      canManageStaff ||
+      canManageInquirySelf ||
+      canManageReferralSelf ||
+      canIntake,
+    // A referral conversation starts contextually from the Referral, not from the generic New
+    // message chooser.
     canStart: canManageSelf || canManageStaff || canManageInquirySelf,
     canUseTemplates: canManageStaff,
     canManageTemplates,

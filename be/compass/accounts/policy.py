@@ -87,6 +87,8 @@ FACULTY_CAPABILITY_CEILING = frozenset(
         "referrals.view_submitted_self",
         "guidance_messages.inquiry_view_self",
         "guidance_messages.inquiry_manage_self",
+        "guidance_messages.referral_view_self",
+        "guidance_messages.referral_manage_self",
     }
 )
 
@@ -199,6 +201,18 @@ CAPABILITY_DEFINITIONS = (
         code="guidance_messages.intake",
         name="Handle general Guidance Office intake",
         description="Read and answer Faculty inquiries addressed to the Guidance Office.",
+    ),
+    # Provisional (GMSG-3): referral coordination messaging ships granted to every Faculty in
+    # FACULTY_CAPABILITY_CEILING. This is an engineering default, not institutional approval.
+    CapabilityDefinition(
+        code="guidance_messages.referral_view_self",
+        name="View own referral conversations",
+        description="View own Guidance conversations bound to submitted Referrals.",
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.referral_manage_self",
+        name="Reply to own referral conversations",
+        description="Start and reply to own Guidance conversations bound to submitted Referrals.",
     ),
     CapabilityDefinition(
         code="activity.supervised_staff.view",
@@ -849,6 +863,8 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "guidance_messages.manage_self": frozenset({"guidance_messages.view_self"}),
     "guidance_messages.manage": frozenset({"guidance_messages.view"}),
     "guidance_messages.inquiry_manage_self": frozenset({"guidance_messages.inquiry_view_self"}),
+    "guidance_messages.referral_view_self": frozenset({"referrals.view_submitted_self"}),
+    "guidance_messages.referral_manage_self": frozenset({"guidance_messages.referral_view_self"}),
     "guidance_messages.templates.manage": frozenset({"guidance_messages.manage"}),
     "privacy_governance.activity.export": frozenset({"privacy_governance.view"}),
     "routine_interviews.manage_self": frozenset({"routine_interviews.view_self"}),

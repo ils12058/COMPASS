@@ -30,6 +30,10 @@ NEW_COLUMNS = (
     "relationship_referral",
     "relationship_case_grant",
 )
+# The parity oracles below model only the kinds creatable before GMSG-3. Referral coordination
+# staff scope is current-placement based, so it has no legacy oracle; it is tested in
+# tests/test_guidance_messages_referral.py.
+PRE_GMSG3_KINDS = (ThreadKind.OFFICE, ThreadKind.COUNSELING, ThreadKind.FACULTY_INQUIRY)
 UNCREATABLE_CODES = (*ReservedThreadKind.values, "NOT_A_KIND")
 CONSTRAINTS = (
     "gm_thread_family_shape",
@@ -81,7 +85,11 @@ def legacy_authorized_pks(actor):
     """`policy.authorized_threads` verbatim as of 5557a3f8, kept as the parity oracle."""
     policy.require_actor(actor)
     if actor.role.code == "STUDENT":
-        return set(GuidanceThread.objects.filter(student_id=actor.pk).values_list("pk", flat=True))
+        return set(
+            GuidanceThread.objects.filter(
+                kind__in=PRE_GMSG3_KINDS, student_id=actor.pk
+            ).values_list("pk", flat=True)
+        )
     scope = resolve_general_guidance_college_scope(actor)
     allowed = Q(kind=ThreadKind.OFFICE, routing_college_id__in=scope.college_ids)
     if actor.role.code == "COUNSELOR":
@@ -91,6 +99,8 @@ def legacy_authorized_pks(actor):
 
 def legacy_require_thread(actor, thread, *, manage=False, staff_only=False):
     """`policy.require_thread` verbatim as of 5557a3f8, including its Office fallthrough."""
+    if thread.kind not in PRE_GMSG3_KINDS:
+        raise ThreadNotFound()
     try:
         policy.require_actor(actor, manage=manage, staff_only=staff_only)
     except MessagesPermissionDenied:
@@ -146,22 +156,21 @@ def test_kind_catalog_is_explicit_and_closed():
         ("OFFICE", "Guidance Office"),
         ("COUNSELING", "Counseling"),
         ("FACULTY_INQUIRY", "Faculty inquiry"),
+        ("REFERRAL_COORDINATION", "Referral coordination"),
     ]
     assert list(ReservedThreadKind.values) == [
-        "REFERRAL_COORDINATION",
         "COUNSELOR_DIRECT",
         "COUNSELOR_CASE_COORDINATION",
     ]
     assert not set(ReservedThreadKind.values) & set(ThreadKind.values)
-    assert ALL_THREAD_KINDS == frozenset(
-        {"OFFICE", "COUNSELING", "FACULTY_INQUIRY", *ReservedThreadKind.values}
-    )
+    assert ALL_THREAD_KINDS == frozenset(ThreadKind.values) | frozenset(ReservedThreadKind.values)
     assert len(ALL_THREAD_KINDS) == 6
     assert set(policy._RULES) == set(ALL_THREAD_KINDS)
     assert [kind for kind, rule in policy._RULES.items() if rule is not None] == [
         ThreadKind.OFFICE,
         ThreadKind.COUNSELING,
         ThreadKind.FACULTY_INQUIRY,
+        ThreadKind.REFERRAL_COORDINATION,
     ]
     assert all(policy._RULES[code] is None for code in ReservedThreadKind.values)
 
@@ -254,8 +263,8 @@ def test_reserved_kinds_are_uncreatable_by_policy_only(world):
     database-level uncreatability is gone. What remains is the policy guarantee, and it is the
     product guarantee that matters — `_RULES` has no rule for them, so every read, write, per-thread
     check and routing candidate denies them before consulting any column, and their code is not in
-    `ThreadKind`, so no response schema or endpoint can even express one. GMSG-3..5 replace this
-    with real family rules.
+    `ThreadKind`, so no response schema or endpoint can even express one. GMSG-3 made
+    REFERRAL_COORDINATION a real kind; GMSG-4..5 replace the remaining two with family rules.
     """
     for code in ReservedThreadKind.values:
         assert policy._RULES[code] is None

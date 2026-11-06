@@ -17,6 +17,7 @@ const KIND_LABELS: Record<ThreadKind, string> = {
   OFFICE: GUIDANCE_OFFICE_LABEL,
   COUNSELING: "Counseling",
   FACULTY_INQUIRY: "Faculty inquiry",
+  REFERRAL_COORDINATION: "Referral coordination",
 };
 
 const STATUS_LABELS: Record<ThreadStatus, string> = {
@@ -49,9 +50,9 @@ export function personName(person: GuidancePerson | null | undefined, fallback: 
 /** Who the conversation is with, from the reader's side. */
 export function threadTitle(thread: GuidanceThreadResponse, viewer: GuidanceViewer): string {
   if (viewer === "staff") {
-    return thread.kind === "FACULTY_INQUIRY"
-      ? personName(thread.requester, "Faculty")
-      : personName(thread.student, "Student");
+    if (thread.kind === "FACULTY_INQUIRY") return personName(thread.requester, "Faculty");
+    if (thread.kind === "REFERRAL_COORDINATION") return personName(thread.requester, "Faculty");
+    return personName(thread.student, "Student");
   }
   return thread.kind === "COUNSELING"
     ? personName(thread.counselor, "Counselor")
@@ -68,6 +69,10 @@ export function threadSubtitle(
 ): string | null {
   if (viewer === "student" && thread.kind === "OFFICE") return null;
   if (viewer === "faculty" && thread.kind === "FACULTY_INQUIRY") return null;
+  if (thread.kind === "REFERRAL_COORDINATION") {
+    const reference = thread.relationship_referral_reference?.trim();
+    return reference ? `Referral ${reference}` : threadKindLabel(thread.kind);
+  }
   return threadKindLabel(thread.kind);
 }
 
@@ -76,6 +81,8 @@ export function threadRoutingFacts(thread: GuidanceThreadResponse, viewer: Guida
   college: string | null;
   assignedTo: string | null;
 } {
+  // A referral thread's College is the submission snapshot, not current routing.
+  if (thread.kind === "REFERRAL_COORDINATION") return { college: null, assignedTo: null };
   if (viewer !== "staff" || thread.kind !== "OFFICE") return { college: null, assignedTo: null };
   return {
     college: thread.routing_college?.name.trim() || thread.routing_college?.code.trim() || null,
