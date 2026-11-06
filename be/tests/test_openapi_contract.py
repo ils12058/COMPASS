@@ -3481,3 +3481,14 @@ def test_catalog_mutations_are_focused_versioned_and_strict():
     assert schemas["CatalogImpactResponse"]["additionalProperties"] is False
     assert schemas["CatalogDependentCounts"]["additionalProperties"] is False
     assert "organization.catalog.manage" in schemas["CapabilityCode"]["enum"]
+
+
+def test_appointment_detail_encounter_record_projection_openapi_contract() -> None:
+    schema = _generated_schema()
+    detail = schema["components"]["schemas"]["AppointmentDetailResponse"]
+    assert "counseling_encounter_recorded" in detail["properties"]
+    assert "counseling_encounter_recorded" in detail["required"]
+    recorded = detail["properties"]["counseling_encounter_recorded"]
+    assert {"type": "boolean"} in recorded["anyOf"]
+    assert {"type": "null"} in recorded["anyOf"]
+    assert detail["properties"]["counseling_context_available"]["type"] == "boolean"

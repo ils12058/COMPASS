@@ -211,6 +211,7 @@ test("a saved Online Counseling Appointment opens E-Counseling from its own prov
     created_at: "2026-10-01T00:00:00Z",
     actions: { cancel: blocked, reschedule: blocked, reassign: blocked, complete: blocked, mark_no_show: blocked },
     counseling_context_available: false,
+    counseling_encounter_recorded: null,
   });
   // No Service Catalog data is loaded: removing ONLINE from the live Service cannot hide the link.
   const page = (service) =>

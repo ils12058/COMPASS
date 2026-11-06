@@ -188,6 +188,39 @@ def _normalize_actual_times(
     return normalized_start, normalized_end
 
 
+def appointment_encounter_recorded(
+    *,
+    actor: User,
+    appointment: Appointment,
+    at: datetime | None = None,
+) -> bool | None:
+    """Whether this Appointment has a recorded Appointment-origin Encounter.
+
+    ``None`` means the fact is not exposed to this actor. This is a UI projection only; the
+    finish request revalidates under locks. Actual times are deliberately not compared: the
+    field says a valid Encounter exists, while finishing still requires matching times.
+    """
+
+    current = at or timezone.now()
+    if (
+        appointment.service.code != COUNSELING_SERVICE_CODE
+        or not getattr(actor, "pk", None)
+        or not actor.is_active
+        or actor.role.code != "COUNSELOR"
+        or appointment.provider_id != actor.pk
+        or not actor.has_capability("counseling.view_assigned", at=current)
+    ):
+        return None
+    return CounselingEncounter.objects.filter(
+        appointment_id=appointment.pk,
+        student_id=appointment.student_id,
+        counselor_id=appointment.provider_id,
+        service_id=appointment.service_id,
+        delivery_mode=appointment.delivery_mode,
+        entry_mode=CounselingEntryMode.APPOINTMENT,
+    ).exists()
+
+
 def _validate_page(page: int, page_size: int) -> tuple[int, int]:
     if type(page) is not int or page < 1:
         raise InvalidCounselingInput("page must be a positive integer")

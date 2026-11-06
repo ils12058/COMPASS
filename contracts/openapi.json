@@ -1761,6 +1761,17 @@
             "title": "Counseling Context Available",
             "type": "boolean"
           },
+          "counseling_encounter_recorded": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Counseling Encounter Recorded"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1835,7 +1846,8 @@
           "no_show_at",
           "created_at",
           "actions",
-          "counseling_context_available"
+          "counseling_context_available",
+          "counseling_encounter_recorded"
         ],
         "title": "AppointmentDetailResponse",
         "type": "object"

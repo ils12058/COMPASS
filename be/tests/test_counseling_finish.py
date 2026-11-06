@@ -791,3 +791,31 @@ def test_legacy_paths_keep_partial_states_and_finish_reconciles_them():
     assert result.encounter_result == "EXISTING"
     assert result.already_finished is True
     assert audit_count("appointment.completed", appointment.pk) == 1
+
+
+@pytest.mark.django_db
+def test_detail_projects_the_encounter_recorded_by_a_finish():
+    _, counselor, student, service = setup_domain("detail-projection")
+    appointment = make_appointment(student=student, provider=counselor, service=service)
+    start, end = actual_times()
+    client = auth_client(counselor)
+
+    before = client.get(f"/api/v1/appointments/{appointment.pk}")
+    assert before.status_code == 200
+    before_body = before.json()
+    assert before_body["counseling_encounter_recorded"] is False
+    assert before_body["status"] == AppointmentStatus.SCHEDULED
+
+    response = finish_via_api(client, appointment, start=start, end=end)
+    assert response.status_code == 200
+
+    after = client.get(f"/api/v1/appointments/{appointment.pk}")
+    assert after.status_code == 200
+    after_body = after.json()
+    assert after_body["counseling_encounter_recorded"] is True
+    assert after_body["status"] == AppointmentStatus.COMPLETED
+    # Only the projection changed shape: the existing Detail fields are untouched, and the
+    # time-bounded Counseling Context flag remains a boolean it has always been.
+    assert set(after_body) == set(before_body)
+    assert isinstance(after_body["counseling_context_available"], bool)
+    assert CounselingEncounter.objects.filter(appointment=appointment).count() == 1

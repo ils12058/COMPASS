@@ -34,7 +34,12 @@ from compass.counseling.models import (
     CounselingEntryMode,
     StudentSessionSummary,
 )
-from compass.counseling.services import CounselingNotFound, get_encounter_for_actor
+from compass.counseling.services import (
+    CounselingNotFound,
+    appointment_encounter_recorded,
+    create_encounter,
+    get_encounter_for_actor,
+)
 from compass.counseling.student_session_summary_content import write_student_session_summary_content
 from compass.inventory.models import StudentInventory
 from compass.inventory.services import (
@@ -57,7 +62,7 @@ from compass.routine_interviews.services import (
     replace_my_intake,
     submit_my_intake,
 )
-from compass.service_catalog.services import set_service_active
+from compass.service_catalog.services import create_service, set_service_active
 from compass.student_academics.models import StudentAcademicProfile
 from compass.student_support.models import (
     FourPsStatus,
@@ -1043,3 +1048,106 @@ def test_detail_responses_project_counseling_context_availability(world):
     )
     submitted = provider.get(f"/api/v1/routine-interviews/{item.pk}")
     assert submitted.json()["counseling_context_available"] is True
+
+
+@pytest.mark.django_db
+def test_detail_projects_whether_the_appointment_encounter_is_recorded(world):
+    base = timezone.now().replace(microsecond=0) - timedelta(hours=2)
+
+    def detail_json(user: User, appointment: Appointment):
+        response = auth_client(user).get(f"/api/v1/appointments/{appointment.pk}")
+        assert response.status_code == 200
+        return response.json()
+
+    appointment = make_appointment(
+        student=world["anna"],
+        counselor=world["b"],
+        service=world["service"],
+        starts_at=base,
+    )
+
+    # 1. The assigned Counselor sees the fact, and a SCHEDULED Appointment starts unrecorded.
+    body = detail_json(world["b"], appointment)
+    assert body["counseling_encounter_recorded"] is False
+    assert body["status"] == AppointmentStatus.SCHEDULED
+
+    # 2-4. The fact is not exposed to the Student, another Counselor, GSS, or Head Guidance.
+    for viewer in (world["anna"], world["unrelated"], world["gss"], world["head"]):
+        assert appointment_encounter_recorded(actor=viewer, appointment=appointment) is None, viewer
+    assert detail_json(world["anna"], appointment)["counseling_encounter_recorded"] is None
+    for outsider in (world["unrelated"], world["gss"], world["head"]):
+        assert (
+            auth_client(outsider).get(f"/api/v1/appointments/{appointment.pk}").status_code == 404
+        ), outsider
+
+    # 5. A non-canonical Service never exposes the Counseling fact.
+    other_service = create_service(
+        code="CAREER_GUIDANCE",
+        name="Context Career Guidance",
+        appointment_booking_enabled=True,
+        default_appointment_duration_minutes=60,
+        delivery_modes=["IN_PERSON"],
+        context=audit_context(world["admin"]),
+    )
+    non_counseling = make_appointment(
+        student=world["anna"],
+        counselor=world["b"],
+        service=other_service,
+        starts_at=base,
+    )
+    assert appointment_encounter_recorded(actor=world["b"], appointment=non_counseling) is None
+    assert detail_json(world["b"], non_counseling)["counseling_encounter_recorded"] is None
+
+    # 6. An Appointment-origin Encounter is reported as recorded.
+    create_encounter(
+        counselor=world["b"],
+        entry_mode="APPOINTMENT",
+        appointment_id=appointment.pk,
+        started_at=base,
+        ended_at=base + timedelta(minutes=50),
+        context=audit_context(world["b"]),
+    )
+    assert appointment_encounter_recorded(actor=world["b"], appointment=appointment) is True
+    assert detail_json(world["b"], appointment)["counseling_encounter_recorded"] is True
+
+    # 7. A linked WALK_IN Encounter is not an Appointment-origin record.
+    walk_in = make_appointment(
+        student=world["anna"],
+        counselor=world["b"],
+        service=world["service"],
+        starts_at=base + timedelta(days=1),
+    )
+    CounselingEncounter.objects.create(
+        student=world["anna"],
+        counselor=world["b"],
+        service=world["service"],
+        appointment=walk_in,
+        entry_mode=CounselingEntryMode.WALK_IN,
+        delivery_mode=walk_in.delivery_mode,
+        started_at=base,
+        ended_at=base + timedelta(minutes=50),
+        created_by=world["b"],
+    )
+    assert appointment_encounter_recorded(actor=world["b"], appointment=walk_in) is False
+    assert detail_json(world["b"], walk_in)["counseling_encounter_recorded"] is False
+
+    # 8. A linked Encounter with a different delivery mode is not a matching record.
+    mismatched = make_appointment(
+        student=world["anna"],
+        counselor=world["b"],
+        service=world["service"],
+        starts_at=base + timedelta(days=2),
+    )
+    CounselingEncounter.objects.create(
+        student=world["anna"],
+        counselor=world["b"],
+        service=world["service"],
+        appointment=mismatched,
+        entry_mode=CounselingEntryMode.APPOINTMENT,
+        delivery_mode="ONLINE",
+        started_at=base,
+        ended_at=base + timedelta(minutes=50),
+        created_by=world["b"],
+    )
+    assert appointment_encounter_recorded(actor=world["b"], appointment=mismatched) is False
+    assert detail_json(world["b"], mismatched)["counseling_encounter_recorded"] is False

@@ -23,6 +23,10 @@ import { getCounselingAccess } from "@/features/counseling/counseling-access";
 import { routineEvaluationStatusLabel, routineIntakeStatusLabel } from "@/features/routine-interviews/routine-interviews-shared";
 import type { EncounterOriginPreset } from "@/features/counseling/record-encounter-form";
 import { RecordEncounterDialog } from "@/features/counseling/record-encounter-dialog";
+import { getAppointmentAccess } from "@/features/appointments/appointments-access";
+import { finishCounselingNotice, finishCounselingState } from "@/features/counseling/finish-counseling-availability";
+import { FinishCounselingDialog } from "@/features/counseling/finish-counseling-dialog";
+import { invalidateAfterCounselingFinish } from "@/features/counseling/finish-counseling-refresh";
 import {
   counselingDeliveryModeLabel,
   counselingEntryModeLabel,
@@ -47,9 +51,14 @@ import type {
   CounselingContextInventoryResponse,
   CounselingContextOverviewResponse,
   CounselingContextSupportResponse,
+  CounselingFinishResponse,
   CounselorRoutineDetailResponse,
 } from "@/lib/api/generated/model";
-import { CounselingContextAnchorType, CounselingContextInventoryStatus, CounselingEntryMode, DeliveryMode } from "@/lib/api/generated/model";
+import { AppointmentStatus, CounselingContextAnchorType, CounselingContextInventoryStatus, CounselingEntryMode, DeliveryMode } from "@/lib/api/generated/model";
+import {
+  getAppointmentsGetQueryKey,
+  useAppointmentsGet,
+} from "@/lib/api/generated/appointments/appointments";
 import {
   getCounselingContextGetOverviewQueryKey,
   getCounselingContextGetInventoryQueryKey,
@@ -235,6 +244,8 @@ function CounselingWorkspaceContent({
   const [recordOpen, setRecordOpen] = useState(false);
   const [recordUncertain, setRecordUncertain] = useState(false);
   const [checkingRecord, setCheckingRecord] = useState(false);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [finishNotice, setFinishNotice] = useState<string | null>(null);
   const encounterActionsRef = useRef<HTMLDivElement>(null);
   const [recordNotice, setRecordNotice] = useState<string | null>(null);
   const [contextExpired, setContextExpired] = useState(false);
@@ -273,6 +284,53 @@ function CounselingWorkspaceContent({
   const canRecord = access.canManageAssigned && (
     anchorType !== CounselingContextAnchorType.ROUTINE_INTERVIEW || getRoutineInterviewAccess(user).canManageAssigned
   );
+  // Finish reads the Appointment itself: its status and Encounter fact are not part of the
+  // time-bounded context projection. Only a confirmed read is used, never last-known data.
+  const appointmentQuery = useAppointmentsGet(anchorId, {
+    query: {
+      enabled: anchorType === CounselingContextAnchorType.APPOINTMENT && access.canViewAssigned,
+      retry: false,
+    },
+  });
+  const appointment = anchorType === CounselingContextAnchorType.APPOINTMENT && appointmentQuery.isSuccess
+    ? appointmentQuery.data.data
+    : undefined;
+  const finishState = appointment
+    ? finishCounselingState(appointment, {
+        canFinish: access.canManageAssigned && getAppointmentAccess(user).canManage,
+      })
+    : "UNAVAILABLE";
+  const finishOffered = encounterState === "NOT_RECORDED" && finishState === "OFFERED";
+
+  async function handleFinished(result: CounselingFinishResponse, wasCompleted: boolean) {
+    setFinishOpen(false);
+    await invalidateAfterCounselingFinish(queryClient, {
+      appointmentId: anchorId,
+      routineInterviewId: result.routine_interview_id,
+    });
+    setFinishNotice(finishCounselingNotice(result, { wasCompleted }));
+    await onRefreshOverview();
+  }
+
+  // A conflict means the Appointment moved under this dialog: refresh and report, never resubmit.
+  async function handleFinishStale(message: string) {
+    setFinishOpen(false);
+    setFinishNotice(`${message} The latest details are now shown.`);
+    await onRefreshOverview();
+  }
+
+  async function checkFinishAgain(): Promise<boolean> {
+    const result = await appointmentQuery.refetch();
+    const latest = result.data?.data;
+    if (!(latest?.status === AppointmentStatus.COMPLETED && latest?.counseling_encounter_recorded === true)) {
+      return false;
+    }
+    setFinishOpen(false);
+    await invalidateAfterCounselingFinish(queryClient, { appointmentId: anchorId });
+    setFinishNotice("Counseling finished. The latest details are now shown.");
+    await onRefreshOverview();
+    return true;
+  }
 
   async function handleCreated() {
     const routineId = overview.routine_interview?.id;
@@ -285,6 +343,10 @@ function CounselingWorkspaceContent({
             queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListEncounterCandidatesQueryKey(routineId) }),
             queryClient.invalidateQueries({ queryKey: getRoutineInterviewsListAssignedQueryKey() }),
           ]
+        : []),
+      // The Appointment's own Encounter fact decides whether Finish or Record is offered next.
+      ...(anchorType === CounselingContextAnchorType.APPOINTMENT
+        ? [queryClient.invalidateQueries({ queryKey: getAppointmentsGetQueryKey(anchorId) })]
         : []),
     ]);
     setRecordOpen(false);
@@ -306,6 +368,10 @@ function CounselingWorkspaceContent({
         queryClient.invalidateQueries({ queryKey: getCounselingListMyEncountersQueryKey() }),
         onRefreshOverview(),
       ]);
+      if (anchorType === CounselingContextAnchorType.APPOINTMENT) {
+        await queryClient.invalidateQueries({ queryKey: getAppointmentsGetQueryKey(anchorId) });
+        await appointmentQuery.refetch();
+      }
     } finally {
       setCheckingRecord(false);
     }
@@ -340,13 +406,22 @@ function CounselingWorkspaceContent({
               <Metadata label="Counseling Encounter">{recordUncertain && encounterState === "NOT_RECORDED" ? "Not confirmed" : contextEncounterStateLabels[encounterState]}</Metadata>
             </dl>
             <div ref={encounterActionsRef}>
+            {finishNotice ? <p role="status" className="mb-2 text-sm text-ink">{finishNotice}</p> : null}
             {overview.matching_encounter && encounterState === "RECORDED" ? (
               <div className="border-t border-brand-line px-4 py-4 sm:px-5">{recordNotice ? <p role="status" className="mb-2 text-sm text-ink">{recordNotice}</p> : null}<p className="text-sm text-muted">Completed interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)}.</p>{canOpenEncounter ? <Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link> : null}</div>
             ) : overview.matching_encounter ? (
               <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A matching interaction recorded {formatCounselingDateTime(overview.matching_encounter.started_at)} – {formatCounselingDateTime(overview.matching_encounter.ended_at)} is not linked to this Routine Interview. If it is this interaction, choose it when finalizing the Counselor Evaluation.</p>{canOpenEncounter ? <Link href={`/portal/counseling/encounters/${overview.matching_encounter.id}`} className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounter</Link> : null}</div>
+            ) : anchorType === CounselingContextAnchorType.APPOINTMENT &&
+              appointment?.counseling_encounter_recorded === true &&
+              !overview.matching_encounter ? (
+              // The Appointment's own Encounter fact comes from the Appointment read, so this still
+              // shows when the context window no longer projects the record.
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-muted">A Counseling Encounter is recorded for this Appointment. Review it in My counseling encounters.</p><Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "secondary", className: "mt-3" })}>View encounters</Link></div>
             ) : canRecord && recordUncertain ? (
               // An unconfirmed save is checked, never retried here.
               <div className="border-t border-brand-line px-4 py-4 sm:px-5"><p className="text-sm text-ink">{unconfirmedEncounterMessage}</p><div className="mt-3 flex flex-wrap gap-2"><Button variant="secondary" aria-busy={checkingRecord} onClick={() => void checkRecordAgain()}>{checkingRecord ? "Checking…" : "Check again"}</Button><Link href="/portal/counseling#encounters" className={buttonVariants({ variant: "quiet" })}>View encounters</Link></div></div>
+            ) : canRecord && finishOffered ? (
+              <div className="border-t border-brand-line px-4 py-4 sm:px-5"><Button onClick={() => { setRecordOpen(false); setFinishNotice(null); setFinishOpen(true); }}>Finish counseling</Button><p className="mt-3 text-sm text-muted">{appointment?.status === AppointmentStatus.COMPLETED ? "Records the Encounter for this completed Appointment." : "Records the Encounter and completes this Appointment."}</p></div>
             ) : canRecord ? (
               <div className="border-t border-brand-line px-4 py-4 sm:px-5"><Button onClick={() => setRecordOpen(true)}>Record encounter</Button>{!preset && recordOpen ? <p role="alert" className="mt-3 text-sm text-danger">This interaction cannot be recorded from this page. Review its visit type and delivery mode.</p> : null}</div>
             ) : null}
@@ -361,6 +436,25 @@ function CounselingWorkspaceContent({
               onCreated={handleCreated}
               onAlreadyRecorded={handleAlreadyRecorded}
               // Recording replaces the opener with View encounter, so focus moves to the new action.
+              onCloseAutoFocus={(event) => {
+                const action = encounterActionsRef.current?.querySelector<HTMLElement>("a, button");
+                if (!action) return;
+                event.preventDefault();
+                action.focus();
+              }}
+            />
+          ) : null}
+
+          {appointment ? (
+            <FinishCounselingDialog
+              open={finishOpen}
+              onOpenChange={setFinishOpen}
+              appointment={appointment}
+              onFinished={handleFinished}
+              onStale={handleFinishStale}
+              onCheckAgain={checkFinishAgain}
+              onUncertainClose={() => setFinishNotice("The finish result is not confirmed. Check the Appointment details before trying again.")}
+              // Finishing replaces the opener, so focus moves back to the action that remains.
               onCloseAutoFocus={(event) => {
                 const action = encounterActionsRef.current?.querySelector<HTMLElement>("a, button");
                 if (!action) return;

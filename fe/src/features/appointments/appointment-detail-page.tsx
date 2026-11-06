@@ -7,7 +7,7 @@ import { ReminderSender } from "@/features/appointments/appointment-reminders";
 import { invalidateGuidanceWork } from "@/features/freshness/guidance-work-invalidation";
 
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 
 import { MoreHorizontal } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
@@ -55,6 +55,10 @@ import { PersonAvatar } from "@/features/account/components/person-avatar";
 import { CompassApiError } from "@/lib/api/errors";
 import { formatInstitutionalDateTime, institutionalDateInputValue } from "@/lib/institutional-time";
 import { isCounselingService } from "@/features/counseling/canonical-counseling-service";
+import { getCounselingAccess } from "@/features/counseling/counseling-access";
+import { finishCounselingNotice, finishCounselingState } from "@/features/counseling/finish-counseling-availability";
+import { FinishCounselingDialog } from "@/features/counseling/finish-counseling-dialog";
+import { invalidateAfterCounselingFinish } from "@/features/counseling/finish-counseling-refresh";
 import {
   AppointmentActionBlocker,
   AppointmentActionConsequenceCode,
@@ -62,6 +66,7 @@ import {
   DeliveryMode,
   type AppointmentActionsResponse,
   type BookableSlotResponse,
+  type CounselingFinishResponse,
 } from "@/lib/api/generated/model";
 import {
   getAppointmentsGetHistoryQueryKey,
@@ -298,6 +303,8 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   const [notice, setNotice] = useState<string | null>(null);
   // Set when an action found the Appointment changed and the page reloaded it.
   const [updatedNotice, setUpdatedNotice] = useState<string | null>(null);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const finishActionsRef = useRef<HTMLDivElement>(null);
 
   const appointment = appointmentQuery.data?.data;
   // A failed reload keeps the last confirmed details on screen, but actions wait for a fresh copy.
@@ -550,6 +557,39 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
     }
   }
 
+  async function handleFinished(result: CounselingFinishResponse, wasCompleted: boolean) {
+    setFinishOpen(false);
+    await invalidateAfterCounselingFinish(queryClient, {
+      appointmentId,
+      routineInterviewId: result.routine_interview_id,
+    });
+    setError(null);
+    setUpdatedNotice(null);
+    setNotice(finishCounselingNotice(result, { wasCompleted }));
+  }
+
+  // A conflict means the Appointment moved under this dialog: reload and report, never resubmit.
+  async function handleFinishStale(message: string) {
+    setFinishOpen(false);
+    setError(null);
+    setUpdatedNotice(`${message} The latest details are now shown.`);
+    await refreshAppointmentQueries(true);
+  }
+
+  async function checkFinishAgain(): Promise<boolean> {
+    const result = await appointmentQuery.refetch();
+    const latest = result.data?.data;
+    if (!(latest?.status === AppointmentStatus.COMPLETED && latest?.counseling_encounter_recorded === true)) {
+      return false;
+    }
+    setFinishOpen(false);
+    await invalidateAfterCounselingFinish(queryClient, { appointmentId });
+    setError(null);
+    setUpdatedNotice(null);
+    setNotice("Counseling finished. The latest details are now shown.");
+    return true;
+  }
+
   if (!access.hasWorkspace) return <AppointmentsUnavailable />;
   if (appointmentQuery.isPending) {
     return <AppointmentDetailSkeleton />;
@@ -600,6 +640,15 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   // Messages opens the Appointment's one Counseling thread beside this page (ADR-103). Only
   // canonical Counseling Appointments ask; the backend decides whether it is offered.
   const counseling = isCounselingService(appointment.service);
+  const counselingAccess = getCounselingAccess(user);
+  // Both capabilities the finish endpoint requires: counseling.manage_assigned and appointments.manage.
+  const canFinishCounseling = counselingAccess.canManageAssigned && access.canManage;
+  const finishState = finishCounselingState(appointment, { canFinish: canFinishCounseling });
+  const finishOffered = finishState === "OFFERED";
+  // Finish stands in for Complete, so a blocked Complete is not also listed as unavailable.
+  const displayedUnavailable = finishOffered
+    ? unavailable.filter((item) => item.action !== actionNames.complete)
+    : unavailable;
   const counterpartName = appointment.student.id === user.id ? appointment.provider.display_name : appointment.student.display_name;
 
   return (
@@ -646,6 +695,13 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           retrying={appointmentQuery.isFetching}
         />
       ) : null}
+      {appointment.status === AppointmentStatus.COMPLETED &&
+      appointment.counseling_encounter_recorded === false &&
+      finishOffered ? (
+        <Notice role="status" tone="warning" className="mb-4">
+          This Appointment is marked completed, but no Counseling Encounter is recorded for it. If the session took place, finish counseling to record it.
+        </Notice>
+      ) : null}
 
       <div className="space-y-5">
       <Panel aria-labelledby="appointment-service-heading">
@@ -672,6 +728,9 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         <PanelSection title="Session details" titleId="appointment-session-details-heading">
           <dl className="grid gap-x-8 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
             <div><dt className="text-xs font-semibold text-muted">Delivery</dt><dd className="mt-1 text-sm text-ink">{deliveryModeLabel(appointment.delivery_mode)}</dd></div>
+            {counseling && appointment.counseling_encounter_recorded !== null ? (
+              <div><dt className="text-xs font-semibold text-muted">Counseling encounter</dt><dd className="mt-1 text-sm text-ink">{appointment.counseling_encounter_recorded ? "Recorded" : "Not recorded"}</dd></div>
+            ) : null}
             {appointment.cancellation_cutoff_minutes !== null ? (
               <div><dt className="text-xs font-semibold text-muted">Student change deadline</dt><dd className="mt-1 text-sm text-ink">Students must cancel or reschedule at least {appointment.cancellation_cutoff_minutes} minutes before the appointment starts.</dd></div>
             ) : null}
@@ -687,17 +746,21 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
         </PanelSection>
       </Panel>
 
-      {(canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || unavailable.length > 0 || (access.canManage && user.role !== "STUDENT")) ? (
+      {(canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || finishOffered || displayedUnavailable.length > 0 || (access.canManage && user.role !== "STUDENT")) ? (
         <Panel aria-labelledby="appointment-actions-heading">
           <PanelHeader title="Actions" titleId="appointment-actions-heading" />
           <PanelBody className="*:first:mt-0">
-          {canCancel || canReschedule || canReassign || canComplete || canMarkNoShow ? (
+          {canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || finishOffered ? (
             // The usual outcome leads; cancelling, the destructive one, comes last.
-            <div className="mt-4 flex flex-wrap gap-2">
+            <div ref={finishActionsRef} className="mt-4 flex flex-wrap gap-2">
               {access.canManage && (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF") ? (
                 <Button variant="secondary" disabled={pending || detailsUnconfirmed} onClick={() => setReminderOpen(true)}>Send reminder</Button>
               ) : null}
-              {canComplete ? <Button disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button> : null}
+              {finishOffered ? (
+                <Button disabled={pending} onClick={() => { setError(null); setNotice(null); setUpdatedNotice(null); setFinishOpen(true); }}>Finish counseling</Button>
+              ) : canComplete ? (
+                <Button disabled={pending} onClick={() => { setError(null); setConfirmAction("complete"); }}>Complete appointment</Button>
+              ) : null}
               {canReschedule ? (
                 <Button
                   variant="secondary"
@@ -729,16 +792,16 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           {error && ((error.scope === "reschedule" && !canReschedule) || (error.scope === "reassign" && !canReassign)) ? (
             <p role="alert" className="mt-4 text-sm text-danger">{error.message}</p>
           ) : null}
-          {unavailable.length > 0 ? (
+          {displayedUnavailable.length > 0 ? (
             <DisclosureSection
               title="Unavailable actions"
-              status={`${unavailable.length} ${unavailable.length === 1 ? "action" : "actions"}`}
+              status={`${displayedUnavailable.length} ${displayedUnavailable.length === 1 ? "action" : "actions"}`}
               level={3}
               className="mt-4 max-w-3xl"
               contentClassName="pb-0"
             >
               <ul className="space-y-2 text-sm leading-6 text-muted">
-                {unavailable.map((item) => (
+                {displayedUnavailable.map((item) => (
                   <li key={item.action}><span className="font-semibold text-ink">{item.action}:</span> {item.reason}</li>
                 ))}
               </ul>
@@ -974,6 +1037,25 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
       </div>
         </div>
       </div>
+
+      {counseling ? (
+        <FinishCounselingDialog
+          open={finishOpen}
+          onOpenChange={setFinishOpen}
+          appointment={appointment}
+          onFinished={handleFinished}
+          onStale={handleFinishStale}
+          onCheckAgain={checkFinishAgain}
+          onUncertainClose={() => setUpdatedNotice("The finish result is not confirmed. Check the Appointment details before trying again.")}
+          // Finishing replaces Finish counseling with the next action, so focus moves into Actions.
+          onCloseAutoFocus={(event) => {
+            const action = finishActionsRef.current?.querySelector<HTMLElement>("button");
+            if (!action) return;
+            event.preventDefault();
+            action.focus();
+          }}
+        />
+      ) : null}
 
       <ActionConfirmation
         action={confirmationAllowed || pending ? confirmAction : null}
