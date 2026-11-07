@@ -178,7 +178,12 @@ def test_capability_ceiling_and_dependency_revocation(world):
         effect="REVOKE",
         reason="Synthetic",
     )
-    assert effective_capabilities(world.faculty) == frozenset()
+    assert effective_capabilities(world.faculty) == frozenset(
+        {
+            "guidance_messages.inquiry_view_self",
+            "guidance_messages.inquiry_manage_self",
+        }
+    )
     with pytest.raises(FacultyReferralError):
         confirm(world)
 
@@ -633,7 +638,9 @@ def test_read_only_faculty_can_keep_own_projection_without_submission_authority(
         effect="REVOKE",
         reason="Synthetic read-only",
     )
-    assert effective_capabilities(world.faculty) == frozenset({"referrals.view_submitted_self"})
+    assert effective_capabilities(world.faculty) == FACULTY_CAPABILITY_CEILING - {
+        "referrals.submit_self"
+    }
     assert (
         faculty_services.get_own_submission(
             actor=world.faculty, actor_session=world.issued.session, referral_id=result["id"]

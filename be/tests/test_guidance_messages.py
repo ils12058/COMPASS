@@ -176,6 +176,30 @@ def test_role_grants_dependencies_and_no_designation_content():
     assert CAPABILITY_DEPENDENCIES["guidance_messages.referral_manage_self"] == {
         "guidance_messages.referral_view_self"
     }
+    assert {
+        "guidance_messages.counselor_direct.view",
+        "guidance_messages.counselor_direct.manage",
+    } <= ROLE_CAPABILITY_GRANTS["COUNSELOR"]
+    for role in [
+        "STUDENT",
+        "FACULTY",
+        "GUIDANCE_SERVICES_STAFF",
+        "IT_ADMIN",
+        "INSTITUTIONAL_OFFICER",
+    ]:
+        assert (
+            not {
+                "guidance_messages.counselor_direct.view",
+                "guidance_messages.counselor_direct.manage",
+            }
+            & ROLE_CAPABILITY_GRANTS[role]
+        )
+    assert CAPABILITY_DEPENDENCIES["guidance_messages.counselor_direct.view"] == {
+        "guidance_messages.view"
+    }
+    assert CAPABILITY_DEPENDENCIES["guidance_messages.counselor_direct.manage"] == {
+        "guidance_messages.counselor_direct.view"
+    }
 
 
 @pytest.mark.parametrize("actor", ["student", "counselor", "gss"])
@@ -1003,7 +1027,9 @@ def test_count_unread_conversations_pagination_independence_and_query_efficiency
 
     assert services.count_unread_conversations(actor=world.counselor) == 25
 
-    with django_assert_num_queries(8):
+    # Three constant accessible_referrals scope queries are added by the GMSG-3 directory filter;
+    # they do not grow with thread count, so this is not an N+1.
+    with django_assert_num_queries(11):
         assert services.count_unread_conversations(actor=world.counselor) == 25
 
 

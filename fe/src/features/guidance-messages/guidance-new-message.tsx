@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { PanelMessage } from "@/components/ui/panel";
 import { cacheThread } from "@/features/guidance-messages/guidance-conversation-data";
 import { ConversationFrame } from "@/features/guidance-messages/guidance-conversation";
+import { GuidanceCounselorPeerPicker } from "@/features/guidance-messages/guidance-counselor-peer-picker";
 import { GuidanceMessageComposer } from "@/features/guidance-messages/guidance-message-composer";
 import type { SendIntent } from "@/features/guidance-messages/guidance-message-send";
 import { messageTemplatesFor } from "@/features/guidance-messages/guidance-messages-access";
@@ -27,15 +28,21 @@ import { CanonicalPagination } from "@/features/portal/components/canonical-pagi
 import { EligibleStudentPicker, type EligibleStudentOption } from "@/features/portal/components/eligible-student-picker";
 import {
   guidanceMessagesOpenCounselingThread,
+  guidanceMessagesOpenCounselorDirectThread,
   guidanceMessagesOpenFacultyInquiry,
   guidanceMessagesOpenMyOfficeThread,
   guidanceMessagesOpenReferralThread,
   guidanceMessagesOpenStudentOfficeThread,
   useGuidanceMessagesEligibleStudents,
   useGuidanceMessagesGetReferralContext,
+  useGuidanceMessagesListCounselorPeers,
   useGuidanceMessagesRecipientOptions,
 } from "@/lib/api/generated/guidance-messages/guidance-messages";
-import type { GuidanceOpenResponse, GuidanceRelationshipOption } from "@/lib/api/generated/model";
+import type {
+  GuidanceOpenResponse,
+  GuidancePerson,
+  GuidanceRelationshipOption,
+} from "@/lib/api/generated/model";
 import { focusHeading } from "@/lib/focus-heading";
 
 // A conversation starts with its first Message; there is no empty conversation. The recipient
@@ -43,6 +50,7 @@ import { focusHeading } from "@/lib/focus-heading";
 const OFFICE_TARGET = "office";
 const appointmentTarget = (appointmentId: string) => `appointment:${appointmentId}`;
 const studentTarget = (studentId: string) => `student:${studentId}`;
+const counselorTarget = (peerId: string) => `counselor:${peerId}`;
 
 function targetValue(target: string, prefix: string): string {
   if (!target.startsWith(prefix)) throw new Error("This message has no recipient.");
@@ -86,7 +94,7 @@ export function GuidanceNewMessage() {
     ? access.canManageSelf
     : access.isFaculty
       ? access.canManageInquirySelf
-      : access.canManageStaff;
+      : access.canManageStaff || access.canManageDirect;
   if (!canStart) {
     return (
       <ConversationFrame title="New message">
@@ -375,71 +383,169 @@ function StaffNewMessage() {
   const { access } = useGuidanceWorkspace();
   const opened = useOpenedThread();
   const navigate = useNavigateToThread();
-  const [search, setSearch] = useState("");
-  const [appliedSearch, setAppliedSearch] = useState("");
-  const [page, setPage] = useState(1);
+  const [recipientType, setRecipientType] = useState<"student" | "counselor">(() =>
+    access.canManageStaff ? "student" : "counselor",
+  );
+  const [studentSearch, setStudentSearch] = useState("");
+  const [studentApplied, setStudentApplied] = useState("");
+  const [studentPage, setStudentPage] = useState(1);
   const [student, setStudent] = useState<EligibleStudentOption | null>(null);
+  const [peerSearch, setPeerSearch] = useState("");
+  const [peerApplied, setPeerApplied] = useState("");
+  const [peerPage, setPeerPage] = useState(1);
+  const [peer, setPeer] = useState<GuidancePerson | null>(null);
   const [locked, setLocked] = useState(false);
   // Only Students in the reader's current workload: never the Accounts directory.
   const students = useGuidanceMessagesEligibleStudents(
-    { ...(appliedSearch ? { search: appliedSearch } : {}), page, page_size: 10 },
-    { query: { retry: false } },
+    { ...(studentApplied ? { search: studentApplied } : {}), page: studentPage, page_size: 10 },
+    { query: { retry: false, enabled: recipientType === "student" && access.canManageStaff } },
+  );
+  // Only active Counselors who may themselves start direct conversations.
+  const peers = useGuidanceMessagesListCounselorPeers(
+    { ...(peerApplied ? { search: peerApplied } : {}), page: peerPage, page_size: 10 },
+    { query: { retry: false, enabled: recipientType === "counselor" && access.canManageDirect } },
   );
   const open = useMutation({
-    mutationFn: (intent: SendIntent) =>
-      guidanceMessagesOpenStudentOfficeThread(targetValue(intent.target, "student:"), {
-        client_message_id: intent.clientMessageId,
-        body: intent.body,
-      }),
+    mutationFn: (intent: SendIntent) => {
+      const payload = { client_message_id: intent.clientMessageId, body: intent.body };
+      const target = intent.target;
+      if (target.startsWith("student:")) {
+        return guidanceMessagesOpenStudentOfficeThread(targetValue(target, "student:"), payload);
+      }
+      return guidanceMessagesOpenCounselorDirectThread(targetValue(target, "counselor:"), payload);
+    },
     onSuccess: (response) => opened(response.data),
     onError: (error) => {
-      if (errorStatus(error) === 404) void students.refetch();
+      if (errorStatus(error) === 404) {
+        if (recipientType === "student") void students.refetch();
+        else void peers.refetch();
+      }
     },
   });
   const send = useCallback((intent: SendIntent) => open.mutateAsync(intent), [open]);
-  const describe = useCallback((error: unknown) => describeSendError(error, "staff-office"), []);
+  const describe = useCallback(
+    (error: unknown) =>
+      describeSendError(error, recipientType === "student" ? "staff-office" : "counselor-direct"),
+    [recipientType],
+  );
   const pageData = students.data?.data;
+  const peerPageData = peers.data?.data;
+  const target =
+    recipientType === "student"
+      ? student
+        ? studentTarget(student.id)
+        : null
+      : peer
+        ? counselorTarget(peer.id)
+        : null;
+  const recipientName =
+    recipientType === "student" ? student?.display_name : peer?.display_name;
 
   return (
     <ConversationFrame title="New message">
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
         <fieldset disabled={locked} className="min-w-0">
-          <EligibleStudentPicker
-            label="Student"
-            search={search}
-            onSearchChange={setSearch}
-            onSearch={() => {
-              setAppliedSearch(search.trim());
-              setPage(1);
-            }}
-            items={pageData?.items ?? []}
-            selectedStudent={student}
-            selectedId={student?.id ?? null}
-            onSelect={setStudent}
-            page={pageData?.page ?? page}
-            hasNext={pageData?.has_next ?? false}
-            isLoading={students.isPending}
-            isError={students.isError}
-            errorMessage="Students could not be loaded."
-            onRetry={() => void students.refetch()}
-            onPageChange={setPage}
-          />
+          {access.canManageStaff && access.canManageDirect ? (
+            <>
+              <legend className="text-sm font-semibold text-ink">To</legend>
+              <ul className="mt-2 divide-y divide-border rounded-sm border border-border">
+                <li>
+                  <RecipientOption
+                    name="guidance-recipient-type"
+                    checked={recipientType === "student"}
+                    onSelect={() => setRecipientType("student")}
+                    title="Student"
+                    detail="The Student's Guidance Office conversation"
+                  />
+                </li>
+                <li>
+                  <RecipientOption
+                    name="guidance-recipient-type"
+                    checked={recipientType === "counselor"}
+                    onSelect={() => setRecipientType("counselor")}
+                    title="Counselor"
+                    detail="A direct conversation between Counselors"
+                  />
+                </li>
+              </ul>
+            </>
+          ) : null}
+          {recipientType === "student" && access.canManageStaff ? (
+            <div className={access.canManageStaff && access.canManageDirect ? "mt-5" : undefined}>
+              <EligibleStudentPicker
+                label="Student"
+                search={studentSearch}
+                onSearchChange={setStudentSearch}
+                onSearch={() => {
+                  setStudentApplied(studentSearch.trim());
+                  setStudentPage(1);
+                }}
+                items={pageData?.items ?? []}
+                selectedStudent={student}
+                selectedId={student?.id ?? null}
+                onSelect={setStudent}
+                page={pageData?.page ?? studentPage}
+                hasNext={pageData?.has_next ?? false}
+                isLoading={students.isPending}
+                isError={students.isError}
+                errorMessage="Students could not be loaded."
+                onRetry={() => void students.refetch()}
+                onPageChange={setStudentPage}
+              />
+            </div>
+          ) : null}
+          {recipientType === "counselor" && access.canManageDirect ? (
+            <div className={access.canManageStaff && access.canManageDirect ? "mt-5" : undefined}>
+              <GuidanceCounselorPeerPicker
+                label="Counselor"
+                search={peerSearch}
+                onSearchChange={setPeerSearch}
+                onSearch={() => {
+                  setPeerApplied(peerSearch.trim());
+                  setPeerPage(1);
+                }}
+                items={peerPageData?.items ?? []}
+                selectedPeer={peer}
+                selectedId={peer?.id ?? null}
+                onSelect={setPeer}
+                page={peerPageData?.page ?? peerPage}
+                hasNext={peerPageData?.has_next ?? false}
+                isLoading={peers.isPending}
+                isError={peers.isError}
+                errorMessage="Counselors could not be loaded."
+                onRetry={() => void peers.refetch()}
+                onPageChange={setPeerPage}
+              />
+            </div>
+          ) : null}
         </fieldset>
-        {student ? (
+        {recipientType === "student" && student ? (
           <p className="mt-4 text-sm text-muted">
             This message goes to the Guidance Office conversation for {student.display_name}. If one is
             already open, it is added there.
           </p>
         ) : null}
+        {recipientType === "counselor" && peer ? (
+          <p className="mt-4 text-sm text-muted">
+            This message goes to your conversation with {peer.display_name}. If you already have one,
+            it is added there.
+          </p>
+        ) : null}
       </div>
       <GuidanceMessageComposer
-        target={student ? studentTarget(student.id) : null}
-        label={student ? `Message to ${student.display_name}` : "Message"}
+        target={target}
+        label={recipientName ? `Message to ${recipientName}` : "Message"}
         send={send}
         describeError={describe}
         onSent={navigate}
         onPendingChange={setLocked}
-        unavailable={student ? null : "Choose a Student to write to."}
+        unavailable={
+          target
+            ? null
+            : recipientType === "student"
+              ? "Choose a Student to write to."
+              : "Choose a Counselor to write to."
+        }
         templates={messageTemplatesFor(access)}
       />
     </ConversationFrame>

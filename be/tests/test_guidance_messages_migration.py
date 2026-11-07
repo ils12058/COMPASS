@@ -1,4 +1,4 @@
-"""Disposable PostgreSQL upgrades through guidance_messages 0003; synthetic sentinels only."""
+"""Disposable PostgreSQL upgrades through guidance_messages 0005; synthetic sentinels only."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ BASE = ("guidance_messages", "0001_canonical_baseline")
 TARGET_0002 = ("guidance_messages", "0002_kinds_and_participants")
 TARGET = ("guidance_messages", "0003_faculty_inquiry")
 TARGET_0004 = ("guidance_messages", "0004_referral_coordination")
+TARGET_0005 = ("guidance_messages", "0005_counselor_direct")
 THREAD_TABLE = "guidance_messages_guidancethread"
 INQUIRY_INDEX = "gm_inquiry_requester_idx"
 KIND_CODES = (
@@ -439,3 +440,118 @@ def test_0004_activates_referral_coordination_without_schema_change(baseline_dat
     )
     assert kept.kind == "REFERRAL_COORDINATION"
     assert kept.relationship_referral_id == referral_pk
+
+
+def seed_direct_counselors(db, apps):
+    """Two synthetic COUNSELOR accounts through the historical model state."""
+    alias = db.alias
+
+    def manager(app, model):
+        return apps.get_model(app, model).objects.using(alias)
+
+    counselor, _ = manager("accounts", "Role").get_or_create(
+        code="COUNSELOR", defaults={"name": "Counselor"}
+    )
+    pks = []
+    for name in ("First", "Second"):
+        person = manager("accounts", "User").create(
+            role_id=counselor.pk,
+            email=f"gm-direct-{name.lower()}@example.invalid",
+            first_name="Synthetic",
+            last_name=name,
+            profile_confidential_content_ciphertext="preservation-sentinel",
+        )
+        pks.append(person.pk)
+    return tuple(pks)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_0005_activates_counselor_direct_without_schema_change(baseline_database):
+    db, apps = baseline_database
+    legacy_thread_pk, legacy_message_pk = seed_legacy_rows(db, apps)
+    MigrationExecutor(db).migrate([TARGET_0004])
+    state_0004 = state_at(db, TARGET_0004)
+    requester_pk, student_pk, college_pk, referral_pk = seed_referral_source(db, state_0004)
+    referral_thread_model = state_0004.get_model("guidance_messages", "GuidanceThread")
+    referral_thread = referral_thread_model.objects.using(db.alias).create(
+        kind="REFERRAL_COORDINATION",
+        requester_id=requester_pk,
+        relationship_referral_id=referral_pk,
+        student_subject_id=student_pk,
+        routing_college_id=college_pk,
+        created_by_id=requester_pk,
+        last_sequence=1,
+    )
+    referral_message = (
+        state_0004.get_model("guidance_messages", "GuidanceMessage")
+        .objects.using(db.alias)
+        .create(
+            thread_id=referral_thread.pk,
+            sender_id=requester_pk,
+            sequence=1,
+            client_message_id=uuid.uuid4(),
+            body_ciphertext="preservation-sentinel",
+        )
+    )
+    before_legacy = snapshot(db, state_0004, legacy_thread_pk, legacy_message_pk)
+    before_referral = snapshot(db, state_0004, referral_thread.pk, referral_message.pk)
+
+    MigrationExecutor(db).migrate([TARGET_0005])
+    state = state_at(db, TARGET_0005)
+    assert "0005_counselor_direct" in applied_guidance_messages(db)
+    thread_model = state.get_model("guidance_messages", "GuidanceThread")
+    choices = dict(thread_model._meta.get_field("kind").choices)
+    assert choices["COUNSELOR_DIRECT"] == "Counselor direct"
+    assert snapshot(db, state, legacy_thread_pk, legacy_message_pk) == before_legacy
+    assert snapshot(db, state, referral_thread.pk, referral_message.pk) == before_referral
+
+    first_counselor_pk, second_counselor_pk = seed_direct_counselors(db, state)
+    first_id, second_id = sorted((first_counselor_pk, second_counselor_pk))
+    threads = thread_model.objects.using(db.alias)
+    direct = threads.create(
+        kind="COUNSELOR_DIRECT",
+        direct_first_user_id=first_id,
+        direct_second_user_id=second_id,
+        created_by_id=first_id,
+        last_sequence=1,
+    )
+    stored = threads.get(pk=direct.pk)
+    assert stored.kind == "COUNSELOR_DIRECT"
+    assert (stored.direct_first_user_id, stored.direct_second_user_id) == (first_id, second_id)
+    assert stored.created_by_id == first_id
+    for name in NEW_COLUMNS[:1] + NEW_COLUMNS[3:]:
+        assert getattr(stored, name) is None, name
+
+    with pytest.raises(IntegrityError), transaction.atomic(using=db.alias):
+        threads.create(
+            kind="COUNSELOR_DIRECT",
+            direct_first_user_id=second_id,
+            direct_second_user_id=first_id,
+            created_by_id=first_id,
+        )
+    with pytest.raises(IntegrityError), transaction.atomic(using=db.alias):
+        threads.create(
+            kind="COUNSELOR_DIRECT",
+            direct_first_user_id=first_id,
+            direct_second_user_id=second_id,
+            created_by_id=second_id,
+        )
+    with pytest.raises(IntegrityError), transaction.atomic(using=db.alias):
+        threads.create(
+            kind="COUNSELOR_DIRECT",
+            direct_first_user_id=first_id,
+            direct_second_user_id=second_id,
+            student_id=student_pk,
+            created_by_id=first_id,
+        )
+
+    MigrationExecutor(db).migrate([TARGET_0004])
+    assert "0005_counselor_direct" not in applied_guidance_messages(db)
+    reversed_state = state_at(db, TARGET_0004)
+    kept = (
+        reversed_state.get_model("guidance_messages", "GuidanceThread")
+        .objects.using(db.alias)
+        .get(pk=direct.pk)
+    )
+    assert kept.kind == "COUNSELOR_DIRECT"
+    assert (kept.direct_first_user_id, kept.direct_second_user_id) == (first_id, second_id)

@@ -1,4 +1,4 @@
-import type { UserSummary } from "@/lib/api/generated/model";
+import type { GuidanceThreadResponse, UserSummary } from "@/lib/api/generated/model";
 import type { GuidanceViewer } from "./guidance-messages-presentation";
 
 // Presentation only (ADR-102). The API decides every thread: College scope, supervision, Head
@@ -30,6 +30,10 @@ export type GuidanceMessagesAccess = {
   canManageReferralSelf: boolean;
   /** Staff: may reply to referral conversations inside their current Referral scope. */
   canManageReferralStaff: boolean;
+  /** Counselor: may open the workspace for their direct Counselor conversations. */
+  canViewDirect: boolean;
+  /** Counselor: may start and reply to direct Counselor conversations. */
+  canManageDirect: boolean;
   /** Staff with the intake designation: receive and answer Faculty inquiries. */
   canIntake: boolean;
   hasWorkspace: boolean;
@@ -63,6 +67,15 @@ export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAc
     isStaff &&
     user.capabilities.includes("guidance_messages.manage") &&
     user.capabilities.includes("referrals.manage");
+  const isCounselor = user.role === "COUNSELOR";
+  // The narrow direct capability depends on broad `guidance_messages.view`; the server resolves
+  // that dependency, and the presentation repeats it so a partial payload cannot over-grant.
+  const canViewDirect =
+    isCounselor &&
+    user.capabilities.includes("guidance_messages.view") &&
+    user.capabilities.includes("guidance_messages.counselor_direct.view");
+  const canManageDirect =
+    canViewDirect && user.capabilities.includes("guidance_messages.counselor_direct.manage");
   const canIntake = isStaff && user.capabilities.includes("guidance_messages.intake");
   const canManageTemplates =
     canManageStaff && user.capabilities.includes("guidance_messages.templates.manage");
@@ -81,18 +94,26 @@ export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAc
     canViewReferralSelf,
     canManageReferralSelf,
     canManageReferralStaff,
+    canViewDirect,
+    canManageDirect,
     canIntake,
     hasWorkspace:
-      canViewSelf || canViewStaff || canViewInquirySelf || canViewReferralSelf || canIntake,
+      canViewSelf ||
+      canViewStaff ||
+      canViewInquirySelf ||
+      canViewReferralSelf ||
+      canViewDirect ||
+      canIntake,
     canWrite:
       canManageSelf ||
       canManageStaff ||
       canManageInquirySelf ||
       canManageReferralSelf ||
+      canManageDirect ||
       canIntake,
     // A referral conversation starts contextually from the Referral, not from the generic New
     // message chooser.
-    canStart: canManageSelf || canManageStaff || canManageInquirySelf,
+    canStart: canManageSelf || canManageStaff || canManageInquirySelf || canManageDirect,
     canUseTemplates: canManageStaff,
     canManageTemplates,
   };
@@ -101,4 +122,12 @@ export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAc
 /** The composer's template option: staff who write operational Messages; never Students. */
 export function messageTemplatesFor(access: GuidanceMessagesAccess): { canManage: boolean } | null {
   return access.canUseTemplates ? { canManage: access.canManageTemplates } : null;
+}
+
+/** Direct threads are written only with the narrow capability; other kinds use the workspace gate. */
+export function canWriteThread(
+  thread: GuidanceThreadResponse,
+  access: GuidanceMessagesAccess,
+): boolean {
+  return thread.kind === "COUNSELOR_DIRECT" ? access.canManageDirect : access.canWrite;
 }

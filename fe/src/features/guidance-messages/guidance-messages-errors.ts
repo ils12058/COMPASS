@@ -9,6 +9,7 @@ export type GuidanceSendContext =
   | "student-office"
   | "student-counseling"
   | "staff-office"
+  | "counselor-direct"
   | "faculty-inquiry"
   | "referral-coordination";
 
@@ -39,6 +40,9 @@ export function describeSendError(error: unknown, context: GuidanceSendContext):
     if (context === "staff-office") {
       return "This Student is no longer in your workload. Your message was not sent; search again and choose another Student.";
     }
+    if (context === "counselor-direct") {
+      return "This Counselor is no longer available to receive messages. Your message was not sent; choose another Counselor.";
+    }
     if (context === "referral-coordination") {
       return "This referral is no longer available to your account. Your message was not sent.";
     }
@@ -60,6 +64,9 @@ export function describeSendError(error: unknown, context: GuidanceSendContext):
     }
     if (context === "staff-office") {
       return "A Guidance Office conversation cannot be started for this Student right now because their College has no available Guidance Office routing. Your message was not sent.";
+    }
+    if (context === "counselor-direct") {
+      return "A conversation with this Counselor could not be started right now. Your message was not sent; try again later.";
     }
     return "This conversation is resolved, so your message was not sent. Your text is still here.";
   }

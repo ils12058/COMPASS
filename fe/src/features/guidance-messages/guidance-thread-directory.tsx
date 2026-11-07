@@ -183,7 +183,7 @@ function ThreadRow({
     >
       <span className="flex items-baseline justify-between gap-3">
         <span className={cn("min-w-0 break-words text-ink", unread ? "font-bold" : "font-semibold")}>
-          {threadTitle(thread, viewer)}
+          {threadTitle(thread, viewer, currentUserId)}
         </span>
         {time ? (
           <time dateTime={thread.last_message_at ?? thread.created_at} className="shrink-0 text-xs text-muted">

@@ -4836,6 +4836,8 @@
           "graduate_tracer.view_self",
           "guidance_followups.manage",
           "guidance_followups.view",
+          "guidance_messages.counselor_direct.manage",
+          "guidance_messages.counselor_direct.view",
           "guidance_messages.inquiry_manage_self",
           "guidance_messages.inquiry_view_self",
           "guidance_messages.intake",
@@ -19176,6 +19178,38 @@
         "title": "GuidanceCollege",
         "type": "object"
       },
+      "GuidanceCounselorPeerPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GuidancePerson"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "GuidanceCounselorPeerPage",
+        "type": "object"
+      },
       "GuidanceHandlerOption": {
         "additionalProperties": false,
         "description": "A safe staff label for assignment: no email, capability, designation or supervision.",
@@ -19895,6 +19929,26 @@
             "title": "Created At",
             "type": "string"
           },
+          "direct_first_user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidancePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "direct_second_user": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidancePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "id": {
             "format": "uuid",
             "title": "Id",
@@ -20014,6 +20068,8 @@
           "student",
           "counselor",
           "requester",
+          "direct_first_user",
+          "direct_second_user",
           "routing_college",
           "assigned_to",
           "relationship_appointment_id",
@@ -31378,7 +31434,8 @@
           "OFFICE",
           "COUNSELING",
           "FACULTY_INQUIRY",
-          "REFERRAL_COORDINATION"
+          "REFERRAL_COORDINATION",
+          "COUNSELOR_DIRECT"
         ],
         "title": "ThreadKind",
         "type": "string"
@@ -33025,6 +33082,8 @@
                 "graduate_tracer.view_self",
                 "guidance_followups.manage",
                 "guidance_followups.view",
+                "guidance_messages.counselor_direct.manage",
+                "guidance_messages.counselor_direct.view",
                 "guidance_messages.inquiry_manage_self",
                 "guidance_messages.inquiry_view_self",
                 "guidance_messages.intake",
@@ -33222,6 +33281,8 @@
                 "graduate_tracer.view_self",
                 "guidance_followups.manage",
                 "guidance_followups.view",
+                "guidance_messages.counselor_direct.manage",
+                "guidance_messages.counselor_direct.view",
                 "guidance_messages.inquiry_manage_self",
                 "guidance_messages.inquiry_view_self",
                 "guidance_messages.intake",
@@ -55559,6 +55620,208 @@
           }
         ],
         "summary": "Open Counseling",
+        "tags": [
+          "guidance-messages"
+        ]
+      }
+    },
+    "/api/v1/guidance-messages/counselor-peers": {
+      "get": {
+        "operationId": "guidanceMessagesListCounselorPeers",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "search",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Search"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceCounselorPeerPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Counselor Peers",
+        "tags": [
+          "guidance-messages"
+        ]
+      }
+    },
+    "/api/v1/guidance-messages/counselor-peers/{peer_id}/direct-thread": {
+      "post": {
+        "operationId": "guidanceMessagesOpenCounselorDirectThread",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "peer_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Peer Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuidanceSendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceOpenResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Open Counselor Direct",
         "tags": [
           "guidance-messages"
         ]

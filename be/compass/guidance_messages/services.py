@@ -3,7 +3,15 @@
 from uuid import UUID
 
 from django.db import IntegrityError, transaction
-from django.db.models import BigIntegerField, Count, Exists, OuterRef, Subquery, Value
+from django.db.models import (
+    BigIntegerField,
+    Count,
+    Exists,
+    OuterRef,
+    Q,
+    Subquery,
+    Value,
+)
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -52,6 +60,9 @@ from .models import (
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_OPEN_FACULTY_INQUIRIES = 5
+COUNSELOR_DIRECT_VIEW = "guidance_messages.counselor_direct.view"
+COUNSELOR_DIRECT_MANAGE = "guidance_messages.counselor_direct.manage"
+MAX_PEER_SEARCH_LENGTH = 160
 
 
 def _audit(actor, action, thread, *, context=None, **metadata):
@@ -111,6 +122,8 @@ def _directory(query, actor):
         "routing_college",
         "requester",
         "relationship_referral",
+        "direct_first_user",
+        "direct_second_user",
     ).annotate(own_unread_count=Coalesce(Subquery(unread), Value(0)))
 
 
@@ -437,10 +450,17 @@ def referral_context(*, actor, referral_id):
 
     An existing thread survives void and is authorized by its persisted participants. Starting
     is offered only to the Faculty submitter with manage authority on a non-voided Referral.
-    Returns `(thread, can_start)`; no Message content or Referral form data is read.
+    Returns `(thread, can_start)`; no Message content or Referral form data is read. Both the
+    existing-thread and the not-yet-started answer require the actor's current Referral capability.
     """
     actor = policy.current_actor(actor)
     if actor.role.code == "FACULTY":
+        # The no-thread answer ("can_start") must not disclose an in-scope Referral to a Faculty
+        # member whose current capability no longer includes reading their own submissions.
+        try:
+            policy.require_actor(actor, kind=ThreadKind.REFERRAL_COORDINATION)
+        except MessagesPermissionDenied:
+            raise ThreadNotFound() from None
         referral = faculty_coordination_referral(actor=actor, referral_id=referral_id)
         if referral is None:
             raise ThreadNotFound()
@@ -543,6 +563,114 @@ def open_referral_thread(*, actor, referral_id, client_message_id, body, context
     return thread, message
 
 
+def _direct_pair_ids(actor_id, peer_id):
+    """Validate the peer shape and return the pair in canonical ascending UUID order."""
+    if not isinstance(peer_id, UUID) or peer_id == actor_id:
+        raise ThreadNotFound()
+    return tuple(sorted((actor_id, peer_id)))
+
+
+def _lock_direct_pair(*, actor_id, peer_id):
+    """Lock both participants in one global order, including the actor.
+
+    `open_counselor_direct_thread` must not pre-lock the actor: A->B and B->A would otherwise take
+    the locks in opposite order. Locking the canonical pair here serializes both directions and
+    covers a different pair that shares one participant, because the ordering is global.
+    """
+    first_id, second_id = _direct_pair_ids(actor_id, peer_id)
+    first = (
+        User.objects.select_for_update(of=("self",), no_key=True)
+        .select_related("role")
+        .filter(pk=first_id)
+        .first()
+    )
+    second = (
+        User.objects.select_for_update(of=("self",), no_key=True)
+        .select_related("role")
+        .filter(pk=second_id)
+        .first()
+    )
+    if first is None or second is None:
+        raise ThreadNotFound()
+    actor = first if first.pk == actor_id else second
+    peer = second if first.pk == actor_id else first
+    for user in (actor, peer):
+        if not user.is_active or user.role.code != "COUNSELOR":
+            raise ThreadNotFound()
+    if not peer.has_capability(COUNSELOR_DIRECT_MANAGE):
+        raise ThreadNotFound()
+    return actor, peer, first, second
+
+
+@transaction.atomic
+def open_counselor_direct_thread(*, actor, peer_id, client_message_id, body, context=None):
+    actor = policy.current_actor(actor)  # deliberately not locked; the pair lock includes the actor
+    policy.require_actor(actor, manage=True, kind=ThreadKind.COUNSELOR_DIRECT)
+    _client_id(client_message_id)
+    pair = _direct_pair_ids(actor.pk, peer_id)
+    prior = (
+        GuidanceMessage.objects.filter(sender=actor, client_message_id=client_message_id)
+        .select_related("thread")
+        .first()
+    )
+    if prior is not None:
+        if prior.thread.kind != ThreadKind.COUNSELOR_DIRECT or {
+            prior.thread.direct_first_user_id,
+            prior.thread.direct_second_user_id,
+        } != set(pair):
+            raise MessagesConflict("client_message_id has already been used for another thread.")
+        policy.require_thread(actor, prior.thread, manage=True)
+        return prior.thread, prior
+    actor, peer, first, second = _lock_direct_pair(actor_id=actor.pk, peer_id=peer_id)
+    thread = (
+        GuidanceThread.objects.select_for_update(of=("self",))
+        .filter(
+            kind=ThreadKind.COUNSELOR_DIRECT,
+            direct_first_user_id=first.pk,
+            direct_second_user_id=second.pk,
+        )
+        .first()
+    )
+    created = thread is None
+    if created:
+        try:
+            with transaction.atomic():
+                thread = GuidanceThread.objects.create(
+                    kind=ThreadKind.COUNSELOR_DIRECT,
+                    direct_first_user=first,
+                    direct_second_user=second,
+                    created_by=actor,
+                )
+        except IntegrityError:
+            # The partial unique index on the canonical pair is the independent creation guard:
+            # a concurrent open committed first, so reuse that thread.
+            thread = (
+                GuidanceThread.objects.select_for_update(of=("self",))
+                .filter(
+                    kind=ThreadKind.COUNSELOR_DIRECT,
+                    direct_first_user_id=first.pk,
+                    direct_second_user_id=second.pk,
+                )
+                .first()
+            )
+            if thread is None:
+                raise
+            created = False
+    policy.require_thread(actor, thread, manage=True)
+    if created:
+        _audit(
+            actor,
+            GUIDANCE_MESSAGES_THREAD_CREATED,
+            thread,
+            context=context,
+            peer_id=str(peer.pk),
+        )
+    message = _send_locked(
+        actor=actor, thread=thread, client_message_id=client_message_id, body=body, context=context
+    )
+    return thread, message
+
+
 @transaction.atomic
 def mark_read(*, actor, thread_id, sequence):
     actor = policy.current_actor(actor)
@@ -572,6 +700,9 @@ def set_status(*, actor, thread_id, resolved, context=None):
         thread = _lock_thread(actor, thread_id)
         # A voided Referral makes its conversation read-only, including resolve and reopen.
         _locked_referral_for(thread)
+    elif snapshot.kind == ThreadKind.COUNSELOR_DIRECT:
+        policy.require_thread(actor, snapshot, manage=True)
+        raise MessagesConflict("Counselor direct conversations stay open.")
     else:
         policy.require_thread(actor, snapshot, manage=True, staff_only=True)
         User.objects.select_for_update(of=("self",), no_key=True).get(pk=snapshot.student_id)
@@ -657,6 +788,35 @@ def eligible_handlers(*, actor, thread_id, search=None, page=1, page_size=DEFAUL
     )
     offset = (page - 1) * page_size
     return handlers[offset : offset + page_size], len(handlers) > offset + page_size
+
+
+def counselor_peers(*, actor, search=None, page=1, page_size=DEFAULT_PAGE_SIZE):
+    """Bounded, name-only peer directory for starting a direct conversation."""
+    _pagination(page, page_size)
+    actor = policy.current_actor(actor)
+    policy.require_actor(actor, manage=True, kind=ThreadKind.COUNSELOR_DIRECT)
+    if search is not None and not isinstance(search, str):
+        raise InvalidMessageInput("search must be text.")
+    term = (search or "").strip()
+    if len(term) > MAX_PEER_SEARCH_LENGTH:
+        raise InvalidMessageInput(f"search must be at most {MAX_PEER_SEARCH_LENGTH} characters.")
+    query = User.objects.filter(is_active=True, role__code="COUNSELOR").exclude(pk=actor.pk)
+    if term:
+        query = query.filter(
+            Q(first_name__icontains=term)
+            | Q(middle_name__icontains=term)
+            | Q(last_name__icontains=term)
+        )
+    rows = sorted(
+        (
+            user
+            for user in query.select_related("role")
+            if user.has_capability(COUNSELOR_DIRECT_MANAGE)
+        ),
+        key=lambda user: (user.get_full_name().casefold(), str(user.pk)),
+    )
+    offset = (page - 1) * page_size
+    return rows[offset : offset + page_size], len(rows) > offset + page_size
 
 
 def eligible_students(*, actor, **query):

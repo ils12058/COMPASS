@@ -44,11 +44,13 @@ export function useThreadConversation({
   threadId,
   active,
   canWrite,
+  canManageDirect,
   latestPinRef: providedPin,
 }: {
   threadId: string | null;
   active: boolean;
   canWrite: boolean;
+  canManageDirect: boolean;
   /** Held by whoever sends, so the history stays at its end until the sent Message arrives. */
   latestPinRef?: RefObject<number | null>;
 }) {
@@ -72,7 +74,11 @@ export function useThreadConversation({
     threadUpdatedAt: threadQuery.dataUpdatedAt,
     latestSequence: conversation?.messages.at(-1)?.sequence ?? 0,
     atLatest,
-    enabled: active && canWrite && !concealed && conversation !== undefined,
+    enabled:
+      active &&
+      (thread?.kind === "COUNSELOR_DIRECT" ? canManageDirect : canWrite) &&
+      !concealed &&
+      conversation !== undefined,
   });
 
   const loadOlder = useCallback((anchor: number) => older.mutate(anchor), [older]);

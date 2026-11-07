@@ -54,6 +54,8 @@ class GuidanceThreadResponse(StrictSchema):
     student: GuidancePerson | None
     counselor: GuidancePerson | None
     requester: GuidancePerson | None
+    direct_first_user: GuidancePerson | None
+    direct_second_user: GuidancePerson | None
     routing_college: GuidanceCollege | None
     assigned_to: GuidancePerson | None
     relationship_appointment_id: UUID | None
@@ -202,6 +204,13 @@ class GuidanceStudentPage(StrictSchema):
     has_next: bool
 
 
+class GuidanceCounselorPeerPage(StrictSchema):
+    items: list[GuidancePerson]
+    page: int
+    page_size: int
+    has_next: bool
+
+
 def _safe(function):
     @wraps(function)
     def wrapped(*args, **kwargs):
@@ -251,6 +260,8 @@ def _thread(thread, actor):
         student=_person(thread.student),
         counselor=_person(thread.counselor),
         requester=_person(thread.requester),
+        direct_first_user=_person(thread.direct_first_user),
+        direct_second_user=_person(thread.direct_second_user),
         routing_college=(
             GuidanceCollege(
                 id=thread.routing_college_id,
@@ -605,6 +616,46 @@ def appointment_context(request, response: HttpResponse, appointment_id: UUID):
     return GuidanceAppointmentContext(
         thread=_thread(thread, request.auth_user) if thread is not None else None,
         can_start=can_start,
+    )
+
+
+@router.get(
+    "/counselor-peers",
+    response=response_with_errors(GuidanceCounselorPeerPage, 401, 403, 422),
+    operation_id="guidanceMessagesListCounselorPeers",
+)
+@_safe
+def counselor_peers(
+    request, response: HttpResponse, search: str | None = None, page: int = 1, page_size: int = 20
+):
+    rows, has_next = services.counselor_peers(
+        actor=request.auth_user, search=search, page=page, page_size=page_size
+    )
+    return GuidanceCounselorPeerPage(
+        items=[_person(user) for user in rows],
+        page=page,
+        page_size=page_size,
+        has_next=has_next,
+    )
+
+
+@router.post(
+    "/counselor-peers/{peer_id}/direct-thread",
+    response=response_with_errors(GuidanceOpenResponse, *ERRORS),
+    operation_id="guidanceMessagesOpenCounselorDirectThread",
+)
+@_safe
+def open_counselor_direct(
+    request, response: HttpResponse, peer_id: UUID, payload: GuidanceSendRequest
+):
+    return _open(
+        services.open_counselor_direct_thread(
+            actor=request.auth_user,
+            peer_id=peer_id,
+            **payload.model_dump(),
+            context=AuditContext.from_request(request, actor=request.auth_user),
+        ),
+        request.auth_user,
     )
 
 

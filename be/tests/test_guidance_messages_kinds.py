@@ -157,9 +157,9 @@ def test_kind_catalog_is_explicit_and_closed():
         ("COUNSELING", "Counseling"),
         ("FACULTY_INQUIRY", "Faculty inquiry"),
         ("REFERRAL_COORDINATION", "Referral coordination"),
+        ("COUNSELOR_DIRECT", "Counselor direct"),
     ]
     assert list(ReservedThreadKind.values) == [
-        "COUNSELOR_DIRECT",
         "COUNSELOR_CASE_COORDINATION",
     ]
     assert not set(ReservedThreadKind.values) & set(ThreadKind.values)
@@ -171,6 +171,7 @@ def test_kind_catalog_is_explicit_and_closed():
         ThreadKind.COUNSELING,
         ThreadKind.FACULTY_INQUIRY,
         ThreadKind.REFERRAL_COORDINATION,
+        ThreadKind.COUNSELOR_DIRECT,
     ]
     assert all(policy._RULES[code] is None for code in ReservedThreadKind.values)
 
@@ -255,6 +256,55 @@ def test_inquiry_shape_inserts_with_a_requester_and_no_student(world):
         assert getattr(thread, name) is None, name
 
 
+def test_direct_shape_is_canonical_and_pair_unique(world):
+    """GMSG-4 W8: the DB CHECK and partial unique index are independent pair guards."""
+    first_id, second_id = sorted((world.counselor.pk, world.other.pk))
+    thread = GuidanceThread.objects.create(
+        kind=ThreadKind.COUNSELOR_DIRECT,
+        direct_first_user_id=first_id,
+        direct_second_user_id=second_id,
+        created_by=world.counselor,
+    )
+    thread.refresh_from_db()
+    assert (thread.direct_first_user_id, thread.direct_second_user_id) == (first_id, second_id)
+    for name in (
+        "student",
+        "counselor",
+        "requester",
+        "student_subject",
+        "relationship_referral",
+        "relationship_case_grant",
+        "relationship_appointment",
+        "routing_college",
+        "assigned_to",
+    ):
+        assert getattr(thread, name) is None, name
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        GuidanceThread.objects.create(
+            kind=ThreadKind.COUNSELOR_DIRECT,
+            direct_first_user_id=second_id,
+            direct_second_user_id=first_id,
+            created_by=world.counselor,
+        )
+    with pytest.raises(IntegrityError), transaction.atomic():
+        GuidanceThread.objects.create(
+            kind=ThreadKind.COUNSELOR_DIRECT,
+            direct_first_user_id=first_id,
+            direct_second_user_id=second_id,
+            created_by=world.other,
+        )
+    with pytest.raises(IntegrityError), transaction.atomic():
+        GuidanceThread.objects.create(
+            kind=ThreadKind.COUNSELOR_DIRECT,
+            direct_first_user_id=first_id,
+            direct_second_user_id=second_id,
+            student=world.student,
+            created_by=world.counselor,
+        )
+    assert GuidanceThread.objects.filter(kind=ThreadKind.COUNSELOR_DIRECT).count() == 1
+
+
 def test_reserved_kinds_are_uncreatable_by_policy_only(world):
     """What 0003 changed, stated plainly.
 
@@ -264,7 +314,8 @@ def test_reserved_kinds_are_uncreatable_by_policy_only(world):
     product guarantee that matters — `_RULES` has no rule for them, so every read, write, per-thread
     check and routing candidate denies them before consulting any column, and their code is not in
     `ThreadKind`, so no response schema or endpoint can even express one. GMSG-3 made
-    REFERRAL_COORDINATION a real kind; GMSG-4..5 replace the remaining two with family rules.
+    REFERRAL_COORDINATION a real kind; GMSG-4 made COUNSELOR_DIRECT a real kind; GMSG-5 replaces
+    the remaining one with its family rule.
     """
     for code in ReservedThreadKind.values:
         assert policy._RULES[code] is None

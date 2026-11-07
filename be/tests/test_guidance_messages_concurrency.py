@@ -116,6 +116,59 @@ def test_concurrent_referral_open_yields_one_thread_and_one_message(referral_wor
     )
 
 
+def test_concurrent_direct_open_same_actor_and_key_is_one_thread_and_message(world):
+    key = uuid4()
+    results = parallel(
+        20,
+        lambda _: services.open_counselor_direct_thread(
+            actor=world.counselor,
+            peer_id=world.other.pk,
+            client_message_id=key,
+            body=BODY,
+        ),
+    )
+    threads = [thread for thread, _ in results]
+    assert len({thread.pk for thread in threads}) == 1
+    assert len({message.pk for _, message in results}) == 1
+    thread = threads[0]
+    assert thread.kind == ThreadKind.COUNSELOR_DIRECT
+    assert GuidanceThread.objects.count() == GuidanceMessage.objects.count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            action="guidance_messages.thread.created", target_id=str(thread.pk)
+        ).count()
+        == 1
+    )
+
+
+def test_parallel_mixed_direction_direct_opens_share_one_thread_without_deadlock(world):
+    """The canonical pair lock serializes A->B and B->A in one global order; no deadlock."""
+    actors = [world.counselor, world.other]
+    keys = [uuid4(), uuid4()]
+    results = parallel(
+        20,
+        lambda index: services.open_counselor_direct_thread(
+            actor=actors[index % 2],
+            peer_id=actors[(index + 1) % 2].pk,
+            client_message_id=keys[index % 2],
+            body=BODY,
+        ),
+    )
+    threads = [thread for thread, _ in results]
+    assert len({thread.pk for thread in threads}) == 1
+    thread = threads[0]
+    assert thread.kind == ThreadKind.COUNSELOR_DIRECT
+    assert GuidanceThread.objects.count() == 1
+    assert GuidanceMessage.objects.filter(thread=thread).count() == 2
+    assert sorted(GuidanceMessage.objects.values_list("sequence", flat=True)) == [1, 2]
+    assert (
+        AuditEvent.objects.filter(
+            action="guidance_messages.thread.created", target_id=str(thread.pk)
+        ).count()
+        == 1
+    )
+
+
 def test_distinct_concurrent_senders_have_contiguous_committed_sequences(world):
     thread, _ = office(world)
     users = [world.student, world.counselor, world.gss]

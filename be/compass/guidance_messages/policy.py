@@ -35,6 +35,8 @@ class _KindRule:
     endpoint_staff_recipients: bool = False
     staff_capability: str | None = None
     referral_scoped: bool = False
+    staff_capability_action_suffix: bool = False
+    direct_pair_participant: bool = False
 
 
 # Every kind the database can hold has an entry, so visibility, per-thread access and push routing
@@ -42,8 +44,9 @@ class _KindRule:
 # column. It replaces the old "anything not Counseling is College-scoped Office" fallthrough, which
 # would otherwise have disclosed each new kind to every staff member in its College on creation.
 # GMSG-2 gave FACULTY_INQUIRY its rule; GMSG-3 gave REFERRAL_COORDINATION its rule (staff scope is
-# the Referral's current operational scope, never the thread's College snapshot); GMSG-4..5 turn a
-# remaining `None` into a rule only when that kind becomes creatable and its participants decided.
+# the Referral's current operational scope, never the thread's College snapshot); GMSG-4 gave
+# COUNSELOR_DIRECT its pair rule; GMSG-5 turns the remaining `None` into a rule only when that kind
+# becomes creatable and its participants decided.
 _RULES: dict[str, _KindRule | None] = {
     ThreadKind.OFFICE: _KindRule(True, frozenset(STAFF_ROLES), True, False, True),
     ThreadKind.COUNSELING: _KindRule(True, frozenset({"COUNSELOR"}), False, True, False),
@@ -68,7 +71,16 @@ _RULES: dict[str, _KindRule | None] = {
         staff_capability=None,
         referral_scoped=True,
     ),
-    ReservedThreadKind.COUNSELOR_DIRECT: None,
+    ThreadKind.COUNSELOR_DIRECT: _KindRule(
+        student_participant=False,
+        staff_roles=frozenset({"COUNSELOR"}),
+        college_scoped=False,
+        counselor_participant=False,
+        office_staff_recipients=False,
+        direct_pair_participant=True,
+        staff_capability="guidance_messages.counselor_direct",
+        staff_capability_action_suffix=True,
+    ),
     ReservedThreadKind.COUNSELOR_CASE_COORDINATION: None,
 }
 
@@ -105,7 +117,11 @@ def require_actor(actor, *, manage=False, staff_only=False, kind=None, codes=Non
         code = f"guidance_messages.{suffix}_self"
     elif actor.role.code in STAFF_ROLES and (rule is None or actor.role.code in rule.staff_roles):
         if rule is not None and rule.staff_capability:
-            code = rule.staff_capability
+            code = (
+                f"{rule.staff_capability}.{suffix}"
+                if rule.staff_capability_action_suffix
+                else rule.staff_capability
+            )
         else:
             code = f"guidance_messages.{suffix}"
     elif (
@@ -118,6 +134,16 @@ def require_actor(actor, *, manage=False, staff_only=False, kind=None, codes=Non
     else:
         raise MessagesPermissionDenied()
     if code not in codes:
+        raise MessagesPermissionDenied()
+    # A Referral-scoped kind also needs the Referral capability that scopes it. Without this the
+    # messaging capability alone would answer 200 for an in-scope Referral the actor may no longer
+    # read, disclosing that a conversation does not yet exist.
+    if (
+        rule is not None
+        and rule.referral_scoped
+        and actor.role.code in STAFF_ROLES
+        and f"referrals.{suffix}" not in codes
+    ):
         raise MessagesPermissionDenied()
 
 
@@ -142,8 +168,19 @@ def authorized_threads(actor, *, manage=False):
             if rule is None or actor.role.code not in rule.staff_roles:
                 continue
             if rule.staff_capability:
-                if rule.staff_capability in codes:
-                    visible |= Q(kind=kind)
+                capability = (
+                    f"{rule.staff_capability}.{suffix}"
+                    if rule.staff_capability_action_suffix
+                    else rule.staff_capability
+                )
+                if capability in codes:
+                    if rule.direct_pair_participant:
+                        visible |= Q(
+                            Q(kind=kind, direct_first_user_id=actor.pk)
+                            | Q(kind=kind, direct_second_user_id=actor.pk)
+                        )
+                    else:
+                        visible |= Q(kind=kind)
                 continue
             if rule.referral_scoped:
                 # Current Referral operational scope, never the thread's College snapshot.
@@ -178,7 +215,11 @@ def require_thread(actor, thread, *, manage=False, staff_only=False):
         allowed = rule.requester_participant and thread.requester_id == actor.pk
     else:
         allowed = actor.role.code in rule.staff_roles and (
-            bool(rule.staff_capability)
+            (
+                rule.direct_pair_participant
+                and actor.pk in (thread.direct_first_user_id, thread.direct_second_user_id)
+            )
+            or (bool(rule.staff_capability) and not rule.direct_pair_participant)
             or (
                 rule.college_scoped
                 and thread.routing_college_id
@@ -299,6 +340,11 @@ def recipient_ids(thread):
         candidates |= Q(pk=thread.counselor_id)
     if rule.requester_participant and thread.requester_id:
         candidates |= Q(pk=thread.requester_id)
+    if rule.direct_pair_participant:
+        if thread.direct_first_user_id:
+            candidates |= Q(pk=thread.direct_first_user_id)
+        if thread.direct_second_user_id:
+            candidates |= Q(pk=thread.direct_second_user_id)
     if rule.office_staff_recipients:
         candidates |= office_staff_candidates(thread)
     if rule.endpoint_staff_recipients:

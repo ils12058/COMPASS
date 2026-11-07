@@ -313,7 +313,13 @@ function ContextualPanel({
   const queryClient = useQueryClient();
   const headingId = `${useContext(ContextualMessagesContext)?.panelId ?? "messages"}-heading`;
   const [status, setStatus] = useState("");
-  const state = useThreadConversation({ threadId, active: true, canWrite: access.canWrite, latestPinRef });
+  const state = useThreadConversation({
+    threadId,
+    active: true,
+    canWrite: access.canWrite,
+    canManageDirect: access.canManageDirect,
+    latestPinRef,
+  });
   const shown = state.thread ?? thread;
   const resolved = shown?.status === "RESOLVED";
 

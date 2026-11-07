@@ -18,6 +18,7 @@ const KIND_LABELS: Record<ThreadKind, string> = {
   COUNSELING: "Counseling",
   FACULTY_INQUIRY: "Faculty inquiry",
   REFERRAL_COORDINATION: "Referral coordination",
+  COUNSELOR_DIRECT: "Counselor conversation",
 };
 
 const STATUS_LABELS: Record<ThreadStatus, string> = {
@@ -48,7 +49,18 @@ export function personName(person: GuidancePerson | null | undefined, fallback: 
 }
 
 /** Who the conversation is with, from the reader's side. */
-export function threadTitle(thread: GuidanceThreadResponse, viewer: GuidanceViewer): string {
+export function threadTitle(
+  thread: GuidanceThreadResponse,
+  viewer: GuidanceViewer,
+  currentUserId?: string,
+): string {
+  if (thread.kind === "COUNSELOR_DIRECT") {
+    let other = thread.direct_first_user ?? thread.direct_second_user;
+    if (currentUserId && thread.direct_first_user?.id === currentUserId) {
+      other = thread.direct_second_user;
+    }
+    return personName(other, "Counselor");
+  }
   if (viewer === "staff") {
     if (thread.kind === "FACULTY_INQUIRY") return personName(thread.requester, "Faculty");
     if (thread.kind === "REFERRAL_COORDINATION") return personName(thread.requester, "Faculty");
@@ -83,6 +95,7 @@ export function threadRoutingFacts(thread: GuidanceThreadResponse, viewer: Guida
 } {
   // A referral thread's College is the submission snapshot, not current routing.
   if (thread.kind === "REFERRAL_COORDINATION") return { college: null, assignedTo: null };
+  if (thread.kind === "COUNSELOR_DIRECT") return { college: null, assignedTo: null };
   if (viewer !== "staff" || thread.kind !== "OFFICE") return { college: null, assignedTo: null };
   return {
     college: thread.routing_college?.name.trim() || thread.routing_college?.code.trim() || null,
@@ -97,3 +110,7 @@ export function unreadLabel(count: number): string | null {
 export function senderLabel(sender: GuidancePerson, currentUserId: string): string {
   return sender.id === currentUserId ? "You" : personName(sender, "Unnamed participant");
 }
+
+// Provisional wording pending GCO copy (D-GMSG-15). Engineering default, not institutional approval.
+export const COUNSELOR_DIRECT_NOTICE =
+  "Counselor conversations are for coordination between Counselors. Do not include confidential Student case details.";

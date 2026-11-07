@@ -20,9 +20,13 @@ import {
 } from "@/features/guidance-messages/guidance-conversation-surface";
 import { ThreadAssignment } from "@/features/guidance-messages/guidance-handler-assignment";
 import { GuidanceMessageComposer } from "@/features/guidance-messages/guidance-message-composer";
-import { messageTemplatesFor } from "@/features/guidance-messages/guidance-messages-access";
+import {
+  canWriteThread,
+  messageTemplatesFor,
+} from "@/features/guidance-messages/guidance-messages-access";
 import { describeSendError } from "@/features/guidance-messages/guidance-messages-errors";
 import {
+  COUNSELOR_DIRECT_NOTICE,
   threadRoutingFacts,
   threadSubtitle,
   threadTitle,
@@ -40,7 +44,12 @@ const STUDENT_OFFICE_CONTEXT = "Guidance and Counseling Office";
 export function GuidanceConversation({ threadId }: { threadId: string }) {
   const workspace = useGuidanceWorkspace();
   const { access, viewer, currentUserId } = workspace;
-  const state = useThreadConversation({ threadId, active: true, canWrite: access.canWrite });
+  const state = useThreadConversation({
+    threadId,
+    active: true,
+    canWrite: access.canWrite,
+    canManageDirect: access.canManageDirect,
+  });
   const send = useSendThreadMessage(threadId, state.latestPinRef);
 
   // On a narrow screen the conversation replaced the directory, so focus moves to its heading. Side
@@ -102,10 +111,12 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
   const referralVoided =
     thread.kind === "REFERRAL_COORDINATION" && thread.relationship_referral_voided === true;
   const readOnly = resolved || referralVoided;
+  const threadWritable = canWriteThread(thread, access);
   // Inquiries are resolved by intake staff or by the Faculty member who wrote them; referral
   // conversations by their submitter or staff in the Referral's current operational scope; every
   // other conversation is resolved only by staff with Messages manage.
   const canChangeStatus =
+    thread.kind !== "COUNSELOR_DIRECT" &&
     !referralVoided &&
     ((viewer === "staff" &&
       (thread.kind === "OFFICE" || thread.kind === "COUNSELING") &&
@@ -122,7 +133,7 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
 
   return (
     <ConversationFrame
-      title={threadTitle(thread, viewer)}
+      title={threadTitle(thread, viewer, currentUserId)}
       details={
         <ThreadDetails
           thread={thread}
@@ -140,13 +151,18 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
       }
     >
       <ConversationHistoryRegion state={state} currentUserId={currentUserId} />
-      {!access.canWrite ? (
+      {thread.kind === "COUNSELOR_DIRECT" ? (
+        <p className="border-t border-brand-line bg-surface px-4 py-3 text-sm text-muted">
+          {COUNSELOR_DIRECT_NOTICE}
+        </p>
+      ) : null}
+      {!threadWritable ? (
         <ComposerNote>You can read this conversation, but your account cannot send messages.</ComposerNote>
       ) : (
         // Stays mounted when the conversation is resolved, so an unsent draft is kept (read-only).
         <GuidanceMessageComposer
           target={`thread:${threadId}`}
-          label={`Message to ${threadTitle(thread, viewer)}`}
+          label={`Message to ${threadTitle(thread, viewer, currentUserId)}`}
           send={sendIntent}
           describeError={describe}
           unavailable={

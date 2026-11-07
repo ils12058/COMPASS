@@ -8,6 +8,7 @@ from uuid import uuid4
 import pytest
 
 from compass.accounts.models import Capability, Designation, Role, User, UserCapabilityOverride
+from compass.accounts.services import effective_capabilities
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditEvent
 from compass.guidance_messages import content, policy, services
@@ -544,4 +545,76 @@ def test_referral_threads_have_no_handler_assignment(world):
         )
         .status_code
         == 404
+    )
+
+
+def test_staff_referral_context_requires_current_referral_scope(world):
+    def revoke_view():
+        return UserCapabilityOverride.objects.create(
+            user=world.counselor_a,
+            capability=Capability.objects.get(code="referrals.view"),
+            effect="REVOKE",
+            reason="Synthetic referral scope revocation",
+        )
+
+    override = revoke_view()
+    try:
+        with pytest.raises(MessagesPermissionDenied):
+            policy.require_actor(world.counselor_a, kind=ThreadKind.REFERRAL_COORDINATION)
+        with pytest.raises(MessagesPermissionDenied):
+            policy.require_actor(
+                world.counselor_a, manage=True, kind=ThreadKind.REFERRAL_COORDINATION
+            )
+        with pytest.raises(ThreadNotFound):
+            services.referral_context(actor=world.counselor_a, referral_id=world.referral.pk)
+        response = auth_client(world.counselor_a).get(
+            f"{BASE}/referrals/{world.referral.pk}/context"
+        )
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "guidance_thread_not_found"
+    finally:
+        override.delete()
+
+    assert services.referral_context(actor=world.counselor_a, referral_id=world.referral.pk) == (
+        None,
+        False,
+    )
+
+    thread, _ = open_thread(world)
+    override = revoke_view()
+    try:
+        with pytest.raises(ThreadNotFound):
+            services.referral_context(actor=world.counselor_a, referral_id=world.referral.pk)
+    finally:
+        override.delete()
+    existing, can_start = services.referral_context(
+        actor=world.counselor_a, referral_id=world.referral.pk
+    )
+    assert existing.pk == thread.pk
+    assert can_start is False
+
+
+def test_faculty_referral_context_requires_current_submission_read(world):
+    override = UserCapabilityOverride.objects.create(
+        user=world.faculty,
+        capability=Capability.objects.get(code="referrals.view_submitted_self"),
+        effect="REVOKE",
+        reason="Synthetic submission-read revocation",
+    )
+    try:
+        assert {
+            "guidance_messages.referral_view_self",
+            "guidance_messages.referral_manage_self",
+        }.isdisjoint(effective_capabilities(world.faculty))
+        with pytest.raises(ThreadNotFound):
+            services.referral_context(actor=world.faculty, referral_id=world.referral.pk)
+        response = auth_client(world.faculty).get(f"{BASE}/referrals/{world.referral.pk}/context")
+        assert response.status_code == 404
+        assert response.json()["error"]["code"] == "guidance_thread_not_found"
+    finally:
+        override.delete()
+
+    assert services.referral_context(actor=world.faculty, referral_id=world.referral.pk) == (
+        None,
+        True,
     )

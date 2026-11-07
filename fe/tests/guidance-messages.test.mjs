@@ -27,6 +27,7 @@ import {
   startGuidanceMessagesFreshness,
 } from "../src/features/guidance-messages/guidance-messages-freshness.ts";
 import {
+  COUNSELOR_DIRECT_NOTICE,
   threadRoutingFacts,
   threadStatusLabel,
   threadSubtitle,
@@ -60,6 +61,7 @@ const counselor = account("COUNSELOR", ["guidance_messages.view", "guidance_mess
 const thread = (overrides = {}) => ({
   id: THREAD, kind: "OFFICE", status: "OPEN",
   student: person("student", "Maria Santos"), counselor: null, requester: null,
+  direct_first_user: null, direct_second_user: null,
   routing_college: { id: "college", code: "CCMS", name: "College of Computing" },
   assigned_to: person("staff", "Lea Ramos"), relationship_appointment_id: null,
   relationship_referral_id: null, relationship_referral_reference: null, relationship_referral_voided: null,
@@ -83,6 +85,7 @@ test("Messages access pairs each identity with its own capability", () => {
       canViewSelf: true, canManageSelf: true, canViewStaff: false, canManageStaff: false,
       canViewInquirySelf: false, canManageInquirySelf: false,
       canViewReferralSelf: false, canManageReferralSelf: false, canManageReferralStaff: false,
+      canViewDirect: false, canManageDirect: false,
       canIntake: false,
       hasWorkspace: true, canWrite: true, canStart: true, canUseTemplates: false, canManageTemplates: false,
     },
@@ -99,6 +102,7 @@ test("Messages access pairs each identity with its own capability", () => {
       canViewSelf: false, canManageSelf: false, canViewStaff: false, canManageStaff: false,
       canViewInquirySelf: true, canManageInquirySelf: true,
       canViewReferralSelf: false, canManageReferralSelf: false, canManageReferralStaff: false,
+      canViewDirect: false, canManageDirect: false,
       canIntake: false,
       hasWorkspace: true, canWrite: true, canStart: true, canUseTemplates: false, canManageTemplates: false,
     },
@@ -149,6 +153,35 @@ test("Messages access pairs each identity with its own capability", () => {
     assert.equal(getGuidanceMessagesAccess(other).hasWorkspace, false, `${other.role} ${other.designations} has no Messages`);
     assert.ok(!portalWorkspaceGroups(other).some((group) => group.links.some((link) => link.href === "/portal/messages")));
   }
+});
+
+test("Counselor direct access needs the narrow capability on top of the broad one", () => {
+  const direct = getGuidanceMessagesAccess(account("COUNSELOR", [
+    "guidance_messages.view", "guidance_messages.manage",
+    "guidance_messages.counselor_direct.view", "guidance_messages.counselor_direct.manage",
+  ]));
+  assert.deepEqual(
+    [direct.canViewDirect, direct.canManageDirect, direct.hasWorkspace, direct.canWrite, direct.canStart],
+    [true, true, true, true, true],
+  );
+  const viewOnly = getGuidanceMessagesAccess(account("COUNSELOR", [
+    "guidance_messages.view", "guidance_messages.counselor_direct.view",
+  ]));
+  assert.deepEqual(
+    [viewOnly.canViewDirect, viewOnly.canManageDirect, viewOnly.hasWorkspace, viewOnly.canWrite, viewOnly.canStart],
+    [true, false, true, false, false],
+    "Narrow view opens the workspace; writing and starting need narrow manage",
+  );
+  const gss = getGuidanceMessagesAccess(account("GUIDANCE_SERVICES_STAFF", ["guidance_messages.view", "guidance_messages.manage"]));
+  assert.deepEqual([gss.canViewDirect, gss.canManageDirect], [false, false], "GSS never holds direct authority");
+  const narrowOnly = getGuidanceMessagesAccess(account("COUNSELOR", [
+    "guidance_messages.counselor_direct.view", "guidance_messages.counselor_direct.manage",
+  ]));
+  assert.deepEqual(
+    [narrowOnly.canViewDirect, narrowOnly.canManageDirect, narrowOnly.hasWorkspace, narrowOnly.canWrite, narrowOnly.canStart],
+    [false, false, false, false, false],
+    "The narrow capability depends on broad guidance_messages.view",
+  );
 });
 
 test("Faculty and intake staff reach Messages through the workspace and its commands", () => {
@@ -223,6 +256,27 @@ test("conversation labels use human wording from each reader's side", () => {
   assert.equal(threadTitle(thread({ student: person("s", "  ") }), "staff"), "Student");
 });
 
+test("a direct conversation is titled with the other Counselor from either side", () => {
+  const direct = thread({
+    kind: "COUNSELOR_DIRECT", student: null, counselor: null, routing_college: null, assigned_to: null,
+    direct_first_user: person("counselor-a", "Ana Cruz"),
+    direct_second_user: person("counselor-b", "Ben Reyes"),
+  });
+  assert.equal(threadTitle(direct, "staff", "counselor-a"), "Ben Reyes");
+  assert.equal(threadTitle(direct, "staff", "counselor-b"), "Ana Cruz");
+  assert.equal(threadTitle(direct, "staff", "someone-else"), "Ana Cruz", "The canonical first participant is the fallback");
+  assert.equal(threadSubtitle(direct, "staff"), "Counselor conversation");
+  assert.deepEqual(threadRoutingFacts(direct, "staff"), { college: null, assignedTo: null });
+});
+
+test("the direct conversation notice is the exact provisional copy", () => {
+  assert.equal(
+    COUNSELOR_DIRECT_NOTICE,
+    "Counselor conversations are for coordination between Counselors. Do not include confidential Student case details.",
+  );
+  assert.match(COUNSELOR_DIRECT_NOTICE, /confidential Student case details/);
+});
+
 test("times follow the institution's calendar", () => {
   const now = new Date("2026-10-09T08:00:00Z"); // 4:00 PM in Manila
   assert.match(threadActivityTime("2026-10-09T01:30:00Z", now), /^9:30\s?AM$/i);
@@ -282,6 +336,12 @@ test("send and status errors say what happened without backend jargon", () => {
   assert.match(describeStatusChangeError(apiError(409, "guidance_messages_referral_voided"), "resolve"), /voided/);
   assert.match(describeStatusChangeError(apiError(409, "guidance_messages_referral_voided"), "reopen"), /voided/);
   assert.match(describeSendError(apiError(404), "student-counseling"), /choose another recipient/);
+  assert.match(describeSendError(apiError(404), "counselor-direct"), /choose another Counselor/);
+  assert.match(describeSendError(apiError(409), "counselor-direct"), /could not be started right now/);
+  assert.ok(
+    !/resolved, so your message was not sent/.test(describeSendError(apiError(409), "counselor-direct")),
+    "A direct conversation never reports the resolved copy",
+  );
   assert.match(describeSendError(apiError(422), "thread"), /4,000 characters/);
   assert.match(describeSendError(new AccountChangedError(), "thread"), /account changed/);
   assert.match(describeStatusChangeError(apiError(409), "reopen"), /already has an open Guidance Office conversation/);

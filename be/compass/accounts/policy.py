@@ -214,6 +214,18 @@ CAPABILITY_DEFINITIONS = (
         name="Reply to own referral conversations",
         description="Start and reply to own Guidance conversations bound to submitted Referrals.",
     ),
+    # Provisional (GMSG-4): Counselor direct messaging ships granted to every Counselor. This is an
+    # engineering default, not institutional approval.
+    CapabilityDefinition(
+        code="guidance_messages.counselor_direct.view",
+        name="View Counselor direct conversations",
+        description="View the direct Guidance conversation between two Counselors.",
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.counselor_direct.manage",
+        name="Start and reply to Counselor direct conversations",
+        description="Start or reply to the direct Guidance conversation between two Counselors.",
+    ),
     CapabilityDefinition(
         code="activity.supervised_staff.view",
         name="View supervised staff activity",
@@ -699,6 +711,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "guidance_messages.view",
             "guidance_messages.manage",
             "guidance_messages.templates.manage",
+            "guidance_messages.counselor_direct.view",
+            "guidance_messages.counselor_direct.manage",
             "activity.supervised_staff.view",
             "accounts.view",
             "organization.structure.view",
@@ -866,6 +880,13 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "guidance_messages.referral_view_self": frozenset({"referrals.view_submitted_self"}),
     "guidance_messages.referral_manage_self": frozenset({"guidance_messages.referral_view_self"}),
     "guidance_messages.templates.manage": frozenset({"guidance_messages.manage"}),
+    # The staff workspace/directory stays gated by broad `guidance_messages.view`, so the narrow
+    # direct capability must not survive without it. Narrow manage deliberately does not depend on
+    # broad manage: a view-only operational staff member may still hold self-scoped direct writing.
+    "guidance_messages.counselor_direct.view": frozenset({"guidance_messages.view"}),
+    "guidance_messages.counselor_direct.manage": frozenset(
+        {"guidance_messages.counselor_direct.view"}
+    ),
     "privacy_governance.activity.export": frozenset({"privacy_governance.view"}),
     "routine_interviews.manage_self": frozenset({"routine_interviews.view_self"}),
     "routine_interviews.manage_assigned": frozenset({"routine_interviews.view_assigned"}),
