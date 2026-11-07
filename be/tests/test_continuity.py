@@ -1,9 +1,10 @@
 """Synthetic policy fixtures are isolated here; deployed provider stays fail closed."""
 
+import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 from threading import Barrier
 from types import SimpleNamespace
 from uuid import uuid4
@@ -26,8 +27,10 @@ from compass.accounts.models import (
 from compass.accounts.services import set_user_capability_override
 from compass.audit.models import AuditEvent
 from compass.authentication.sessions import create_auth_session
-from compass.counseling import continuity_policy
+from compass.counseling import case_communication_policy, continuity_policy
 from compass.counseling import continuity_services as svc
+from compass.counseling.case_communication_policy import ApprovedCaseCommunicationPolicy
+from compass.counseling.continuity_models import ContinuityCommunicationPurpose
 from compass.counseling.continuity_models import CounselorCaseContinuityGrant as Grant
 from compass.counseling.continuity_models import CounselorCaseContinuityScope as Scope
 from compass.counseling.continuity_policy import ApprovedContinuityPolicy, ContinuityError
@@ -1076,3 +1079,123 @@ def test_audit_actor_spoof_rolls_back(case):
     with pytest.raises(ValueError, match="match the acting user"):
         request(case, context=AuditContext.user(case.outsider))
     assert Grant.objects.count() == 0
+
+
+def communication_policy(case, *, version="synthetic-comm-v1", **changes):
+    return ApprovedCaseCommunicationPolicy(
+        **(
+            {
+                "version": version,
+                "evidence_reference": "TEST-ONLY-GMSG5-CONT",
+                "valid_from": case.policy.valid_from,
+                "valid_until": case.policy.valid_until,
+                "permitted_purposes": frozenset([ContinuityCommunicationPurpose.CASE_COORDINATION]),
+            }
+            | changes
+        )
+    )
+
+
+def patch_communication(monkeypatch, policy):
+    monkeypatch.setattr(
+        case_communication_policy,
+        "get_approved_case_communication_policy",
+        lambda: policy,
+    )
+    return policy
+
+
+def purpose_request(case, **changes):
+    return request(
+        case, communication_purpose=ContinuityCommunicationPurpose.CASE_COORDINATION, **changes
+    )
+
+
+def legacy_snapshot_digest(grant, scopes):
+    data = {}
+    for field in (
+        "student_id",
+        "original_counselor_id",
+        "receiving_counselor_id",
+        "coverage_kind",
+        "reason_category",
+        "requested_by_id",
+        "starts_at",
+        "expires_at",
+        "policy_version",
+        "policy_evidence",
+        "policy_digest",
+        "student_placement_marker",
+    ):
+        value = getattr(grant, field)
+        data[field] = (
+            value.astimezone(UTC).isoformat() if isinstance(value, datetime) else str(value)
+        )
+    data["scopes"] = sorted(
+        (s.resource_kind, str(s.source_id), s.projection, s.source_revision) for s in scopes
+    )
+    return hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
+
+
+def test_metadata_only_grant_keeps_the_legacy_digest_bytes(case):
+    g = request(case)
+    grant = Grant.objects.get(pk=g["id"])
+    scopes = list(
+        Scope.objects.filter(grant=grant).order_by("resource_kind", "source_id", "projection")
+    )
+    assert legacy_snapshot_digest(grant, scopes) == grant.snapshot_digest
+
+
+def test_purpose_request_is_denied_while_no_communication_policy_is_deployed(case):
+    assert case_communication_policy.get_approved_case_communication_policy() is None
+    with expect("communication_policy_unconfirmed"):
+        purpose_request(case)
+    assert not Grant.objects.exists()
+
+
+def test_synthetic_policy_records_digest_metadata_and_audit(case, monkeypatch):
+    policy = patch_communication(monkeypatch, communication_policy(case))
+    g = decide(case, purpose_request(case))
+
+    grant = Grant.objects.get(pk=g["id"])
+    assert grant.communication_purpose == ContinuityCommunicationPurpose.CASE_COORDINATION
+    assert grant.communication_policy_digest == policy.digest
+    assert g["communication_purpose"] == ContinuityCommunicationPurpose.CASE_COORDINATION
+    assert (
+        svc.get_grant_metadata(actor=case.receiver, grant_id=g["id"])["communication_purpose"]
+        == ContinuityCommunicationPurpose.CASE_COORDINATION
+    )
+    metadata = list(
+        AuditEvent.objects.filter(action__startswith="counseling.continuity.").values_list(
+            "metadata", flat=True
+        )
+    )
+    assert len(metadata) == 2
+    assert all(
+        event["communication_purpose"] == ContinuityCommunicationPurpose.CASE_COORDINATION
+        for event in metadata
+    )
+
+
+def test_replay_with_a_changed_communication_policy_conflicts(case, monkeypatch):
+    key = uuid4()
+    patch_communication(monkeypatch, communication_policy(case))
+    purpose_request(case, request_id=key)
+    patch_communication(monkeypatch, communication_policy(case, version="synthetic-comm-v2"))
+
+    with expect("request_conflict"):
+        purpose_request(case, request_id=key)
+    assert Grant.objects.count() == 1
+
+
+def test_approval_revalidates_the_recording_communication_policy(case, monkeypatch):
+    patch_communication(monkeypatch, communication_policy(case))
+    g = purpose_request(case)
+    patch_communication(monkeypatch, communication_policy(case, version="synthetic-comm-v2"))
+
+    with expect("communication_policy_changed"):
+        decide(case, g)
+    assert Grant.objects.get(pk=g["id"]).decision == "REQUESTED"
+
+    patch_communication(monkeypatch, communication_policy(case))
+    assert decide(case, g)["decision"] == "APPROVED"

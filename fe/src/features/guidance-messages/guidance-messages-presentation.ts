@@ -19,6 +19,7 @@ const KIND_LABELS: Record<ThreadKind, string> = {
   FACULTY_INQUIRY: "Faculty inquiry",
   REFERRAL_COORDINATION: "Referral coordination",
   COUNSELOR_DIRECT: "Counselor conversation",
+  COUNSELOR_CASE_COORDINATION: "Case coordination",
 };
 
 const STATUS_LABELS: Record<ThreadStatus, string> = {
@@ -61,6 +62,9 @@ export function threadTitle(
     }
     return personName(other, "Counselor");
   }
+  if (thread.kind === "COUNSELOR_CASE_COORDINATION") {
+    return personName(thread.student_subject, "Case coordination");
+  }
   if (viewer === "staff") {
     if (thread.kind === "FACULTY_INQUIRY") return personName(thread.requester, "Faculty");
     if (thread.kind === "REFERRAL_COORDINATION") return personName(thread.requester, "Faculty");
@@ -96,6 +100,7 @@ export function threadRoutingFacts(thread: GuidanceThreadResponse, viewer: Guida
   // A referral thread's College is the submission snapshot, not current routing.
   if (thread.kind === "REFERRAL_COORDINATION") return { college: null, assignedTo: null };
   if (thread.kind === "COUNSELOR_DIRECT") return { college: null, assignedTo: null };
+  if (thread.kind === "COUNSELOR_CASE_COORDINATION") return { college: null, assignedTo: null };
   if (viewer !== "staff" || thread.kind !== "OFFICE") return { college: null, assignedTo: null };
   return {
     college: thread.routing_college?.name.trim() || thread.routing_college?.code.trim() || null,
@@ -114,3 +119,10 @@ export function senderLabel(sender: GuidancePerson, currentUserId: string): stri
 // Provisional wording pending GCO copy (D-GMSG-15). Engineering default, not institutional approval.
 export const COUNSELOR_DIRECT_NOTICE =
   "Counselor conversations are for coordination between Counselors. Do not include confidential Student case details.";
+
+// The case-coordination surface's three exact copies. The ended copy is the proposal-specified
+// placeholder pending GCO wording (D-GMSG-15); do not substitute alternative institutional promises.
+export const CASE_COORDINATION_ENTRY_COPY = "Coordinate on this authorized case.";
+export const CASE_COORDINATION_ENDED_COPY = "Your case coordination access has ended.";
+export const CASE_COORDINATION_UNAVAILABLE_COPY =
+  "This conversation is no longer available for new messages.";

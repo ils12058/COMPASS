@@ -1,22 +1,25 @@
 "use client";
 import Link from "next/link";
+import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Notice } from "@/components/ui/notice";
 import { ContextHelp } from "@/components/ui/context-help";
 import { pageBackLinkClass } from "@/components/ui/page-header";
 import { CounselingPageHeading, counselingErrorCode, formatCounselingDateTime } from "@/features/counseling/counseling-shared";
-import type { ContinuityStatus, ContinuityReason, ContinuityGrantMetadata } from "@/lib/api/generated/model";
+import type { ContinuityCommunicationPurpose, ContinuityStatus, ContinuityReason, ContinuityGrantMetadata } from "@/lib/api/generated/model";
 export const statusLabels: Record<ContinuityStatus, string> = { PENDING: "Pending approval", SCHEDULED: "Scheduled", ACTIVE: "Active", EXPIRED: "Expired", DECLINED: "Declined", CANCELLED: "Cancelled", REVOKED: "Revoked", UNAVAILABLE: "Unavailable" };
 export const reasonLabels: Record<ContinuityReason, string> = { PLANNED_ABSENCE: "Planned absence", UNEXPECTED_ABSENCE: "Unexpected absence", TEMPORARY_SUPPORT: "Temporary support" };
+export const communicationPurposeLabels: Record<ContinuityCommunicationPurpose, string> = { CASE_COORDINATION: "Case coordination" };
 export const referenceClass = "break-all font-mono text-xs text-muted";
-export function CoverageHeading({ title = "Case coverage" }: {
+export function CoverageHeading({ title = "Case coverage", messagesTrigger }: {
     title?: string;
+    messagesTrigger?: ReactNode;
 }) {
-    return <CounselingPageHeading title={title} back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>} action={<ContextHelp title="Case coverage" sections={[
+    return <CounselingPageHeading title={title} back={<Link href="/portal/counseling" className={pageBackLinkClass}>Back to Counseling</Link>} action={<>{messagesTrigger}<ContextHelp title="Case coverage" sections={[
                 { heading: "Temporary access", content: <p>Coverage requires independent approval. Each selected record is checked again when opened. Original authorship and Appointment responsibilities stay with their existing workflows.</p> },
                 { heading: "Counselor handoff", content: <p>A confidential handoff is optional. Drafts belong to the original Counselor; submitted handoffs are read-only. They are separate from Student Session Summaries.</p> },
                 { heading: "Confidentiality", content: <p>Protected content is cleared when access cannot be confirmed. Already viewed information cannot be recalled. Contact your guidance office when approved coverage or an independent approver is unavailable.</p> },
-            ]}/>}/>;
+            ]}/></>}/>;
 }
 export function CoverageError({ error, retry }: {
     error: unknown;
@@ -32,6 +35,6 @@ export function CoverageError({ error, retry }: {
 export function CoverageFacts({ grant }: {
     grant: ContinuityGrantMetadata;
 }) {
-    const facts = [["Student reference", grant.student_id], ["Original Counselor", grant.original_counselor_id ?? "Not recorded"], ["Receiving Counselor", grant.receiving_counselor_id], ["Requester", grant.requested_by_id], ["Approver", grant.decision_by_id ?? "Pending"], ["Purpose", reasonLabels[grant.reason_category]], ["Starts", formatCounselingDateTime(grant.starts_at)], ["Expires", formatCounselingDateTime(grant.expires_at)], ["Status", statusLabels[grant.effective_status]], ["Policy reference", grant.policy_evidence]];
+    const facts = [["Student reference", grant.student_id], ["Original Counselor", grant.original_counselor_id ?? "Not recorded"], ["Receiving Counselor", grant.receiving_counselor_id], ["Requester", grant.requested_by_id], ["Approver", grant.decision_by_id ?? "Pending"], ["Purpose", reasonLabels[grant.reason_category]], ...(grant.communication_purpose ? [["Communication purpose", communicationPurposeLabels[grant.communication_purpose]]] : []), ["Starts", formatCounselingDateTime(grant.starts_at)], ["Expires", formatCounselingDateTime(grant.expires_at)], ["Status", statusLabels[grant.effective_status]], ["Policy reference", grant.policy_evidence]];
     return <dl className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">{facts.map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-xs font-semibold text-muted">{label}</dt><dd className="mt-1 break-words text-sm">{value}</dd></div>)}</dl>;
 }

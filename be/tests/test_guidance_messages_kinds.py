@@ -12,7 +12,6 @@ from compass.guidance_messages.errors import MessagesPermissionDenied, ThreadNot
 from compass.guidance_messages.models import (
     ALL_THREAD_KINDS,
     GuidanceThread,
-    ReservedThreadKind,
     ThreadKind,
 )
 from compass.organization.access_scope import resolve_general_guidance_college_scope
@@ -34,7 +33,7 @@ NEW_COLUMNS = (
 # staff scope is current-placement based, so it has no legacy oracle; it is tested in
 # tests/test_guidance_messages_referral.py.
 PRE_GMSG3_KINDS = (ThreadKind.OFFICE, ThreadKind.COUNSELING, ThreadKind.FACULTY_INQUIRY)
-UNCREATABLE_CODES = (*ReservedThreadKind.values, "NOT_A_KIND")
+UNCREATABLE_CODES = ("NOT_A_KIND",)
 CONSTRAINTS = (
     "gm_thread_family_shape",
     "gm_direct_pair_ordered",
@@ -44,7 +43,7 @@ CONSTRAINTS = (
 )
 
 
-def reserved_row(world, kind):
+def unknown_kind_row(world, kind):
     """An unsaved row shaped to be maximally reachable: participant and College all present.
 
     Never written. The College value is deliberately in scope for the world's staff so that a denial
@@ -158,12 +157,9 @@ def test_kind_catalog_is_explicit_and_closed():
         ("FACULTY_INQUIRY", "Faculty inquiry"),
         ("REFERRAL_COORDINATION", "Referral coordination"),
         ("COUNSELOR_DIRECT", "Counselor direct"),
+        ("COUNSELOR_CASE_COORDINATION", "Counselor case coordination"),
     ]
-    assert list(ReservedThreadKind.values) == [
-        "COUNSELOR_CASE_COORDINATION",
-    ]
-    assert not set(ReservedThreadKind.values) & set(ThreadKind.values)
-    assert ALL_THREAD_KINDS == frozenset(ThreadKind.values) | frozenset(ReservedThreadKind.values)
+    assert ALL_THREAD_KINDS == frozenset(ThreadKind.values)
     assert len(ALL_THREAD_KINDS) == 6
     assert set(policy._RULES) == set(ALL_THREAD_KINDS)
     assert [kind for kind, rule in policy._RULES.items() if rule is not None] == [
@@ -172,8 +168,8 @@ def test_kind_catalog_is_explicit_and_closed():
         ThreadKind.FACULTY_INQUIRY,
         ThreadKind.REFERRAL_COORDINATION,
         ThreadKind.COUNSELOR_DIRECT,
+        ThreadKind.COUNSELOR_CASE_COORDINATION,
     ]
-    assert all(policy._RULES[code] is None for code in ReservedThreadKind.values)
 
 
 def test_legacy_shapes_still_insert_with_all_new_columns_null(world):
@@ -229,13 +225,6 @@ def test_legacy_shapes_still_insert_with_all_new_columns_null(world):
             )
         assert result(current_authorized_pks, actor) == ("denied", "capability")
         assert result(legacy_authorized_pks, actor) == ("denied", "capability")
-
-
-@pytest.mark.parametrize("code", ReservedThreadKind.values)
-def test_reserved_kinds_are_rejected_by_postgresql(world, code):
-    with pytest.raises(IntegrityError), transaction.atomic():
-        GuidanceThread.objects.create(kind=code, student=world.student, created_by=world.counselor)
-    assert not GuidanceThread.objects.filter(kind=code).exists()
 
 
 def test_inquiry_shape_inserts_with_a_requester_and_no_student(world):
@@ -305,31 +294,9 @@ def test_direct_shape_is_canonical_and_pair_unique(world):
     assert GuidanceThread.objects.filter(kind=ThreadKind.COUNSELOR_DIRECT).count() == 1
 
 
-def test_reserved_kinds_are_uncreatable_by_policy_only(world):
-    """What 0003 changed, stated plainly.
-
-    GMSG-1 relied on `student NOT NULL` to make each reserved branch unsatisfiable. `student` is
-    now nullable, so a direct ORM insert shaped to the CHECK can store one of these rows: their
-    database-level uncreatability is gone. What remains is the policy guarantee, and it is the
-    product guarantee that matters — `_RULES` has no rule for them, so every read, write, per-thread
-    check and routing candidate denies them before consulting any column, and their code is not in
-    `ThreadKind`, so no response schema or endpoint can even express one. GMSG-3 made
-    REFERRAL_COORDINATION a real kind; GMSG-4 made COUNSELOR_DIRECT a real kind; GMSG-5 replaces
-    the remaining one with its family rule.
-    """
-    for code in ReservedThreadKind.values:
-        assert policy._RULES[code] is None
-        assert code not in set(ThreadKind.values)
-        thread = reserved_row(world, code)
-        for actor in actors(world):
-            assert result(policy.require_actor, actor, kind=code) == ("denied", "capability")
-            assert result(policy.require_thread, actor, thread) == ("denied", "thread")
-        assert policy.recipient_ids(thread) == ()
-
-
 @pytest.mark.parametrize("code", UNCREATABLE_CODES)
-def test_reserved_and_unknown_kinds_are_denied_for_every_role(world, code):
-    thread = reserved_row(world, code)
+def test_unknown_kinds_are_denied_for_every_role(world, code):
+    thread = unknown_kind_row(world, code)
     for actor in actors(world):
         for manage in (False, True):
             assert result(policy.require_thread, actor, thread, manage=manage) == (
@@ -343,8 +310,8 @@ def test_reserved_and_unknown_kinds_are_denied_for_every_role(world, code):
 
 
 @pytest.mark.parametrize("code", UNCREATABLE_CODES)
-def test_reserved_and_unknown_kinds_have_no_recipients(world, code):
-    assert policy.recipient_ids(reserved_row(world, code)) == ()
+def test_unknown_kinds_have_no_recipients(world, code):
+    assert policy.recipient_ids(unknown_kind_row(world, code)) == ()
 
 
 @pytest.mark.parametrize("code", UNCREATABLE_CODES)
@@ -377,9 +344,8 @@ def test_new_constraints_are_installed_in_postgresql():
     shape = definitions["gm_thread_family_shape"]
     for name in NEW_COLUMNS:
         assert f"{name}_id" in shape, name
-    for code in UNCREATABLE_CODES[:-1]:
-        assert f"'{code}'" in shape, code
     assert "'OFFICE'" in shape and "'COUNSELING'" in shape
+    assert "'COUNSELOR_CASE_COORDINATION'" in shape
     assert "direct_first_user_id" in definitions["gm_direct_pair_ordered"]
     assert "direct_second_user_id" in definitions["gm_direct_pair_ordered"]
     assert definitions["gm_one_thread_per_referral"].startswith("CREATE UNIQUE INDEX")
@@ -401,3 +367,69 @@ def test_new_constraints_are_installed_in_postgresql():
     for column in ("student_id", "routing_college_id", "assigned_to_id", "counselor_id"):
         assert f"{column} IS NULL" in inquiry_branch, column
     assert "requester_id IS NOT NULL" in inquiry_branch
+
+
+CASE_VIEW = "guidance_messages.case_coordination.view"
+CASE_MANAGE = "guidance_messages.case_coordination.manage"
+CASE_KIND = ThreadKind.COUNSELOR_CASE_COORDINATION
+
+
+def test_no_reserved_kind_placeholder_remains():
+    import compass
+
+    root = __import__("pathlib").Path(compass.__file__).resolve().parent
+    references = [
+        str(path.relative_to(root))
+        for path in root.rglob("*.py")
+        if "ReservedThreadKind" in path.read_text()
+    ]
+    assert references == []
+
+
+def test_case_kind_rule_is_counselor_only_grant_scoped():
+    rule = policy._RULES[CASE_KIND]
+    assert rule.staff_roles == frozenset({"COUNSELOR"})
+    assert rule.student_participant is False
+    assert rule.case_grant_participant is True
+    assert rule.direct_pair_participant is False
+    assert rule.office_staff_recipients is False
+    assert rule.staff_capability == "guidance_messages.case_coordination"
+    assert rule.staff_capability_action_suffix is True
+
+
+def test_case_kind_allow_deny_matrix_across_every_role(world):
+    for actor in actors(world):
+        if actor.role.code == "COUNSELOR":
+            assert policy.require_actor(actor, kind=CASE_KIND) is None
+            assert policy.require_actor(actor, manage=True, kind=CASE_KIND) is None
+        else:
+            with pytest.raises(MessagesPermissionDenied):
+                policy.require_actor(actor, kind=CASE_KIND)
+            with pytest.raises(MessagesPermissionDenied):
+                policy.require_actor(actor, manage=True, kind=CASE_KIND)
+
+
+def test_case_kind_view_and_manage_are_separately_scoped(world):
+    override = UserCapabilityOverride.objects.create(
+        user=world.counselor,
+        capability=Capability.objects.get(code=CASE_MANAGE),
+        effect="REVOKE",
+        reason="Synthetic case matrix",
+    )
+    try:
+        policy.require_actor(world.counselor, kind=CASE_KIND)
+        with pytest.raises(MessagesPermissionDenied):
+            policy.require_actor(world.counselor, manage=True, kind=CASE_KIND)
+    finally:
+        override.delete()
+    view = UserCapabilityOverride.objects.create(
+        user=world.counselor,
+        capability=Capability.objects.get(code=CASE_VIEW),
+        effect="REVOKE",
+        reason="Synthetic case matrix",
+    )
+    try:
+        with pytest.raises(MessagesPermissionDenied):
+            policy.require_actor(world.counselor, kind=CASE_KIND)
+    finally:
+        view.delete()

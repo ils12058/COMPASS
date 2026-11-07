@@ -128,7 +128,7 @@ no typing, no Seen, no read-cursor schema change, no retention/export code, no f
 | GMSG-2 | Faculty general inquiry + GCO intake view | GMSG-1; **D-GMSG-01** (routing) must be answered; `student` becomes nullable in this slice with the forbidding CHECK | new operations + `student` optional → OpenAPI + generated client + FE |
 | GMSG-3 | Referral coordination | GMSG-1; `Referral.submitted_by` (`referrals/models.py:54-61`) verified shipped; **D-GMSG-09** | one open + per-thread ops; subject never in DTO for the Student |
 | GMSG-4 | Counselor direct | GMSG-1; **D-GMSG-05/06**; no external domain dependency | pair operations + bounded peer directory |
-| GMSG-5 | Case coordination | GMSG-1; **D-GMSG-07/08** *and* a real CONT communication scope + single predicate service (D-GMSG-29) — **blocked, cannot be scheduled from this package** | grant-bound thread ops |
+| GMSG-5 | Case coordination | GMSG-1; **D-GMSG-07/08** *and* a real CONT communication scope + single predicate service (D-GMSG-29) — implemented, dormant pending D-GMSG-08; see [`docs/gmsg-5/README.md`](../gmsg-5/README.md) | grant-bound thread ops |
 | GMSG-6 | Read receipts | GMSG-1; **D-GMSG-03/04/14**; monotonicity hardening (D-GMSG-26) | response fields for Seen |
 | GMSG-7 | Typing | GMSG-1; **D-GMSG-13**; new `messages.typing_changed` registry entry + HTTP signal (D-GMSG-24) | realtime protocol both sides |
 | GMSG-8 | Unified workspace, purpose filters, work/notification alignment, full gates | all above; **D-GMSG-12/15/16**; fixes D-GMSG-25 surfacing | FE-heavy; full regression + browser + UAT |

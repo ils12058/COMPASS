@@ -226,6 +226,25 @@ CAPABILITY_DEFINITIONS = (
         name="Start and reply to Counselor direct conversations",
         description="Start or reply to the direct Guidance conversation between two Counselors.",
     ),
+    # Provisional (GMSG-5): Counselor case coordination ships granted to every Counselor. The live
+    # Counseling grant is the authority; this capability only decides who may ask for it. This is an
+    # engineering default, not institutional approval.
+    CapabilityDefinition(
+        code="guidance_messages.case_coordination.view",
+        name="View case coordination conversations",
+        description=(
+            "View the case-coordination conversation on an approved coverage grant "
+            "you participate in."
+        ),
+    ),
+    CapabilityDefinition(
+        code="guidance_messages.case_coordination.manage",
+        name="Start and reply to case coordination conversations",
+        description=(
+            "Start or reply to the case-coordination conversation on an approved "
+            "coverage grant you participate in."
+        ),
+    ),
     CapabilityDefinition(
         code="activity.supervised_staff.view",
         name="View supervised staff activity",
@@ -713,6 +732,8 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "guidance_messages.templates.manage",
             "guidance_messages.counselor_direct.view",
             "guidance_messages.counselor_direct.manage",
+            "guidance_messages.case_coordination.view",
+            "guidance_messages.case_coordination.manage",
             "activity.supervised_staff.view",
             "accounts.view",
             "organization.structure.view",
@@ -886,6 +907,13 @@ CAPABILITY_DEPENDENCIES: dict[str, frozenset[str]] = {
     "guidance_messages.counselor_direct.view": frozenset({"guidance_messages.view"}),
     "guidance_messages.counselor_direct.manage": frozenset(
         {"guidance_messages.counselor_direct.view"}
+    ),
+    # The CONT predicate, not this capability, decides whether any conversation exists or is live;
+    # `counseling.continuity.view` is deliberately not a dependency because Counselors do not hold
+    # it and a granted source-read scope is never communication authority.
+    "guidance_messages.case_coordination.view": frozenset({"guidance_messages.view"}),
+    "guidance_messages.case_coordination.manage": frozenset(
+        {"guidance_messages.case_coordination.view"}
     ),
     "privacy_governance.activity.export": frozenset({"privacy_governance.view"}),
     "routine_interviews.manage_self": frozenset({"routine_interviews.view_self"}),

@@ -2,19 +2,32 @@
 
 from __future__ import annotations
 
+import time
 from concurrent.futures import ThreadPoolExecutor
-from threading import Barrier
+from threading import Barrier, Event
 from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-from django.db import connections, transaction
+from django.db import connection, connections, transaction
+from django.db.models import F
+from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 
 from compass.audit.models import AuditEvent
+from compass.counseling.continuity_models import CounselorCaseContinuityGrant as Grant
 from compass.guidance_messages import services
-from compass.guidance_messages.errors import GuidanceMessageContentUnavailable
+from compass.guidance_messages.errors import (
+    CaseCoordinationEnded,
+    GuidanceMessageContentUnavailable,
+)
 from compass.guidance_messages.models import GuidanceMessage, GuidanceThread, ThreadKind
 from compass.referrals.models import Referral
+from tests.case_communication_helpers import (  # noqa: F401
+    case,
+    communication,
+    live_case_grant,
+)
 from tests.faculty_referral_helpers import make_world, submit
 from tests.test_guidance_messages import BODY, counseling, office, world  # noqa: F401
 
@@ -284,3 +297,117 @@ def test_simultaneous_client_id_reuse_across_threads_conflicts_safely(world):
         == 1
     )
     assert sorted(GuidanceThread.objects.values_list("last_sequence", flat=True)) == [1, 2]
+
+
+@pytest.fixture
+def case_world(communication):
+    communication.grant = live_case_grant(communication)
+    return communication
+
+
+def for_update_statements(queries):
+    return [query["sql"] for query in queries.captured_queries if "FOR UPDATE" in query["sql"]]
+
+
+def assert_grant_lock_precedes_thread_lock(queries):
+    statements = for_update_statements(queries)
+    grant = next(
+        index
+        for index, sql in enumerate(statements)
+        if "counseling_counselorcasecontinuitygrant" in sql
+    )
+    thread = next(
+        index for index, sql in enumerate(statements) if "guidance_messages_guidancethread" in sql
+    )
+    assert grant < thread
+
+
+def test_case_send_lock_order_is_grant_before_thread(case_world):
+    thread, _ = services.open_case_coordination_thread(
+        actor=case_world.author,
+        grant_id=case_world.grant["id"],
+        client_message_id=uuid4(),
+        body=BODY,
+    )
+    with CaptureQueriesContext(connection) as queries:
+        services.send_message(
+            actor=case_world.receiver,
+            thread_id=thread.pk,
+            client_message_id=uuid4(),
+            body=BODY,
+        )
+    assert_grant_lock_precedes_thread_lock(queries)
+
+
+def test_case_open_lock_order_is_grant_before_thread(case_world):
+    from tests.case_communication_helpers import additional_student
+
+    other = additional_student(case_world)
+    grant = live_case_grant(case_world, student_id=other.student.pk, scopes=other.scopes)
+    with CaptureQueriesContext(connection) as queries:
+        services.open_case_coordination_thread(
+            actor=case_world.author,
+            grant_id=grant["id"],
+            client_message_id=uuid4(),
+            body=BODY,
+        )
+    assert_grant_lock_precedes_thread_lock(queries)
+
+
+def test_revocation_committed_while_a_send_waits_denies_that_send(case_world):
+    thread, _ = services.open_case_coordination_thread(
+        actor=case_world.author,
+        grant_id=case_world.grant["id"],
+        client_message_id=uuid4(),
+        body=BODY,
+    )
+    started = Event()
+
+    def worker():
+        started.set()
+        return services.send_message(
+            actor=case_world.receiver,
+            thread_id=thread.pk,
+            client_message_id=uuid4(),
+            body=BODY,
+        )
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(worker)
+        assert started.wait(5)
+        with transaction.atomic():
+            Grant.objects.select_for_update().get(pk=case_world.grant["id"])
+            time.sleep(0.5)
+            assert not future.done()
+            Grant.objects.filter(pk=case_world.grant["id"]).update(
+                decision="REVOKED",
+                revoked_by=case_world.head,
+                revoked_at=timezone.now(),
+                revocation_reason="COVERAGE_ENDED",
+                version=F("version") + 1,
+            )
+        with pytest.raises(CaseCoordinationEnded):
+            future.result(timeout=15)
+
+    thread.refresh_from_db()
+    assert thread.last_sequence == 1
+    assert GuidanceMessage.objects.filter(thread=thread).count() == 1
+
+
+def test_mixed_direction_case_opens_share_one_thread_without_deadlock(case_world):
+    actors = [case_world.author, case_world.receiver]
+    results = parallel(
+        20,
+        lambda index: services.open_case_coordination_thread(
+            actor=actors[index % 2],
+            grant_id=case_world.grant["id"],
+            client_message_id=uuid4(),
+            body=BODY,
+        ),
+    )
+    threads = [thread for thread, _ in results]
+    assert len({thread.pk for thread in threads}) == 1
+    assert GuidanceThread.objects.filter(kind=ThreadKind.COUNSELOR_CASE_COORDINATION).count() == 1
+    assert sorted(GuidanceMessage.objects.values_list("sequence", flat=True)) == list(
+        range(1, len(results) + 1)
+    )

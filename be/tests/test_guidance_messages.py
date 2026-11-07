@@ -1027,9 +1027,10 @@ def test_count_unread_conversations_pagination_independence_and_query_efficiency
 
     assert services.count_unread_conversations(actor=world.counselor) == 25
 
-    # Three constant accessible_referrals scope queries are added by the GMSG-3 directory filter;
-    # they do not grow with thread count, so this is not an N+1.
-    with django_assert_num_queries(11):
+    # Three constant accessible_referrals scope queries are added by the GMSG-3 directory filter,
+    # and GMSG-5 adds one constant live case-grant scope query. They do not grow with thread
+    # count, so this is not an N+1.
+    with django_assert_num_queries(12):
         assert services.count_unread_conversations(actor=world.counselor) == 25
 
 

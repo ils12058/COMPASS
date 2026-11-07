@@ -105,16 +105,16 @@ GSS every Office thread and `:51,63` keeps it out of COUNSELING — a peer threa
 second category); IT Admin/Institutional Officer denied; no College-wide audience; and a direct chat
 grants no source-record read (proposal §11.3 line 8328, §23 line 8707).
 
-### 1.6 `COUNSELOR_CASE_COORDINATION` — authorized pair + one valid grant + one Student subject — **Proposed, blocked**
+### 1.6 `COUNSELOR_CASE_COORDINATION` — authorized pair + one valid grant + one Student subject — **Implemented (GMSG-5), dormant pending D-GMSG-08**
 
 | Dimension | Design position (provisional) |
 |---|---|
 | Initiator / counterpart | exactly the `original_counselor` and `receiving_counselor` of one `CounselorCaseContinuityGrant` (`continuity_models.py:49,56`) |
 | Source binding | one grant (`:44`) + one Student subject (`:46`) |
-| Blocking fact | **the grant carries no communication authority**: `ContinuitySourceKind` = {`ENCOUNTER`, `ROUTINE_EVALUATION`} (`:34-36`), capability map `continuity_access.py:41-44`, module docstring "no content authority" (`:1`). There is no service that answers "is this pair authorized for this Student right now" as one callable (only `_effective`, `continuity_services.py:230-248`) |
-| Required authority (once D-GMSG-08 is approved) | role COUNSELOR **and** case capability **and** exact grant participation **and** live window `starts_at <= now < expires_at` with `decision=APPROVED` and `revoked_at IS NULL` — the fail-closed predicate already proven at `continuity_access.py:59-65` |
-| Lifecycle | expiry/revocation must stop new sends at the authorization boundary even with no background job (proposal §14.2 line 8404) |
-| Post-invalidity reads | recommended default in proposal §12.6 (line 8365): deny new sends **and** confidential history reads; GCO decision D-GMSG-07 open |
+| Communication authority (implemented) | explicit `communication_purpose=CASE_COORDINATION` + `communication_policy_digest`, guarded by `counseling_grant_communication_scope` (`continuity_models.py:206-214`); source-read scope is never reused as write authority. The production provider returns `None`, so no grant can carry a purpose until D-GMSG-08 institutional approval |
+| Required authority (implemented) | role COUNSELOR **and** case capability **and** exact grant participation **and** live window `starts_at <= now < expires_at` with `decision=APPROVED`, no revocation, matching policy digests and `ACTIVE` effective status — one predicate, `authorize_case_coordination` (`case_communication.py:96-106`) |
+| Lifecycle | expiry/revocation stop new sends, history reads and resolve/reopen at the authorization boundary even with no background job; tested in `test_guidance_messages_case.py` |
+| Post-invalidity reads | D-GMSG-07 provisional (a) implemented: deny both participants; institutional question remains open |
 | DTO / realtime | pair only; Student surfaced as subject to the two authorized Counselors; never to an Office queue |
 
 **Negative rule:** GSS never joins (its `guidance_messages.view/manage` must not reach this kind);
@@ -197,4 +197,4 @@ Surfaces are those enumerated at proposal line 8239.
 | `FACULTY_INQUIRY` | **Blocked on policy, not on code** | needs GCO intake routing decision (D-GMSG-01) and a requester field that §1.4 requires; role/capability substrate exists (`accounts/policy.py:31,79`) |
 | `REFERRAL_COORDINATION` | **Ready conditionally** | provenance substrate verified (`referrals/models.py:13-16,54-61,227-253`, `faculty_services.py:307-313`); needs a Referral link + unique constraint and the D-GMSG-09 closure policy |
 | `COUNSELOR_DIRECT` | **Ready** | needs pair columns + canonical-pair unique index and one narrow capability; no external domain dependency |
-| `COUNSELOR_CASE_COORDINATION` | **Blocked — no authority exists** | grant has no communication scope (`continuity_models.py:1,34-41`); needs D-GMSG-08 institutional approval **and** a real single predicate service before any code |
+| `COUNSELOR_CASE_COORDINATION` | **Implemented (GMSG-5), dormant** | live grant predicate shipped (`case_communication.py:96`); D-GMSG-08 institutional approval remains **Open — GCO/DPO**, and the production provider returns `None`, so no case conversation can exist. GSS, IT Admin, Institutional Officer, Head and DPO excluded; the Student is a subject, never a participant |

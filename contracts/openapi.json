@@ -4836,6 +4836,8 @@
           "graduate_tracer.view_self",
           "guidance_followups.manage",
           "guidance_followups.view",
+          "guidance_messages.case_coordination.manage",
+          "guidance_messages.case_coordination.view",
           "guidance_messages.counselor_direct.manage",
           "guidance_messages.counselor_direct.view",
           "guidance_messages.inquiry_manage_self",
@@ -6332,6 +6334,13 @@
         "title": "ContextSupportIndicatorResponse",
         "type": "object"
       },
+      "ContinuityCommunicationPurpose": {
+        "enum": [
+          "CASE_COORDINATION"
+        ],
+        "title": "ContinuityCommunicationPurpose",
+        "type": "string"
+      },
       "ContinuityDecision": {
         "enum": [
           "REQUESTED",
@@ -6346,6 +6355,16 @@
       "ContinuityGrantMetadata": {
         "additionalProperties": false,
         "properties": {
+          "communication_purpose": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContinuityCommunicationPurpose"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "coverage_kind": {
             "$ref": "#/components/schemas/CoverageKind"
           },
@@ -6501,6 +6520,7 @@
           "revoked_by_id",
           "revoked_at",
           "revocation_reason",
+          "communication_purpose",
           "version",
           "policy_version",
           "policy_evidence",
@@ -6561,6 +6581,16 @@
       "ContinuityRequestInput": {
         "additionalProperties": false,
         "properties": {
+          "communication_purpose": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ContinuityCommunicationPurpose"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "coverage_kind": {
             "$ref": "#/components/schemas/CoverageKind"
           },
@@ -19153,6 +19183,48 @@
         "title": "GuidanceAssignRequest",
         "type": "object"
       },
+      "GuidanceCaseCoordinationContext": {
+        "additionalProperties": false,
+        "description": "Structural only: never a Message body. The Student subject appears only inside `thread`,\nwhich the live Counseling predicate authorized; `access_ended` is shown only to the pair.",
+        "properties": {
+          "access_ended": {
+            "title": "Access Ended",
+            "type": "boolean"
+          },
+          "can_start": {
+            "title": "Can Start",
+            "type": "boolean"
+          },
+          "counterpart": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidancePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "thread": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceThreadResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "thread",
+          "counterpart",
+          "can_start",
+          "access_ended"
+        ],
+        "title": "GuidanceCaseCoordinationContext",
+        "type": "object"
+      },
       "GuidanceCollege": {
         "additionalProperties": false,
         "properties": {
@@ -19989,6 +20061,18 @@
             ],
             "title": "Relationship Appointment Id"
           },
+          "relationship_case_grant_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relationship Case Grant Id"
+          },
           "relationship_referral_id": {
             "anyOf": [
               {
@@ -20056,6 +20140,16 @@
               }
             ]
           },
+          "student_subject": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidancePerson"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "unread_count": {
             "title": "Unread Count",
             "type": "integer"
@@ -20070,12 +20164,14 @@
           "requester",
           "direct_first_user",
           "direct_second_user",
+          "student_subject",
           "routing_college",
           "assigned_to",
           "relationship_appointment_id",
           "relationship_referral_id",
           "relationship_referral_reference",
           "relationship_referral_voided",
+          "relationship_case_grant_id",
           "created_at",
           "last_message_at",
           "last_sequence",
@@ -31435,7 +31531,8 @@
           "COUNSELING",
           "FACULTY_INQUIRY",
           "REFERRAL_COORDINATION",
-          "COUNSELOR_DIRECT"
+          "COUNSELOR_DIRECT",
+          "COUNSELOR_CASE_COORDINATION"
         ],
         "title": "ThreadKind",
         "type": "string"
@@ -33082,6 +33179,8 @@
                 "graduate_tracer.view_self",
                 "guidance_followups.manage",
                 "guidance_followups.view",
+                "guidance_messages.case_coordination.manage",
+                "guidance_messages.case_coordination.view",
                 "guidance_messages.counselor_direct.manage",
                 "guidance_messages.counselor_direct.view",
                 "guidance_messages.inquiry_manage_self",
@@ -33281,6 +33380,8 @@
                 "graduate_tracer.view_self",
                 "guidance_followups.manage",
                 "guidance_followups.view",
+                "guidance_messages.case_coordination.manage",
+                "guidance_messages.case_coordination.view",
                 "guidance_messages.counselor_direct.manage",
                 "guidance_messages.counselor_direct.view",
                 "guidance_messages.inquiry_manage_self",
@@ -55620,6 +55721,212 @@
           }
         ],
         "summary": "Open Counseling",
+        "tags": [
+          "guidance-messages"
+        ]
+      }
+    },
+    "/api/v1/guidance-messages/case-grants/{grant_id}/context": {
+      "get": {
+        "operationId": "guidanceMessagesGetCaseCoordinationContext",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceCaseCoordinationContext"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Case Coordination Context",
+        "tags": [
+          "guidance-messages"
+        ]
+      }
+    },
+    "/api/v1/guidance-messages/case-grants/{grant_id}/thread": {
+      "post": {
+        "operationId": "guidanceMessagesOpenCaseCoordinationThread",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "grant_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Grant Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GuidanceSendRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GuidanceOpenResponse"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Open Case Coordination Thread",
         "tags": [
           "guidance-messages"
         ]

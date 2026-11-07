@@ -21,7 +21,9 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.counseling.case_communication_policy import require_case_communication_policy
 from compass.counseling.continuity_models import (
+    ContinuityCommunicationPurpose,
     ContinuityDecision,
     ContinuityReason,
     ContinuityRevocationReason,
@@ -133,6 +135,10 @@ def _digest(grant, scopes):
         "policy_digest",
         "student_placement_marker",
     )
+    if grant.communication_purpose is not None:
+        # Historical metadata-only digests stay byte-for-byte identical: without a purpose these
+        # two fields never enter the digest.
+        fields = (*fields, "communication_purpose", "communication_policy_digest")
     data = {}
     for field in fields:
         value = getattr(grant, field)
@@ -200,6 +206,20 @@ def _audit(grant, actor, verb, context):
         context = AuditContext.user(actor)
     if context.actor_type != "USER" or context.actor.pk != actor.pk:
         raise ValueError("continuity audit context must match the acting user")
+    metadata = {
+        "student_id": str(grant.student_id),
+        "receiving_counselor_id": str(grant.receiving_counselor_id),
+        "coverage_kind": grant.coverage_kind,
+        "reason_code": grant.revocation_reason or grant.reason_category,
+        "version": grant.version,
+        "starts_at": grant.starts_at.isoformat(),
+        "expires_at": grant.expires_at.isoformat(),
+        "policy_version": grant.policy_version,
+        "policy_evidence": grant.policy_evidence,
+        "scope_snapshot_digest": grant.snapshot_digest,
+    }
+    if grant.communication_purpose is not None:
+        metadata["communication_purpose"] = grant.communication_purpose
     record_event(
         context=context,
         action={
@@ -212,18 +232,7 @@ def _audit(grant, actor, verb, context):
         outcome=AuditOutcome.SUCCESS,
         target_type="counseling.counselorcasecontinuitygrant",
         target_id=grant.pk,
-        metadata={
-            "student_id": str(grant.student_id),
-            "receiving_counselor_id": str(grant.receiving_counselor_id),
-            "coverage_kind": grant.coverage_kind,
-            "reason_code": grant.revocation_reason or grant.reason_category,
-            "version": grant.version,
-            "starts_at": grant.starts_at.isoformat(),
-            "expires_at": grant.expires_at.isoformat(),
-            "policy_version": grant.policy_version,
-            "policy_evidence": grant.policy_evidence,
-            "scope_snapshot_digest": grant.snapshot_digest,
-        },
+        metadata=metadata,
     )
 
 
@@ -268,6 +277,7 @@ def _metadata(grant, scopes, users, policy, now):
         "revoked_by_id": grant.revoked_by_id,
         "revoked_at": grant.revoked_at,
         "revocation_reason": grant.revocation_reason or None,
+        "communication_purpose": grant.communication_purpose,
         "version": grant.version,
         "policy_version": grant.policy_version,
         "policy_evidence": grant.policy_evidence,
@@ -339,6 +349,7 @@ def request_coverage(
     scopes,
     request_id,
     expected_version,
+    communication_purpose=None,
     context=None,
 ):
     if expected_version != 0:
@@ -363,6 +374,14 @@ def request_coverage(
         original = users.get(original_counselor_id)
         if original is None or original.role.code != "COUNSELOR":
             raise ContinuityError("invalid_original_counselor", 422)
+    communication_policy_digest = ""
+    if communication_purpose is not None:
+        if communication_purpose not in ContinuityCommunicationPurpose.values:
+            raise ContinuityError("invalid_purpose", 422)
+        if original_counselor_id is None or original_counselor_id == receiving_counselor_id:
+            raise ContinuityError("invalid_original_counselor", 422)
+        # Fail closed while no reviewed provider is deployed.
+        communication_policy_digest = require_case_communication_policy(now).digest
     if not isinstance(request_id, UUID):
         raise ContinuityError("invalid_request_id", 422)
     grant = Grant(
@@ -379,6 +398,8 @@ def request_coverage(
         policy_evidence=policy.evidence_reference,
         policy_digest=policy.digest,
         student_placement_marker=placement_marker,
+        communication_purpose=communication_purpose,
+        communication_policy_digest=communication_policy_digest,
         request_id=request_id,
     )
     selected = []
@@ -417,6 +438,16 @@ def request_coverage(
     return _metadata(grant, selected, users, policy, now)
 
 
+def _communication_policy(grant, now):
+    """Require the reviewed communication policy and the grant's recorded digest."""
+    if grant.communication_purpose is None:
+        return None
+    policy = require_case_communication_policy(now)
+    if grant.communication_policy_digest != policy.digest:
+        raise ContinuityError("communication_policy_changed", 409)
+    return policy
+
+
 @transaction.atomic
 def decide_coverage(
     *, actor, grant_id, decision, expected_version, revocation_reason="", context=None
@@ -452,6 +483,7 @@ def decide_coverage(
     # Reducing transitions remain possible when source revision/receiver eligibility changes.
     if decision == "APPROVED":
         _snapshot(grant, selected, policy)
+        _communication_policy(grant, now)
     if expected_version != grant.version:
         raise ContinuityError("stale_version", 409)
     if grant.decision == decision and (
@@ -478,6 +510,7 @@ def decide_coverage(
         # immediately before persistence, after every source validation.
         now = timezone.now()
         policy.validate(now)
+        _communication_policy(grant, now)
         _head(actor, policy, now)
         _receiver(users.get(grant.receiving_counselor_id), now)
         _interval(grant.starts_at, grant.expires_at, policy, now)

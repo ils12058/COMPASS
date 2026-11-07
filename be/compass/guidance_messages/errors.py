@@ -12,6 +12,10 @@ class MessagesPermissionDenied(GuidanceMessagesError):
         super().__init__("You do not have permission to perform this action.")
 
 
+class CaseCoordinationEnded(MessagesPermissionDenied):
+    """The Counseling grant that authorized this case conversation is no longer live."""
+
+
 class TemplateNotFound(GuidanceMessagesError):
     def __init__(self):
         super().__init__("The requested Message template was not found.")

@@ -18,6 +18,7 @@ from compass.counseling.continuity_encounters import (
     read_selected_encounter_for_continuity,
 )
 from compass.counseling.continuity_models import (
+    ContinuityCommunicationPurpose,
     ContinuityDecision,
     ContinuityProjection,
     ContinuityReason,
@@ -69,6 +70,7 @@ class ContinuityRequestInput(ContinuitySchema):
     expires_at: datetime
     request_id: UUID
     expected_version: int = Field(ge=0, le=0)
+    communication_purpose: ContinuityCommunicationPurpose | None = None
     scopes: list[ContinuityScopeInput] = Field(min_length=1, max_length=32)
 
 
@@ -103,6 +105,7 @@ class ContinuityGrantMetadata(ContinuitySchema):
     revoked_by_id: UUID | None
     revoked_at: datetime | None
     revocation_reason: ContinuityRevocationReason | None
+    communication_purpose: ContinuityCommunicationPurpose | None
     version: int
     policy_version: str
     policy_evidence: str

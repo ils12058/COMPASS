@@ -44,6 +44,8 @@
     "guidance_messages/migrations/0003_faculty_inquiry.py",
     "guidance_messages/migrations/0004_referral_coordination.py",
     "guidance_messages/migrations/0005_counselor_direct.py",
+    "guidance_messages/migrations/0006_case_coordination.py",
+    "counseling/migrations/0006_case_communication_scope.py",
     "service_catalog/migrations/0002_booking_pathways.py",
     "service_catalog/migrations/0003_fixed_date_slots.py",
     "service_catalog/migrations/0004_serviceappointmentslot_withdrawn_at_and_more.py",

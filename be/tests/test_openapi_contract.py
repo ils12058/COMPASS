@@ -123,6 +123,8 @@ EXPECTED_OPERATION_IDS = {
     "guidanceMessagesGetReferralContext",
     "guidanceMessagesListCounselorPeers",
     "guidanceMessagesOpenCounselorDirectThread",
+    "guidanceMessagesGetCaseCoordinationContext",
+    "guidanceMessagesOpenCaseCoordinationThread",
     "guidanceMessagesGetThread",
     "guidanceMessagesListMessages",
     "guidanceMessagesSendMessage",
@@ -2137,6 +2139,8 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
             "guidance_messages.view",
             "guidance_messages.manage",
             "guidance_messages.templates.manage",
+            "guidance_messages.case_coordination.view",
+            "guidance_messages.case_coordination.manage",
             "guidance_messages.counselor_direct.view",
             "guidance_messages.counselor_direct.manage",
             "guidance_messages.intake",
@@ -3342,6 +3346,27 @@ def test_guidance_messages_contract_is_private_strict_and_persistent_idempotency
     assert set(schemas["GuidancePerson"]["properties"]) == {"id", "display_name"}
     assert "body" not in schemas["GuidanceThreadResponse"]["properties"]
     assert "read_states" not in schemas["GuidanceThreadResponse"]["properties"]
+    assert "student_subject" in schemas["GuidanceThreadResponse"]["properties"]
+    assert "relationship_case_grant_id" in schemas["GuidanceThreadResponse"]["properties"]
+    assert set(schemas["GuidanceCaseCoordinationContext"]["properties"]) == {
+        "thread",
+        "counterpart",
+        "can_start",
+        "access_ended",
+    }
+    assert schemas["GuidanceCaseCoordinationContext"]["additionalProperties"] is False
+    assert (
+        _operation(schema, "/api/v1/guidance-messages/case-grants/{grant_id}/context", "get")[
+            "operationId"
+        ]
+        == "guidanceMessagesGetCaseCoordinationContext"
+    )
+    assert (
+        _operation(schema, "/api/v1/guidance-messages/case-grants/{grant_id}/thread", "post")[
+            "operationId"
+        ]
+        == "guidanceMessagesOpenCaseCoordinationThread"
+    )
     assert set(schemas["ThreadStatus"]["enum"]) == {"OPEN", "RESOLVED"}
     for method, path, operation in iter_operations(schema):
         if not path.startswith("/api/v1/guidance-messages"):

@@ -410,12 +410,14 @@ def test_dto_exposes_only_name_pair_and_nulls_every_legacy_field(world):
             "student",
             "counselor",
             "requester",
+            "student_subject",
             "routing_college",
             "assigned_to",
             "relationship_appointment_id",
             "relationship_referral_id",
             "relationship_referral_reference",
             "relationship_referral_voided",
+            "relationship_case_grant_id",
         ):
             assert payload[name] is None, name
 

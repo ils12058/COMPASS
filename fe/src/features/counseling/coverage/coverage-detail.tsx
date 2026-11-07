@@ -8,6 +8,7 @@ import { ConsequentialActionDialog } from "@/components/ui/consequential-action-
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { useServerBoundary, boundaryDelay } from "@/features/freshness/use-server-boundary";
 import * as api from "@/lib/api/generated/counseling/counseling";
+import { GuidanceCaseCoordinationMessages, GuidanceMessagesTrigger } from "@/features/guidance-messages/guidance-contextual-messages";
 import { CoverageHeading, CoverageFacts, CoverageError, referenceClass, reasonLabels } from "./coverage-shared";
 import { useCoveragePrivacy, broadcastCoverageChange } from "./use-coverage-privacy";
 import { ProtectedRecord, HandoffWorkspace } from "./protected-record";
@@ -29,9 +30,10 @@ function CoverageDetailForAccount({ grantId }: {
     useServerBoundary({ boundary: validUntil, serverDate: grantQuery.data?.headers.date, receivedAt: grantQuery.dataUpdatedAt, onBoundary: privacy.clear });
     const remaining = grant ? boundaryDelay(validUntil, grantQuery.data?.headers.date, grantQuery.dataUpdatedAt) : null;
     const confirmed = Boolean(grant && !grantQuery.isError && config.isSuccess && !privacy.blocked && (remaining ?? 0) > 0 && ["ACTIVE", "SCHEDULED", "PENDING"].includes(grant.effective_status));
+    const caseCoordination = Boolean(grant && user.role === "COUNSELOR" && grant.communication_purpose === "CASE_COORDINATION" && grant.effective_status === "ACTIVE" && (grant.original_counselor_id === user.id || grant.receiving_counselor_id === user.id) && user.capabilities.includes("guidance_messages.view") && user.capabilities.includes("guidance_messages.case_coordination.view"));
     async function recheck() { privacy.clear(); const [g, c] = await Promise.all([grantQuery.refetch(), config.refetch()]); if (g.isSuccess && c.isSuccess)
         privacy.resume(); setSelected(null); }
-    return <article><CoverageHeading title="Coverage details"/>{!allowed ? <CoverageError error={null}/> : grantQuery.isPending ? <p role="status">Loading coverage…</p> : grantQuery.isError || !grant ? <CoverageError error={grantQuery.error} retry={() => void recheck()}/> : <>
+    const content = <article><CoverageHeading title="Coverage details" messagesTrigger={<GuidanceMessagesTrigger />}/>{!allowed ? <CoverageError error={null}/> : grantQuery.isPending ? <p role="status">Loading coverage…</p> : grantQuery.isError || !grant ? <CoverageError error={grantQuery.error} retry={() => void recheck()}/> : <>
   <Panel><PanelHeader title="Case coverage"/><CoverageFacts grant={grant}/></Panel>
   <CoverageDecisions grant={grant} canApprove={Boolean(config.data?.data.can_approve) && !config.isError && !grantQuery.isFetching} onChanged={() => { privacy.clear(); broadcastCoverageChange(grant.id); void recheck(); }}/>
   {!confirmed ? <div className="mt-5">{config.isError ? <CoverageError error={config.error} retry={() => void recheck()}/> : <Notice title="Protected content is closed" action={<Button variant="secondary" onClick={() => void recheck()}>Check access again</Button>}>Coverage may be inactive, expired or unconfirmed. Protected content has been cleared.</Notice>}</div> : null}
@@ -39,6 +41,7 @@ function CoverageDetailForAccount({ grantId }: {
   {confirmed && selected && grant.effective_status === "ACTIVE" && grant.receiving_counselor_id === user.id ? grant.scopes.filter(s => s.id === selected).map(scope => <ProtectedRecord key={`${user.id}:${grant.id}:${grant.version}:${privacy.generation}:${scope.id}`} grant={grant} scope={scope} privacy={privacy}/>) : null}
   {confirmed ? <HandoffWorkspace key={`${user.id}:${grant.id}:${grant.version}:${privacy.generation}`} grant={grant} privacy={privacy}/> : null}
  </>}</article>;
+    return caseCoordination ? <GuidanceCaseCoordinationMessages grantId={grantId} enabled>{content}</GuidanceCaseCoordinationMessages> : content;
 }
 function CoverageDecisions({ grant, canApprove, onChanged }: {
     grant: ContinuityGrantMetadata;

@@ -34,6 +34,10 @@ export type GuidanceMessagesAccess = {
   canViewDirect: boolean;
   /** Counselor: may start and reply to direct Counselor conversations. */
   canManageDirect: boolean;
+  /** Counselor: may read a case-coordination conversation on a live coverage grant they participate in. */
+  canViewCaseCoordination: boolean;
+  /** Counselor: may start and reply to case-coordination conversations on their live grants. */
+  canManageCaseCoordination: boolean;
   /** Staff with the intake designation: receive and answer Faculty inquiries. */
   canIntake: boolean;
   hasWorkspace: boolean;
@@ -76,6 +80,15 @@ export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAc
     user.capabilities.includes("guidance_messages.counselor_direct.view");
   const canManageDirect =
     canViewDirect && user.capabilities.includes("guidance_messages.counselor_direct.manage");
+  // Case coordination repeats the same broad-view dependency. Neither narrow capability is
+  // authority on its own: the server's live Counseling predicate decides whether anything exists.
+  const canViewCaseCoordination =
+    isCounselor &&
+    user.capabilities.includes("guidance_messages.view") &&
+    user.capabilities.includes("guidance_messages.case_coordination.view");
+  const canManageCaseCoordination =
+    canViewCaseCoordination &&
+    user.capabilities.includes("guidance_messages.case_coordination.manage");
   const canIntake = isStaff && user.capabilities.includes("guidance_messages.intake");
   const canManageTemplates =
     canManageStaff && user.capabilities.includes("guidance_messages.templates.manage");
@@ -96,6 +109,8 @@ export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAc
     canManageReferralStaff,
     canViewDirect,
     canManageDirect,
+    canViewCaseCoordination,
+    canManageCaseCoordination,
     canIntake,
     hasWorkspace:
       canViewSelf ||
@@ -103,6 +118,7 @@ export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAc
       canViewInquirySelf ||
       canViewReferralSelf ||
       canViewDirect ||
+      canViewCaseCoordination ||
       canIntake,
     canWrite:
       canManageSelf ||
@@ -110,9 +126,10 @@ export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAc
       canManageInquirySelf ||
       canManageReferralSelf ||
       canManageDirect ||
+      canManageCaseCoordination ||
       canIntake,
     // A referral conversation starts contextually from the Referral, not from the generic New
-    // message chooser.
+    // message chooser; case coordination is contextual to its coverage grant in the same way.
     canStart: canManageSelf || canManageStaff || canManageInquirySelf || canManageDirect,
     canUseTemplates: canManageStaff,
     canManageTemplates,
@@ -124,10 +141,12 @@ export function messageTemplatesFor(access: GuidanceMessagesAccess): { canManage
   return access.canUseTemplates ? { canManage: access.canManageTemplates } : null;
 }
 
-/** Direct threads are written only with the narrow capability; other kinds use the workspace gate. */
+/** Direct and case threads are written only with their narrow capability; other kinds use the workspace gate. */
 export function canWriteThread(
   thread: GuidanceThreadResponse,
   access: GuidanceMessagesAccess,
 ): boolean {
-  return thread.kind === "COUNSELOR_DIRECT" ? access.canManageDirect : access.canWrite;
+  if (thread.kind === "COUNSELOR_DIRECT") return access.canManageDirect;
+  if (thread.kind === "COUNSELOR_CASE_COORDINATION") return access.canManageCaseCoordination;
+  return access.canWrite;
 }

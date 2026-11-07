@@ -7,6 +7,11 @@ from django.db.models import Q
 from compass.accounts.models import StudentLifecycleStatus, User
 from compass.accounts.services import effective_capabilities
 from compass.appointments.models import AppointmentStatus
+from compass.counseling.case_communication import (
+    authorize_case_coordination,
+    visible_case_coordination_grant_ids,
+)
+from compass.counseling.continuity_policy import ContinuityError
 from compass.organization.access_scope import (
     HEAD_GUIDANCE_DESIGNATION,
     resolve_general_guidance_college_scope,
@@ -15,8 +20,8 @@ from compass.organization.models import CounselorResponsibility, StaffSupervisio
 from compass.referrals.services import accessible_referrals
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 
-from .errors import MessagesPermissionDenied, ThreadNotFound
-from .models import GuidanceThread, ReservedThreadKind, ThreadKind
+from .errors import CaseCoordinationEnded, MessagesPermissionDenied, ThreadNotFound
+from .models import GuidanceThread, ThreadKind
 
 STAFF_ROLES = {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
 RELATIONSHIP_STATUSES = {AppointmentStatus.SCHEDULED, AppointmentStatus.COMPLETED}
@@ -37,16 +42,17 @@ class _KindRule:
     referral_scoped: bool = False
     staff_capability_action_suffix: bool = False
     direct_pair_participant: bool = False
+    case_grant_participant: bool = False
 
 
 # Every kind the database can hold has an entry, so visibility, per-thread access and push routing
-# all read one table. `None` means reserved: denied for every role without consulting any resource
-# column. It replaces the old "anything not Counseling is College-scoped Office" fallthrough, which
-# would otherwise have disclosed each new kind to every staff member in its College on creation.
-# GMSG-2 gave FACULTY_INQUIRY its rule; GMSG-3 gave REFERRAL_COORDINATION its rule (staff scope is
-# the Referral's current operational scope, never the thread's College snapshot); GMSG-4 gave
-# COUNSELOR_DIRECT its pair rule; GMSG-5 turns the remaining `None` into a rule only when that kind
-# becomes creatable and its participants decided.
+# all read one table. `None` would mean reserved: denied for every role without consulting any
+# resource column. It replaces the old "anything not Counseling is College-scoped Office"
+# fallthrough, which would otherwise have disclosed each new kind to every staff member in its
+# College on creation. GMSG-2 gave FACULTY_INQUIRY its rule; GMSG-3 gave REFERRAL_COORDINATION its
+# rule (staff scope is the Referral's current operational scope, never the thread's College
+# snapshot); GMSG-4 gave COUNSELOR_DIRECT its pair rule; GMSG-5 gives COUNSELOR_CASE_COORDINATION
+# its rule: only the grant's exact Counselor pair, and only while the grant itself is live.
 _RULES: dict[str, _KindRule | None] = {
     ThreadKind.OFFICE: _KindRule(True, frozenset(STAFF_ROLES), True, False, True),
     ThreadKind.COUNSELING: _KindRule(True, frozenset({"COUNSELOR"}), False, True, False),
@@ -81,7 +87,16 @@ _RULES: dict[str, _KindRule | None] = {
         staff_capability="guidance_messages.counselor_direct",
         staff_capability_action_suffix=True,
     ),
-    ReservedThreadKind.COUNSELOR_CASE_COORDINATION: None,
+    ThreadKind.COUNSELOR_CASE_COORDINATION: _KindRule(
+        student_participant=False,
+        staff_roles=frozenset({"COUNSELOR"}),
+        college_scoped=False,
+        counselor_participant=False,
+        office_staff_recipients=False,
+        case_grant_participant=True,
+        staff_capability="guidance_messages.case_coordination",
+        staff_capability_action_suffix=True,
+    ),
 }
 
 
@@ -179,6 +194,15 @@ def authorized_threads(actor, *, manage=False):
                             Q(kind=kind, direct_first_user_id=actor.pk)
                             | Q(kind=kind, direct_second_user_id=actor.pk)
                         )
+                    elif rule.case_grant_participant:
+                        # Never the generic `kind=` branch: that would show every Counselor holding
+                        # the capability every case conversation in the institution.
+                        visible |= Q(
+                            kind=kind,
+                            relationship_case_grant_id__in=visible_case_coordination_grant_ids(
+                                actor=actor
+                            ),
+                        )
                     else:
                         visible |= Q(kind=kind)
                 continue
@@ -213,6 +237,17 @@ def require_thread(actor, thread, *, manage=False, staff_only=False):
         allowed = rule.student_participant and thread.student_id == actor.pk
     elif actor.role.code == "FACULTY":
         allowed = rule.requester_participant and thread.requester_id == actor.pk
+    elif rule.case_grant_participant:
+        # The thread's own row never decides access: the live grant does, re-evaluated here.
+        if not thread.relationship_case_grant_id:
+            raise ThreadNotFound()
+        try:
+            authorize_case_coordination(actor=actor, grant_id=thread.relationship_case_grant_id)
+        except ContinuityError as exc:
+            if exc.code == "continuity_case_access_ended":
+                raise CaseCoordinationEnded() from None
+            raise ThreadNotFound() from None
+        allowed = True
     else:
         allowed = actor.role.code in rule.staff_roles and (
             (
@@ -345,6 +380,10 @@ def recipient_ids(thread):
             candidates |= Q(pk=thread.direct_first_user_id)
         if thread.direct_second_user_id:
             candidates |= Q(pk=thread.direct_second_user_id)
+    if rule.case_grant_participant and thread.relationship_case_grant_id:
+        grant = thread.relationship_case_grant
+        candidates |= Q(pk=grant.original_counselor_id)
+        candidates |= Q(pk=grant.receiving_counselor_id)
     if rule.office_staff_recipients:
         candidates |= office_staff_candidates(thread)
     if rule.endpoint_staff_recipients:

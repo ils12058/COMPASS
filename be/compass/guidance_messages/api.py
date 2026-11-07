@@ -17,6 +17,7 @@ from compass.operational_students import InvalidOperationalStudentQuery
 
 from . import content, services, templates
 from .errors import (
+    CaseCoordinationEnded,
     GuidanceMessageContentUnavailable,
     GuidanceMessagesError,
     InvalidMessageInput,
@@ -56,12 +57,14 @@ class GuidanceThreadResponse(StrictSchema):
     requester: GuidancePerson | None
     direct_first_user: GuidancePerson | None
     direct_second_user: GuidancePerson | None
+    student_subject: GuidancePerson | None
     routing_college: GuidanceCollege | None
     assigned_to: GuidancePerson | None
     relationship_appointment_id: UUID | None
     relationship_referral_id: UUID | None
     relationship_referral_reference: str | None
     relationship_referral_voided: bool | None
+    relationship_case_grant_id: UUID | None
     created_at: datetime
     last_message_at: datetime | None
     last_sequence: int
@@ -141,6 +144,16 @@ class GuidanceReferralContext(StrictSchema):
 
     thread: GuidanceThreadResponse | None
     can_start: bool
+
+
+class GuidanceCaseCoordinationContext(StrictSchema):
+    """Structural only: never a Message body. The Student subject appears only inside `thread`,
+    which the live Counseling predicate authorized; `access_ended` is shown only to the pair."""
+
+    thread: GuidanceThreadResponse | None
+    counterpart: GuidancePerson | None
+    can_start: bool
+    access_ended: bool
 
 
 class GuidanceHandlerRole(StrEnum):
@@ -224,6 +237,8 @@ def _safe(function):
                 status, code = 404, "guidance_thread_not_found"
             elif isinstance(exc, TemplateNotFound):
                 status, code = 404, "guidance_message_template_not_found"
+            elif isinstance(exc, CaseCoordinationEnded):
+                status, code = 403, "guidance_messages_case_coordination_ended"
             elif isinstance(exc, MessagesPermissionDenied):
                 status, code = 403, "permission_denied"
             elif isinstance(exc, TemplateNameTaken):
@@ -262,6 +277,12 @@ def _thread(thread, actor):
         requester=_person(thread.requester),
         direct_first_user=_person(thread.direct_first_user),
         direct_second_user=_person(thread.direct_second_user),
+        # The case Student is a subject, not a participant; only a live grant's thread reaches here.
+        student_subject=(
+            _person(thread.student_subject)
+            if thread.kind == ThreadKind.COUNSELOR_CASE_COORDINATION
+            else None
+        ),
         routing_college=(
             GuidanceCollege(
                 id=thread.routing_college_id,
@@ -276,6 +297,7 @@ def _thread(thread, actor):
         relationship_referral_id=thread.relationship_referral_id,
         relationship_referral_reference=referral.reference_code if referral else None,
         relationship_referral_voided=(referral.voided_at is not None) if referral else None,
+        relationship_case_grant_id=thread.relationship_case_grant_id,
         created_at=thread.created_at,
         last_message_at=thread.last_message_at,
         last_sequence=thread.last_sequence,
@@ -616,6 +638,44 @@ def appointment_context(request, response: HttpResponse, appointment_id: UUID):
     return GuidanceAppointmentContext(
         thread=_thread(thread, request.auth_user) if thread is not None else None,
         can_start=can_start,
+    )
+
+
+@router.get(
+    "/case-grants/{grant_id}/context",
+    response=response_with_errors(GuidanceCaseCoordinationContext, *ERRORS),
+    operation_id="guidanceMessagesGetCaseCoordinationContext",
+)
+@_safe
+def case_coordination_context(request, response: HttpResponse, grant_id: UUID):
+    thread, can_start, access_ended, counterpart = services.case_coordination_context(
+        actor=request.auth_user, grant_id=grant_id
+    )
+    return GuidanceCaseCoordinationContext(
+        thread=_thread(thread, request.auth_user) if thread is not None else None,
+        counterpart=_person(counterpart),
+        can_start=can_start,
+        access_ended=access_ended,
+    )
+
+
+@router.post(
+    "/case-grants/{grant_id}/thread",
+    response=response_with_errors(GuidanceOpenResponse, *ERRORS),
+    operation_id="guidanceMessagesOpenCaseCoordinationThread",
+)
+@_safe
+def open_case_coordination_thread(
+    request, response: HttpResponse, grant_id: UUID, payload: GuidanceSendRequest
+):
+    return _open(
+        services.open_case_coordination_thread(
+            actor=request.auth_user,
+            grant_id=grant_id,
+            **payload.model_dump(),
+            context=AuditContext.from_request(request, actor=request.auth_user),
+        ),
+        request.auth_user,
     )
 
 

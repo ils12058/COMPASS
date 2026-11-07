@@ -1,3 +1,7 @@
+import {
+  CASE_COORDINATION_ENDED_COPY,
+  CASE_COORDINATION_UNAVAILABLE_COPY,
+} from "@/features/guidance-messages/guidance-messages-presentation";
 import { CompassApiError, readApiErrorCode } from "@/lib/api/errors";
 import { AccountChangedError } from "@/lib/query/account-ownership";
 
@@ -11,7 +15,8 @@ export type GuidanceSendContext =
   | "staff-office"
   | "counselor-direct"
   | "faculty-inquiry"
-  | "referral-coordination";
+  | "referral-coordination"
+  | "case-coordination";
 
 function status(error: unknown): number | null {
   return error instanceof CompassApiError ? error.status : null;
@@ -28,12 +33,22 @@ export function describeSendError(error: unknown, context: GuidanceSendContext):
   }
   if (code >= 500) return "COMPASS could not confirm your message.";
   if (code === 401) return "Your session needs to be checked again. Your message was not sent and is still here.";
-  if (code === 403) return "Your account can no longer send this message. It was not sent.";
+  if (code === 403) {
+    if (
+      context === "case-coordination" &&
+      error instanceof CompassApiError &&
+      readApiErrorCode(error.body) === "guidance_messages_case_coordination_ended"
+    ) {
+      return CASE_COORDINATION_ENDED_COPY;
+    }
+    return "Your account can no longer send this message. It was not sent.";
+  }
   if (code === 422) {
     return "Your message was not sent. It must contain text and be no longer than 4,000 characters.";
   }
   if (code === 429) return "Too many messages were sent in a short time. Wait a moment, then send it again.";
   if (code === 404) {
+    if (context === "case-coordination") return CASE_COORDINATION_UNAVAILABLE_COPY;
     if (context === "student-counseling") {
       return "This Counseling relationship can no longer receive messages. Your message was not sent; choose another recipient.";
     }

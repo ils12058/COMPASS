@@ -28,6 +28,9 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.counseling.case_communication import authorize_case_coordination
+from compass.counseling.continuity_models import CounselorCaseContinuityGrant
+from compass.counseling.continuity_policy import ContinuityError
 from compass.operational_students import list_scoped_operational_students
 from compass.organization.access_scope import (
     resolve_general_guidance_college_scope,
@@ -43,6 +46,7 @@ from compass.student_academics.reads import get_current_placement
 
 from . import content, policy
 from .errors import (
+    CaseCoordinationEnded,
     InvalidMessageInput,
     MessagesConflict,
     MessagesPermissionDenied,
@@ -62,6 +66,7 @@ MAX_PAGE_SIZE = 50
 MAX_OPEN_FACULTY_INQUIRIES = 5
 COUNSELOR_DIRECT_VIEW = "guidance_messages.counselor_direct.view"
 COUNSELOR_DIRECT_MANAGE = "guidance_messages.counselor_direct.manage"
+CASE_COORDINATION_MANAGE = "guidance_messages.case_coordination.manage"
 MAX_PEER_SEARCH_LENGTH = 160
 
 
@@ -124,6 +129,7 @@ def _directory(query, actor):
         "relationship_referral",
         "direct_first_user",
         "direct_second_user",
+        "student_subject",
     ).annotate(own_unread_count=Coalesce(Subquery(unread), Value(0)))
 
 
@@ -248,6 +254,30 @@ def _send_locked(*, actor, thread, client_message_id, body, context):
     return message
 
 
+def _case_peer(grant, actor):
+    """The other Counselor of the exact pair, or None when there is no authorized pair."""
+    if grant is None:
+        return None
+    peer_id = (
+        grant.receiving_counselor_id
+        if actor.pk == grant.original_counselor_id
+        else grant.original_counselor_id
+    )
+    if peer_id is None:
+        return None
+    return User.objects.select_related("role").filter(pk=peer_id).first()
+
+
+def _authorized_case_grant(*, actor, grant_id, lock=False):
+    """Translate the single predicate's non-disclosing refusals into messaging errors."""
+    try:
+        return authorize_case_coordination(actor=actor, grant_id=grant_id, lock=lock)
+    except ContinuityError as exc:
+        if exc.code == "continuity_case_access_ended":
+            raise CaseCoordinationEnded() from None
+        raise ThreadNotFound() from None
+
+
 @transaction.atomic
 def send_message(*, actor, thread_id, client_message_id, body, context=None):
     # NO KEY UPDATE serializes the sender without blocking peer foreign-key checks
@@ -255,6 +285,15 @@ def send_message(*, actor, thread_id, client_message_id, body, context=None):
     # reuse of a client ID across
     # different threads. Database uniqueness remains the final independent guard.
     actor = policy.current_actor(actor, lock=True)
+    # Grant -> thread: read the immutable case link without a lock, then take the grant lock
+    # before the thread lock so revocation and a send serialize on the grant row.
+    case_grant_id = (
+        GuidanceThread.objects.filter(pk=thread_id)
+        .values_list("relationship_case_grant_id", flat=True)
+        .first()
+    )
+    if case_grant_id is not None:
+        _authorized_case_grant(actor=actor, grant_id=case_grant_id, lock=True)
     thread = _lock_thread(actor, thread_id)
     return _send_locked(
         actor=actor, thread=thread, client_message_id=client_message_id, body=body, context=context
@@ -443,6 +482,50 @@ def appointment_context(*, actor, appointment_id):
     ):
         raise ThreadNotFound()
     return None, True
+
+
+def case_coordination_context(*, actor, grant_id):
+    """Resolve one grant's case conversation for a contextual surface (ADR-103).
+
+    The live Counseling predicate decides everything: participants, purpose, policy digests,
+    window, revocation and current source state. A live grant returns its thread (or `can_start`);
+    an ended grant returns `access_ended` only to the exact pair, and every other refusal is
+    concealed as a missing thread. The Student is never returned here.
+    Returns `(thread, can_start, access_ended, counterpart)`.
+    """
+    actor = policy.current_actor(actor)
+    try:
+        policy.require_actor(actor, kind=ThreadKind.COUNSELOR_CASE_COORDINATION, staff_only=True)
+    except MessagesPermissionDenied:
+        raise ThreadNotFound() from None
+    try:
+        grant = authorize_case_coordination(actor=actor, grant_id=grant_id)
+    except ContinuityError as exc:
+        if exc.code != "continuity_case_access_ended":
+            raise ThreadNotFound() from None
+        # The pair may learn that its own coordination ended; nobody else may learn it existed.
+        pair_grant = (
+            CounselorCaseContinuityGrant.objects.filter(pk=grant_id)
+            .filter(Q(original_counselor_id=actor.pk) | Q(receiving_counselor_id=actor.pk))
+            .first()
+        )
+        return None, False, True, _case_peer(pair_grant, actor)
+    thread = (
+        GuidanceThread.objects.filter(
+            kind=ThreadKind.COUNSELOR_CASE_COORDINATION,
+            relationship_case_grant_id=grant.pk,
+            student_subject_id=grant.student_id,
+        )
+        .values_list("pk", flat=True)
+        .first()
+    )
+    can_start = thread is None and actor.has_capability(CASE_COORDINATION_MANAGE)
+    return (
+        get_thread(actor=actor, thread_id=thread) if thread is not None else None,
+        can_start,
+        False,
+        _case_peer(grant, actor),
+    )
 
 
 def referral_context(*, actor, referral_id):
@@ -671,6 +754,85 @@ def open_counselor_direct_thread(*, actor, peer_id, client_message_id, body, con
     return thread, message
 
 
+@catalog_dependent_write
+@transaction.atomic
+def open_case_coordination_thread(*, actor, grant_id, client_message_id, body, context=None):
+    """Open (or continue) the one conversation on a live case-coordination grant.
+
+    Lock order is grant -> thread, the same order `send_message` uses, so a revocation and a send
+    serialize on the grant row. The predicate is the only participant/window/policy authority.
+    """
+    actor = policy.current_actor(actor, lock=True)
+    try:
+        policy.require_actor(
+            actor, manage=True, kind=ThreadKind.COUNSELOR_CASE_COORDINATION, staff_only=True
+        )
+    except MessagesPermissionDenied:
+        raise ThreadNotFound() from None
+    _client_id(client_message_id)
+    grant = _authorized_case_grant(actor=actor, grant_id=grant_id, lock=True)
+    prior = (
+        GuidanceMessage.objects.filter(sender=actor, client_message_id=client_message_id)
+        .select_related("thread")
+        .first()
+    )
+    if prior is not None:
+        if (
+            prior.thread.kind != ThreadKind.COUNSELOR_CASE_COORDINATION
+            or prior.thread.relationship_case_grant_id != grant.pk
+        ):
+            raise MessagesConflict("client_message_id has already been used for another thread.")
+        policy.require_thread(actor, prior.thread, manage=True)
+        return prior.thread, prior
+    thread = (
+        GuidanceThread.objects.select_for_update(of=("self",))
+        .filter(
+            kind=ThreadKind.COUNSELOR_CASE_COORDINATION,
+            relationship_case_grant_id=grant.pk,
+            student_subject_id=grant.student_id,
+        )
+        .first()
+    )
+    created = thread is None
+    if created:
+        try:
+            with transaction.atomic():
+                thread = GuidanceThread.objects.create(
+                    kind=ThreadKind.COUNSELOR_CASE_COORDINATION,
+                    relationship_case_grant=grant,
+                    student_subject_id=grant.student_id,
+                    created_by=actor,
+                )
+        except IntegrityError:
+            # The partial unique index on (grant, Student subject) is the creation guard: a
+            # concurrent open committed first, so reuse that thread.
+            thread = (
+                GuidanceThread.objects.select_for_update(of=("self",))
+                .filter(
+                    kind=ThreadKind.COUNSELOR_CASE_COORDINATION,
+                    relationship_case_grant_id=grant.pk,
+                    student_subject_id=grant.student_id,
+                )
+                .first()
+            )
+            if thread is None:
+                raise
+            created = False
+    policy.require_thread(actor, thread, manage=True)
+    if created:
+        _audit(
+            actor,
+            GUIDANCE_MESSAGES_THREAD_CREATED,
+            thread,
+            context=context,
+            relationship_case_grant_id=str(grant.pk),
+        )
+    message = _send_locked(
+        actor=actor, thread=thread, client_message_id=client_message_id, body=body, context=context
+    )
+    return thread, message
+
+
 @transaction.atomic
 def mark_read(*, actor, thread_id, sequence):
     actor = policy.current_actor(actor)
@@ -703,6 +865,11 @@ def set_status(*, actor, thread_id, resolved, context=None):
     elif snapshot.kind == ThreadKind.COUNSELOR_DIRECT:
         policy.require_thread(actor, snapshot, manage=True)
         raise MessagesConflict("Counselor direct conversations stay open.")
+    elif snapshot.kind == ThreadKind.COUNSELOR_CASE_COORDINATION:
+        # Resolve/reopen is messaging-only: it never writes back to the Counseling grant, and the
+        # live predicate refuses both once coordination has ended.
+        policy.require_thread(actor, snapshot, manage=True)
+        thread = _lock_thread(actor, thread_id)
     else:
         policy.require_thread(actor, snapshot, manage=True, staff_only=True)
         User.objects.select_for_update(of=("self",), no_key=True).get(pk=snapshot.student_id)

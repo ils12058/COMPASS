@@ -126,7 +126,10 @@ originating Counselor keeps them; (c) time-boxed read tail.
 **Rationale:** (b)/(c) require a rule engine over "who was authorized for what when", which does not
 exist (`continuity_services.py:230-248` is grant-local); a default that reads nothing is the only
 implementable fail-closed position today.
-**Status:** `Open — institutional approval required`. **Owner:** GCO/DPO. **Impact:** GMSG-5.
+**Status:** `Provisional — engineering default, not GCO/DPO/UCN-approved`. **Implemented in
+GMSG-5:** `authorize_case_coordination` denies new sends, confidential history reads and
+resolve/reopen for both participants after `REVOKED` or `expires_at`; the institutional question
+(how long, who may still read) remains open. **Owner:** GCO/DPO. **Impact:** GMSG-5.
 
 ### D-GMSG-08 — Grant source scope / communication purpose — **the blocking one**
 **Context:** the audit searched for any communication authority in the continuity contract:
@@ -141,10 +144,13 @@ no authority (never).
 shipped contract disclaims exactly that. (c) is prohibited by ground rules and by proposal line 8896.
 **Rationale:** reusing a source-read grant as a write-side communication right would let an
 `ENCOUNTER`-scope coverage grant open an unbounded confidential channel.
-**Status:** `Open — institutional approval required` **and** a code prerequisite: GMSG-5 is blocked
-until (i) a communication scope exists on the grant and (ii) a single
-"is this pair authorized for this Student now" service exists (see D-GMSG-29 / risks).
-**Owner:** GCO (+ Engineering to build the scope). **Impact:** gates GMSG-5 entirely.
+**Status:** `Open — institutional approval required` **and** a code prerequisite. **GMSG-5
+implements the code prerequisite only:** `communication_purpose` / `communication_policy_digest`
+with the `counseling_grant_communication_scope` CHECK (`counseling/0006`), and one predicate
+service, `authorize_case_coordination` (`case_communication.py:96`). Institutional approval remains
+**Open — GCO/DPO**; the production provider returns `None`, so no grant can carry a purpose and no
+case conversation can exist. Do not record this as approved or resolved.
+**Owner:** GCO (+ Engineering). **Impact:** gates GMSG-5 activation.
 
 ### D-GMSG-09 — Faculty Referral closure and void
 **Context:** Faculty-visible state is derived and void-aware
@@ -378,7 +384,10 @@ explicit per-kind matrix with **deny for any unlisted kind**, land it in GMSG-1 
 exist (so the legacy behavior is provably unchanged), and require GMSG-5 to consume one CONT predicate
 service rather than writing an eighth copy.
 **Status:** `Provisional — engineering default`. **Owner:** Engineering. **Impact:** GMSG-1 (blocker for
-everything after it).
+everything after it). **GMSG-5 implementation:** the single Counseling predicate is
+`authorize_case_coordination` (`case_communication.py:96-106`), with
+`visible_case_coordination_grant_ids` for directory visibility; the Guidance Messages policy,
+services, recipients and contextual resolver consume it instead of adding an eighth copy.
 
 ### D-GMSG-30 — Records governance owner
 **Provisional recommendation:** name DPO + records governance as the owner of retention/disposition and

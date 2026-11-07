@@ -4,17 +4,19 @@ from __future__ import annotations
 
 import copy
 import uuid
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 from django.db import IntegrityError, connection, connections, transaction
 from django.db.migrations.executor import MigrationExecutor
+from django.utils import timezone
 
 BASE = ("guidance_messages", "0001_canonical_baseline")
 TARGET_0002 = ("guidance_messages", "0002_kinds_and_participants")
 TARGET = ("guidance_messages", "0003_faculty_inquiry")
 TARGET_0004 = ("guidance_messages", "0004_referral_coordination")
 TARGET_0005 = ("guidance_messages", "0005_counselor_direct")
+TARGET_0006 = ("guidance_messages", "0006_case_coordination")
 THREAD_TABLE = "guidance_messages_guidancethread"
 INQUIRY_INDEX = "gm_inquiry_requester_idx"
 KIND_CODES = (
@@ -555,3 +557,124 @@ def test_0005_activates_counselor_direct_without_schema_change(baseline_database
     )
     assert kept.kind == "COUNSELOR_DIRECT"
     assert (kept.direct_first_user_id, kept.direct_second_user_id) == (first_id, second_id)
+
+
+@pytest.mark.django_db(transaction=True)
+def test_0006_activates_case_coordination_choices_and_shape(baseline_database):
+    db, apps = baseline_database
+    legacy_thread_pk, legacy_message_pk = seed_legacy_rows(db, apps)
+    MigrationExecutor(db).migrate([TARGET_0005])
+    before = snapshot(db, state_at(db, TARGET_0005), legacy_thread_pk, legacy_message_pk)
+    assert "0006_case_coordination" not in applied_guidance_messages(db)
+
+    MigrationExecutor(db).migrate([TARGET_0006])
+    state = state_at(db, TARGET_0006)
+    assert "0006_case_coordination" in applied_guidance_messages(db)
+    thread_model = state.get_model("guidance_messages", "GuidanceThread")
+    choices = dict(thread_model._meta.get_field("kind").choices)
+    assert set(choices) == set(KIND_CODES)
+    assert choices["COUNSELOR_CASE_COORDINATION"] == "Counselor case coordination"
+    assert snapshot(db, state, legacy_thread_pk, legacy_message_pk) == before
+    assert "gm_case_grant_subject_unique" in constraint_names(db)
+    case_branch = family_shape_branches(db)["COUNSELOR_CASE_COORDINATION"]
+    assert "(relationship_case_grant_id IS NOT NULL)" in case_branch
+    assert "(student_subject_id IS NOT NULL)" in case_branch
+    assert "(student_id IS NULL)" in case_branch
+    assert "(routing_college_id IS NULL)" in case_branch
+    assert "(assigned_to_id IS NULL)" in case_branch
+
+    student_pk = (
+        state.get_model("accounts", "User")
+        .objects.using(db.alias)
+        .get(email="gm-migration@example.invalid")
+        .pk
+    )
+    first_counselor_pk, second_counselor_pk = seed_direct_counselors(db, state)
+    now = timezone.now()
+    grant_model = state.get_model("counseling", "CounselorCaseContinuityGrant")
+    grant = grant_model.objects.using(db.alias).create(
+        student_id=student_pk,
+        original_counselor_id=first_counselor_pk,
+        receiving_counselor_id=second_counselor_pk,
+        coverage_kind="PLANNED_HANDOFF",
+        reason_category="PLANNED_ABSENCE",
+        requested_by_id=first_counselor_pk,
+        requested_at=now,
+        starts_at=now,
+        expires_at=now + timedelta(hours=1),
+        decision="REQUESTED",
+        policy_version="synthetic-v1",
+        policy_evidence="TEST-ONLY-MIGRATION",
+        policy_digest="a" * 64,
+        student_placement_marker="SYNTHETIC-MARKER",
+        snapshot_digest="b" * 64,
+        request_id=uuid.uuid4(),
+    )
+    assert grant.communication_purpose is None
+    assert grant.communication_policy_digest == ""
+
+    threads = thread_model.objects.using(db.alias)
+    case_thread = threads.create(
+        kind="COUNSELOR_CASE_COORDINATION",
+        relationship_case_grant_id=grant.pk,
+        student_subject_id=student_pk,
+        created_by_id=first_counselor_pk,
+        last_sequence=1,
+    )
+    stored = threads.get(pk=case_thread.pk)
+    assert stored.kind == "COUNSELOR_CASE_COORDINATION"
+    assert stored.relationship_case_grant_id == grant.pk
+    assert stored.student_subject_id == student_pk
+    assert stored.created_by_id == first_counselor_pk
+    for name in (
+        "student_id",
+        "counselor_id",
+        "requester_id",
+        "direct_first_user_id",
+        "direct_second_user_id",
+        "relationship_referral_id",
+        "relationship_appointment_id",
+        "routing_college_id",
+        "assigned_to_id",
+    ):
+        assert getattr(stored, name) is None, name
+
+    with pytest.raises(IntegrityError), transaction.atomic(using=db.alias):
+        threads.create(
+            kind="COUNSELOR_CASE_COORDINATION",
+            relationship_case_grant_id=grant.pk,
+            created_by_id=first_counselor_pk,
+        )
+    with pytest.raises(IntegrityError), transaction.atomic(using=db.alias):
+        threads.create(
+            kind="COUNSELOR_CASE_COORDINATION",
+            relationship_case_grant_id=grant.pk,
+            student_subject_id=student_pk,
+            student_id=student_pk,
+            created_by_id=first_counselor_pk,
+        )
+    with pytest.raises(IntegrityError), transaction.atomic(using=db.alias):
+        threads.create(
+            kind="COUNSELOR_CASE_COORDINATION",
+            relationship_case_grant_id=grant.pk,
+            student_subject_id=student_pk,
+            created_by_id=second_counselor_pk,
+        )
+
+    MigrationExecutor(db).migrate([TARGET_0005])
+    assert "0006_case_coordination" not in applied_guidance_messages(db)
+    reversed_state = state_at(db, TARGET_0005)
+    reversed_model = reversed_state.get_model("guidance_messages", "GuidanceThread")
+    assert "COUNSELOR_CASE_COORDINATION" not in dict(reversed_model._meta.get_field("kind").choices)
+    kept = reversed_model.objects.using(db.alias).get(pk=case_thread.pk)
+    assert kept.kind == "COUNSELOR_CASE_COORDINATION"
+    assert kept.relationship_case_grant_id == grant.pk
+    assert kept.student_subject_id == student_pk
+
+    MigrationExecutor(db).migrate([TARGET_0006])
+    reapplied_model = state_at(db, TARGET_0006).get_model("guidance_messages", "GuidanceThread")
+    reapplied = reapplied_model.objects.using(db.alias).get(pk=case_thread.pk)
+    assert reapplied.kind == "COUNSELOR_CASE_COORDINATION"
+    assert reapplied.relationship_case_grant_id == grant.pk
+    assert reapplied.student_subject_id == student_pk
+    assert snapshot(db, state_at(db, TARGET_0006), legacy_thread_pk, legacy_message_pk) == before

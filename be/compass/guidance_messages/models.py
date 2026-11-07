@@ -14,22 +14,10 @@ class ThreadKind(models.TextChoices):
     FACULTY_INQUIRY = "FACULTY_INQUIRY", "Faculty inquiry"
     REFERRAL_COORDINATION = "REFERRAL_COORDINATION", "Referral coordination"
     COUNSELOR_DIRECT = "COUNSELOR_DIRECT", "Counselor direct"
-
-
-class ReservedThreadKind(models.TextChoices):
-    """Kind codes whose families GMSG-5 will add; only case coordination remains reserved.
-
-    COUNSELOR_CASE_COORDINATION is admitted by the generalized database CHECK, denied for every
-    actor by `policy._RULES`, and has no service function and no endpoint. Since 0003 made
-    `student` nullable it is no longer blocked by a NOT NULL column, so uncreatability here is a
-    policy guarantee only: a direct ORM insert with a satisfiable CHECK branch would store the
-    row. The generalized CHECK remains the database-level shape guarantee.
-    """
-
     COUNSELOR_CASE_COORDINATION = "COUNSELOR_CASE_COORDINATION", "Counselor case coordination"
 
 
-ALL_THREAD_KINDS = frozenset(ThreadKind.values) | frozenset(ReservedThreadKind.values)
+ALL_THREAD_KINDS = frozenset(ThreadKind.values)
 
 # GMSG-0 §6.1 family allowlists: per kind, the columns a row must set and the columns it must leave
 # null. A column in neither list is deliberately unconstrained, except for FACULTY_INQUIRY, whose
@@ -188,7 +176,8 @@ class GuidanceThread(models.Model):
     )
     resolved_at = models.DateTimeField(null=True, blank=True)
     # Reserved-family participants and sources. Legacy kinds must leave all six null, enforced by
-    # `_FAMILY_SHAPE`; no service path sets them yet, and no existing field or constraint moved.
+    # `_FAMILY_SHAPE`; only the families that own them set them, and no existing field or constraint
+    # moved.
     requester = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
