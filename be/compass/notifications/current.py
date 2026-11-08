@@ -6,6 +6,10 @@ def notification_is_current(notification, *, now=None):
         from compass.graduate_tracer.reminders import reminder_notification_is_current
 
         return reminder_notification_is_current(notification, now=now)
+    if notification.source_type == "faculty_referral_administration":
+        from compass.referrals.notification_contract import faculty_notice_is_current
+
+        return faculty_notice_is_current(notification, now=now)
     if notification.source_type == "appointment_reminder":
         from compass.appointments.reminders import reminder_notification_is_current
 

@@ -1,4 +1,4 @@
-"""FAC-4 canonical transitions, independent evidence, privacy and inactive notices."""
+"""FAC-4 canonical transitions, independent evidence, privacy and Faculty notices."""
 
 import json
 from dataclasses import replace
@@ -195,7 +195,7 @@ def test_missing_acknowledgment_or_closure_provider_denies_transition(world, mon
     monkeypatch.setattr(policy, "get_approved_closure_policy", lambda: None)
     with pytest.raises(policy.AdministrativeReferralError):
         transition(world, pk, close=True)
-    assert prepare_candidate_intent(referral_id=pk, event="RECEIVED_BY_GCO") is None
+    assert prepare_candidate_intent(referral_id=pk, event="RECEIVED_BY_GCO") is not None
 
 
 def test_defined_conflicts_prior_receipt_and_explicit_review(world):
@@ -295,14 +295,14 @@ def test_database_fences_unacknowledged_start_and_immutable_history(world):
         )
 
 
-def test_inactive_notice_intent_current_recipient_stale_events_and_no_delivery(world, monkeypatch):
+def test_notice_intent_current_recipient_and_stale_events(world, monkeypatch):
     from compass.notifications.models import Notification
 
     pk = submit(world)[0]["id"]
     start = Notification.objects.count()
     transition(world, pk)
-    assert Notification.objects.count() == start
-    assert prepare_candidate_intent(referral_id=pk, event="RECEIVED_BY_GCO") is None
+    assert Notification.objects.count() == start + 1
+    assert prepare_candidate_intent(referral_id=pk, event="RECEIVED_BY_GCO") is not None
     approved = seal_admin(world, "FACULTY_NOTICES")
     monkeypatch.setattr(policy, "get_approved_faculty_notice_policy", lambda: approved)
     a = prepare_candidate_intent(referral_id=pk, event="RECEIVED_BY_GCO")
@@ -319,7 +319,7 @@ def test_inactive_notice_intent_current_recipient_stale_events_and_no_delivery(w
     world.faculty.is_active = False
     world.faculty.save(update_fields=["is_active"])
     assert prepare_candidate_intent(referral_id=pk, event="ADMINISTRATIVELY_CLOSED") is None
-    assert Notification.objects.count() == start
+    assert Notification.objects.count() == start + 2
 
 
 def test_api_uses_actual_session_strict_payload_and_role_guards(world):

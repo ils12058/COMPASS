@@ -13,6 +13,8 @@ class PushDecision(StrEnum):
 
 PUSH_POLICY: dict[NotificationEvent, tuple[PushDecision, str]] = {
     NotificationEvent.GRADUATE_TRACER_REMINDER: (PushDecision.IN_APP_ONLY, ""),
+    NotificationEvent.FACULTY_REFERRAL_RECEIVED: (PushDecision.IN_APP_ONLY, ""),
+    NotificationEvent.FACULTY_REFERRAL_ADMINISTRATIVELY_CLOSED: (PushDecision.IN_APP_ONLY, ""),
     **{
         event: (PushDecision.PUSH, "You have a Guidance follow-up update.")
         for event in (

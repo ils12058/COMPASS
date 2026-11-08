@@ -280,10 +280,10 @@ def test_canonical_faculty_referral_journey_is_available_by_default(world):
     assert acknowledgment_event.metadata["contract_evidence_reference"] == (
         provisional.PROVISIONAL_CONTRACT_EVIDENCE_REFERENCE
     )
-    assert prepare_candidate_intent(referral_id=row.pk, event="RECEIVED_BY_GCO") is None
+    assert prepare_candidate_intent(referral_id=row.pk, event="RECEIVED_BY_GCO") is not None
     assert_faculty_projection(faculty, row.pk, "RECEIVED_BY_GCO")
-    assert Notification.objects.count() == start_notifications == 0
-    assert EmailDelivery.objects.count() == start_deliveries == 0
+    assert Notification.objects.count() == start_notifications + 1 == 1
+    assert EmailDelivery.objects.count() == start_deliveries + 1 == 1
 
     first = linked_followup(world, row.pk, "fup3a-completed-after-closure")
     second = linked_followup(world, row.pk, "fup3a-open-after-void")
@@ -293,15 +293,17 @@ def test_canonical_faculty_referral_journey_is_available_by_default(world):
     staff_list = followup_services.list_followups(actor=world.staff)
     assert {item.pk for item in staff_list.items} == {first.pk, second.pk}
     assert GuidanceFollowUp.objects.count() == 2
-    # Only the existing Follow-Up assignment notifications exist: no Referral/FAC-D8 notice.
-    assignment_notifications = list(Notification.objects.all())
+    # Follow-Up assignment notices remain scoped to their staff assignee.
+    assignment_notifications = list(
+        Notification.objects.filter(source_type="guidance_followup_event")
+    )
     assert len(assignment_notifications) == 2
     for notification in assignment_notifications:
         assert notification.recipient_id == world.staff.pk
         assert notification.recipient_id != world.faculty.pk
         assert notification.target_type == "GUIDANCE_FOLLOW_UP"
         assert notification.source_type == "guidance_followup_event"
-    assert not EmailDelivery.objects.exists()
+    assert EmailDelivery.objects.count() == start_deliveries + 3
     notifications_before_closure = Notification.objects.count()
     assert_faculty_projection(faculty, row.pk, "RECEIVED_BY_GCO")
 
@@ -313,7 +315,7 @@ def test_canonical_faculty_referral_journey_is_available_by_default(world):
     assert closure_event.metadata["decision"] == provisional.PROVISIONAL_DECISION
     assert GuidanceFollowUp.objects.get(pk=first.pk).status == "PENDING"
     assert GuidanceFollowUp.objects.get(pk=second.pk).status == "PENDING"
-    assert prepare_candidate_intent(referral_id=row.pk, event="ADMINISTRATIVELY_CLOSED") is None
+    assert prepare_candidate_intent(referral_id=row.pk, event="ADMINISTRATIVELY_CLOSED") is not None
     assert_faculty_projection(faculty, row.pk, "ADMINISTRATIVELY_CLOSED")
 
     before_completion = referral_snapshot(row)
@@ -393,10 +395,10 @@ def test_canonical_faculty_referral_journey_is_available_by_default(world):
     assert faculty.get(f"/api/v1/faculty/referrals/{row.pk}").status_code == 404
     assert faculty.get("/api/v1/faculty/referrals").json()["items"] == []
     assert not ReferralAction.objects.exists()
-    assert Notification.objects.count() == notifications_before_closure
-    assert not Notification.objects.filter(target_type="REFERRAL").exists()
-    assert not Notification.objects.filter(source_type__startswith="referral").exists()
-    assert EmailDelivery.objects.count() == start_deliveries == 0
+    assert Notification.objects.count() == notifications_before_closure + 1
+    assert Notification.objects.filter(target_type="FACULTY_REFERRAL").count() == 2
+    assert Notification.objects.filter(source_type="faculty_referral_administration").count() == 2
+    assert EmailDelivery.objects.count() == start_deliveries + 4
 
 
 def test_provisional_evidence_is_fixed_idempotent_and_truthful(world):
@@ -407,6 +409,7 @@ def test_provisional_evidence_is_fixed_idempotent_and_truthful(world):
         provisional.ACKNOWLEDGMENT: provisional.provisional_acknowledgment_policy(now),
         provisional.CLOSURE: provisional.provisional_closure_policy(now),
         provisional.FACULTY_TRACKING: provisional.provisional_tracking_disclosure_policy(now),
+        provisional.FACULTY_NOTICES: provisional.provisional_faculty_notice_policy(now),
     }
     for _ in range(2):
         provisional.provisional_lookup_policy(now)
@@ -414,6 +417,7 @@ def test_provisional_evidence_is_fixed_idempotent_and_truthful(world):
         provisional.provisional_acknowledgment_policy(now)
         provisional.provisional_closure_policy(now)
         provisional.provisional_tracking_disclosure_policy(now)
+        provisional.provisional_faculty_notice_policy(now)
 
     providers[provisional.STUDENT_CONFIRMATION].validate(now)
     providers[provisional.DIGITAL_SUBMISSION].validate(now)
@@ -421,11 +425,12 @@ def test_provisional_evidence_is_fixed_idempotent_and_truthful(world):
         provisional.ACKNOWLEDGMENT,
         provisional.CLOSURE,
         provisional.FACULTY_TRACKING,
+        provisional.FACULTY_NOTICES,
     ):
         providers[kind].validate(now, kind)
 
-    assert len({policy.digest for policy in providers.values()}) == 5
-    assert AuditEvent.objects.filter(pk__in=provisional.EVENT_IDS.values()).count() == 5
+    assert len({policy.digest for policy in providers.values()}) == 6
+    assert AuditEvent.objects.filter(pk__in=provisional.EVENT_IDS.values()).count() == 6
     for kind, policy in providers.items():
         assert policy.digest == provisional.digest_for(kind)
         event = AuditEvent.objects.get(pk=provisional.EVENT_IDS[kind])

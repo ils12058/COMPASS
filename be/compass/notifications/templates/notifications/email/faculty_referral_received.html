@@ -1,0 +1,8 @@
+{% extends "compass/email/base.html" %}
+{% block preheader %}The Guidance Office has received your Referral.{% endblock %}
+{% block heading %}Received by the Guidance Office{% endblock %}
+{% block content %}
+<p>The Guidance Office has received your Referral.</p>
+{% if action_url %}<p><a href="{{ action_url }}" style="color:#6b1f2a;">View Referral in COMPASS</a></p>{% else %}<p>Sign in to COMPASS to review your Referral.</p>{% endif %}
+<p>For assistance, contact the Guidance Office through an official university channel.</p>
+{% endblock %}

@@ -33,3 +33,13 @@ test("superseded Group Session history navigates with current-event wording", ()
   assert.equal(target.label, "Review current event");
   assert.equal(target.href, "/portal/group-sessions/12345678-1234-4234-8234-123456789abc");
 });
+
+test("Faculty Referral notices open the Faculty's own record page", () => {
+  const referralId = "12345678-1234-4234-8234-123456789abc";
+  const destination = notificationDestination({ target_type: "FACULTY_REFERRAL", target_id: referralId }, "faculty-a");
+  assert.equal(destination.href, `/portal/faculty/referrals/${referralId}`);
+  assert.equal(destination.label, "Open Referral");
+  const login = new URL(loginPathForPortal(destination.href), "https://portal.example");
+  assert.equal(safePortalDestination(login.searchParams.get("next")), destination.href);
+  assert.equal(notificationDestination({ target_type: "FACULTY_REFERRAL", target_id: null }, "faculty-a"), null);
+});

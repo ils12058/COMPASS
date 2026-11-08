@@ -37,9 +37,12 @@ class NotificationTargetType(StrEnum):
     GRADUATE_TRACER = "GRADUATE_TRACER"
     INVENTORY = "INVENTORY"
     ROUTINE_INTERVIEW = "ROUTINE_INTERVIEW"
+    FACULTY_REFERRAL = "FACULTY_REFERRAL"
 
 
 class NotificationEvent(StrEnum):
+    FACULTY_REFERRAL_RECEIVED = "referral.received_by_guidance_office"
+    FACULTY_REFERRAL_ADMINISTRATIVELY_CLOSED = "referral.administratively_closed"
     FOLLOWUP_ASSIGNED = "guidance_followup.assigned"
     FOLLOWUP_REASSIGNED = "guidance_followup.reassigned"
     FOLLOWUP_DUE_CHANGED = "guidance_followup.due_changed"
@@ -73,6 +76,14 @@ class NotificationEvent(StrEnum):
     SECURITY_ACCOUNT_ACCESS_CHANGED = "security.account_access.changed"
 
 
+FACULTY_REFERRAL_NOTICE_EVENTS = frozenset(
+    {
+        NotificationEvent.FACULTY_REFERRAL_RECEIVED,
+        NotificationEvent.FACULTY_REFERRAL_ADMINISTRATIVELY_CLOSED,
+    }
+)
+
+
 @dataclass(frozen=True, slots=True)
 class NotificationEventDefinition:
     event: NotificationEvent
@@ -97,6 +108,24 @@ _EVENT_CATALOG = {
         message="Tell the Guidance Office how you’re doing in the Graduate Tracer survey.",
         email_subject="COMPASS Graduate Tracer reminder",
         email_template="graduate_tracer_reminder",
+    ),
+    NotificationEvent.FACULTY_REFERRAL_RECEIVED: NotificationEventDefinition(
+        event=NotificationEvent.FACULTY_REFERRAL_RECEIVED,
+        policy=NotificationPolicy.OPTIONAL_INFORMATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Received by the Guidance Office",
+        message="The Guidance Office has received your Referral. Open COMPASS to review it.",
+        email_subject="COMPASS Referral received by the Guidance Office",
+        email_template="faculty_referral_received",
+    ),
+    NotificationEvent.FACULTY_REFERRAL_ADMINISTRATIVELY_CLOSED: NotificationEventDefinition(
+        event=NotificationEvent.FACULTY_REFERRAL_ADMINISTRATIVELY_CLOSED,
+        policy=NotificationPolicy.OPTIONAL_INFORMATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Administratively Closed",
+        message="Your Referral has been administratively closed. Open COMPASS to review it.",
+        email_subject="COMPASS Referral administratively closed",
+        email_template="faculty_referral_administratively_closed",
     ),
     **{
         event: NotificationEventDefinition(

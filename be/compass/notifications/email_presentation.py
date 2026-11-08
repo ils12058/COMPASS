@@ -44,7 +44,7 @@ from .email_links import (
     NotificationEmailTarget,
     build_notification_email_link,
 )
-from .policy import NotificationEvent, NotificationTargetType
+from .policy import FACULTY_REFERRAL_NOTICE_EVENTS, NotificationEvent, NotificationTargetType
 
 
 class EmailPresentationReason(StrEnum):
@@ -128,6 +128,8 @@ def resolve_notification_email_presentation(notification) -> NotificationEmailPr
     event = notification.event_code
     if event == NotificationEvent.GRADUATE_TRACER_REMINDER:
         return _graduate_tracer_presentation(notification)
+    if event in FACULTY_REFERRAL_NOTICE_EVENTS:
+        return _faculty_referral_presentation(notification)
     if event in OPERATIONAL_EMAIL_EVENTS:
         return _operational_presentation(notification)
     if event not in APPOINTMENT_EMAIL_EVENTS:
@@ -272,4 +274,29 @@ def _graduate_tracer_presentation(notification) -> NotificationEmailPresentation
         EmailPresentationReason.LINK_AVAILABLE,
         target=target,
         validated_link=link,
+    )
+
+
+def _faculty_referral_presentation(notification) -> NotificationEmailPresentation:
+    from compass.referrals.notification_contract import faculty_notice_is_current
+
+    from .services import optional_email_enabled_for
+
+    event = notification.event_code
+    if not faculty_notice_is_current(notification) or not optional_email_enabled_for(
+        notification.recipient
+    ):
+        return NotificationEmailPresentation(event, EmailPresentationReason.SOURCE_STALE)
+    target = NotificationEmailTarget(
+        NotificationTargetType.FACULTY_REFERRAL, notification.target_id
+    )
+    link = build_notification_email_link(target)
+    if link.reason != EmailLinkReason.AVAILABLE:
+        reason = {
+            EmailLinkReason.ORIGIN_MISSING: EmailPresentationReason.ORIGIN_MISSING,
+            EmailLinkReason.ORIGIN_INVALID: EmailPresentationReason.ORIGIN_INVALID,
+        }.get(link.reason, EmailPresentationReason.INVALID_TARGET)
+        return NotificationEmailPresentation(event, reason)
+    return NotificationEmailPresentation(
+        event, EmailPresentationReason.LINK_AVAILABLE, target=target, validated_link=link
     )

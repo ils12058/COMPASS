@@ -24337,7 +24337,8 @@
           "GROUP_SESSION",
           "GRADUATE_TRACER",
           "INVENTORY",
-          "ROUTINE_INTERVIEW"
+          "ROUTINE_INTERVIEW",
+          "FACULTY_REFERRAL"
         ],
         "title": "NotificationTargetType",
         "type": "string"

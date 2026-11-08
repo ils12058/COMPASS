@@ -44,8 +44,9 @@ DIGITAL_SUBMISSION = "DIGITAL_SUBMISSION"
 ACKNOWLEDGMENT = "ACKNOWLEDGMENT"
 CLOSURE = "CLOSURE"
 FACULTY_TRACKING = "FACULTY_TRACKING"
+FACULTY_NOTICES = "FACULTY_NOTICES"
 _FACULTY_KINDS = frozenset({STUDENT_CONFIRMATION, DIGITAL_SUBMISSION})
-_ADMIN_KINDS = frozenset({ACKNOWLEDGMENT, CLOSURE, FACULTY_TRACKING})
+_ADMIN_KINDS = frozenset({ACKNOWLEDGMENT, CLOSURE, FACULTY_TRACKING, FACULTY_NOTICES})
 
 # One fixed, unmistakably synthetic event per policy kind. Audit rows are append-only; a
 # future version must use a new fixed id and digest rather than edit these rows. Version 2
@@ -56,6 +57,7 @@ EVENT_IDS = {
     ACKNOWLEDGMENT: UUID("f3b00003-0000-4000-8000-000000000003"),
     CLOSURE: UUID("f3b00004-0000-4000-8000-000000000004"),
     FACULTY_TRACKING: UUID("f3b00005-0000-4000-8000-000000000005"),
+    FACULTY_NOTICES: UUID("f3b00006-0000-4000-8000-000000000006"),
 }
 
 _FACULTY_SCOPE = "ALL_ACTIVE_FACULTY"
@@ -87,6 +89,13 @@ _FIXED_CONSTRAINTS = {
         "actor_scope": _STAFF_SCOPE,
         "student_college_scope": _COLLEGE_SCOPE,
     },
+    FACULTY_NOTICES: {
+        "contract": "MINIMAL_REFERENCE_EVENT_LINK_V1",
+        "contract_evidence_reference": PROVISIONAL_CONTRACT_EVIDENCE_REFERENCE,
+        "roles": ["FACULTY"],
+        "actor_scope": _FACULTY_SCOPE,
+        "student_college_scope": _COLLEGE_SCOPE,
+    },
     FACULTY_TRACKING: {
         "contract": "THREE_STAGE_TIMES_V1",
         "contract_evidence_reference": PROVISIONAL_CONTRACT_EVIDENCE_REFERENCE,
@@ -113,9 +122,7 @@ def _digest(kind, constraints):
     ).hexdigest()
 
 
-_DIGESTS = {
-    kind: _digest(kind, constraints) for kind, constraints in _FIXED_CONSTRAINTS.items()
-}
+_DIGESTS = {kind: _digest(kind, constraints) for kind, constraints in _FIXED_CONSTRAINTS.items()}
 _FIXED_CONSTRAINTS[DIGITAL_SUBMISSION] = {
     "lookup_policy_digest": _DIGESTS[STUDENT_CONFIRMATION],
     "eligibility_evidence_reference": PROVISIONAL_ELIGIBILITY_REFERENCE,
@@ -129,9 +136,7 @@ _FIXED_CONSTRAINTS[DIGITAL_SUBMISSION] = {
     "faculty_scope": _FACULTY_SCOPE,
     "student_college_scope": _COLLEGE_SCOPE,
 }
-_DIGESTS[DIGITAL_SUBMISSION] = _digest(
-    DIGITAL_SUBMISSION, _FIXED_CONSTRAINTS[DIGITAL_SUBMISSION]
-)
+_DIGESTS[DIGITAL_SUBMISSION] = _digest(DIGITAL_SUBMISSION, _FIXED_CONSTRAINTS[DIGITAL_SUBMISSION])
 
 
 def _action(kind):
@@ -177,9 +182,7 @@ def _ensure_event(kind, now):
 def _faculty_scope():
     return (
         frozenset(
-            User.objects.filter(is_active=True, role__code="FACULTY").values_list(
-                "pk", flat=True
-            )
+            User.objects.filter(is_active=True, role__code="FACULTY").values_list("pk", flat=True)
         ),
         frozenset(
             College.objects.filter(is_active=True, campus__is_active=True).values_list(
@@ -269,6 +272,16 @@ class ProvisionalAdministrativeTrackingPolicy(
     )
 
 
+@dataclass(frozen=True, kw_only=True)
+class ProvisionalAdministrativeFacultyNoticePolicy(
+    _ProvisionalPolicy, administrative_policy.ApprovedAdministrativePolicy
+):
+    _provisional_kind: ClassVar[str] = FACULTY_NOTICES
+    _provisional_error: ClassVar[type[Exception]] = (
+        administrative_policy.AdministrativeReferralError
+    )
+
+
 def _window(now):
     return now - SCOPE_WINDOW, now + SCOPE_WINDOW
 
@@ -319,7 +332,9 @@ def provisional_submission_policy(now: datetime | None = None):
 
 def _administrative_policy(kind, policy_class, now):
     at = now or timezone.now()
-    actor_ids, college_ids = _staff_scope() if kind != FACULTY_TRACKING else _faculty_scope()
+    actor_ids, college_ids = (
+        _staff_scope() if kind not in {FACULTY_TRACKING, FACULTY_NOTICES} else _faculty_scope()
+    )
     _event_if_scoped(kind, at, actor_ids, college_ids)
     valid_from, valid_until = _window(at)
     return policy_class(
@@ -333,7 +348,9 @@ def _administrative_policy(kind, policy_class, now):
         actor_ids=actor_ids,
         student_college_ids=college_ids,
         roles=frozenset(
-            {"FACULTY"} if kind == FACULTY_TRACKING else {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
+            {"FACULTY"}
+            if kind in {FACULTY_TRACKING, FACULTY_NOTICES}
+            else {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         ),
         activation_event_id=EVENT_IDS[kind],
     )
@@ -350,6 +367,10 @@ def provisional_closure_policy(now: datetime | None = None):
 
 
 def provisional_tracking_disclosure_policy(now: datetime | None = None):
+    return _administrative_policy(FACULTY_TRACKING, ProvisionalAdministrativeTrackingPolicy, now)
+
+
+def provisional_faculty_notice_policy(now: datetime | None = None):
     return _administrative_policy(
-        FACULTY_TRACKING, ProvisionalAdministrativeTrackingPolicy, now
+        FACULTY_NOTICES, ProvisionalAdministrativeFacultyNoticePolicy, now
     )

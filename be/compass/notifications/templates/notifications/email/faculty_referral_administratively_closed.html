@@ -1,0 +1,9 @@
+{% extends "compass/email/base.html" %}
+{% block preheader %}Your Referral has been administratively closed.{% endblock %}
+{% block heading %}Administratively Closed{% endblock %}
+{% block content %}
+<p>Your Referral has been administratively closed.</p>
+{% if action_url %}<p><a href="{{ action_url }}" style="color:#6b1f2a;">View Referral in COMPASS</a></p>{% else %}<p>Sign in to COMPASS to review your Referral.</p>{% endif %}
+<p>Administrative closure does not certify that clinical care or every linked Follow-Up is complete.</p>
+<p>For assistance, contact the Guidance Office through an official university channel.</p>
+{% endblock %}

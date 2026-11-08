@@ -214,4 +214,10 @@ def _transition_locked(
             "obligations_reviewed": kind == "CLOSURE",
         },
     )
+    from compass.referrals.notification_contract import create_faculty_notice
+
+    create_faculty_notice(
+        referral_id=item.pk,
+        event="RECEIVED_BY_GCO" if kind == "ACKNOWLEDGMENT" else "ADMINISTRATIVELY_CLOSED",
+    )
     return _facts(item)

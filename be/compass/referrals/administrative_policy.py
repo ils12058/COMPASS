@@ -2,8 +2,8 @@
 
 No institutionally approved adapter is installed. FUP-3A installs code-owned
 provisional acknowledgment, closure and Faculty-tracking policies so the canonical
-journey is available by default; this is not institutional approval. Faculty notices
-remain inactive.
+journey, including Faculty notices, is available by default; this is not institutional
+approval.
 """
 
 import hashlib
@@ -142,8 +142,10 @@ def get_approved_tracking_disclosure_policy() -> ApprovedAdministrativePolicy | 
 
 
 def get_approved_faculty_notice_policy() -> ApprovedAdministrativePolicy | None:
-    """Inactive: FAC-D8 notices require separate institutional approval."""
-    return None
+    """Return the code-owned provisional policy until an approved adapter exists."""
+    from compass.referrals.provisional_activation import provisional_faculty_notice_policy
+
+    return provisional_faculty_notice_policy()
 
 
 def require_policy(kind, now):

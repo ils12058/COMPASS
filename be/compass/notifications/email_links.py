@@ -1,6 +1,6 @@
 """Closed portal routes and deployment-owned email origins.
 
-The origin is required at live-staging startup and optional in local-staging.
+A valid origin is required at live-staging startup and optional in local-staging.
 Links still validate it here, including after a runtime configuration change.
 
 No request, source text, meeting URL or authentication credential is an input.
@@ -41,6 +41,7 @@ class NotificationEmailLink:
 
 
 _RECORD_ROUTES = {
+    NotificationTargetType.FACULTY_REFERRAL: "faculty/referrals",
     NotificationTargetType.APPOINTMENT: "appointments",
     NotificationTargetType.GROUP_SESSION: "group-sessions",
     NotificationTargetType.GOOD_MORAL: "good-moral",

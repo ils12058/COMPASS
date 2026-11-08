@@ -38,7 +38,12 @@ from .email_presentation import (
 )
 from .models import EmailDelivery, EmailDeliveryStatus, Notification
 from .operational_email_rendering import operational_email_context
-from .policy import NotificationEvent, NotificationTargetType, get_event_definition
+from .policy import (
+    FACULTY_REFERRAL_NOTICE_EVENTS,
+    NotificationEvent,
+    NotificationTargetType,
+    get_event_definition,
+)
 
 logger = logging.getLogger("compass.notifications")
 DELIVERY_BATCH_SIZE = 100
@@ -171,7 +176,7 @@ def render_notification_email(
             raise ValueError("inconsistent notification email action")
         if presentation.target is not None:
             if (
-                event_code not in APPROVED_EMAIL_EVENTS
+                event_code not in APPROVED_EMAIL_EVENTS | FACULTY_REFERRAL_NOTICE_EVENTS
                 or (
                     presentation.reason == EmailPresentationReason.LINK_AVAILABLE
                     and event_code in APPOINTMENT_EMAIL_EVENTS
@@ -182,6 +187,8 @@ def render_notification_email(
                 != (
                     NotificationTargetType.GRADUATE_TRACER
                     if event_code == NotificationEvent.GRADUATE_TRACER_REMINDER
+                    else NotificationTargetType.FACULTY_REFERRAL
+                    if event_code in FACULTY_REFERRAL_NOTICE_EVENTS
                     else OPERATIONAL_EMAIL_TARGETS.get(
                         event_code, NotificationTargetType.APPOINTMENT
                     )
