@@ -363,6 +363,49 @@ def has_intake_staff():
     )
 
 
+# GMSG-6/7 conversation sides. A requester kind is one person (Student or Faculty) writing to the
+# Guidance Office as an institution; a pair kind is exactly two people. Receipts and typing always
+# travel from one side to the other, never between staff on the Office side.
+REQUESTER_KINDS = frozenset(
+    {ThreadKind.OFFICE, ThreadKind.FACULTY_INQUIRY, ThreadKind.REFERRAL_COORDINATION}
+)
+PAIR_KINDS = frozenset(
+    {ThreadKind.COUNSELING, ThreadKind.COUNSELOR_DIRECT, ThreadKind.COUNSELOR_CASE_COORDINATION}
+)
+# D-GMSG-04 (provisional engineering default, not GCO/DPO-approved): Office staff see the
+# requester's personal Seen only in a Student Office thread. Faculty inquiry and Referral
+# coordination withhold it until D-GMSG-03 and D-GMSG-22 are decided.
+REQUESTER_RECEIPT_KINDS = frozenset({ThreadKind.OFFICE})
+
+
+def requester_id(thread):
+    """The one person on the requester side of a requester kind, or None for any other kind."""
+    if thread.kind == ThreadKind.OFFICE:
+        return thread.student_id
+    if thread.kind in (ThreadKind.FACULTY_INQUIRY, ThreadKind.REFERRAL_COORDINATION):
+        return thread.requester_id
+    return None
+
+
+def counterpart_recipient_ids(thread, actor):
+    """Currently authorized people on the other side of the conversation from `actor`.
+
+    The requester's counterpart is every authorized Office reader; an Office reader's counterpart
+    is the requester alone, so staff never receive each other's typing or receipts. A pair's
+    counterpart is the other person. Recipients come from `recipient_ids`, so the same current
+    authorization as HTTP applies and a revoked reader receives nothing.
+    """
+    recipients = recipient_ids(thread)
+    if thread.kind in REQUESTER_KINDS:
+        requester = requester_id(thread)
+        if actor.pk == requester:
+            return tuple(user_id for user_id in recipients if user_id != requester)
+        return tuple(user_id for user_id in recipients if user_id == requester)
+    if thread.kind in PAIR_KINDS:
+        return tuple(user_id for user_id in recipients if user_id != actor.pk)
+    return ()
+
+
 def recipient_ids(thread):
     """Finite routing candidates, then the same current content authorization as HTTP."""
     rule = _RULES.get(thread.kind)

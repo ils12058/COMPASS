@@ -2,11 +2,13 @@
 
 from uuid import UUID
 
+from django.conf import settings
 from django.db import IntegrityError, transaction
 from django.db.models import (
     BigIntegerField,
     Count,
     Exists,
+    Max,
     OuterRef,
     Q,
     Subquery,
@@ -28,6 +30,7 @@ from compass.audit.actions import (
 from compass.audit.context import AuditContext
 from compass.audit.models import AuditOutcome
 from compass.audit.services import record_event
+from compass.common.rate_limit import RateLimitPolicy, RateLimitUnavailable, RedisRateLimiter
 from compass.counseling.case_communication import authorize_case_coordination
 from compass.counseling.continuity_models import CounselorCaseContinuityGrant
 from compass.counseling.continuity_policy import ContinuityError
@@ -38,7 +41,7 @@ from compass.organization.access_scope import (
 )
 from compass.organization.integrity import catalog_dependent_write
 from compass.organization.services import resolve_default_counselor_for_student
-from compass.realtime.publish import publish_to_user_on_commit
+from compass.realtime.publish import publish_to_user, publish_to_user_on_commit
 from compass.referrals.models import Referral
 from compass.referrals.services import accessible_referrals, faculty_coordination_referral
 from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
@@ -103,12 +106,55 @@ def _pagination(page, page_size):
         raise InvalidMessageInput("Use a positive page and page_size between 1 and 50.")
 
 
+SEEN_BY_PERSON = "PERSON"
+SEEN_BY_OFFICE = "OFFICE"
+
+
+def thread_receipt(thread, actor):
+    """The Seen this reader may be shown for `thread`, as `(scope, sequence)` (GMSG-6).
+
+    Seen is derived only from read cursors, and a cursor moves only through `mark_read`, which the
+    portal calls while the conversation is open in a visible tab with its newest Message in view.
+    Nothing here claims delivery. A pair sees the other person's cursor. A requester sees
+    "Seen by Guidance Office": the furthest cursor any Office reader reached (D-GMSG-03 option b,
+    provisional). Because every such cursor was produced by an authorized read, an Office Seen does
+    not revert when handling changes. Office staff see the Student's own cursor in a Student Office
+    thread only (D-GMSG-04, provisional); everything else returns `(None, None)`, which the portal
+    renders as no receipt at all rather than "not seen".
+    """
+    if thread.kind in policy.PAIR_KINDS:
+        return SEEN_BY_PERSON, thread.others_last_read_sequence
+    if thread.kind in policy.REQUESTER_KINDS:
+        if actor.pk == policy.requester_id(thread):
+            return SEEN_BY_OFFICE, thread.others_last_read_sequence
+        if thread.kind in policy.REQUESTER_RECEIPT_KINDS:
+            return SEEN_BY_PERSON, thread.student_last_read_sequence
+    return None, None
+
+
 def _directory(query, actor):
     cursor = GuidanceThreadReadState.objects.filter(
         thread_id=OuterRef("pk"), user_id=actor.pk
     ).values("last_read_sequence")[:1]
+    others = (
+        GuidanceThreadReadState.objects.filter(thread_id=OuterRef("pk"))
+        .exclude(user_id=actor.pk)
+        .order_by()
+        .values("thread_id")
+        .annotate(furthest=Max("last_read_sequence"))
+        .values("furthest")
+    )
+    student_cursor = GuidanceThreadReadState.objects.filter(
+        thread_id=OuterRef("pk"), user_id=OuterRef("student_id")
+    ).values("last_read_sequence")[:1]
     query = query.annotate(
-        own_last_read_sequence=Coalesce(Subquery(cursor), Value(0), output_field=BigIntegerField())
+        own_last_read_sequence=Coalesce(Subquery(cursor), Value(0), output_field=BigIntegerField()),
+        others_last_read_sequence=Coalesce(
+            Subquery(others), Value(0), output_field=BigIntegerField()
+        ),
+        student_last_read_sequence=Coalesce(
+            Subquery(student_cursor), Value(0), output_field=BigIntegerField()
+        ),
     )
     unread = (
         GuidanceMessage.objects.filter(
@@ -842,11 +888,116 @@ def mark_read(*, actor, thread_id, sequence):
             "Read sequence must be between zero and the latest Message sequence."
         )
     state, _ = GuidanceThreadReadState.objects.get_or_create(thread=thread, user=actor)
-    if sequence > state.last_read_sequence:
-        state.last_read_sequence = sequence
-        state.save(update_fields=("last_read_sequence", "updated_at"))
-        publish_to_user_on_commit(actor.pk, "messages.thread_changed", {"thread_id": thread.pk})
+    previous = state.last_read_sequence
+    if sequence <= previous:
+        return state
+    receipt_moved = _receipt_moved(thread, actor, previous=previous, sequence=sequence)
+    # D-GMSG-26: the cursor only ever moves forward, enforced by the database as well as by the
+    # thread lock. A row that is already at or past `sequence` is left untouched.
+    advanced = GuidanceThreadReadState.objects.filter(
+        pk=state.pk, last_read_sequence__lt=sequence
+    ).update(last_read_sequence=sequence, updated_at=timezone.now())
+    state.refresh_from_db(fields=("last_read_sequence", "updated_at"))
+    if advanced != 1:
+        return state
+    publish_to_user_on_commit(actor.pk, "messages.thread_changed", {"thread_id": thread.pk})
+    if receipt_moved:
+        thread_id, actor_id = thread.pk, actor.pk
+        transaction.on_commit(lambda: _publish_receipt(thread_id, actor_id), robust=True)
     return state
+
+
+def _receipt_moved(thread, actor, *, previous, sequence):
+    """Whether advancing `actor` from `previous` to `sequence` changes a Seen someone is shown.
+
+    Only the counterpart side can see this reader's cursor, and only for Messages that side sent,
+    so a read that covers none of their Messages tells them nothing new. An Office reader moves the
+    requester's "Seen by Guidance Office" only when they pass the furthest Office cursor so far.
+    """
+    messages = GuidanceMessage.objects.filter(thread_id=thread.pk)
+    if thread.kind in policy.PAIR_KINDS:
+        return (
+            messages.filter(sequence__gt=previous, sequence__lte=sequence)
+            .exclude(sender_id=actor.pk)
+            .exists()
+        )
+    if thread.kind not in policy.REQUESTER_KINDS:
+        return False
+    requester = policy.requester_id(thread)
+    if actor.pk == requester:
+        if thread.kind not in policy.REQUESTER_RECEIPT_KINDS:
+            return False
+        return (
+            messages.filter(sequence__gt=previous, sequence__lte=sequence)
+            .exclude(sender_id=actor.pk)
+            .exists()
+        )
+    office_furthest = (
+        GuidanceThreadReadState.objects.filter(thread_id=thread.pk)
+        .exclude(user_id=requester)
+        .aggregate(furthest=Max("last_read_sequence"))["furthest"]
+        or 0
+    )
+    floor = max(previous, office_furthest)
+    if sequence <= floor:
+        return False
+    return messages.filter(sequence__gt=floor, sequence__lte=sequence, sender_id=requester).exists()
+
+
+def _publish_receipt(thread_id, actor_id):
+    thread = GuidanceThread.objects.select_related("relationship_case_grant").get(pk=thread_id)
+    actor = User.objects.get(pk=actor_id)
+    for user_id in policy.counterpart_recipient_ids(thread, actor):
+        publish_to_user_on_commit(user_id, "messages.thread_changed", {"thread_id": thread.pk})
+
+
+# D-GMSG-13 (provisional engineering default): at most one typing hint per reader per thread every
+# three seconds. Portals expire the indicator locally after eight seconds without another hint.
+TYPING_POLICY = RateLimitPolicy(name="guidance-messages-typing", limit=1, window_seconds=3)
+
+
+def signal_typing(*, actor, thread_id):
+    """Tell the other side that `actor` is writing now (GMSG-7). Returns whether a hint went out.
+
+    Nothing is stored: no draft text, no typing row, no audit event. The hint is the registered,
+    content-free `messages.typing_changed {thread_id}` and goes only to currently authorized
+    counterparts, so the referred Student of a Referral conversation and other Office staff never
+    receive it. A reader who may not send here gets the same refusal sending would give. A refused
+    or unavailable rate limiter publishes nothing, because typing is advisory.
+    """
+    actor = policy.current_actor(actor)
+    thread = (
+        GuidanceThread.objects.select_related("relationship_referral", "relationship_case_grant")
+        .filter(pk=thread_id)
+        .first()
+    )
+    if thread is None:
+        raise ThreadNotFound()
+    policy.require_thread(actor, thread, manage=True)
+    if thread.status != ThreadStatus.OPEN:
+        raise MessagesConflict("This Guidance thread is resolved.")
+    if thread.kind == ThreadKind.REFERRAL_COORDINATION:
+        referral = thread.relationship_referral
+        if referral is None:
+            raise ThreadNotFound()
+        if referral.voided_at is not None:
+            raise ReferralVoided()
+    if not settings.REALTIME_ENABLED:
+        return False
+    try:
+        allowed = (
+            RedisRateLimiter.from_settings()
+            .consume_with_failure_policy(TYPING_POLICY, f"{actor.pk}:{thread.pk}")
+            .allowed
+        )
+    except RateLimitUnavailable:
+        allowed = False
+    if not allowed:
+        return False
+    sent = False
+    for user_id in policy.counterpart_recipient_ids(thread, actor):
+        sent = publish_to_user(user_id, "messages.typing_changed", {"thread_id": thread.pk}) or sent
+    return sent
 
 
 @catalog_dependent_write

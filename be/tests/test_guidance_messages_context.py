@@ -69,6 +69,8 @@ def test_existing_thread_resolves_for_persisted_participants(world, actor):  # n
         "last_sequence",
         "own_last_read_sequence",
         "unread_count",
+        "seen_sequence",
+        "seen_scope",
     }
     assert BODY.strip() not in response.content.decode()
     assert "email" not in response.content.decode()

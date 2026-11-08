@@ -29,8 +29,7 @@ from tests.test_notifications import auth_client
 pytestmark = pytest.mark.django_db
 
 
-@pytest.fixture
-def world(monkeypatch):
+def build_world(monkeypatch):
     base = make_world(monkeypatch)
     college_b = College.objects.create(campus=base.campus, code="CHS", name="Synthetic CHS")
 
@@ -63,6 +62,11 @@ def world(monkeypatch):
         head=head,
         referral=referral,
     )
+
+
+@pytest.fixture
+def world(monkeypatch):
+    return build_world(monkeypatch)
 
 
 def open_thread(world, *, actor=None, client_id=None):

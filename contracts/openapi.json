@@ -19693,6 +19693,15 @@
         "title": "GuidanceRelationshipOption",
         "type": "object"
       },
+      "GuidanceSeenScope": {
+        "description": "Whose viewing a Seen receipt reports: the one counterpart, or the Guidance Office.",
+        "enum": [
+          "PERSON",
+          "OFFICE"
+        ],
+        "title": "GuidanceSeenScope",
+        "type": "string"
+      },
       "GuidanceSendRequest": {
         "additionalProperties": false,
         "properties": {
@@ -20127,6 +20136,28 @@
               }
             ]
           },
+          "seen_scope": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GuidanceSeenScope"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "seen_sequence": {
+            "anyOf": [
+              {
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seen Sequence"
+          },
           "status": {
             "$ref": "#/components/schemas/ThreadStatus"
           },
@@ -20176,7 +20207,9 @@
           "last_message_at",
           "last_sequence",
           "own_last_read_sequence",
-          "unread_count"
+          "unread_count",
+          "seen_sequence",
+          "seen_scope"
         ],
         "title": "GuidanceThreadResponse",
         "type": "object"
@@ -58252,6 +58285,98 @@
           }
         ],
         "summary": "Resolve",
+        "tags": [
+          "guidance-messages"
+        ]
+      }
+    },
+    "/api/v1/guidance-messages/threads/{thread_id}/typing": {
+      "post": {
+        "description": "Sends a content-free typing hint to the other side of the conversation. Nothing is stored, and the request is accepted whether or not a hint was published.",
+        "operationId": "guidanceMessagesSignalTyping",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "thread_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Thread Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Not Found"
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Conflict"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          },
+          "503": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Service Unavailable"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Signal that the reader is writing in this conversation",
         "tags": [
           "guidance-messages"
         ]

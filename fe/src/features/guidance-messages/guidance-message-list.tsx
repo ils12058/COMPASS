@@ -42,6 +42,7 @@ export function GuidanceMessageList({
   onLoadOlder,
   onAtLatestChange,
   latestPinRef,
+  receipt = null,
 }: {
   threadId: string;
   messages: readonly GuidanceMessageResponse[];
@@ -53,6 +54,8 @@ export function GuidanceMessageList({
   onAtLatestChange: (atLatest: boolean) => void;
   /** After the reader sends, the list stays at its end until this sequence has arrived. */
   latestPinRef: RefObject<number | null>;
+  /** "Seen" under the reader's latest Message, when the other side has viewed it (GMSG-6). */
+  receipt?: { sequence: number; label: string } | null;
 }) {
   const scroller = useRef<HTMLDivElement>(null);
   const atLatest = useRef(true);
@@ -201,6 +204,9 @@ export function GuidanceMessageList({
                       >
                         <p className="whitespace-pre-wrap break-words [overflow-wrap:anywhere]">{message.body}</p>
                       </div>
+                      {receipt && receipt.sequence === message.sequence ? (
+                        <p className="mt-1 px-1 text-xs text-muted">{receipt.label}</p>
+                      ) : null}
                     </li>
                   );
                 })}

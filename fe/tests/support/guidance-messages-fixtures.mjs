@@ -117,6 +117,9 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
       last_sequence: last?.sequence ?? 0,
       own_last_read_sequence: read,
       unread_count: list.filter((message) => message.sequence > read && message.sender.id !== state.viewerId).length,
+      // GMSG-6: no synthetic counterpart ever reads, so no receipt is shown unless a test sets one.
+      seen_sequence: thread.seen_sequence ?? null,
+      seen_scope: thread.seen_scope ?? null,
     };
   }
 
@@ -342,6 +345,11 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
         await finishSend(route, reply, status, result);
         return true;
       }
+      if (method === "POST" && action === "typing") {
+        // GMSG-7: accepted and content-free; nothing about the draft is sent.
+        await route.fulfill({ status: 204, headers: { "cache-control": "no-store, private" } });
+        return true;
+      }
       if (method === "PATCH" && action === "read") {
         const current = state.reads.get(thread.id) ?? 0;
         if (body.sequence > current) state.reads.set(thread.id, body.sequence);
@@ -381,6 +389,7 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
     opens: () => state.requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/counseling-thread")),
     contexts: () => state.requests.filter((request) => request.method === "GET" && request.pathname.endsWith("/context")),
     reads: () => state.requests.filter((request) => request.method === "PATCH" && request.pathname.endsWith("/read")),
+    typings: () => state.requests.filter((request) => request.method === "POST" && request.pathname.endsWith("/typing")),
     addTemplate,
     handlerLists: () => state.requests.filter((request) => request.method === "GET" && request.pathname.endsWith("/eligible-handlers")),
     assigns: () => state.requests.filter((request) => request.method === "PATCH" && request.pathname.endsWith("/handler")),

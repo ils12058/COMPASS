@@ -48,6 +48,13 @@ class GuidanceCollege(StrictSchema):
     name: str
 
 
+class GuidanceSeenScope(StrEnum):
+    """Whose viewing a Seen receipt reports: the one counterpart, or the Guidance Office."""
+
+    PERSON = "PERSON"
+    OFFICE = "OFFICE"
+
+
 class GuidanceThreadResponse(StrictSchema):
     id: UUID
     kind: ThreadKind
@@ -70,6 +77,10 @@ class GuidanceThreadResponse(StrictSchema):
     last_sequence: int
     own_last_read_sequence: int
     unread_count: int
+    # GMSG-6: the furthest sequence the other side has genuinely viewed, and who that side is.
+    # Both are null when this reader is shown no receipt for the conversation; 0 means not yet seen.
+    seen_sequence: int | None = Field(ge=0)
+    seen_scope: GuidanceSeenScope | None
 
 
 class GuidanceUnreadCountResponse(StrictSchema):
@@ -268,6 +279,7 @@ def _thread(thread, actor):
     # D-GMSG-22: Office handling identity and College routing are staff-only payload.
     staff_viewer = actor.role.code in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
     referral = thread.relationship_referral if thread.relationship_referral_id else None
+    seen_scope, seen_sequence = services.thread_receipt(thread, actor)
     return GuidanceThreadResponse(
         id=thread.pk,
         kind=thread.kind,
@@ -303,6 +315,8 @@ def _thread(thread, actor):
         last_sequence=thread.last_sequence,
         own_last_read_sequence=thread.own_last_read_sequence,
         unread_count=thread.own_unread_count,
+        seen_sequence=seen_sequence,
+        seen_scope=GuidanceSeenScope(seen_scope) if seen_scope else None,
     )
 
 
@@ -781,6 +795,22 @@ def mark_read(request, response: HttpResponse, thread_id: UUID, payload: Guidanc
         actor=request.auth_user, thread_id=thread_id, sequence=payload.sequence
     )
     return GuidanceReadResponse(own_last_read_sequence=state.last_read_sequence)
+
+
+@router.post(
+    "/threads/{thread_id}/typing",
+    response=response_with_errors(None, *ERRORS, success_status=204),
+    operation_id="guidanceMessagesSignalTyping",
+    summary="Signal that the reader is writing in this conversation",
+    description=(
+        "Sends a content-free typing hint to the other side of the conversation. Nothing is "
+        "stored, and the request is accepted whether or not a hint was published."
+    ),
+)
+@_safe
+def signal_typing(request, response: HttpResponse, thread_id: UUID):
+    services.signal_typing(actor=request.auth_user, thread_id=thread_id)
+    return Status(204, None)
 
 
 @router.post(

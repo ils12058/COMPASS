@@ -874,4 +874,40 @@ for (const device of ["desktop", "phone"]) {
   });
 }
 
+// ── Seen receipts and typing (GMSG-6/7) ──────────────────────────────────────────────────────
+
+{
+  const backend = studentWorld();
+  backend.addMessage(threadIds.office, STUDENT, "Thank you po, see you Monday.");
+  const office = backend.state.threads.get(threadIds.office);
+  office.seen_sequence = 4;
+  office.seen_scope = "OFFICE";
+  const world = messagesWorld(backend, messagesAccount("STUDENT"));
+  await check("Seen by Guidance Office, a typing hint that expires on reply, and a content-free typing signal", threadPath(threadIds.office), world.options({ initScripts: [enableRealtime] }), async (page) => {
+    await shown(history(page).getByText("Seen by Guidance Office", { exact: true }));
+    await world.ready();
+
+    world.open().forEach((socket) => world.send(socket, { v: 1, type: "messages.typing_changed", thread_id: threadIds.office }));
+    await shown(page.getByRole("status").filter({ hasText: "Guidance Office is typing…" }));
+    // A hint for another conversation is ignored.
+    world.open().forEach((socket) => world.send(socket, { v: 1, type: "messages.typing_changed", thread_id: threadIds.counseling }));
+
+    backend.addMessage(threadIds.office, COUNSELOR, "You are welcome.");
+    world.changed(threadIds.office);
+    await shown(history(page).getByText("You are welcome."));
+    await hidden(page.getByText("Guidance Office is typing…"));
+    await hidden(history(page).getByText("Seen by Guidance Office", { exact: true }));
+    assert.equal(await page.getByText("Delivered").count(), 0, "Nothing ever claims delivery");
+
+    await composer(page).fill("Hello");
+    await eventually(() => backend.typings().length === 1, "Writing signals typing once");
+    await composer(page).fill("Hello again");
+    await page.waitForTimeout(500);
+    assert.equal(backend.typings().length, 1, "Signals are throttled while writing");
+    const [signal] = backend.typings();
+    assert.equal(signal.pathname, `/api/v1/guidance-messages/threads/${threadIds.office}/typing`);
+    assert.ok(signal.body === null || signal.body === undefined || Object.keys(signal.body).length === 0, "The draft never leaves the browser");
+  });
+}
+
 await finish();

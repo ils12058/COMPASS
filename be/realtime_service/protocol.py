@@ -42,12 +42,15 @@ _EVENT_TYPE = re.compile(r"[a-z][a-z_]*(?:\.[a-z][a-z_]*)+")
 _FIELD_NAME = re.compile(r"[a-z][a-z_]*")
 
 # Public server-to-client hints form a closed registry. Notification freshness (ADR-101)
-# carries no fields. Guidance Messages (ADR-102) carries only an opaque thread UUID.
+# carries no fields. Guidance Messages (ADR-102) carries only an opaque thread UUID; its typing
+# hint (GMSG-7) means "the other side is writing in this thread now" and carries nothing else: no
+# sender, no draft, no duration. Receivers expire it themselves.
 PUBLIC_EVENT_FIELDS: Mapping[str, frozenset[str]] = MappingProxyType(
     {
         "notifications.changed": frozenset(),
         "followups.changed": frozenset(),
         "messages.thread_changed": frozenset({"thread_id"}),
+        "messages.typing_changed": frozenset({"thread_id"}),
         "ecounseling.consent.changed": frozenset({"appointment_id"}),
         "ecounseling.media.changed": frozenset({"appointment_id"}),
     }

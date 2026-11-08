@@ -28,12 +28,20 @@ import {
 } from "../src/features/guidance-messages/guidance-messages-freshness.ts";
 import {
   COUNSELOR_DIRECT_NOTICE,
+  latestCounterpartSequence,
+  seenReceipt,
   threadRoutingFacts,
   threadStatusLabel,
   threadSubtitle,
   threadTitle,
+  typingLabel,
   unreadLabel,
 } from "../src/features/guidance-messages/guidance-messages-presentation.ts";
+import {
+  createTypingSignal,
+  TYPING_SIGNAL_INTERVAL_MS,
+  typingThreadId,
+} from "../src/features/guidance-messages/guidance-typing.ts";
 import {
   IDLE_SEND,
   isUncertainSendFailure,
@@ -778,4 +786,58 @@ test("templates only prepare text: no ID, no template link, no storage", () => {
   const insert = composer.slice(composer.indexOf("function insertTemplate"), composer.indexOf("function focusDraft"));
   assert.match(insert, /current\.current\.kind !== "idle"/, "Refused while a send is in flight or unconfirmed");
   assert.ok(!/createClientMessageId|update\(/.test(insert), "Inserting never creates or changes a send intent");
+});
+
+// ── Receipts and typing (GMSG-6/7) ────────────────────────────────────────────────────────────
+
+test("Seen appears only under the reader's latest Message once the other side viewed it", () => {
+  const me = person("student", "Maria Santos");
+  const staff = person("staff", "Lea Ramos");
+  const mine = [message(1, me), message(2, me)];
+  const office = (overrides) => thread({ seen_scope: "OFFICE", seen_sequence: 0, ...overrides });
+  assert.equal(seenReceipt(office(), mine, "student", "student"), null, "Not seen yet shows nothing");
+  assert.equal(seenReceipt(office({ seen_sequence: 1 }), mine, "student", "student"), null, "An older read is not a Seen on the latest");
+  assert.deepEqual(seenReceipt(office({ seen_sequence: 2 }), mine, "student", "student"), { sequence: 2, label: "Seen by Guidance Office" });
+  assert.equal(seenReceipt(office({ seen_sequence: 3 }), [...mine, message(3, staff)], "student", "student"), null, "A reply already shows it was read");
+  assert.equal(seenReceipt(thread({ seen_scope: null, seen_sequence: null }), mine, "student", "student"), null, "Withheld receipts show nothing");
+});
+
+test("Office staff see the Student's Seen on any staff Message; pairs see a plain Seen", () => {
+  const colleague = person("colleague", "Ana Cruz");
+  const staffThread = thread({ seen_scope: "PERSON", seen_sequence: 4 });
+  assert.deepEqual(seenReceipt(staffThread, [message(3, person("student", "Maria Santos")), message(4, colleague)], "staff", "staff"), { sequence: 4, label: "Seen" });
+  const pair = thread({ kind: "COUNSELING", counselor: person("counselor", "Jo Reyes"), seen_scope: "PERSON", seen_sequence: 5 });
+  assert.deepEqual(seenReceipt(pair, [message(5, person("student", "Maria Santos"))], "student", "student"), { sequence: 5, label: "Seen" });
+  assert.equal(latestCounterpartSequence(pair, [message(4, person("counselor", "Jo Reyes")), message(5, person("student", "Maria Santos"))], "student", "student"), 4);
+});
+
+test("typing is named from the reader's side and never names the case pair", () => {
+  assert.equal(typingLabel(thread(), "student", "student"), "Guidance Office is typing…");
+  assert.equal(typingLabel(thread(), "staff", "staff"), "Maria Santos is typing…");
+  assert.equal(typingLabel(thread({ kind: "COUNSELOR_CASE_COORDINATION", student_subject: person("s", "Maria Santos") }), "staff", "c"), "The other Counselor is typing…");
+});
+
+test("the writer signals on changed, nonblank drafts at most once per interval", () => {
+  let clock = 0;
+  const sent = [];
+  const signal = createTypingSignal((id) => sent.push(id), () => clock);
+  assert.equal(signal.update("H", THREAD), true);
+  clock += 1_000;
+  assert.equal(signal.update("Hi", THREAD), false, "Throttled inside the interval");
+  clock += TYPING_SIGNAL_INTERVAL_MS;
+  assert.equal(signal.update("Hi", THREAD), false, "An unchanged draft is not typing");
+  assert.equal(signal.update("Hi!", THREAD), true);
+  assert.equal(signal.update("   ", THREAD), false, "A blank draft never signals");
+  assert.equal(signal.update("Again", THREAD), true, "Clearing resets the throttle");
+  assert.deepEqual(sent, [THREAD, THREAD, THREAD]);
+});
+
+test("the protocol accepts only the closed messages.typing_changed shape", () => {
+  const frame = (value) => parseServerFrame(JSON.stringify(value));
+  const event = frame({ v: 1, type: "messages.typing_changed", thread_id: THREAD }).event;
+  assert.equal(typingThreadId(event), THREAD);
+  assert.equal(changedThreadId(event), null, "A typing hint never refreshes a thread");
+  assert.equal(frame({ v: 1, type: "messages.typing_changed" }), null);
+  assert.equal(frame({ v: 1, type: "messages.typing_changed", thread_id: THREAD, sender_id: THREAD }), null);
+  assert.equal(typingThreadId({ v: 1, type: "messages.thread_changed", thread_id: THREAD }), null);
 });

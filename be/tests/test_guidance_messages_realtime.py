@@ -149,7 +149,7 @@ def test_actual_redis_connection_failure_never_undoes_writes(
 
 
 @pytest.mark.parametrize("kind", ["OFFICE", "COUNSELING"])
-def test_real_sockets_authenticated_http_commits_and_private_read_freshness(world, settings, kind):
+def test_real_sockets_authenticated_http_commits_and_read_receipt_freshness(world, settings, kind):
     settings.REALTIME_ENABLED = True
     connection._client.cache_clear()
     users = [
@@ -225,10 +225,13 @@ def test_real_sockets_authenticated_http_commits_and_private_read_freshness(worl
                 content_type="application/json",
             )
             assert read.status_code == 200
-            for socket in sockets[:2]:
-                assert json.loads((await socket.next())["text"]) == frame
-            for socket in sockets[2:]:
-                await socket.nothing()
+            # GMSG-6: the reader's own sessions refresh, and so does the counterpart side whose
+            # "Seen" just changed; the other Student and non-recipients learn nothing.
+            for index, socket in enumerate(sockets):
+                if index in recipient_indices:
+                    assert json.loads((await socket.next())["text"]) == frame
+                else:
+                    await socket.nothing()
         finally:
             for socket in sockets:
                 await socket.disconnect()

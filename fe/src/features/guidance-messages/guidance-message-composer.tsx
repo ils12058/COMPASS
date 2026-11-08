@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 
 import { MessageComposerView, type MessageTemplatesOption } from "@/features/guidance-messages/guidance-message-composer-view";
 import { useUnsavedChangesGuard } from "@/features/form-safety/use-unsaved-changes-guard";
+import { useTypingSignal } from "@/features/guidance-messages/guidance-typing";
 import {
   createClientMessageId,
   IDLE_SEND,
@@ -29,6 +30,8 @@ export type MessageComposerOptions<TResult> = {
   onSent?: (result: TResult) => void;
   /** True while the reader cannot send, such as in a resolved conversation. The draft is kept. */
   blocked?: boolean;
+  /** The existing open conversation whose other side is told while the reader writes (GMSG-7). */
+  typingThreadId?: string | null;
 };
 
 export type MessageComposerController = {
@@ -72,6 +75,7 @@ export function useMessageComposer<TResult>({
   describeError,
   onSent,
   blocked: unavailable = false,
+  typingThreadId = null,
 }: MessageComposerOptions<TResult>): MessageComposerController {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -92,6 +96,9 @@ export function useMessageComposer<TResult>({
 
   const pending = sendState.kind !== "idle";
   const blocked = unavailable || target === null;
+
+  // Typing is announced only for what the reader is still writing, never for an attempt in flight.
+  useTypingSignal(typingThreadId, draft, !blocked && !pending);
 
   useUnsavedChangesGuard({
     dirty: draft.trim() !== "" || pending,

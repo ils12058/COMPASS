@@ -339,6 +339,8 @@ function ContextualHost({
     send: target.send,
     describeError: (error) => describeSendError(error, target.sendErrorContext),
     blocked: !canSend,
+    // Only an existing open conversation has someone to tell; a first Message creates the thread.
+    typingThreadId: thread && thread.status === "OPEN" ? thread.id : null,
   });
 
   // While closed, keep the unread count beside the trigger current from hints for this thread only.
@@ -554,7 +556,7 @@ function ContextualPanel({
         concealed ? (
           <p className="px-4 py-4 text-sm text-muted">This conversation is no longer available to your account.</p>
         ) : (
-          <ConversationHistoryRegion state={state} currentUserId={target.currentUserId} />
+          <ConversationHistoryRegion state={state} currentUserId={target.currentUserId} viewer={target.viewer} />
         )
       ) : (
         // No thread exists until the first Message is confirmed; nothing here pretends otherwise.

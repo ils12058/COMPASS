@@ -1,5 +1,6 @@
 import type {
   GuidanceHandlerRole,
+  GuidanceMessageResponse,
   GuidancePerson,
   GuidanceThreadResponse,
   ThreadKind,
@@ -126,3 +127,65 @@ export const CASE_COORDINATION_ENTRY_COPY = "Coordinate on this authorized case.
 export const CASE_COORDINATION_ENDED_COPY = "Your case coordination access has ended.";
 export const CASE_COORDINATION_UNAVAILABLE_COPY =
   "This conversation is no longer available for new messages.";
+
+// ── Receipts and typing (GMSG-6/7) ───────────────────────────────────────────────────────────
+// "Seen" means the other side genuinely viewed a Message: the backend derives it from read cursors
+// that move only while a conversation is open in a visible tab. Nothing here says "Delivered", and
+// a conversation without a receipt shows nothing rather than "Not seen".
+
+/**
+ * Whether a Message was written from the reader's side. Office staff write as the Guidance Office,
+ * so in a Student Office conversation every staff Message is theirs; everyone else writes as
+ * themselves.
+ */
+export function isOwnSide(
+  thread: GuidanceThreadResponse,
+  viewer: GuidanceViewer,
+  currentUserId: string,
+  message: GuidanceMessageResponse,
+): boolean {
+  if (viewer === "staff" && thread.kind === "OFFICE") return message.sender.id !== thread.student?.id;
+  return message.sender.id === currentUserId;
+}
+
+/** The receipt to show under the reader's latest Message, or null when there is none to show. */
+export function seenReceipt(
+  thread: GuidanceThreadResponse,
+  messages: readonly GuidanceMessageResponse[],
+  viewer: GuidanceViewer,
+  currentUserId: string,
+): { sequence: number; label: string } | null {
+  if (thread.seen_scope == null || thread.seen_sequence == null) return null;
+  const last = messages.at(-1);
+  // A reply from the other side already shows they read it.
+  if (!last || !isOwnSide(thread, viewer, currentUserId, last)) return null;
+  if (thread.seen_sequence < last.sequence) return null;
+  return {
+    sequence: last.sequence,
+    label: thread.seen_scope === "OFFICE" ? `Seen by ${GUIDANCE_OFFICE_LABEL}` : "Seen",
+  };
+}
+
+/** The newest sequence the other side wrote, so their next Message can clear "is typing". */
+export function latestCounterpartSequence(
+  thread: GuidanceThreadResponse,
+  messages: readonly GuidanceMessageResponse[],
+  viewer: GuidanceViewer,
+  currentUserId: string,
+): number {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (!isOwnSide(thread, viewer, currentUserId, message)) return message.sequence;
+  }
+  return 0;
+}
+
+/** Who is writing, from the reader's side; the case pair is never named here. */
+export function typingLabel(
+  thread: GuidanceThreadResponse,
+  viewer: GuidanceViewer,
+  currentUserId: string,
+): string {
+  if (thread.kind === "COUNSELOR_CASE_COORDINATION") return "The other Counselor is typing…";
+  return `${threadTitle(thread, viewer, currentUserId)} is typing…`;
+}

@@ -15,7 +15,15 @@ import { cacheThread, useConversationHistory, useMarkThreadRead } from "@/featur
 import { GuidanceMessageList } from "@/features/guidance-messages/guidance-message-list";
 import { guidanceDirectoryQueryFamily } from "@/features/guidance-messages/guidance-messages-cache";
 import { describeOlderError, describeStatusChangeError } from "@/features/guidance-messages/guidance-messages-errors";
-import { GUIDANCE_OFFICE_LABEL, personName, type GuidanceViewer } from "@/features/guidance-messages/guidance-messages-presentation";
+import {
+  GUIDANCE_OFFICE_LABEL,
+  latestCounterpartSequence,
+  personName,
+  seenReceipt,
+  typingLabel,
+  type GuidanceViewer,
+} from "@/features/guidance-messages/guidance-messages-presentation";
+import { useCounterpartTyping } from "@/features/guidance-messages/guidance-typing";
 import {
   ConversationSkeleton,
   isConcealingError,
@@ -92,11 +100,20 @@ export type ThreadConversation = ReturnType<typeof useThreadConversation>;
 export function ConversationHistoryRegion({
   state,
   currentUserId,
+  viewer,
 }: {
   state: ThreadConversation;
   currentUserId: string;
+  viewer: GuidanceViewer;
 }) {
-  const { history, threadQuery, conversation, older } = state;
+  const { history, threadQuery, conversation, older, thread } = state;
+  const messages = conversation?.messages ?? [];
+  const receipt = thread ? seenReceipt(thread, messages, viewer, currentUserId) : null;
+  const typing = useCounterpartTyping(
+    state.threadId,
+    thread?.status === "OPEN",
+    thread ? latestCounterpartSequence(thread, messages, viewer, currentUserId) : 0,
+  );
   return (
     <>
       {history.isError && conversation ? (
@@ -127,6 +144,7 @@ export function ConversationHistoryRegion({
           onLoadOlder={state.loadOlder}
           onAtLatestChange={state.setAtLatest}
           latestPinRef={state.latestPinRef}
+          receipt={receipt}
         />
       ) : history.isError ? (
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -149,7 +167,33 @@ export function ConversationHistoryRegion({
           <ConversationSkeleton />
         </div>
       )}
+      <TypingIndicator label={typing && thread ? typingLabel(thread, viewer, currentUserId) : null} />
     </>
+  );
+}
+
+/**
+ * "… is typing…" between the history and the composer. The polite status changes only when
+ * writing starts or stops, never on each hint, and the dots move only without reduced motion.
+ */
+function TypingIndicator({ label }: { label: string | null }) {
+  return (
+    <p role="status" aria-live="polite" className={cn("px-4 text-xs text-muted", label ? "py-1.5" : "sr-only")}>
+      {label ? (
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className="inline-flex gap-0.5">
+            {[0, 150, 300].map((delay) => (
+              <span
+                key={delay}
+                className="size-1 rounded-full bg-muted motion-safe:animate-pulse"
+                style={{ animationDelay: `${delay}ms` }}
+              />
+            ))}
+          </span>
+          {label}
+        </span>
+      ) : null}
+    </p>
   );
 }
 

@@ -150,7 +150,7 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
         ) : null
       }
     >
-      <ConversationHistoryRegion state={state} currentUserId={currentUserId} />
+      <ConversationHistoryRegion state={state} currentUserId={currentUserId} viewer={viewer} />
       {thread.kind === "COUNSELOR_DIRECT" ? (
         <p className="border-t border-brand-line bg-surface px-4 py-3 text-sm text-muted">
           {COUNSELOR_DIRECT_NOTICE}
@@ -162,6 +162,7 @@ export function GuidanceConversation({ threadId }: { threadId: string }) {
         // Stays mounted when the conversation is resolved, so an unsent draft is kept (read-only).
         <GuidanceMessageComposer
           target={`thread:${threadId}`}
+          typingThreadId={readOnly ? null : threadId}
           label={`Message to ${threadTitle(thread, viewer, currentUserId)}`}
           send={sendIntent}
           describeError={describe}

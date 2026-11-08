@@ -129,6 +129,7 @@ EXPECTED_OPERATION_IDS = {
     "guidanceMessagesListMessages",
     "guidanceMessagesSendMessage",
     "guidanceMessagesMarkRead",
+    "guidanceMessagesSignalTyping",
     "guidanceMessagesResolveThread",
     "guidanceMessagesReopenThread",
     "guidanceMessagesAssignHandler",
@@ -3367,6 +3368,16 @@ def test_guidance_messages_contract_is_private_strict_and_persistent_idempotency
         ]
         == "guidanceMessagesOpenCaseCoordinationThread"
     )
+    # GMSG-6: a receipt is a sequence and a closed scope, never a reader's identity or time.
+    thread_properties = schemas["GuidanceThreadResponse"]["properties"]
+    assert {"seen_sequence", "seen_scope"} <= set(schemas["GuidanceThreadResponse"]["required"])
+    assert not {"seen_by", "seen_at", "read_by", "delivered"} & set(thread_properties)
+    assert set(schemas["GuidanceSeenScope"]["enum"]) == {"PERSON", "OFFICE"}
+    # GMSG-7: the typing signal has no request body and returns no content.
+    typing = _operation(schema, "/api/v1/guidance-messages/threads/{thread_id}/typing", "post")
+    assert typing["operationId"] == "guidanceMessagesSignalTyping"
+    assert "requestBody" not in typing
+    assert "content" not in typing["responses"]["204"]
     assert set(schemas["ThreadStatus"]["enum"]) == {"OPEN", "RESOLVED"}
     for method, path, operation in iter_operations(schema):
         if not path.startswith("/api/v1/guidance-messages"):
