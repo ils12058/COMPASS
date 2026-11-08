@@ -7,7 +7,7 @@ Students designed for stakeholder testing. The decision record is
 [ADR-116](decisions/ADR-116-canonical-baseline-and-staging-dataset-v1.md).
 
 Dataset v1 is a **new lineage**. It is not the retired Demo Dataset v1/v2 (`seed_demo_staging`,
-[historical notes](historical/staging-demo-seeding.md)) and never upgrades it: a database that
+whose historical notes remain in git history) and never upgrades it: a database that
 contains `DEMO-2026-…` accounts is refused. The dataset version (1) is independent of the COMPASS
 application and API versions.
 
@@ -131,7 +131,8 @@ The clean rebuild completed on 2026-10-17. Routine [staging deployment](staging-
 never runs this command; do not reseed or reissue credentials during UAT without a separate owner
 decision. For an authorized operator run, verify the canonical release
 by its exact `build_id` and ensure the
-cutover checks in `outputs/canon-1c/CANON-1C-Cutover-Dependencies.md` are recorded. Use the release
+canonical compatibility and deployment checks in the [staging deployment runbook](staging-deployment.md)
+are recorded. The original clean-rebuild evidence remains in git history. Use the release
 image already on the Droplet and a one-off container:
 
 ```bash
@@ -196,7 +197,7 @@ password and an unverified email, so it needs `STAGING_SEED_ONBOARDING_EMAIL` to
 
 ```sh
 python manage.py seed_staging_dataset verify
-python manage.py seed_staging_dataset report --output-dir ../outputs/canon-1c/uat
+python manage.py seed_staging_dataset report --output-dir /tmp/compass-staging-uat
 ```
 
 `verify` runs in a PostgreSQL `READ ONLY` transaction. It fails visibly when the database and the
@@ -216,7 +217,9 @@ manifest disagree. Sections:
 During active UAT, `--allow-uat-changes` reports states that evaluators changed (and the email
 their actions legitimately send) as warnings; structural failures still fail.
 
-`report` generates, from the manifest plus a passing verification:
+`report` generates fresh documents in the selected output directory, from the manifest plus a
+passing verification. The filenames below describe generated reports; historical copies are
+available in git history:
 
 | File | Contents |
 | --- | --- |

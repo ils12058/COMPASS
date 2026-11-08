@@ -22,8 +22,6 @@ be/docs/decisions/ADR-084-graduate-tracer-confidential-content-encryption.md,18,
 be/docs/decisions/ADR-092-ecounseling-media-governance-v2.md,10;218,Historical architecture/audit/validation evidence; applicable ADRs annotated.
 be/docs/decisions/ADR-099-operational-responsibility-and-domain-head-oversight.md,55,Historical architecture/audit/validation evidence; applicable ADRs annotated.
 be/docs/decisions/ADR-106-student-action-center.md,81,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-be/docs/historical/demo-dataset-v2-validation-report.md,91;92;134;142;231,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-be/docs/historical/staging-demo-seeding.md,60;206;207;208;237;252;286;302,Historical architecture/audit/validation evidence; applicable ADRs annotated.
 be/docs/retention-disposition-validation.md,75,Historical validation/procedures explicitly marked; current cutover contract linked separately.
 be/docs/runtime-secrets.md,242;256;259;270;271;279;294;302;305;316;318;367;382;517;528;529,Historical validation/procedures explicitly marked; current cutover contract linked separately.
 be/tests/encryption_oracles/shared_summary_content_v1.py,13;14;21;42;60;89,"Frozen historical codec, used to prove incompatibility."
@@ -58,22 +56,3 @@ fe/docs/ui-density-audit.md,69,Historical validation/procedures explicitly marke
 fe/tests/counseling-context-confidentiality.browser.mjs,11;33;221;223,"Retired-contract negative tests, historical seed/migration rehearsal or deliberately stale fixtures."
 fe/tests/counseling-context-confidentiality.test.mjs,34;118;122,"Retired-contract negative tests, historical seed/migration rehearsal or deliberately stale fixtures."
 fe/tests/support/cont1a-summary-fixtures.mjs,21,"Retired-contract negative tests, historical seed/migration rehearsal or deliberately stale fixtures."
-outputs/FORM-ID-1-Test-Evidence.json,742,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1/CANON-1-Migration-Graph.md,69;70;71;72,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1/CANON-1-Removal-Matrix.csv,22;28;58,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1/evidence/backend-shard-plan.txt,65;144,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1/evidence/ci-backend-full-8cff975e.json,157;318;374;453,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1/evidence/contract-inventory.json,565;567;600;602;605;607;610;612;620;622;625;627,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1/evidence/existing-schema.json,272;273;274;275;276;277;1129;1130;1131;1132;1692;1693;2017;2019;2020,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1/evidence/frontend-build.txt,69,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1/evidence/migration-inventory.json,731;745;765;782;784,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1c/CANON-1C-Canonical-Schema-Comparison.md,56,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1c/CANON-1C-Staging-Dataset-v1-Design.md,79;97;121;122,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1c/evidence/rehearsal-clean.txt,56,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1c/evidence/schema-reference-a.json,45;47;48;4192;4244;4250;4264;4266;4268;4271;4273;4275,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1c/evidence/schema-reference-b.json,4116;4168;4174;4188;4190;4192;4195;4197;4199,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1c/uat/STAGING-DATASET-v1-ACCOUNT-CATALOG.md,20;21;40;41;42;69,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1c/uat/STAGING-DATASET-v1-SUMMARY.md,160,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1c/uat/UAT-ACCOUNT-SELECTION-GUIDE.md,100;102;124;164;165,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1c/uat/UAT-SCENARIO-MATRIX.md,33;35;40;41;72;101,Historical architecture/audit/validation evidence; applicable ADRs annotated.
-outputs/canon-1c/uat/staging-accounts.csv,8;9;17;18;19;41,Historical architecture/audit/validation evidence; applicable ADRs annotated.

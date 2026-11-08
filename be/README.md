@@ -344,7 +344,7 @@ or tombstone, no fallback service and no Beat schedule. E-Counseling keeps every
 artifact disposal, terminal-state, quarantine, consent and custody fence, and custody-transfer
 cleanup of the provider copy after verified private storage is unchanged. The canonical baseline
 assumes an empty history: no pre-reset capture, room, broker message, worker or backup may reach
-it (see `outputs/canon-1c/CANON-1C-Cutover-Dependencies.md`).
+it (see [ADR-116](docs/decisions/ADR-116-canonical-baseline-and-staging-dataset-v1.md)).
 
 Decommissioning does not settle retention periods or disposal obligations. Until the University
 adopts them, identifiable records and stored media are retained.

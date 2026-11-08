@@ -51,11 +51,14 @@ The browser suites ran with Chromium against `pnpm exec next start -p 3107`. Web
 
 Commands were run from the repository root.
 
+The reproduction commands omit reference-directory exclusions removed by P1 housekeeping. Results
+describe the original validation; its original command scopes remain available in git history.
+
 | Check | Command | Result |
 |---|---|---|
 | Canonical model and reverse relation removed from runtime and tests | `rg -n "StudentAffiliation\|organization_student_affiliation" be/compass be/tests --glob '!**/migrations/**' --glob '!*.pyc'` | no matches |
 | Retired operations removed from backend, frontend and contract | `rg -n "organizationListStudentAffiliations\|organizationSetStudentAffiliation\|organizationRemoveStudentAffiliation" be fe/src contracts --glob '!*.pyc'` | no matches |
-| SAR-1 machinery removed | `rg -n "STUDENT_ACADEMIC_PROFILE_SYNC_ENABLED\|sync_profile_from_affiliation\|clear_profile_for_removed_affiliation\|backfill_student_academic_profiles\|reconcile_student_academic_profiles" --glob '!docs/**' --glob '!outputs/**' --glob '!archived/**' --glob '!*.pyc'` | no matches |
+| SAR-1 machinery removed | `rg -n "STUDENT_ACADEMIC_PROFILE_SYNC_ENABLED\|sync_profile_from_affiliation\|clear_profile_for_removed_affiliation\|backfill_student_academic_profiles\|reconcile_student_academic_profiles" --glob '!docs/**' --glob '!*.pyc'` | no matches |
 | New feature contains no “affiliation” copy | `rg -in "affiliation" fe/src/features/student-academics "fe/src/app/(portal)/portal/organization/student-academics" fe/src/features/organization/components fe/src/features/portal/components/portal-command-destinations.ts` | no matches |
 | No whitespace errors | `git diff --check` | clean |
 

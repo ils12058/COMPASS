@@ -7,7 +7,8 @@
 > **Reset-only canonical baseline (CANON-1C, ADR-116).** This runbook applies only to the
 > compatible pre-reset staging runtime. The canonical baseline has no ledger tables, tombstone
 > tasks or `retention_decommission_status` command, and installs only into an empty database; its
-> clean-rebuild gates are in `outputs/canon-1c/CANON-1C-Cutover-Dependencies.md`. Collect this
+> compatibility boundary is documented in [ADR-116](decisions/ADR-116-canonical-baseline-and-staging-dataset-v1.md);
+> the original clean-rebuild evidence remains in git history. Collect this
 > runbook's preflight evidence on the old runtime **before** the reset, while its schema exists.
 >
 > **Historical (ADR-114).** In-app disposition is decommissioned. The deployment, review, approval,

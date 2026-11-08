@@ -8,4 +8,4 @@ PASS landing-narrowPhone
 PASS announcements-narrowPhone
 PASS resources-narrowPhone
 PASS all-fourteen-production-PNGs-decode
-10/10 browser checks passed; artifacts: ../outputs/simplify-2b/browser/webkit/public-illustrations
+10/10 browser checks passed; historical browser artifacts were recorded outside the current tracked tree.

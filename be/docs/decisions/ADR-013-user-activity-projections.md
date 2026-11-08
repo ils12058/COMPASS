@@ -54,8 +54,8 @@ Students see eligible effects only for records their existing self-service read 
 allows. Staff see only their own eligible actions with current role, capability and source scope.
 Head status supplies no organization-wide actor selector. IT Admin and DPO stay account-only.
 Routine professional actions, encounter/evaluation events and Call Slip interview completion are
-excluded, as are Student referral events. The complete evidence and deferrals are recorded in
-`outputs/BACKLOG-ACT-2-Implementation-Report.md` at the repository root.
+excluded, as are Student referral events. The original BACKLOG-ACT-2 implementation evidence and
+deferrals remain available in git history.
 
 Security Activity uses its own explicit action allowlist and never consults domain policies;
 session creation remains excluded. Supervised Staff, Privacy and Platform projections retain their

@@ -9,9 +9,9 @@ The F4 rule now uses the linked current submitted Inventory's canonical Program 
 stored Year Level. New F4 is limited to Bachelor's Programs with supported 1st–4th Year values.
 F6 request intake is available across recorded Student lifecycle states because lifecycle is not
 degree evidence. It remains a Student-reported claim; COMPASS has no authoritative completed-degree
-source or documented GCO verification procedure. The [implementation report](../../outputs/COMPASS-GM-UX-2-IMPLEMENTATION-REPORT.md)
-records the evidence audit, regression scenarios, and proposed minimal manual verification before
-issuance.
+source or documented GCO verification procedure. The original implementation report remains in git
+history. The evidence limitation and proposed minimal manual verification before issuance are
+documented below.
 
 ## Classification source
 

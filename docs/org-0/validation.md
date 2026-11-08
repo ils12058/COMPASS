@@ -42,11 +42,14 @@ The proposal's staging `0a843dae` findings were treated as older context, never 
 
 Searches included these literal identifiers across the repository, then narrower full-file reads:
 
+The reproduction commands below omit reference directories removed by P1 housekeeping. The
+results describe the original audit; its original command scopes remain available in git history.
+
 ```sh
-rg -n 'CANONICAL_CAMPUSES|CANONICAL_CAMPUS_CODES|CANONICAL_COLLEGE_IDENTITIES|CANONICAL_PROGRAM_IDENTITIES|CANONICAL_PROGRAM_BY_IDENTITY|canonical_program_metadata|sync_organization_catalog|EXPECTED_CAMPUS_COUNT|EXPECTED_COLLEGE_COUNT|EXPECTED_PROGRAM_COUNT|AcademicClassification|YearLevelPolicyStatus' --glob '!archived/**' --glob '!uv.lock' --glob '!pnpm-lock.yaml'
-rg -n 'sync_organization_catalog|organization.bootstrap|CANONICAL_(CAMPUS|COLLEGE|PROGRAM)|canonical_program_metadata' --hidden --glob '!.git' --glob '!archived/**' --glob '!docs/**' --glob '!be/docs/**' --glob '!contracts/**' .
+rg -n 'CANONICAL_CAMPUSES|CANONICAL_CAMPUS_CODES|CANONICAL_COLLEGE_IDENTITIES|CANONICAL_PROGRAM_IDENTITIES|CANONICAL_PROGRAM_BY_IDENTITY|canonical_program_metadata|sync_organization_catalog|EXPECTED_CAMPUS_COUNT|EXPECTED_COLLEGE_COUNT|EXPECTED_PROGRAM_COUNT|AcademicClassification|YearLevelPolicyStatus' --glob '!uv.lock' --glob '!pnpm-lock.yaml'
+rg -n 'sync_organization_catalog|organization.bootstrap|CANONICAL_(CAMPUS|COLLEGE|PROGRAM)|canonical_program_metadata' --hidden --glob '!.git' --glob '!docs/**' --glob '!be/docs/**' --glob '!contracts/**' .
 rg -n 'organization\.(Campus|College|Program)|ForeignKey\((Campus|College|Program)' be/compass --glob '*models.py'
-rg -n 'sync_organization_catalog|organization.bootstrap|CANONICAL_(CAMPUS|COLLEGE|PROGRAM)|EXPECTED_(CAMPUS|COLLEGE|PROGRAM)_COUNT' .github be/config be/compass/common be/compose.yaml be/compose.staging.yaml be/Containerfile archived --glob '!*.lock'
+rg -n 'sync_organization_catalog|organization.bootstrap|CANONICAL_(CAMPUS|COLLEGE|PROGRAM)|EXPECTED_(CAMPUS|COLLEGE|PROGRAM)_COUNT' .github be/config be/compass/common be/compose.yaml be/compose.staging.yaml be/Containerfile --glob '!*.lock'
 ```
 
 Follow-up searches covered code-based Campus/College/Program filters, literal baseline codes,
