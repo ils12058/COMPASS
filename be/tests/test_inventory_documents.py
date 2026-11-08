@@ -42,6 +42,8 @@ from compass.student_academics.models import StudentAcademicProfile
 from tests.inventory_encryption_helpers import update_inventory_private
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
+
 
 def context(actor: User) -> AuditContext:
     return AuditContext.user(actor)
@@ -117,12 +119,14 @@ def make_submitted_inventory(*, student: User, actor: User, code: str) -> Studen
                 {"sort_order": 0, "name": "Alex Student", "sex": "MALE", "age": 19, "is_self": True}
             ],
             "education_entries": [
+                values["education_entries"][0],
+                values["education_entries"][1],
                 {
                     "level": "SENIOR_HIGH",
                     "school_attended_address": "Camarines Norte Senior High School, Daet",
                     "inclusive_years": "2022-2024",
                     "awards_received": "With Honors",
-                }
+                },
             ],
             "organization_memberships": [
                 {

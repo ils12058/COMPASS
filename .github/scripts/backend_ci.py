@@ -286,6 +286,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_inventory_correction_targets.py",
             "test_inventory_counselor_review.py",
             "test_inventory_documents.py",
+            "test_inventory_form_req_1.py",
             "test_inventory_frontend_readiness.py",
             "test_inventory_profiling_normalization.py",
             "test_program_inventory_academic_context.py",

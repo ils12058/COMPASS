@@ -44,6 +44,8 @@ from tests.inventory_test_helpers import (
     ensure_inventory_form_revision,
     minimum_normalized_inventory_values,
 )
+
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
 from tests.test_inventory_counselor_review import (
     affiliate,
     auth_client,

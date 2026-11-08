@@ -132,7 +132,7 @@ export function OrganizationsSection({ draft, onChange, validationIssues = [] }:
 
       <FieldGroup legend="Transportation">
         <p className="mb-4 text-sm leading-6 text-muted">
-          Select only the ways you use to travel to and from the university. Each selected mode has its own optional frequency and fare details.
+          Select only the ways you use to travel to and from the university. Each selected mode needs its frequency; the fare is optional.
         </p>
         <div
           id="inventory-transport-modes"
@@ -171,6 +171,7 @@ export function OrganizationsSection({ draft, onChange, validationIssues = [] }:
                 <SelectField
                   id={`inventory-transport-${mode.toLowerCase()}-frequency-category`}
                   label="Frequency"
+                  required
                   error={errorFor(`inventory-transport-${mode.toLowerCase()}-frequency-category`)}
                   value={entry.frequency_category}
                   options={transportationFrequencyOptions}

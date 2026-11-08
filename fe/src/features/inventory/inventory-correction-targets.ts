@@ -239,7 +239,7 @@ export const inventoryCorrectionTargets = {
   "personal.languages_most_fluent": answer(personal, "Contact and addresses", "Languages most fluent in", "inventory-languages-fluent"),
   "personal.religion_from_birth": answer(personal, "Contact and addresses", "Religion from birth", "inventory-religion-birth"),
   "personal.current_religion": answer(personal, "Contact and addresses", "Current religion", "inventory-current-religion-category"),
-  "personal.current_location": answer(personal, "Location details", "Current location details", "inventory-current-location-choice", {
+  "personal.current_location": answer(personal, "Location details", "Current location details", "inventory-current-region", {
     scope: "answers",
     hintHost: "inventory-current-location",
   }),
@@ -472,6 +472,69 @@ export function inventoryCorrectionFocusOrder(code: InventoryCorrectionTarget, d
     ? [definition.anchor, ...(definition.condition ? [definition.condition.fallback] : [])]
     : [definition.condition!.fallback];
   return [...order, INVENTORY_SECTION_START_ID];
+}
+
+// The review issues a pending correction lets block resubmission. A target covers the control it
+// names plus any input the same answer reveals: an "Other" detail, a list row, a conditional
+// detail. An unmet F5 requirement elsewhere was not named by the Counselor, so it waits for a
+// later correction instead of blocking this one.
+const correctionIssueAliases: Partial<Record<InventoryCorrectionTarget, readonly string[]>> = {
+  "personal.civil_status": ["inventory-civil-status-other"],
+  "personal.current_religion": ["inventory-current-religion-other"],
+  "personal.current_location": ["inventory-current-city"],
+  "family.father.occupation": ["inventory-family-father-occupation-category"],
+  "family.mother.occupation": ["inventory-family-mother-occupation-category"],
+  "family.spouse.occupation": ["inventory-family-spouse-occupation-category"],
+  "family.father.annual_income": ["inventory-family-father-income-amount"],
+  "family.mother.annual_income": ["inventory-family-mother-income-amount"],
+  "family.spouse.annual_income": ["inventory-family-spouse-income-amount"],
+  "health.pwd_status": ["inventory-physical-disadvantage"],
+  "health.immunizations": ["inventory-immunization-other"],
+  "education.history.preparatory": ["inventory-education-preparatory-years"],
+  "education.history.elementary": ["inventory-education-elementary-years"],
+  "education.history.junior_high": ["inventory-education-junior_high-years"],
+  "education.history.senior_high": ["inventory-education-senior_high-years"],
+  "education.history.technical_vocational": ["inventory-education-technical_vocational-years"],
+  "education.history.collegiate": ["inventory-education-collegiate-years"],
+  "education.schedule_satisfaction": ["inventory-schedule-reason"],
+  "interests.course_choice_reasons": ["inventory-course-choice-other"],
+  "plans.intended_work_field": ["inventory-intended-work-other"],
+  "plans.prior_counseling": [
+    "inventory-prior-counselor",
+    "inventory-prior-counseling-when",
+    "inventory-prior-counseling-where",
+  ],
+};
+
+const correctionIssuePrefixes: Partial<Record<InventoryCorrectionTarget, readonly string[]>> = {
+  "background.siblings": ["inventory-sibling"],
+  "organizations.transportation.tricycle": ["inventory-transport-tricycle-"],
+  "organizations.transportation.bus": ["inventory-transport-bus-"],
+  "organizations.transportation.jeepney": ["inventory-transport-jeepney-"],
+  "organizations.transportation.van": ["inventory-transport-van-"],
+  "organizations.transportation.boat": ["inventory-transport-boat-"],
+};
+
+export function inventoryCorrectionIssueAllowed(
+  targets: readonly InventoryCorrectionTarget[],
+  issue: { section: string; targetId: string },
+): boolean {
+  for (const code of targets) {
+    const definition = inventoryCorrectionTargets[code];
+    if (definition.scope === "section") {
+      if (issue.section === definition.section) return true;
+      continue;
+    }
+    const covered = [
+      definition.anchor,
+      definition.hintHost,
+      definition.condition?.fallback,
+      ...(correctionIssueAliases[code] ?? []),
+    ];
+    if (covered.includes(issue.targetId)) return true;
+    if ((correctionIssuePrefixes[code] ?? []).some((prefix) => issue.targetId.startsWith(prefix))) return true;
+  }
+  return false;
 }
 
 const focusableSelector = "input:not(:disabled), select:not(:disabled), textarea:not(:disabled), button:not(:disabled)";

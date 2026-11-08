@@ -19,6 +19,8 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
             label="Ideal monthly allowance"
             value={draft.ideal_monthly_allowance}
             options={allowanceOptions}
+            required
+            error={errorFor("inventory-ideal-allowance")}
             onChange={(value) => onChange({ ideal_monthly_allowance: value })}
           />
           <SelectField
@@ -26,6 +28,8 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
             label="Field you intend to work in after graduation"
             value={draft.intended_work_field}
             options={workFieldOptions}
+            required
+            error={errorFor("inventory-intended-work-field")}
             onChange={(value) => onChange({
               intended_work_field: value,
               ...(value === PostGraduationFieldValue.OTHER ? {} : { intended_work_other: "" }),
@@ -52,6 +56,8 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
             id="inventory-prior-counseling"
             legend="Have you had a counseling experience before?"
             value={draft.prior_counseling_experience}
+            required
+            error={errorFor("inventory-prior-counseling")}
             onChange={(value) => onChange({
               prior_counseling_experience: value,
               ...(value === true
@@ -71,6 +77,8 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
                 label="Counselor name"
                 value={draft.prior_counselor_name}
                 onChange={(value) => onChange({ prior_counselor_name: value })}
+                required
+                error={errorFor("inventory-prior-counselor")}
               />
               <TextField
                 id="inventory-prior-counseling-when"
@@ -78,6 +86,8 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
                 label="When"
                 value={draft.prior_counseling_when}
                 onChange={(value) => onChange({ prior_counseling_when: value })}
+                required
+                error={errorFor("inventory-prior-counseling-when")}
               />
               <TextField
                 id="inventory-prior-counseling-where"
@@ -85,6 +95,8 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
                 label="Where"
                 value={draft.prior_counseling_where}
                 onChange={(value) => onChange({ prior_counseling_where: value })}
+                required
+                error={errorFor("inventory-prior-counseling-where")}
               />
             </div>
           ) : null}
@@ -102,6 +114,8 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
             value={draft.current_concerns}
             onChange={(value) => onChange({ current_concerns: value })}
             rows={5}
+            required
+            error={errorFor("inventory-current-concerns")}
           />
           <TextAreaField
             id="inventory-current-fears"
@@ -109,6 +123,8 @@ export function PlansSection({ draft, onChange, validationIssues = [] }: Invento
             value={draft.current_fears}
             onChange={(value) => onChange({ current_fears: value })}
             rows={5}
+            required
+            error={errorFor("inventory-current-fears")}
           />
         </div>
       </FieldGroup>

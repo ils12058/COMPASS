@@ -66,16 +66,23 @@ from .confidential_content import (
     initial_confidential_content,
     project_confidential_input,
     read_inventory_private_projection,
+    read_reopen_targets,
     write_confidential_content,
     write_reopen_targets,
 )
-from .correction_targets import normalize_correction_targets
+from .correction_targets import (
+    TARGET_COVERAGE,
+    InventoryCorrectionTarget,
+    normalize_correction_targets,
+    project_stored_targets,
+)
 from .errors import InvalidInventoryInput, InventoryError
 from .models import (
     AnnualIncomeStatus,
     CivilStatusCategory,
     CourseChoiceReason,
     CurrentReligionCategory,
+    EducationLevel,
     FamilyMemberKind,
     GeographicLocationKind,
     ImmunizationType,
@@ -161,7 +168,10 @@ def combine_parent_annual_income(
     mother_amount: Decimal | None,
 ) -> CombinedParentIncome:
     pairs = ((father_status, father_amount), (mother_status, mother_amount))
-    if any(status == AnnualIncomeStatus.NOT_SPECIFIED for status, _ in pairs):
+    if any(
+        status in {AnnualIncomeStatus.NOT_SPECIFIED, AnnualIncomeStatus.UNKNOWN}
+        for status, _ in pairs
+    ):
         return CombinedParentIncome(CombinedParentIncomeStatus.NOT_SPECIFIED, None)
 
     total = Decimal("0")
@@ -615,7 +625,7 @@ def _normalize_snapshot_categories(values: dict[str, object]) -> dict[str, objec
             raise InvalidInventoryInput(
                 "physical_disadvantage detail is required when pwd_status is PWD."
             )
-        if pwd_status in {PWDStatus.NON_PWD, PWDStatus.NOT_SPECIFIED}:
+        if pwd_status == PWDStatus.NOT_SPECIFIED:
             normalized["physical_disadvantage"] = ""
 
     parent_status = normalized.get("parent_status_category")
@@ -651,7 +661,7 @@ def _normalize_family_rows(rows: object) -> list[dict[str, object]]:
                     )
             elif status == AnnualIncomeStatus.NONE:
                 row["annual_income_previous_year"] = Decimal("0")
-            elif status == AnnualIncomeStatus.NOT_SPECIFIED:
+            elif status in {AnnualIncomeStatus.NOT_SPECIFIED, AnnualIncomeStatus.UNKNOWN}:
                 row["annual_income_previous_year"] = None
 
         occupation_category = row.get("occupation_category")
@@ -941,27 +951,475 @@ def _validate_draft_consistency(item: StudentInventory, content) -> None:
         )
 
 
+_NOT_SPECIFIED = "NOT_SPECIFIED"
+_ABSENT_LIFE_STATUSES = {ParentLifeStatus.DECEASED, ParentLifeStatus.UNKNOWN}
+
+
+def _blank(value: object) -> bool:
+    return value is None or (isinstance(value, str) and not value.strip())
+
+
+def _missing_choice(value: object) -> bool:
+    """A choice is answered only when it names a real option a new submission may give."""
+
+    return _blank(value) or str(value) == _NOT_SPECIFIED
+
+
+def _is_none_answer(value: object) -> bool:
+    return isinstance(value, str) and value.strip().casefold() == "none"
+
+
+def _correction_required_keys(item: StudentInventory) -> frozenset[str] | None:
+    """The payload keys a correction was asked to review; ``None`` means a first submission.
+
+    A reopened record was valid under the rules in force when it was submitted. Only the answers a
+    Counselor named for review are subject to the current F5 requirements; an older reason-only
+    correction therefore keeps its previous answers.
+    """
+
+    event = get_pending_correction(item)
+    if event is None:
+        return None
+    targets, _omitted = project_stored_targets(read_reopen_targets(event))
+    keys: set[str] = set()
+    for target in targets:
+        if target.value.startswith("section."):
+            section = target.value.split(".", 1)[1]
+            for candidate in InventoryCorrectionTarget:
+                if candidate.value.startswith(f"{section}."):
+                    keys.update(TARGET_COVERAGE[candidate])
+        else:
+            keys.update(TARGET_COVERAGE[target])
+    return frozenset(keys)
+
+
+def _member_requirements(
+    kind: FamilyMemberKind,
+    row: InventoryFamilyMember,
+    content,
+) -> list[tuple[str, str]]:
+    label = kind.label.lower()
+    prefix = f"family_members.{kind}"
+    requirements: list[tuple[str, str]] = []
+
+    def require_text(field: str, message: str, value: object) -> None:
+        if _blank(value):
+            requirements.append((f"{prefix}.{field}", message))
+
+    def require_choice(field: str, message: str, value: object) -> None:
+        if _missing_choice(value):
+            requirements.append((f"{prefix}.{field}", message))
+
+    require_text("name", f"Add your {label}'s name.", content.name)
+    require_text("date_of_birth", f"Add your {label}'s date of birth.", content.date_of_birth)
+    require_text("place_of_birth", f"Add your {label}'s place of birth.", content.place_of_birth)
+    require_text("current_address", f"Add your {label}'s current address.", content.current_address)
+    require_text(
+        "permanent_address", f"Add your {label}'s permanent address.", content.permanent_address
+    )
+    require_text("contact_number", f"Add your {label}'s contact number.", content.contact_number)
+    require_text(
+        "email_address",
+        f"Add your {label}'s email address. Write None if there is none.",
+        content.email_address,
+    )
+    require_text(
+        "educational_attainment",
+        f"Add your {label}'s educational attainment.",
+        content.educational_attainment,
+    )
+    require_choice(
+        "occupation_category", f"Choose your {label}'s occupation.", row.occupation_category
+    )
+    require_choice(
+        "annual_income_status",
+        f"Choose your {label}'s annual income.",
+        row.annual_income_status,
+    )
+    require_text(
+        "business_address",
+        f"Add your {label}'s business address. Write None if there is none.",
+        content.business_address,
+    )
+    require_text(
+        "business_telephone",
+        f"Add your {label}'s business telephone. Write None if there is none.",
+        content.business_telephone,
+    )
+    require_text("languages_spoken", f"Add the languages your {label} speaks.", content.languages_spoken)
+    require_text(
+        "religion_raised_with",
+        f"Add the religion you were raised with by your {label}.",
+        content.religion_raised_with,
+    )
+    require_text("current_religion", f"Add your {label}'s current religion.", content.current_religion)
+    return requirements
+
+
+def _submission_requirements(
+    item: StudentInventory,
+    profile: StudentSupportProfile,
+    private,
+) -> list[tuple[str, str]]:
+    """Unmet F5 answers, each paired with the payload key it belongs to."""
+
+    content = private.root
+    requirements: list[tuple[str, str]] = []
+
+    def require_text(key: str, message: str, value: object) -> None:
+        if _blank(value):
+            requirements.append((key, message))
+
+    def require_choice(key: str, message: str, value: object) -> None:
+        if _missing_choice(value):
+            requirements.append((key, message))
+
+    # Page 1 — personal data.
+    require_text("full_name", "Add your full name.", item.full_name_snapshot)
+    require_text("nickname", "Add your nickname.", content.nickname)
+    require_text("student_number", "Add your student number.", item.student_number)
+    require_text("date_of_birth", "Add your date of birth.", item.date_of_birth)
+    require_text("place_of_birth", "Add your place of birth.", content.place_of_birth)
+    require_text("nationality", "Add your nationality.", content.nationality)
+    require_choice("sex", "Choose your sex.", item.sex)
+    require_text(
+        "birth_order_among_siblings",
+        "Add your birth order among siblings.",
+        content.birth_order_among_siblings,
+    )
+    require_choice("civil_status_category", "Choose your civil status.", item.civil_status_category)
+    require_text("current_address", "Add your current address.", content.current_address)
+    require_text("permanent_address", "Add your permanent address.", content.permanent_address)
+    require_text("contact_number", "Add your contact number.", content.contact_number)
+    require_text("email_address", "Add your email address.", content.email_address)
+    require_text(
+        "languages_spoken_at_home",
+        "Add the languages spoken at home.",
+        content.languages_spoken_at_home,
+    )
+    require_text(
+        "languages_most_fluent",
+        "Add the languages you are most fluent in.",
+        content.languages_most_fluent,
+    )
+    require_text("religion_from_birth", "Add your religion from birth.", content.religion_from_birth)
+    require_choice(
+        "current_religion_category",
+        "Choose your current religion.",
+        item.current_religion_category,
+    )
+    current_location = next(
+        (
+            row
+            for row in item.geographic_locations.all()
+            if row.kind == GeographicLocationKind.CURRENT
+        ),
+        None,
+    )
+    if current_location is None or current_location.not_specified:
+        requirements.append(
+            (
+                "geographic_locations.CURRENT.not_specified",
+                "Choose your current region and city or municipality.",
+            )
+        )
+
+    # Page 1 — family and support.
+    require_choice(
+        "parent_status_category",
+        "Choose your parents' marital status.",
+        item.parent_status_category,
+    )
+    if not item.parent_statuses:
+        requirements.append(
+            ("parent_statuses", "Tick at least one circumstance that applies to your parents.")
+        )
+    require_text("guardian_name", "Add your guardian's name.", content.guardian_name)
+    require_text(
+        "guardian_relationship", "Add your guardian's relationship to you.", content.guardian_relationship
+    )
+    require_text("guardian_address", "Add your guardian's address.", content.guardian_address)
+    require_text(
+        "guardian_contact_number",
+        "Add your guardian's contact number.",
+        content.guardian_contact_number,
+    )
+    require_text(
+        "emergency_contact_name",
+        "Add your emergency contact's name.",
+        content.emergency_contact_name,
+    )
+    require_text(
+        "emergency_contact_number",
+        "Add your emergency contact's number.",
+        content.emergency_contact_number,
+    )
+    require_choice("support_profile.four_ps_status", "Choose your 4Ps status.", profile.four_ps_status)
+    require_choice(
+        "support_profile.indigenous_peoples_status",
+        "Choose whether you are an Indigenous Peoples member.",
+        profile.indigenous_peoples_status,
+    )
+    require_choice(
+        "support_profile.mother_life_status",
+        "Choose whether your mother is living, deceased, or unknown.",
+        profile.mother_life_status,
+    )
+    require_choice(
+        "support_profile.father_life_status",
+        "Choose whether your father is living, deceased, or unknown.",
+        profile.father_life_status,
+    )
+
+    parents = {row.kind: row for row in item.family_members.all()}
+    for kind, life_status in (
+        (FamilyMemberKind.FATHER, profile.father_life_status),
+        (FamilyMemberKind.MOTHER, profile.mother_life_status),
+    ):
+        if life_status in _ABSENT_LIFE_STATUSES:
+            # If a parent is deceased or of unknown life status, the F5 parent details would not
+            # be truthfully answerable. Keep whatever the Student already knows.
+            continue
+        row = parents.get(kind)
+        if row is None:
+            requirements.append(
+                (
+                    f"family_members.{kind}.name",
+                    f"Add your {kind.label.lower()}'s details.",
+                )
+            )
+            continue
+        requirements.extend(_member_requirements(kind, row, private.children[row.pk]))
+
+    if item.civil_status_category == CivilStatusCategory.MARRIED:
+        spouse = parents.get(FamilyMemberKind.SPOUSE)
+        if spouse is None:
+            requirements.append(
+                ("family_members.SPOUSE.name", "Add your spouse's details.")
+            )
+        else:
+            requirements.extend(
+                _member_requirements(
+                    FamilyMemberKind.SPOUSE, spouse, private.children[spouse.pk]
+                )
+            )
+
+    # Page 2 — siblings, unique features, living arrangement, health.
+    siblings = list(item.siblings.all())
+    if not any(row.is_self for row in siblings):
+        requirements.append(("siblings.is_self", "Include yourself among your siblings."))
+    for row in siblings:
+        sibling = private.children[row.pk]
+        require_text("siblings.name", "Add each sibling's name.", sibling.name)
+        if sibling.sex not in {"MALE", "FEMALE"}:
+            requirements.append(("siblings.sex", "Choose each sibling's sex."))
+        if sibling.age is None:
+            requirements.append(("siblings.age", "Add each sibling's age."))
+
+    require_text("friends_in_school", "Add your friends in school.", content.friends_in_school)
+    require_text(
+        "friends_outside_school",
+        "Add your friends outside school.",
+        content.friends_outside_school,
+    )
+    require_text("special_interest", "Add your special interests.", content.special_interest)
+    require_text(
+        "special_skills_talents", "Add your special skills or talents.", content.special_skills_talents
+    )
+    require_text("hobbies_recreation", "Add your hobbies and recreation.", content.hobbies_recreation)
+    require_text("ambition_goal", "Add your ambition or goal.", content.ambition_goal)
+    require_text("characteristics", "Add your characteristics.", content.characteristics)
+
+    require_choice("living_arrangement", "Choose your living arrangement.", item.living_arrangement)
+    if item.present_place_people_count is None:
+        requirements.append(
+            ("present_place_people_count", "Add how many people live in your present place.")
+        )
+    if item.room_sharing_people_count is None:
+        requirements.append(
+            ("room_sharing_people_count", "Add how many people share your room.")
+        )
+    if item.living_arrangement == LivingArrangement.BOARDING_HOUSE:
+        if item.boarding_exclusive is None:
+            requirements.append(
+                ("boarding_exclusive", "Answer whether your boarding room is exclusive to you.")
+            )
+        require_text(
+            "boarding_landlord_name",
+            "Add your boarding-house landlord's name.",
+            content.boarding_landlord_name,
+        )
+        require_text(
+            "boarding_address", "Add your boarding-house address.", content.boarding_address
+        )
+
+    require_text(
+        "accidents_experienced",
+        "Describe the accidents you have experienced. Write None if none.",
+        content.accidents_experienced,
+    )
+    if not _is_none_answer(content.accidents_experienced):
+        require_text(
+            "accidents_effect",
+            "Describe the effect of the accidents you experienced.",
+            content.accidents_effect,
+        )
+    require_text(
+        "operations_experienced",
+        "Describe the operations you have experienced. Write None if none.",
+        content.operations_experienced,
+    )
+    if not _is_none_answer(content.operations_experienced):
+        require_text(
+            "operations_effect",
+            "Describe the effect of the operations you experienced.",
+            content.operations_effect,
+        )
+    require_text("height", "Add your height.", content.height)
+    require_text("weight", "Add your weight.", content.weight)
+    require_text(
+        "physical_disadvantage",
+        "Describe any physical disadvantage. Write None if none.",
+        content.physical_disadvantage,
+    )
+    require_choice("pwd_status", "Choose your PWD status.", item.pwd_status)
+    require_text(
+        "illness_this_year",
+        "List the illnesses you had this year. Write None if none.",
+        content.illness_this_year,
+    )
+    require_text(
+        "previous_illness",
+        "List your previous illnesses. Write None if none.",
+        content.previous_illness,
+    )
+
+    # Page 2 — educational history and current study.
+    education = {row.level: row for row in item.education_entries.all()}
+    for level, label in (
+        (EducationLevel.ELEMENTARY, "elementary"),
+        (EducationLevel.JUNIOR_HIGH, "junior high school"),
+        (EducationLevel.SENIOR_HIGH, "senior high school"),
+    ):
+        entry = education.get(level)
+        entry_content = private.children[entry.pk] if entry is not None else None
+        require_text(
+            f"education_entries.{level}.school_attended_address",
+            f"Add the school you attended for {label} and its address.",
+            entry_content.school_attended_address if entry_content is not None else None,
+        )
+        require_text(
+            f"education_entries.{level}.inclusive_years",
+            f"Add the inclusive years you attended {label}.",
+            entry_content.inclusive_years if entry_content is not None else None,
+        )
+    if item.program_id is None:
+        requirements.append(("program_id", "Choose your current Program."))
+    if item.schedule_satisfied is None:
+        requirements.append(
+            ("schedule_satisfied", "Answer whether you are satisfied with your present schedule.")
+        )
+    if item.schedule_satisfied is False:
+        require_text(
+            "schedule_satisfaction_reason",
+            "Explain why you are not satisfied with your present schedule.",
+            content.schedule_satisfaction_reason,
+        )
+
+    # Page 3 — course choice, interests, perceptions, and plans.
+    if item.course_first_choice is None:
+        requirements.append(
+            ("course_first_choice", "Answer whether your enrolled course was your first choice.")
+        )
+    if not item.course_choice_reasons:
+        requirements.append(("course_choice_reasons", "Choose at least one reason for your course choice."))
+    for row in item.transportation_entries.all():
+        if _missing_choice(row.frequency_category):
+            requirements.append(
+                (
+                    f"transportation_entries.{row.mode}.frequency_category",
+                    "Choose how often you use each selected mode of transportation.",
+                )
+            )
+    require_text(
+        "lowest_subjects_grades",
+        "Add the subjects with your lowest grades and the grades you received.",
+        content.lowest_subjects_grades,
+    )
+    require_text(
+        "highest_subjects_grades",
+        "Add the subjects with your highest grades and the grades you received.",
+        content.highest_subjects_grades,
+    )
+    require_text(
+        "inclination_performing_arts",
+        "Add your inclination for the performing arts.",
+        content.inclination_performing_arts,
+    )
+    require_text("inclination_sports", "Add your inclination for sports.", content.inclination_sports)
+    require_text(
+        "inclination_leadership", "Add your inclination for leadership.", content.inclination_leadership
+    )
+    require_text("other_skills_hobbies", "Add your other skills and hobbies.", content.other_skills_hobbies)
+    require_text(
+        "desired_extracurricular_activities",
+        "Add the extracurricular activities you would like to join.",
+        content.desired_extracurricular_activities,
+    )
+    require_text(
+        "reading_preferences",
+        "Add the books and magazines you enjoy reading. Write None if none.",
+        content.reading_preferences,
+    )
+    require_choice("handedness", "Choose your handedness.", item.handedness)
+    for field in (
+        "daily_hours_class",
+        "daily_hours_library",
+        "daily_hours_studying",
+        "daily_hours_rest",
+        "daily_hours_recreation",
+        "daily_hours_other",
+    ):
+        if getattr(item, field) is None:
+            requirements.append((field, "Add the hours you devote daily to each listed activity."))
+
+    require_choice(
+        "ideal_monthly_allowance",
+        "Choose your ideal monthly allowance.",
+        item.ideal_monthly_allowance,
+    )
+    require_choice("intended_work_field", "Choose your intended work field.", item.intended_work_field)
+    if content.prior_counseling_experience is None:
+        requirements.append(
+            ("prior_counseling_experience", "Answer whether you have had previous counseling.")
+        )
+    if content.prior_counseling_experience is True:
+        require_text(
+            "prior_counselor_name", "Add your previous counselor's name.", content.prior_counselor_name
+        )
+        require_text(
+            "prior_counseling_when", "Add when you had previous counseling.", content.prior_counseling_when
+        )
+        require_text(
+            "prior_counseling_where",
+            "Add where you had previous counseling.",
+            content.prior_counseling_where,
+        )
+    require_text("current_concerns", "Add your current concerns.", content.current_concerns)
+    require_text("current_fears", "Add your current fears.", content.current_fears)
+
+    return requirements
+
+
 def _validate_submission(
     item: StudentInventory,
     profile: StudentSupportProfile,
     private,
+    *,
+    correction_keys: frozenset[str] | None = None,
 ) -> dict[str, object]:
     content = private.root
     _validate_draft_consistency(item, content)
-    required_scalars = (
-        ("sex", item.sex),
-        ("date_of_birth", item.date_of_birth),
-        ("civil_status_category", item.civil_status_category),
-        ("current_religion_category", item.current_religion_category),
-        ("pwd_status", item.pwd_status),
-        ("parent_status_category", item.parent_status_category),
-        ("living_arrangement", item.living_arrangement),
-    )
-    missing = [name for name, value in required_scalars if value in {None, ""}]
-    if missing:
-        raise InvalidInventoryInput(
-            "Inventory submission requires normalized fields: " + ", ".join(missing) + "."
-        )
     # Drafts saved before birth dates were checked at the write boundary are caught here.
     _reject_future_birth_date(item.date_of_birth, "date_of_birth")
     for row in item.family_members.all():
@@ -988,74 +1446,37 @@ def _validate_submission(
     ):
         root_values[field] = normalized_root[field]
 
-    required_support = (
-        ("four_ps_status", profile.four_ps_status),
-        ("indigenous_peoples_status", profile.indigenous_peoples_status),
-        ("mother_life_status", profile.mother_life_status),
-        ("father_life_status", profile.father_life_status),
-    )
-    missing_support = [name for name, value in required_support if value in {None, ""}]
-    if missing_support:
-        raise InvalidInventoryInput(
-            "Inventory submission requires Student Support fields: "
-            + ", ".join(missing_support)
-            + "."
+    for row in item.geographic_locations.all():
+        _normalize_geographic_rows(
+            [
+                {
+                    "kind": row.kind,
+                    "not_specified": row.not_specified,
+                    "region_psgc_code": row.region_psgc_code,
+                    "region_name_snapshot": row.region_name_snapshot,
+                    "province_psgc_code": row.province_psgc_code,
+                    "province_name_snapshot": row.province_name_snapshot,
+                    "city_municipality_psgc_code": row.city_municipality_psgc_code,
+                    "city_municipality_name_snapshot": row.city_municipality_name_snapshot,
+                    "barangay_psgc_code": row.barangay_psgc_code,
+                    "barangay_name_snapshot": row.barangay_name_snapshot,
+                }
+            ]
         )
 
-    current_location = next(
-        (
-            row
-            for row in item.geographic_locations.all()
-            if row.kind == GeographicLocationKind.CURRENT
-        ),
-        None,
-    )
-    if current_location is None:
-        raise InvalidInventoryInput(
-            "A deliberate CURRENT structured geographic location response is required."
-        )
-    _normalize_geographic_rows(
-        [
-            {
-                "kind": current_location.kind,
-                "not_specified": current_location.not_specified,
-                "region_psgc_code": current_location.region_psgc_code,
-                "region_name_snapshot": current_location.region_name_snapshot,
-                "province_psgc_code": current_location.province_psgc_code,
-                "province_name_snapshot": current_location.province_name_snapshot,
-                "city_municipality_psgc_code": current_location.city_municipality_psgc_code,
-                "city_municipality_name_snapshot": current_location.city_municipality_name_snapshot,
-                "barangay_psgc_code": current_location.barangay_psgc_code,
-                "barangay_name_snapshot": current_location.barangay_name_snapshot,
-            }
-        ]
-    )
-
-    parents = {row.kind: row for row in item.family_members.all()}
-    for kind in (FamilyMemberKind.FATHER, FamilyMemberKind.MOTHER):
-        parent = parents.get(kind)
-        if parent is None:
-            raise InvalidInventoryInput(f"{kind.label} family-member row is required.")
-        if parent.occupation_category in {None, ""}:
-            raise InvalidInventoryInput(f"{kind.label} occupation_category is required.")
-        if parent.annual_income_status in {None, ""}:
-            raise InvalidInventoryInput(f"{kind.label} annual_income_status is required.")
+    for row in item.family_members.all():
         _normalize_family_rows(
             [
                 {
-                    "kind": parent.kind,
-                    "occupation_category": parent.occupation_category,
-                    "occupation": private.children[parent.pk].occupation,
-                    "annual_income_status": parent.annual_income_status,
-                    "annual_income_previous_year": parent.annual_income_previous_year,
+                    "kind": row.kind,
+                    "occupation_category": row.occupation_category,
+                    "occupation": private.children[row.pk].occupation,
+                    "annual_income_status": row.annual_income_status,
+                    "annual_income_previous_year": row.annual_income_previous_year,
                 }
             ]
         )
     for row in item.transportation_entries.all():
-        if row.frequency_category in {None, ""}:
-            raise InvalidInventoryInput(
-                "Each transportation entry requires a frequency_category before submission."
-            )
         _normalize_transportation_rows(
             [
                 {
@@ -1069,22 +1490,31 @@ def _validate_submission(
 
     if ImmunizationType.OTHER in content.immunizations and not content.immunization_other.strip():
         raise InvalidInventoryInput(
-            "immunization_other is required when OTHER immunization is selected."
+            "Add the other immunization you received."
         )
     if (
         CourseChoiceReason.OTHER in item.course_choice_reasons
         and not content.course_choice_other.strip()
     ):
         raise InvalidInventoryInput(
-            "course_choice_other is required when OTHER course-choice reason is selected."
+            "Add the other reason for your course choice."
         )
     if (
         item.intended_work_field == PostGraduationField.OTHER
         and not content.intended_work_other.strip()
     ):
         raise InvalidInventoryInput(
-            "intended_work_other is required when intended_work_field is OTHER."
+            "Add the other work field you intend to pursue."
         )
+
+    requirements = _submission_requirements(item, profile, private)
+    unmet = [
+        message
+        for key, message in requirements
+        if correction_keys is None or key in correction_keys
+    ]
+    if unmet:
+        raise InvalidInventoryInput(unmet[0])
 
     return root_values
 
@@ -1419,7 +1849,12 @@ def submit_current_inventory(
         if locked_student.institutional_id is not None:
             item.student_number = locked_student.institutional_id
         private = read_inventory_private_projection(item)
-        normalized_private = _validate_submission(item, profile, private)
+        normalized_private = _validate_submission(
+            item,
+            profile,
+            private,
+            correction_keys=_correction_required_keys(item),
+        )
         if normalized_private != private.root.payload():
             write_confidential_content(item, normalized_private)
         _apply_resolved_geography(item, resolved_geography)

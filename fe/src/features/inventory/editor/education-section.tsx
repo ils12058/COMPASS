@@ -68,7 +68,9 @@ export function EducationSection({
     <div className="space-y-7">
       <FieldGroup legend="Educational history">
         <p className="mb-5 text-sm leading-6 text-muted">
-          Add the school and years attended for each level, such as 2016–2022. You can leave levels that do not apply blank.
+          Add the school and years attended for each level, such as 2016–2022. Elementary, junior
+          high, and senior high school are required. Preparatory, technical or vocational, and
+          collegiate levels are optional.
         </p>
         <div className="divide-y divide-border rounded-sm border border-border">
           {educationLevelOptions.map(([level, label]) => (
@@ -76,8 +78,10 @@ export function EducationSection({
               key={level}
               level={level}
               label={label}
+              required={requiredEducationLevels.has(level)}
               entry={(draft.education_entries ?? []).find((item) => item.level === level)}
               onChange={(patch) => updateEducation(level, patch)}
+              errorFor={errorFor}
             />
           ))}
         </div>
@@ -217,14 +221,18 @@ export function EducationSection({
               schedule_satisfied: value,
               ...(value === false ? {} : { schedule_satisfaction_reason: "" }),
             })}
+            required
+            error={errorFor("inventory-schedule-satisfied")}
           />
           {draft.schedule_satisfied === false ? (
             <TextAreaField
               id="inventory-schedule-reason"
-              label="Reason (optional)"
+              label="Reason"
+              error={errorFor("inventory-schedule-reason")}
               value={draft.schedule_satisfaction_reason}
               onChange={(value) => onChange({ schedule_satisfaction_reason: value })}
               hint="Changing the schedule response to Yes or no response clears this detail."
+              required
             />
           ) : null}
         </div>
@@ -233,39 +241,56 @@ export function EducationSection({
   );
 }
 
+const requiredEducationLevels = new Set<EducationLevelValue>([
+  EducationLevelValue.ELEMENTARY,
+  EducationLevelValue.JUNIOR_HIGH,
+  EducationLevelValue.SENIOR_HIGH,
+]);
+
 // One school level. A level is a stable key, so a review request can name the row even before it
 // has answers.
 function EducationLevelRow({
   level,
   label,
+  required,
   entry,
   onChange,
+  errorFor,
 }: {
   level: EducationLevelValue;
   label: string;
+  required: boolean;
   entry: EducationEntryPayload | undefined;
   onChange: (patch: Partial<EducationEntryPayload>) => void;
+  errorFor: (targetId: string) => string | undefined;
 }) {
   const key = level.toLowerCase();
   const review = useInventoryReview(`inventory-education-${key}`);
   return (
     <section className="grid gap-4 px-4 py-5 @4xl/inventory:grid-cols-[12rem_minmax(0,1fr)_11rem_12rem] @4xl/inventory:items-start">
       <div className="pt-2">
-        <h3 className="text-sm font-semibold text-ink">{label}</h3>
+        <h3 className="text-sm font-semibold text-ink">
+          {label}
+          {required ? <span aria-hidden="true" className="ml-1 text-danger">*</span> : null}
+        </h3>
         <InventoryReviewHintText hint={review.hint} className="mt-1" />
       </div>
       <TextField
         id={`inventory-education-${key}-school`}
         label="School attended and address"
+        error={errorFor(`inventory-education-${key}-school`)}
         value={entry?.school_attended_address}
         onChange={(value) => onChange({ school_attended_address: value })}
+        required={required}
       />
       <TextField
         id={`inventory-education-${key}-years`}
         label="Inclusive years"
         maxLength={educationTextLimits.inclusive_years}
+        error={errorFor(`inventory-education-${key}-years`)}
         value={entry?.inclusive_years}
         onChange={(value) => onChange({ inclusive_years: value })}
+        required={required}
       />
       <TextField
         id={`inventory-education-${key}-awards`}

@@ -39,6 +39,8 @@ from compass.service_catalog.services import set_service_active
 from tests.canonical_service_helpers import legacy_counseling_service
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
+
 
 def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)
@@ -298,16 +300,16 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
             "prior_counseling_experience": False,
             "family_members": [
                 {
-                    "kind": "FATHER",
-                    "occupation_category": "NOT_SPECIFIED",
-                    "annual_income_status": "NOT_SPECIFIED",
+                    **baseline["family_members"][0],
+                    "occupation_category": "NONE",
+                    "annual_income_status": "NONE",
                 },
                 {
-                    "kind": "MOTHER",
+                    **baseline["family_members"][1],
                     "name": "Parent Snapshot",
                     "occupation": "Teacher",
                     "occupation_category": "GOVERNMENT_EMPLOYEE",
-                    "annual_income_status": "NOT_SPECIFIED",
+                    "annual_income_status": "NONE",
                 },
             ],
             "siblings": [
@@ -320,12 +322,14 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
                 }
             ],
             "education_entries": [
+                baseline["education_entries"][0],
+                baseline["education_entries"][1],
                 {
                     "level": "SENIOR_HIGH",
                     "school_attended_address": "School / Address",
                     "inclusive_years": "2022-2024",
                     "awards_received": "",
-                }
+                },
             ],
             "organization_memberships": [
                 {
@@ -355,7 +359,7 @@ def test_put_style_replacement_preserves_typed_nested_source_sections_and_submis
         == "Parent Snapshot"
     )
     assert updated.siblings.get().is_self
-    assert updated.education_entries.get().level == "SENIOR_HIGH"
+    assert updated.education_entries.get(level="SENIOR_HIGH").level == "SENIOR_HIGH"
     assert updated.organization_memberships.get().scope == "INSIDE_SCHOOL"
     assert str(updated.transportation_entries.get().fare) == "20.00"
 
@@ -385,7 +389,7 @@ def test_submission_enforces_only_confirmed_conditional_consistency():
             "immunization_other": "",
         },
     )
-    with pytest.raises(InvalidInventoryInput, match="immunization_other"):
+    with pytest.raises(InvalidInventoryInput, match="Add the other immunization"):
         submit_current_inventory(student=student, context=context(student))
 
     replace_current_inventory(
@@ -439,6 +443,7 @@ def test_birth_dates_may_be_any_past_date_but_never_after_the_institutional_toda
 
     client = auth_client(student)
     payload = minimum_normalized_inventory_values(program_id=program.pk)
+    payload["full_name"] = payload.pop("full_name_snapshot")
     payload["date_of_birth"] = today + timedelta(days=1)
     response = client.put(
         "/api/v1/inventory/me/current",

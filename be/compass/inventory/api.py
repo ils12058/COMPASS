@@ -147,12 +147,14 @@ class PWDStatusValue(StrEnum):
 class ParentLifeStatusValue(StrEnum):
     LIVING = ParentLifeStatus.LIVING
     DECEASED = ParentLifeStatus.DECEASED
+    UNKNOWN = ParentLifeStatus.UNKNOWN
     NOT_SPECIFIED = ParentLifeStatus.NOT_SPECIFIED
 
 
 class FourPsStatusValue(StrEnum):
     BENEFICIARY = FourPsStatus.BENEFICIARY
     NOT_BENEFICIARY = FourPsStatus.NOT_BENEFICIARY
+    NOT_SURE = FourPsStatus.NOT_SURE
     NOT_SPECIFIED = FourPsStatus.NOT_SPECIFIED
 
 
@@ -193,6 +195,7 @@ class OccupationCategoryValue(StrEnum):
 class AnnualIncomeStatusValue(StrEnum):
     REPORTED = AnnualIncomeStatus.REPORTED
     NONE = AnnualIncomeStatus.NONE
+    UNKNOWN = AnnualIncomeStatus.UNKNOWN
     NOT_SPECIFIED = AnnualIncomeStatus.NOT_SPECIFIED
 
 

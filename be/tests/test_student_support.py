@@ -48,6 +48,8 @@ from compass.student_support.models import (
 from tests.inventory_encryption_helpers import create_inventory_row, update_inventory_private
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
+
 
 def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)
@@ -436,6 +438,7 @@ def test_support_profile_is_nested_in_inventory_and_family_rows_have_no_life_sta
     client = auth_client(student)
 
     payload = minimum_normalized_inventory_values(program_id=program.pk)
+    payload["full_name"] = payload.pop("full_name_snapshot")
     payload["pwd_status"] = "PWD"
     payload["physical_disadvantage"] = "Mobility limitation"
     payload["support_profile"] = {

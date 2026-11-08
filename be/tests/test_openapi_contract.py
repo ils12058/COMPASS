@@ -1699,6 +1699,7 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
     assert schemas["FourPsStatusValue"]["enum"] == [
         "BENEFICIARY",
         "NOT_BENEFICIARY",
+        "NOT_SURE",
         "NOT_SPECIFIED",
     ]
     assert schemas["IndigenousPeoplesStatusValue"]["enum"] == [
@@ -1706,6 +1707,8 @@ def test_core_schemas_and_realistic_error_responses_are_typed() -> None:
         "NOT_MEMBER",
         "NOT_SPECIFIED",
     ]
+    assert "UNKNOWN" in schemas["ParentLifeStatusValue"]["enum"]
+    assert "UNKNOWN" in schemas["AnnualIncomeStatusValue"]["enum"]
     assert schemas["DistributionRow"]["properties"]["percentage"]["anyOf"] == [
         {"type": "number"},
         {"type": "null"},

@@ -52,7 +52,12 @@ export function BackgroundSection({ draft, onChange, validationIssues = [] }: In
           List siblings from eldest to youngest, including yourself. Mark the row that represents you.
         </p>
         <InventoryReviewHintText hint={listReview.hint} className="mb-5" />
-        <ol className="divide-y divide-border rounded-sm border border-border">
+        {errorFor("inventory-siblings") ? (
+          <p role="alert" className="mb-4 text-xs leading-5 text-danger">
+            {errorFor("inventory-siblings")}
+          </p>
+        ) : null}
+        <ol id="inventory-siblings" className="divide-y divide-border rounded-sm border border-border">
           {siblings.map((sibling, index) => (
             <li key={`sibling-${index}`} className="px-4 py-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -94,16 +99,20 @@ export function BackgroundSection({ draft, onChange, validationIssues = [] }: In
                 <TextField
                   id={`inventory-sibling-${index}-name`}
                   maxLength={siblingTextLimits.name}
+                  error={errorFor(`inventory-sibling-${index}-name`)}
                   label="Name"
                   value={sibling.name}
                   onChange={(value) => updateRow(index, { name: value })}
+                  required
                 />
                 <SelectField
                   id={`inventory-sibling-${index}-sex`}
+                  error={errorFor(`inventory-sibling-${index}-sex`)}
                   label="Sex"
                   value={sibling.sex}
                   options={sexOptions}
                   onChange={(value) => updateRow(index, { sex: value })}
+                  required
                 />
                 <TextField
                   id={`inventory-sibling-${index}-age`}
@@ -114,6 +123,7 @@ export function BackgroundSection({ draft, onChange, validationIssues = [] }: In
                   error={errorFor(`inventory-sibling-${index}-age`)}
                   value={sibling.age}
                   onChange={(value) => updateRow(index, { age: value ? Number(value) : null })}
+                  required
                 />
                 <TextField
                   id={`inventory-sibling-${index}-education`}
@@ -167,45 +177,59 @@ export function BackgroundSection({ draft, onChange, validationIssues = [] }: In
         <div className="grid gap-4 @md/inventory:grid-cols-2">
           <TextAreaField
             id="inventory-friends-in-school"
+            error={errorFor("inventory-friends-in-school")}
             label="Friends in school"
             value={draft.friends_in_school}
             onChange={(value) => onChange({ friends_in_school: value })}
+            required
           />
           <TextAreaField
             id="inventory-friends-outside-school"
+            error={errorFor("inventory-friends-outside-school")}
             label="Friends outside school"
             value={draft.friends_outside_school}
             onChange={(value) => onChange({ friends_outside_school: value })}
+            required
           />
           <TextAreaField
             id="inventory-special-interest"
+            error={errorFor("inventory-special-interest")}
             label="Special interest"
             value={draft.special_interest}
             onChange={(value) => onChange({ special_interest: value })}
+            required
           />
           <TextAreaField
             id="inventory-special-skills"
+            error={errorFor("inventory-special-skills")}
             label="Special skills and talents"
             value={draft.special_skills_talents}
             onChange={(value) => onChange({ special_skills_talents: value })}
+            required
           />
           <TextAreaField
             id="inventory-hobbies"
+            error={errorFor("inventory-hobbies")}
             label="Hobbies and recreation activities"
             value={draft.hobbies_recreation}
             onChange={(value) => onChange({ hobbies_recreation: value })}
+            required
           />
           <TextAreaField
             id="inventory-ambition"
+            error={errorFor("inventory-ambition")}
             label="Ambition or goal"
             value={draft.ambition_goal}
             onChange={(value) => onChange({ ambition_goal: value })}
+            required
           />
           <TextAreaField
             id="inventory-characteristics"
+            error={errorFor("inventory-characteristics")}
             label="Characteristics that describe you best"
             value={draft.characteristics}
             onChange={(value) => onChange({ characteristics: value })}
+            required
           />
         </div>
       </FieldGroup>

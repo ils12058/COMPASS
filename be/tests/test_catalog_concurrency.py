@@ -37,7 +37,10 @@ from tests.catalog_test_helpers import authority, hierarchy, manager, run_serial
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 from tests.test_inventory import configure_year
 
-pytestmark = pytest.mark.django_db(transaction=True)
+pytestmark = [
+    pytest.mark.django_db(transaction=True),
+    pytest.mark.usefixtures("inventory_psgc"),
+]
 
 
 @pytest.fixture

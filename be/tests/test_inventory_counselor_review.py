@@ -36,6 +36,8 @@ from compass.student_support.services import StudentSupportNotFound, get_student
 from tests.canonical_service_helpers import legacy_counseling_service
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
+
 
 def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)

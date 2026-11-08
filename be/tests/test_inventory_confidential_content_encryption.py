@@ -31,6 +31,8 @@ from compass.routine_interviews.services import list_direct_student_candidates
 from compass.student_support.services import get_student_support_context
 from tests.encryption_oracles import inventory_confidential_content_v1 as frozen
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
+
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
 from tests.test_inventory_counselor_review import (
     affiliate,
     auth_client,
@@ -293,16 +295,17 @@ def make_world():
         for kind in ("FATHER", "MOTHER")
     ]
     values["siblings"] = [
-        {"sort_order": 0, "is_self": False, **private_payload("InventorySibling")}
+        {"sort_order": 0, "is_self": True, **private_payload("InventorySibling")}
     ]
     values["education_entries"] = [
         {
-            "level": "ELEMENTARY",
+            "level": level,
             **{
                 **private_payload("InventoryEducationEntry"),
                 "school_attended_address": "PRIVATE-SCHOOL",
             },
         }
+        for level in ("ELEMENTARY", "JUNIOR_HIGH", "SENIOR_HIGH")
     ]
     values["organization_memberships"] = [
         {
@@ -390,7 +393,9 @@ def test_storage_ciphertext_only_and_normalized_columns_queryable(world):
         == 2
     )
     assert item.transportation_entries.filter(frequency_category="OTHER", fare=10).exists()
-    assert item.geographic_locations.filter(kind="CURRENT", not_specified=True).exists()
+    assert item.geographic_locations.filter(
+        kind="CURRENT", not_specified=False, city_municipality_psgc_code="1380600000"
+    ).exists()
 
 
 def test_metadata_dependencies_work_with_key_and_decrypt_unavailable(world, monkeypatch, settings):
@@ -505,14 +510,14 @@ def test_owner_submitted_detail_pdf_projection_and_content_free_effects(world, m
 
     monkeypatch.setattr(content, "decrypt_bound_json", observe)
     private = content.read_inventory_private_projection(item)
-    assert len(seen) == 7  # root + two parents + four other child tables
+    assert len(seen) == 9  # root + two parents + three education rows + three other child tables
     seen.clear()
     # Builder consumes the authorized projection and never decrypts.
     projection = documents.build_inventory_render_context(item, private=private)
     assert seen == []
     assert projection["inventory_form"]["concerns"] == private.root.current_concerns
     response = auth_client(world["student"]).get(f"/api/v1/inventory/me/{item.pk}/pdf")
-    assert response.status_code == 200 and len(seen) == 7
+    assert response.status_code == 200 and len(seen) == 9
     pdf = PdfReader(BytesIO(response.content))
     assert len(pdf.pages) == 3
     text = (

@@ -30,10 +30,15 @@ export function PSGCLocationSelector({
   const prefix = `inventory-${kind.toLowerCase()}`;
   const errorFor = (targetId: string) =>
     validationIssues.find((issue) => issue.targetId === targetId)?.message;
-  const choiceError = errorFor(`${prefix}-location-choice`);
+  // The current location is required, so it is always entered directly; only the optional
+  // permanent location still asks how the Student wants to provide it.
+  const choiceError = permanent ? errorFor(`${prefix}-location-choice`) : undefined;
   const blockReview = useInventoryReview(`${prefix}-location`);
   const choiceReview = useInventoryReview(`${prefix}-location-choice`);
   const addReview = useInventoryReview(`${prefix}-location-add`);
+  // The current location's review hint lives on this whole block; the region select is where the
+  // Student is taken, so it also points at the hint.
+  const regionReview = useInventoryReview(`${prefix}-region`);
   const regionError = errorFor(`${prefix}-region`);
   const cityError = errorFor(`${prefix}-city`);
   const mode = !location
@@ -179,7 +184,14 @@ export function PSGCLocationSelector({
         ) : null}
       </div>
 
-      {!permanent || location ? (
+      {!permanent ? (
+        location?.not_specified ? (
+          <InventoryNotice tone="warning" role="status">
+            Your saved answer “Prefer not to specify” is no longer accepted. Choose your current
+            region and city or municipality.
+          </InventoryNotice>
+        ) : null
+      ) : location ? (
         <div className="max-w-xl">
           <Label htmlFor={`${prefix}-location-choice`}>
             How would you like to provide this location?
@@ -188,7 +200,6 @@ export function PSGCLocationSelector({
             id={`${prefix}-location-choice`}
             className="mt-2"
             value={mode}
-            aria-required={!permanent || undefined}
             aria-invalid={choiceError ? true : undefined}
             aria-describedby={[choiceReview.describedBy, choiceError ? `${prefix}-location-choice-error` : undefined].filter(Boolean).join(" ") || undefined}
             onChange={(event) => chooseMode(event.target.value)}
@@ -210,7 +221,7 @@ export function PSGCLocationSelector({
         </Button>
       )}
 
-      {mode === "specified" ? (
+      {!permanent || mode === "specified" ? (
         <>
           {hasLookupFailure ? (
             <InventoryNotice tone="warning" role="status">
@@ -231,7 +242,7 @@ export function PSGCLocationSelector({
                 disabled={regions.isPending || regions.isError}
                 aria-required={!permanent || undefined}
                 aria-invalid={regionError ? true : undefined}
-                aria-describedby={regionError ? `${prefix}-region-error` : undefined}
+                aria-describedby={[regionReview.describedBy, regionError ? `${prefix}-region-error` : undefined].filter(Boolean).join(" ") || undefined}
                 onChange={(event) => chooseRegion(event.target.value)}
               >
                 <option value="">Select a region</option>

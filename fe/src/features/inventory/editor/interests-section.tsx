@@ -31,6 +31,8 @@ export function InterestsSection({ draft, onChange, validationIssues = [] }: Inv
             legend="Was your enrolled course your first choice?"
             value={draft.course_first_choice}
             onChange={(value) => onChange({ course_first_choice: value })}
+            required
+            error={errorFor("inventory-course-first-choice")}
           />
           <CheckboxGroupField
             id="inventory-course-choice-reasons"
@@ -41,6 +43,8 @@ export function InterestsSection({ draft, onChange, validationIssues = [] }: Inv
               course_choice_reasons: values,
               ...(values.includes(CourseChoiceReasonValue.OTHER) ? {} : { course_choice_other: "" }),
             })}
+            required
+            error={errorFor("inventory-course-choice-reasons")}
           />
           {(draft.course_choice_reasons ?? []).includes(CourseChoiceReasonValue.OTHER) ? (
             <TextField
@@ -56,33 +60,43 @@ export function InterestsSection({ draft, onChange, validationIssues = [] }: Inv
           <div className="grid gap-4 @md/inventory:grid-cols-2">
             <TextAreaField
               id="inventory-lowest-subjects"
+              error={errorFor("inventory-lowest-subjects")}
               label="Subjects with lowest grades and grades received"
               value={draft.lowest_subjects_grades}
               onChange={(value) => onChange({ lowest_subjects_grades: value })}
+              required
             />
             <TextAreaField
               id="inventory-highest-subjects"
+              error={errorFor("inventory-highest-subjects")}
               label="Subjects with highest grades and grades received"
               value={draft.highest_subjects_grades}
               onChange={(value) => onChange({ highest_subjects_grades: value })}
+              required
             />
             <TextAreaField
               id="inventory-inclination-performing-arts"
+              error={errorFor("inventory-inclination-performing-arts")}
               label="Inclinations: performing arts"
               value={draft.inclination_performing_arts}
               onChange={(value) => onChange({ inclination_performing_arts: value })}
+              required
             />
             <TextAreaField
               id="inventory-inclination-sports"
+              error={errorFor("inventory-inclination-sports")}
               label="Inclinations: sports"
               value={draft.inclination_sports}
               onChange={(value) => onChange({ inclination_sports: value })}
+              required
             />
             <TextAreaField
               id="inventory-inclination-leadership"
+              error={errorFor("inventory-inclination-leadership")}
               label="Inclinations: leadership"
               value={draft.inclination_leadership}
               onChange={(value) => onChange({ inclination_leadership: value })}
+              required
             />
           </div>
         </div>
@@ -101,29 +115,38 @@ export function InterestsSection({ draft, onChange, validationIssues = [] }: Inv
           <div className="grid gap-4 @md/inventory:grid-cols-2">
             <TextAreaField
               id="inventory-other-skills-hobbies"
+              error={errorFor("inventory-other-skills-hobbies")}
               label="Other skills and hobbies"
               value={draft.other_skills_hobbies}
               onChange={(value) => onChange({ other_skills_hobbies: value })}
+              required
             />
             <TextAreaField
               id="inventory-desired-extracurricular"
+              error={errorFor("inventory-desired-extracurricular")}
               label="Extracurricular activities you would like to join"
               value={draft.desired_extracurricular_activities}
               onChange={(value) => onChange({ desired_extracurricular_activities: value })}
+              required
             />
             <TextAreaField
               id="inventory-reading-preferences"
+              error={errorFor("inventory-reading-preferences")}
               label="Books and magazines you enjoy reading"
               value={draft.reading_preferences}
               onChange={(value) => onChange({ reading_preferences: value })}
+              hint="Write None if you have none."
+              required
             />
             <SelectField
               id="inventory-handedness"
+              error={errorFor("inventory-handedness")}
               label="Handedness"
               value={draft.handedness}
               options={handednessOptions}
               onChange={(value) => onChange({ handedness: value })}
-              placeholder="No response"
+              placeholder="Choose handedness"
+              required
             />
           </div>
 
@@ -146,6 +169,7 @@ export function InterestsSection({ draft, onChange, validationIssues = [] }: Inv
                   onChange={(value) => onChange({ [key]: value || null })}
                   hint="0 to 24 hours, up to two decimal places."
                   error={errorFor(`inventory-${key.replaceAll("_", "-")}`)}
+                  required
                 />
               ))}
             </div>

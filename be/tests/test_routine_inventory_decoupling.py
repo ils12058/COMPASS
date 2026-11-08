@@ -55,6 +55,8 @@ from tests.test_routine_interviews import (
     sync_policy,
 )
 
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
+
 
 def setup_domain(prefix: str, *, year: bool = True):
     sync_policy()

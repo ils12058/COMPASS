@@ -33,6 +33,8 @@ from compass.organization.models import (
 from compass.student_academics.models import StudentAcademicProfile
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
+
 
 def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)

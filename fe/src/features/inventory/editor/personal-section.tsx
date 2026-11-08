@@ -41,25 +41,31 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
           <TextField
             id="inventory-full-name"
             maxLength={inventoryTextLimits.full_name}
+            error={errorFor("inventory-full-name")}
             label="Full name"
             value={draft.full_name}
             onChange={(value) => onChange({ full_name: value })}
             hint="This name will appear on this year’s Individual Inventory."
+            required
           />
           <TextField
             id="inventory-nickname"
             maxLength={inventoryTextLimits.nickname}
+            error={errorFor("inventory-nickname")}
             label="Nickname"
             value={draft.nickname}
             onChange={(value) => onChange({ nickname: value })}
+            required
           />
           <TextField
             id="inventory-student-number"
+            error={errorFor("inventory-student-number")}
             label="Institutional ID"
             value={draft.student_number}
             onChange={() => undefined}
             readOnly
             hint="From your COMPASS account. It cannot be changed here."
+            required
           />
           <TextField
             id="inventory-date-of-birth"
@@ -74,16 +80,20 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
           <TextField
             id="inventory-place-of-birth"
             maxLength={inventoryTextLimits.place_of_birth}
+            error={errorFor("inventory-place-of-birth")}
             label="Place of birth"
             value={draft.place_of_birth}
             onChange={(value) => onChange({ place_of_birth: value })}
+            required
           />
           <TextField
             id="inventory-nationality"
             maxLength={inventoryTextLimits.nationality}
+            error={errorFor("inventory-nationality")}
             label="Nationality"
             value={draft.nationality}
             onChange={(value) => onChange({ nationality: value })}
+            required
           />
           <SelectField
             id="inventory-sex"
@@ -97,9 +107,11 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
           <TextField
             id="inventory-birth-order"
             maxLength={inventoryTextLimits.birth_order_among_siblings}
+            error={errorFor("inventory-birth-order")}
             label="Birth order among siblings"
             value={draft.birth_order_among_siblings}
             onChange={(value) => onChange({ birth_order_among_siblings: value })}
+            required
           />
           <SelectField
             id="inventory-civil-status"
@@ -134,53 +146,67 @@ export function PersonalSection({ draft, onChange, validationIssues = [] }: Inve
         <div className="grid gap-4 @md/inventory:grid-cols-2">
           <TextAreaField
             id="inventory-current-address"
+            error={errorFor("inventory-current-address")}
             label="Current address"
             value={draft.current_address}
             onChange={(value) => onChange({ current_address: value })}
+            required
           />
           <TextAreaField
             id="inventory-permanent-address"
+            error={errorFor("inventory-permanent-address")}
             label="Permanent address"
             value={draft.permanent_address}
             onChange={(value) => onChange({ permanent_address: value })}
+            required
           />
           <TextField
             id="inventory-contact-number"
             maxLength={inventoryTextLimits.contact_number}
+            error={errorFor("inventory-contact-number")}
             hint="For example, 0917 123 4567."
             label="Contact number"
             type="tel"
             value={draft.contact_number}
             onChange={(value) => onChange({ contact_number: value })}
             autoComplete="tel"
+            required
           />
           <TextField
             id="inventory-email"
             maxLength={inventoryTextLimits.email_address}
+            error={errorFor("inventory-email")}
             label="Email address"
             type="email"
             value={draft.email_address}
             onChange={(value) => onChange({ email_address: value })}
             autoComplete="email"
+            required
           />
           <TextAreaField
             id="inventory-languages-home"
+            error={errorFor("inventory-languages-home")}
             label="Languages spoken at home"
             value={draft.languages_spoken_at_home}
             onChange={(value) => onChange({ languages_spoken_at_home: value })}
+            required
           />
           <TextAreaField
             id="inventory-languages-fluent"
+            error={errorFor("inventory-languages-fluent")}
             label="Languages most fluent in"
             value={draft.languages_most_fluent}
             onChange={(value) => onChange({ languages_most_fluent: value })}
+            required
           />
           <TextField
             id="inventory-religion-birth"
             maxLength={inventoryTextLimits.religion_from_birth}
+            error={errorFor("inventory-religion-birth")}
             label="Religion from birth"
             value={draft.religion_from_birth}
             onChange={(value) => onChange({ religion_from_birth: value })}
+            required
           />
           <SelectField
             id="inventory-current-religion-category"

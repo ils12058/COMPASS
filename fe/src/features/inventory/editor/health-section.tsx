@@ -8,13 +8,16 @@ import { FieldGroup } from "@/features/inventory/inventory-shared";
 import {
   ImmunizationValue,
   LivingArrangementValue,
-  PWDStatusValue,
 } from "@/lib/api/generated/model";
 
 function nullableCount(value: string): number | null {
   if (!value) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isNoneAnswer(value: string | null | undefined): boolean {
+  return typeof value === "string" && value.trim().toLowerCase() === "none";
 }
 
 export function HealthSection({ draft, onChange, validationIssues = [] }: InventorySectionProps) {
@@ -54,6 +57,7 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
             step={1}
             value={draft.present_place_people_count}
             onChange={(value) => onChange({ present_place_people_count: nullableCount(value) })}
+            required
           />
           <TextField
             id="inventory-room-sharing-people"
@@ -64,6 +68,7 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
             step={1}
             value={draft.room_sharing_people_count}
             onChange={(value) => onChange({ room_sharing_people_count: nullableCount(value) })}
+            required
           />
         </div>
         {boarding ? (
@@ -73,19 +78,25 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
               legend="Is the boarding house exclusive to one sex?"
               value={draft.boarding_exclusive}
               onChange={(value) => onChange({ boarding_exclusive: value })}
+              required
+              error={errorFor("inventory-boarding-exclusive")}
             />
             <TextField
               id="inventory-boarding-landlord"
               maxLength={inventoryTextLimits.boarding_landlord_name}
+              error={errorFor("inventory-boarding-landlord")}
               label="Landlord or landlady name"
               value={draft.boarding_landlord_name}
               onChange={(value) => onChange({ boarding_landlord_name: value })}
+              required
             />
             <TextAreaField
               id="inventory-boarding-address"
+              error={errorFor("inventory-boarding-address")}
               label="Boarding-house address"
               value={draft.boarding_address}
               onChange={(value) => onChange({ boarding_address: value })}
+              required
             />
             <p className="self-end text-xs leading-5 text-muted">
               Choosing another living arrangement clears boarding-house details.
@@ -101,27 +112,37 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
         <div className="grid gap-4 @md/inventory:grid-cols-2">
           <TextAreaField
             id="inventory-accidents"
+            error={errorFor("inventory-accidents")}
             label="Accidents experienced"
             value={draft.accidents_experienced}
             onChange={(value) => onChange({ accidents_experienced: value })}
+            hint="Write None if you have not had any accidents."
+            required
           />
           <TextAreaField
             id="inventory-accidents-effect"
+            error={errorFor("inventory-accidents-effect")}
             label="Effect of accidents"
             value={draft.accidents_effect}
             onChange={(value) => onChange({ accidents_effect: value })}
+            required={!isNoneAnswer(draft.accidents_experienced)}
           />
           <TextAreaField
             id="inventory-operations"
+            error={errorFor("inventory-operations")}
             label="Operations experienced"
             value={draft.operations_experienced}
             onChange={(value) => onChange({ operations_experienced: value })}
+            hint="Write None if you have not had any operations."
+            required
           />
           <TextAreaField
             id="inventory-operations-effect"
+            error={errorFor("inventory-operations-effect")}
             label="Effect of operations"
             value={draft.operations_effect}
             onChange={(value) => onChange({ operations_effect: value })}
+            required={!isNoneAnswer(draft.operations_experienced)}
           />
           <div className="@md/inventory:col-span-2">
             <CheckboxGroupField
@@ -151,17 +172,21 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
             id="inventory-height"
             maxLength={inventoryTextLimits.height}
             hint="For example, 160 cm."
+            error={errorFor("inventory-height")}
             label="Height"
             value={draft.height}
             onChange={(value) => onChange({ height: value })}
+            required
           />
           <TextField
             id="inventory-weight"
             maxLength={inventoryTextLimits.weight}
             hint="For example, 52 kg."
+            error={errorFor("inventory-weight")}
             label="Weight"
             value={draft.weight}
             onChange={(value) => onChange({ weight: value })}
+            required
           />
           <SelectField
             id="inventory-pwd-status"
@@ -169,34 +194,33 @@ export function HealthSection({ draft, onChange, validationIssues = [] }: Invent
             label="Disability status"
             value={draft.pwd_status}
             options={pwdOptions}
-            onChange={(value) => onChange({
-              pwd_status: value,
-              ...(value === PWDStatusValue.PWD ? {} : { physical_disadvantage: "" }),
-            })}
+            onChange={(value) => onChange({ pwd_status: value })}
             required
           />
-          {draft.pwd_status === PWDStatusValue.PWD ? (
-            <TextAreaField
-              id="inventory-physical-disadvantage"
+          <TextAreaField
+            id="inventory-physical-disadvantage"
             error={errorFor("inventory-physical-disadvantage")}
-              label="Physical disadvantage or support context"
-              value={draft.physical_disadvantage}
-              onChange={(value) => onChange({ physical_disadvantage: value })}
-              required
-              hint="Changing the response to a different option clears this detail."
-            />
-          ) : null}
+            label="Physical disadvantage or support context"
+            value={draft.physical_disadvantage}
+            onChange={(value) => onChange({ physical_disadvantage: value })}
+            required
+            hint="Write None if there is none."
+          />
           <TextAreaField
             id="inventory-illness-this-year"
+            error={errorFor("inventory-illness-this-year")}
             label="Illness this year"
             value={draft.illness_this_year}
             onChange={(value) => onChange({ illness_this_year: value })}
+            required
           />
           <TextAreaField
             id="inventory-previous-illness"
+            error={errorFor("inventory-previous-illness")}
             label="Previous illness"
             value={draft.previous_illness}
             onChange={(value) => onChange({ previous_illness: value })}
+            required
           />
         </div>
       </FieldGroup>

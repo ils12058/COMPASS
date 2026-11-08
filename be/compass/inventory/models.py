@@ -75,6 +75,7 @@ class OccupationCategory(models.TextChoices):
 class AnnualIncomeStatus(models.TextChoices):
     REPORTED = "REPORTED", "Reported"
     NONE = "NONE", "None"
+    UNKNOWN = "UNKNOWN", "Unknown"
     NOT_SPECIFIED = "NOT_SPECIFIED", "Not specified"
 
 

@@ -1474,6 +1474,7 @@
         "enum": [
           "REPORTED",
           "NONE",
+          "UNKNOWN",
           "NOT_SPECIFIED"
         ],
         "title": "AnnualIncomeStatusValue",
@@ -14413,6 +14414,7 @@
         "enum": [
           "BENEFICIARY",
           "NOT_BENEFICIARY",
+          "NOT_SURE",
           "NOT_SPECIFIED"
         ],
         "title": "FourPsStatusValue",
@@ -24477,6 +24479,7 @@
         "enum": [
           "LIVING",
           "DECEASED",
+          "UNKNOWN",
           "NOT_SPECIFIED"
         ],
         "title": "ParentLifeStatusValue",

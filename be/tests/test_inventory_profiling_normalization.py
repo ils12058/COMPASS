@@ -44,6 +44,8 @@ from compass.student_support.models import ParentLifeStatus
 from tests.inventory_encryption_helpers import create_inventory_row, update_inventory_row
 from tests.inventory_test_helpers import minimum_normalized_inventory_values
 
+pytestmark = pytest.mark.usefixtures("inventory_psgc")
+
 
 def sync_policy() -> None:
     call_command("sync_identity_policy", verbosity=0)
@@ -193,7 +195,7 @@ def test_current_religion_other_requires_detail_and_none_is_distinct_from_not_sp
 
 
 @pytest.mark.django_db
-def test_pwd_status_requires_detail_only_when_pwd_and_clears_non_pwd_detail():
+def test_pwd_status_requires_detail_when_pwd_and_keeps_the_answered_physical_disadvantage():
     student, _, _ = make_draft("physical@example.edu")
     with pytest.raises(InvalidInventoryInput, match="physical_disadvantage detail"):
         replace_current_inventory(
@@ -213,14 +215,16 @@ def test_pwd_status_requires_detail_only_when_pwd_and_clears_non_pwd_detail():
     )
     assert read_confidential_content(reported).physical_disadvantage == "Mobility limitation"
 
+    # The F5 physical-disadvantage answer is required even for a non-PWD Student, and a truthful
+    # answer such as "None" is kept rather than cleared.
     none_value = replace_current_inventory(
         student=student,
         values={
             "pwd_status": PWDStatus.NON_PWD,
-            "physical_disadvantage": "Contradiction",
+            "physical_disadvantage": "None",
         },
     )
-    assert read_confidential_content(none_value).physical_disadvantage == ""
+    assert read_confidential_content(none_value).physical_disadvantage == "None"
 
     unspecified = replace_current_inventory(
         student=student,
@@ -678,23 +682,23 @@ def test_negative_transport_fare_and_parent_income_have_database_protection():
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "missing_field",
+    ("missing_field", "message"),
     [
-        "sex",
-        "date_of_birth",
-        "civil_status_category",
-        "current_religion_category",
-        "pwd_status",
-        "parent_status_category",
-        "living_arrangement",
+        ("sex", "Choose your sex."),
+        ("date_of_birth", "Add your date of birth."),
+        ("civil_status_category", "Choose your civil status."),
+        ("current_religion_category", "Choose your current religion."),
+        ("pwd_status", "Choose your PWD status."),
+        ("parent_status_category", "Choose your parents' marital status."),
+        ("living_arrangement", "Choose your living arrangement."),
     ],
 )
-def test_new_submission_rejects_missing_root_profiling_fields(missing_field):
+def test_new_submission_rejects_missing_root_profiling_fields(missing_field, message):
     student, program, _ = make_draft(f"missing-{missing_field}@example.edu")
     values = minimum_normalized_inventory_values(program_id=program.pk)
     values.pop(missing_field)
     replace_current_inventory(student=student, values=values)
-    with pytest.raises(InvalidInventoryInput, match=missing_field):
+    with pytest.raises(InvalidInventoryInput, match=message):
         submit_current_inventory(student=student, context=context(student))
 
 
@@ -704,19 +708,19 @@ def test_new_submission_requires_current_location_and_both_parent_rows_with_expl
     values = minimum_normalized_inventory_values(program_id=program.pk)
     values["geographic_locations"] = []
     replace_current_inventory(student=student, values=values)
-    with pytest.raises(InvalidInventoryInput, match="CURRENT structured geographic"):
+    with pytest.raises(InvalidInventoryInput, match="Choose your current region"):
         submit_current_inventory(student=student, context=context(student))
 
     values = minimum_normalized_inventory_values(program_id=program.pk)
     values["family_members"] = values["family_members"][:1]
     replace_current_inventory(student=student, values=values)
-    with pytest.raises(InvalidInventoryInput, match="Mother family-member"):
+    with pytest.raises(InvalidInventoryInput, match="Add your mother's details."):
         submit_current_inventory(student=student, context=context(student))
 
     values = minimum_normalized_inventory_values(program_id=program.pk)
     values["family_members"][0]["occupation_category"] = None
     replace_current_inventory(student=student, values=values)
-    with pytest.raises(InvalidInventoryInput, match="Father occupation_category"):
+    with pytest.raises(InvalidInventoryInput, match="Choose your father's occupation."):
         submit_current_inventory(student=student, context=context(student))
 
 
@@ -732,7 +736,7 @@ def test_existing_transportation_entry_requires_explicit_frequency_category_at_s
         }
     ]
     replace_current_inventory(student=student, values=values)
-    with pytest.raises(InvalidInventoryInput, match="frequency_category"):
+    with pytest.raises(InvalidInventoryInput, match="Choose how often you use each selected mode"):
         submit_current_inventory(student=student, context=context(student))
 
 
@@ -747,7 +751,7 @@ def test_valid_normalized_inventory_submits_and_freezes_all_snapshots():
             "current_religion_category": CurrentReligionCategory.ROMAN_CATHOLIC,
             "current_religion": "Bad client text",
             "pwd_status": PWDStatus.NON_PWD,
-            "physical_disadvantage": "Contradiction",
+            "physical_disadvantage": "None",
             "parent_status_category": ParentStatusCategory.MARRIED,
             "transportation_entries": [
                 {
@@ -764,7 +768,7 @@ def test_valid_normalized_inventory_submits_and_freezes_all_snapshots():
     assert submitted.submitted_at is not None
     assert read_confidential_content(submitted).civil_status == "Single"
     assert read_confidential_content(submitted).current_religion == "Roman Catholic"
-    assert read_confidential_content(submitted).physical_disadvantage == ""
+    assert read_confidential_content(submitted).physical_disadvantage == "None"
     assert submitted.course_currently_enrolled == program.name
     assert read_confidential_content(submitted.transportation_entries.get()).frequency == "Daily"
 

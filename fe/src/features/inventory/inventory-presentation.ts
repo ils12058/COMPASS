@@ -48,7 +48,6 @@ export const civilStatusOptions = [
   [CivilStatusCategoryValue.MARRIED, "Married"],
   [CivilStatusCategoryValue.SOLO_PARENT, "Solo parent"],
   [CivilStatusCategoryValue.OTHER, "Other"],
-  [CivilStatusCategoryValue.NOT_SPECIFIED, "Prefer not to specify"],
 ] as const;
 
 export const religionOptions = [
@@ -65,7 +64,6 @@ export const religionOptions = [
   [CurrentReligionCategoryValue.PMCC, "PMCC"],
   [CurrentReligionCategoryValue.NONE, "None"],
   [CurrentReligionCategoryValue.OTHER, "Other"],
-  [CurrentReligionCategoryValue.NOT_SPECIFIED, "Prefer not to specify"],
 ] as const;
 
 export const familyKindOptions = [
@@ -77,7 +75,7 @@ export const familyKindOptions = [
 export const annualIncomeOptions = [
   [AnnualIncomeStatusValue.REPORTED, "Reported"],
   [AnnualIncomeStatusValue.NONE, "None"],
-  [AnnualIncomeStatusValue.NOT_SPECIFIED, "Prefer not to specify"],
+  [AnnualIncomeStatusValue.UNKNOWN, "Unknown"],
 ] as const;
 
 export const occupationOptions = [
@@ -89,7 +87,6 @@ export const occupationOptions = [
   [OccupationCategoryValue.OFW, "Overseas Filipino worker"],
   [OccupationCategoryValue.NONE, "None"],
   [OccupationCategoryValue.OTHER, "Other"],
-  [OccupationCategoryValue.NOT_SPECIFIED, "Prefer not to specify"],
 ] as const;
 
 export const parentStatusCategoryOptions = [
@@ -105,7 +102,6 @@ export const parentStatusCategoryOptions = [
   [ParentStatusCategoryValue.MOTHER_OFW, "Mother works overseas"],
   [ParentStatusCategoryValue.FATHER_OFW, "Father works overseas"],
   [ParentStatusCategoryValue.OTHER, "Other"],
-  [ParentStatusCategoryValue.NOT_SPECIFIED, "Prefer not to specify"],
 ] as const;
 
 export const parentStatusOptions = [
@@ -120,21 +116,20 @@ export const parentStatusOptions = [
 ] as const;
 
 export const parentLifeOptions = [
-  [ParentLifeStatusValue.LIVING, "Alive"],
+  [ParentLifeStatusValue.LIVING, "Living"],
   [ParentLifeStatusValue.DECEASED, "Deceased"],
-  [ParentLifeStatusValue.NOT_SPECIFIED, "Prefer not to specify"],
+  [ParentLifeStatusValue.UNKNOWN, "Unknown"],
 ] as const;
 
 export const fourPsOptions = [
-  [FourPsStatusValue.BENEFICIARY, "Yes"],
-  [FourPsStatusValue.NOT_BENEFICIARY, "No"],
-  [FourPsStatusValue.NOT_SPECIFIED, "Prefer not to specify"],
+  [FourPsStatusValue.BENEFICIARY, "4Ps beneficiary"],
+  [FourPsStatusValue.NOT_BENEFICIARY, "Not a 4Ps beneficiary"],
+  [FourPsStatusValue.NOT_SURE, "Not sure"],
 ] as const;
 
 export const indigenousOptions = [
-  [IndigenousPeoplesStatusValue.MEMBER, "Yes"],
-  [IndigenousPeoplesStatusValue.NOT_MEMBER, "No"],
-  [IndigenousPeoplesStatusValue.NOT_SPECIFIED, "Prefer not to specify"],
+  [IndigenousPeoplesStatusValue.MEMBER, "Member"],
+  [IndigenousPeoplesStatusValue.NOT_MEMBER, "Not a member"],
 ] as const;
 
 export const livingArrangementOptions = [
@@ -144,9 +139,8 @@ export const livingArrangementOptions = [
 ] as const;
 
 export const pwdOptions = [
-  [PWDStatusValue.PWD, "Person with disability"],
-  [PWDStatusValue.NON_PWD, "Not a person with disability"],
-  [PWDStatusValue.NOT_SPECIFIED, "Prefer not to specify"],
+  [PWDStatusValue.PWD, "PWD"],
+  [PWDStatusValue.NON_PWD, "Non-PWD"],
 ] as const;
 
 export const educationLevelOptions = [
@@ -228,7 +222,6 @@ export const transportationFrequencyOptions = [
   [TransportationFrequencyCategoryValue.WEEKLY, "Weekly"],
   [TransportationFrequencyCategoryValue.OCCASIONAL, "Occasionally"],
   [TransportationFrequencyCategoryValue.OTHER, "Other"],
-  [TransportationFrequencyCategoryValue.NOT_SPECIFIED, "Prefer not to specify"],
 ] as const;
 
 export const organizationScopeOptions = [
@@ -236,33 +229,42 @@ export const organizationScopeOptions = [
   [OrganizationScopeValue.OUTSIDE_SCHOOL, "Outside the university"],
 ] as const;
 
-const enumPresentationLabels: Record<string, string> = Object.fromEntries(
-  [
-    sexOptions,
-    civilStatusOptions,
-    religionOptions,
-    familyKindOptions,
-    annualIncomeOptions,
-    occupationOptions,
-    parentStatusCategoryOptions,
-    parentStatusOptions,
-    parentLifeOptions,
-    fourPsOptions,
-    indigenousOptions,
-    livingArrangementOptions,
-    pwdOptions,
-    educationLevelOptions,
-    courseChoiceReasonOptions,
-    interestOptions,
-    immunizationOptions,
-    handednessOptions,
-    allowanceOptions,
-    workFieldOptions,
-    transportationModes,
-    transportationFrequencyOptions,
-    organizationScopeOptions,
-  ].flat(),
-);
+// Submitted Inventories may still record NOT_SPECIFIED from earlier years. It is no longer an
+// option on the form, but the stored answer must keep its meaning when it is displayed.
+const historicalChoiceLabels: Record<string, string> = {
+  NOT_SPECIFIED: "Prefer not to specify",
+};
+
+const enumPresentationLabels: Record<string, string> = {
+  ...Object.fromEntries(
+    [
+      sexOptions,
+      civilStatusOptions,
+      religionOptions,
+      familyKindOptions,
+      annualIncomeOptions,
+      occupationOptions,
+      parentStatusCategoryOptions,
+      parentStatusOptions,
+      parentLifeOptions,
+      fourPsOptions,
+      indigenousOptions,
+      livingArrangementOptions,
+      pwdOptions,
+      educationLevelOptions,
+      courseChoiceReasonOptions,
+      interestOptions,
+      immunizationOptions,
+      handednessOptions,
+      allowanceOptions,
+      workFieldOptions,
+      transportationModes,
+      transportationFrequencyOptions,
+      organizationScopeOptions,
+    ].flat(),
+  ),
+  ...historicalChoiceLabels,
+};
 
 export function enumLabel(value: string | null | undefined): string {
   if (!value) return "Not provided";

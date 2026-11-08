@@ -59,6 +59,8 @@
     "referrals/migrations/0003_referral_acknowledged_by_and_more.py",
     "student_academics/migrations/0001_initial.py",
     "student_academics/migrations/0002_studentacademicperiodrecord_studentgraduationrecord.py",
-    "ecounseling/migrations/0002_recording_only.py"
+    "ecounseling/migrations/0002_recording_only.py",
+    "inventory/migrations/0002_alter_inventoryfamilymember_annual_income_status.py",
+    "student_support/migrations/0002_alter_studentsupportprofile_father_life_status_and_more.py"
   ]
 }

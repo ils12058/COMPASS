@@ -27,6 +27,7 @@ import {
   focusInventoryCorrectionTarget,
   INVENTORY_SECTION_REVIEW_ID,
   INVENTORY_SECTION_START_ID,
+  inventoryCorrectionIssueAllowed,
   inventoryCorrectionTarget,
   inventoryCorrectionFocusOrder,
   inventoryReviewHints,
@@ -95,7 +96,6 @@ export function InventoryEditor({
     dirty,
     message: "Discard your unsaved Individual Inventory changes?",
   });
-  const issues = getInventorySubmissionIssues(draft, activeProgramIds, activePrograms);
   const currentSectionIndex = inventorySections.findIndex((item) => item.id === section);
   const currentCorrection = inventory.correction_pending ? inventory.latest_correction : null;
   const correctionTargetValues = currentCorrection?.targets;
@@ -105,6 +105,21 @@ export function InventoryEditor({
   );
   // Advisory only: a target never marks an answer invalid, blocks saving, or blocks resubmission.
   const reviewHints = useMemo(() => inventoryReviewHints(correctionTargets, draft), [correctionTargets, draft]);
+  const submissionIssues = getInventorySubmissionIssues(draft, activeProgramIds, activePrograms);
+  // While a correction is pending, only the answers it named are required again. Save-time checks
+  // still apply to anything the Student edits, as they do on every save.
+  const draftIssues = currentCorrection ? getInventoryDraftIssues(normalizeInventoryPayload(draft)) : [];
+  const issues = currentCorrection
+    ? submissionIssues.filter(
+        (issue) =>
+          draftIssues.some(
+            (draftIssue) =>
+              draftIssue.section === issue.section &&
+              draftIssue.targetId === issue.targetId &&
+              draftIssue.message === issue.message,
+          ) || inventoryCorrectionIssueAllowed(correctionTargets, issue),
+      )
+    : submissionIssues;
 
   useEffect(() => {
     const pendingReview = pendingReviewRef.current;
