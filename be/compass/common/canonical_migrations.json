@@ -28,6 +28,7 @@
     "compass/student_support/migrations/0001_canonical_baseline.py": "8a7277317e119ecff73b42e3373444a99a00f8da504a9967b0eab1ba7295e78c"
   },
   "additive_migrations": [
+    "graduate_tracer/migrations/0002_graduate_tracer_reminder_occurrences.py",
     "accounts/migrations/0002_student_session_summary_capabilities.py",
     "accounts/migrations/0003_rename_guidance_services_staff_role.py",
     "appointments/migrations/0002_appointment_reminders.py",

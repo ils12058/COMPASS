@@ -16,6 +16,7 @@ from compass.common.api import response_with_errors
 from compass.common.errors import APIError
 
 from .models import (
+    GraduateTracerReminderKind,
     GraduateTracerStatus,
     GTSAdvancedStudyReason,
     GTSBusinessLine,
@@ -36,6 +37,7 @@ from .models import (
     GTSUnemploymentReason,
     GTSUsefulCompetency,
 )
+from .reminders import GraduateTracerReminderOrdering, GraduateTracerReminderState, list_reminders
 from .services import (
     DEFAULT_PAGE_SIZE,
     GraduateTracerConflict,
@@ -788,3 +790,49 @@ def graduate_tracer_get_response(request, response_id: UUID):
     except GraduateTracerError as exc:
         _raise(exc)
     return _detail(item)
+
+
+class GraduateTracerReminderKindValue(StrEnum):
+    SIX_MONTH = GraduateTracerReminderKind.SIX_MONTH
+    FOLLOW_UP = GraduateTracerReminderKind.FOLLOW_UP
+
+
+class GraduateTracerReminderSummary(StrictSchema):
+    kind: GraduateTracerReminderKindValue
+    due_date: date
+    issued_at: datetime | None
+    state: GraduateTracerReminderState
+
+
+class GraduateTracerReminderRow(StrictSchema):
+    graduation_record_id: UUID
+    graduate_name: str
+    graduation_date: date
+    reminders: list[GraduateTracerReminderSummary]
+
+
+class GraduateTracerReminderPage(StrictSchema):
+    items: list[GraduateTracerReminderRow]
+    ordering: GraduateTracerReminderOrdering
+    page: int
+    page_size: int
+    has_next: bool
+
+
+@router.get(
+    "/reminders",
+    response=response_with_errors(GraduateTracerReminderPage, 401, 403, 422),
+    auth=session_auth,
+    operation_id="graduateTracerListReminders",
+)
+def graduate_tracer_list_reminders(
+    request,
+    page: int = 1,
+    page_size: int = 20,
+    ordering: GraduateTracerReminderOrdering | None = None,
+):
+    _require_viewer(request)
+    try:
+        return list_reminders(page=page, page_size=page_size, ordering=ordering)
+    except ValueError as exc:
+        raise APIError(422, "invalid_graduate_tracer_request", str(exc)) from exc

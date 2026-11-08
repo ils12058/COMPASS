@@ -180,7 +180,13 @@ def render_notification_email(
                 )
                 or not isinstance(presentation.target, NotificationEmailTarget)
                 or presentation.target.target_type
-                != OPERATIONAL_EMAIL_TARGETS.get(event_code, NotificationTargetType.APPOINTMENT)
+                != (
+                    NotificationTargetType.GRADUATE_TRACER
+                    if event_code == NotificationEvent.GRADUATE_TRACER_REMINDER
+                    else OPERATIONAL_EMAIL_TARGETS.get(
+                        event_code, NotificationTargetType.APPOINTMENT
+                    )
+                )
             ):
                 raise ValueError("unsupported notification email action")
             link = build_notification_email_link(presentation.target)

@@ -121,6 +121,8 @@ def notification_email_route(target: NotificationEmailTarget) -> str | None:
         if not isinstance(identifier, (UUID, str)) or not _UUID.fullmatch(str(identifier)):
             return None
         identifier = str(UUID(str(identifier)))
+    if kind == NotificationTargetType.GRADUATE_TRACER:
+        return "/portal/graduate-tracer"
     if kind == NotificationTargetType.INVENTORY:
         return "/portal/inventory/current"
     if kind == NotificationTargetType.FEEDBACK:

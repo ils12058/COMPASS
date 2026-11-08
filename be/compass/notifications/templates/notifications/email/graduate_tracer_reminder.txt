@@ -1,0 +1,4 @@
+{% extends "compass/email/base.txt" %}
+{% block content %}Tell the Guidance Office how you're doing in the Graduate Tracer survey.
+
+{% if action_url %}Open Graduate Tracer survey: {{ action_url }}{% else %}Sign in to COMPASS and open Graduate Tracer.{% endif %}{% endblock %}

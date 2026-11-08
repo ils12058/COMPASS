@@ -22,6 +22,8 @@ import {
   appointmentErrorMessage,
   updateAppointmentQuery,
 } from "@/features/appointments/appointments-shared";
+import { getGraduateTracerAccess } from "@/features/graduate-tracer/graduate-tracer-access";
+import { GraduateTracerReminders } from "@/features/reminders/graduate-tracer-reminders";
 import { usePortalSession } from "@/features/portal/components/portal-session";
 import { CanonicalPagination } from "@/features/portal/components/canonical-pagination";
 import { useListOrdering } from "@/features/portal/components/list-ordering";
@@ -930,14 +932,20 @@ function RemindersWorkspace() {
 export function RemindersPage() {
   const { user } = usePortalSession();
   const canManage = getAppointmentAccess(user).canManage;
-  if (!canManage) {
+  const canViewTracer = getGraduateTracerAccess(user).canViewOperational;
+  if (!canManage && !canViewTracer) {
     return (
       <WorkspaceUnavailable title="Reminders unavailable">
-        Reminders are available only to staff who manage Appointments.
+        Reminders are available to staff who manage Appointments or review Graduate Tracer responses.
       </WorkspaceUnavailable>
     );
   }
-  return <RemindersWorkspace />;
+  return (
+    <>
+      {canManage ? <RemindersWorkspace /> : <PageHeader title="Reminders" />}
+      {canViewTracer ? <GraduateTracerReminders /> : null}
+    </>
+  );
 }
 
 export function RemindersSkeleton() {

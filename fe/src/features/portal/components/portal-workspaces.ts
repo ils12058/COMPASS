@@ -96,7 +96,7 @@ export function portalWorkspaceGroups(user: UserSummary, facultyAvailability?: F
   const hasServices = hasServicesWorkspace(user);
   const hasAvailability = hasAvailabilityWorkspace(user);
   const hasAppointments = getAppointmentAccess(user).hasWorkspace;
-  const hasReminders = getAppointmentAccess(user).canManage;
+  const hasReminders = getAppointmentAccess(user).canManage || getGraduateTracerAccess(user).canViewOperational;
   const hasGroupSessions = hasGroupSessionsWorkspace(user);
   // Students with their own Messages, and Guidance staff with Messages for their workload. No other
   // role or designation (IT Admin, Institutional Officer, Head, DPO) adds it.

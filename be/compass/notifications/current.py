@@ -12,6 +12,10 @@ def external_delivery_enabled(notification):
 def notification_is_current(notification, *, now=None):
     if not external_delivery_enabled(notification):
         return False
+    if notification.source_type == "graduate_tracer_reminder":
+        from compass.graduate_tracer.reminders import reminder_notification_is_current
+
+        return reminder_notification_is_current(notification, now=now)
     if notification.source_type == "appointment_reminder":
         from compass.appointments.reminders import reminder_notification_is_current
 

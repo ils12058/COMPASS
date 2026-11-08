@@ -34,6 +34,7 @@ class NotificationTargetType(StrEnum):
     FEEDBACK = "FEEDBACK"
     GOOD_MORAL = "GOOD_MORAL"
     GROUP_SESSION = "GROUP_SESSION"
+    GRADUATE_TRACER = "GRADUATE_TRACER"
     INVENTORY = "INVENTORY"
     ROUTINE_INTERVIEW = "ROUTINE_INTERVIEW"
 
@@ -62,6 +63,7 @@ class NotificationEvent(StrEnum):
     STUDENT_SESSION_SUMMARY_PUBLISHED = "counseling.student_session_summary.published"
     ROUTINE_INTERVIEW_INTAKE_READY = "routine_interview.intake_ready"
     ECOUNSELING_CONSENT_REQUESTED = "ecounseling.consent.requested"
+    GRADUATE_TRACER_REMINDER = "graduate_tracer.reminder"
     FEEDBACK_INVITATION = "feedback.invitation"
     SECURITY_PASSWORD_RESET = "security.password.reset"
     SECURITY_PASSWORD_CHANGED = "security.password.changed"
@@ -87,6 +89,15 @@ _EMAIL_CHANNELS = frozenset({NotificationChannel.IN_APP, NotificationChannel.EMA
 
 
 _EVENT_CATALOG = {
+    NotificationEvent.GRADUATE_TRACER_REMINDER: NotificationEventDefinition(
+        event=NotificationEvent.GRADUATE_TRACER_REMINDER,
+        policy=NotificationPolicy.OPTIONAL_INFORMATIONAL,
+        channels=_EMAIL_CHANNELS,
+        title="Graduate Tracer reminder",
+        message="Tell the Guidance Office how you’re doing in the Graduate Tracer survey.",
+        email_subject="COMPASS Graduate Tracer reminder",
+        email_template="graduate_tracer_reminder",
+    ),
     **{
         event: NotificationEventDefinition(
             event=event,

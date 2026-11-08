@@ -19,6 +19,8 @@ from compass.notifications.policy import NotificationEvent
 from compass.notifications.push_policy import push_body_for
 from tests.test_appointment_email_presentation import case, notice  # noqa: F401
 from tests.test_appointments import make_user
+from tests.test_graduate_tracer import sync_policy
+from tests.test_graduate_tracer_reminders import make_graduate
 from tests.test_notifications import auth_client
 from tests.test_operational_email_presentation import intent, world  # noqa: F401
 
@@ -33,6 +35,19 @@ def local_transport(settings, monkeypatch):
 
 
 def event_notice(request, event):
+    if event == NotificationEvent.GRADUATE_TRACER_REMINDER:
+        from compass.common.institutional_time import institution_day_start
+        from compass.graduate_tracer.reminders import dispatch_due_reminders, six_month_due_date
+
+        sync_policy()
+        _, record = make_graduate()
+        assert (
+            dispatch_due_reminders(
+                now=institution_day_start(six_month_due_date(record.graduation_date))
+            )
+            == 1
+        )
+        return record.tracer_reminder_occurrences.get().notification
     if event.value.startswith("appointment."):
         return notice(request.getfixturevalue("case"), event)
     return intent(request.getfixturevalue("world"), event)[0]
@@ -41,7 +56,7 @@ def event_notice(request, event):
 @pytest.mark.django_db
 @pytest.mark.parametrize("event", sorted(APPROVED_EMAIL_EVENTS))
 @pytest.mark.parametrize("policy", ["minimal", "operational_v1"])
-def test_fifteen_events_join_email_http_read_and_push(request, settings, event, policy):
+def test_approved_events_join_email_http_read_and_push(request, settings, event, policy):
     settings.COMPASS_EMAIL_DISCLOSURE_POLICY = policy
     notification = event_notice(request, event)
     owner = auth_client(notification.recipient)
@@ -176,9 +191,9 @@ def test_suppressed_external_notice_keeps_truthful_in_app_history(request, setti
     assert mail.outbox == []
 
 
-def test_catalog_has_thirty_events_and_only_fifteen_rich_candidates():
-    assert len(NotificationEvent) == 30
-    assert len(APPROVED_EMAIL_EVENTS) == 15
+def test_catalog_has_thirty_one_events_and_sixteen_link_candidates():
+    assert len(NotificationEvent) == 31
+    assert len(APPROVED_EMAIL_EVENTS) == 16
     assert push_body_for("unrecognized.event") is None
     assert notification_email_route(NotificationEmailTarget("APPOINTMENT", str(uuid4())))
 

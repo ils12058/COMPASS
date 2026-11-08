@@ -11,6 +11,9 @@ export function notificationDestination(
   if (notification.target_type === NotificationTargetType.ACCOUNT_SECURITY && notification.target_id === currentUserId) {
     return { href: "/portal/account/security", label: "Open Security" };
   }
+  if (notification.target_type === NotificationTargetType.GRADUATE_TRACER && notification.target_id === currentUserId) {
+    return { href: "/portal/graduate-tracer", label: "Open Graduate Tracer survey" };
+  }
   if (notification.target_type === NotificationTargetType.INVENTORY) {
     // Inventory reopen notifications are recipient-scoped; the current route
     // reloads the canonical self-service status and record before rendering.

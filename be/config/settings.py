@@ -847,6 +847,10 @@ CELERY_IMPORTS = ("compass.tasks", "compass.appointments.reminder_tasks")
 # Safe by default in local and live staging; an operator must explicitly enable.
 APPOINTMENT_AUTO_REMINDERS_ENABLED = env_bool("APPOINTMENT_AUTO_REMINDERS_ENABLED", False)
 CELERY_BEAT_SCHEDULE = {
+    "graduate-tracer-reminders-dispatch-due": {
+        "task": "compass.graduate_tracer.reminders.dispatch_due",
+        "schedule": 86400,
+    },
     "appointment-reminders-dispatch-due": {
         "task": "compass.appointments.reminders.dispatch_due",
         "schedule": 60,

@@ -512,3 +512,37 @@ class GraduateTracerTraining(models.Model):
                 name="graduate_tracer_training_position_uniq",
             ),
         ]
+
+
+class GraduateTracerReminderKind(models.TextChoices):
+    SIX_MONTH = "SIX_MONTH", "Six-month notice"
+    FOLLOW_UP = "FOLLOW_UP", "Follow-up notice"
+
+
+class GraduateTracerReminderOccurrence(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    graduation_record = models.ForeignKey(
+        "student_academics.StudentGraduationRecord",
+        on_delete=models.PROTECT,
+        related_name="tracer_reminder_occurrences",
+    )
+    kind = models.CharField(max_length=16, choices=GraduateTracerReminderKind.choices)
+    issued_at = models.DateTimeField()
+    notification = models.OneToOneField(
+        "notifications.Notification",
+        on_delete=models.PROTECT,
+        related_name="tracer_reminder_occurrence",
+    )
+
+    class Meta:
+        default_permissions = ()
+        ordering = ("issued_at", "id")
+        constraints = [
+            models.UniqueConstraint(
+                fields=("graduation_record", "kind"), name="tracer_reminder_record_kind_uniq"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(kind__in=GraduateTracerReminderKind.values),
+                name="tracer_reminder_kind_valid",
+            ),
+        ]

@@ -127,6 +127,8 @@ def _minimal_presentation(notification) -> NotificationEmailPresentation:
 
 def resolve_notification_email_presentation(notification) -> NotificationEmailPresentation:
     event = notification.event_code
+    if event == NotificationEvent.GRADUATE_TRACER_REMINDER:
+        return _graduate_tracer_presentation(notification)
     if event in OPERATIONAL_EMAIL_EVENTS:
         return _operational_presentation(notification)
     if (
@@ -246,3 +248,33 @@ def _operational_presentation(notification) -> NotificationEmailPresentation:
     if type(facts) is GoodMoralEmailFacts:
         return replace(plan, good_moral_facts=facts)
     return replace(plan, call_slip_facts=facts)
+
+
+def _graduate_tracer_presentation(notification) -> NotificationEmailPresentation:
+    from compass.graduate_tracer.reminders import reminder_notification_is_current
+    from compass.notifications.services import optional_email_enabled_for
+
+    if (
+        notification.source_type != "graduate_tracer_reminder"
+        or not optional_email_enabled_for(notification.recipient)
+        or not reminder_notification_is_current(notification)
+    ):
+        return NotificationEmailPresentation(
+            notification.event_code, EmailPresentationReason.SOURCE_STALE
+        )
+    target = NotificationEmailTarget(
+        NotificationTargetType.GRADUATE_TRACER, notification.recipient_id
+    )
+    link = build_notification_email_link(target)
+    if link.reason != EmailLinkReason.AVAILABLE:
+        reason = {
+            EmailLinkReason.ORIGIN_MISSING: EmailPresentationReason.ORIGIN_MISSING,
+            EmailLinkReason.ORIGIN_INVALID: EmailPresentationReason.ORIGIN_INVALID,
+        }.get(link.reason, EmailPresentationReason.INVALID_TARGET)
+        return NotificationEmailPresentation(notification.event_code, reason)
+    return NotificationEmailPresentation(
+        notification.event_code,
+        EmailPresentationReason.LINK_AVAILABLE,
+        target=target,
+        validated_link=link,
+    )

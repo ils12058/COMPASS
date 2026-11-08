@@ -18158,6 +18158,137 @@
         "title": "GraduateTracerProgramSummary",
         "type": "object"
       },
+      "GraduateTracerReminderKindValue": {
+        "enum": [
+          "SIX_MONTH",
+          "FOLLOW_UP"
+        ],
+        "title": "GraduateTracerReminderKindValue",
+        "type": "string"
+      },
+      "GraduateTracerReminderOrdering": {
+        "enum": [
+          "EARLIEST_GRADUATION",
+          "LATEST_GRADUATION"
+        ],
+        "title": "GraduateTracerReminderOrdering",
+        "type": "string"
+      },
+      "GraduateTracerReminderPage": {
+        "additionalProperties": false,
+        "properties": {
+          "has_next": {
+            "title": "Has Next",
+            "type": "boolean"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/GraduateTracerReminderRow"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "ordering": {
+            "$ref": "#/components/schemas/GraduateTracerReminderOrdering"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "page_size": {
+            "title": "Page Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "ordering",
+          "page",
+          "page_size",
+          "has_next"
+        ],
+        "title": "GraduateTracerReminderPage",
+        "type": "object"
+      },
+      "GraduateTracerReminderRow": {
+        "additionalProperties": false,
+        "properties": {
+          "graduate_name": {
+            "title": "Graduate Name",
+            "type": "string"
+          },
+          "graduation_date": {
+            "format": "date",
+            "title": "Graduation Date",
+            "type": "string"
+          },
+          "graduation_record_id": {
+            "format": "uuid",
+            "title": "Graduation Record Id",
+            "type": "string"
+          },
+          "reminders": {
+            "items": {
+              "$ref": "#/components/schemas/GraduateTracerReminderSummary"
+            },
+            "title": "Reminders",
+            "type": "array"
+          }
+        },
+        "required": [
+          "graduation_record_id",
+          "graduate_name",
+          "graduation_date",
+          "reminders"
+        ],
+        "title": "GraduateTracerReminderRow",
+        "type": "object"
+      },
+      "GraduateTracerReminderState": {
+        "enum": [
+          "UPCOMING",
+          "SENT",
+          "ANSWERED"
+        ],
+        "title": "GraduateTracerReminderState",
+        "type": "string"
+      },
+      "GraduateTracerReminderSummary": {
+        "additionalProperties": false,
+        "properties": {
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "issued_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Issued At"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/GraduateTracerReminderKindValue"
+          },
+          "state": {
+            "$ref": "#/components/schemas/GraduateTracerReminderState"
+          }
+        },
+        "required": [
+          "kind",
+          "due_date",
+          "issued_at",
+          "state"
+        ],
+        "title": "GraduateTracerReminderSummary",
+        "type": "object"
+      },
       "GraduateTracerReportContext": {
         "additionalProperties": false,
         "properties": {
@@ -24204,6 +24335,7 @@
           "FEEDBACK",
           "GOOD_MORAL",
           "GROUP_SESSION",
+          "GRADUATE_TRACER",
           "INVENTORY",
           "ROUTINE_INTERVIEW"
         ],
@@ -52369,6 +52501,99 @@
           }
         ],
         "summary": "Graduate Tracer Submit My Response",
+        "tags": [
+          "graduate-tracer"
+        ]
+      }
+    },
+    "/api/v1/graduate-tracer/reminders": {
+      "get": {
+        "operationId": "graduateTracerListReminders",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "title": "Page",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "page_size",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "title": "Page Size",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "ordering",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/GraduateTracerReminderOrdering"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GraduateTracerReminderPage"
+                }
+              }
+            },
+            "description": "OK"
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unauthorized"
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Forbidden"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/APIErrorResponse"
+                }
+              }
+            },
+            "description": "Unprocessable Content"
+          }
+        },
+        "security": [
+          {
+            "OpaqueSessionAuth": []
+          }
+        ],
+        "summary": "Graduate Tracer List Reminders",
         "tags": [
           "graduate-tracer"
         ]

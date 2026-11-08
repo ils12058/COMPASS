@@ -348,6 +348,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Graduate Tracer responses, encryption, reports, and exports.",
         (
             "test_graduate_tracer.py",
+            "test_graduate_tracer_reminders.py",
             "test_graduate_tracer_confidential_content_encryption.py",
             "test_graduate_tracer_graduation_classification.py",
             "test_graduate_tracer_reports.py",
