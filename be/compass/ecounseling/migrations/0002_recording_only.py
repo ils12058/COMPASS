@@ -2,8 +2,9 @@
 
 Every transcription capture, its stored artifact (and any transcript file already in private
 storage), reconciliation and webhook receipts, and every transcription or transcript-storage consent
-are deleted; there is no drain, cutover or retained legacy policy. A session-media consent always covered recording, so it becomes the recording
-consent it already granted. Audit events are left untouched.
+are deleted; there is no drain, cutover or retained legacy policy. A session-media consent always
+covered recording, so it becomes the recording consent it already granted. Audit events are left
+untouched.
 """
 
 from django.db import migrations, models
@@ -47,16 +48,22 @@ def purge_transcription(apps, schema_editor):
     Reconciliation = apps.get_model("ecounseling", "ECounselingCaptureReconciliation")
     Receipt = apps.get_model("ecounseling", "DailyWebhookReceipt")
     Consent = apps.get_model("ecounseling", "ECounselingConsent")
-    transcription = Capture.objects.filter(kind="TRANSCRIPTION")
-    _delete_stored_transcripts(Artifact.objects.filter(capture__in=transcription))
-    Receipt.objects.filter(
+    alias = schema_editor.connection.alias
+    transcription = Capture.objects.using(alias).filter(kind="TRANSCRIPTION")
+    _delete_stored_transcripts(Artifact.objects.using(alias).filter(capture__in=transcription))
+    Receipt.objects.using(alias).filter(
         Q(capture__in=transcription) | Q(event_type__startswith="transcript.")
     ).delete()
-    Reconciliation.objects.filter(capture__in=transcription).delete()
-    Artifact.objects.filter(capture__in=transcription).delete()
+    Reconciliation.objects.using(alias).filter(capture__in=transcription).delete()
+    Artifact.objects.using(alias).filter(capture__in=transcription).delete()
     transcription.delete()
-    Consent.objects.filter(scope__in=TRANSCRIPT_SCOPES).delete()
-    Consent.objects.filter(scope="SESSION_MEDIA_CAPTURE").update(scope="AUDIO_VIDEO_RECORDING")
+    Consent.objects.using(alias).filter(scope__in=TRANSCRIPT_SCOPES).delete()
+    Consent.objects.using(alias).filter(scope="SESSION_MEDIA_CAPTURE").update(
+        scope="AUDIO_VIDEO_RECORDING"
+    )
+    # Complete deferred FK checks before the following operations alter these tables.
+    if schema_editor.connection.vendor == "postgresql":
+        schema_editor.execute("SET CONSTRAINTS ALL IMMEDIATE")
 
 
 class Migration(migrations.Migration):

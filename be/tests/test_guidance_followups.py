@@ -403,9 +403,7 @@ def test_referral_void_makes_source_filter_and_context_unavailable(world):
         context=context(counselor),
     )
     client = auth_client(goa)
-    filtered = client.get(
-        f"/api/v1/guidance-followups?source_kind=REFERRAL&source_id={source.pk}"
-    )
+    filtered = client.get(f"/api/v1/guidance-followups?source_kind=REFERRAL&source_id={source.pk}")
     source_context = client.get(
         f"/api/v1/guidance-followups/context?source_kind=REFERRAL&source_id={source.pk}"
     )
@@ -461,9 +459,13 @@ def test_list_projects_source_unavailable_for_voided_referral(world):
     assert len(rows) == 1
     assert rows[0]["status"] == "PENDING"
     assert rows[0]["source_unavailable"] is True
-    assert {"source", "source_id", "source_kind", "source_title", "source_reference_code"}.isdisjoint(
-        rows[0]
-    )
+    assert {
+        "source",
+        "source_id",
+        "source_kind",
+        "source_title",
+        "source_reference_code",
+    }.isdisjoint(rows[0])
 
 
 def test_list_source_unavailable_false_for_readable_and_source_free(world):
@@ -562,9 +564,13 @@ def test_source_unavailable_projection_does_not_leak_source_identity(world):
     assert response.status_code == 200
     row = next(row for row in response.json()["items"] if row["id"] == str(item.pk))
     assert row["source_unavailable"] is True
-    assert {"source", "source_id", "source_kind", "source_title", "source_reference_code"}.isdisjoint(
-        row
-    )
+    assert {
+        "source",
+        "source_id",
+        "source_kind",
+        "source_title",
+        "source_reference_code",
+    }.isdisjoint(row)
     body = response.content.decode()
     for secret in (
         str(source.pk),
@@ -709,9 +715,7 @@ def test_completion_does_not_change_referral_state(world):
     referral_before = Referral.objects.filter(pk=source.pk).values().get()
     actions_before = list(Referral.objects.get(pk=source.pk).actions.values())
     referral_audits_before = AuditEvent.objects.filter(action__startswith="referrals.").count()
-    followup_audits_before = AuditEvent.objects.filter(
-        action="guidance_followup.completed"
-    ).count()
+    followup_audits_before = AuditEvent.objects.filter(action="guidance_followup.completed").count()
 
     completed = services.complete_followup(
         actor=counselor,

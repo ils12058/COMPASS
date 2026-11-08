@@ -5,6 +5,7 @@ from __future__ import annotations
 from uuid import uuid4
 
 import pytest
+
 from compass.accounts.models import Designation, Role, User
 from compass.accounts.services import effective_capabilities
 from compass.audit.models import AuditEvent
@@ -83,9 +84,7 @@ def test_faculty_opens_an_inquiry_by_service_and_http(world):
     assert content.read_body(message) == BODY
     assert BODY not in message.body_ciphertext
 
-    event = AuditEvent.objects.get(
-        action="guidance_messages.thread.created", target_id=thread.pk
-    )
+    event = AuditEvent.objects.get(action="guidance_messages.thread.created", target_id=thread.pk)
     assert event.metadata["kind"] == "FACULTY_INQUIRY"
 
     second = faculty()
@@ -109,7 +108,8 @@ def test_faculty_opens_an_inquiry_by_service_and_http(world):
 
 
 @pytest.mark.parametrize(
-    "name", ["student", "counselor", "goa", "head", "admin", "dpo"],
+    "name",
+    ["student", "counselor", "goa", "head", "admin", "dpo"],
 )
 def test_only_faculty_may_open_an_inquiry(world, name):
     with_intake(world.other)
@@ -234,11 +234,14 @@ def test_inquiries_are_concealed_from_other_faculty(world):
     client = auth_client(stranger)
     assert client.get(f"{BASE}/threads/{thread.pk}").status_code == 404
     assert post(client, f"/threads/{thread.pk}/messages", {"body": BODY}).status_code == 422
-    assert post(
-        client,
-        f"/threads/{thread.pk}/messages",
-        {"client_message_id": str(uuid4()), "body": BODY},
-    ).status_code == 404
+    assert (
+        post(
+            client,
+            f"/threads/{thread.pk}/messages",
+            {"client_message_id": str(uuid4()), "body": BODY},
+        ).status_code
+        == 404
+    )
     assert post(client, f"/threads/{thread.pk}/resolve", {}).status_code == 404
     with pytest.raises(ThreadNotFound):
         services.send_message(
@@ -273,9 +276,12 @@ def test_requester_and_intake_change_status(world):
 
     reopened = services.set_status(actor=holder, thread_id=thread.pk, resolved=False)
     assert reopened.status == ThreadStatus.OPEN
-    assert services.send_message(
-        actor=holder, thread_id=thread.pk, client_message_id=uuid4(), body=BODY
-    ).sequence == 2
+    assert (
+        services.send_message(
+            actor=holder, thread_id=thread.pk, client_message_id=uuid4(), body=BODY
+        ).sequence
+        == 2
+    )
 
     with pytest.raises(ThreadNotFound):
         services.set_status(actor=world.counselor, thread_id=thread.pk, resolved=True)

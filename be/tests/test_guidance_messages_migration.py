@@ -1,4 +1,4 @@
-"""Disposable PostgreSQL upgrades through guidance_messages 0005; synthetic sentinels only."""
+"""Disposable PostgreSQL upgrades through guidance_messages 0006; synthetic sentinels only."""
 
 from __future__ import annotations
 
@@ -38,7 +38,7 @@ NEW_COLUMNS = (
 
 
 @pytest.fixture
-def baseline_database(django_db_blocker):
+def baseline_database(django_db_blocker, request):
     """One throwaway database on the test server only; no deployed connection is opened."""
     name = "gm_kinds_" + uuid.uuid4().hex
     with django_db_blocker.unblock():
@@ -51,6 +51,10 @@ def baseline_database(django_db_blocker):
         try:
             executor = MigrationExecutor(db)
             targets = other_leaves(executor) + [BASE]
+            if hasattr(request, "param"):
+                targets = [
+                    request.param if node[0] == request.param[0] else node for node in targets
+                ]
             executor.migrate(targets)
             yield db, executor.loader.project_state(targets).apps
         finally:
@@ -194,7 +198,7 @@ def family_shape_sql(db):
 
 
 def family_shape_branches(db):
-    """kind -> its live allowlist branch; 0002's inquiry branch omits assigned_to/routing_college."""
+    """Map kinds to live branches; 0002's inquiry omits assigned_to/routing_college."""
     return {
         kind: branch
         for branch in family_shape_sql(db).split(" OR ")
@@ -221,6 +225,123 @@ def state_at(db, target):
 
 def legacy_only(thread):
     return {key: value for key, value in thread.items() if key not in NEW_COLUMNS}
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    "baseline_database", [("ecounseling", "0001_canonical_baseline")], indirect=True
+)
+def test_recording_only_upgrade_purges_the_migrated_database(baseline_database, monkeypatch):
+    """Upgrading another database must purge its transcripts and preserve default recordings."""
+    from compass.ecounseling.models import (
+        ECounselingConsent,
+        ECounselingMediaCapture,
+        ECounselingRoom,
+    )
+    from tests.test_counseling import make_appointment
+    from tests.test_counseling_finish import setup_domain
+
+    _, counselor, student, service = setup_domain("recording-migration-isolation")
+    appointment = make_appointment(student=student, provider=counselor, service=service)
+    default_room = ECounselingRoom.objects.create(
+        appointment=appointment, daily_room_name="default-recording-sentinel"
+    )
+    default_capture = ECounselingMediaCapture.objects.create(room=default_room, kind="RECORDING")
+    default_consent = ECounselingConsent.objects.create(
+        room=default_room, requested_by=student, scope="AUDIO_VIDEO_RECORDING"
+    )
+    default_snapshot = (
+        ECounselingMediaCapture.objects.values().get(pk=default_capture.pk),
+        ECounselingConsent.objects.values().get(pk=default_consent.pk),
+    )
+
+    db, apps = baseline_database
+    thread_pk, _ = seed_legacy_rows(db, apps)
+    thread = (
+        apps.get_model("guidance_messages", "GuidanceThread")
+        .objects.using(db.alias)
+        .get(pk=thread_pk)
+    )
+
+    def manager(app, model):
+        return apps.get_model(app, model).objects.using(db.alias)
+
+    now = timezone.now()
+    service = manager("service_catalog", "Service").create(
+        code="RECORDING_MIGRATION", name="Synthetic recording migration"
+    )
+    appointment = manager("appointments", "Appointment").create(
+        reference_code="RECORDING-MIGRATION",
+        student_id=thread.student_id,
+        provider_id=thread.student_id,
+        service_id=service.pk,
+        delivery_mode="ONLINE",
+        starts_at=now,
+        ends_at=now + timedelta(hours=1),
+        created_by_id=thread.student_id,
+    )
+    room = manager("ecounseling", "ECounselingRoom").create(
+        appointment_id=appointment.pk, daily_room_name="migrated-recording-sentinel"
+    )
+    captures = manager("ecounseling", "ECounselingMediaCapture")
+    artifacts = manager("ecounseling", "ECounselingMediaArtifact")
+    receipts = manager("ecounseling", "DailyWebhookReceipt")
+    reconciliations = manager("ecounseling", "ECounselingCaptureReconciliation")
+    consents = manager("ecounseling", "ECounselingConsent")
+    transcription = captures.create(room_id=room.pk, kind="TRANSCRIPTION")
+    recording = captures.create(room_id=room.pk, kind="RECORDING")
+    artifacts.create(capture_id=transcription.pk, object_key="synthetic/transcript-to-delete")
+    recording_artifact = artifacts.create(capture_id=recording.pk)
+    receipts.create(
+        capture_id=transcription.pk,
+        provider_event_id="transcript-event",
+        event_type="transcript.ready",
+    )
+    recording_receipt = receipts.create(
+        capture_id=recording.pk, provider_event_id="recording-event", event_type="recording.started"
+    )
+    reconciliations.create(capture_id=transcription.pk, uncertainty_since=now)
+    recording_reconciliation = reconciliations.create(
+        capture_id=recording.pk, uncertainty_since=now
+    )
+    for scope in ("SESSION_MEDIA_CAPTURE", "LIVE_TRANSCRIPTION", "TRANSCRIPT_STORAGE"):
+        consents.create(room_id=room.pk, requested_by_id=thread.student_id, scope=scope)
+
+    deleted_keys = []
+
+    class SyntheticStorage:
+        def __init__(self, *, alias):
+            pass
+
+        def delete(self, key):
+            deleted_keys.append(key)
+
+    monkeypatch.setattr("compass.integrations.storage.ObjectStorage", SyntheticStorage)
+    target = ("ecounseling", "0002_recording_only")
+    MigrationExecutor(db).migrate([target])
+    current = MigrationExecutor(db).loader.project_state([BASE, target]).apps
+
+    def remaining(model):
+        return current.get_model("ecounseling", model).objects.using(db.alias)
+
+    assert deleted_keys == ["synthetic/transcript-to-delete"]
+    assert list(remaining("ECounselingMediaCapture").values_list("pk", flat=True)) == [recording.pk]
+    assert list(remaining("ECounselingMediaArtifact").values_list("pk", flat=True)) == [
+        recording_artifact.pk
+    ]
+    assert list(remaining("DailyWebhookReceipt").values_list("pk", flat=True)) == [
+        recording_receipt.pk
+    ]
+    assert list(remaining("ECounselingCaptureReconciliation").values_list("pk", flat=True)) == [
+        recording_reconciliation.pk
+    ]
+    assert list(remaining("ECounselingConsent").values_list("scope", flat=True)) == [
+        "AUDIO_VIDEO_RECORDING"
+    ]
+    assert (
+        ECounselingMediaCapture.objects.values().get(pk=default_capture.pk),
+        ECounselingConsent.objects.values().get(pk=default_consent.pk),
+    ) == default_snapshot
 
 
 @pytest.mark.django_db(transaction=True)

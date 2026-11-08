@@ -36,8 +36,10 @@ from compass.referrals import (
     administrative_policy,
     faculty_policy,
     faculty_services,
-    provisional_activation as provisional,
     services,
+)
+from compass.referrals import (
+    provisional_activation as provisional,
 )
 from compass.referrals.faculty_policy import FacultyReferralError
 from compass.referrals.models import Referral, ReferralAction
@@ -287,9 +289,7 @@ def test_canonical_faculty_referral_journey_is_available_by_default(world):
     second = linked_followup(world, row.pk, "fup3a-open-after-void")
     assert first.visibility == "OPERATIONAL" and first.category == "REFERRAL_ACTION"
     assert first.assigned_to_id == world.staff.pk
-    assert followup_services.get_followup(
-        actor=world.staff, followup_id=first.pk
-    ).pk == first.pk
+    assert followup_services.get_followup(actor=world.staff, followup_id=first.pk).pk == first.pk
     staff_list = followup_services.list_followups(actor=world.staff)
     assert {item.pk for item in staff_list.items} == {first.pk, second.pk}
     assert GuidanceFollowUp.objects.count() == 2
@@ -364,19 +364,16 @@ def test_canonical_faculty_referral_journey_is_available_by_default(world):
     row.refresh_from_db()
     second_before.refresh_from_db()
     assert row.voided_at is not None
-    assert (
-        {
-            "status": second_before.status,
-            "assigned_to_id": second_before.assigned_to_id,
-            "source_kind": second_before.source_kind,
-            "source_id": second_before.source_id,
-            "version": second_before.version,
-            "completed_at": second_before.completed_at,
-            "cancelled_at": second_before.cancelled_at,
-            "updated_at": second_before.updated_at,
-        }
-        == second_snapshot
-    )
+    assert {
+        "status": second_before.status,
+        "assigned_to_id": second_before.assigned_to_id,
+        "source_kind": second_before.source_kind,
+        "source_id": second_before.source_id,
+        "version": second_before.version,
+        "completed_at": second_before.completed_at,
+        "cancelled_at": second_before.cancelled_at,
+        "updated_at": second_before.updated_at,
+    } == second_snapshot
     assert GuidanceFollowUp.objects.count() == followup_count
     assert followup_services.get_followup(actor=world.staff, followup_id=second.pk).pk == (
         second.pk
@@ -384,9 +381,7 @@ def test_canonical_faculty_referral_journey_is_available_by_default(world):
     assert second.pk in {
         item.pk for item in followup_services.list_followups(actor=world.staff).items
     }
-    detail = authenticated(world.staff_issued).get(
-        f"/api/v1/guidance-followups/{second.pk}"
-    )
+    detail = authenticated(world.staff_issued).get(f"/api/v1/guidance-followups/{second.pk}")
     assert detail.status_code == 200
     assert detail.json()["source"] is None
     assert detail.json()["source_unavailable"] is True
@@ -464,9 +459,10 @@ def test_provisional_evidence_is_fixed_idempotent_and_truthful(world):
 
 
 def test_live_scope_removal_denies_affected_provisional_operation(world):
-    assert confirm(world, actor=world.other_faculty, issued=world.other_faculty_issued)[
-        "confirmed"
-    ] is True
+    assert (
+        confirm(world, actor=world.other_faculty, issued=world.other_faculty_issued)["confirmed"]
+        is True
+    )
     world.other_faculty.is_active = False
     world.other_faculty.save(update_fields=["is_active"])
     with pytest.raises(FacultyReferralError):
@@ -527,9 +523,7 @@ def test_approved_and_provisional_evidence_cannot_cross_activate(world):
             "evidence_reference": provisional_lookup.evidence_reference,
         },
     )
-    disguised_provisional = replace(
-        provisional_lookup, activation_event_id=approved_event.pk
-    )
+    disguised_provisional = replace(provisional_lookup, activation_event_id=approved_event.pk)
     with pytest.raises(FacultyReferralError):
         disguised_provisional.validate(now)
 
@@ -620,9 +614,12 @@ def test_empty_scope_keeps_events_uncreated_even_after_prior_resolution(world):
     College.objects.filter(pk__in=[world.cas.pk, world.ccms.pk]).update(is_active=False)
     with pytest.raises(FacultyReferralError):
         faculty_policy.require_lookup_policy(now)
-    assert AuditEvent.objects.filter(
-        pk=provisional.EVENT_IDS[provisional.STUDENT_CONFIRMATION]
-    ).count() == 1
+    assert (
+        AuditEvent.objects.filter(
+            pk=provisional.EVENT_IDS[provisional.STUDENT_CONFIRMATION]
+        ).count()
+        == 1
+    )
     assert not AuditEvent.objects.filter(
         pk=provisional.EVENT_IDS[provisional.ACKNOWLEDGMENT]
     ).exists()

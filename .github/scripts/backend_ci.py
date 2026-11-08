@@ -183,7 +183,10 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
     "guidance-followups": (
         "Privacy-scoped Guidance Follow-Up domain and lifecycle.",
-        ("test_guidance_followups.py",),
+        (
+            "test_guidance_followups.py",
+            "test_fup3a_faculty_referral_journey.py",
+        ),
     ),
     "guidance-messages": (
         "Guidance Messages encryption, workload/relationship authorization, commit hints, "
@@ -215,7 +218,8 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         ),
     ),
     "counseling": (
-        "Counseling encounters, context, student session summaries, continuity, and downstream lifecycle.",
+        "Counseling encounters, context, student session summaries, continuity, "
+        "and downstream lifecycle.",
         (
             "test_handoff.py",
             "test_handoff_configuration.py",
@@ -227,9 +231,13 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             "test_continuity_release_concurrency.py",
             "test_continuity_contract.py",
             "test_continuity_migrations.py",
+            "test_case_communication.py",
             "test_counseling.py",
             "test_counseling_context.py",
+            "test_counseling_documentation_review.py",
             "test_counseling_downstream_lifecycle.py",
+            "test_counseling_finish.py",
+            "test_counseling_finish_concurrency.py",
             "test_counseling_frontend_readiness.py",
             "test_student_session_summary_encryption.py",
             "test_student_session_summaries.py",
@@ -274,6 +282,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
         "Referrals and Call Slips, which create and void each other.",
         (
             "test_referrals.py",
+            "test_fup3a_faculty_referral_journey.py",
             "test_referral_confidential_content_encryption.py",
             "test_referral_call_slip_lifecycle.py",
             "test_call_slips.py",
@@ -315,13 +324,20 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
     ),
     "good-moral": (
         "Good Moral requests, preparation, issuance, and release audit.",
-        ("test_good_moral.py", "test_good_moral_assisted.py",
-         "test_good_moral_preparation.py", "test_good_moral_receipts.py",
-         "test_good_moral_receipt_migration.py",
-         "test_good_moral_verification.py", "test_good_moral_verification_concurrency.py",
-         "test_good_moral_verification_migration.py",
-         "test_good_moral_authenticated_integration.py", "test_good_moral_recovery_rehearsal.py",
-         "test_good_moral_final_preservation.py", "test_privacy_release_audit.py"),
+        (
+            "test_good_moral.py",
+            "test_good_moral_assisted.py",
+            "test_good_moral_preparation.py",
+            "test_good_moral_receipts.py",
+            "test_good_moral_receipt_migration.py",
+            "test_good_moral_verification.py",
+            "test_good_moral_verification_concurrency.py",
+            "test_good_moral_verification_migration.py",
+            "test_good_moral_authenticated_integration.py",
+            "test_good_moral_recovery_rehearsal.py",
+            "test_good_moral_final_preservation.py",
+            "test_privacy_release_audit.py",
+        ),
     ),
     "feedback": (
         "Customer feedback and CSM responses, including encryption.",
@@ -504,8 +520,10 @@ DOMAINS: dict[str, Area] = {
         "account_management",
         "Account administration also blocks role changes on scheduled work.",
         ("identity-access", "organization"),
-        ("test_appointments.py",
-            "test_appointment_reminders.py",),
+        (
+            "test_appointments.py",
+            "test_appointment_reminders.py",
+        ),
     ),
     "activity": domain(
         "activity",
@@ -543,7 +561,14 @@ DOMAINS: dict[str, Area] = {
     "call_slips": domain(
         "call_slips",
         "Call Slips are issued from Referrals and read by Counseling context and lists.",
-        ("work-queue", "referrals-call-slips", "counseling", "documents", "cross-domain-api", "cross-domain-lists"),
+        (
+            "work-queue",
+            "referrals-call-slips",
+            "counseling",
+            "documents",
+            "cross-domain-api",
+            "cross-domain-lists",
+        ),
         ("test_exit_interviews.py", "test_institutional_forms.py", "test_profiles.py"),
     ),
     "counseling": domain(
@@ -597,8 +622,16 @@ DOMAINS: dict[str, Area] = {
     "guidance_followups": domain(
         "guidance_followups",
         "Assigned Follow-Up lifecycle, encryption, source policy and role scope.",
-        ("guidance-followups", "identity-access", "counseling", "routine-interviews",
-         "referrals-call-slips", "organization", "crypto", "cross-domain-api"),
+        (
+            "guidance-followups",
+            "identity-access",
+            "counseling",
+            "routine-interviews",
+            "referrals-call-slips",
+            "organization",
+            "crypto",
+            "cross-domain-api",
+        ),
     ),
     "guidance_messages": domain(
         "guidance_messages",
@@ -616,7 +649,14 @@ DOMAINS: dict[str, Area] = {
     "good_moral": domain(
         "good_moral",
         "Good Moral depends on Inventory and Exit Interviews and feeds the Overview.",
-        ("work-queue", "good-moral", "exit-interviews", "feedback", "documents", "cross-domain-lists"),
+        (
+            "work-queue",
+            "good-moral",
+            "exit-interviews",
+            "feedback",
+            "documents",
+            "cross-domain-lists",
+        ),
         ("test_final_api_lifecycle_completion.py",),
     ),
     "graduate_tracer": domain(
@@ -626,7 +666,8 @@ DOMAINS: dict[str, Area] = {
     ),
     "group_sessions": domain(
         "group_sessions",
-        "Group Sessions depend on Services, counselor qualification, registrations, notifications, and audit.",
+        "Group Sessions depend on Services, counselor qualification, registrations, "
+        "notifications, and audit.",
         ("service-catalog", "scheduling", "notifications", "identity-access"),
     ),
     "institutional_forms": domain(
@@ -661,36 +702,57 @@ DOMAINS: dict[str, Area] = {
             "institutional-forms",
             "cross-domain-lists",
         ),
-        ("test_appointments.py",
-            "test_appointment_reminders.py", "test_profiles.py"),
+        ("test_appointments.py", "test_appointment_reminders.py", "test_profiles.py"),
     ),
     "student_actions": domain(
         "student_actions",
         "Projection depends on all eight Student source predicates.",
         (
-            "student-actions", "inventory", "routine-interviews", "exit-interviews",
-            "graduate-tracer", "referrals-call-slips", "ecounseling", "guidance-messages",
-            "notifications", "identity-access",
+            "student-actions",
+            "inventory",
+            "routine-interviews",
+            "exit-interviews",
+            "graduate-tracer",
+            "referrals-call-slips",
+            "ecounseling",
+            "guidance-messages",
+            "notifications",
+            "identity-access",
         ),
     ),
     "work_queue": domain(
         "work_queue",
         "Composition depends on all five domain-owned actionable sources.",
         (
-            "work-queue", "guidance-messages", "routine-interviews", "good-moral",
-            "referrals-call-slips", "cross-domain-lists",
+            "work-queue",
+            "guidance-messages",
+            "routine-interviews",
+            "good-moral",
+            "referrals-call-slips",
+            "cross-domain-lists",
         ),
     ),
     "guidance_operations": domain(
         "guidance_operations",
         "Aggregate projection depends on five actionable sources and canonical schedule scope.",
-        ("guidance-operations", "work-queue", "guidance-messages", "routine-interviews",
-         "good-moral", "referrals-call-slips", "scheduling", "identity-access"),
+        (
+            "guidance-operations",
+            "work-queue",
+            "guidance-messages",
+            "routine-interviews",
+            "good-moral",
+            "referrals-call-slips",
+            "scheduling",
+            "identity-access",
+        ),
     ),
     "overview": domain(
         "overview",
         "The Overview reads appointments, cases, Good Moral, and platform state.",
-        ("work-queue", "cross-domain-lists",),
+        (
+            "work-queue",
+            "cross-domain-lists",
+        ),
         ("test_platform_operations.py",),
     ),
     "platform_ops": domain(
@@ -725,7 +787,13 @@ DOMAINS: dict[str, Area] = {
     "referrals": domain(
         "referrals",
         "Referrals create Call Slips and appear in Counseling context.",
-        ("referrals-call-slips", "counseling", "documents", "cross-domain-api", "cross-domain-lists"),
+        (
+            "referrals-call-slips",
+            "counseling",
+            "documents",
+            "cross-domain-api",
+            "cross-domain-lists",
+        ),
         ("test_exit_interviews.py", "test_institutional_forms.py", "test_profiles.py"),
     ),
     "reports": domain(
@@ -753,7 +821,11 @@ DOMAINS: dict[str, Area] = {
             "cross-domain-api",
             "cross-domain-lists",
         ),
-        ("test_exit_interviews.py", "test_institutional_forms.py", "test_service_provider_qualification.py"),
+        (
+            "test_exit_interviews.py",
+            "test_institutional_forms.py",
+            "test_service_provider_qualification.py",
+        ),
     ),
     "service_catalog": domain(
         "service_catalog",
@@ -784,16 +856,29 @@ DOMAINS: dict[str, Area] = {
 
 # Source policy changes must exercise the sibling Student projection as well.
 for source in (
-    "inventory", "routine_interviews", "exit_interviews", "graduate_tracer",
-    "call_slips", "ecounseling", "guidance_messages", "overview", "appointments",
-    "service_catalog", "counseling",
+    "inventory",
+    "routine_interviews",
+    "exit_interviews",
+    "graduate_tracer",
+    "call_slips",
+    "ecounseling",
+    "guidance_messages",
+    "overview",
+    "appointments",
+    "service_catalog",
+    "counseling",
 ):
     area = DOMAINS[source]
     DOMAINS[source] = domain(area.name, area.reason, (*area.bundles, "student-actions"), area.tests)
 
 # My Activity reads these source domains directly; their changes must exercise its privacy scope.
 for source in (
-    "appointments", "call_slips", "exit_interviews", "good_moral", "inventory", "referrals",
+    "appointments",
+    "call_slips",
+    "exit_interviews",
+    "good_moral",
+    "inventory",
+    "referrals",
     "routine_interviews",
 ):
     area = DOMAINS[source]
@@ -801,23 +886,37 @@ for source in (
 
 # compass/integrations is split by client: each client is used by different domains.
 for source in (
-    "guidance_messages", "routine_interviews", "good_moral", "call_slips", "appointments",
-    "overview", "work_queue", "service_catalog",
+    "guidance_messages",
+    "routine_interviews",
+    "good_moral",
+    "call_slips",
+    "appointments",
+    "overview",
+    "work_queue",
+    "service_catalog",
 ):
     area = DOMAINS[source]
-    DOMAINS[source] = domain(area.name, area.reason, (*area.bundles, "guidance-operations"), area.tests)
+    DOMAINS[source] = domain(
+        area.name, area.reason, (*area.bundles, "guidance-operations"), area.tests
+    )
 
 INTEGRATIONS: dict[str, Area] = {
     "daily.py": domain("integrations:daily", "Daily.co client for E-Counseling.", ("ecounseling",)),
-    "mail.py": domain("integrations:mail", "Outbound email transport.", ("notifications", "platform-ops")),
+    "mail.py": domain(
+        "integrations:mail", "Outbound email transport.", ("notifications", "platform-ops")
+    ),
     "media_download.py": domain(
-        "integrations:media_download", "E-Counseling media download.", ("ecounseling", "privacy-governance")
+        "integrations:media_download",
+        "E-Counseling media download.",
+        ("ecounseling", "privacy-governance"),
     ),
     "psgc.py": domain(
         "integrations:psgc", "PSGC client for Inventory locations.", ("reference-data", "inventory")
     ),
     "sensitive_storage.py": domain(
-        "integrations:sensitive_storage", "Private media storage.", ("ecounseling", "privacy-governance")
+        "integrations:sensitive_storage",
+        "Private media storage.",
+        ("ecounseling", "privacy-governance"),
     ),
     "storage.py": domain(
         "integrations:storage",
@@ -825,7 +924,9 @@ INTEGRATIONS: dict[str, Area] = {
         ("content", "ecounseling"),
         ("test_profile_photos.py", "test_sensitive_media_storage.py"),
     ),
-    "turnstile.py": domain("integrations:turnstile", "Turnstile bot challenge.", ("identity-access",)),
+    "turnstile.py": domain(
+        "integrations:turnstile", "Turnstile bot challenge.", ("identity-access",)
+    ),
 }
 
 # The standalone realtime service shares only its wire protocol with Django (ADR-100).
@@ -893,7 +994,8 @@ def classify(path: str) -> Area | None:
     if "/migrations/" in path:
         return full("migrations", "Migrations change the schema every test builds.")
     if path.startswith("be/compass/") and (
-        Path(path).name == "models.py" or Path(path).name.endswith("_models.py")
+        Path(path).name == "models.py"
+        or Path(path).name.endswith("_models.py")
         or "models" in Path(path).parts[2:-1]
     ):
         return full("models", "Database models affect the schema and cross-domain relationships.")
@@ -902,7 +1004,9 @@ def classify(path: str) -> Area | None:
     if path.startswith("be/config/"):
         return full("settings", "Django settings, URLs, ASGI/WSGI, or Celery configuration.")
     if path.startswith(DEPLOYMENT_PREFIXES):
-        return domain("deployment", "Deployment and runtime configuration.", ("deployment-runtime",))
+        return domain(
+            "deployment", "Deployment and runtime configuration.", ("deployment-runtime",)
+        )
     if path.startswith(DOC_PREFIXES) or (path.startswith("be/") and path.endswith(".md")):
         return domain("docs", "Documentation only.", ())
     if path in TOP_LEVEL_MODULES:
@@ -932,10 +1036,20 @@ def classify_test_path(path: str) -> Area:
     module = name.removesuffix(".py")
     importers = tuple(sorted(test_importers(module)))
     if name.startswith("test_"):
-        return domain(f"tests:{module}", "A test module changed; it and its importers run.", (), (name, *importers))
+        return domain(
+            f"tests:{module}",
+            "A test module changed; it and its importers run.",
+            (),
+            (name, *importers),
+        )
     if not importers:
         return full(path, "A test helper with no importing test module changed.")
-    return domain(f"tests:{module}", "A test helper changed; the test modules importing it run.", (), importers)
+    return domain(
+        f"tests:{module}",
+        "A test helper changed; the test modules importing it run.",
+        (),
+        importers,
+    )
 
 
 def _imported_test_modules(file: Path) -> set[str]:
@@ -1051,7 +1165,9 @@ def describe(selection: Selection, weights: dict[str, float]) -> str:
             lines.append(f"  {name} also selects: {', '.join(tests)}")
     total = sum(weights.get(name, DEFAULT_TEST_SECONDS) for name in selection.files)
     lines.append("")
-    lines.append(f"Pytest files selected ({len(selection.files)}, about {total / 60:.0f} min serial):")
+    lines.append(
+        f"Pytest files selected ({len(selection.files)}, about {total / 60:.0f} min serial):"
+    )
     lines.extend(f"  tests/{name}" for name in selection.files)
     return "\n".join(lines)
 
@@ -1077,7 +1193,9 @@ class Item:
 def load_weights() -> dict[str, float]:
     if not DURATIONS_FILE.exists():
         return {}
-    return {name: float(seconds) for name, seconds in json.loads(DURATIONS_FILE.read_text()).items()}
+    return {
+        name: float(seconds) for name, seconds in json.loads(DURATIONS_FILE.read_text()).items()
+    }
 
 
 def items_for(files: list[str]) -> list[Item]:
@@ -1112,7 +1230,9 @@ def describe_plan(buckets: list[list[Item]], weights: dict[str, float]) -> str:
     lines = []
     for index, bucket in enumerate(buckets):
         load = sum(max(weights.get(i.file, DEFAULT_TEST_SECONDS), 1.0) / i.parts for i in bucket)
-        lines.append(f"Shard {index + 1}/{len(buckets)}: {len(bucket)} items, about {load / 60:.1f} min")
+        lines.append(
+            f"Shard {index + 1}/{len(buckets)}: {len(bucket)} items, about {load / 60:.1f} min"
+        )
         lines.extend(f"  {item.label}" for item in sorted(bucket))
     return "\n".join(lines)
 
@@ -1125,7 +1245,16 @@ def shard_matrix(shards: int) -> dict[str, list[dict[str, object]]]:
 
 def collect_node_ids(file: str) -> list[str]:
     result = subprocess.run(
-        [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider", f"tests/{file}"],
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "--collect-only",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            f"tests/{file}",
+        ],
         cwd=BACKEND,
         check=True,
         capture_output=True,
@@ -1149,8 +1278,10 @@ def pytest_targets(bucket: list[Item]) -> list[str]:
         count = SPLIT_FILES[file]
         node_ids = collect_node_ids(file)
         selected = [node for index, node in enumerate(node_ids) if index % count in parts]
-        print(f"tests/{file}: running parts {sorted(p + 1 for p in parts)}/{count} "
-              f"({len(selected)} of {len(node_ids)} tests)")
+        print(
+            f"tests/{file}: running parts {sorted(p + 1 for p in parts)}/{count} "
+            f"({len(selected)} of {len(node_ids)} tests)"
+        )
         targets.extend(selected)
     return targets
 
@@ -1165,7 +1296,9 @@ def verify() -> list[str]:
     tests = set(all_test_files())
     bundled = {name for _, files in BUNDLES.values() for name in files}
     for name in sorted(tests - bundled):
-        problems.append(f"tests/{name} is in no CI bundle; add it to BUNDLES in {Path(__file__).name}.")
+        problems.append(
+            f"tests/{name} is in no CI bundle; add it to BUNDLES in {Path(__file__).name}."
+        )
     for bundle, (_, files) in sorted(BUNDLES.items()):
         for name in files:
             if name not in tests:
@@ -1177,9 +1310,15 @@ def verify() -> list[str]:
         for name in area.tests:
             if name not in tests:
                 problems.append(f"Area {area.name!r} names missing test file tests/{name}.")
-    apps = {path.name for path in (BACKEND / "compass").iterdir() if path.is_dir() and not path.name.startswith("__")}
+    apps = {
+        path.name
+        for path in (BACKEND / "compass").iterdir()
+        if path.is_dir() and not path.name.startswith("__")
+    }
     for app in sorted(apps - set(DOMAINS) - set(INFRASTRUCTURE) - {"integrations"}):
-        problems.append(f"compass/{app} has no CI mapping; it would always select the complete suite.")
+        problems.append(
+            f"compass/{app} has no CI mapping; it would always select the complete suite."
+        )
     for name in SPLIT_FILES:
         if name not in tests:
             problems.append(f"SPLIT_FILES names missing test file tests/{name}.")
@@ -1191,7 +1330,9 @@ def verify() -> list[str]:
     for name in sorted(tests):
         expected = list(range(SPLIT_FILES.get(name, 1)))
         if sorted(seen.get(name, [])) != expected:
-            problems.append(f"tests/{name} is not covered exactly once by the full-regression shards.")
+            problems.append(
+                f"tests/{name} is not covered exactly once by the full-regression shards."
+            )
     return problems
 
 
@@ -1224,22 +1365,34 @@ def write_output(name: str, value: str) -> None:
 
 
 def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_select = sub.add_parser("select", help="Select tests for the changes between two revisions.")
-    p_select.add_argument("--base", required=True, help="Base revision; the merge base with --head is used.")
+    p_select.add_argument(
+        "--base", required=True, help="Base revision; the merge base with --head is used."
+    )
     p_select.add_argument("--head", required=True, help="Head revision being validated.")
-    p_select.add_argument("--paths", nargs="*", help="Use these changed paths instead of git (for testing).")
+    p_select.add_argument(
+        "--paths", nargs="*", help="Use these changed paths instead of git (for testing)."
+    )
 
     p_plan = sub.add_parser("plan", help="Show the shard plan for the full suite or given files.")
     p_plan.add_argument("--shards", type=int, default=FULL_SHARDS)
-    p_plan.add_argument("--files-json", help="JSON list of test file names; default: every test file.")
+    p_plan.add_argument(
+        "--files-json", help="JSON list of test file names; default: every test file."
+    )
 
-    p_run = sub.add_parser("run-shard", help="Run one shard with pytest (inside the backend virtualenv).")
+    p_run = sub.add_parser(
+        "run-shard", help="Run one shard with pytest (inside the backend virtualenv)."
+    )
     p_run.add_argument("--index", type=int, required=True, help="Zero-based shard index.")
     p_run.add_argument("--total", type=int, required=True)
-    p_run.add_argument("--files-json", help="JSON list of test file names; default: every test file.")
+    p_run.add_argument(
+        "--files-json", help="JSON list of test file names; default: every test file."
+    )
     p_run.add_argument("--junitxml", help="Write a JUnit XML report here.")
 
     sub.add_parser("verify", help="Check bundle and full-regression shard coverage.")
@@ -1276,7 +1429,11 @@ def main(argv: list[str] | None = None) -> int:
         if not 0 <= args.index < args.total:
             raise SystemExit("--index must be within --total")
         bucket = plan(files, args.total, weights)[args.index]
-        print(describe_plan([bucket], weights).replace("Shard 1/1", f"Shard {args.index + 1}/{args.total}"))
+        print(
+            describe_plan([bucket], weights).replace(
+                "Shard 1/1", f"Shard {args.index + 1}/{args.total}"
+            )
+        )
         if not bucket:
             print("This shard has no tests assigned.")
             return 0
@@ -1293,8 +1450,10 @@ def main(argv: list[str] | None = None) -> int:
             print(f"error: {problem}")
         if not problems:
             tests = all_test_files()
-            print(f"OK: {len(tests)} test files are bundled and each runs exactly once across "
-                  f"{FULL_SHARDS} full-regression shards.")
+            print(
+                f"OK: {len(tests)} test files are bundled and each runs exactly once across "
+                f"{FULL_SHARDS} full-regression shards."
+            )
         return 1 if problems else 0
 
     if args.command == "durations":
