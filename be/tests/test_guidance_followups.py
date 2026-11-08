@@ -747,7 +747,6 @@ def test_source_loss_does_not_create_material_notification(world, settings):
     from compass.referrals.services import void_referral
 
     counselor, _, _, student, *_ = world
-    settings.GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = True
     source = create_for(
         counselor,
         student,
@@ -1059,7 +1058,6 @@ def test_work_and_notifications_are_current_and_content_minimized(world, setting
     from compass.work_queue.services import list_work
 
     counselor, _, goa, *_ = world
-    settings.GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = True
     item = create(world)
     notice = Notification.objects.get(source_type="guidance_followup_event")
     assert notice.recipient_id == counselor.pk
@@ -1095,42 +1093,6 @@ def test_work_and_notifications_are_current_and_content_minimized(world, setting
     settings.GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS = ()
     assert pending_followups(actor=counselor, limit=20)
     assert list_my_notifications(actor=counselor).items
-
-
-def test_followup_external_delivery_is_off_by_default(world, settings):
-    from compass.notifications.models import EmailDelivery, Notification, PushDelivery
-    from compass.notifications.services import list_my_notifications, unread_count_for
-
-    settings.GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = False
-    item = create(world)
-    notice = Notification.objects.get(target_id=item.pk)
-    assert notice in list_my_notifications(actor=world[0]).items
-    assert unread_count_for(actor=world[0]) == 1
-    assert not EmailDelivery.objects.filter(notification__target_id=item.pk).exists()
-    assert not PushDelivery.objects.filter(notification__target_id=item.pk).exists()
-
-
-def test_pending_followup_email_is_suppressed_after_external_pause(world, settings):
-    from unittest.mock import patch
-
-    from compass.notifications.delivery import deliver_email_delivery
-    from compass.notifications.models import EmailDelivery, EmailDeliveryStatus, Notification
-    from compass.notifications.services import list_my_notifications, unread_count_for
-
-    settings.GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = True
-    item = create(world)
-    notice = Notification.objects.get(target_id=item.pk)
-    delivery = EmailDelivery.objects.get(notification=notice)
-
-    settings.GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = False
-    with patch("compass.notifications.delivery.Mailer") as mailer:
-        assert deliver_email_delivery(delivery.pk) == "skipped"
-        mailer.assert_not_called()
-
-    delivery.refresh_from_db()
-    assert delivery.status == EmailDeliveryStatus.CANCELLED
-    assert notice in list_my_notifications(actor=world[0]).items
-    assert unread_count_for(actor=world[0]) == 1
 
 
 def test_material_due_change_has_new_occurrence_and_activity_does_not_notify(world, settings):
@@ -1392,3 +1354,33 @@ def test_http_protected_content_fails_closed_without_usable_keyring(world, setti
     assert detail.status_code == 503
     assert detail.json()["error"]["code"] == "followup_content_unavailable"
     assert "Private notes" not in detail.content.decode()
+
+
+def test_followup_email_and_opted_in_push_are_always_delivered(world, settings, monkeypatch):
+    from compass.notifications.delivery import deliver_email_delivery
+    from compass.notifications.models import EmailDelivery, Notification, PushDelivery
+    from compass.notifications.push import deliver_push_delivery, register_subscription
+    from compass.notifications.services import list_my_notifications
+    from tests.test_notification_push import PUSH_SETTINGS, client_for, payload
+
+    monkeypatch.setattr("compass.notifications.services._safe_kick_email_delivery", lambda _: None)
+    monkeypatch.setattr("compass.notifications.services._safe_kick_push_delivery", lambda _: None)
+    sent = []
+    monkeypatch.setattr("compass.notifications.push._send", lambda *args: sent.append(args))
+    settings.MAILERS = {"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}}
+    with PUSH_SETTINGS:
+        _, session = client_for(world[0])
+        subscription = payload("https://fcm.googleapis.com/fcm/send/followup-p6")
+        register_subscription(
+            user=world[0],
+            session=session,
+            endpoint=subscription["endpoint"],
+            **subscription["keys"],
+        )
+        item = create(world)
+        notice = Notification.objects.get(target_id=item.pk)
+        assert notice in list_my_notifications(actor=world[0]).items
+        assert deliver_email_delivery(EmailDelivery.objects.get(notification=notice).pk) == "SENT"
+        push = PushDelivery.objects.get(notification=notice)
+        assert deliver_push_delivery(push.pk) == "SENT"
+        assert len(sent) == 1

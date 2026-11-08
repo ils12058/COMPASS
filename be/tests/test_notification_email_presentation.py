@@ -112,7 +112,7 @@ def deny_view(user):
         (1, AppointmentEmailRecipient.CURRENT_COUNSELOR),
     ],
 )
-def test_authorized_link_is_minimal_and_html_text_agree(case, recipient_index, kind):
+def test_authorized_link_and_operational_fields_have_html_text_parity(case, recipient_index, kind):
     student, counselor, item = case
     notice = notification_for(item, (student, counselor)[recipient_index])
     plan = resolve_notification_email_presentation(notice)
@@ -129,9 +129,6 @@ def test_authorized_link_is_minimal_and_html_text_agree(case, recipient_index, k
         for value in (
             student.email,
             student.get_full_name(),
-            counselor.get_full_name(),
-            item.service.name,
-            item.reference_code,
             item.starts_at.isoformat(),
         ):
             assert value not in body
@@ -353,8 +350,13 @@ def test_private_source_and_hostile_labels_never_enter_context(case, monkeypatch
 
     monkeypatch.setattr(email_module, "render_to_string", capture)
     rendered = rendered_for(notice)
-    assert all(set(values) == {"subject", "action_url"} for values in captured)
-    assert all(type(value) is str for values in captured for value in values.values())
+    assert all(
+        set(values) == {"subject", "action_url", "appointment_details"} for values in captured
+    )
+    assert all(
+        type(values["subject"]) is str and type(values["action_url"]) is str for values in captured
+    )
+    assert all(type(values["appointment_details"]) is tuple for values in captured)
     for forbidden in (hostile, "evil.test", "PRIVATE", "assessment", "MFA_SECRET", "session_token"):
         assert forbidden not in rendered.text_body + rendered.html_body
 
@@ -420,9 +422,10 @@ def test_renderer_rejects_untyped_context_event_and_unapproved_target(case):
 def test_other_events_retain_fixed_copy(case, event):
     student, _, item = case
     notice = notification_for(item, student, event=event)
-    assert (
-        resolve_notification_email_presentation(notice).reason
-        == EmailPresentationReason.GENERIC_EVENT
+    assert resolve_notification_email_presentation(notice).reason == (
+        EmailPresentationReason.INVALID_SOURCE
+        if event == NotificationEvent.APPOINTMENT_REASSIGNED
+        else EmailPresentationReason.GENERIC_EVENT
     )
     assert rendered_for(notice) == render_notification_email(event)
 

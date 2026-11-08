@@ -28,7 +28,6 @@ from tests.test_operational_email_presentation import intent, world  # noqa: F40
 @pytest.fixture(autouse=True)
 def local_transport(settings, monkeypatch):
     settings.COMPASS_PORTAL_ORIGIN = "https://portal.example"
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = "minimal"
     settings.MAILERS = {"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}}
     monkeypatch.setattr("compass.notifications.services._safe_kick_email_delivery", lambda _: None)
     monkeypatch.setattr("compass.notifications.services._safe_kick_push_delivery", lambda _: None)
@@ -55,9 +54,7 @@ def event_notice(request, event):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize("event", sorted(APPROVED_EMAIL_EVENTS))
-@pytest.mark.parametrize("policy", ["minimal", "operational_v1"])
-def test_approved_events_join_email_http_read_and_push(request, settings, event, policy):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = policy
+def test_approved_events_join_email_http_read_and_push(request, settings, event):
     notification = event_notice(request, event)
     owner = auth_client(notification.recipient)
     listed = owner.get("/api/v1/notifications").json()["items"]
@@ -96,7 +93,6 @@ def test_approved_events_join_email_http_read_and_push(request, settings, event,
 def test_actual_appointment_endpoint_rechecks_roles_despite_notification_ownership(
     request, settings, actor_kind
 ):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = "operational_v1"
     appointment_case = request.getfixturevalue("case")
     student, provider, previous, appointment = appointment_case
     role = {"goa": "GUIDANCE_OFFICE_ASSISTANT", "it": "IT_ADMIN"}.get(actor_kind, "COUNSELOR")
@@ -157,7 +153,6 @@ def test_other_student_cannot_read_notice_or_record(request, event, path):
 @pytest.mark.django_db
 @pytest.mark.parametrize("family", ["appointment", "call_slip", "group"])
 def test_suppressed_external_notice_keeps_truthful_in_app_history(request, settings, family):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = "operational_v1"
     event = {
         "appointment": NotificationEvent.APPOINTMENT_SCHEDULED,
         "call_slip": NotificationEvent.CALL_SLIP_ISSUED,

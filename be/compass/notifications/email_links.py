@@ -1,4 +1,7 @@
-"""Closed portal routes and optional, deployment-owned email origins.
+"""Closed portal routes and deployment-owned email origins.
+
+The origin is required at live-staging startup and optional in local-staging.
+Links still validate it here, including after a runtime configuration change.
 
 No request, source text, meeting URL or authentication credential is an input.
 Route support does not activate an event's email link or authorize disclosure.

@@ -46,7 +46,6 @@ EVENTS = (
 @pytest.fixture(autouse=True)
 def synthetic_transport(settings, monkeypatch):
     settings.COMPASS_PORTAL_ORIGIN = "https://portal.example"
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = "minimal"
     settings.MAILERS = {"default": {"BACKEND": "django.core.mail.backends.locmem.EmailBackend"}}
     monkeypatch.setattr("compass.notifications.services._safe_kick_email_delivery", lambda _: None)
     monkeypatch.setattr("compass.notifications.services._safe_kick_push_delivery", lambda _: None)
@@ -179,9 +178,7 @@ def resolve_render(notification):
 
 
 @pytest.mark.parametrize("event", EVENTS)
-@pytest.mark.parametrize("policy", ["minimal", POLICY])
-def test_all_operational_events_use_source_owned_safe_links(world, settings, event, policy):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = policy
+def test_all_operational_events_use_source_owned_safe_links(world, settings, event):
     notification, item = intent(world, event)
     plan, message = resolve_render(notification)
     route = {
@@ -190,56 +187,14 @@ def test_all_operational_events_use_source_owned_safe_links(world, settings, eve
         "CALL_SLIP": "call-slips",
     }[notification.target_type]
     url = f"https://portal.example/portal/{route}/{item.pk}"
-    assert plan.reason == ("rich_available" if policy == POLICY else "link_available")
+    assert plan.reason == "rich_available"
     assert url in message.text_body and url in message.html_body
     assert "PRIVATE" not in message.text_body + message.html_body + repr(plan)
-    assert ("Status:" in message.text_body) is (policy == POLICY)
-
-
-def test_real_settings_default_is_centralized_and_obsolete_name_absent():
-    environment = dict(os.environ)
-    for key in (
-        "COMPASS_EMAIL_DISCLOSURE_POLICY",
-        "COMPASS_EMAIL_DISCLOSURE_POLICY_FILE",
-        "APPOINTMENT_EMAIL_DISCLOSURE_POLICY",
-        "APPOINTMENT_EMAIL_DISCLOSURE_POLICY_FILE",
-    ):
-        environment.pop(key, None)
-    result = subprocess.run(
-        [
-            sys.executable,
-            "-c",
-            "import tests.settings as s; "
-            "assert s.COMPASS_EMAIL_DISCLOSURE_POLICY == 'minimal'; "
-            "assert not hasattr(s, 'APPOINTMENT_EMAIL_DISCLOSURE_POLICY')",
-        ],
-        env=environment,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stderr
-
-
-@pytest.mark.parametrize(
-    "key", ["APPOINTMENT_EMAIL_DISCLOSURE_POLICY", "APPOINTMENT_EMAIL_DISCLOSURE_POLICY_FILE"]
-)
-@pytest.mark.parametrize("value", ["", "operational_v1"])
-def test_obsolete_environment_is_rejected_even_if_empty(key, value):
-    environment = dict(os.environ)
-    environment[key] = value
-    result = subprocess.run(
-        [sys.executable, "-c", "import tests.settings"],
-        env=environment,
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode != 0
-    assert "replace" in result.stderr and "COMPASS_EMAIL_DISCLOSURE_POLICY" in result.stderr
+    assert "Status:" in message.text_body
 
 
 @pytest.mark.parametrize("event", EVENTS)
 def test_unrelated_student_gets_no_details_or_action(world, settings, event):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, event, recipient=world["other"])
     plan, message = resolve_render(notification)
     assert plan.reason == "recipient_denied"
@@ -249,7 +204,6 @@ def test_unrelated_student_gets_no_details_or_action(world, settings, event):
 
 @pytest.mark.parametrize("event", EVENTS)
 def test_wrong_target_never_gains_link_or_fields(world, settings, event):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, event)
     notification.target_id = uuid4()
     notification.save(update_fields=["target_id"])
@@ -260,7 +214,6 @@ def test_wrong_target_never_gains_link_or_fields(world, settings, event):
 
 @pytest.mark.parametrize("event", EVENTS)
 def test_transport_success_and_duplicate_task_do_not_reissue_intents(world, settings, event):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, event)
     delivery = EmailDelivery.objects.get(notification=notification)
     before = Notification.objects.count()
@@ -282,7 +235,6 @@ def capability_for(event):
 def test_current_self_authority_required_for_both_disclosure_and_links(
     world, settings, event, change
 ):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, event)
     if change == "inactive":
         User.objects.filter(pk=world["student"].pk).update(is_active=False)
@@ -304,7 +256,6 @@ def test_current_self_authority_required_for_both_disclosure_and_links(
 def test_missing_legacy_sources_have_generic_projection_without_data_or_links(
     world, settings, event
 ):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, event)
     notification.source_id = uuid4()
     if notification.source_type != "group_session_registration":
@@ -317,7 +268,6 @@ def test_missing_legacy_sources_have_generic_projection_without_data_or_links(
 
 @pytest.mark.parametrize("event", EVENTS)
 def test_wrong_source_type_is_never_a_domain_reader(world, settings, event):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, event)
     notification.source_type = "student_session_summary"
     plan, message = resolve_render(notification)
@@ -325,22 +275,9 @@ def test_wrong_source_type_is_never_a_domain_reader(world, settings, event):
     assert "https://" not in message.text_body and "PRIVATE" not in message.text_body
 
 
-@pytest.mark.parametrize(
-    "policy", [None, True, "OPERATIONAL_V1", "operational_v2", " operational_v1"]
-)
-@pytest.mark.parametrize("event", [EVENTS[0], EVENTS[5], EVENTS[6]])
-def test_unrecognized_central_values_only_allow_minimal_links(world, settings, event, policy):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = policy
-    notification, _ = intent(world, event)
-    plan, message = resolve_render(notification)
-    assert plan.reason == "link_available" and plan.disclosure_policy == "minimal"
-    assert "Status:" not in message.text_body
-
-
 @pytest.mark.parametrize("origin", ["", "https://portal.example/bad", "javascript:PRIVATE_TOKEN"])
 @pytest.mark.parametrize("event", [EVENTS[0], EVENTS[5], EVENTS[6]])
 def test_new_domain_details_require_validated_portal_origin(world, settings, event, origin):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     settings.COMPASS_PORTAL_ORIGIN = origin
     notification, _ = intent(world, event)
     plan, message = resolve_render(notification)
@@ -352,7 +289,6 @@ def test_new_domain_details_require_validated_portal_origin(world, settings, eve
 def test_group_details_never_fetch_or_render_free_text_title_or_meeting_context(
     world, settings, event
 ):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, event)
     baseline, message = resolve_render(notification)
     for title in ("<img src=x onerror=PRIVATE_TOKEN>", ("PRIVATE_Counseling " * 15)[:255], ""):
@@ -363,7 +299,6 @@ def test_group_details_never_fetch_or_render_free_text_title_or_meeting_context(
 
 
 def test_group_cancellation_requires_proven_participant_at_exact_cancellation(world, settings):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, EVENTS[2])
     GroupSessionRegistration.objects.filter(group_session=item).update(
         cancelled_at=item.cancelled_at - timedelta(minutes=1)
@@ -373,7 +308,6 @@ def test_group_cancellation_requires_proven_participant_at_exact_cancellation(wo
 
 
 def test_group_cancelled_registration_is_not_current_after_reregistration(world, settings):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, EVENTS[1])
     GroupSessionRegistration.objects.create(group_session=item, student=world["student"])
     plan = resolve_notification_email_presentation(notification)
@@ -384,7 +318,6 @@ def test_group_cancelled_registration_is_not_current_after_reregistration(world,
 def test_group_schedule_revision_and_legacy_general_version_have_distinct_rich_proof(
     world, settings, legacy
 ):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, EVENTS[3])
     if legacy:
         notification.source_type = f"group_session_v{item.version}"
@@ -403,7 +336,6 @@ def test_group_schedule_revision_and_legacy_general_version_have_distinct_rich_p
 def test_group_upcoming_messages_do_not_survive_obsolete_session_state(
     world, settings, event, state
 ):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, event)
     changes = (
         {"status": state}
@@ -419,7 +351,6 @@ def test_group_upcoming_messages_do_not_survive_obsolete_session_state(
 
 
 def test_group_cross_date_uses_updated_schedule_in_philippine_time(world, settings):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, EVENTS[3])
     GroupSession.objects.filter(pk=item.pk).update(
         starts_at=datetime(2099, 10, 23, 15, 30, tzinfo=UTC),
@@ -434,7 +365,6 @@ def test_group_cross_date_uses_updated_schedule_in_philippine_time(world, settin
 def test_assisted_request_message_tracks_current_status_without_guessing_issuance(
     world, settings, state
 ):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, EVENTS[4] if state != "ISSUED" else EVENTS[5])
     notification.event_code = EVENTS[4]
     if state == "READY_FOR_ISSUANCE":
@@ -460,7 +390,6 @@ def test_assisted_request_message_tracks_current_status_without_guessing_issuanc
 
 
 def test_self_service_request_cannot_be_reinterpreted_as_office_assisted(world, settings):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, EVENTS[4])
     GoodMoralRequest.objects.filter(pk=item.pk).update(
         initiation_origin="STUDENT_SELF", initiated_by=world["student"]
@@ -470,7 +399,6 @@ def test_self_service_request_cannot_be_reinterpreted_as_office_assisted(world, 
 
 @pytest.mark.parametrize("state", ["REQUESTED", "READY_FOR_ISSUANCE", "CANCELLED"])
 def test_request_or_preparation_is_not_certificate_issuance(world, settings, state):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, EVENTS[4])
     notification.event_code = EVENTS[5]
     if state == "READY_FOR_ISSUANCE":
@@ -490,7 +418,6 @@ def test_request_or_preparation_is_not_certificate_issuance(world, settings, sta
 @pytest.mark.parametrize("mode", ["LIVE", "HISTORICAL", "LEGACY_UNKNOWN"])
 @pytest.mark.parametrize("event", [EVENTS[6], EVENTS[7]])
 def test_call_slip_original_issuance_intent_and_legacy_void_contract(world, settings, event, mode):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, event)
     CallSlip.objects.filter(pk=item.pk).update(issuance_mode=mode)
     plan = resolve_notification_email_presentation(notification)
@@ -505,7 +432,6 @@ def test_call_slip_original_issuance_intent_and_legacy_void_contract(world, sett
 
 @pytest.mark.parametrize("change", ["voided", "completed"])
 def test_pending_call_slip_issuance_cancels_after_obsolete_instruction(world, settings, change):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, EVENTS[6])
     updates = (
         {"voided_at": timezone.now(), "void_reason": "PRIVATE_REASON"}
@@ -534,19 +460,16 @@ def mutate_source(item):
 
 
 @pytest.mark.parametrize("event", [EVENTS[3], EVENTS[5], EVENTS[6]])
-@pytest.mark.parametrize("change", ["policy", "origin", "email", "capability", "role", "source"])
+@pytest.mark.parametrize("change", ["origin", "email", "capability", "role", "source"])
 def test_post_render_changes_cancel_old_transport(world, settings, monkeypatch, event, change):
     from compass.notifications import delivery as worker
 
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, event)
     original = worker.render_notification_email
 
     def rendered_then_change(*args, **kwargs):
         message = original(*args, **kwargs)
-        if change == "policy":
-            settings.COMPASS_EMAIL_DISCLOSURE_POLICY = "minimal"
-        elif change == "origin":
+        if change == "origin":
             settings.COMPASS_PORTAL_ORIGIN = "https://changed.example"
         elif change == "email":
             User.objects.filter(pk=world["student"].pk).update(email="changed@example.test")
@@ -581,7 +504,6 @@ def test_committed_source_changes_are_seen_by_worker_before_smtp(
     from compass.integrations.mail import Mailer
     from compass.notifications import delivery as worker
 
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, event)
     delivery = EmailDelivery.objects.get(notification=notification)
     rendered, release = threading.Event(), threading.Event()
@@ -637,7 +559,6 @@ def test_f4_f6_issuance_projection_preserves_variant_and_omits_private_snapshots
 ):
     from tests.test_good_moral import make_academic_year, make_inventory
 
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, EVENTS[5])
     User.objects.filter(pk=world["student"].pk).update(student_lifecycle_status=lifecycle)
     if variant == "CURRENT_STUDENT":
@@ -688,7 +609,6 @@ def test_student_self_service_creation_does_not_add_assisted_notification(world)
     ["mapping", "duplicate", "wrong_recipient", "wrong_event", "wrong_target", "unapproved_policy"],
 )
 def test_renderer_rejects_forged_domain_rows_and_binding(world, settings, event, defect):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, event)
     plan = resolve_notification_email_presentation(notification)
     attribute = {
@@ -721,7 +641,6 @@ def test_group_cancellation_field_policy_rejects_active_schedule_rows(world, set
         GroupSessionEmailField,
     )
 
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, EVENTS[2])
     plan = resolve_notification_email_presentation(notification)
     facts = replace(
@@ -740,7 +659,6 @@ def test_typed_detail_html_escaping_and_plain_text_parity(world, settings):
         GroupSessionEmailField,
     )
 
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, EVENTS[0])
     plan = resolve_notification_email_presentation(notification)
     value = "Synthetic <em>label</em> & sample"
@@ -758,7 +676,6 @@ def test_typed_detail_html_escaping_and_plain_text_parity(world, settings):
 
 @pytest.mark.parametrize("defect", ["family", "template", "version", "future_date"])
 def test_good_moral_issuance_requires_consistent_persisted_provenance(world, settings, defect):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, EVENTS[5])
     if defect == "family":
         item.form_revision = form("call_slip", "UCN-OP-GCO-01F2")
@@ -798,7 +715,6 @@ def test_domain_detail_values_are_bounded_and_errors_content_free(family, value)
 def test_renderer_requires_available_origin_snapshot_for_new_domain_facts(world, settings, event):
     from compass.notifications.email_links import build_notification_email_link
 
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, event)
     plan = resolve_notification_email_presentation(notification)
     settings.COMPASS_PORTAL_ORIGIN = ""
@@ -819,12 +735,11 @@ def test_one_central_declaration_and_no_legacy_runtime_alias():
         for target in node.targets
         if isinstance(target, ast.Name) and target.id.endswith("EMAIL_DISCLOSURE_POLICY")
     }
-    assert declared == {"COMPASS_EMAIL_DISCLOSURE_POLICY"}
+    assert declared == set()
 
 
 @pytest.mark.parametrize("event", [EVENTS[5], EVENTS[6]])
 def test_undisclosed_source_changes_do_not_change_email_projection(world, settings, event):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, event)
     before = resolve_notification_email_presentation(notification)
     if isinstance(item, GoodMoralRequest):
@@ -856,7 +771,6 @@ def test_undisclosed_source_changes_do_not_change_email_projection(world, settin
 def test_registered_notice_labels_current_schedule_instead_of_inventing_initial_snapshot(
     world, settings
 ):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, EVENTS[0])
     GroupSession.objects.filter(pk=item.pk).update(
         schedule_revision=3,
@@ -869,34 +783,11 @@ def test_registered_notice_labels_current_schedule_instead_of_inventing_initial_
 
 
 @pytest.mark.parametrize("event", [EVENTS[0], EVENTS[5], EVENTS[6]])
-def test_minimal_link_plan_still_detects_profile_change_before_smtp(
-    world, settings, monkeypatch, event
-):
-    from compass.notifications import delivery as worker
-
-    notification, _ = intent(world, event)
-    original = worker.render_notification_email
-
-    def change(*args, **kwargs):
-        message = original(*args, **kwargs)
-        settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
-        return message
-
-    monkeypatch.setattr(worker, "render_notification_email", change)
-    assert (
-        deliver_email_delivery(EmailDelivery.objects.get(notification=notification).pk)
-        == "CANCELLED"
-    )
-    assert not mail.outbox
-
-
-@pytest.mark.parametrize("event", [EVENTS[0], EVENTS[5], EVENTS[6]])
 def test_projection_failure_diagnostics_do_not_log_source_facts(
     world, settings, monkeypatch, caplog, event
 ):
     from compass.notifications import email_presentation as plans
 
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, event)
 
     def fail(**kwargs):
@@ -923,7 +814,6 @@ def test_retry_preserves_source_identity_and_never_adds_notification(
 ):
     from compass.integrations.mail import Mailer
 
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, _ = intent(world, event)
     delivery = EmailDelivery.objects.get(notification=notification)
     before = resolve_notification_email_presentation(notification)
@@ -949,7 +839,6 @@ def test_retry_preserves_source_identity_and_never_adds_notification(
 def test_email_supersession_does_not_rewrite_in_app_or_push_currentness(world, settings):
     from compass.notifications.current import notification_is_current
 
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     notification, item = intent(world, EVENTS[6])
     mutate_source(item)
     assert notification_is_current(notification)
@@ -966,7 +855,6 @@ EXAMPLES = (
     ("good-moral-issued", EVENTS[5]),
     ("call-slip-issued", EVENTS[6]),
     ("call-slip-voided", EVENTS[7]),
-    ("minimal-link", EVENTS[0]),
     ("missing-source", EVENTS[5]),
     ("unauthorized-recipient", EVENTS[6]),
     ("superseded-session", EVENTS[3]),
@@ -977,7 +865,6 @@ EXAMPLES = (
 
 @pytest.mark.parametrize("name,event", EXAMPLES)
 def test_synthetic_operational_previews(world, settings, tmp_path, name, event):
-    settings.COMPASS_EMAIL_DISCLOSURE_POLICY = "minimal" if name == "minimal-link" else POLICY
     notification, item = intent(
         world, event, recipient=world["other"] if name == "unauthorized-recipient" else None
     )
@@ -1017,3 +904,60 @@ def test_synthetic_operational_previews(world, settings, tmp_path, name, event):
             "\n".join(line.rstrip() for line in body.splitlines()) + "\n"
         )
     assert "PRIVATE" not in message.subject + message.html_body + message.text_body
+
+
+@pytest.mark.parametrize("origin", [None, "", "   "])
+def test_live_staging_requires_portal_origin_at_startup(origin):
+    environment = dict(os.environ)
+    environment.pop("COMPASS_PORTAL_ORIGIN_FILE", None)
+    environment.pop("COMPASS_PORTAL_ORIGIN", None)
+    environment["APP_ENV"] = "live-staging"
+    if origin is not None:
+        environment["COMPASS_PORTAL_ORIGIN"] = origin
+    result = subprocess.run(
+        [sys.executable, "-c", "import config.settings"],
+        env=environment,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "COMPASS_PORTAL_ORIGIN is required in live-staging" in result.stderr
+
+
+def test_local_staging_keeps_portal_origin_optional():
+    environment = dict(os.environ)
+    environment["APP_ENV"] = "local-staging"
+    environment.pop("COMPASS_PORTAL_ORIGIN", None)
+    environment.pop("COMPASS_PORTAL_ORIGIN_FILE", None)
+    result = subprocess.run(
+        [sys.executable, "-c", "import tests.settings as s; assert s.COMPASS_PORTAL_ORIGIN == ''"],
+        env=environment,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.parametrize(
+    "origin",
+    [
+        "http://localhost:3000",
+        "https://portal.example/path",
+        "javascript:PRIVATE",
+        "https://PORTAL.example",
+    ],
+)
+def test_live_staging_rejects_invalid_portal_origin_at_startup(origin):
+    environment = dict(os.environ)
+    environment.pop("COMPASS_PORTAL_ORIGIN_FILE", None)
+    environment["APP_ENV"] = "live-staging"
+    environment["COMPASS_PORTAL_ORIGIN"] = origin
+    result = subprocess.run(
+        [sys.executable, "-c", "import config.settings"],
+        env=environment,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode != 0
+    assert "COMPASS_PORTAL_ORIGIN must be a canonical HTTPS origin in live-staging" in result.stderr
+    assert origin not in result.stderr

@@ -1,10 +1,8 @@
-"""One version selector and explicit candidate event/recipient admission.
+"""Code-owned operational_v1 field and event/recipient admission.
 
 operational_v1 covers the complete four-family bundle, not Appointment-only
 approval. No source facts or arbitrary model/field access are centralized here.
 """
-
-from django.conf import settings
 
 from compass.appointments.email_presentation import (
     APPOINTMENT_EMAIL_EVENTS,
@@ -93,12 +91,3 @@ APPROVED_EMAIL_EVENTS = (
     | OPERATIONAL_EMAIL_EVENTS
     | {NotificationEvent.GRADUATE_TRACER_REMINDER}
 )
-
-
-def email_disclosure_policy() -> str:
-    configured = settings.COMPASS_EMAIL_DISCLOSURE_POLICY
-    return (
-        APPROVED_OPERATIONAL_POLICY
-        if type(configured) is str and configured == APPROVED_OPERATIONAL_POLICY
-        else "minimal"
-    )

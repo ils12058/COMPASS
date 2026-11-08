@@ -184,7 +184,7 @@ def resolve_appointment_email_facts(
     recipient_id: UUID,
     now=None,
 ) -> AppointmentEmailResolution:
-    """Only called after Notifications selects an approved disclosure policy."""
+    """Resolve source-owned operational_v1 facts for the admitted recipient."""
     at = now or timezone.now()
     recipient = User.objects.select_related("role").filter(pk=recipient_id).first()
     if recipient is None or not recipient.is_active:

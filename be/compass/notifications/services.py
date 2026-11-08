@@ -13,7 +13,6 @@ from compass.accounts.models import User
 from compass.common.correlation import get_current_request_id
 from compass.realtime.publish import publish_to_user_on_commit
 
-from .current import external_delivery_enabled
 from .models import EmailDelivery, Notification, NotificationPreference
 from .policy import (
     NotificationChannel,
@@ -117,8 +116,6 @@ def create_notification_for_event(
 
     if created:
         publish_to_user_on_commit(notification.recipient_id, "notifications.changed")
-    if not external_delivery_enabled(notification):
-        return notification
     if created:
         try:
             # Optional transport setup is isolated from the authoritative transaction.

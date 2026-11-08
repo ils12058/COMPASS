@@ -25,7 +25,6 @@ from .email_disclosure import (
     GOOD_MORAL_EMAIL_FIELD_POLICY,
     GROUP_SESSION_EMAIL_FIELD_POLICY,
     OPERATIONAL_EMAIL_EVENTS,
-    email_disclosure_policy,
 )
 from .email_links import EmailLinkReason, NotificationEmailLink
 from .policy import NotificationEvent
@@ -126,11 +125,10 @@ def operational_email_context(event_code, presentation):
                 not facts.rows
                 or not facts.rich_allowed
                 or presentation.disclosure_policy != APPROVED_OPERATIONAL_POLICY
-                or email_disclosure_policy() != APPROVED_OPERATIONAL_POLICY
             )
         )
         or (not rich and (presentation.reason != "link_available" or facts.rows))
-        or presentation.disclosure_policy != email_disclosure_policy()
+        or presentation.disclosure_policy != APPROVED_OPERATIONAL_POLICY
     ):
         raise ValueError("unapproved operational email facts")
     # Code-owned copy only; the link itself was independently rebuilt by delivery.

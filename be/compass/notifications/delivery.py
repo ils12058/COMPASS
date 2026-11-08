@@ -29,7 +29,6 @@ from .email_disclosure import (
     APPROVED_OPERATIONAL_POLICY,
     OPERATIONAL_EMAIL_EVENTS,
     OPERATIONAL_EMAIL_TARGETS,
-    email_disclosure_policy,
 )
 from .email_links import NotificationEmailTarget, build_notification_email_link
 from .email_presentation import (
@@ -203,7 +202,6 @@ def render_notification_email(
                 or presentation.reason != EmailPresentationReason.RICH_AVAILABLE
                 or presentation.disclosure_policy != APPROVED_OPERATIONAL_POLICY
                 or presentation.validated_link is None
-                or email_disclosure_policy() != APPROVED_OPERATIONAL_POLICY
                 or presentation.target is None
                 or facts.event_code != event_code
                 or facts.appointment_id != presentation.target.target_id

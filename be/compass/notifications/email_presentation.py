@@ -37,7 +37,6 @@ from .email_disclosure import (
     GROUP_SESSION_EMAIL_FIELD_POLICY,
     OPERATIONAL_EMAIL_EVENTS,
     OPERATIONAL_EMAIL_TARGETS,
-    email_disclosure_policy,
 )
 from .email_links import (
     EmailLinkReason,
@@ -77,7 +76,7 @@ class NotificationEmailPresentation:
     ) = None
     target: NotificationEmailTarget | None = field(default=None, repr=False)
     appointment_facts: AppointmentEmailFacts | None = field(default=None, repr=False)
-    disclosure_policy: str = "minimal"
+    disclosure_policy: str = APPROVED_OPERATIONAL_POLICY
     validated_link: NotificationEmailLink | None = field(default=None, repr=False)
 
     group_session_facts: GroupSessionEmailFacts | None = field(default=None, repr=False)
@@ -131,10 +130,7 @@ def resolve_notification_email_presentation(notification) -> NotificationEmailPr
         return _graduate_tracer_presentation(notification)
     if event in OPERATIONAL_EMAIL_EVENTS:
         return _operational_presentation(notification)
-    if (
-        email_disclosure_policy() != APPROVED_OPERATIONAL_POLICY
-        or event not in APPOINTMENT_EMAIL_EVENTS
-    ):
+    if event not in APPOINTMENT_EMAIL_EVENTS:
         return _minimal_presentation(notification)
     if (
         notification.target_type != NotificationTargetType.APPOINTMENT
@@ -228,9 +224,8 @@ def _operational_presentation(notification) -> NotificationEmailPresentation:
             EmailLinkReason.ORIGIN_INVALID: EmailPresentationReason.ORIGIN_INVALID,
         }.get(link.reason, EmailPresentationReason.INVALID_TARGET)
         return NotificationEmailPresentation(event, reason)
-    policy = email_disclosure_policy()
-    rich = policy == APPROVED_OPERATIONAL_POLICY and result.facts.rich_allowed
-    # Minimal plans retain typed source guards for final equality, but no display rows.
+    rich = result.facts.rich_allowed
+    # Provenance-limited plans retain source guards for final equality without display rows.
     facts = replace(
         result.facts,
         rows=tuple(row for row in result.facts.rows if row.field in fields) if rich else (),
@@ -240,7 +235,7 @@ def _operational_presentation(notification) -> NotificationEmailPresentation:
         EmailPresentationReason.RICH_AVAILABLE if rich else EmailPresentationReason.LINK_AVAILABLE,
         facts.recipient_class,
         target,
-        disclosure_policy=policy,
+        disclosure_policy=APPROVED_OPERATIONAL_POLICY,
         validated_link=link,
     )
     if type(facts) is GroupSessionEmailFacts:

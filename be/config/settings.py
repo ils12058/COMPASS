@@ -1,7 +1,6 @@
 """Environment-driven Django settings for local-staging and live-staging."""
 
 import base64
-import os
 from pathlib import Path
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -13,21 +12,24 @@ from compass.common.build_metadata import read_project_version, validate_runtime
 from compass.common.config import env, env_bool, env_csv, env_float, env_int, required_env
 from compass.common.redis_config import redis_urls
 from compass.confidential_data.crypto import keyring_reuses_secret, parse_fernet_keyring
+from compass.notifications.email_links import validated_portal_origin
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-if any(
-    name in os.environ
-    for name in ("APPOINTMENT_EMAIL_DISCLOSURE_POLICY", "APPOINTMENT_EMAIL_DISCLOSURE_POLICY_FILE")
-):
-    raise ValueError(
-        "APPOINTMENT_EMAIL_DISCLOSURE_POLICY has been removed; "
-        "replace it with COMPASS_EMAIL_DISCLOSURE_POLICY"
-    )
 
 APP_ENV = env("APP_ENV", "local-staging")
 if APP_ENV not in {"local-staging", "live-staging"}:
     raise ValueError("APP_ENV must be either local-staging or live-staging")
+
+# Operator-owned origin; live-staging requires links in operational email.
+# Local-staging may omit it. Never infer it from HTTP Host, CORS or CSRF.
+COMPASS_PORTAL_ORIGIN = env("COMPASS_PORTAL_ORIGIN", "")
+if APP_ENV == "live-staging" and not COMPASS_PORTAL_ORIGIN.strip():
+    raise ValueError("COMPASS_PORTAL_ORIGIN is required in live-staging")
+if (
+    APP_ENV == "live-staging"
+    and validated_portal_origin(COMPASS_PORTAL_ORIGIN, app_env=APP_ENV) is None
+):
+    raise ValueError("COMPASS_PORTAL_ORIGIN must be a canonical HTTPS origin in live-staging")
 
 APPLICATION_VERSION = read_project_version(BASE_DIR / "pyproject.toml")
 COMPASS_BUILD_ID, COMPASS_BUILD_TIME = validate_runtime_build_identity(
@@ -476,12 +478,6 @@ if not 0 <= COUNSELING_CONTEXT_POST_ENCOUNTER_DAYS <= 30:
     raise ValueError("COUNSELING_CONTEXT_POST_ENCOUNTER_DAYS must be between 0 and 30")
 
 NOTIFICATION_EMAIL_MAX_ATTEMPTS = env_int("NOTIFICATION_EMAIL_MAX_ATTEMPTS", 5)
-# Optional and validated at link generation: absent/invalid values keep generic
-# transactional mail working. Never infer this from HTTP Host, CORS or CSRF.
-COMPASS_PORTAL_ORIGIN = env("COMPASS_PORTAL_ORIGIN", "")
-# Only an approved complete policy version enables external operational detail fields.
-# Unknown values fail closed in the presentation policy, without breaking email.
-COMPASS_EMAIL_DISCLOSURE_POLICY = env("COMPASS_EMAIL_DISCLOSURE_POLICY", "minimal")
 NOTIFICATION_EMAIL_RETRY_BASE_SECONDS = env_int("NOTIFICATION_EMAIL_RETRY_BASE_SECONDS", 60)
 NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS = env_int(
     "NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS", 60
@@ -716,7 +712,6 @@ if keyring_reuses_secret(
 # Follow-Ups do not require new secrets at process startup. Web-only confidential
 # operations fail closed until the operator provisions and approves a separate keyring.
 # Worker, beat and realtime remain keyless; no notification tasks in FUP-1A.
-GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = env_bool("GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED", False)
 _followup_keys = env("GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS", "")
 GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS = (
     parse_fernet_keyring(_followup_keys, setting="GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS")
