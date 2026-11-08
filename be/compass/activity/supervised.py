@@ -25,7 +25,7 @@ from .retrieval import (
 
 CAPABILITY = "activity.supervised_staff.view"
 
-# Audited against actual GSS-capable service/API call sites. Appointment creation is self-Student.
+# Audited against actual GOA-capable service/API call sites. Appointment creation is self-Student.
 # Referral actions target referralaction; all other targets below are the owning resource UUID.
 SUPERVISED_PRESENTERS = {
     actions.APPOINTMENT_CANCELLED: (
@@ -148,7 +148,7 @@ def current_supervisions(actor):
         supervisor__is_active=True,
         supervisor__role__code="COUNSELOR",
         staff__is_active=True,
-        staff__role__code="GUIDANCE_SERVICES_STAFF",
+        staff__role__code="GUIDANCE_OFFICE_ASSISTANT",
     )
 
 
@@ -176,7 +176,7 @@ def list_supervised_staff(*, actor, page=1, page_size=DEFAULT_PAGE_SIZE):
         "items": [
             {
                 "id": row.staff_id,
-                "display_name": row.staff.get_full_name().strip() or "Guidance Services Staff",
+                "display_name": row.staff.get_full_name().strip() or "Guidance Office Assistant",
             }
             for row in rows[:page_size]
         ],
@@ -241,7 +241,7 @@ def supervised_items(queryset, criteria):
         except (ValueError, TypeError):
             continue
         title, description, _ = SUPERVISED_PRESENTERS[event.action]
-        name = event.actor_user.get_full_name().strip() or "Guidance Services Staff"
+        name = event.actor_user.get_full_name().strip() or "Guidance Office Assistant"
         if not matches_text(criteria.search, (event.action, title, description, name)):
             continue
         yield SupervisedActivityItem(

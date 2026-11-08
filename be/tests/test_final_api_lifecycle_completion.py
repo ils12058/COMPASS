@@ -353,9 +353,9 @@ def test_student_support_roster_surface_is_removed():
     sync_policy()
     counselor = make_support_user("roster-final-counselor@example.edu", "COUNSELOR")
     head = make_head("roster-final-head@example.edu")
-    gss = make_support_user("roster-final-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_support_user("roster-final-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
 
-    for actor in (counselor, head, gss):
+    for actor in (counselor, head, goa):
         assert support_auth_client(actor).get("/api/v1/student-support/students").status_code == 404
 
 

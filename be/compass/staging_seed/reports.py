@@ -101,7 +101,7 @@ SUITABILITY_LABELS = {
 STAKEHOLDER_ORDER = (
     "Student",
     "Guidance Counselor",
-    "Guidance Services Staff",
+    "Guidance Office Assistant",
     "Head Guidance Counselor",
     "IT Administrator",
     "Data Protection Officer",
@@ -307,9 +307,9 @@ GUIDE_NOTES = {
         "satellite campuses). Assign one evaluator per Counselor account; their Work Queues and "
         "rosters do not overlap except for office-wide Good Moral work."
     ),
-    "Guidance Services Staff": (
+    "Guidance Office Assistant": (
         "Each staff account is supervised by one Counselor and works within that caseload. "
-        "Assign gss_a with counselor_a's evaluator team and gss_b with counselor_b's."
+        "Assign goa_a with counselor_a's evaluator team and goa_b with counselor_b's."
     ),
     "Head Guidance Counselor": (
         "One Head account exists, as at the institution. If two evaluators share it, schedule "
@@ -585,7 +585,7 @@ def _uat_40_unit(account: AccountSpec) -> str:
         return "Guidance and Counseling Office (institution-wide)"
     if account.role == "COUNSELOR":
         return f"Guidance and Counseling Office ({_caseload(account.key)})"
-    if account.role == "GUIDANCE_SERVICES_STAFF":
+    if account.role == "GUIDANCE_OFFICE_ASSISTANT":
         supervisor = dict(STAFF_SUPERVISION)[account.key]
         return f"Guidance and Counseling Office ({_caseload(supervisor)})"
     if account.role == "IT_ADMIN":
@@ -648,7 +648,7 @@ def _summary(result) -> str:
         f"- Accounts: **{counts['accounts']}** ({counts['students']} Students, "
         f"{counts['staff']} staff).",
         "- UAT allocation: **40 independent participants** — 1 Head, 3 Counselors, "
-        "2 Guidance Services Staff, 25 current Students, 5 graduated Alumni, 3 ITSO and 1 DPO. "
+        "2 Guidance Office Assistant, 25 current Students, 5 graduated Alumni, 3 ITSO and 1 DPO. "
         "Current Students by College: "
         + ", ".join(
             f"{_college_label(college)} {len(keys)}"

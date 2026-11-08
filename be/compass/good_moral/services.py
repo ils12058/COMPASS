@@ -272,7 +272,7 @@ def _validate_operational(actor: User, capability: str) -> None:
     if (
         not getattr(actor, "pk", None)
         or not actor.is_active
-        or actor.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        or actor.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         or not actor.has_capability(capability)
     ):
         raise GoodMoralNotPermitted("Authorized Guidance Good Moral access is required.")
@@ -953,7 +953,7 @@ def count_requested_requests(actor: User) -> int | None:
     if (
         not getattr(actor, "pk", None)
         or not actor.is_active
-        or actor.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        or actor.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         or not actor.has_capability("good_moral.view")
     ):
         return None

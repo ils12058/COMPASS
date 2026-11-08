@@ -413,7 +413,7 @@ candidate.
 6. Verify actual applied migrations and final columns, row counts/provenance/rating equality and
    historical content privately. Run all three domain rotation dry runs, including
    `rotate_exit_interview_confidential_content --dry-run --batch-size 100`. Exercise authorized
-   owner DRAFT/SUBMITTED detail/edit, Head SUBMITTED detail/PDF and reopened-DRAFT denial, GSS
+   owner DRAFT/SUBMITTED detail/edit, Head SUBMITTED detail/PDF and reopened-DRAFT denial, GOA
    opportunity-note-only access, metadata search/status and graduation Good Moral. Confirm saved
    contact snapshots/PDF fidelity, content-free Audit/notifications, exact public build/readiness and
    web/worker/Beat health. Print only sanitized counts/UUID/reason context. Repository evidence alone

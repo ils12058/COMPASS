@@ -28,7 +28,7 @@ identities, 91 scenario definitions and all 65 background Students are retained.
 116 accounts and 94 scenarios (91 executable, three pending); no migration is needed.
 
 The allocation (`UAT_40_ALLOCATION` in `compass/staging_seed/manifest.py`) assigns distinct keys
-to 1 Head, 3 Counselors, 2 GSS, 25 current Students, five graduated Alumni, 3 ITSO personnel and
+to 1 Head, 3 Counselors, 2 GOA, 25 current Students, five graduated Alumni, 3 ITSO personnel and
 1 DPO. The 25 current Students follow the finalized College distribution
 (`UAT_40_STUDENT_QUOTA`): 3 each from CCMS, CAS, CBPA, COENG, COED, CFAST and CANR, and 2 each
 from COTT and Entienza. The manifest refuses an allocation whose counts, College affiliations,
@@ -267,7 +267,7 @@ before commit, so no other session observes a historical year as current.
 | Rich scenario Students | 11 | Multi-domain stories (counseling, referrals, Call Slips, certificates, Exit Interviews, Graduate Tracer, onboarding, a former Student) |
 | Action-ready Students (`ar_01`…`ar_26`) | 26 | One evaluator-owned pending action each |
 | Background Students (`bg_01`…`bg_65`) | 65 | Quiet population across all six campuses for rosters, filters and reports; `bg_65` is disabled; seven are promoted to UAT-ready for the College distribution |
-| Staff (participants) | 11 | IT Administrator ×3, Head Guidance Counselor, Counselors ×3 (separate caseloads), Guidance Services Staff ×2, DPO ×2 |
+| Staff (participants) | 11 | IT Administrator ×3, Head Guidance Counselor, Counselors ×3 (separate caseloads), Guidance Office Assistant ×2, DPO ×2 |
 | Staff (restricted) | 3 | Disabled former staff, a Counselor without responsibility, an undesignated Institutional Officer |
 
 Counselor routing: `counselor_a` — Main CCMS, CAS, COENG; `counselor_b` — Main CBPA, Abaño COED;

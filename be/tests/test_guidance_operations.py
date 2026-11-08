@@ -54,7 +54,7 @@ def summary(world, actor=None, now=None):
     return services.get_guidance_operations(actor=actor or world.counselor, now=now)
 
 
-@pytest.mark.parametrize("actor", ["counselor", "gss", "head"])
+@pytest.mark.parametrize("actor", ["counselor", "goa", "head"])
 def test_active_staff_access_without_new_capability(world, actor):
     response = auth_client(getattr(world, actor)).get(BASE)
     assert response.status_code == 200
@@ -95,16 +95,16 @@ def test_stale_counselor_role_does_not_retain_projection_access(world):
         summary(world)
 
 
-def test_authorized_zero_and_gss_null(world):
+def test_authorized_zero_and_goa_null(world):
     result = summary(world)
     for metric in result.backlog.model_dump().values():
         assert metric["count"] == 0
         assert list(metric.values())[1] is None
-    gss = summary(world, world.gss)
-    assert gss.backlog.routine_evaluations is None
-    assert gss.backlog.good_moral_issuance is None
-    assert gss.backlog.good_moral_preparation.count == 0
-    assert gss.schedule.upcoming_self_appointments_count is None
+    goa = summary(world, world.goa)
+    assert goa.backlog.routine_evaluations is None
+    assert goa.backlog.good_moral_issuance is None
+    assert goa.backlog.good_moral_preparation.count == 0
+    assert goa.schedule.upcoming_self_appointments_count is None
     assert result.schedule.upcoming_managed_appointments_count is None
 
 
@@ -128,9 +128,9 @@ def test_capability_removal_means_null_not_zero(world, capability, section, fiel
     assert getattr(getattr(result, section), field) is None
 
 
-def test_gss_managed_appointment_capability_removal(world):
-    deny(world.gss, "appointments.manage")
-    assert summary(world, world.gss).schedule.upcoming_managed_appointments_count is None
+def test_goa_managed_appointment_capability_removal(world):
+    deny(world.goa, "appointments.manage")
+    assert summary(world, world.goa).schedule.upcoming_managed_appointments_count is None
 
 
 def test_message_reply_read_send_resolve_assignment_scope_and_oldest(world):
@@ -152,12 +152,12 @@ def test_message_reply_read_send_resolve_assignment_scope_and_oldest(world):
     messages.set_status(actor=world.counselor, thread_id=first.pk, resolved=True)
     assert summary(world).backlog.guidance_messages.count == 1
     messages.set_status(actor=world.counselor, thread_id=first.pk, resolved=False)
-    assign(world, first, world.gss)
+    assign(world, first, world.goa)
     assert summary(world).backlog.guidance_messages.count == 1
-    assert summary(world, world.gss).backlog.guidance_messages.count == 1
-    StaffSupervision.objects.filter(staff=world.gss).delete()
-    assert summary(world, world.gss).backlog.guidance_messages.count == 0
-    assert GuidanceThread.objects.get(pk=first.pk).assigned_to_id == world.gss.pk
+    assert summary(world, world.goa).backlog.guidance_messages.count == 1
+    StaffSupervision.objects.filter(staff=world.goa).delete()
+    assert summary(world, world.goa).backlog.guidance_messages.count == 0
+    assert GuidanceThread.objects.get(pk=first.pk).assigned_to_id == world.goa.pk
     GuidanceThread.objects.filter(pk=first.pk).update(assigned_to=None)
     assert summary(world).backlog.guidance_messages.count == 1
 
@@ -168,9 +168,9 @@ def test_message_assignment_never_grants_current_scope(world):
     assert summary(world, world.other).backlog.guidance_messages.count == 0
 
 
-def test_counseling_exact_persisted_provider_and_no_gss_or_head_broadening(world):
+def test_counseling_exact_persisted_provider_and_no_goa_or_head_broadening(world):
     thread, _ = counseling(world)
-    for actor in [world.other, world.head, world.gss, world.head_gss]:
+    for actor in [world.other, world.head, world.goa, world.head_goa]:
         assert summary(world, actor).backlog.guidance_messages.count == 0
     Appointment.objects.filter(pk=world.appointment.pk).update(provider=world.other)
     assert summary(world).backlog.guidance_messages.count == 1
@@ -190,12 +190,12 @@ def test_second_head_keeps_existing_office_backlog_with_its_saved_handler(world)
     # A later ambiguous fallback never reroutes or hides an existing Office thread: its saved
     # handler still owns the reply, while the second Head and Head-supervised staff only see it.
     assert summary(world, world.head).backlog.guidance_messages.count == 1
-    for actor in (world.other, world.head_gss):
+    for actor in (world.other, world.head_goa):
         assert messages.get_thread(actor=actor, thread_id=thread.pk).pk == thread.pk
         assert summary(world, actor).backlog.guidance_messages.count == 0
     with pytest.raises(ThreadNotFound):
-        messages.get_thread(actor=world.gss, thread_id=thread.pk)
-    assert summary(world, world.gss).backlog.guidance_messages.count == 0
+        messages.get_thread(actor=world.goa, thread_id=thread.pk)
+    assert summary(world, world.goa).backlog.guidance_messages.count == 0
     thread.refresh_from_db()
     assert thread.assigned_to_id == world.head.pk
     # Ownership never substitutes for the current capability or College visibility.
@@ -225,7 +225,7 @@ def test_multiple_heads_fail_closed_for_message_fallback(world):
     with pytest.raises(MessagesConflict, match="routing"):
         open_for_other_student()
     assert not GuidanceThread.objects.filter(student=world.other_student).exists()
-    for actor in (world.head, world.other, world.head_gss):
+    for actor in (world.head, world.other, world.head_goa):
         assert summary(world, actor).backlog.guidance_messages.count == 0
     # An explicit College Counselor assignment still wins over any Head fallback.
     StudentAcademicProfile.objects.filter(student=world.other_student).update(
@@ -233,7 +233,7 @@ def test_multiple_heads_fail_closed_for_message_fallback(world):
     )
     assert open_for_other_student().assigned_to_id == world.counselor.pk
     assert summary(world).backlog.guidance_messages.count == 1
-    for actor in (world.head, world.other, world.head_gss):
+    for actor in (world.head, world.other, world.head_goa):
         assert summary(world, actor).backlog.guidance_messages.count == 0
     # With one active Head again, the unassigned College falls back to that Head.
     world.other.designations.remove(head_designation)
@@ -292,7 +292,7 @@ def test_good_moral_separate_authorities_and_timestamp_anchors(world):
     second = good_moral(world, world.other_student)
     old = timezone.now() - timedelta(days=3)
     GoodMoralRequest.objects.filter(pk=first.pk).update(created_at=old)
-    assert summary(world, world.gss).backlog.good_moral_preparation.count == 2
+    assert summary(world, world.goa).backlog.good_moral_preparation.count == 2
     assert summary(world).backlog.good_moral_preparation.oldest_waiting_since == old
     sync_institutional_forms()
     GoodMoralRequest.objects.filter(pk=first.pk).update(
@@ -301,18 +301,18 @@ def test_good_moral_separate_authorities_and_timestamp_anchors(world):
         graduation_date=date(2000, 1, 1),
     )
     prepare_request(
-        actor=world.gss, request_id=first.pk, context=AuditContext.user(world.gss), now=old
+        actor=world.goa, request_id=first.pk, context=AuditContext.user(world.goa), now=old
     )
     assert summary(world).backlog.good_moral_preparation.count == 1
     assert summary(world).backlog.good_moral_issuance.count == 1
     assert summary(world).backlog.good_moral_issuance.oldest_waiting_since == old
     UserCapabilityOverride.objects.create(
-        user=world.gss,
+        user=world.goa,
         capability=Capability.objects.get(code="good_moral.issue"),
         effect="GRANT",
         reason="Synthetic",
     )
-    assert summary(world, world.gss).backlog.good_moral_issuance is None
+    assert summary(world, world.goa).backlog.good_moral_issuance is None
     issue_request(
         actor=world.counselor, request_id=first.pk, context=AuditContext.user(world.counselor)
     )
@@ -362,14 +362,14 @@ def test_head_scope_is_owned_by_each_domain(world):
     assert result.backlog.routine_evaluations.count == 0
     assert result.schedule.upcoming_self_appointments_count == 0
     assert result.schedule.upcoming_managed_appointments_count is None
-    assert summary(world, world.gss, now).backlog.call_slips_due.count == 1
-    assert summary(world, world.head_gss, now).backlog.call_slips_due.count == 0
+    assert summary(world, world.goa, now).backlog.call_slips_due.count == 1
+    assert summary(world, world.head_goa, now).backlog.call_slips_due.count == 0
 
 
-def test_gss_supervision_move_changes_only_canonical_scoped_populations(world):
+def test_goa_supervision_move_changes_only_canonical_scoped_populations(world):
     now = timezone.now()
     thread, _ = office(world)
-    assign(world, thread, world.gss)
+    assign(world, thread, world.goa)
     call_slip(world, now=now)
     good_moral(world)
     service = Service.objects.create(code="OPERATIONS", name="Synthetic")
@@ -382,14 +382,14 @@ def test_gss_supervision_move_changes_only_canonical_scoped_populations(world):
         ends_at=now + timedelta(hours=2),
         created_by=world.student,
     )
-    before = summary(world, world.gss, now)
+    before = summary(world, world.goa, now)
     assert before.backlog.guidance_messages.count == 1
     assert before.backlog.call_slips_due.count == 1
     assert before.schedule.upcoming_managed_appointments_count == 1
     assert before.backlog.routine_evaluations is None
     assert before.backlog.good_moral_issuance is None
-    StaffSupervision.objects.filter(staff=world.gss).update(supervisor=world.other)
-    after = summary(world, world.gss, now)
+    StaffSupervision.objects.filter(staff=world.goa).update(supervisor=world.other)
+    after = summary(world, world.goa, now)
     assert after.backlog.guidance_messages.count == 0
     assert after.backlog.call_slips_due.count == 0
     assert after.schedule.upcoming_managed_appointments_count == 0
@@ -405,7 +405,7 @@ def test_schedule_preserves_canonical_inclusive_start_boundary_and_relationship(
         ).schedule.upcoming_self_appointments_count
         == 0
     )
-    assert summary(world, world.gss, now).schedule.upcoming_managed_appointments_count == 0
+    assert summary(world, world.goa, now).schedule.upcoming_managed_appointments_count == 0
     assert summary(world, world.head, now).schedule.upcoming_self_appointments_count == 0
     Appointment.objects.filter(pk=world.appointment.pk).update(status="COMPLETED", completed_at=now)
     assert summary(world, now=now).schedule.upcoming_self_appointments_count == 0

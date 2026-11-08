@@ -48,7 +48,7 @@ const tray = (page) => page.getByRole("group", { name: "Call controls" });
 
 /** A Messages backend for the viewer, with the Appointment's thread already started or not. */
 function backendFor(role, { started = true, status = "OPEN", startable = true } = {}) {
-  const viewerId = role === "STUDENT" ? STUDENT.id : role === "GUIDANCE_SERVICES_STAFF" ? "gss" : COUNSELOR.id;
+  const viewerId = role === "STUDENT" ? STUDENT.id : role === "GUIDANCE_OFFICE_ASSISTANT" ? "goa" : COUNSELOR.id;
   const backend = createMessagesBackend({ viewerId, viewerRole: role });
   if (!startable) backend.state.startable.clear();
   if (started) {
@@ -63,7 +63,7 @@ function backendFor(role, { started = true, status = "OPEN", startable = true } 
 
 /** One world: a signed-in account, its Messages backend, the Appointment records and a socket. */
 function contextualWorld(role, backend, { serviceCode, validUntil, account } = {}) {
-  const world = { account: account ?? messagesAccount(role, role === "GUIDANCE_SERVICES_STAFF" ? { id: "gss" } : {}), backend, sockets: [], joins: { count: 0 } };
+  const world = { account: account ?? messagesAccount(role, role === "GUIDANCE_OFFICE_ASSISTANT" ? { id: "goa" } : {}), backend, sockets: [], joins: { count: 0 } };
   const routes = contextualRoutes({ serviceCode, validUntil, joins: world.joins });
   world.handler = async (args) => (await backend.handler(args)) || (await routes(args));
   world.overrides = {
@@ -124,8 +124,8 @@ for (const role of ["STUDENT", "COUNSELOR"]) {
   });
 }
 
-for (const [label, role] of [["concealed context", "STUDENT"], ["GSS", "GUIDANCE_SERVICES_STAFF"]]) {
-  const backend = backendFor(role, { started: label === "GSS", startable: false });
+for (const [label, role] of [["concealed context", "STUDENT"], ["GOA", "GUIDANCE_OFFICE_ASSISTANT"]]) {
+  const backend = backendFor(role, { started: label === "GOA", startable: false });
   const world = contextualWorld(role, backend);
   await check(`${label}: no Messages action and no content`, appointmentPath, world.options(), async (page) => {
     await shown(page.getByRole("heading", { name: "APT-CTX-0001", level: 1 }));

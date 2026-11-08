@@ -169,7 +169,7 @@ class GuidanceCaseCoordinationContext(StrictSchema):
 
 class GuidanceHandlerRole(StrEnum):
     COUNSELOR = "COUNSELOR"
-    GUIDANCE_SERVICES_STAFF = "GUIDANCE_SERVICES_STAFF"
+    GUIDANCE_OFFICE_ASSISTANT = "GUIDANCE_OFFICE_ASSISTANT"
 
 
 class GuidanceHandlerOption(GuidancePerson):
@@ -277,7 +277,7 @@ def _person(user):
 
 def _thread(thread, actor):
     # D-GMSG-22: Office handling identity and College routing are staff-only payload.
-    staff_viewer = actor.role.code in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+    staff_viewer = actor.role.code in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
     referral = thread.relationship_referral if thread.relationship_referral_id else None
     seen_scope, seen_sequence = services.thread_receipt(thread, actor)
     return GuidanceThreadResponse(

@@ -95,7 +95,7 @@ def build_overview_summary(actor: User, *, now: datetime | None = None) -> Overv
             good_moral_ready_count=count_ready_requests(actor),
             active_call_slip_count=count_active_call_slips(actor),
         )
-    elif role == "GUIDANCE_SERVICES_STAFF":
+    elif role == "GUIDANCE_OFFICE_ASSISTANT":
         guidance = GuidanceOverviewSummary(
             upcoming_self_appointments_count=None,
             upcoming_managed_appointments_count=count_upcoming_managed_appointments(

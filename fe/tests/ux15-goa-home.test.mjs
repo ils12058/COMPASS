@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getGssHomeDestinations, getGssManagedAppointmentParams, presentGssOperations, presentGssWork } from "../src/features/portal/home/gss-home-presentation.ts";
+import { getGoaHomeDestinations, getGoaManagedAppointmentParams, presentGoaOperations, presentGoaWork } from "../src/features/portal/home/goa-home-presentation.ts";
 import { homeWorld } from "./support/ux15-home-fixtures.mjs";
-import { gssHomeWork } from "./support/ux15-gss-home-fixtures.mjs";
+import { goaHomeWork } from "./support/ux15-goa-home-fixtures.mjs";
 
 const operations = (overrides = {}) => ({
   generated_at: "2026-10-22T01:30:00Z",
@@ -22,8 +22,8 @@ const operations = (overrides = {}) => ({
   },
 });
 
-test("GSS managed schedule uses the supported bounded, Manila-date Appointment filters", () => {
-  assert.deepEqual(getGssManagedAppointmentParams("2026-10-22"), {
+test("GOA managed schedule uses the supported bounded, Manila-date Appointment filters", () => {
+  assert.deepEqual(getGoaManagedAppointmentParams("2026-10-22"), {
     status: "SCHEDULED",
     from_date: "2026-10-22",
     to_date: "2026-10-22",
@@ -33,9 +33,9 @@ test("GSS managed schedule uses the supported bounded, Manila-date Appointment f
   });
 });
 
-test("GSS operations keep zero distinct from null and label Counselor issuance as context", () => {
-  const user = homeWorld({ role: "GUIDANCE_SERVICES_STAFF" }).account;
-  const metrics = presentGssOperations(operations(), user);
+test("GOA operations keep zero distinct from null and label Counselor issuance as context", () => {
+  const user = homeWorld({ role: "GUIDANCE_OFFICE_ASSISTANT" }).account;
+  const metrics = presentGoaOperations(operations(), user);
   assert.deepEqual(metrics.map(({ key, count }) => [key, count]), [
     ["messages", 0],
     ["good-moral-preparation", 3],
@@ -46,7 +46,7 @@ test("GSS operations keep zero distinct from null and label Counselor issuance a
   assert.equal(metrics.find((metric) => metric.key === "good-moral-issuance")?.label, "Good Moral requests awaiting Counselor issuance");
   assert.equal(metrics.find((metric) => metric.key === "good-moral-issuance")?.href, undefined);
 
-  const unavailable = presentGssOperations(operations({
+  const unavailable = presentGoaOperations(operations({
     guidance_messages: null,
     good_moral_preparation: null,
     good_moral_issuance: null,
@@ -55,28 +55,28 @@ test("GSS operations keep zero distinct from null and label Counselor issuance a
   assert.deepEqual(unavailable, []);
 });
 
-test("GSS work copy never turns Counselor issuance or evaluations into GSS actions", () => {
-  const user = homeWorld({ role: "GUIDANCE_SERVICES_STAFF" }).account;
-  const issuance = presentGssWork(gssHomeWork.find((item) => item.kind === "GOOD_MORAL_PREPARATION") && {
-    ...gssHomeWork[2],
+test("GOA work copy never turns Counselor issuance or evaluations into GOA actions", () => {
+  const user = homeWorld({ role: "GUIDANCE_OFFICE_ASSISTANT" }).account;
+  const issuance = presentGoaWork(goaHomeWork.find((item) => item.kind === "GOOD_MORAL_PREPARATION") && {
+    ...goaHomeWork[2],
     kind: "GOOD_MORAL_ISSUANCE",
   }, user, "2026-10-22T01:30:00Z");
   assert.equal(issuance?.title, "Good Moral request awaiting Counselor issuance");
   assert.equal(issuance?.actionLabel, "View request");
-  assert.equal(issuance?.href.endsWith(gssHomeWork[2].source_id), true);
+  assert.equal(issuance?.href.endsWith(goaHomeWork[2].source_id), true);
 
-  const evaluation = presentGssWork({ ...gssHomeWork[0], kind: "ROUTINE_EVALUATION" }, user, "2026-10-22T01:30:00Z");
+  const evaluation = presentGoaWork({ ...goaHomeWork[0], kind: "ROUTINE_EVALUATION" }, user, "2026-10-22T01:30:00Z");
   assert.equal(evaluation, null);
 });
 
-test("GSS continuation links are selected only from existing authorized workspaces", () => {
-  const restricted = homeWorld({ role: "GUIDANCE_SERVICES_STAFF", capabilities: [] }).account;
-  const restrictedLinks = getGssHomeDestinations(restricted);
+test("GOA continuation links are selected only from existing authorized workspaces", () => {
+  const restricted = homeWorld({ role: "GUIDANCE_OFFICE_ASSISTANT", capabilities: [] }).account;
+  const restrictedLinks = getGoaHomeDestinations(restricted);
   assert.deepEqual(restrictedLinks.map((link) => link.href), ["/portal/operations"]);
 
-  const user = homeWorld({ role: "GUIDANCE_SERVICES_STAFF" }).account;
+  const user = homeWorld({ role: "GUIDANCE_OFFICE_ASSISTANT" }).account;
   const referralAuthorizedUser = { ...user, capabilities: [...user.capabilities, "referrals.view"] };
-  const destinations = getGssHomeDestinations(referralAuthorizedUser);
+  const destinations = getGoaHomeDestinations(referralAuthorizedUser);
   assert.ok(destinations.length <= 6);
   assert.ok(destinations.some((link) => link.href === "/portal/operations"));
   assert.ok(destinations.some((link) => link.href === "/portal/referrals"));

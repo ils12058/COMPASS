@@ -84,7 +84,7 @@ def world(monkeypatch, settings):
     other_faculty = person("fup3a-other-faculty", "FACULTY")
     student = person("fup3a-student", "STUDENT")
     counselor = person("fup3a-counselor", "COUNSELOR")
-    staff = person("fup3a-staff", "GUIDANCE_SERVICES_STAFF")
+    staff = person("fup3a-staff", "GUIDANCE_OFFICE_ASSISTANT")
     campus = Campus.objects.create(code="FUP3A", name="Synthetic FUP3A Campus")
     cas = College.objects.create(campus=campus, code="FUP3A-CAS", name="Synthetic FUP3A CAS")
     ccms = College.objects.create(campus=campus, code="FUP3A-CCMS", name="Synthetic FUP3A CCMS")

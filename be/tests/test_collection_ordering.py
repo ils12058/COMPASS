@@ -159,7 +159,7 @@ def test_parse_ordering_accepts_closed_values_and_names_them_on_rejection():
 
 def _good_moral(student: User, *, name: str, status: str = GoodMoralStatus.REQUESTED, **times):
     staff = User.objects.filter(email="gm-staff@example.edu").first() or person(
-        "gm-staff@example.edu", "GUIDANCE_SERVICES_STAFF"
+        "gm-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT"
     )
     values: dict[str, object] = {
         "student": student,
@@ -188,7 +188,7 @@ def _good_moral(student: User, *, name: str, status: str = GoodMoralStatus.REQUE
 
 def test_good_moral_queues_serve_the_longest_waiting_and_history_reads_newest_first():
     sync_policy()
-    staff = person("gm-reader@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = person("gm-reader@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     students = [person(f"gm-student-{index}@example.edu") for index in range(6)]
     base = timezone.now() - timedelta(days=30)
     day = timedelta(days=1)
@@ -382,7 +382,7 @@ def test_routine_pending_evaluations_serve_the_oldest_submitted_intake_first():
 
 def test_active_call_slips_follow_the_report_schedule_and_history_reads_latest_first():
     sync_policy()
-    counselor, _other_counselor, _gss, student, outside = call_slip_scope()
+    counselor, _other_counselor, _goa, student, outside = call_slip_scope()
     start = timezone.now() + timedelta(days=2)
     slips = [
         create_call_slip_for(
@@ -692,7 +692,7 @@ def _published_resource(admin, title: str, *, display_order: int, published_at):
 
 def test_curated_feeds_keep_editorial_order_and_offer_explicit_alternatives():
     sync_policy()
-    admin = person("feed-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    admin = person("feed-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     now = timezone.now()
     old_pinned = _published_announcement(
         admin, "Beta pinned", pinned=True, published_at=now - timedelta(days=9)

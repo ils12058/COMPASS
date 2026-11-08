@@ -86,7 +86,7 @@ def typing(actor, thread):
 def test_requester_typing_reaches_office_readers_but_not_themselves(world, limiter, hints):
     thread, _ = office(world)
     assert typing(world.student, thread) is True
-    assert receivers(hints) == users(world.counselor, world.gss, world.head, world.head_gss)
+    assert receivers(hints) == users(world.counselor, world.goa, world.head, world.head_goa)
     assert all(
         frame == {"v": 1, "type": "messages.typing_changed", "thread_id": str(thread.pk)}
         for _, frame in hints
@@ -95,7 +95,7 @@ def test_requester_typing_reaches_office_readers_but_not_themselves(world, limit
 
 def test_office_typing_reaches_only_the_requester(world, limiter, hints):
     thread, _ = office(world)
-    assert typing(world.gss, thread) is True
+    assert typing(world.goa, thread) is True
     # Other staff never see a colleague typing, so "Student is typing" can never be wrong.
     assert receivers(hints) == users(world.student)
 
@@ -172,9 +172,9 @@ def test_outsiders_are_concealed(world, limiter, hints, name):
 
 def test_view_only_reader_cannot_signal(world, limiter, hints):
     thread, _ = office(world)
-    deny(world.gss, "guidance_messages.manage")
+    deny(world.goa, "guidance_messages.manage")
     with pytest.raises(ThreadNotFound):
-        typing(world.gss, thread)
+        typing(world.goa, thread)
     assert hints == []
 
 
@@ -226,7 +226,7 @@ class TestReferralTyping:
         hints.clear()
         services.signal_typing(actor=referral_world.faculty, thread_id=thread.pk)
         assert receivers(hints) == users(
-            referral_world.counselor_a, referral_world.gss_a, referral_world.head
+            referral_world.counselor_a, referral_world.goa_a, referral_world.head
         )
         assert protocol.user_channel(referral_world.student.pk) not in receivers(hints)
 

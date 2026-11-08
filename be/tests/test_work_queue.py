@@ -81,16 +81,16 @@ def test_office_reply_read_reply_reassignment_and_scope(world):
     assert [i.source_id for i in queue(world)] == [thread.pk]
     messages.mark_read(actor=world.counselor, thread_id=thread.pk, sequence=1)
     assert len(queue(world)) == 1
-    send(world, thread, actor=world.gss)
+    send(world, thread, actor=world.goa)
     assert queue(world) == []  # any staff reply changes the latest sender
     send(world, thread)
     assert len(queue(world)) == 1
-    assign(world, thread, world.gss)
+    assign(world, thread, world.goa)
     assert queue(world) == []
-    assert len(queue(world, world.gss)) == 1
-    StaffSupervision.objects.filter(staff=world.gss).delete()
-    assert queue(world, world.gss) == []
-    assert GuidanceThread.objects.get(pk=thread.pk).assigned_to_id == world.gss.pk
+    assert len(queue(world, world.goa)) == 1
+    StaffSupervision.objects.filter(staff=world.goa).delete()
+    assert queue(world, world.goa) == []
+    assert GuidanceThread.objects.get(pk=thread.pk).assigned_to_id == world.goa.pk
 
 
 def test_reply_resolution_and_removed_capability(world):
@@ -106,7 +106,7 @@ def test_reply_resolution_and_removed_capability(world):
 def test_counseling_exact_persisted_provider(world):
     thread, _ = counseling(world)
     assert len(queue(world)) == 1
-    for actor in [world.gss, world.head, world.other]:
+    for actor in [world.goa, world.head, world.other]:
         assert queue(world, actor) == []
     world.appointment.provider = world.other
     world.appointment.save(update_fields=["provider"])
@@ -154,7 +154,7 @@ def test_routine_assigned_pending_and_closed_parent(world):
         counselor_evaluation_ciphertext="unread",
     )
     assert {i.source_id for i in queue(world)} == {direct.pk, linked.pk}
-    assert queue(world, world.other) == queue(world, world.gss) == []
+    assert queue(world, world.other) == queue(world, world.goa) == []
     world.appointment.status = "CANCELLED"
     world.appointment.cancelled_at = timezone.now()
     world.appointment.cancelled_by = world.counselor
@@ -166,20 +166,20 @@ def test_routine_assigned_pending_and_closed_parent(world):
 
 def test_good_moral_officewide_separate_prepare_and_issue(world):
     row = good_moral(world, world.other_student)
-    assert queue(world, world.gss)[0].kind == WorkKind.GOOD_MORAL_PREPARATION
-    deny(world.gss, "good_moral.prepare")
-    assert queue(world, world.gss) == []
+    assert queue(world, world.goa)[0].kind == WorkKind.GOOD_MORAL_PREPARATION
+    deny(world.goa, "good_moral.prepare")
+    assert queue(world, world.goa) == []
     GoodMoralRequest.objects.filter(pk=row.pk).update(
         status="READY_FOR_ISSUANCE", prepared_at=timezone.now(), prepared_by=world.counselor
     )
     assert queue(world)[0].kind == WorkKind.GOOD_MORAL_ISSUANCE
     UserCapabilityOverride.objects.create(
-        user=world.gss,
+        user=world.goa,
         capability=Capability.objects.get(code="good_moral.issue"),
         effect="GRANT",
         reason="Synthetic",
     )
-    assert queue(world, world.gss) == []  # the domain still requires a Counselor
+    assert queue(world, world.goa) == []  # the domain still requires a Counselor
     deny(world.counselor, "good_moral.issue")
     assert queue(world) == []
 
@@ -193,7 +193,7 @@ def test_call_slip_due_equality_future_completion_and_head_scope(world):
     with patch.object(services.timezone, "now", return_value=now):
         assert {i.source_id for i in queue(world)} == {past.pk, exact.pk}
         assert {i.source_id for i in queue(world, world.head)} == {past.pk, exact.pk, outside.pk}
-        assert {i.source_id for i in queue(world, world.head_gss)} == set()
+        assert {i.source_id for i in queue(world, world.head_goa)} == set()
         CallSlip.objects.filter(pk=past.pk).update(interview_ended_at=now)
         CallSlip.objects.filter(pk=exact.pk).update(
             voided_at=now, voided_by=world.counselor, void_reason="Synthetic"

@@ -36,7 +36,7 @@ from tests.test_good_moral import (
 
 def setup_request(*, graduate=False):
     sync_policy()
-    staff = make_user("preparer@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    staff = make_user("preparer@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     counselor = make_user("issuer@example.edu", role="COUNSELOR")
     student = make_user("applicant@example.edu", lifecycle="GRADUATED" if graduate else "CURRENT")
     item = make_graduate_request(student) if graduate else make_current_request(student)[0]
@@ -53,7 +53,7 @@ def post(client, item, action, payload):
 
 
 @pytest.mark.django_db
-def test_gss_baseline_is_clerical_and_reference_only():
+def test_goa_baseline_is_clerical_and_reference_only():
     staff, counselor, _, _ = setup_request()
     codes = effective_capabilities(staff)
     assert {
@@ -203,7 +203,7 @@ def test_safe_corrections_preserve_sources_and_ready_requires_reconfirmation():
         "college_snapshot",
     ],
 )
-def test_gss_cannot_change_protected_fields(field):
+def test_goa_cannot_change_protected_fields(field):
     staff, _, _, item = setup_request()
     before = getattr(item, field)
     with pytest.raises(InvalidGoodMoralInput):
@@ -218,7 +218,7 @@ def test_gss_cannot_change_protected_fields(field):
 
 
 @pytest.mark.django_db
-def test_gss_cannot_rewrite_graduation_facts_but_counselor_can_correct_them():
+def test_goa_cannot_rewrite_graduation_facts_but_counselor_can_correct_them():
     staff, counselor, _, item = setup_request(graduate=True)
     with pytest.raises(InvalidGoodMoralInput):
         update_request(
@@ -356,7 +356,7 @@ def test_ready_request_can_be_cancelled_and_terminal_records_remain_immutable():
 
 
 @pytest.mark.django_db
-def test_gss_keeps_denial_for_exit_interview_answers_and_reopen():
+def test_goa_keeps_denial_for_exit_interview_answers_and_reopen():
     staff, _, _, _ = setup_request()
     client = auth_client(staff)
     record_id = uuid4()

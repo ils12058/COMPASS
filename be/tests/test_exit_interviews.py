@@ -316,7 +316,7 @@ def test_exit_interview_policy_is_student_self_plus_head_only():
 
     student = make_user("student-policy@example.edu")
     counselor = make_user("counselor-policy@example.edu", role="COUNSELOR")
-    staff = make_user("staff-policy@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    staff = make_user("staff-policy@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("admin-policy@example.edu", role="IT_ADMIN")
     dpo = make_user("dpo-policy@example.edu", role="INSTITUTIONAL_OFFICER")
     UserDesignation.objects.create(
@@ -726,7 +726,7 @@ def test_only_head_may_read_all_and_reopen_with_required_reason():
     exit_id = submitted.json()["id"]
 
     counselor = make_user("ordinary-counselor@example.edu", role="COUNSELOR")
-    staff = make_user("ordinary-staff@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    staff = make_user("ordinary-staff@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("technical-admin@example.edu", role="IT_ADMIN")
     dpo = make_user("privacy-dpo@example.edu", role="INSTITUTIONAL_OFFICER")
     UserDesignation.objects.create(

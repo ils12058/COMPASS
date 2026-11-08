@@ -329,7 +329,14 @@ def test_raw_storage_removed_private_columns_and_queryable_search_and_e1(world, 
 
 @pytest.mark.parametrize(
     "role",
-    ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER", "STUDENT", "DPO"],
+    [
+        "COUNSELOR",
+        "GUIDANCE_OFFICE_ASSISTANT",
+        "IT_ADMIN",
+        "INSTITUTIONAL_OFFICER",
+        "STUDENT",
+        "DPO",
+    ],
 )
 def test_unauthorized_raw_detail_never_decrypts(world, monkeypatch, role):
     item = filled(world, submit=True)

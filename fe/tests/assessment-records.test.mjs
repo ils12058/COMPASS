@@ -13,7 +13,7 @@ const account = (role = "COUNSELOR", grants = capabilities, head = true) => ({ r
 const failure = (status, code) => new CompassApiError({ status, body: { error: { code, message: "PRIVATE-SERVER-SENTINEL" } }, headers: {}, method: "GET", url: "/api/v1/assessment-records/test" });
 
 test("Records navigation and catalog commands respect both role and effective capability", () => {
-  for (const role of ["STUDENT", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+  for (const role of ["STUDENT", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
     const user = account(role);
     assert.deepEqual(getAssessmentRecordsAccess(user), { canView: false, canManage: false, canManageTypes: false });
     assert.equal(portalWorkspaceGroups(user).flatMap((group) => group.links).some((link) => link.href === "/portal/assessment-records"), false);
@@ -43,7 +43,7 @@ test("Assessment Type management follows effective capabilities, not the Head de
   assert.deepEqual(getAssessmentRecordsAccess(revoked), { canView: true, canManage: false, canManageTypes: false });
   assert.deepEqual(commandHrefs(revoked), ["/portal/assessment-records"]);
   // Supervision is not visible to the client and capability strings never widen the role fence.
-  for (const role of ["GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+  for (const role of ["GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
     assert.deepEqual(getAssessmentRecordsAccess(account(role, capabilities, false)), denied);
     assert.deepEqual(commandHrefs(account(role, capabilities, false)), []);
   }

@@ -41,7 +41,8 @@ def setup():
 
 
 @pytest.mark.parametrize(
-    "role", ["IT_ADMIN", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "INSTITUTIONAL_OFFICER"]
+    "role",
+    ["IT_ADMIN", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "INSTITUTIONAL_OFFICER"],
 )
 def test_no_role_or_designation_baseline_grants(role):
     user, _ = manager(role, grant=False)
@@ -476,7 +477,8 @@ def test_api_mfa_csrf_status_history_and_errors(setup):
 
 
 @pytest.mark.parametrize(
-    "role", ["IT_ADMIN", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "INSTITUTIONAL_OFFICER"]
+    "role",
+    ["IT_ADMIN", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "INSTITUTIONAL_OFFICER"],
 )
 def test_http_catalog_permission_is_separate_from_role_and_relationship_management(role):
     user, issued = manager(role, grant=False)

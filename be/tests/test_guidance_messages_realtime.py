@@ -72,7 +72,7 @@ def test_commit_targets_current_authorized_recipients_only(world, publications, 
         thread, _ = office(world) if kind == "OFFICE" else counseling(world)
         assert publications == []
     expected = (
-        [world.student, world.counselor, world.gss, world.head, world.head_gss]
+        [world.student, world.counselor, world.goa, world.head, world.head_goa]
         if kind == "OFFICE"
         else [world.student, world.counselor]
     )
@@ -132,7 +132,7 @@ def test_actual_redis_connection_failure_never_undoes_writes(
         )
     elif operation == "assign":
         result = services.assign_handler(
-            actor=world.counselor, thread_id=thread.pk, handler_id=world.gss.pk
+            actor=world.counselor, thread_id=thread.pk, handler_id=world.goa.pk
         )
     else:
         result = services.mark_read(actor=world.student, thread_id=thread.pk, sequence=1)
@@ -145,7 +145,7 @@ def test_actual_redis_connection_failure_never_undoes_writes(
     if operation == "reopen":
         assert thread.status == "OPEN"
     if operation == "assign":
-        assert thread.assigned_to_id == world.gss.pk
+        assert thread.assigned_to_id == world.goa.pk
 
 
 @pytest.mark.parametrize("kind", ["OFFICE", "COUNSELING"])
@@ -156,10 +156,10 @@ def test_real_sockets_authenticated_http_commits_and_read_receipt_freshness(worl
         world.student,
         world.student,
         world.counselor,
-        world.gss,
+        world.goa,
         world.other_student,
         world.head,
-        world.head_gss,
+        world.head_goa,
     ]
     clients = [auth_client(user) for user in users]
 
@@ -247,11 +247,11 @@ def test_commit_time_supervision_changes_do_not_signal_revoked_staff(world, publ
 
     with transaction.atomic():
         thread, _ = office(world)
-        StaffSupervision.objects.filter(staff=world.gss).delete()
+        StaffSupervision.objects.filter(staff=world.goa).delete()
     assert {channel for channel, _ in publications} == {
         protocol.user_channel(world.student.pk),
         protocol.user_channel(world.counselor.pk),
         protocol.user_channel(world.head.pk),
-        protocol.user_channel(world.head_gss.pk),
+        protocol.user_channel(world.head_goa.pk),
     }
     assert all(frame["thread_id"] == str(thread.pk) for _, frame in publications)

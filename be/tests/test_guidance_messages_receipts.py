@@ -59,7 +59,7 @@ def test_counseling_pair_sees_only_the_counterpart_cursor(world):
 def test_requester_sees_seen_by_office_from_any_authorized_office_read(world):
     thread, _ = office(world)
     assert seen(world.student, thread) == ("OFFICE", 0)
-    read(world.gss, thread, 1)
+    read(world.goa, thread, 1)
     assert seen(world.student, thread) == ("OFFICE", 1)
     read(world.counselor, thread, 1)
     assert seen(world.student, thread) == ("OFFICE", 1)
@@ -69,9 +69,9 @@ def test_office_staff_see_the_students_cursor_never_a_colleagues(world):
     thread, _ = office(world)
     send(world, thread, actor=world.counselor)
     read(world.counselor, thread, 2)
-    assert seen(world.gss, thread) == ("PERSON", 0)
+    assert seen(world.goa, thread) == ("PERSON", 0)
     read(world.student, thread, 2)
-    assert seen(world.gss, thread) == ("PERSON", 2)
+    assert seen(world.goa, thread) == ("PERSON", 2)
     assert seen(world.counselor, thread) == ("PERSON", 2)
 
 
@@ -147,15 +147,15 @@ def test_read_hints_reach_only_the_counterpart_who_can_see_the_receipt(
 
     publications.clear()
     with django_capture_on_commit_callbacks(execute=True):
-        read(world.gss, thread, 1)
+        read(world.goa, thread, 1)
     # Office Seen did not move, so only the reader's own sessions refresh.
-    assert channels(publications) == {protocol.user_channel(world.gss.pk)}
+    assert channels(publications) == {protocol.user_channel(world.goa.pk)}
 
     send(world, thread, actor=world.counselor)
     publications.clear()
     with django_capture_on_commit_callbacks(execute=True):
         read(world.student, thread, 2)
-    staff = {world.counselor, world.gss, world.head, world.head_gss}
+    staff = {world.counselor, world.goa, world.head, world.head_goa}
     assert channels(publications) == {student_channel} | {
         protocol.user_channel(user.pk) for user in staff
     }

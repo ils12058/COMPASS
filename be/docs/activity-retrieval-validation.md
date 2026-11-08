@@ -58,9 +58,9 @@ Frontend tests: **130 passed**, including 15 new activity cases plus CSV Blob pa
 Local Chrome/Playwright used synthetic accounts, events and an isolated database; no live account
 data, provider action or retention mutation was used. Completed browser checks:
 
-- Student and GSS: My/Security only; no supervisory tab, activity search or export.
+- Student and GOA: My/Security only; no supervisory tab, activity search or export.
 - Head Guidance without direct staff: same self view; no global staff visibility.
-- Counselor: only direct GSS, no pre-assignment event, staff security or hidden record content.
+- Counselor: only direct GOA, no pre-assignment event, staff security or hidden record content.
 - Supervised search: explicit apply; staff/type/dates combine; URL reload/back restores criteria;
   pagination preserves them; criteria changes reset page; empty filtered state clears correctly.
 - IT Admin: technical type/operator criteria work; no CSV or Privacy events.

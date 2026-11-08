@@ -680,8 +680,8 @@ def test_head_reads_only_submitted_and_other_operational_roles_are_denied():
     assert head.get(f"/api/v1/graduate-tracer/responses/{draft_id}").status_code == 404
 
     counselor = auth_client(make_user("ordinary-gts@example.edu", role="COUNSELOR", lifecycle=None))
-    gss = auth_client(
-        make_user("gss-gts@example.edu", role="GUIDANCE_SERVICES_STAFF", lifecycle=None)
+    goa = auth_client(
+        make_user("goa-gts@example.edu", role="GUIDANCE_OFFICE_ASSISTANT", lifecycle=None)
     )
     admin = auth_client(make_user("admin-gts@example.edu", role="IT_ADMIN", lifecycle=None))
     dpo_user = make_user("dpo-gts@example.edu", role="COUNSELOR", lifecycle=None)
@@ -690,7 +690,7 @@ def test_head_reads_only_submitted_and_other_operational_roles_are_denied():
         designation=Designation.objects.get(code="DPO"),
     )
     dpo = auth_client(dpo_user)
-    for denied in (counselor, gss, admin, dpo):
+    for denied in (counselor, goa, admin, dpo):
         assert denied.get("/api/v1/graduate-tracer/responses").status_code == 403
 
 

@@ -11,7 +11,7 @@ from tests.test_student_session_summaries import auth_client, make_user, sync_po
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("role", ["COUNSELOR", "STUDENT", "IT_ADMIN", "GUIDANCE_SERVICES_STAFF"])
+@pytest.mark.parametrize("role", ["COUNSELOR", "STUDENT", "IT_ADMIN", "GUIDANCE_OFFICE_ASSISTANT"])
 def test_legacy_endpoints_are_absent_without_decryption(monkeypatch, role):
     sync_policy()
     actor = make_user(f"old-contract-{role}@example.test", role)

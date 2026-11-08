@@ -172,7 +172,7 @@ def test_current_authority_and_scope_revalidated(world, mutation):
     assert row.administrative_version == 1 and row.received_at is None
 
 
-def test_gss_actual_supervised_ccms_scope_not_faculty_home_college(world):
+def test_goa_actual_supervised_ccms_scope_not_faculty_home_college(world):
     pk = submit(world)[0]["id"]
     result = transition(world, pk, actor=world.staff, actor_session=world.staff_issued.session)
     assert result["acknowledged_by"]["id"] == world.staff.pk

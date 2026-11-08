@@ -55,7 +55,7 @@ for (const width of [320, 375, 390, 430, 768, 1440]) {
   });
 }
 
-for (const role of ["STUDENT", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+for (const role of ["STUDENT", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
   const world = assessmentWorld({ account: { ...head(), role } });
   await check(`${role} override cannot open direct confidential route`, detail, world.options(), async (page, { requests }) => {
     await shown(page.getByRole("heading", { name: "Assessment Records unavailable" }));

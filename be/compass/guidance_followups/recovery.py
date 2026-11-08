@@ -83,7 +83,7 @@ def recoverable_queryset(*, actor):
         "organization_staff_supervision__supervisor__organization_counselor_responsibilities"
     )
     scope |= Q(
-        role__code="GUIDANCE_SERVICES_STAFF",
+        role__code="GUIDANCE_OFFICE_ASSISTANT",
         organization_staff_supervision__supervisor__is_active=True,
         organization_staff_supervision__supervisor__role__code="COUNSELOR",
         **{
@@ -109,7 +109,7 @@ def recoverable_queryset(*, actor):
             ),
         )
         scope |= Q(
-            role__code="GUIDANCE_SERVICES_STAFF",
+            role__code="GUIDANCE_OFFICE_ASSISTANT",
             organization_staff_supervision__supervisor_id=heads[0],
             _assigned_college__isnull=False,
             _student_college_active=True,

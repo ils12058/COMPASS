@@ -654,7 +654,7 @@ def _workflow(section: Section, lookup: Lookup, allow) -> None:
         )
     from compass.work_queue.services import list_work
 
-    for key in ("counselor_a", "counselor_b", "counselor_c", "gss_a", "gss_b", "head_guidance"):
+    for key in ("counselor_a", "counselor_b", "counselor_c", "goa_a", "goa_b", "head_guidance"):
         user = lookup.user(key)
         section.check(
             user is not None and bool(list_work(actor=user).items),
@@ -720,7 +720,7 @@ def _privacy(section: Section, lookup: Lookup) -> None:
                 ),
                 f"{account.key}: a Student holds a non-self capability.",
             )
-        elif account.role == "GUIDANCE_SERVICES_STAFF":
+        elif account.role == "GUIDANCE_OFFICE_ASSISTANT":
             section.check(
                 not _counseling_content(capabilities),
                 f"{account.key}: staff hold counseling-content capabilities.",

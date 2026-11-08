@@ -386,7 +386,7 @@ def test_lists_search_history_status_and_good_moral_prerequisite_need_no_decrypt
 
 
 @pytest.mark.parametrize(
-    "actor_kind", ["other-student", "head-draft", "gss", "counselor", "it", "dpo", "revoked-owner"]
+    "actor_kind", ["other-student", "head-draft", "goa", "counselor", "it", "dpo", "revoked-owner"]
 )
 def test_unauthorized_detail_pdf_and_draft_edits_fail_before_decryption(
     world, monkeypatch, actor_kind
@@ -405,7 +405,7 @@ def test_unauthorized_detail_pdf_and_draft_edits_fail_before_decryption(
     else:
         role = {
             "other-student": "STUDENT",
-            "gss": "GUIDANCE_SERVICES_STAFF",
+            "goa": "GUIDANCE_OFFICE_ASSISTANT",
             "counselor": "COUNSELOR",
             "it": "IT_ADMIN",
             "dpo": "INSTITUTIONAL_OFFICER",
@@ -547,7 +547,7 @@ def test_opportunity_manager_authorization_precedes_note_decryption(world, monke
     assert client.get(f"/api/v1/exit-interviews/opportunities/{world['opp'].pk}").status_code == 403
 
 
-def test_opportunity_idempotency_revoked_reopening_gss_and_page_selection(world, monkeypatch):
+def test_opportunity_idempotency_revoked_reopening_goa_and_page_selection(world, monkeypatch):
     item = record(world)
     original = raw(ExitInterviewOpportunity, world["opp"].pk)
     assert (
@@ -585,7 +585,7 @@ def test_opportunity_idempotency_revoked_reopening_gss_and_page_selection(world,
         context=AuditContext.user(world["head"]),
     )
     assert reopened.note_ciphertext == original["note_ciphertext"]
-    staff = make_user("note-gss@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    staff = make_user("note-goa@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     other = make_user("other-opportunity@example.edu")
     late = open_opportunity(
         actor=staff,

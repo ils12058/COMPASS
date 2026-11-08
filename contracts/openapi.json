@@ -19588,7 +19588,7 @@
       "GuidanceHandlerRole": {
         "enum": [
           "COUNSELOR",
-          "GUIDANCE_SERVICES_STAFF"
+          "GUIDANCE_OFFICE_ASSISTANT"
         ],
         "title": "GuidanceHandlerRole",
         "type": "string"
@@ -24402,7 +24402,7 @@
       "OrganizationRole": {
         "enum": [
           "COUNSELOR",
-          "GUIDANCE_SERVICES_STAFF",
+          "GUIDANCE_OFFICE_ASSISTANT",
           "STUDENT"
         ],
         "title": "OrganizationRole",
@@ -28000,7 +28000,7 @@
         "enum": [
           "COUNSELOR",
           "FACULTY",
-          "GUIDANCE_SERVICES_STAFF",
+          "GUIDANCE_OFFICE_ASSISTANT",
           "INSTITUTIONAL_OFFICER",
           "IT_ADMIN",
           "STUDENT"
@@ -62792,7 +62792,7 @@
             "schema": {
               "enum": [
                 "COUNSELOR",
-                "GUIDANCE_SERVICES_STAFF",
+                "GUIDANCE_OFFICE_ASSISTANT",
                 "STUDENT"
               ],
               "title": "OrganizationRole",

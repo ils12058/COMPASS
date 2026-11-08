@@ -11,7 +11,7 @@ import { OverviewAnnouncements } from "@/features/portal/home/overview-announcem
 import { OverviewAttention } from "@/features/portal/home/overview-attention";
 import { OverviewSummary } from "@/features/portal/home/overview-summary";
 import { CounselorHome } from "@/features/portal/home/counselor-home";
-import { GssHome } from "@/features/portal/home/gss-home";
+import { GoaHome } from "@/features/portal/home/goa-home";
 import { StudentHome } from "@/features/portal/home/student-home";
 import {
   formatOverviewDate,
@@ -49,12 +49,12 @@ function OperationalPortalHome() {
   const { user } = usePortalSession();
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
-    if (user.role !== "COUNSELOR" && user.role !== "GUIDANCE_SERVICES_STAFF") return;
+    if (user.role !== "COUNSELOR" && user.role !== "GUIDANCE_OFFICE_ASSISTANT") return;
     const interval = window.setInterval(() => setNow(new Date()), 60_000);
     return () => window.clearInterval(interval);
   }, [user.role]);
   const summaryQuery = useOverviewGetSummary({
-    query: { retry: false, enabled: user.role !== "GUIDANCE_SERVICES_STAFF" },
+    query: { retry: false, enabled: user.role !== "GUIDANCE_OFFICE_ASSISTANT" },
   });
   const projectedSummary = isAuthorizationFailure(summaryQuery.error)
     ? undefined
@@ -67,7 +67,7 @@ function OperationalPortalHome() {
   const attention = useOverviewAttention(user, summary);
   const metrics = summary ? getOverviewMetrics(summary, user) : [];
   const emailStatus = summary ? getEmailDeliveryStatus(summary, user) : null;
-  const primaryAction = user.role === "GUIDANCE_SERVICES_STAFF" ? null : getOverviewPrimaryAction(user);
+  const primaryAction = user.role === "GUIDANCE_OFFICE_ASSISTANT" ? null : getOverviewPrimaryAction(user);
   // OverviewSummary renders nothing for an account without counts; then the work column is alone.
   const hasSummary =
     summaryQuery.isPending || summaryQuery.isError || metrics.length > 0 || emailStatus !== null;
@@ -88,10 +88,10 @@ function OperationalPortalHome() {
       <PageHeader
         title={user.role === "STUDENT"
           ? <span className="inline-block max-w-full font-script text-3xl font-semibold leading-[1.1] [overflow-wrap:anywhere] sm:text-4xl">{getOverviewGreeting(user, now)}</span>
-          : user.role === "GUIDANCE_SERVICES_STAFF" ? "Guidance Services Home" : getOverviewGreeting(user, now)}
+          : user.role === "GUIDANCE_OFFICE_ASSISTANT" ? "Guidance Office Home" : getOverviewGreeting(user, now)}
         headingId="portal-overview-heading"
         context={user.role === "STUDENT" ? "Overview" : undefined}
-        description={[formatOverviewDate(now), user.role === "GUIDANCE_SERVICES_STAFF" ? null : roleContext].filter(Boolean).join(" · ")}
+        description={[formatOverviewDate(now), user.role === "GUIDANCE_OFFICE_ASSISTANT" ? null : roleContext].filter(Boolean).join(" · ")}
         actions={primaryAction ? (
           <PageActionLink
             href={primaryAction.href}
@@ -106,8 +106,8 @@ function OperationalPortalHome() {
         <StudentHome user={user} attention={attention} summary={summaryPanel} />
       ) : user.role === "COUNSELOR" ? (
         <CounselorHome user={user} attention={attention} summary={summaryPanel} now={now} />
-      ) : user.role === "GUIDANCE_SERVICES_STAFF" ? (
-        <GssHome user={user} attention={attention} now={now} />
+      ) : user.role === "GUIDANCE_OFFICE_ASSISTANT" ? (
+        <GoaHome user={user} attention={attention} now={now} />
       ) : (
         <div
           className={

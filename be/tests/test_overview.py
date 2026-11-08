@@ -374,12 +374,12 @@ def test_student_overview_counts_exact_actionable_records_only() -> None:
 
 
 @pytest.mark.django_db
-def test_guidance_overview_preserves_counselor_gss_and_head_scope() -> None:
+def test_guidance_overview_preserves_counselor_goa_and_head_scope() -> None:
     sync_policy()
     counselor = make_user("overview-counselor-a@example.edu", "COUNSELOR")
     other_counselor = make_user("overview-counselor-b@example.edu", "COUNSELOR")
     head = make_head()
-    gss = make_user("overview-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("overview-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student_a = make_user(
         "overview-guidance-student-a@example.edu",
         "STUDENT",
@@ -395,7 +395,7 @@ def test_guidance_overview_preserves_counselor_gss_and_head_scope() -> None:
     college_b = College.objects.create(campus=campus, code="OV-B", name="Overview B")
     CounselorResponsibility.objects.create(college=college_a, counselor=counselor)
     CounselorResponsibility.objects.create(college=college_b, counselor=other_counselor)
-    StaffSupervision.objects.create(staff=gss, supervisor=counselor)
+    StaffSupervision.objects.create(staff=goa, supervisor=counselor)
     StudentAcademicProfile.objects.create(student=student_a, current_college=college_a)
     StudentAcademicProfile.objects.create(student=student_b, current_college=college_b)
 
@@ -491,8 +491,8 @@ def test_guidance_overview_preserves_counselor_gss_and_head_scope() -> None:
         "active_call_slip_count": 1,
     }
 
-    gss_body = auth_client(gss).get("/api/v1/overview").json()["guidance"]
-    assert gss_body == {
+    goa_body = auth_client(goa).get("/api/v1/overview").json()["guidance"]
+    assert goa_body == {
         "upcoming_self_appointments_count": None,
         "upcoming_managed_appointments_count": 2,
         "routine_evaluation_pending_count": None,

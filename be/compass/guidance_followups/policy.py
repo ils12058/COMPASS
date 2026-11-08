@@ -15,7 +15,7 @@ from compass.student_academics.reads import student_is_placed_in_colleges
 from .errors import FollowUpInvalid, FollowUpNotFound, FollowUpPermissionDenied
 from .models import FollowUpCategory, FollowUpSource, FollowUpVisibility
 
-ROLES = frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
+ROLES = frozenset({"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"})
 
 
 def current_actor(actor, *, manage=False, lock=False):

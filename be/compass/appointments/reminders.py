@@ -130,7 +130,7 @@ def _manager(actor: User) -> bool:
     return bool(
         actor
         and actor.is_active
-        and actor.role.code in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        and actor.role.code in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         and actor.has_capability("appointments.manage")
     )
 

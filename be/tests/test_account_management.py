@@ -441,13 +441,13 @@ def test_role_designation_and_override_mutations_update_authority_and_invalidate
 
     role = client.put(
         f"/api/v1/accounts/{target.pk}/role",
-        data=json.dumps({"role": "GUIDANCE_SERVICES_STAFF"}),
+        data=json.dumps({"role": "GUIDANCE_OFFICE_ASSISTANT"}),
         content_type="application/json",
         **csrf_headers(client),
     )
     assert role.status_code == 200
     target.refresh_from_db()
-    assert target.role.code == "GUIDANCE_SERVICES_STAFF"
+    assert target.role.code == "GUIDANCE_OFFICE_ASSISTANT"
     assert target.has_capability("accounts.manage")
 
     removed = client.delete(
@@ -931,14 +931,14 @@ def test_role_change_blocks_active_or_future_appointment_until_resolved():
         created_by=student,
     )
 
-    blocked_gss = client.put(
+    blocked_goa = client.put(
         f"/api/v1/accounts/{provider.pk}/role",
-        data=json.dumps({"role": "GUIDANCE_SERVICES_STAFF"}),
+        data=json.dumps({"role": "GUIDANCE_OFFICE_ASSISTANT"}),
         content_type="application/json",
         **csrf_headers(client),
     )
-    assert blocked_gss.status_code == 409
-    assert blocked_gss.json()["error"]["code"] == "appointment_relationship_conflict"
+    assert blocked_goa.status_code == 409
+    assert blocked_goa.json()["error"]["code"] == "appointment_relationship_conflict"
     provider.refresh_from_db()
     assert provider.role.code == "COUNSELOR"
 
@@ -1066,7 +1066,7 @@ def test_student_lifecycle_authority_and_role_transition_preservation():
 
     away = client.put(
         f"/api/v1/accounts/{student.pk}/role",
-        data=json.dumps({"role": "GUIDANCE_SERVICES_STAFF"}),
+        data=json.dumps({"role": "GUIDANCE_OFFICE_ASSISTANT"}),
         content_type="application/json",
         **csrf_headers(client),
     )
@@ -1115,7 +1115,7 @@ def test_student_lifecycle_authority_and_role_transition_preservation():
     assert stale_response.status_code == 403
     assert stale_response.json()["error"]["code"] == "mfa_setup_required"
 
-    for role_code in ("STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF"):
+    for role_code in ("STUDENT", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"):
         actor = make_user(
             email=f"unauthorized-{role_code.lower()}@example.edu",
             role=role_code,
@@ -1161,7 +1161,7 @@ def test_designation_role_compatibility_is_fail_closed_and_role_change_never_cle
     sync_policy()
     client, _admin, _session = make_admin_client()
     student = make_user(email="student-dpo@example.edu", role="STUDENT")
-    gss = make_user(email="gss-head@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    goa = make_user(email="goa-head@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     admin_target = make_user(email="admin-dpo@example.edu", role="IT_ADMIN")
     officer = make_user(email="officer-dpo@example.edu", role="INSTITUTIONAL_OFFICER")
     counselor = make_user(email="counselor-head@example.edu", role="COUNSELOR")
@@ -1170,7 +1170,7 @@ def test_designation_role_compatibility_is_fail_closed_and_role_change_never_cle
     for target, designation_code in (
         (student, "DPO"),
         (student, "HEAD_GUIDANCE_COUNSELOR"),
-        (gss, "HEAD_GUIDANCE_COUNSELOR"),
+        (goa, "HEAD_GUIDANCE_COUNSELOR"),
         (admin_target, "DPO"),
     ):
         response = post_json(
@@ -1213,7 +1213,7 @@ def test_designation_role_compatibility_is_fail_closed_and_role_change_never_cle
 
     blocked_head_role = client.put(
         f"/api/v1/accounts/{counselor.pk}/role",
-        data=json.dumps({"role": "GUIDANCE_SERVICES_STAFF"}),
+        data=json.dumps({"role": "GUIDANCE_OFFICE_ASSISTANT"}),
         content_type="application/json",
         **headers,
     )
@@ -1324,7 +1324,7 @@ def test_institutional_officer_transition_does_not_bypass_organization_relations
         name="Student Relationship",
     )
     counselor = make_user(email="related-counselor@example.edu", role="COUNSELOR")
-    staff = make_user(email="related-staff@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    staff = make_user(email="related-staff@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     student = make_user(email="related-student@example.edu", role="STUDENT")
     CounselorResponsibility.objects.create(college=counselor_college, counselor=counselor)
     StaffSupervision.objects.create(staff=staff, supervisor=counselor)
@@ -1344,7 +1344,7 @@ def test_institutional_officer_transition_does_not_bypass_organization_relations
     staff.refresh_from_db()
     student.refresh_from_db()
     assert counselor.role.code == "COUNSELOR"
-    assert staff.role.code == "GUIDANCE_SERVICES_STAFF"
+    assert staff.role.code == "GUIDANCE_OFFICE_ASSISTANT"
     assert student.role.code == "STUDENT"
     assert CounselorResponsibility.objects.filter(counselor=counselor).exists()
     assert StaffSupervision.objects.filter(staff=staff).exists()

@@ -279,7 +279,7 @@ def test_authorization_requires_capability_and_actual_encounter_relationship():
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     other = make_user("other@example.edu", "COUNSELOR")
     head = make_user("head@example.edu", "COUNSELOR")
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     dpo = make_user("dpo@example.edu", "IT_ADMIN")
     student = make_user("student@example.edu", "STUDENT")
     UserDesignation.objects.create(
@@ -302,7 +302,7 @@ def test_authorization_requires_capability_and_actual_encounter_relationship():
     assert counselor.has_capability("student_session_summaries.view_assigned")
     assert counselor.has_capability("student_session_summaries.manage_assigned")
     assert head.has_capability("student_session_summaries.view_assigned")
-    assert not gss.has_capability("student_session_summaries.view_assigned")
+    assert not goa.has_capability("student_session_summaries.view_assigned")
     assert not admin.has_capability("student_session_summaries.view_assigned")
     assert not dpo.has_capability("student_session_summaries.view_assigned")
 
@@ -312,7 +312,7 @@ def test_authorization_requires_capability_and_actual_encounter_relationship():
         )
         assert response.status_code == 404
 
-    for actor in (gss, admin, dpo):
+    for actor in (goa, admin, dpo):
         response = auth_client(actor).get(
             f"/api/v1/counseling/encounters/{encounter.pk}/student-session-summary"
         )

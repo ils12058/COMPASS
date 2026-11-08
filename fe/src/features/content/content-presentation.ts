@@ -30,7 +30,7 @@ export const publicationAudienceDescriptions: Record<PublicationAudience, string
   [AnnouncementAudienceValue.PUBLIC]: "Anyone, including visitors who are not signed in.",
   [AnnouncementAudienceValue.ALL_AUTHENTICATED]: "Anyone signed in to COMPASS.",
   [AnnouncementAudienceValue.STUDENTS]: "Signed-in Students.",
-  [AnnouncementAudienceValue.GCO_PERSONNEL]: "Signed-in Counselors and Guidance Services Staff.",
+  [AnnouncementAudienceValue.GCO_PERSONNEL]: "Signed-in Counselors and Guidance Office Assistant.",
 };
 
 // Completes consequence copy such as "It will be visible to …".
@@ -38,7 +38,7 @@ export const publicationAudienceReaders: Record<PublicationAudience, string> = {
   [AnnouncementAudienceValue.PUBLIC]: "everyone, including visitors who are not signed in",
   [AnnouncementAudienceValue.ALL_AUTHENTICATED]: "everyone signed in to COMPASS",
   [AnnouncementAudienceValue.STUDENTS]: "signed-in Students",
-  [AnnouncementAudienceValue.GCO_PERSONNEL]: "signed-in Counselors and Guidance Services Staff",
+  [AnnouncementAudienceValue.GCO_PERSONNEL]: "signed-in Counselors and Guidance Office Assistant",
 };
 
 export function isPublicationStatus(value: string | null): value is PublicationStatus {

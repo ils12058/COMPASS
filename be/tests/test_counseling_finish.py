@@ -509,7 +509,7 @@ def test_finish_rejects_an_open_ecounseling_window_for_scheduled_and_completed()
 def test_finish_authorization_matrix_returns_no_resource_details():
     admin, counselor, student, service = setup_domain("authz")
     other = make_user("authz-other@example.edu", "COUNSELOR")
-    gss = make_user("authz-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("authz-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     head = make_user("authz-head@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
         user=head,
@@ -523,7 +523,7 @@ def test_finish_authorization_matrix_returns_no_resource_details():
     assert anonymous.status_code == 401
     assert error_code(anonymous) == "authentication_required"
 
-    for user in (student, gss, admin):
+    for user in (student, goa, admin):
         client = auth_client(user)
         response = client.post(
             finish_url(appointment),

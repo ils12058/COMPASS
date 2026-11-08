@@ -244,7 +244,7 @@ test("failed HTTP reconciliation preserves only an unconfirmed prior approval", 
   } finally { f.close(); }
 });
 
-for (const role of ["GUIDANCE_SERVICES_STAFF", "IT_ADMIN"]) test(`${role} cannot activate a consent endpoint`, async () => {
+for (const role of ["GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN"]) test(`${role} cannot activate a consent endpoint`, async () => {
   const f = fixture(role);
   try {
     for (const key of [...keys.STUDENT, ...keys.COUNSELOR]) { f.client.setQueryData(key(A), "unrelated"); f.observer(key(A)); }

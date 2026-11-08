@@ -338,7 +338,7 @@ def test_retention_oversight_requires_authentication():
 
 @pytest.mark.parametrize(
     "role",
-    ["STUDENT", "GUIDANCE_SERVICES_STAFF", "COUNSELOR", "IT_ADMIN", "INSTITUTIONAL_OFFICER"],
+    ["STUDENT", "GUIDANCE_OFFICE_ASSISTANT", "COUNSELOR", "IT_ADMIN", "INSTITUTIONAL_OFFICER"],
 )
 def test_retention_oversight_rejects_accounts_without_the_view_capability(dpo, role):
     other = make_user(f"{role.lower()}@example.edu", role=role)
@@ -590,7 +590,8 @@ def test_an_override_cannot_restore_a_retired_capability(dpo, code):
 
 
 @pytest.mark.parametrize(
-    "role", ["IT_ADMIN", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "INSTITUTIONAL_OFFICER"]
+    "role",
+    ["IT_ADMIN", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "INSTITUTIONAL_OFFICER"],
 )
 def test_no_role_gains_retention_or_disposition_authority(dpo, role):
     other = make_user(f"baseline-{role.lower()}@example.edu", role=role)

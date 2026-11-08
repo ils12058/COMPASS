@@ -76,7 +76,7 @@ for (const status of [403, 500, 503]) {
   });
 }
 
-for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]) {
+for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
   const f = staffFixture(role);
   await check(`${role} opens scoped staff workspace and participant-specific attendance`, "/portal/group-sessions/attendance", { role, handler: f.handler, device: role === "COUNSELOR" ? "desktop" : "phone" }, async (page, { requests }) => {
     await shown(page.getByRole("link", { name: event.title, exact: true }));
@@ -141,8 +141,8 @@ await check("Counselor directory keeps concise copy and keyboard-accessible sche
 });
 
 await check("supervision or authority denial does not offer staff creation", "/portal/group-sessions/manage", {
-  role: "GUIDANCE_SERVICES_STAFF", handler: async ({ pathname, reply }) => {
-    if (pathname === "/api/v1/auth/session") { await reply(sessionFor(account("GUIDANCE_SERVICES_STAFF"))); return true; }
+  role: "GUIDANCE_OFFICE_ASSISTANT", handler: async ({ pathname, reply }) => {
+    if (pathname === "/api/v1/auth/session") { await reply(sessionFor(account("GUIDANCE_OFFICE_ASSISTANT"))); return true; }
     if (pathname.startsWith("/api/v1/group-sessions")) { await reply({ error: { code: "permission_denied", message: "Internal policy detail" } }, 403); return true; }
     return false;
   },

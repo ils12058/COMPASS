@@ -23,7 +23,7 @@ from compass.service_catalog.canonical import COUNSELING_SERVICE_CODE
 from .errors import CaseCoordinationEnded, MessagesPermissionDenied, ThreadNotFound
 from .models import GuidanceThread, ThreadKind
 
-STAFF_ROLES = {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+STAFF_ROLES = {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
 RELATIONSHIP_STATUSES = {AppointmentStatus.SCHEDULED, AppointmentStatus.COMPLETED}
 
 

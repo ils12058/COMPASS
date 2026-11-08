@@ -502,7 +502,7 @@ def test_worklist_reads_and_never_writes():
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("role", ["STUDENT", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN"])
+@pytest.mark.parametrize("role", ["STUDENT", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN"])
 def test_documentation_review_is_counselor_only(role):
     admin, counselor, student, service = setup_domain(f"review-role-{role}")
     make_appointment(

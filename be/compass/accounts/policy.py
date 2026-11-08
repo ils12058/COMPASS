@@ -43,9 +43,9 @@ ROLE_DEFINITIONS = (
         description="Operational counseling role.",
     ),
     RoleDefinition(
-        code="GUIDANCE_SERVICES_STAFF",
-        name="Guidance Services Staff",
-        description="Operational guidance services staff role.",
+        code="GUIDANCE_OFFICE_ASSISTANT",
+        name="Guidance Office Assistant",
+        description="Operational guidance office assistant role.",
     ),
     RoleDefinition(
         code="STUDENT",
@@ -99,7 +99,7 @@ def faculty_capability_eligible(role_code: str, capability_code: str) -> bool:
     return capability_code not in FACULTY_CAPABILITY_CEILING
 
 
-CATALOG_ELIGIBLE_ROLES = frozenset({"IT_ADMIN", "COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
+CATALOG_ELIGIBLE_ROLES = frozenset({"IT_ADMIN", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"})
 
 CAPABILITY_DEFINITIONS = (
     CapabilityDefinition(
@@ -771,7 +771,7 @@ ROLE_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
             "ecounseling.access_media_assigned",
         }
     ),
-    "GUIDANCE_SERVICES_STAFF": frozenset(
+    "GUIDANCE_OFFICE_ASSISTANT": frozenset(
         {
             "guidance_followups.view",
             "guidance_followups.manage",
@@ -871,7 +871,7 @@ DESIGNATION_CAPABILITY_GRANTS: dict[str, frozenset[str]] = {
 DESIGNATION_ROLE_COMPATIBILITY: dict[str, frozenset[str]] = {
     "HEAD_GUIDANCE_COUNSELOR": frozenset({"COUNSELOR"}),
     "DPO": frozenset({"INSTITUTIONAL_OFFICER"}),
-    "GENERAL_GUIDANCE_INTAKE": frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}),
+    "GENERAL_GUIDANCE_INTAKE": frozenset({"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}),
 }
 
 ROLE_CODES = frozenset(definition.code for definition in ROLE_DEFINITIONS)

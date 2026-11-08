@@ -128,10 +128,10 @@ def validate_role_transition(*, user: User, new_role_code: str) -> None:
             )
         if StaffSupervision.objects.filter(supervisor_id=user.pk).exists():
             raise OrganizationRoleTransitionConflict(
-                "Remove or reassign supervised Guidance Services Staff before changing role."
+                "Remove or reassign supervised Guidance Office Assistant before changing role."
             )
     if (
-        user.role.code == "GUIDANCE_SERVICES_STAFF"
+        user.role.code == "GUIDANCE_OFFICE_ASSISTANT"
         and StaffSupervision.objects.filter(staff_id=user.pk).exists()
     ):
         raise OrganizationRoleTransitionConflict(
@@ -318,7 +318,7 @@ def set_staff_supervisor(
     *, staff_id: UUID, supervisor_id: UUID, context: AuditContext
 ) -> StaffSupervision:
     with transaction.atomic():
-        staff = _lock_active_user(staff_id, "GUIDANCE_SERVICES_STAFF", "staff member")
+        staff = _lock_active_user(staff_id, "GUIDANCE_OFFICE_ASSISTANT", "staff member")
         supervisor = _lock_active_user(supervisor_id, "COUNSELOR", "supervisor")
         current = StaffSupervision.objects.select_for_update().filter(staff_id=staff.pk).first()
         if current is not None and current.supervisor_id == supervisor.pk:
@@ -355,7 +355,7 @@ def remove_staff_supervisor(*, staff_id: UUID, context: AuditContext) -> bool:
     with transaction.atomic():
         _lock_user_with_role(
             staff_id,
-            "GUIDANCE_SERVICES_STAFF",
+            "GUIDANCE_OFFICE_ASSISTANT",
             "staff member",
             require_active=False,
         )
@@ -378,10 +378,10 @@ def remove_staff_supervisor(*, staff_id: UUID, context: AuditContext) -> bool:
 def list_people(
     *, role: str, page: int = 1, page_size: int = DEFAULT_PAGE_SIZE, search: str | None = None
 ) -> PeoplePage:
-    allowed = {"COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT"}
+    allowed = {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT"}
     if role not in allowed:
         raise InvalidOrganizationInput(
-            "role must be COUNSELOR, GUIDANCE_SERVICES_STAFF, or STUDENT"
+            "role must be COUNSELOR, GUIDANCE_OFFICE_ASSISTANT, or STUDENT"
         )
     if type(page) is not int or page < 1:
         raise InvalidOrganizationInput("page must be a positive integer")

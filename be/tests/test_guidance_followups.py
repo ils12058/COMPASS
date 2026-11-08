@@ -40,8 +40,8 @@ from tests.test_referrals import context, create_for, setup_scope, sync_policy
 def world(settings):
     sync_policy()
     settings.GUIDANCE_FOLLOWUP_ENCRYPTION_KEYS = (Fernet.generate_key().decode(),)
-    counselor_a, counselor_b, gss, student_a, student_b, student_none = setup_scope()
-    return counselor_a, counselor_b, gss, student_a, student_b, student_none
+    counselor_a, counselor_b, goa, student_a, student_b, student_none = setup_scope()
+    return counselor_a, counselor_b, goa, student_a, student_b, student_none
 
 
 def create(
@@ -85,9 +85,9 @@ pytestmark = pytest.mark.django_db
 def test_core_workspace_uses_authorization_without_rollout_gate(world, client):
     from tests.test_appointment_management_scope import auth_client
 
-    counselor, _, gss, student, *_ = world
+    counselor, _, goa, student, *_ = world
     assert client.get("/api/v1/guidance-followups").status_code == 401
-    for actor in (counselor, gss):
+    for actor in (counselor, goa):
         response = auth_client(actor).get("/api/v1/guidance-followups")
         assert response.status_code == 200
         assert response.json()["items"] == []
@@ -96,77 +96,77 @@ def test_core_workspace_uses_authorization_without_rollout_gate(world, client):
 
 
 def test_operational_create_read_complete_and_immutable_history(world):
-    counselor, _, gss, student, *_ = world
-    item = create(world, actor=gss, student=student)
+    counselor, _, goa, student, *_ = world
+    item = create(world, actor=goa, student=student)
     assert item.status == FollowUpStatus.PENDING
     assert item.visibility == "OPERATIONAL"
     assert item.events.count() == 1
     assert item.description_ciphertext != "Private notes"
-    detail = services.followup_detail(actor=gss, item=item)
+    detail = services.followup_detail(actor=goa, item=item)
     assert detail["description"] == "Private notes"
-    assert services.get_followup(actor=gss, followup_id=item.pk).pk == item.pk
-    assert services.list_followups(actor=gss).items[0].pk == item.pk
+    assert services.get_followup(actor=goa, followup_id=item.pk).pk == item.pk
+    assert services.list_followups(actor=goa).items[0].pk == item.pk
 
     before = AuditEvent.objects.filter(action="guidance_followup.completed").count()
     result = services.complete_followup(
-        actor=gss,
+        actor=goa,
         followup_id=item.pk,
         expected_version=1,
         outcome="Contact completed and acknowledged",
-        context=context(gss),
+        context=context(goa),
     )
     assert result.status == "COMPLETED"
     assert result.version == 2
     assert result.events.count() == 2
-    assert services.followup_detail(actor=gss, item=result)["outcome"] == (
+    assert services.followup_detail(actor=goa, item=result)["outcome"] == (
         "Contact completed and acknowledged"
     )
     assert AuditEvent.objects.filter(action="guidance_followup.completed").count() == before + 1
     with pytest.raises(FollowUpConflict):
         services.complete_followup(
-            actor=gss,
+            actor=goa,
             followup_id=item.pk,
             expected_version=2,
             outcome="Repeat",
-            context=context(gss),
+            context=context(goa),
         )
     assert item.events.count() == 2
-    assert services.list_followups(actor=gss, status="PENDING").items == ()
-    assert counselor.pk != gss.pk
+    assert services.list_followups(actor=goa, status="PENDING").items == ()
+    assert counselor.pk != goa.pk
 
 
-def test_gss_assignment_reassignment_and_supervision_loss(world):
-    counselor, counselor_b, gss, student, *_ = world
+def test_goa_assignment_reassignment_and_supervision_loss(world):
+    counselor, counselor_b, goa, student, *_ = world
     item = create(world, actor=counselor)
     changed = services.reassign_followup(
         actor=counselor,
         followup_id=item.pk,
         expected_version=1,
-        assigned_to_id=gss.pk,
+        assigned_to_id=goa.pk,
         context=context(counselor),
     )
-    assert changed.assigned_to_id == gss.pk
+    assert changed.assigned_to_id == goa.pk
     assert changed.events.count() == 2
     assert services.list_followups(actor=counselor).items == ()
-    assert services.list_followups(actor=gss).items[0].pk == item.pk
+    assert services.list_followups(actor=goa).items[0].pk == item.pk
     with pytest.raises(FollowUpNotFound):
         services.get_followup(actor=counselor, followup_id=item.pk)
     with pytest.raises(FollowUpInvalid):
         services.reassign_followup(
-            actor=gss,
+            actor=goa,
             followup_id=item.pk,
             expected_version=2,
             assigned_to_id=counselor_b.pk,
-            context=context(gss),
+            context=context(goa),
         )
-    StaffSupervision.objects.filter(staff=gss).delete()
-    assert services.list_followups(actor=gss).items == ()
+    StaffSupervision.objects.filter(staff=goa).delete()
+    assert services.list_followups(actor=goa).items == ()
     with pytest.raises(FollowUpNotFound):
-        services.get_followup(actor=gss, followup_id=item.pk)
+        services.get_followup(actor=goa, followup_id=item.pk)
 
 
 def test_source_classification_cannot_be_downgraded(world):
-    counselor, _, gss, student, *_ = world
+    counselor, _, goa, student, *_ = world
     service = Service.objects.create(code="FUP_TEST", name="Counseling for test")
     now = timezone.now()
     encounter = CounselingEncounter.objects.create(
@@ -197,19 +197,19 @@ def test_source_classification_cannot_be_downgraded(world):
     assert confidential.visibility == "COUNSELOR_CONFIDENTIAL"
     assert services.get_followup(actor=counselor, followup_id=confidential.pk).pk == confidential.pk
     with pytest.raises(FollowUpNotFound):
-        services.get_followup(actor=gss, followup_id=confidential.pk)
+        services.get_followup(actor=goa, followup_id=confidential.pk)
     with pytest.raises(FollowUpInvalid):
         services.reassign_followup(
             actor=counselor,
             followup_id=confidential.pk,
             expected_version=1,
-            assigned_to_id=gss.pk,
+            assigned_to_id=goa.pk,
             context=context(counselor),
         )
 
 
 def test_source_matches_student_and_current_actor(world):
-    counselor, counselor_b, gss, student_a, student_b, _ = world
+    counselor, counselor_b, goa, student_a, student_b, _ = world
     service = Service.objects.create(code="FUP_SOURCE", name="Source service")
     now = timezone.now()
     encounter = CounselingEncounter.objects.create(
@@ -223,7 +223,7 @@ def test_source_matches_student_and_current_actor(world):
         ended_at=now - timedelta(hours=1),
         created_by=counselor,
     )
-    for student, actor in ((student_b, counselor), (student_a, counselor_b), (student_a, gss)):
+    for student, actor in ((student_b, counselor), (student_a, counselor_b), (student_a, goa)):
         with pytest.raises(FollowUpNotFound):
             create(
                 world,
@@ -250,7 +250,7 @@ def test_source_matches_student_and_current_actor(world):
 
 
 def test_referral_source_keeps_operational_scope(world):
-    counselor, counselor_b, gss, student, student_b, _ = world
+    counselor, counselor_b, goa, student, student_b, _ = world
     source = create_for(
         counselor,
         student,
@@ -258,10 +258,10 @@ def test_referral_source_keeps_operational_scope(world):
         fingerprint="b" * 64,
     )
     item = create(
-        world, actor=gss, source_kind="REFERRAL", source_id=source.pk, category="REFERRAL_ACTION"
+        world, actor=goa, source_kind="REFERRAL", source_id=source.pk, category="REFERRAL_ACTION"
     )
     assert item.visibility == "OPERATIONAL"
-    assert services.followup_detail(actor=gss, item=item)["source"]["id"] == source.pk
+    assert services.followup_detail(actor=goa, item=item)["source"]["id"] == source.pk
     with pytest.raises(FollowUpNotFound):
         create(
             world,
@@ -272,7 +272,7 @@ def test_referral_source_keeps_operational_scope(world):
             category="REFERRAL_ACTION",
         )
     Referral.objects.filter(pk=source.pk).update(voided_at=timezone.now(), voided_by=counselor)
-    assert services.followup_detail(actor=gss, item=item)["source"] is None
+    assert services.followup_detail(actor=goa, item=item)["source"] is None
 
 
 def test_referral_void_preserves_operational_task_across_workspaces(world):
@@ -282,7 +282,7 @@ def test_referral_void_preserves_operational_task_across_workspaces(world):
     from compass.work_queue.services import list_work
     from tests.test_appointment_management_scope import auth_client
 
-    counselor, _, gss, student, *_ = world
+    counselor, _, goa, student, *_ = world
     source = create_for(
         counselor,
         student,
@@ -291,7 +291,7 @@ def test_referral_void_preserves_operational_task_across_workspaces(world):
     )
     completed = create(
         world,
-        actor=gss,
+        actor=goa,
         student=student,
         source_kind="REFERRAL",
         source_id=source.pk,
@@ -299,7 +299,7 @@ def test_referral_void_preserves_operational_task_across_workspaces(world):
     )
     cancelled = create(
         world,
-        actor=gss,
+        actor=goa,
         student=student,
         source_kind="REFERRAL",
         source_id=source.pk,
@@ -319,44 +319,44 @@ def test_referral_void_preserves_operational_task_across_workspaces(world):
     assert (
         AuditEvent.objects.filter(action__startswith="guidance_followup.").count() == audits_before
     )
-    assert {row.pk for row in services.list_followups(actor=gss).items} == {
+    assert {row.pk for row in services.list_followups(actor=goa).items} == {
         completed.pk,
         cancelled.pk,
     }
-    assert reporting(actor=gss)["pending"] == 2
-    work = [row for row in list_work(actor=gss).items if row.kind == "GUIDANCE_FOLLOW_UP"]
+    assert reporting(actor=goa)["pending"] == 2
+    work = [row for row in list_work(actor=goa).items if row.kind == "GUIDANCE_FOLLOW_UP"]
     assert {row.source_id for row in work} == {completed.pk, cancelled.pk}
-    assert {row.pk for row in pending_followups(actor=gss, limit=20)} == {
+    assert {row.pk for row in pending_followups(actor=goa, limit=20)} == {
         completed.pk,
         cancelled.pk,
     }
-    detail = auth_client(gss).get(f"/api/v1/guidance-followups/{completed.pk}").json()
+    detail = auth_client(goa).get(f"/api/v1/guidance-followups/{completed.pk}").json()
     assert detail["source"] is None
     assert detail["source_unavailable"] is True
     assert detail["status"] == "PENDING"
 
     updated = services.update_followup(
-        actor=gss,
+        actor=goa,
         followup_id=completed.pk,
         expected_version=1,
         due_at=completed.due_at + timedelta(days=1),
-        context=context(gss),
+        context=context(goa),
     )
     assert updated.version == 2
     recorded, _ = services.record_activity(
-        actor=gss,
+        actor=goa,
         followup_id=completed.pk,
         expected_version=2,
         remarks="Coordination continues after the source became unavailable.",
-        context=context(gss),
+        context=context(goa),
     )
     assert recorded.version == 3
     reassigned = services.reassign_followup(
-        actor=gss,
+        actor=goa,
         followup_id=completed.pk,
         expected_version=3,
         assigned_to_id=counselor.pk,
-        context=context(gss),
+        context=context(goa),
     )
     assert reassigned.assigned_to_id == counselor.pk
     completed_item = services.complete_followup(
@@ -368,11 +368,11 @@ def test_referral_void_preserves_operational_task_across_workspaces(world):
     )
     assert completed_item.status == FollowUpStatus.COMPLETED
     cancelled_item = services.cancel_followup(
-        actor=gss,
+        actor=goa,
         followup_id=cancelled.pk,
         expected_version=1,
         reason="The related record is no longer available.",
-        context=context(gss),
+        context=context(goa),
     )
     assert cancelled_item.status == FollowUpStatus.CANCELLED
 
@@ -381,7 +381,7 @@ def test_referral_void_makes_source_filter_and_context_unavailable(world):
     from compass.referrals.services import void_referral
     from tests.test_appointment_management_scope import auth_client
 
-    counselor, _, gss, student, *_ = world
+    counselor, _, goa, student, *_ = world
     source = create_for(
         counselor,
         student,
@@ -390,7 +390,7 @@ def test_referral_void_makes_source_filter_and_context_unavailable(world):
     )
     item = create(
         world,
-        actor=gss,
+        actor=goa,
         student=student,
         source_kind="REFERRAL",
         source_id=source.pk,
@@ -402,7 +402,7 @@ def test_referral_void_makes_source_filter_and_context_unavailable(world):
         reason="Synthetic source void",
         context=context(counselor),
     )
-    client = auth_client(gss)
+    client = auth_client(goa)
     filtered = client.get(
         f"/api/v1/guidance-followups?source_kind=REFERRAL&source_id={source.pk}"
     )
@@ -427,7 +427,7 @@ def test_list_projects_source_unavailable_for_voided_referral(world):
     from compass.referrals.services import void_referral
     from tests.test_appointment_management_scope import auth_client
 
-    counselor, _, gss, student, *_ = world
+    counselor, _, goa, student, *_ = world
     source = create_for(
         counselor,
         student,
@@ -436,13 +436,13 @@ def test_list_projects_source_unavailable_for_voided_referral(world):
     )
     item = create(
         world,
-        actor=gss,
+        actor=goa,
         student=student,
         source_kind="REFERRAL",
         source_id=source.pk,
         category="REFERRAL_ACTION",
     )
-    client = auth_client(gss)
+    client = auth_client(goa)
     before = client.get("/api/v1/guidance-followups")
     assert before.status_code == 200
     row = next(row for row in before.json()["items"] if row["id"] == str(item.pk))
@@ -469,7 +469,7 @@ def test_list_projects_source_unavailable_for_voided_referral(world):
 def test_list_source_unavailable_false_for_readable_and_source_free(world):
     from tests.test_appointment_management_scope import auth_client
 
-    counselor, _, gss, student, *_ = world
+    counselor, _, goa, student, *_ = world
     source = create_for(
         counselor,
         student,
@@ -478,15 +478,15 @@ def test_list_source_unavailable_false_for_readable_and_source_free(world):
     )
     linked = create(
         world,
-        actor=gss,
+        actor=goa,
         student=student,
         source_kind="REFERRAL",
         source_id=source.pk,
         category="REFERRAL_ACTION",
     )
-    standalone = create(world, actor=gss, student=student)
+    standalone = create(world, actor=goa, student=student)
 
-    response = auth_client(gss).get("/api/v1/guidance-followups")
+    response = auth_client(goa).get("/api/v1/guidance-followups")
     assert response.status_code == 200
     rows = {row["id"]: row for row in response.json()["items"]}
     assert rows[str(linked.pk)]["source_unavailable"] is False
@@ -497,7 +497,7 @@ def test_list_and_detail_agree_on_source_unavailable(world):
     from compass.referrals.services import void_referral
     from tests.test_appointment_management_scope import auth_client
 
-    counselor, _, gss, student, *_ = world
+    counselor, _, goa, student, *_ = world
     source = create_for(
         counselor,
         student,
@@ -506,7 +506,7 @@ def test_list_and_detail_agree_on_source_unavailable(world):
     )
     item = create(
         world,
-        actor=gss,
+        actor=goa,
         student=student,
         source_kind="REFERRAL",
         source_id=source.pk,
@@ -519,7 +519,7 @@ def test_list_and_detail_agree_on_source_unavailable(world):
         context=context(counselor),
     )
 
-    client = auth_client(gss)
+    client = auth_client(goa)
     list_row = next(
         row
         for row in client.get("/api/v1/guidance-followups").json()["items"]
@@ -534,7 +534,7 @@ def test_source_unavailable_projection_does_not_leak_source_identity(world):
     from compass.referrals.services import void_referral
     from tests.test_appointment_management_scope import auth_client
 
-    counselor, _, gss, student, *_ = world
+    counselor, _, goa, student, *_ = world
     source = create_for(
         counselor,
         student,
@@ -545,7 +545,7 @@ def test_source_unavailable_projection_does_not_leak_source_identity(world):
     )
     item = create(
         world,
-        actor=gss,
+        actor=goa,
         student=student,
         source_kind="REFERRAL",
         source_id=source.pk,
@@ -558,7 +558,7 @@ def test_source_unavailable_projection_does_not_leak_source_identity(world):
         context=context(counselor),
     )
 
-    response = auth_client(gss).get("/api/v1/guidance-followups")
+    response = auth_client(goa).get("/api/v1/guidance-followups")
     assert response.status_code == 200
     row = next(row for row in response.json()["items"] if row["id"] == str(item.pk))
     assert row["source_unavailable"] is True
@@ -661,12 +661,12 @@ def test_head_operational_list_remains_assignment_scoped(world):
     from compass.guidance_followups.recovery import list_recoverable
     from compass.guidance_followups.workspace import reporting
 
-    counselor, head, gss, student, *_ = world
+    counselor, head, goa, student, *_ = world
     UserDesignation.objects.create(
         user=head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     )
     own = create(world, actor=head, assignee=head)
-    gss_task = create(world, actor=gss, assignee=gss)
+    goa_task = create(world, actor=goa, assignee=goa)
     service = Service.objects.create(code="FUP_HEAD_SCOPE", name="Counseling", is_active=True)
     encounter = CounselingEncounter.objects.create(
         student=student,
@@ -686,9 +686,9 @@ def test_head_operational_list_remains_assignment_scoped(world):
 
     assert [row.pk for row in services.list_followups(actor=head).items] == [own.pk]
     assert reporting(actor=head)["pending"] == 1
-    User.objects.filter(pk=gss.pk).update(is_active=False)
+    User.objects.filter(pk=goa.pk).update(is_active=False)
     recoverable = [row.pk for row in list_recoverable(actor=head)["items"]]
-    assert recoverable == [gss_task.pk]
+    assert recoverable == [goa_task.pk]
     assert confidential.pk not in recoverable
 
 
@@ -866,10 +866,10 @@ def test_cancel_is_terminal_with_encrypted_reason(world):
 
 
 def test_capability_deactivation_and_direct_object_scope(world):
-    counselor, _, gss, student_a, student_b, student_none = world
+    counselor, _, goa, student_a, student_b, student_none = world
     item = create(world)
     with pytest.raises(FollowUpNotFound):
-        services.get_followup(actor=gss, followup_id=item.pk)
+        services.get_followup(actor=goa, followup_id=item.pk)
     capability = Capability.objects.get(code="guidance_followups.manage")
     UserCapabilityOverride.objects.create(
         user=counselor,
@@ -885,13 +885,13 @@ def test_capability_deactivation_and_direct_object_scope(world):
             outcome="Denied",
             context=context(counselor),
         )
-    other = create(world, actor=gss, student=student_a, assignee=gss)
-    StaffSupervision.objects.filter(staff=gss).update(supervisor=counselor)
-    # Student B and unaffiliated Student are never addressable by GSS.
+    other = create(world, actor=goa, student=student_a, assignee=goa)
+    StaffSupervision.objects.filter(staff=goa).update(supervisor=counselor)
+    # Student B and unaffiliated Student are never addressable by GOA.
     with pytest.raises(FollowUpNotFound):
-        create(world, actor=gss, student=student_b, assignee=gss)
+        create(world, actor=goa, student=student_b, assignee=goa)
     with pytest.raises(FollowUpNotFound):
-        create(world, actor=gss, student=student_none, assignee=gss)
+        create(world, actor=goa, student=student_none, assignee=goa)
     assert other.pk
 
 
@@ -941,15 +941,15 @@ def test_workspace_options_filters_and_reporting_are_scoped(world):
 
     from compass.guidance_followups import workspace
 
-    counselor, _, gss, student, *_ = world
+    counselor, _, goa, student, *_ = world
     mine = create(world)
-    create(world, actor=gss)
+    create(world, actor=goa)
     students = workspace.eligible_students(actor=counselor)
     assert student.pk in {row.id for row in students.items}
     staff = workspace.eligible_assignees(
         actor=counselor, student_id=student.pk, category="ADMINISTRATIVE"
     )
-    assert {counselor.pk, gss.pk} <= {row.pk for row in staff.items}
+    assert {counselor.pk, goa.pk} <= {row.pk for row in staff.items}
     GuidanceFollowUp.objects.filter(pk=mine.pk).update(due_at=F("due_at") - timedelta(days=5))
     assert [
         row.pk for row in services.list_followups(actor=counselor, due_window="OVERDUE").items
@@ -960,10 +960,10 @@ def test_workspace_options_filters_and_reporting_are_scoped(world):
     assert "Private notes" not in str(report)
 
 
-def test_confidential_source_options_do_not_offer_gss(world):
+def test_confidential_source_options_do_not_offer_goa(world):
     from compass.guidance_followups import workspace
 
-    counselor, _, gss, student, *_ = world
+    counselor, _, goa, student, *_ = world
     service = Service.objects.create(code="FUP_SOURCE_OPTIONS", name="Counseling", is_active=True)
     source = CounselingEncounter.objects.create(
         student=student,
@@ -987,19 +987,19 @@ def test_confidential_source_options_do_not_offer_gss(world):
     )
     assert [row.pk for row in options.items] == [counselor.pk]
     with pytest.raises(FollowUpNotFound):
-        workspace.source_context(actor=gss, source_kind="COUNSELING_ENCOUNTER", source_id=source.pk)
+        workspace.source_context(actor=goa, source_kind="COUNSELING_ENCOUNTER", source_id=source.pk)
 
 
 def test_delegated_create_has_safe_receipt_and_durable_replay(world):
     from compass.guidance_followups.api import _detail_or_receipt
 
-    counselor, _, gss, *_ = world
+    counselor, _, goa, *_ = world
     key = str(uuid4())
-    first = create(world, assignee=gss, key=key)
+    first = create(world, assignee=goa, key=key)
     receipt = _detail_or_receipt(counselor, first)
     assert receipt["description"] is None
     assert receipt["events"] == []
-    assert create(world, assignee=gss, key=key).pk == first.pk
+    assert create(world, assignee=goa, key=key).pk == first.pk
     with pytest.raises(FollowUpNotFound):
         services.get_followup(actor=counselor, followup_id=first.pk)
 
@@ -1054,7 +1054,7 @@ def test_work_and_notifications_are_current_and_content_minimized(world, setting
     from compass.notifications.services import list_my_notifications, unread_count_for
     from compass.work_queue.services import list_work
 
-    counselor, _, gss, *_ = world
+    counselor, _, goa, *_ = world
     settings.GUIDANCE_FOLLOWUP_NOTIFICATIONS_ENABLED = True
     item = create(world)
     notice = Notification.objects.get(source_type="guidance_followup_event")
@@ -1067,11 +1067,11 @@ def test_work_and_notifications_are_current_and_content_minimized(world, setting
         actor=counselor,
         followup_id=item.pk,
         expected_version=1,
-        assigned_to_id=gss.pk,
+        assigned_to_id=goa.pk,
         context=context(counselor),
     )
     assert not pending_followups(actor=counselor, limit=20)
-    assert [row.pk for row in pending_followups(actor=gss, limit=20)] == [item.pk]
+    assert [row.pk for row in pending_followups(actor=goa, limit=20)] == [item.pk]
     assert not list_my_notifications(actor=counselor).items
     assert unread_count_for(actor=counselor) == 0
     delivery = EmailDelivery.objects.get(notification=notice)
@@ -1080,11 +1080,11 @@ def test_work_and_notifications_are_current_and_content_minimized(world, setting
         mailer.assert_not_called()
     # Returning to the earlier owner never revives an older occurrence.
     services.reassign_followup(
-        actor=gss,
+        actor=goa,
         followup_id=item.pk,
         expected_version=changed.version,
         assigned_to_id=counselor.pk,
-        context=context(gss),
+        context=context(goa),
     )
     notices = list_my_notifications(actor=counselor).items
     assert len(notices) == 1 and notices[0].pk != notice.pk
@@ -1160,10 +1160,10 @@ def test_reassignment_recovery_is_operational_and_resource_scoped(world):
     from compass.accounts.models import User
     from compass.guidance_followups.recovery import list_recoverable
 
-    counselor, counselor_b, gss, student, *_ = world
-    item = create(world, assignee=gss)
+    counselor, counselor_b, goa, student, *_ = world
+    item = create(world, assignee=goa)
     assert not list_recoverable(actor=counselor)["items"]
-    User.objects.filter(pk=gss.pk).update(is_active=False)
+    User.objects.filter(pk=goa.pk).update(is_active=False)
     assert [row.pk for row in list_recoverable(actor=counselor)["items"]] == [item.pk]
     assert not list_recoverable(actor=counselor_b)["items"]
     # Recovery grants only reassignment, never prior protected detail or editing.
@@ -1191,10 +1191,10 @@ def test_reassignment_recovery_is_operational_and_resource_scoped(world):
 def test_recovery_detects_capability_revocation_without_loading_descriptions(world):
     from compass.guidance_followups.recovery import list_recoverable
 
-    counselor, _, gss, *_ = world
-    item = create(world, assignee=gss)
+    counselor, _, goa, *_ = world
+    item = create(world, assignee=goa)
     UserCapabilityOverride.objects.create(
-        user=gss,
+        user=goa,
         capability=Capability.objects.get(code="guidance_followups.view"),
         effect="REVOKE",
         reason="Recovery fixture",
@@ -1206,11 +1206,11 @@ def test_head_recovery_never_includes_confidential_followups(world):
     from compass.accounts.models import Designation, User, UserDesignation
     from compass.guidance_followups.recovery import list_recoverable
 
-    counselor, head, gss, student, *_ = world
+    counselor, head, goa, student, *_ = world
     UserDesignation.objects.create(
         user=head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     )
-    operational = create(world, assignee=gss)
+    operational = create(world, assignee=goa)
     service = Service.objects.create(code="FUP_HEAD_RECOVERY", name="Counseling", is_active=True)
     encounter = CounselingEncounter.objects.create(
         student=student,
@@ -1278,9 +1278,9 @@ def test_http_lifecycle_requires_recent_mfa_and_replays_durably(world, action, f
 
     from tests.test_appointment_management_scope import auth_client, csrf
 
-    counselor, _, gss, *_ = world
+    counselor, _, goa, *_ = world
     item = create(world)
-    payload = {"expected_version": 1, field: value if value is not None else str(gss.pk)}
+    payload = {"expected_version": 1, field: value if value is not None else str(goa.pk)}
     path = f"/api/v1/guidance-followups/{item.pk}/{action}"
     headers = {"HTTP_IDEMPOTENCY_KEY": str(uuid4())}
     denied = auth_client(counselor)
@@ -1338,7 +1338,7 @@ def test_work_queue_prioritization_distinguishes_time_sensitive_and_action_requi
 
 
 def test_standalone_student_followup_and_student_support_boundary(world):
-    counselor, _, gss, student, *_ = world
+    counselor, _, goa, student, *_ = world
     now = timezone.now()
 
     # Standalone follow-up without linked source record
@@ -1360,15 +1360,15 @@ def test_standalone_student_followup_and_student_support_boundary(world):
     # Counselor (assignee in scope) can view and manage
     assert services.get_followup(actor=counselor, followup_id=standalone.pk).pk == standalone.pk
 
-    # Operational follow-up can be reassigned to GSS in scope, transferring access
+    # Operational follow-up can be reassigned to GOA in scope, transferring access
     services.reassign_followup(
         actor=counselor,
         followup_id=standalone.pk,
         expected_version=standalone.version,
-        assigned_to_id=gss.pk,
+        assigned_to_id=goa.pk,
         context=context(counselor),
     )
-    assert services.get_followup(actor=gss, followup_id=standalone.pk).pk == standalone.pk
+    assert services.get_followup(actor=goa, followup_id=standalone.pk).pk == standalone.pk
     with pytest.raises(FollowUpNotFound):
         services.get_followup(actor=counselor, followup_id=standalone.pk)
 

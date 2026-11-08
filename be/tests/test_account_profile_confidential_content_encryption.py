@@ -108,7 +108,8 @@ def test_strict_canonical_date_payload(birthday):
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "role", ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]
+    "role",
+    ["STUDENT", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"],
 )
 def test_all_roles_create_default_before_insert_and_constraints(role):
     sync_policy()

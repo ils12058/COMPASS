@@ -175,7 +175,7 @@ def test_routine_form_family_and_capabilities_are_explicit_without_fake_qms_revi
     sync_policy()
     student = make_user("student@example.edu", "STUDENT")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("admin@example.edu", "IT_ADMIN")
     head = make_user("head@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
@@ -196,7 +196,7 @@ def test_routine_form_family_and_capabilities_are_explicit_without_fake_qms_revi
     assert counselor.has_capability("routine_interviews.view_assigned")
     assert counselor.has_capability("routine_interviews.manage_assigned")
     assert head.has_capability("routine_interviews.view_assigned")
-    assert not gss.has_capability("routine_interviews.view_assigned")
+    assert not goa.has_capability("routine_interviews.view_assigned")
     assert not admin.has_capability("routine_interviews.view_assigned")
 
 
@@ -434,7 +434,7 @@ def test_api_keeps_student_draft_private_and_never_returns_counselor_evaluation_
     student = make_user("student@example.edu", "STUDENT")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     unrelated = make_user("unrelated@example.edu", "COUNSELOR")
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     dpo = make_user("dpo@example.edu", "INSTITUTIONAL_OFFICER")
     UserDesignation.objects.create(user=dpo, designation=Designation.objects.get(code="DPO"))
     head = make_user("head@example.edu", "COUNSELOR")
@@ -450,7 +450,7 @@ def test_api_keeps_student_draft_private_and_never_returns_counselor_evaluation_
     student_client = auth_client(student)
     counselor_client = auth_client(counselor)
     unrelated_client = auth_client(unrelated)
-    gss_client = auth_client(gss)
+    goa_client = auth_client(goa)
     head_client = auth_client(head)
     admin_client = auth_client(admin)
     dpo_client = auth_client(dpo)
@@ -474,9 +474,9 @@ def test_api_keeps_student_draft_private_and_never_returns_counselor_evaluation_
     assert counselor_draft.json()["intake"] is None
 
     assert unrelated_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 404
-    assert gss_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 403
+    assert goa_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 403
     assert head_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 404
-    for operational_client in (gss_client, admin_client, dpo_client):
+    for operational_client in (goa_client, admin_client, dpo_client):
         assert operational_client.get(f"/api/v1/routine-interviews/{item.pk}").status_code == 403
         assert operational_client.get(f"/api/v1/routine-interviews/me/{item.pk}").status_code == 403
 
@@ -879,7 +879,7 @@ def test_counselor_routine_queue_is_assigned_paginated_filtered_and_identity_sea
     student.save(update_fields=["institutional_id", "updated_at"])
     counselor = make_user("queue.counselor@example.edu", "COUNSELOR")
     other = make_user("queue.other@example.edu", "COUNSELOR")
-    gss = make_user("queue.gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("queue.goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     year = configure_year(admin)
     submit_inventory(student, student)
     create_counseling_service(admin)
@@ -920,7 +920,7 @@ def test_counselor_routine_queue_is_assigned_paginated_filtered_and_identity_sea
         == 422
     )
     assert auth_client(other).get("/api/v1/routine-interviews").status_code == 200
-    assert auth_client(gss).get("/api/v1/routine-interviews").status_code == 403
+    assert auth_client(goa).get("/api/v1/routine-interviews").status_code == 403
 
 
 @pytest.mark.django_db

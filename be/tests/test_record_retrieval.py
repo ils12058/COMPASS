@@ -131,8 +131,8 @@ def test_provider_lookup_reuses_directory_eligibility_permission_and_tokenized_s
     provider.middle_name = "Dela"
     provider.save(update_fields=["middle_name"])
     student = avail.make_user("student@example.edu", "STUDENT")
-    clean = avail.make_user("clean@example.edu", "GUIDANCE_SERVICES_STAFF")
-    legacy = avail.make_user("legacy@example.edu", "GUIDANCE_SERVICES_STAFF")
+    clean = avail.make_user("clean@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    legacy = avail.make_user("legacy@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     ProviderAvailabilityWindow.objects.create(
         provider=legacy, weekday="MONDAY", start_time=time(8), end_time=time(12), mode_scope="ALL"
     )
@@ -277,7 +277,7 @@ def test_encounter_search_is_identity_only_and_collection_projection_is_narrow()
 
 
 def test_referral_revision_choices_and_exact_filter_remain_organization_scoped():
-    counselor, other, gss, student, hidden_student, _ = referrals.setup_scope()
+    counselor, other, goa, student, hidden_student, _ = referrals.setup_scope()
     revoke_forms(counselor)
     old = historical_revision("referral_slip")
     hidden_revision = historical_revision("referral_slip", code="HIDDEN-REF")
@@ -301,7 +301,7 @@ def test_referral_revision_choices_and_exact_filter_remain_organization_scoped()
     assert ids(client.get("/api/v1/referrals", {"form_revision_id": hidden_revision.pk})) == []
     assert str(hidden_revision.pk) not in revision_options(client.get("/api/v1/referrals"))
     assert ids(
-        referrals.auth_client(gss).get("/api/v1/referrals", {"form_revision_id": old.pk})
+        referrals.auth_client(goa).get("/api/v1/referrals", {"form_revision_id": old.pk})
     ) == [str(first.pk)]
     assert client.get("/api/v1/referrals", {"form_revision_id": "invalid"}).status_code == 422
 

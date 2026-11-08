@@ -15,7 +15,7 @@ export function operationsData(role = "COUNSELOR") {
     },
     schedule: {
       upcoming_self_appointments_count: role === "COUNSELOR" ? 6 : null,
-      upcoming_managed_appointments_count: role === "GUIDANCE_SERVICES_STAFF" ? 14 : null,
+      upcoming_managed_appointments_count: role === "GUIDANCE_OFFICE_ASSISTANT" ? 14 : null,
       active_call_slips_count: 9,
     },
   };
@@ -23,7 +23,7 @@ export function operationsData(role = "COUNSELOR") {
 
 export function operationsAccount(role = "COUNSELOR", fields = {}) {
   const user = messagesAccount(role, fields);
-  if (!["COUNSELOR", "GUIDANCE_SERVICES_STAFF"].includes(role) || fields.capabilities) return user;
+  if (!["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(role) || fields.capabilities) return user;
   return { ...user, capabilities: [...new Set([...user.capabilities,
     "good_moral.view", "good_moral.prepare", "call_slips.view", "call_slips.manage",
     "appointments.manage", ...(role === "COUNSELOR" ? ["appointments.view_self",

@@ -198,7 +198,7 @@ def test_appointment_capability_policy_preserves_business_authority_boundaries()
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("student@example.edu", "STUDENT")
     head = make_user("head@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
@@ -212,9 +212,9 @@ def test_appointment_capability_policy_preserves_business_authority_boundaries()
     assert counselor.has_capability("appointments.view_self")
     assert not counselor.has_capability("appointments.manage_self")
     assert counselor.has_capability("appointments.manage")
-    assert gss.has_capability("appointments.view_self")
-    assert not gss.has_capability("appointments.manage_self")
-    assert gss.has_capability("appointments.manage")
+    assert goa.has_capability("appointments.view_self")
+    assert not goa.has_capability("appointments.manage_self")
+    assert goa.has_capability("appointments.manage")
     assert student.has_capability("appointments.view_self")
     assert student.has_capability("appointments.manage_self")
     assert not student.has_capability("appointments.manage")
@@ -439,13 +439,13 @@ def test_default_routing_does_not_silently_fallback_when_default_is_time_unavail
 
 @pytest.mark.django_db
 @override_settings(TIME_ZONE="Asia/Manila")
-def test_explicit_cross_scope_counselor_is_allowed_and_gss_is_not_student_selectable():
+def test_explicit_cross_scope_counselor_is_allowed_and_goa_is_not_student_selectable():
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
     student = make_user("student@example.edu", "STUDENT")
     default = make_user("default@example.edu", "COUNSELOR")
     other = make_user("other@example.edu", "COUNSELOR")
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     service = active_service(
         actor,
     )
@@ -474,7 +474,7 @@ def test_explicit_cross_scope_counselor_is_allowed_and_gss_is_not_student_select
         create_student_appointment(
             student=student,
             service_id=service.pk,
-            provider_id=gss.pk,
+            provider_id=goa.pk,
             delivery_mode="IN_PERSON",
             starts_at=start + timedelta(hours=2),
             context=context(student),

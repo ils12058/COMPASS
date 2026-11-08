@@ -417,7 +417,7 @@ export function ResponsibilitiesPage() {
               <thead className={dataTable.head}>
                 <tr>
                   <th scope="col" className={`${dataTable.headerCell} ${dataTable.stickyHeaderCell}`}>
-                    Guidance Services Staff
+                    Guidance Office Assistant
                   </th>
                   <th scope="col" className={dataTable.headerCell}>
                     Supervisor
@@ -633,7 +633,7 @@ export function ResponsibilitiesPage() {
           <div className="mt-6 space-y-6">
             {staffDialog?.staff ? (
               <div>
-                <p className="text-sm font-semibold text-ink">Guidance Services Staff</p>
+                <p className="text-sm font-semibold text-ink">Guidance Office Assistant</p>
                 <div className="mt-2 rounded-sm border border-brand-line bg-brand-wash px-3 py-3 text-sm">
                   <p className="font-semibold text-ink">{staffDialog.staff.full_name}</p>
                   <p className="mt-1 text-xs text-muted">
@@ -646,8 +646,8 @@ export function ResponsibilitiesPage() {
             ) : (
               <PeoplePicker
                 id="staff-person-search"
-                label="Guidance Services Staff"
-                role="GUIDANCE_SERVICES_STAFF"
+                label="Guidance Office Assistant"
+                role="GUIDANCE_OFFICE_ASSISTANT"
                 enabled={Boolean(staffDialog)}
                 value={staffId}
                 selectedPerson={selectedStaff}

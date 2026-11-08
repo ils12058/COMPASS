@@ -12,7 +12,7 @@ export type CallSlipAccess = {
 export function getCallSlipAccess(user: UserSummary): CallSlipAccess {
   const isStudent = user.role === "STUDENT";
   const isOperational =
-    user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF";
+    user.role === "COUNSELOR" || user.role === "GUIDANCE_OFFICE_ASSISTANT";
   const canViewSelf =
     isStudent && user.capabilities.includes("call_slips.view_self");
   const canViewOperational =

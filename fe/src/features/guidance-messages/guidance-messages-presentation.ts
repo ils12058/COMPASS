@@ -30,7 +30,7 @@ const STATUS_LABELS: Record<ThreadStatus, string> = {
 
 const HANDLER_ROLE_LABELS: Record<GuidanceHandlerRole, string> = {
   COUNSELOR: "Counselor",
-  GUIDANCE_SERVICES_STAFF: "Guidance Services Staff",
+  GUIDANCE_OFFICE_ASSISTANT: "Guidance Office Assistant",
 };
 
 export function handlerRoleLabel(role: GuidanceHandlerRole): string {

@@ -280,7 +280,7 @@ ACTIVE_REFERRAL = StudentSpec(
     program_code="BAELS",
     home_address="Purok 7, Barangay Awitan, Daet, Camarines Norte",
     year_levels=((PREVIOUS_YEAR, 1), (CURRENT_YEAR, 2)),
-    summary="Inventory draft, a new adviser referral and a Call Slip issued live by gss_a.",
+    summary="Inventory draft, a new adviser referral and a Call Slip issued live by goa_a.",
 )
 GOOD_MORAL = StudentSpec(
     key="good_moral",
@@ -547,7 +547,7 @@ ACTION_READY_ROWS = (
         "ordinary",
         Lifecycle.CURRENT,
         "New referral awaiting a Call Slip",
-        "Referral recorded by gss_a; no action yet: issue a Call Slip from it.",
+        "Referral recorded by goa_a; no action yet: issue a Call Slip from it.",
     ),
     (
         "Abigail",
@@ -559,7 +559,7 @@ ACTION_READY_ROWS = (
         "ordinary",
         Lifecycle.CURRENT,
         "New referral awaiting a Call Slip",
-        "Referral recorded by counselor_b; no action yet: gss_b issues a Call Slip.",
+        "Referral recorded by counselor_b; no action yet: goa_b issues a Call Slip.",
     ),
     (
         "Benedict",

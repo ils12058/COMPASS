@@ -16,7 +16,7 @@ test("Faculty navigation requires independent current availability as well as na
   const readOnly = { ...approved, can_confirm_student: false, can_submit_referral: false };
   assert.deepEqual(portalWorkspaceGroups(faculty, readOnly)[0].links.map(x => x.label), ["My Referrals"]);
   assert.equal(facultySubmissionAvailable(readOnly), false);
-  for (const role of ["STUDENT", "COUNSELOR", "IT_ADMIN", "GUIDANCE_SERVICES_STAFF", "INSTITUTIONAL_OFFICER"]) {
+  for (const role of ["STUDENT", "COUNSELOR", "IT_ADMIN", "GUIDANCE_OFFICE_ASSISTANT", "INSTITUTIONAL_OFFICER"]) {
     assert.deepEqual(facultyReferralAccess({ ...faculty, role }), { read: false, submit: false, message: false });
   }
   assert.deepEqual(facultyReferralAccess({ ...faculty, capabilities: ["referrals.submit_self"] }), { read: false, submit: false, message: false });

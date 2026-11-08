@@ -27,7 +27,7 @@ function render(element, user) {
   const html = renderToStaticMarkup(withNextRouter(h(QueryClientProvider, { client }, h(PortalSessionProvider, { value: { user } }, element))));
   client.clear(); return html;
 }
-for (const role of ['COUNSELOR', 'GUIDANCE_SERVICES_STAFF']) test(`${role} initiation access and queue entry point`, () => {
+for (const role of ['COUNSELOR', 'GUIDANCE_OFFICE_ASSISTANT']) test(`${role} initiation access and queue entry point`, () => {
   const user = account(role);
   assert.equal(getGoodMoralAccess(user).canInitiate, true);
   assert.match(render(h(GoodMoralWorkspacePage, { filters }), user), /\/portal\/good-moral\/start/);

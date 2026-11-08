@@ -48,10 +48,10 @@ async function readable(page) {
   assert.equal((await received).suggestedFilename(), "synthetic-call-slip.pdf");
 }
 
-for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT"]) {
+for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT"]) {
   for (const state of ["ACTIVE", "COMPLETED", "VOIDED"]) {
     const fixture = world(role, [role === "STUDENT" ? "call_slips.view_self" : "call_slips.view"], state);
-    await check(`${role} view-only ${state} keeps details and PDF`, path, { handler: fixture.handler, mobile: role === "GUIDANCE_SERVICES_STAFF" }, async (page, { requests }) => {
+    await check(`${role} view-only ${state} keeps details and PDF`, path, { handler: fixture.handler, mobile: role === "GUIDANCE_OFFICE_ASSISTANT" }, async (page, { requests }) => {
       await readable(page); await noManagement(page); await noHorizontalOverflow(page);
       assert.equal(fixture.mutations.length, 0);
       const expected = role === "STUDENT" ? `/api/v1/call-slips/me/${slip.id}/pdf` : `/api/v1/call-slips/${slip.id}/pdf`;
@@ -61,7 +61,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT"]) {
     });
   }
 }
-for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]) {
+for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
   for (const state of ["COMPLETED", "VOIDED"]) {
     const fixture = world(role, ["call_slips.view", "call_slips.manage"], state);
     await check(`${role} manager cannot transition ${state}`, path, { handler: fixture.handler }, async (page) => {
@@ -101,7 +101,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]) {
     }
   }
 }
-for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT"]) {
+for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT"]) {
   const fixture = world(role, ["call_slips.manage", "unrelated.view"]);
   await check(`${role} direct URL without viewing capability makes no detail request`, path, { handler: fixture.handler }, async (page) => {
     await shown(page.getByRole("heading", { name: "Call Slips unavailable", exact: true }));

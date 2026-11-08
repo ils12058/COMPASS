@@ -266,12 +266,12 @@ def _validate_provider_for_new_configuration(provider: User) -> None:
 
 
 def _directory_provider_queryset():
-    legacy_gss = Q(role__code="GUIDANCE_SERVICES_STAFF") & (
+    legacy_goa = Q(role__code="GUIDANCE_OFFICE_ASSISTANT") & (
         Q(availability_windows__isnull=False) | Q(unavailability_exceptions__isnull=False)
     )
     return (
         User.objects.select_related("role")
-        .filter(Q(role__code="COUNSELOR") | legacy_gss)
+        .filter(Q(role__code="COUNSELOR") | legacy_goa)
         .distinct()
         .order_by("last_name", "first_name", "id")
     )

@@ -350,9 +350,9 @@ for (const status of ['REQUESTED', 'READY_FOR_ISSUANCE', 'CANCELLED']) {
   });
 }
 {
-  const account = { ...counselor, role: 'GUIDANCE_SERVICES_STAFF', capabilities: ['good_moral.view', 'good_moral.prepare'] };
+  const account = { ...counselor, role: 'GUIDANCE_OFFICE_ASSISTANT', capabilities: ['good_moral.view', 'good_moral.prepare'] };
   const data = fixture({ status: 'ISSUED', account });
-  await check('existing-authorized-gss-can-reprint-without-issue-authority', route, { ...data.options, initScripts: [fakePreview] }, async page => {
+  await check('existing-authorized-goa-can-reprint-without-issue-authority', route, { ...data.options, initScripts: [fakePreview] }, async page => {
     await prepared(page);
     await hidden(page.getByRole('button', { name: 'Issue certificate', exact: true }));
     await setFramePrint(page, 'direct');

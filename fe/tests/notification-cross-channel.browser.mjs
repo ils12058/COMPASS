@@ -126,7 +126,7 @@ for (const family of families) {
   });
 }
 
-for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]) {
+for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
   const denied = role !== "COUNSELOR";
   const f = world({ role, deny: denied });
   await check(`${role} Notification opens only backend-permitted Appointment`, center, f.options, async page => {

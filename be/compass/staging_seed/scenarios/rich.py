@@ -48,7 +48,7 @@ from ..content import narratives
 from ..history import seed_annual_inventory, seed_exit_interview
 from ..identities import StudentSpec
 from ..organization import program_for
-from ..staff import COUNSELOR_A, COUNSELOR_B, FORMER_STAFF, GSS_A, HEAD_GUIDANCE
+from ..staff import COUNSELOR_A, COUNSELOR_B, FORMER_STAFF, GOA_A, HEAD_GUIDANCE
 from ..students import (
     ACTIVE_REFERRAL,
     ALUMNI,
@@ -145,7 +145,7 @@ def academic_adjustment(session: SeedSession) -> None:
 
     # A Call Slip requested by the class adviser was withdrawn once staff saw the booking.
     slip = create_call_slip(
-        actor=session.user(GSS_A.key),
+        actor=session.user(GOA_A.key),
         student_id=session.users[SECOND_YEAR.key].pk,
         course_year="BS Psychology 2-B",
         destination_type="GUIDANCE_OFFICE",
@@ -155,14 +155,14 @@ def academic_adjustment(session: SeedSession) -> None:
         notify_student=False,
         idempotency_key=idempotency_key("call-slip", SECOND_YEAR.key, "adviser-request"),
         request_fingerprint=request_fingerprint(record="call-slip", student=SECOND_YEAR.key),
-        context=session.as_user(GSS_A.key),
+        context=session.as_user(GOA_A.key),
     )
     void_at = t.past(11, 14, 40)
     void_call_slip(
-        actor=session.user(GSS_A.key),
+        actor=session.user(GOA_A.key),
         call_slip_id=slip.pk,
         reason=narratives.VOIDED_CALL_SLIP_REASON,
-        context=session.as_user(GSS_A.key),
+        context=session.as_user(GOA_A.key),
         now=void_at,
     )
     align_timestamps(slip, created_at=t.past(11, 10, 15), updated_at=void_at)
@@ -444,7 +444,7 @@ def active_referral(session: SeedSession) -> None:
     seed_annual_inventory(session, ACTIVE_REFERRAL, CURRENT_ACADEMIC_YEAR)
     referral = wf.referral(
         session,
-        GSS_A.key,
+        GOA_A.key,
         ACTIVE_REFERRAL,
         narratives.ACTIVE_REFERRAL,
         record_key="class-adviser",
@@ -454,7 +454,7 @@ def active_referral(session: SeedSession) -> None:
     )
     wf.call_slip_for_referral(
         session,
-        GSS_A.key,
+        GOA_A.key,
         ACTIVE_REFERRAL,
         referral,
         record_key="class-adviser",

@@ -490,7 +490,7 @@ def test_student_academics_capabilities_resolve_and_dependency_holds():
 
     for role_code in (
         "COUNSELOR",
-        "GUIDANCE_SERVICES_STAFF",
+        "GUIDANCE_OFFICE_ASSISTANT",
         "FACULTY",
         "INSTITUTIONAL_OFFICER",
     ):

@@ -108,7 +108,7 @@ def test_structural_reads_are_available_without_organization_management():
     campus = Campus.objects.create(code="READ", name="Read Campus")
     college = College.objects.create(campus=campus, code="READ", name="Read College")
     program = Program.objects.create(college=college, code="READ", name="Read Program")
-    for role_code in ("STUDENT", "GUIDANCE_SERVICES_STAFF", "COUNSELOR", "IT_ADMIN"):
+    for role_code in ("STUDENT", "GUIDANCE_OFFICE_ASSISTANT", "COUNSELOR", "IT_ADMIN"):
         actor = make_user(f"read-{role_code.lower()}@example.edu", role_code)
         client = auth_client(actor)
         for collection, record_id in (
@@ -118,7 +118,7 @@ def test_structural_reads_are_available_without_organization_management():
         ):
             assert client.get(f"/api/v1/organization/{collection}").status_code == 200
             assert client.get(f"/api/v1/organization/{collection}/{record_id}").status_code == 200
-        if role_code in {"STUDENT", "GUIDANCE_SERVICES_STAFF", "COUNSELOR"}:
+        if role_code in {"STUDENT", "GUIDANCE_OFFICE_ASSISTANT", "COUNSELOR"}:
             assert not actor.has_capability("organization.manage")
             for path in (
                 "counselor-responsibilities",
@@ -177,13 +177,13 @@ def test_program_read_exposes_exact_academic_classification_and_pending_policy()
 
 
 @pytest.mark.django_db
-def test_effective_scope_head_and_gss_inheritance_are_dynamic_not_capability_inheritance():
+def test_effective_scope_head_and_goa_inheritance_are_dynamic_not_capability_inheritance():
     sync_policy()
     campus = Campus.objects.create(code="MAIN", name="Main")
     college_a = College.objects.create(campus=campus, code="A", name="A")
     college_b = College.objects.create(campus=campus, code="B", name="B")
     counselor = make_user("c@example.edu", "COUNSELOR")
-    staff = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
 
     set_counselor_responsibility(
         college_id=college_a.pk,
@@ -242,9 +242,9 @@ def test_operational_scope_is_canonical_and_fail_closed():
     )
     counselor = make_user("auth-scope-counselor@example.edu", "COUNSELOR")
     head = make_user("auth-scope-head@example.edu", "COUNSELOR")
-    staff = make_user("auth-scope-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
-    head_staff = make_user("auth-scope-head-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
-    unsupervised = make_user("auth-scope-unsupervised@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("auth-scope-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    head_staff = make_user("auth-scope-head-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    unsupervised = make_user("auth-scope-unsupervised@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     inactive_supervisor = make_user(
         "auth-scope-inactive-supervisor@example.edu",
         "COUNSELOR",
@@ -252,7 +252,7 @@ def test_operational_scope_is_canonical_and_fail_closed():
     )
     inactive_staff = make_user(
         "auth-scope-inactive-staff@example.edu",
-        "GUIDANCE_SERVICES_STAFF",
+        "GUIDANCE_OFFICE_ASSISTANT",
     )
     unsupported = make_user("auth-scope-admin@example.edu", "IT_ADMIN")
 
@@ -304,8 +304,8 @@ def test_general_guidance_college_scope_separates_head_visibility_from_handled_w
     carlo = make_user("scope-carlo@example.edu", "COUNSELOR")
     other = make_user("scope-other@example.edu", "COUNSELOR")
     head = make_user("scope-head@example.edu", "COUNSELOR")
-    gss = make_user("scope-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
-    head_gss = make_user("scope-head-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("scope-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    head_goa = make_user("scope-head-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("scope-admin@example.edu", "IT_ADMIN")
     designation = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     head.designations.add(designation)
@@ -313,39 +313,39 @@ def test_general_guidance_college_scope_separates_head_visibility_from_handled_w
     CounselorResponsibility.objects.create(college=assigned_b, counselor=other)
     CounselorResponsibility.objects.create(college=inactive_college, counselor=carlo)
     CounselorResponsibility.objects.create(college=inactive_campus_college, counselor=carlo)
-    StaffSupervision.objects.create(staff=gss, supervisor=carlo)
-    StaffSupervision.objects.create(staff=head_gss, supervisor=head)
+    StaffSupervision.objects.create(staff=goa, supervisor=carlo)
+    StaffSupervision.objects.create(staff=head_goa, supervisor=head)
 
     def visible(actor):
         return set(resolve_general_guidance_college_scope(actor).college_ids)
 
     eligible = {assigned_a.pk, assigned_b.pk, unassigned.pk}
-    assert visible(head) == visible(head_gss) == eligible
-    assert visible(carlo) == visible(gss) == {assigned_a.pk}
+    assert visible(head) == visible(head_goa) == eligible
+    assert visible(carlo) == visible(goa) == {assigned_a.pk}
     assert visible(other) == {assigned_b.pk}
     assert visible(admin) == set()
-    assert not head_gss.designations.filter(pk=designation.pk).exists()
+    assert not head_goa.designations.filter(pk=designation.pk).exists()
     # Handled assignment/fallback is intentionally a different contract.
     assert set(resolve_operational_responsibility_scope(head).college_ids) == {unassigned.pk}
-    assert set(resolve_operational_responsibility_scope(head_gss).college_ids) == {unassigned.pk}
+    assert set(resolve_operational_responsibility_scope(head_goa).college_ids) == {unassigned.pk}
     # Each Head sees every eligible College, but multiple Heads invalidate
     # the unique-Head handled fallback instead of selecting one arbitrarily.
     other.designations.add(designation)
-    assert visible(head) == visible(other) == visible(head_gss) == eligible
+    assert visible(head) == visible(other) == visible(head_goa) == eligible
     assert resolve_operational_responsibility_scope(head).college_ids == ()
-    assert resolve_operational_responsibility_scope(head_gss).college_ids == ()
+    assert resolve_operational_responsibility_scope(head_goa).college_ids == ()
 
 
 @pytest.mark.django_db
-def test_general_guidance_gss_scope_rechecks_current_supervision_designation_and_identity():
+def test_general_guidance_goa_scope_rechecks_current_supervision_designation_and_identity():
     sync_policy()
     campus = Campus.objects.create(code="DYNAMIC", name="Current Campus")
     college_a = College.objects.create(campus=campus, code="A", name="College A")
     college_b = College.objects.create(campus=campus, code="B", name="College B")
     carlo = make_user("dynamic-carlo@example.edu", "COUNSELOR")
     head = make_user("dynamic-head@example.edu", "COUNSELOR")
-    staff = make_user("dynamic-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
-    unsupervised = make_user("dynamic-unsupervised@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("dynamic-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    unsupervised = make_user("dynamic-unsupervised@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     head.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
     CounselorResponsibility.objects.create(college=college_a, counselor=carlo)
     StaffSupervision.objects.create(staff=staff, supervisor=carlo)
@@ -447,7 +447,7 @@ def test_disabled_supervisor_keeps_relationship_but_staff_operational_scope_is_e
     campus = Campus.objects.create(code="M", name="Main")
     college = College.objects.create(campus=campus, code="C", name="College")
     counselor = make_user("c@example.edu", "COUNSELOR")
-    staff = make_user("staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     CounselorResponsibility.objects.create(college=college, counselor=counselor)
     StaffSupervision.objects.create(staff=staff, supervisor=counselor)
 
@@ -682,7 +682,7 @@ def test_dpo_institutional_officer_is_never_head_guidance_fallback():
 
 
 @pytest.mark.django_db
-def test_head_workload_matches_routing_and_gss_inherits_only_handled_colleges():
+def test_head_workload_matches_routing_and_goa_inherits_only_handled_colleges():
     sync_policy()
     campus = Campus.objects.create(code="WORK", name="Workload")
     colleges = {
@@ -692,7 +692,7 @@ def test_head_workload_matches_routing_and_gss_inherits_only_handled_colleges():
     other = make_user("work-other@example.edu", "COUNSELOR")
     inactive = make_user("work-inactive@example.edu", "COUNSELOR", active=False)
     unsupported = make_user("work-admin@example.edu", "IT_ADMIN")
-    staff = make_user("work-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("work-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     UserDesignation.objects.create(
         user=head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     )
@@ -763,12 +763,12 @@ def test_ambiguous_or_inactive_heads_never_receive_implicit_fallback_workload():
     student = make_user("multi-student@example.edu", "STUDENT")
     StudentAcademicProfile.objects.create(student=student, current_college=fallback)
     heads = [make_user(f"multi-h{i}@example.edu", "COUNSELOR") for i in range(2)]
-    staff = [make_user(f"multi-g{i}@example.edu", "GUIDANCE_SERVICES_STAFF") for i in range(2)]
-    for head, gss in zip(heads, staff, strict=True):
+    staff = [make_user(f"multi-g{i}@example.edu", "GUIDANCE_OFFICE_ASSISTANT") for i in range(2)]
+    for head, goa in zip(heads, staff, strict=True):
         UserDesignation.objects.create(
             user=head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
         )
-        StaffSupervision.objects.create(staff=gss, supervisor=head)
+        StaffSupervision.objects.create(staff=goa, supervisor=head)
     CounselorResponsibility.objects.create(college=explicit, counselor=heads[0])
     assert resolve_default_counselor_for_student(student).reason == "AMBIGUOUS_HEAD_CONFIGURATION"
     for index in range(2):

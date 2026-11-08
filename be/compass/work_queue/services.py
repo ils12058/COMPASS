@@ -69,7 +69,7 @@ def list_work(*, actor, page=1, page_size=20):
         .filter(pk=getattr(actor, "pk", None), is_active=True)
         .first()
     )
-    if actor is None or actor.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}:
+    if actor is None or actor.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}:
         raise WorkQueueAccessDenied("An active Guidance staff account is required.")
     if not 1 <= page <= MAX_PAGE or not 1 <= page_size <= MAX_PAGE_SIZE:
         raise ValueError("Work Queue pagination is outside its supported bounds.")

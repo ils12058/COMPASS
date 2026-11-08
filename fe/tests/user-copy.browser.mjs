@@ -222,8 +222,8 @@ for (const width of [320, 1440]) {
         assert.equal(requests.filter(r => r.method !== 'GET' && r.pathname.startsWith('/api/v1/graduate-tracer')).length, 0);
         await safe(page);
     });
-    // A Guidance Services Staff account with reviewer authority is labeled by that action, not its role.
-    const reviewerStaff = { ...user('GUIDANCE_SERVICES_STAFF'), capabilities: ['exit_interviews.view', 'exit_interviews.manage_opportunities'] };
+    // A Guidance Office Assistant account with reviewer authority is labeled by that action, not its role.
+    const reviewerStaff = { ...user('GUIDANCE_OFFICE_ASSISTANT'), capabilities: ['exit_interviews.view', 'exit_interviews.manage_opportunities'] };
     await check(`exit-reviewer-staff-navigation-${width}`, '/portal/exit-interviews', { viewport, overrides: { ...worlds, '/api/v1/auth/session': session(reviewerStaff) } }, async (page) => {
         if (width < 1024) await page.getByRole('button', { name: 'Open portal navigation' }).click();
         const nav = page.getByRole('navigation', { name: 'Portal navigation' });

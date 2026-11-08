@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { homeWorld } from "./support/ux15-home-fixtures.mjs";
 import { counselorWorld } from "./support/ux15-counselor-home-fixtures.mjs";
-import { gssWorld } from "./support/ux15-gss-home-fixtures.mjs";
+import { goaWorld } from "./support/ux15-goa-home-fixtures.mjs";
 
 const h = await createBrowserHarness("simplify-2a-home");
 const phase = process.env.COMPASS_HOME_PHASE === "before" ? "before" : "after";
@@ -17,7 +17,7 @@ const cases = [
     "availability.manage", "services.manage", "services.catalog.view", "guidance_messages.view",
     "routine_interviews.view_assigned", "counseling.view_assigned", "guidance_followups.view",
   ] }), "head-guidance-oversight-heading"],
-  ["gss", () => gssWorld(), "gss-work-heading"],
+  ["goa", () => goaWorld(), "goa-work-heading"],
   ["it", () => homeWorld({ role: "IT_ADMIN" }), "overview-summary-heading"],
 ];
 const geometry = [];
@@ -29,12 +29,12 @@ for (const [role, makeState, heading] of cases) {
       await h.shown(page.getByText("Guidance Office schedule for October", { exact: true }));
       if (role === "student") await h.shown(page.getByRole("link", { name: "Book appointment", exact: true }));
       if (role === "head") await h.shown(page.locator('section[aria-labelledby="head-guidance-oversight-heading"]').getByRole("link", { name: /Reports/ }));
-      if (role === "gss") await h.shown(page.locator("#gss-operations-heading"));
+      if (role === "goa") await h.shown(page.locator("#goa-operations-heading"));
       if (role === "it") await h.shown(page.getByText("2 failed", { exact: true }));
       await page.evaluate(() => document.fonts.ready);
       await h.noHorizontalOverflow(page);
       if (phase === "after") {
-        const primary = role === "student" || role === "it" ? "overview-attention-heading" : role === "gss" ? "gss-work-heading" : "counselor-work-heading";
+        const primary = role === "student" || role === "it" ? "overview-attention-heading" : role === "goa" ? "goa-work-heading" : "counselor-work-heading";
         assert.equal(await page.locator("main h2").first().getAttribute("id"), primary, "Primary work comes first in reading order");
         const links = page.locator(`section[aria-labelledby="${primary}"] a`);
         for (const link of await links.all()) {

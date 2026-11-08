@@ -79,7 +79,7 @@ ANNOUNCEMENTS = (
     ),
     AnnouncementSpec(
         key="midterm_schedule",
-        author="gss_a",
+        author="goa_a",
         title="Office schedule during the midterm examination week",
         body_markdown=(
             "During the midterm examination week, the Guidance and Counseling Office will "
@@ -106,7 +106,7 @@ ANNOUNCEMENTS = (
     ),
     AnnouncementSpec(
         key="career_seminar_draft",
-        author="gss_a",
+        author="goa_a",
         title="Career planning seminar for graduating students",
         body_markdown=(
             "The Guidance and Counseling Office will hold a half-day career planning seminar for "
@@ -211,7 +211,7 @@ RESOURCES = (
     ),
     ResourceSpec(
         key="career_checklist_draft",
-        author="gss_a",
+        author="goa_a",
         title="Career Readiness Checklist for Graduating Students",
         body_markdown=(
             "- Update your résumé and ask a faculty member to review it.\n"

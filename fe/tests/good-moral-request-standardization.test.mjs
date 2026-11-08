@@ -35,7 +35,7 @@ const graduateStudent = {
 
 const staffUser = {
   id: "staff-1",
-  role: "GUIDANCE_SERVICES_STAFF",
+  role: "GUIDANCE_OFFICE_ASSISTANT",
   first_name: "Guidance",
   last_name: "Staff",
   email: "staff@example.edu",

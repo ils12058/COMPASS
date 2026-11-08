@@ -78,11 +78,11 @@ test("Institutional Form Help distinguishes Current, software support and approv
   assert.match(html, /CNSC\/GTA/);
 });
 
-test("Responsibilities Help includes safe fallback, confidential access and GSS inheritance", () => {
+test("Responsibilities Help includes safe fallback, confidential access and GOA inheritance", () => {
   const html = help(responsibilitiesHelpSections);
   assert.match(html, /exactly one active Head Guidance Counselor/);
   assert.match(html, /does not automatically grant blanket access/);
-  assert.match(html, /Guidance Services Staff handle/);
+  assert.match(html, /Guidance Office Assistant handle/);
   assert.match(html, /unique active Head when no valid Counselor is assigned/);
   assert.match(html, /Staff do not inherit Head oversight authority/);
 });

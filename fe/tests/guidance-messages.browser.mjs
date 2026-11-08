@@ -99,7 +99,7 @@ function messagesWorld(backend, account) {
 
 // ── Navigation and access ─────────────────────────────────────────────────────────────────────
 
-for (const [role, label] of [["STUDENT", "Student with view_self"], ["GUIDANCE_SERVICES_STAFF", "Guidance staff with view"]]) {
+for (const [role, label] of [["STUDENT", "Student with view_self"], ["GUIDANCE_OFFICE_ASSISTANT", "Guidance staff with view"]]) {
   const world = messagesWorld(role === "STUDENT" ? studentWorld() : staffWorld(), messagesAccount(role));
   await check(`${label} sees the Messages destination`, "/portal", world.options(), async (page) => {
     await shown(page.getByRole("link", { name: "Messages", exact: true }).first());
@@ -209,7 +209,7 @@ for (const [label, account] of [
   const backend = createMessagesBackend({ viewerId: COUNSELOR.id });
   backend.addThread({ id: threadIds.office });
   backend.addMessage(threadIds.office, STUDENT, "Please reply when you can.");
-  const world = messagesWorld(backend, messagesAccount("GUIDANCE_SERVICES_STAFF", { capabilities: ["guidance_messages.view"] }));
+  const world = messagesWorld(backend, messagesAccount("GUIDANCE_OFFICE_ASSISTANT", { capabilities: ["guidance_messages.view"] }));
   await check("view-only staff can read but not write, start, or mark read", threadPath(threadIds.office), world.options(), async (page) => {
     await shown(page.getByText("Please reply when you can."));
     await shown(page.getByText("You can read this conversation, but your account cannot send messages."));

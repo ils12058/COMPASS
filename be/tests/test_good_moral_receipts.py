@@ -894,7 +894,7 @@ def test_active_draft_does_not_inspect_and_missing_policy_blocks_preparation(wor
 
     actor, item = world
     activate()
-    staff = person("clerical", "GUIDANCE_SERVICES_STAFF")
+    staff = person("clerical", "GUIDANCE_OFFICE_ASSISTANT")
     edit(item, staff, {"official_receipt_amount": Decimal("0")})
     assert not Identity.objects.exists()
     with pytest.raises(ReceiptBlocked):

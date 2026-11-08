@@ -76,7 +76,7 @@ def test_fifteen_events_join_email_http_read_and_push(request, settings, event, 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "actor_kind",
-    ["student", "assigned", "former", "head", "gss", "it", "unrelated", "inactive", "revoked"],
+    ["student", "assigned", "former", "head", "goa", "it", "unrelated", "inactive", "revoked"],
 )
 def test_actual_appointment_endpoint_rechecks_roles_despite_notification_ownership(
     request, settings, actor_kind
@@ -84,7 +84,7 @@ def test_actual_appointment_endpoint_rechecks_roles_despite_notification_ownersh
     settings.COMPASS_EMAIL_DISCLOSURE_POLICY = "operational_v1"
     appointment_case = request.getfixturevalue("case")
     student, provider, previous, appointment = appointment_case
-    role = {"gss": "GUIDANCE_SERVICES_STAFF", "it": "IT_ADMIN"}.get(actor_kind, "COUNSELOR")
+    role = {"goa": "GUIDANCE_OFFICE_ASSISTANT", "it": "IT_ADMIN"}.get(actor_kind, "COUNSELOR")
     actors = {"student": student, "assigned": provider, "former": previous}
     actor = actors.get(actor_kind) or make_user(f"cross-{actor_kind}@example.test", role)
     if actor_kind == "head":

@@ -63,7 +63,7 @@ class ApprovedAdministrativePolicy:
         references = (self.version, self.evidence_reference, self.contract_evidence_reference)
         scopes = (self.actor_ids, self.student_college_ids)
         permitted_roles = (
-            {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+            {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
             if kind in {"ACKNOWLEDGMENT", "CLOSURE"}
             else {"FACULTY"}
         )

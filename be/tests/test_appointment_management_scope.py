@@ -144,13 +144,13 @@ def appointment(*, reference: str, student: User, provider: User, service):
 
 
 @pytest.mark.django_db
-def test_gss_default_capability_and_scope_list_get_filters_and_cancel():
+def test_goa_default_capability_and_scope_list_get_filters_and_cancel():
     sync_policy()
     admin = make_user("scope-admin@example.edu", "IT_ADMIN")
     supervisor = make_user("scope-supervisor@example.edu", "COUNSELOR")
     other_counselor = make_user("scope-other-counselor@example.edu", "COUNSELOR")
     provider = make_user("scope-provider@example.edu", "COUNSELOR")
-    gss = make_user("scope-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("scope-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     in_student = make_user("scope-in-student@example.edu", "STUDENT")
     out_student = make_user("scope-out-student@example.edu", "STUDENT")
     in_college = make_college("IN")
@@ -159,7 +159,7 @@ def test_gss_default_capability_and_scope_list_get_filters_and_cancel():
     affiliate(out_student, out_college)
     CounselorResponsibility.objects.create(college=in_college, counselor=supervisor)
     CounselorResponsibility.objects.create(college=out_college, counselor=other_counselor)
-    StaffSupervision.objects.create(staff=gss, supervisor=supervisor)
+    StaffSupervision.objects.create(staff=goa, supervisor=supervisor)
     service = make_service(admin)
     inside = appointment(
         reference="APT-2099-100001",
@@ -174,12 +174,12 @@ def test_gss_default_capability_and_scope_list_get_filters_and_cancel():
         service=service,
     )
 
-    assert gss.has_capability("appointments.manage")
-    assert not gss.has_capability("counseling.view_assigned")
-    assert not gss.has_capability("counseling.manage_assigned")
-    assert not gss.has_capability("ecounseling.view_assigned")
+    assert goa.has_capability("appointments.manage")
+    assert not goa.has_capability("counseling.view_assigned")
+    assert not goa.has_capability("counseling.manage_assigned")
+    assert not goa.has_capability("ecounseling.view_assigned")
 
-    client = auth_client(gss, recent_mfa=True)
+    client = auth_client(goa, recent_mfa=True)
     listed = client.get("/api/v1/appointments")
     assert listed.status_code == 200
     assert [row["id"] for row in listed.json()["items"]] == [str(inside.pk)]
@@ -215,7 +215,7 @@ def test_gss_default_capability_and_scope_list_get_filters_and_cancel():
 
 
 @pytest.mark.django_db
-def test_gss_scope_fails_closed_for_broken_or_inactive_supervision_chain():
+def test_goa_scope_fails_closed_for_broken_or_inactive_supervision_chain():
     sync_policy()
     admin = make_user("failclosed-admin@example.edu", "IT_ADMIN")
     provider = make_user("failclosed-provider@example.edu", "COUNSELOR")
@@ -230,7 +230,7 @@ def test_gss_scope_fails_closed_for_broken_or_inactive_supervision_chain():
         service=service,
     )
 
-    no_supervision = make_user("gss-none@example.edu", "GUIDANCE_SERVICES_STAFF")
+    no_supervision = make_user("goa-none@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     assert list_managed_appointments(actor=no_supervision).items == ()
 
     inactive_supervisor = make_user(
@@ -238,19 +238,19 @@ def test_gss_scope_fails_closed_for_broken_or_inactive_supervision_chain():
         "COUNSELOR",
         active=False,
     )
-    gss_inactive = make_user("gss-inactive@example.edu", "GUIDANCE_SERVICES_STAFF")
-    StaffSupervision.objects.create(staff=gss_inactive, supervisor=inactive_supervisor)
-    assert list_managed_appointments(actor=gss_inactive).items == ()
+    goa_inactive = make_user("goa-inactive@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    StaffSupervision.objects.create(staff=goa_inactive, supervisor=inactive_supervisor)
+    assert list_managed_appointments(actor=goa_inactive).items == ()
 
     no_responsibility = make_user("no-responsibility@example.edu", "COUNSELOR")
-    gss_no_responsibility = make_user(
-        "gss-no-responsibility@example.edu", "GUIDANCE_SERVICES_STAFF"
+    goa_no_responsibility = make_user(
+        "goa-no-responsibility@example.edu", "GUIDANCE_OFFICE_ASSISTANT"
     )
     StaffSupervision.objects.create(
-        staff=gss_no_responsibility,
+        staff=goa_no_responsibility,
         supervisor=no_responsibility,
     )
-    assert list_managed_appointments(actor=gss_no_responsibility).items == ()
+    assert list_managed_appointments(actor=goa_no_responsibility).items == ()
 
     inactive_college = make_college("INACTIVE-COLLEGE", college_active=False)
     inactive_college_student = make_user("inactive-college-student@example.edu", "STUDENT")
@@ -260,9 +260,11 @@ def test_gss_scope_fails_closed_for_broken_or_inactive_supervision_chain():
         college=inactive_college,
         counselor=inactive_college_supervisor,
     )
-    gss_inactive_college = make_user("gss-inactive-college@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa_inactive_college = make_user(
+        "goa-inactive-college@example.edu", "GUIDANCE_OFFICE_ASSISTANT"
+    )
     StaffSupervision.objects.create(
-        staff=gss_inactive_college,
+        staff=goa_inactive_college,
         supervisor=inactive_college_supervisor,
     )
     appointment(
@@ -271,7 +273,7 @@ def test_gss_scope_fails_closed_for_broken_or_inactive_supervision_chain():
         provider=provider,
         service=service,
     )
-    assert list_managed_appointments(actor=gss_inactive_college).items == ()
+    assert list_managed_appointments(actor=goa_inactive_college).items == ()
 
     inactive_campus_college = make_college("INACTIVE-CAMPUS", campus_active=False)
     inactive_campus_student = make_user("inactive-campus-student@example.edu", "STUDENT")
@@ -281,9 +283,9 @@ def test_gss_scope_fails_closed_for_broken_or_inactive_supervision_chain():
         college=inactive_campus_college,
         counselor=inactive_campus_supervisor,
     )
-    gss_inactive_campus = make_user("gss-inactive-campus@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa_inactive_campus = make_user("goa-inactive-campus@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     StaffSupervision.objects.create(
-        staff=gss_inactive_campus,
+        staff=goa_inactive_campus,
         supervisor=inactive_campus_supervisor,
     )
     appointment(
@@ -292,11 +294,11 @@ def test_gss_scope_fails_closed_for_broken_or_inactive_supervision_chain():
         provider=provider,
         service=service,
     )
-    assert list_managed_appointments(actor=gss_inactive_campus).items == ()
+    assert list_managed_appointments(actor=goa_inactive_campus).items == ()
 
 
 @pytest.mark.django_db
-def test_head_provider_only_and_gss_under_head_still_use_handled_non_counseling_workload():
+def test_head_provider_only_and_goa_under_head_still_use_handled_non_counseling_workload():
     sync_policy()
     admin = make_user("headscope-admin@example.edu", "IT_ADMIN")
     provider = make_user("headscope-provider@example.edu", "COUNSELOR")
@@ -305,8 +307,8 @@ def test_head_provider_only_and_gss_under_head_still_use_handled_non_counseling_
         user=head,
         designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
     )
-    gss = make_user("headscope-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
-    StaffSupervision.objects.create(staff=gss, supervisor=head)
+    goa = make_user("headscope-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    StaffSupervision.objects.create(staff=goa, supervisor=head)
 
     assigned_college = make_college("HEAD-ASSIGNED")
     other_college = make_college("HEAD-OTHER")
@@ -331,12 +333,12 @@ def test_head_provider_only_and_gss_under_head_still_use_handled_non_counseling_
     )
 
     # General Guidance College visibility does not grant Appointment ownership.
-    assert set(resolve_general_guidance_college_scope(gss).college_ids) == {
+    assert set(resolve_general_guidance_college_scope(goa).college_ids) == {
         assigned_college.pk,
         other_college.pk,
     }
     assert list_managed_appointments(actor=head).items == ()
-    assert {row.pk for row in list_managed_appointments(actor=gss).items} == {inside.pk}
+    assert {row.pk for row in list_managed_appointments(actor=goa).items} == {inside.pk}
     assert {row.pk for row in list_managed_appointments(actor=provider).items} == {
         inside.pk,
         outside.pk,
@@ -345,7 +347,7 @@ def test_head_provider_only_and_gss_under_head_still_use_handled_non_counseling_
         with pytest.raises(AppointmentNotFound):
             get_appointment_for_actor(appointment_id=item.pk, actor=head)
     with pytest.raises(AppointmentNotFound):
-        get_appointment_for_actor(appointment_id=outside.pk, actor=gss)
+        get_appointment_for_actor(appointment_id=outside.pk, actor=goa)
 
     # Head provider assignment, even in someone else's College, is sufficient.
     head_student = make_user("headscope-own-student@example.edu", "STUDENT")
@@ -358,7 +360,7 @@ def test_head_provider_only_and_gss_under_head_still_use_handled_non_counseling_
     )
     assert [row.pk for row in list_managed_appointments(actor=head).items] == [mine.pk]
     assert get_appointment_for_actor(appointment_id=mine.pk, actor=head).pk == mine.pk
-    assert not appointment_management_access_allowed(gss, mine)
+    assert not appointment_management_access_allowed(goa, mine)
 
 
 @pytest.mark.django_db
@@ -369,12 +371,12 @@ def test_counseling_appointment_is_relationship_only_across_list_get_filters_and
     counselor_a = make_user("privacy-counselor-a@example.edu", "COUNSELOR")
     counselor_b = make_user("privacy-counselor-b@example.edu", "COUNSELOR")
     head = make_user("privacy-head@example.edu", "COUNSELOR")
-    gss = make_user("privacy-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("privacy-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     UserDesignation.objects.create(
         user=head,
         designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
     )
-    StaffSupervision.objects.create(staff=gss, supervisor=head)
+    StaffSupervision.objects.create(staff=goa, supervisor=head)
 
     cas = make_college("PRIV-CAS")
     ccms = make_college("PRIV-CCMS")
@@ -393,7 +395,7 @@ def test_counseling_appointment_is_relationship_only_across_list_get_filters_and
     provider_client = auth_client(counselor_b, recent_mfa=True)
     counselor_a_client = auth_client(counselor_a, recent_mfa=True)
     head_client = auth_client(head, recent_mfa=True)
-    gss_client = auth_client(gss, recent_mfa=True)
+    goa_client = auth_client(goa, recent_mfa=True)
 
     own = student_client.get("/api/v1/appointments/me")
     assert own.status_code == 200
@@ -405,7 +407,7 @@ def test_counseling_appointment_is_relationship_only_across_list_get_filters_and
     assert [row["id"] for row in provider_list.json()["items"]] == [str(item.pk)]
     assert provider_client.get(f"/api/v1/appointments/{item.pk}").status_code == 200
 
-    for client in (counselor_a_client, head_client, gss_client):
+    for client in (counselor_a_client, head_client, goa_client):
         listed = client.get("/api/v1/appointments")
         assert listed.status_code == 200
         assert listed.json()["items"] == []
@@ -418,7 +420,7 @@ def test_counseling_appointment_is_relationship_only_across_list_get_filters_and
     assert probed.status_code == 200
     assert probed.json()["items"] == []
 
-    for client in (counselor_a_client, head_client, gss_client):
+    for client in (counselor_a_client, head_client, goa_client):
         denied = client.post(
             f"/api/v1/appointments/{item.pk}/cancel",
             data=json.dumps({}),
@@ -597,13 +599,13 @@ def test_counselor_baseline_management_is_limited_to_assigned_colleges():
 
 
 @pytest.mark.django_db
-def test_head_provider_scope_matches_single_resource_lists_filters_counts_and_gss_delegation():
+def test_head_provider_scope_matches_single_resource_lists_filters_counts_and_goa_delegation():
     sync_policy()
     admin = make_user("provider-boundary-admin@example.edu", "IT_ADMIN")
     carlo = make_user("provider-boundary-carlo@example.edu", "COUNSELOR")
     head = make_user("provider-boundary-head@example.edu", "COUNSELOR")
     head.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
-    head_staff = make_user("provider-boundary-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    head_staff = make_user("provider-boundary-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     StaffSupervision.objects.create(staff=head_staff, supervisor=head)
 
     ccms = make_college("BEA-CCMS")

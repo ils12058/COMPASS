@@ -43,7 +43,7 @@ MAX_PAGE_SIZE = 50
 MAX_DESCRIPTION_LENGTH = 2000
 MAX_SELECTED_COUNSELORS = 200
 SERVICE_CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$", re.ASCII)
-# Counselor is the one operational provider class (ADR-050, ADR-089). Guidance Services Staff
+# Counselor is the one operational provider class (ADR-050, ADR-089). Guidance Office Assistant
 # administer Appointments but never provide Services.
 PROVIDER_ROLE_CODE = "COUNSELOR"
 ELIGIBLE_PROVIDER_ROLE_CODES = frozenset({PROVIDER_ROLE_CODE})

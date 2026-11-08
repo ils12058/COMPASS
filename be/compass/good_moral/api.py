@@ -383,7 +383,7 @@ def _require_operational(request, capability: str) -> None:
     user = request.auth_user
     if (
         not user.is_active
-        or user.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        or user.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         or not user.has_capability(capability)
     ):
         raise APIError(403, "permission_denied", "Guidance Good Moral access is required.")
@@ -667,7 +667,7 @@ def _require_degree_options_access(request) -> None:
         return
     if (
         user.is_active
-        and user.role.code in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        and user.role.code in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         and (
             user.has_capability("good_moral.initiate") or user.has_capability("good_moral.prepare")
         )

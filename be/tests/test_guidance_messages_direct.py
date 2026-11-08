@@ -139,15 +139,15 @@ def test_peer_directory_is_bounded_name_only_and_manage_scoped(world):
         assert [item["id"] for item in second_page["items"]] == [str(world.other.pk)]
         assert second_page["has_next"] is False
 
-        for outsider in (world.student, world.gss, view_only):
+        for outsider in (world.student, world.goa, view_only):
             assert auth_client(outsider).get(BASE + "/counselor-peers").status_code == 403
 
     with (
         overrides(world.admin, "GRANT", DIRECT_VIEW, DIRECT_MANAGE),
         overrides(world.dpo, "GRANT", DIRECT_VIEW, DIRECT_MANAGE),
-        overrides(world.gss, "GRANT", DIRECT_VIEW, DIRECT_MANAGE),
+        overrides(world.goa, "GRANT", DIRECT_VIEW, DIRECT_MANAGE),
     ):
-        for outsider in (world.admin, world.dpo, world.gss):
+        for outsider in (world.admin, world.dpo, world.goa):
             assert auth_client(outsider).get(BASE + "/counselor-peers").status_code == 403
 
 
@@ -262,7 +262,7 @@ def test_a_third_counselor_is_concealed_from_thread_and_directory(world):
     with pytest.raises(ThreadNotFound):
         services.set_status(actor=outsider, thread_id=thread.pk, resolved=False)
     with pytest.raises(ThreadNotFound):
-        services.assign_handler(actor=outsider, thread_id=thread.pk, handler_id=world.gss.pk)
+        services.assign_handler(actor=outsider, thread_id=thread.pk, handler_id=world.goa.pk)
     with pytest.raises(ThreadNotFound):
         services.eligible_handlers(actor=outsider, thread_id=thread.pk)
 
@@ -307,7 +307,7 @@ def test_peer_validation_is_concealed_like_a_missing_thread(world):
 
     peers = [
         world.counselor,
-        world.gss,
+        world.goa,
         inactive,
         world.student,
         revoked,
@@ -432,7 +432,7 @@ def test_dto_exposes_only_name_pair_and_nulls_every_legacy_field(world):
 def test_role_gate_precedes_a_granted_narrow_capability(world):
     thread, _ = open_direct(world)
     faculty = faculty_actor()
-    outsiders = [world.gss, world.admin, world.dpo, world.student, faculty]
+    outsiders = [world.goa, world.admin, world.dpo, world.student, faculty]
 
     for outsider in outsiders:
         with overrides(outsider, "GRANT", DIRECT_VIEW, DIRECT_MANAGE):

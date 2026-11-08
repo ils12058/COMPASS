@@ -13,7 +13,7 @@ for (const change of ['role', 'capability', 'student-placement', 'grant-revocati
     await page.getByRole('button', { name: 'Open handoff', exact: true }).click();
     await shown(page.getByText('SYNTHETIC CONFIDENTIAL HANDOFF', { exact: true }));
     const currentUser = state.currentUser;
-    if (change === 'role') state.currentUser = () => ({ ...currentUser(), role: 'GUIDANCE_SERVICES_STAFF' });
+    if (change === 'role') state.currentUser = () => ({ ...currentUser(), role: 'GUIDANCE_OFFICE_ASSISTANT' });
     if (change === 'capability') state.currentUser = () => ({ ...currentUser(), capabilities: currentUser().capabilities.filter(c => !c.startsWith('counseling.continuity') && !c.startsWith('counseling.handoff')) });
     state.denied = true;
     state.deniedStatus = ['role', 'capability'].includes(change) ? 403 : 404;

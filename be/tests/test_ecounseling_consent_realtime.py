@@ -325,7 +325,7 @@ def test_reassignment_during_first_recipient_publication_is_resolved_again(
     assert_participants(world, publications, [student, replacement])
 
 
-@pytest.mark.parametrize("role", ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN"])
+@pytest.mark.parametrize("role", ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN"])
 def test_unrelated_or_designated_staff_never_qualify(world, publications, role):
     other = make_user(f"unrelated-{role}@example.edu", role)
     # Even explicit capabilities cannot override exact appointment ownership/role.

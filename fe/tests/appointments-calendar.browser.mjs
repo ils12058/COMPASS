@@ -202,7 +202,7 @@ if (process.env.COMPASS_CAL1_BASELINE === "1") {
   });
 
   await check("managed-list-calendar-toggle-and-staff-labels", "/portal/appointments/manage?status=ALL", {
-    role: "GUIDANCE_SERVICES_STAFF",
+    role: "GUIDANCE_OFFICE_ASSISTANT",
     timezoneId: "Asia/Manila",
     beforeNavigate: installCalendarClock,
     handler: appointmentHandler(),

@@ -77,7 +77,7 @@ def actors(world):
         capability=Capability.objects.get(code="guidance_messages.manage"),
         defaults={"effect": "GRANT", "reason": "Synthetic probe: grants do not widen a role"},
     )
-    return [world.student, world.counselor, world.gss, world.head, world.admin, world.dpo, faculty]
+    return [world.student, world.counselor, world.goa, world.head, world.admin, world.dpo, faculty]
 
 
 def legacy_authorized_pks(actor):
@@ -194,7 +194,7 @@ def test_legacy_shapes_still_insert_with_all_new_columns_null(world):
     assert GuidanceThread._meta.get_field("student").null is True
     assert all(GuidanceThread._meta.get_field(name).null for name in NEW_COLUMNS)
 
-    for actor in (world.student, world.counselor, world.gss, world.head):
+    for actor in (world.student, world.counselor, world.goa, world.head):
         assert result(current_authorized_pks, actor) == result(legacy_authorized_pks, actor), (
             actor.role.code
         )

@@ -130,7 +130,7 @@ def test_inventory_policy_is_counselor_baseline_only_for_raw_review():
     counselor = make_user("inventory-policy-counselor@example.edu", "COUNSELOR")
     head = make_head("inventory-policy-head@example.edu")
     student = make_user("inventory-policy-student@example.edu", "STUDENT")
-    gss = make_user("inventory-policy-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("inventory-policy-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("inventory-policy-admin@example.edu", "IT_ADMIN")
     officer = make_user("inventory-policy-officer@example.edu", "INSTITUTIONAL_OFFICER")
 
@@ -140,7 +140,7 @@ def test_inventory_policy_is_counselor_baseline_only_for_raw_review():
 
     assert student.has_capability("inventory.view_self")
     assert student.has_capability("inventory.manage_self")
-    for actor in (student, gss, admin, officer):
+    for actor in (student, goa, admin, officer):
         assert not actor.has_capability("inventory.view")
         assert not actor.has_capability("inventory.reopen")
 

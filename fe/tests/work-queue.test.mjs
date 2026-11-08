@@ -24,9 +24,9 @@ function render(items) {
 }
 
 test("Guidance roles get the first daily workspace without a new capability", () => {
-  for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+  for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
     const user = messagesAccount(role, { capabilities: [] });
-    const allowed = ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"].includes(role);
+    const allowed = ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(role);
     assert.equal(hasWorkQueue(user), allowed);
     const links = portalWorkspaceGroups(user).flatMap((group) => group.links);
     assert.equal(links.some((link) => link.href === "/portal/work"), allowed);

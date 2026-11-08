@@ -394,7 +394,7 @@ def count_upcoming_managed_appointments(
     if (
         not getattr(actor, "pk", None)
         or not actor.is_active
-        or actor.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        or actor.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         or not actor.has_capability("appointments.manage")
     ):
         return None

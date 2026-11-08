@@ -156,7 +156,7 @@ def test_student_support_capability_is_counselor_only_by_default_and_head_inheri
     sync_policy()
     counselor = make_user("support-counselor@example.edu", "COUNSELOR")
     head = make_head()
-    staff = make_user("support-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("support-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("support-student@example.edu")
     admin = make_user("support-admin@example.edu", "IT_ADMIN")
     dpo = make_user("support-dpo@example.edu", "INSTITUTIONAL_OFFICER")

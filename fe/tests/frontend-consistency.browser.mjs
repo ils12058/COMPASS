@@ -77,7 +77,7 @@ for (const width of [320, 393, 1440]) {
       if (width === 393) await screenshot(page, `${name}-${width}`);
     });
   }
-  for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]) await check(`operations-${role}-${width}`, "/portal/operations", { viewport, overrides: { "/api/v1/auth/session": session(operationsAccount(role)), "/api/v1/guidance-operations": operationsData(role) } }, async (page) => {
+  for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) await check(`operations-${role}-${width}`, "/portal/operations", { viewport, overrides: { "/api/v1/auth/session": session(operationsAccount(role)), "/api/v1/guidance-operations": operationsData(role) } }, async (page) => {
     await shown(page.getByRole("heading", { level: 1, name: "Guidance Operations" }));
     await shown(page.getByText("Active Call Slips", { exact: true })); await noHorizontalOverflow(page);
   });

@@ -302,7 +302,8 @@ def test_duplicate_ready_webhooks_create_one_artifact_and_broker_failure_is_reco
 
 
 @pytest.mark.parametrize(
-    "role", ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER", "STUDENT"]
+    "role",
+    ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITUTIONAL_OFFICER", "STUDENT"],
 )
 def test_artifact_access_requires_assigned_active_counselor_even_with_explicit_capability(role):
     _, _, appointment, _, _, storage = ready_artifact(pending=False)

@@ -15,7 +15,7 @@ export const roleLabels: Record<RoleCode, string> = {
   [RoleCode.FACULTY]: "Faculty",
   [RoleCode.IT_ADMIN]: "IT Administrator",
   [RoleCode.COUNSELOR]: "Counselor",
-  [RoleCode.GUIDANCE_SERVICES_STAFF]: "Guidance Services Staff",
+  [RoleCode.GUIDANCE_OFFICE_ASSISTANT]: "Guidance Office Assistant",
   [RoleCode.STUDENT]: "Student",
   [RoleCode.INSTITUTIONAL_OFFICER]: "Institutional Officer",
 };
@@ -71,7 +71,7 @@ export function compatibleDesignations(role: RoleCode): DesignationCode[] {
   if (role === RoleCode.COUNSELOR) {
     return [DesignationCode.HEAD_GUIDANCE_COUNSELOR, DesignationCode.GENERAL_GUIDANCE_INTAKE];
   }
-  if (role === RoleCode.GUIDANCE_SERVICES_STAFF) return [DesignationCode.GENERAL_GUIDANCE_INTAKE];
+  if (role === RoleCode.GUIDANCE_OFFICE_ASSISTANT) return [DesignationCode.GENERAL_GUIDANCE_INTAKE];
   if (role === RoleCode.INSTITUTIONAL_OFFICER) return [DesignationCode.DPO];
   return [];
 }

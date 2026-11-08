@@ -76,7 +76,7 @@ def overview():
     supervisor = make_user("ov-supervisor@example.edu", "COUNSELOR")
     provider = make_user("ov-provider@example.edu", "COUNSELOR")
     other_provider = make_user("ov-other-provider@example.edu", "COUNSELOR")
-    gss = make_user("ov-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("ov-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("ov-student@example.edu", "STUDENT")
     outside_student = make_user("ov-outside-student@example.edu", "STUDENT")
     in_college = make_college("OVIN")
@@ -85,7 +85,7 @@ def overview():
     affiliate(outside_student, out_college)
     CounselorResponsibility.objects.create(college=in_college, counselor=supervisor)
     CounselorResponsibility.objects.create(college=out_college, counselor=other_provider)
-    StaffSupervision.objects.create(staff=gss, supervisor=supervisor)
+    StaffSupervision.objects.create(staff=goa, supervisor=supervisor)
     service = make_service(admin)
     now = timezone.now()
 
@@ -124,7 +124,7 @@ def overview():
         supervisor=supervisor,
         provider=provider,
         other_provider=other_provider,
-        gss=gss,
+        goa=goa,
         student=student,
         outside_student=outside_student,
         service=service,
@@ -149,7 +149,7 @@ def test_upcoming_and_activity_never_reveal_appointments_outside_the_managed_sco
     overview.occurrence(inside, kind=AppointmentReminderKind.MANUAL, issued_at=overview.now)
     overview.occurrence(outside, kind=AppointmentReminderKind.MANUAL, issued_at=overview.now)
 
-    client = auth_client(overview.gss)
+    client = auth_client(overview.goa)
     upcoming = client.get(UPCOMING)
     assert upcoming.status_code == 200
     assert [row["appointment_id"] for row in upcoming.json()["items"]] == [str(inside.pk)]
@@ -176,7 +176,7 @@ def test_upcoming_window_defaults_to_seven_days_and_caps_at_thirty(overview):
     far = overview.make("APT-OV-FAR", starts_at=overview.now + timedelta(days=10))
     today = overview.now.astimezone(institution_zone()).date()
 
-    client = auth_client(overview.gss)
+    client = auth_client(overview.goa)
     default = client.get(UPCOMING)
     assert default.status_code == 200
     assert [row["appointment_id"] for row in default.json()["items"]] == [str(inside.pk)]
@@ -218,7 +218,7 @@ def test_upcoming_reports_next_automatic_reminder_and_manual_availability(overvi
         issued_at=overview.now - timedelta(hours=1),
     )
 
-    client = auth_client(overview.gss)
+    client = auth_client(overview.goa)
     response = client.get(UPCOMING)
     assert response.status_code == 200
     rows = rows_by_reference(response)
@@ -250,7 +250,7 @@ def test_upcoming_reports_next_automatic_reminder_and_manual_availability(overvi
 @pytest.mark.django_db
 def test_upcoming_reports_no_automatic_reminder_when_sending_is_disabled(overview):
     overview.make("APT-OV-24H", starts_at=overview.now + timedelta(hours=30))
-    client = auth_client(overview.gss)
+    client = auth_client(overview.goa)
     response = client.get(UPCOMING)
     assert response.status_code == 200
     assert response.json()["items"][0]["next_automatic"] is None
@@ -266,21 +266,21 @@ def test_activity_filters_paginate_and_never_include_transport_diagnostics(overv
     overview.occurrence(item, kind=AppointmentReminderKind.AUTO_24H, issued_at=older)
     overview.occurrence(item, kind=AppointmentReminderKind.MANUAL, issued_at=newer)
     issued = issue_manual_reminder(
-        actor=overview.gss,
+        actor=overview.goa,
         appointment_id=item.pk,
         request_key=uuid4(),
-        context=AuditContext.user(overview.gss),
+        context=AuditContext.user(overview.goa),
         now=overview.now,
     )
     assert issued["accepted"] is True
 
-    client = auth_client(overview.gss)
+    client = auth_client(overview.goa)
     response = client.get(f"{ACTIVITY}?page_size=2")
     assert response.status_code == 200
     page = response.json()
     assert page["has_next"] is True
     assert [row["kind"] for row in page["items"]] == ["MANUAL", "MANUAL"]
-    assert page["items"][0]["issued_by"]["id"] == str(overview.gss.pk)
+    assert page["items"][0]["issued_by"]["id"] == str(overview.goa.pk)
     for row in page["items"]:
         assert set(row) == ACTIVITY_FIELDS
         assert row["appointment_id"] == str(item.pk)
@@ -318,16 +318,16 @@ def test_activity_filters_paginate_and_never_include_transport_diagnostics(overv
 def test_per_appointment_history_response_is_unchanged(overview):
     item = overview.make("APT-OV-HISTORY", starts_at=overview.now + timedelta(days=2))
     issue_manual_reminder(
-        actor=overview.gss,
+        actor=overview.goa,
         appointment_id=item.pk,
         request_key=uuid4(),
-        context=AuditContext.user(overview.gss),
+        context=AuditContext.user(overview.goa),
         now=overview.now,
     )
 
-    response = auth_client(overview.gss).get(f"/api/v1/appointments/{item.pk}/reminders")
+    response = auth_client(overview.goa).get(f"/api/v1/appointments/{item.pk}/reminders")
     assert response.status_code == 200
     entry = response.json()["items"][0]
     assert set(entry) == HISTORY_FIELDS
     assert entry["kind"] == "MANUAL"
-    assert entry["issued_by"]["id"] == str(overview.gss.pk)
+    assert entry["issued_by"]["id"] == str(overview.goa.pk)

@@ -537,10 +537,10 @@ test("ServiceDetailPage hides group session panels for IT_ADMIN and INSTITUTIONA
 
 
 test("one Group Sessions sidebar entry follows scheduling role and capability, independently of Services management", () => {
-  for (const role of ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+  for (const role of ["STUDENT", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
     const account = { ...manager, role, capabilities: ["appointments.manage", "appointments.view_self"] };
     const entries = portalWorkspaceGroups(account).flatMap(group => group.links).filter(link => link.href.startsWith("/portal/group-sessions"));
-    assert.equal(entries.length, ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF"].includes(role) ? 1 : 0);
+    assert.equal(entries.length, ["STUDENT", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(role) ? 1 : 0);
     if (entries.length) assert.equal(entries[0].href, "/portal/group-sessions");
   }
   assert.equal(portalWorkspaceGroups({ ...manager, capabilities: ["services.manage"] }).flatMap(group => group.links).some(link => link.href === "/portal/group-sessions"), false);

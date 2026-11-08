@@ -7,25 +7,25 @@ import { portalWorkspaceGroups, type PortalWorkspaceLink } from "@/features/port
 import { AppointmentListOrdering, AppointmentStatus, type GuidanceOperationsResponse, type UserSummary, type WorkItem } from "@/lib/api/generated/model";
 import { presentWork } from "@/features/work-queue/work-queue-presentation";
 
-export const GSS_HOME_PREVIEW_SIZE = 5;
+export const GOA_HOME_PREVIEW_SIZE = 5;
 
-export function getGssManagedAppointmentParams(today: string) {
+export function getGoaManagedAppointmentParams(today: string) {
   return {
     status: AppointmentStatus.SCHEDULED,
     from_date: today,
     to_date: today,
     ordering: AppointmentListOrdering.EARLIEST_START,
     page: 1,
-    page_size: GSS_HOME_PREVIEW_SIZE,
+    page_size: GOA_HOME_PREVIEW_SIZE,
   };
 }
 
-export function presentGssWork(item: WorkItem, user: UserSummary, generatedAt?: string) {
+export function presentGoaWork(item: WorkItem, user: UserSummary, generatedAt?: string) {
   const goodMoral = getGoodMoralAccess(user);
   switch (item.kind) {
     case "ROUTINE_EVALUATION":
       // This workspace is Counselor-only. A malformed or newly broadened projection must not
-      // introduce Counselor evaluation records into the GSS Home.
+      // introduce Counselor evaluation records into the GOA Home.
       if (!getRoutineInterviewAccess(user).canViewAssigned) return null;
       break;
     case "GOOD_MORAL_PREPARATION":
@@ -56,7 +56,7 @@ export function presentGssWork(item: WorkItem, user: UserSummary, generatedAt?: 
   return presentWork(item, generatedAt) ?? null;
 }
 
-export type GssOperationalMetric = {
+export type GoaOperationalMetric = {
   key: string;
   label: string;
   count: number;
@@ -65,8 +65,8 @@ export type GssOperationalMetric = {
 };
 
 /** These are scoped office facts, not assignments. Null means the source did not return a metric. */
-export function presentGssOperations(data: GuidanceOperationsResponse, user: UserSummary): GssOperationalMetric[] {
-  const metrics: GssOperationalMetric[] = [];
+export function presentGoaOperations(data: GuidanceOperationsResponse, user: UserSummary): GoaOperationalMetric[] {
+  const metrics: GoaOperationalMetric[] = [];
   const messages = data.backlog.guidance_messages;
   if (messages !== null) {
     metrics.push({
@@ -111,7 +111,7 @@ export function presentGssOperations(data: GuidanceOperationsResponse, user: Use
     });
   }
 
-  // The shared schema also serves Counselors. GSS must not infer access to their evaluations.
+  // The shared schema also serves Counselors. GOA must not infer access to their evaluations.
   const evaluations = data.backlog.routine_evaluations;
   if (evaluations !== null && getRoutineInterviewAccess(user).canViewAssigned) {
     metrics.push({
@@ -125,9 +125,9 @@ export function presentGssOperations(data: GuidanceOperationsResponse, user: Use
   return metrics;
 }
 
-type GssDestinationCopy = { description: string; label?: string };
+type GoaDestinationCopy = { description: string; label?: string };
 
-const DESTINATIONS: Record<string, GssDestinationCopy> = {
+const DESTINATIONS: Record<string, GoaDestinationCopy> = {
   "/portal/appointments": { label: "Manage Appointments", description: "Coordinate scheduled Appointments in your authorized scope." },
   "/portal/operations": { description: "Review scoped office workload and schedule context." },
   "/portal/good-moral": { description: "Continue authorized Good Moral request work." },
@@ -142,10 +142,10 @@ const DESTINATIONS: Record<string, GssDestinationCopy> = {
 
 const DESTINATION_ORDER = Object.keys(DESTINATIONS);
 
-export type GssHomeDestination = PortalWorkspaceLink & GssDestinationCopy;
+export type GoaHomeDestination = PortalWorkspaceLink & GoaDestinationCopy;
 
 /** A short office continuation list derived only from the existing capability-aware destinations. */
-export function getGssHomeDestinations(user: UserSummary): GssHomeDestination[] {
+export function getGoaHomeDestinations(user: UserSummary): GoaHomeDestination[] {
   const available = new Map(portalWorkspaceGroups(user).flatMap((group) => group.links).map((link) => [link.href, link]));
   return DESTINATION_ORDER.flatMap((href) => {
     const link = available.get(href);

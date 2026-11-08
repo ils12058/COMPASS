@@ -194,7 +194,7 @@ function ManagedAppointmentFilters({
 
 function ManagedAppointmentsList() {
   const { user } = usePortalSession();
-  const canSendReminders = user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF";
+  const canSendReminders = user.role === "COUNSELOR" || user.role === "GUIDANCE_OFFICE_ASSISTANT";
   const [presentation, setPresentation] = useState<AppointmentPresentation>("list");
   const [calendarStartDate, setCalendarStartDate] = useState<Date | null>(null);
   const [reminderOpen, setReminderOpen] = useState(false);

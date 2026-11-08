@@ -81,10 +81,10 @@ def main():
         import pyotp
 
         for key, role, catalog in (
-            ("catalog", "GUIDANCE_SERVICES_STAFF", True),
+            ("catalog", "GUIDANCE_OFFICE_ASSISTANT", True),
             ("relationships", "IT_ADMIN", False),
             ("both", "IT_ADMIN", True),
-            ("reader", "GUIDANCE_SERVICES_STAFF", False),
+            ("reader", "GUIDANCE_OFFICE_ASSISTANT", False),
             ("student", "STUDENT", False),
         ):
             user = User.objects.create_user(

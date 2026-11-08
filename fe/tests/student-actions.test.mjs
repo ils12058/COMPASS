@@ -24,7 +24,7 @@ function render(items) {
 }
 
 test("Students get the first daily workspace without a new capability", () => {
-  for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+  for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
     const user = messagesAccount(role, { capabilities: [] });
     const allowed = role === "STUDENT";
     assert.equal(hasStudentActions(user), allowed);

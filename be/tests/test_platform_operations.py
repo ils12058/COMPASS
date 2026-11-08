@@ -83,7 +83,7 @@ def test_platform_operations_capability_is_it_admin_baseline_only():
 
     admin = make_user("platform-admin@example.edu", "IT_ADMIN")
     counselor = make_user("platform-counselor@example.edu", "COUNSELOR")
-    staff = make_user("platform-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("platform-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("platform-student@example.edu", "STUDENT")
     officer = make_user("platform-officer@example.edu", "INSTITUTIONAL_OFFICER")
     dpo = make_user("platform-dpo@example.edu", "INSTITUTIONAL_OFFICER")

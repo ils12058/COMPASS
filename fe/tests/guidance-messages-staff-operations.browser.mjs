@@ -84,7 +84,7 @@ async function choose(page, name) {
     const dialog = assignDialog(page);
     await shown(dialog.getByText("Assignment shows who follows up. It does not change who can read this conversation."));
     await shown(dialog.getByRole("radio", { name: /Lea Ramos/ }));
-    assert.match(await dialog.getByText(/Guidance Services Staff · Currently assigned/).first().innerText(), /Currently assigned/);
+    assert.match(await dialog.getByText(/Guidance Office Assistant · Currently assigned/).first().innerText(), /Currently assigned/);
     // Development mounts twice, so count from what the dialog has already asked.
     const initial = backend.handlerLists().length;
     assert.ok(initial >= 1);
@@ -420,7 +420,7 @@ async function choose(page, name) {
 {
   const backend = withTemplates(staffWorld());
   const accountA = messagesAccount("COUNSELOR", { first_name: "Account", last_name: "Alpha" });
-  const accountB = messagesAccount("GUIDANCE_SERVICES_STAFF", { id: "staff-b", first_name: "Account", last_name: "Bravo" });
+  const accountB = messagesAccount("GUIDANCE_OFFICE_ASSISTANT", { id: "staff-b", first_name: "Account", last_name: "Bravo" });
   const value = world(backend, accountA);
   await check("an account change drops the previous account's templates and template-filled draft", OFFICE, value.options(withClock()), async (page) => {
     await choose(page, "Office follow-up");
@@ -566,7 +566,7 @@ async function choose(page, name) {
 
 {
   const backend = withTemplates(staffWorld());
-  const value = world(backend, messagesAccount("GUIDANCE_SERVICES_STAFF"));
+  const value = world(backend, messagesAccount("GUIDANCE_OFFICE_ASSISTANT"));
   await check("edit, archive with confirmation, archived view and restore", TEMPLATES_PAGE, value.options(), async (page) => {
     const main = page.getByRole("main");
     await shown(main.getByRole("heading", { name: "Appointment reminder", level: 2 }));

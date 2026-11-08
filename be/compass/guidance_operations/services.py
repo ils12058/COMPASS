@@ -36,7 +36,7 @@ def get_guidance_operations(*, actor, now=None):
         .filter(pk=getattr(actor, "pk", None), is_active=True)
         .first()
     )
-    if actor is None or actor.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}:
+    if actor is None or actor.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}:
         raise GuidanceOperationsAccessDenied("An active Guidance staff account is required.")
     current = now or timezone.now()
     if timezone.is_naive(current):
@@ -62,7 +62,7 @@ def get_guidance_operations(*, actor, now=None):
             ),
             upcoming_managed_appointments_count=(
                 count_upcoming_managed_appointments(actor=actor, now=current)
-                if actor.role.code == "GUIDANCE_SERVICES_STAFF"
+                if actor.role.code == "GUIDANCE_OFFICE_ASSISTANT"
                 else None
             ),
             active_call_slips_count=count_active_call_slips(actor),

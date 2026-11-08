@@ -25,8 +25,8 @@ function fixture(role) {
     },
   };
 }
-for (const role of ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF"]) {
-  for (const width of role === "GUIDANCE_SERVICES_STAFF" ? [390, 1440] : [320, 390, 768, 1024, 1440]) {
+for (const role of ["STUDENT", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
+  for (const width of role === "GUIDANCE_OFFICE_ASSISTANT" ? [390, 1440] : [320, 390, 768, 1024, 1440]) {
     const world = fixture(role);
     await h.check(`${phase}-${role}-${width}`, role === "STUDENT" ? "/portal/actions" : "/portal/work", { handler: world.handler, viewport: { width, height: 900 } }, async (page, { requests }) => {
       const nav = page.getByRole("navigation", { name: role === "STUDENT" ? "My actions pages" : "My work pages" });

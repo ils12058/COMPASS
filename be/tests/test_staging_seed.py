@@ -284,7 +284,7 @@ def test_manifest_population_and_uat_rules():
     assert {a.role for a in staff} == {
         "IT_ADMIN",
         "COUNSELOR",
-        "GUIDANCE_SERVICES_STAFF",
+        "GUIDANCE_OFFICE_ASSISTANT",
         "INSTITUTIONAL_OFFICER",
     }
     for account in ACCOUNTS:
@@ -313,6 +313,8 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
     # 94 scenarios). The College promotion changes only catalog text and suitability. The
     # graduating Student's one unsupported fifth-year value is normalized back to the frozen
     # snapshot here; the dedicated seed regression below verifies the corrected fourth year.
+    # The GOA rename intentionally changes the two assistant personas, emails, handles and
+    # scenario ids; no other seeded identity or scenario content moves.
     original_accounts = [a for a in ACCOUNTS if a.key not in EXPANSION_KEYS]
     original_scenarios = [
         pre_cont1b_catalog_snapshot(asdict(s))
@@ -322,20 +324,20 @@ def test_expansions_preserve_every_seeded_identity_and_scenario_definition():
     assert len(original_accounts) == 113
     assert len(original_scenarios) == 91
     assert fingerprint([identity(a) for a in ACCOUNTS]) == (
-        "56c9cd98a74255cc05d353346ba5939e40e11faafe8260fa356e99fb0fbbf9d6"
+        "c9346f81bc288d917ab88cf576121d40adfb8b5ead0a3b0761da627078efc4e5"
     )
     assert (
         fingerprint(
             [pre_acad_account_snapshot(a) for a in original_accounts if a.key not in PROMOTED_KEYS]
         )
-        == "6ddaa162ce458270f175d8cb0c8fd3aa257f08ee3c1bfec7fa0f2d7bcf4a8ae7"
+        == "5d6b54777ff7017154c84fc023fca6aa1dc9d844683916c69c8130b814504a23"
     )
     assert fingerprint(original_scenarios) == (
-        "1b63b4f8283d740993af7eccdafdc034565e15a5de26263b83b4af6775ddffa8"
+        "562ff5e59d046027f8b20a928b9974163b397ee21dba6137d27900ebfea6b6ab"
     )
     assert fingerprint(
         [pre_cont1b_catalog_snapshot(asdict(s)) for s in SCENARIOS if s.id not in COLLEGE_SCENARIOS]
-    ) == ("604231c50af3d63ec0f4462ea1939756b48b4d35acf18ce78f4d88ae74412b04")
+    ) == ("7209cea6ce74eda619752cbb5e300312ff27089271f07bdcc6f7acc17e2c4110")
     assert len(ACCOUNTS) == 116 and len(SCENARIOS) == 102
     for key in PROMOTED_KEYS:
         student = STUDENTS_BY_KEY[key]
@@ -352,7 +354,7 @@ def test_40_person_allocation_has_independent_eligible_account_owners():
     assert {category: len(keys) for category, keys in UAT_40_ALLOCATION.items()} == {
         "Head Guidance Counselor": 1,
         "Guidance Counselor": 3,
-        "Guidance Services Staff": 2,
+        "Guidance Office Assistant": 2,
         "Current Student": 25,
         "Alumni": 5,
         "ITSO Personnel": 3,
@@ -411,7 +413,7 @@ def test_40_person_staff_roles_designations_and_scenario_ownership():
     expected_staff = {
         "Head Guidance Counselor": ("COUNSELOR", {"HEAD_GUIDANCE_COUNSELOR"}),
         "Guidance Counselor": ("COUNSELOR", set()),
-        "Guidance Services Staff": ("GUIDANCE_SERVICES_STAFF", set()),
+        "Guidance Office Assistant": ("GUIDANCE_OFFICE_ASSISTANT", set()),
         "ITSO Personnel": ("IT_ADMIN", set()),
         "Data Protection Officer": ("INSTITUTIONAL_OFFICER", {"DPO"}),
     }

@@ -15,7 +15,7 @@ import { getOverviewMetrics } from "../src/features/portal/home/overview-present
 import { getGoodMoralGetRequestQueryKey, getGoodMoralListRequestsQueryKey } from "../src/lib/api/generated/good-moral/good-moral.ts";
 
 const staff = {
-  id: "staff", role: "GUIDANCE_SERVICES_STAFF", first_name: "Guidance", last_name: "Staff",
+  id: "staff", role: "GUIDANCE_OFFICE_ASSISTANT", first_name: "Guidance", last_name: "Staff",
   email: "staff@example.test", student_lifecycle_status: null, designations: [],
   capabilities: ["good_moral.view", "good_moral.prepare", "academic_years.view", "institutional_forms.view", "exit_interviews.manage_opportunities"],
 };
@@ -43,7 +43,7 @@ function render(element, user = staff, request = item) {
   return html;
 }
 
-test("GSS gets Good Moral and references while professional destinations stay absent", () => {
+test("GOA gets Good Moral and references while professional destinations stay absent", () => {
   const hrefs = portalWorkspaceGroups(staff).flatMap((group) => group.links.map((link) => link.href));
   assert.ok(hrefs.includes("/portal/good-moral"));
   assert.ok(hrefs.includes("/portal/exit-interviews"));
@@ -55,7 +55,7 @@ test("GSS gets Good Moral and references while professional destinations stay ab
   assert.equal(getGoodMoralAccess({ ...staff, capabilities: [...staff.capabilities, "good_moral.issue"] }).canIssue, false);
 });
 
-test("GSS queue shows year, preparation state, and useful status filters", () => {
+test("GOA queue shows year, preparation state, and useful status filters", () => {
   const html = render(h(GoodMoralWorkspacePage, { filters }));
   assert.match(html, /Student Example/);
   assert.match(html, /2026-2027/);
@@ -64,14 +64,14 @@ test("GSS queue shows year, preparation state, and useful status filters", () =>
   assert.doesNotMatch(html, /Issue certificate/);
 });
 
-test("GSS direct detail can correct and mark ready but cannot cancel or issue", () => {
+test("GOA direct detail can correct and mark ready but cannot cancel or issue", () => {
   const html = render(h(GoodMoralDetailPage, { requestId: item.id }));
   assert.match(html, /Correct certificate details/);
   assert.match(html, /Mark ready for issuance/);
   assert.doesNotMatch(html, /Issue certificate|Cancel request/);
 });
 
-test("view-only GSS sees the record without preparation controls", () => {
+test("view-only GOA sees the record without preparation controls", () => {
   const user = { ...staff, capabilities: ["good_moral.view"] };
   const request = { ...item, actions: { ...actions, can_prepare: false, can_correct: false, correction_fields: [] } };
   const html = render(h(GoodMoralDetailPage, { requestId: item.id }), user, request);
@@ -101,7 +101,7 @@ test("Counselor sees actual preparation provenance and can issue ready requests"
   assert.doesNotMatch(render(h(GoodMoralDetailPage, { requestId: item.id }), staff, { ...ready, actions: { ...ready.actions, can_issue: false, can_cancel: false } }), /Issue certificate/);
 });
 
-test("issued GSS detail offers certificate download and preserves the issuing Counselor", () => {
+test("issued GOA detail offers certificate download and preserves the issuing Counselor", () => {
   const issued = { ...item, status: "ISSUED", issued_at: "2026-10-05T01:00:00Z", issued_by: { id: "counselor", display_name: "Actual Counselor" }, issued_by_name_snapshot: "Actual Counselor", actions: { ...actions, can_prepare: false, can_correct: false, can_download: true, correction_fields: [] } };
   const html = render(h(GoodMoralDetailPage, { requestId: item.id }), staff, issued);
   assert.match(html, /Actual Counselor/);
@@ -109,7 +109,7 @@ test("issued GSS detail offers certificate download and preserves the issuing Co
   assert.doesNotMatch(html, /Issue certificate|Mark ready for issuance/);
 });
 
-test("GSS Overview links only the exact preparation and readiness counts", () => {
+test("GOA Overview links only the exact preparation and readiness counts", () => {
   const summary = { student: null, platform: null, guidance: {
     upcoming_self_appointments_count: null, upcoming_managed_appointments_count: null,
     routine_evaluation_pending_count: null, active_call_slip_count: null,

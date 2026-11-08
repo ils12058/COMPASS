@@ -181,7 +181,7 @@ export function formatOverviewDate(now: Date): string {
 const DESIGNATION_ROLES: Record<DesignationCode, readonly RoleCode[]> = {
   [DesignationCode.HEAD_GUIDANCE_COUNSELOR]: [RoleCode.COUNSELOR],
   [DesignationCode.DPO]: [RoleCode.INSTITUTIONAL_OFFICER],
-  [DesignationCode.GENERAL_GUIDANCE_INTAKE]: [RoleCode.COUNSELOR, RoleCode.GUIDANCE_SERVICES_STAFF],
+  [DesignationCode.GENERAL_GUIDANCE_INTAKE]: [RoleCode.COUNSELOR, RoleCode.GUIDANCE_OFFICE_ASSISTANT],
 };
 
 export function getOverviewRoleContext(user: UserSummary): string | null {

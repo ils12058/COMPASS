@@ -334,7 +334,7 @@ def test_reopen_authorization_is_unchanged(world):
     item = world["item"]
     body = {"reason": REASON, "targets": [T.GENERAL_AGE.value]}
     counselor = make_user("corr-exit-counselor@example.edu", role="COUNSELOR")
-    staff = make_user("corr-exit-gss@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    staff = make_user("corr-exit-goa@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     for actor in (world["student"], counselor, staff):
         response = reopen_api(actor, item, body)
         assert response.status_code == 403
@@ -379,7 +379,7 @@ def test_history_keeps_earlier_events_and_shows_targets_only_to_existing_readers
         assert [(event["reason"], event["targets"]) for event in events] == expected
 
     counselor = make_user("corr-exit-reader-counselor@example.edu", role="COUNSELOR")
-    staff = make_user("corr-exit-reader-gss@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    staff = make_user("corr-exit-reader-goa@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     other = make_user("corr-exit-other-student@example.edu")
     for actor, path, status in (
         (counselor, f"/api/v1/exit-interviews/{item.pk}", 403),

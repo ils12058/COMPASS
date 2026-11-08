@@ -498,11 +498,11 @@ for (const [sourceKind, category, visibility] of [
   });
 }
 {
-  const fixture = world("GUIDANCE_SERVICES_STAFF", { recoverable: true });
+  const fixture = world("GUIDANCE_OFFICE_ASSISTANT", { recoverable: true });
   await check("Operational recovery exposes only the summary and scoped assignment restoration", "/portal/follow-ups/reassignment", { handler: fixture.handler, mobile: true }, async page => {
     await shown(page.getByRole("heading", { name: "Recover assignments", exact: true }));
     await page.getByRole("button", { name: "Recover assignment for Synthetic Student", exact: true }).click();
-    await page.getByLabel("Responsible staff member", { exact: true }).selectOption(user("GUIDANCE_SERVICES_STAFF").id);
+    await page.getByLabel("Responsible staff member", { exact: true }).selectOption(user("GUIDANCE_OFFICE_ASSISTANT").id);
     await page.getByRole("button", { name: "Recover assignment", exact: true }).click();
     await shown(page.getByText("No operational follow-ups need recovery in your current scope.", { exact: true }));
     assert.equal(fixture.writes.length, 1); await hidden(page.getByText("Protected synthetic description", { exact: true }));

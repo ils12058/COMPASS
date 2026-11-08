@@ -29,7 +29,7 @@ function assertReadable(html) {
 function assertNoManagement(html) {
   assert.doesNotMatch(html, /Operational actions|Record interview end|Review interview end|Void Call Slip|call-slip-interview-ended|call-slip-void-reason|role="alertdialog"/);
 }
-for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]) {
+for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
   for (const state of ["ACTIVE", "COMPLETED", "VOIDED"]) {
     test(`${role} with explicit view-only capabilities keeps ${state} details and PDF without management`, () => {
       const html = render(role, ["call_slips.view"], state);
@@ -63,7 +63,7 @@ for (const state of ["ACTIVE", "COMPLETED", "VOIDED"]) {
     if (state === "VOIDED") assert.match(html, /Withdrawn|This Call Slip is no longer active/);
   });
 }
-for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
   test(`${role} without applicable viewing authority cannot render seeded protected detail`, () => {
     const capabilities = ["unrelated.view", ...(role === "IT_ADMIN" || role === "INSTITUTIONAL_OFFICER" ? ["call_slips.view", "call_slips.manage", "call_slips.view_self"] : [])];
     const html = render(role, capabilities);

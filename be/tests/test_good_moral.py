@@ -381,7 +381,7 @@ def test_degree_suggestions_are_bachelor_only_and_capability_scoped():
         "degree-suggestions.student@example.edu", lifecycle=StudentLifecycleStatus.CURRENT
     )
     counselor = make_user("degree-suggestions.counselor@example.edu", role="COUNSELOR")
-    staff = make_user("degree-suggestions.gss@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    staff = make_user("degree-suggestions.goa@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     it_user = make_user("degree-suggestions.it@example.edu", role="IT_ADMIN")
 
     response = auth_client(student).get("/api/v1/good-moral/degree-options")
@@ -402,7 +402,7 @@ def test_f4_academic_context_is_student_self_service_only():
     sync_policy()
     student = make_user("f4-context.student@example.edu")
     counselor = make_user("f4-context.counselor@example.edu", role="COUNSELOR")
-    staff = make_user("f4-context.gss@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    staff = make_user("f4-context.goa@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     it_user = make_user("f4-context.it@example.edu", role="IT_ADMIN")
 
     assert auth_client(student).get("/api/v1/good-moral/me/academic-context").status_code == 200
@@ -1197,7 +1197,7 @@ def test_issue_api_requires_counselor_capability_but_not_step_up():
         lifecycle=StudentLifecycleStatus.GRADUATED,
     )
     counselor = make_user("mfa.counselor@example.edu", role="COUNSELOR")
-    gss = make_user("mfa.gss@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    goa = make_user("mfa.goa@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("mfa.admin@example.edu", role="IT_ADMIN")
     dpo = make_user("mfa.dpo@example.edu", role="IT_ADMIN")
     UserDesignation.objects.create(
@@ -1209,7 +1209,7 @@ def test_issue_api_requires_counselor_capability_but_not_step_up():
         actor=counselor, request_id=item.pk, context=AuditContext.user(counselor)
     )
 
-    for user in (student, gss, admin, dpo):
+    for user in (student, goa, admin, dpo):
         client = auth_client(user, recent_mfa=True)
         denied = client.post(
             f"/api/v1/good-moral/requests/{item.pk}/issue",
@@ -2393,11 +2393,11 @@ def test_form_input_1a_idempotent_replay_preserves_older_accepted_fifth_year_req
 
 
 @pytest.mark.django_db
-def test_form_input_1a_counselor_and_gss_corrections_match_the_linked_inventory():
+def test_form_input_1a_counselor_and_goa_corrections_match_the_linked_inventory():
     sync_policy()
     student = make_user("correction.student@example.edu")
     counselor = make_user("correction.counselor@example.edu", role="COUNSELOR")
-    staff = make_user("correction.gss@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    staff = make_user("correction.goa@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     UserDesignation.objects.create(
         user=staff,
         designation=Designation.objects.create(code="STAFF_PREP", name="Preparation Staff"),
@@ -2420,8 +2420,8 @@ def test_form_input_1a_counselor_and_gss_corrections_match_the_linked_inventory(
     assert updated_by_counselor.year_level_snapshot == "4th Year"
     assert updated_by_counselor.semester_snapshot == "Second Semester"
 
-    # GSS retains authorized clerical correction access for a request linked to 1st Year.
-    other_student = make_user("correction.gss.student@example.edu")
+    # GOA retains authorized clerical correction access for a request linked to 1st Year.
+    other_student = make_user("correction.goa.student@example.edu")
     make_placement(other_student)
     make_inventory(
         other_student,

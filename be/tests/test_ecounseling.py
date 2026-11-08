@@ -165,11 +165,11 @@ def _webhook_signature(secret: bytes, timestamp: str, body: bytes) -> str:
 
 
 @pytest.mark.django_db
-def test_capabilities_are_explicit_and_do_not_grant_gss_it_or_head_blanket_access():
+def test_capabilities_are_explicit_and_do_not_grant_goa_it_or_head_blanket_access():
     sync_policy()
     student = make_user("student@example.edu", "STUDENT")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("admin@example.edu", "IT_ADMIN")
     head = make_user("head@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
@@ -181,7 +181,7 @@ def test_capabilities_are_explicit_and_do_not_grant_gss_it_or_head_blanket_acces
     assert student.has_capability("ecounseling.join_self")
     assert counselor.has_capability("ecounseling.view_assigned")
     assert counselor.has_capability("ecounseling.join_assigned")
-    assert not gss.has_capability("ecounseling.view_assigned")
+    assert not goa.has_capability("ecounseling.view_assigned")
     assert not admin.has_capability("ecounseling.view_assigned")
     assert head.has_capability("ecounseling.view_assigned")
 

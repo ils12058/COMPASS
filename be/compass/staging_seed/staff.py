@@ -56,7 +56,7 @@ COUNSELOR_A = AccountSpec(
     middle_name="Dizon",
     last_name="Esguerra",
     role="COUNSELOR",
-    summary="Counselor for the Main Campus CCMS, CAS and COENG caseload; supervises gss_a.",
+    summary="Counselor for the Main Campus CCMS, CAS and COENG caseload; supervises goa_a.",
     limitations="Sees only Students in CCMS, CAS and COENG.",
 )
 COUNSELOR_B = AccountSpec(
@@ -68,7 +68,7 @@ COUNSELOR_B = AccountSpec(
     middle_name="Aquino",
     last_name="Manalo",
     role="COUNSELOR",
-    summary="Counselor for the CBPA and COED caseload; supervises gss_b.",
+    summary="Counselor for the CBPA and COED caseload; supervises goa_b.",
     limitations="Sees only Students in CBPA and COED.",
 )
 COUNSELOR_C = AccountSpec(
@@ -85,27 +85,27 @@ COUNSELOR_C = AccountSpec(
     ),
     limitations="Sees only satellite-campus Students; has no supervised staff.",
 )
-GSS_A = AccountSpec(
-    key="gss_a",
-    label="Guidance Services Staff (supervised by counselor_a)",
+GOA_A = AccountSpec(
+    key="goa_a",
+    label="Guidance Office Assistant (supervised by counselor_a)",
     institutional_id="STG-E-0007",
-    email_local_part="stg-gss-a",
+    email_local_part="stg-goa-a",
     first_name="Arnel",
     middle_name="Soriano",
     last_name="Ocampo",
-    role="GUIDANCE_SERVICES_STAFF",
+    role="GUIDANCE_OFFICE_ASSISTANT",
     summary="Operational assistance within counselor_a's caseload: referrals, Call Slips, queue.",
     limitations="No counseling, Routine Interview or Student Session Summary content.",
 )
-GSS_B = AccountSpec(
-    key="gss_b",
-    label="Guidance Services Staff (supervised by counselor_b)",
+GOA_B = AccountSpec(
+    key="goa_b",
+    label="Guidance Office Assistant (supervised by counselor_b)",
     institutional_id="STG-E-0008",
-    email_local_part="stg-gss-b",
+    email_local_part="stg-goa-b",
     first_name="Rowena",
     middle_name="Tan",
     last_name="Galvez",
-    role="GUIDANCE_SERVICES_STAFF",
+    role="GUIDANCE_OFFICE_ASSISTANT",
     summary="Operational assistance within counselor_b's caseload: referrals, Call Slips, queue.",
     limitations="No counseling, Routine Interview or Student Session Summary content.",
 )
@@ -137,13 +137,13 @@ DPO_2 = AccountSpec(
 )
 FORMER_STAFF = AccountSpec(
     key="former_staff",
-    label="Former Guidance Services Staff (disabled)",
+    label="Former Guidance Office Assistant (disabled)",
     institutional_id="STG-E-0011",
     email_local_part="stg-former-staff",
     first_name="Dennis",
     middle_name="Rivera",
     last_name="Aragon",
-    role="GUIDANCE_SERVICES_STAFF",
+    role="GUIDANCE_OFFICE_ASSISTANT",
     # Active while their historical records are entered, then disabled as a departed employee.
     auth=AuthPlan.DISABLED,
     suitability=Suitability.RESTRICTED,
@@ -196,8 +196,8 @@ STAFF = (
     COUNSELOR_A,
     COUNSELOR_B,
     COUNSELOR_C,
-    GSS_A,
-    GSS_B,
+    GOA_A,
+    GOA_B,
     DPO,
     DPO_2,
     FORMER_STAFF,
@@ -219,8 +219,8 @@ COUNSELOR_RESPONSIBILITIES = (
 )
 # Supervision by an ordinary Counselor keeps each Staff scope identical to that Counselor's.
 STAFF_SUPERVISION = (
-    (GSS_A.key, COUNSELOR_A.key),
-    (GSS_B.key, COUNSELOR_B.key),
+    (GOA_A.key, COUNSELOR_A.key),
+    (GOA_B.key, COUNSELOR_B.key),
     (FORMER_STAFF.key, COUNSELOR_A.key),
 )
 
@@ -247,8 +247,8 @@ __all__ = [
     "DPO",
     "DPO_2",
     "FORMER_STAFF",
-    "GSS_A",
-    "GSS_B",
+    "GOA_A",
+    "GOA_B",
     "HEAD_GUIDANCE",
     "IT_ADMIN",
     "IT_ADMIN_2",

@@ -4,14 +4,14 @@ import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { homeWorld } from "./support/ux15-home-fixtures.mjs";
 import { counselorWorld } from "./support/ux15-counselor-home-fixtures.mjs";
 import { appointment } from "./support/ui-hierarchy-fixtures.mjs";
-import { gssWorld } from "./support/ux15-gss-home-fixtures.mjs";
+import { goaWorld } from "./support/ux15-goa-home-fixtures.mjs";
 const h = await createBrowserHarness("simplify-2c");
 const before = process.env.COMPASS_HOME_PHASE === "before";
 const cases = [
   ["student", () => homeWorld(), "appointment-calendar-3d"],
   ["counselor", () => counselorWorld(), "guidance-messages-3d"],
   ["head", () => counselorWorld({ head:true }), "guidance-messages-3d"],
-  ["gss", () => gssWorld(), "appointment-calendar-3d"],
+  ["goa", () => goaWorld(), "appointment-calendar-3d"],
   ["it", () => homeWorld({role:"IT_ADMIN"}), null],
 ];
 async function checkImages(page, expected) {
@@ -58,7 +58,7 @@ if (!before) {
   for (const [name, makeWorld] of [
     ["student", () => homeWorld({capabilities:["guidance_messages.view_self"]})],
     ["counselor", () => counselorWorld({capabilities:["appointments.view_self"]})],
-    ["gss", () => gssWorld({capabilities:["guidance_messages.view"]})],
+    ["goa", () => goaWorld({capabilities:["guidance_messages.view"]})],
   ]) await h.check(`no-relevant-destination-${name}`, "/portal", makeWorld().options(), async page => {
     await h.shown(page.locator("#overview-announcements-heading"));
     assert.equal(await page.locator('main img[src*="illustrations"]').count(),0);

@@ -27,7 +27,7 @@ export type OverviewAttentionItem = {
 
 export type OverviewAttentionData = {
   items: OverviewAttentionItem[];
-  // The GSS Home needs the canonical projection in its backend order. The ranked attention list
+  // The GOA Home needs the canonical projection in its backend order. The ranked attention list
   // below remains the presentation used by the other overview compositions.
   canonicalWorkItems: WorkItem[];
   workGeneratedAt?: string;

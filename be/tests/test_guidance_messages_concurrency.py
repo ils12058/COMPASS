@@ -184,7 +184,7 @@ def test_parallel_mixed_direction_direct_opens_share_one_thread_without_deadlock
 
 def test_distinct_concurrent_senders_have_contiguous_committed_sequences(world):
     thread, _ = office(world)
-    users = [world.student, world.counselor, world.gss]
+    users = [world.student, world.counselor, world.goa]
     messages = parallel(
         24,
         lambda index: services.send_message(
@@ -246,7 +246,7 @@ def test_rollback_and_encryption_failure_leave_no_phantom_or_sequence_gap(world,
 
 @pytest.mark.parametrize("kind", ["OFFICE", "COUNSELING"])
 def test_different_participants_concurrently_open_the_same_anchor(world, kind):
-    actors = [world.student, world.gss if kind == "OFFICE" else world.counselor]
+    actors = [world.student, world.goa if kind == "OFFICE" else world.counselor]
     client_id = uuid4()
 
     def create(index):

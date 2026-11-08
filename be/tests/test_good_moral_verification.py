@@ -129,7 +129,7 @@ def issue(item, actor, **overrides):
 @pytest.mark.parametrize("variant", ["CURRENT_STUDENT", "GRADUATE"])
 def test_full_workflow_and_issued_replay_preserve_provenance_and_effects(approved, variant):
     sync_policy()
-    actor = person("inspector", "GUIDANCE_SERVICES_STAFF")
+    actor = person("inspector", "GUIDANCE_OFFICE_ASSISTANT")
     counselor = person("issuer", "COUNSELOR")
     grant(actor)
     item = request_for(
@@ -234,9 +234,9 @@ def test_invalid_amount_input_rejected_before_revision(scene, value):
     "role,explicit,allowed",
     [
         ("COUNSELOR", True, True),
-        ("GUIDANCE_SERVICES_STAFF", True, True),
+        ("GUIDANCE_OFFICE_ASSISTANT", True, True),
         ("COUNSELOR", False, False),
-        ("GUIDANCE_SERVICES_STAFF", False, False),
+        ("GUIDANCE_OFFICE_ASSISTANT", False, False),
         ("STUDENT", True, False),
         ("IT_ADMIN", True, False),
     ],
@@ -289,7 +289,7 @@ def test_head_designation_does_not_imply_inspection(scene):
         verify(item, actor)
 
 
-@pytest.mark.parametrize("role", ["GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "STUDENT"])
+@pytest.mark.parametrize("role", ["GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "STUDENT"])
 def test_issue_role_fence_survives_unusual_override(scene, role):
     actor, item = scene
     verify(item, actor)

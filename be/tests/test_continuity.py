@@ -214,7 +214,7 @@ def test_self_approval_denied_even_head(case, monkeypatch, who):
 
 
 @pytest.mark.parametrize(
-    "role", ["GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "STUDENT", "INSTITUTIONAL_OFFICER"]
+    "role", ["GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "STUDENT", "INSTITUTIONAL_OFFICER"]
 )
 @pytest.mark.parametrize("operation", ["request", "detail", "approve"])
 def test_unsupported_roles_with_all_capabilities(case, role, operation):
@@ -460,7 +460,7 @@ def test_effective_eligibility_revalidated(case, monkeypatch, change):
         User.objects.filter(pk=case.receiver.pk).update(is_active=False)
     elif change == "role":
         User.objects.filter(pk=case.receiver.pk).update(
-            role=Role.objects.get(code="GUIDANCE_SERVICES_STAFF")
+            role=Role.objects.get(code="GUIDANCE_OFFICE_ASSISTANT")
         )
     elif change == "revoke":
         set_user_capability_override(

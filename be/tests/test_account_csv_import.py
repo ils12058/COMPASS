@@ -325,7 +325,7 @@ def test_csv_existing_identical_active_account_is_skip_and_reimport_is_idempoten
     [
         {"role": "COUNSELOR", "first_name": "Different", "last_name": "User", "active": True},
         {
-            "role": "GUIDANCE_SERVICES_STAFF",
+            "role": "GUIDANCE_OFFICE_ASSISTANT",
             "first_name": "Same",
             "last_name": "User",
             "active": True,
@@ -374,7 +374,7 @@ def test_csv_commit_revalidates_after_dry_run_and_does_not_use_persisted_batch_s
     make_user(
         email="racy@example.edu",
         institutional_id="UCN-RACY-1",
-        role="GUIDANCE_SERVICES_STAFF",
+        role="GUIDANCE_OFFICE_ASSISTANT",
         first_name="External",
         last_name="Change",
     )

@@ -50,7 +50,7 @@ def world():
     sync_policy()
     roles = {
         "staff": "COUNSELOR",
-        "gss": "GUIDANCE_SERVICES_STAFF",
+        "goa": "GUIDANCE_OFFICE_ASSISTANT",
         "student": "STUDENT",
         "graduate": "STUDENT",
         "other": "STUDENT",
@@ -114,7 +114,7 @@ def create(
     )
 
 
-@pytest.mark.parametrize("actor", ["staff", "gss"])
+@pytest.mark.parametrize("actor", ["staff", "goa"])
 def test_operational_creation_and_student_ownership(world, actor):
     response = post(world[actor], world["student"])
     assert response.status_code == 201, response.content
@@ -180,7 +180,7 @@ def test_inactive_actor_rejected(world):
 
 
 def test_graduate_creation_and_current_lifecycle_claim(world):
-    response = post(world["gss"], world["graduate"], variant="graduate", payload=GRADUATE)
+    response = post(world["goa"], world["graduate"], variant="graduate", payload=GRADUATE)
     assert response.status_code == 201, response.content
     data = response.json()
     assert data["degree"] == GRADUATE["degree"]
@@ -214,7 +214,7 @@ def test_assisted_f6_is_available_for_a_current_student_reenrolled_in_local_post
     assert f4.status_code == 409
     assert f4.json()["error"]["code"] == "good_moral_f4_academic_eligibility_required"
 
-    f6 = post(world["gss"], world["student"], variant="graduate", payload=GRADUATE)
+    f6 = post(world["goa"], world["student"], variant="graduate", payload=GRADUATE)
     assert f6.status_code == 201
     item = GoodMoralRequest.objects.get(pk=f6.json()["id"])
     assert item.variant == GoodMoralVariant.GRADUATE
@@ -312,7 +312,7 @@ def test_idempotency_replay_payload_target_variant_and_actor_binding(world):
         with pytest.raises(services.GoodMoralCreationConflict):
             create(world, **kwargs)
     with pytest.raises(services.GoodMoralConflict, match="pending"):
-        create(world, actor="gss")  # a second actor cannot reuse this pending request
+        create(world, actor="goa")  # a second actor cannot reuse this pending request
     with pytest.raises(services.GoodMoralConflict, match="pending"):
         create(world, key="different")
     assert GoodMoralRequest.objects.count() == 1
@@ -350,12 +350,12 @@ def test_provenance_survives_existing_workflows(world, transition):
     item = create(world)
     if transition in {"prepare", "issue"}:
         services.prepare_request(
-            actor=world["gss"], request_id=item.pk, context=AuditContext.user(world["gss"])
+            actor=world["goa"], request_id=item.pk, context=AuditContext.user(world["goa"])
         )
     if transition == "issue":
         with pytest.raises(services.GoodMoralNotPermitted):
             services.issue_request(
-                actor=world["gss"], request_id=item.pk, context=AuditContext.user(world["gss"])
+                actor=world["goa"], request_id=item.pk, context=AuditContext.user(world["goa"])
             )
         services.issue_request(
             actor=world["staff"], request_id=item.pk, context=AuditContext.user(world["staff"])
@@ -373,10 +373,10 @@ def test_provenance_survives_existing_workflows(world, transition):
         )
     elif transition == "correct":
         services.update_request(
-            actor=world["gss"],
+            actor=world["goa"],
             request_id=item.pk,
             changes={"semester_snapshot": "Second Semester"},
-            context=AuditContext.user(world["gss"]),
+            context=AuditContext.user(world["goa"]),
         )
     item.refresh_from_db()
     assert item.initiated_by == world["staff"] and item.initiation_origin == "GCO_ASSISTED"
@@ -449,7 +449,7 @@ def test_email_retry_uses_durable_delivery_without_creating_a_request(world, mon
     assert Notification.objects.filter(event_code=EVENT).count() == 1
 
 
-@pytest.mark.parametrize("actor", ["staff", "gss"])
+@pytest.mark.parametrize("actor", ["staff", "goa"])
 def test_activity_relationships_and_current_authority(world, actor):
     item = create(world, actor=actor)
 
@@ -477,7 +477,7 @@ def test_activity_relationships_and_current_authority(world, actor):
 
 
 def test_options_bound_minimized_office_wide_and_revalidated(world):
-    client = auth_client(world["gss"])
+    client = auth_client(world["goa"])
     url = "/api/v1/good-moral/student-options"
     response = client.get(url, {"search": "ASSIST", "page_size": 1})
     assert response.status_code == 200
@@ -502,7 +502,7 @@ def test_options_bound_minimized_office_wide_and_revalidated(world):
     world["graduate"].save(update_fields=["is_active"])
     assert not client.get(url, {"search": "ASSIST-GRADUATE"}).json()["items"]
     assert (
-        post(world["gss"], world["graduate"], variant="graduate", payload=GRADUATE).status_code
+        post(world["goa"], world["graduate"], variant="graduate", payload=GRADUATE).status_code
         == 404
     )
 
@@ -524,7 +524,7 @@ def test_concurrent_creation_uses_student_fence(world, same_actor):
             close_old_connections()
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        results = list(pool.map(run, ["staff", "staff" if same_actor else "gss"]))
+        results = list(pool.map(run, ["staff", "staff" if same_actor else "goa"]))
     assert GoodMoralRequest.objects.count() == 1
     assert Notification.objects.filter(event_code=EVENT).count() == 1
     assert AuditEvent.objects.filter(action="good_moral.request_created").count() == 1

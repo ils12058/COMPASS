@@ -32,7 +32,7 @@ from compass.referrals import administrative_policy, faculty_policy
 
 PROVISIONAL_DECISION = "PROVISIONAL"
 PROVISIONAL_AUTHORITY = "CODE_OWNED_PENDING_INSTITUTIONAL_APPROVAL"
-PROVISIONAL_VERSION = "code_owned_provisional_v1"
+PROVISIONAL_VERSION = "code_owned_provisional_v2"
 PROVISIONAL_EVIDENCE_REFERENCE = "CODE_OWNED_PROVISIONAL_NOT_INSTITUTIONAL"
 PROVISIONAL_CONTRACT_EVIDENCE_REFERENCE = "CODE_OWNED_PROVISIONAL_CONTRACT"
 PROVISIONAL_ELIGIBILITY_REFERENCE = "CODE_OWNED_PROVISIONAL_ELIGIBILITY"
@@ -48,17 +48,18 @@ _FACULTY_KINDS = frozenset({STUDENT_CONFIRMATION, DIGITAL_SUBMISSION})
 _ADMIN_KINDS = frozenset({ACKNOWLEDGMENT, CLOSURE, FACULTY_TRACKING})
 
 # One fixed, unmistakably synthetic event per policy kind. Audit rows are append-only; a
-# future version must use a new fixed id and digest rather than edit these rows.
+# future version must use a new fixed id and digest rather than edit these rows. Version 2
+# records the Guidance Office Assistant role code; the v1 events stay untouched history.
 EVENT_IDS = {
-    STUDENT_CONFIRMATION: UUID("f3a00001-0000-4000-8000-000000000001"),
-    DIGITAL_SUBMISSION: UUID("f3a00002-0000-4000-8000-000000000002"),
-    ACKNOWLEDGMENT: UUID("f3a00003-0000-4000-8000-000000000003"),
-    CLOSURE: UUID("f3a00004-0000-4000-8000-000000000004"),
-    FACULTY_TRACKING: UUID("f3a00005-0000-4000-8000-000000000005"),
+    STUDENT_CONFIRMATION: UUID("f3b00001-0000-4000-8000-000000000001"),
+    DIGITAL_SUBMISSION: UUID("f3b00002-0000-4000-8000-000000000002"),
+    ACKNOWLEDGMENT: UUID("f3b00003-0000-4000-8000-000000000003"),
+    CLOSURE: UUID("f3b00004-0000-4000-8000-000000000004"),
+    FACULTY_TRACKING: UUID("f3b00005-0000-4000-8000-000000000005"),
 }
 
 _FACULTY_SCOPE = "ALL_ACTIVE_FACULTY"
-_STAFF_SCOPE = "ALL_ACTIVE_COUNSELOR_AND_GUIDANCE_SERVICES_STAFF"
+_STAFF_SCOPE = "ALL_ACTIVE_COUNSELOR_AND_GUIDANCE_OFFICE_ASSISTANT"
 _COLLEGE_SCOPE = "ALL_ACTIVE_COLLEGES_WITH_ACTIVE_CAMPUS"
 
 _FIXED_CONSTRAINTS = {
@@ -75,14 +76,14 @@ _FIXED_CONSTRAINTS = {
     ACKNOWLEDGMENT: {
         "contract": "EXPLICIT_RECEIPT_UCN_F3_V1",
         "contract_evidence_reference": PROVISIONAL_CONTRACT_EVIDENCE_REFERENCE,
-        "roles": ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"],
+        "roles": ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"],
         "actor_scope": _STAFF_SCOPE,
         "student_college_scope": _COLLEGE_SCOPE,
     },
     CLOSURE: {
         "contract": "ADMINISTRATIVE_REVIEW_RETAIN_LINKS_V1",
         "contract_evidence_reference": PROVISIONAL_CONTRACT_EVIDENCE_REFERENCE,
-        "roles": ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"],
+        "roles": ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"],
         "actor_scope": _STAFF_SCOPE,
         "student_college_scope": _COLLEGE_SCOPE,
     },
@@ -192,7 +193,7 @@ def _staff_scope():
     return (
         frozenset(
             User.objects.filter(
-                is_active=True, role__code__in=("COUNSELOR", "GUIDANCE_SERVICES_STAFF")
+                is_active=True, role__code__in=("COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT")
             ).values_list("pk", flat=True)
         ),
         frozenset(
@@ -331,7 +332,9 @@ def _administrative_policy(kind, policy_class, now):
         valid_until=valid_until,
         actor_ids=actor_ids,
         student_college_ids=college_ids,
-        roles=frozenset({"FACULTY"} if kind == FACULTY_TRACKING else {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}),
+        roles=frozenset(
+            {"FACULTY"} if kind == FACULTY_TRACKING else {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
+        ),
         activation_event_id=EVENT_IDS[kind],
     )
 

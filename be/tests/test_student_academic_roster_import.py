@@ -199,7 +199,7 @@ def test_import_effective_grants_are_limited_to_admin_and_head_with_view():
     for role_code in (
         "STUDENT",
         "COUNSELOR",
-        "GUIDANCE_SERVICES_STAFF",
+        "GUIDANCE_OFFICE_ASSISTANT",
         "INSTITUTIONAL_OFFICER",
     ):
         user = make_user(f"UCN-POLICY-{role_code}", role=role_code)

@@ -8,11 +8,11 @@ import { presentWork } from "../src/features/work-queue/work-queue-presentation.
 import { AttentionPriority, rankAttention } from "../src/features/portal/home/overview-attention-ranking.ts";
 
 test("Follow-Up workspace requires a canonical staff role and its own capability", () => {
-  for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]) {
+  for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
     assert.deepEqual(followupAccess({ role, capabilities: ["guidance_followups.view", "guidance_followups.manage"] }), { view: true, manage: true });
     assert.deepEqual(followupAccess({ role, capabilities: [] }), { view: false, manage: false });
   }
-  for (const role of ["STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER", "GSS"]) {
+  for (const role of ["STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER", "GOA"]) {
     assert.deepEqual(followupAccess({ role, capabilities: ["guidance_followups.view", "guidance_followups.manage"] }), { view: false, manage: false });
   }
 });

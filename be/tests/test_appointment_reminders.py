@@ -69,10 +69,10 @@ def test_manager_requires_appropriate_role_and_capability():
         )
 
     assert _manager(actor("COUNSELOR", True))
-    assert _manager(actor("GUIDANCE_SERVICES_STAFF", True))
+    assert _manager(actor("GUIDANCE_OFFICE_ASSISTANT", True))
     for role in ("STUDENT", "DPO", "IT_ADMIN"):
         assert not _manager(actor(role, True))
-    assert not _manager(actor("GUIDANCE_SERVICES_STAFF", False))
+    assert not _manager(actor("GUIDANCE_OFFICE_ASSISTANT", False))
 
 
 @override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=False)

@@ -65,6 +65,7 @@ BUNDLES: dict[str, tuple[str, tuple[str, ...]]] = {
             # The reset-only canonical migration baseline and its pre-canonical history guard.
             "test_canonical_baseline.py",
             "test_postbaseline_upgrade.py",
+            "test_guidance_office_assistant_migration.py",
             # Every locking query is scoped to its own rows; database errors map safely.
             "test_lock_scope.py",
             "test_database_error_mapping.py",

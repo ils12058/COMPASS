@@ -10,7 +10,7 @@ from django.db.models import Q, QuerySet
 from compass.accounts.models import User
 from compass.organization.models import StaffSupervision
 
-GROUP_SESSION_STAFF_ROLES = frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
+GROUP_SESSION_STAFF_ROLES = frozenset({"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,7 +25,7 @@ class GroupSessionAccess:
 def current_group_session_staff(
     actor: User | None, *, lock_supervision: bool = False
 ) -> User | None:
-    """Reload the actor, effective capability, and current GSS supervision relationship."""
+    """Reload the actor, effective capability, and current GOA supervision relationship."""
 
     actor_id = getattr(actor, "pk", None)
     if not actor_id:
@@ -41,7 +41,7 @@ def current_group_session_staff(
     ):
         return None
     if (
-        current.role.code == "GUIDANCE_SERVICES_STAFF"
+        current.role.code == "GUIDANCE_OFFICE_ASSISTANT"
         and supervised_counselor(current, lock=lock_supervision) is None
     ):
         return None
@@ -54,7 +54,7 @@ def supervised_counselor(staff: User | None, *, lock: bool = False) -> User | No
     staff_id = getattr(staff, "pk", None)
     if not staff_id or not getattr(staff, "is_active", False):
         return None
-    if getattr(getattr(staff, "role", None), "code", None) != "GUIDANCE_SERVICES_STAFF":
+    if getattr(getattr(staff, "role", None), "code", None) != "GUIDANCE_OFFICE_ASSISTANT":
         return None
     queryset = StaffSupervision.objects.filter(
         staff_id=staff_id,
@@ -95,7 +95,7 @@ def _counselor_supervises_session_organizer(
     queryset = StaffSupervision.objects.filter(
         staff_id=session.organizer_id,
         staff__is_active=True,
-        staff__role__code="GUIDANCE_SERVICES_STAFF",
+        staff__role__code="GUIDANCE_OFFICE_ASSISTANT",
         supervisor_id=actor.pk,
         supervisor__is_active=True,
         supervisor__role__code="COUNSELOR",
@@ -152,11 +152,11 @@ def scope_group_sessions(queryset: QuerySet, actor: User | None, *, permission: 
     if current is None:
         return queryset.none()
 
-    if current.role.code == "GUIDANCE_SERVICES_STAFF":
+    if current.role.code == "GUIDANCE_OFFICE_ASSISTANT":
         allowed = Q(organizer_id=current.pk)
     else:
         allowed = Q(organizer_id=current.pk) | Q(
-            organizer__role__code="GUIDANCE_SERVICES_STAFF",
+            organizer__role__code="GUIDANCE_OFFICE_ASSISTANT",
             organizer__is_active=True,
             organizer__organization_staff_supervision__supervisor_id=current.pk,
         )

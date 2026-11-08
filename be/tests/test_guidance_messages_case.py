@@ -49,12 +49,12 @@ CASE_KIND = ThreadKind.COUNSELOR_CASE_COORDINATION
 def world(communication):
     world = communication
     world.grant = live_case_grant(world)
-    world.gss = User.objects.create_user(
-        email="case-gss@synthetic.test",
+    world.goa = User.objects.create_user(
+        email="case-goa@synthetic.test",
         password=None,
-        role=Role.objects.get(code="GUIDANCE_SERVICES_STAFF"),
+        role=Role.objects.get(code="GUIDANCE_OFFICE_ASSISTANT"),
         first_name="Synthetic",
-        last_name="gss",
+        last_name="goa",
     )
     world.faculty = User.objects.create_user(
         email="case-faculty@synthetic.test",
@@ -101,7 +101,7 @@ def overrides(user, effect, *codes):
         UserCapabilityOverride.objects.filter(pk__in=[row.pk for row in rows]).delete()
 
 
-@pytest.mark.parametrize("who", ["student", "gss", "faculty", "head", "outsider"])
+@pytest.mark.parametrize("who", ["student", "goa", "faculty", "head", "outsider"])
 def test_open_is_unavailable_to_anyone_outside_the_exact_pair(world, who):
     actor = getattr(world, who)
     with pytest.raises(ThreadNotFound):
@@ -117,7 +117,7 @@ def test_open_is_unavailable_to_anyone_outside_the_exact_pair(world, who):
 
 
 def test_role_gate_precedes_a_granted_case_capability(world):
-    for actor in (world.student, world.gss, world.faculty, world.outsider):
+    for actor in (world.student, world.goa, world.faculty, world.outsider):
         with overrides(actor, "GRANT", CASE_VIEW, CASE_MANAGE):
             with pytest.raises(ThreadNotFound):
                 open_thread(world, actor=actor)
@@ -357,7 +357,7 @@ def test_recipients_are_only_the_exact_pair(world):
     thread, _ = open_thread(world)
     send(world, thread, actor=world.receiver)
     assert set(policy.recipient_ids(thread)) == {world.author.pk, world.receiver.pk}
-    for outsider in (world.student, world.gss, world.faculty, world.head, world.outsider):
+    for outsider in (world.student, world.goa, world.faculty, world.head, world.outsider):
         assert outsider.pk not in policy.recipient_ids(thread)
 
 
@@ -420,7 +420,7 @@ def test_context_reports_ended_only_to_the_previously_authorized_pair(world, end
         assert payload["can_start"] is False
         assert payload["access_ended"] is True
         assert payload["counterpart"]["id"] == str(peer.pk)
-    for outsider in (world.head, world.outsider, world.student, world.gss, world.faculty):
+    for outsider in (world.head, world.outsider, world.student, world.goa, world.faculty):
         response = auth_client(outsider).get(f"{BASE}/case-grants/{world.grant['id']}/context")
         assert response.status_code == 404, (outsider.role.code, response.content)
     missing = uuid4()

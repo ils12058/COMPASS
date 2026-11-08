@@ -29,6 +29,7 @@
   },
   "additive_migrations": [
     "accounts/migrations/0002_student_session_summary_capabilities.py",
+    "accounts/migrations/0003_rename_guidance_services_staff_role.py",
     "appointments/migrations/0002_appointment_reminders.py",
     "audit/migrations/0002_alter_auditevent_target_type.py",
     "counseling/migrations/0002_student_session_summary_contract.py",

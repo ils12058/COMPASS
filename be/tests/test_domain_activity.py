@@ -67,7 +67,7 @@ def world():
         "counselor": "COUNSELOR",
         "unrelated": "COUNSELOR",
         "head": "COUNSELOR",
-        "gss": "GUIDANCE_SERVICES_STAFF",
+        "goa": "GUIDANCE_OFFICE_ASSISTANT",
         "it": "IT_ADMIN",
         "dpo": "INSTITUTIONAL_OFFICER",
     }
@@ -90,7 +90,7 @@ def world():
     outside = College.objects.create(campus=campus, code="ACT2B", name="Other College")
     CounselorResponsibility.objects.create(college=college, counselor=people["counselor"])
     CounselorResponsibility.objects.create(college=outside, counselor=people["unrelated"])
-    StaffSupervision.objects.create(staff=people["gss"], supervisor=people["counselor"])
+    StaffSupervision.objects.create(staff=people["goa"], supervisor=people["counselor"])
     year = AcademicYear.objects.create(label="2026-2027", is_current=True)
     service = Service.objects.create(code="ACT2", name="Synthetic service")
     counseling = Service.objects.create(code="COUNSELING", name="Counseling")
@@ -229,7 +229,7 @@ def test_allowlisted_actions_have_exact_viewer_relationships(world, action):
     else:
         assert ids(world["head"]) == []
     assert ids(world["unrelated"]) == []
-    assert ids(world["gss"]) == []
+    assert ids(world["goa"]) == []
     assert ids(world["dpo"]) == []
     assert ids(world["it"]) == []
     assert get_security_activity(actor).items == ()
@@ -318,8 +318,8 @@ def test_real_inventory_correction_sequence_and_unrelated_issuance(world):
     assert ids(world["other"]) == [issued.id]
 
 
-def test_gss_has_own_operational_activity_without_professional_or_supervision_fallback(world):
-    gss = world["gss"]
+def test_goa_has_own_operational_activity_without_professional_or_supervision_fallback(world):
+    goa = world["goa"]
     own = world["rows"]["student"]
     expected = []
     for action in (
@@ -327,13 +327,13 @@ def test_gss_has_own_operational_activity_without_professional_or_supervision_fa
         actions.CALL_SLIP_CREATED,
         actions.REFERRAL_CREATED,
     ):
-        expected.append(emit(gss, action, own[DOMAIN_ACTIVITY_POLICIES[action].target_type]).id)
-    emit(gss, actions.INVENTORY_REOPENED, own["inventory.studentinventory"])
-    emit(gss, actions.GOOD_MORAL_ISSUED, own["goodmoral.request"])
+        expected.append(emit(goa, action, own[DOMAIN_ACTIVITY_POLICIES[action].target_type]).id)
+    emit(goa, actions.INVENTORY_REOPENED, own["inventory.studentinventory"])
+    emit(goa, actions.GOOD_MORAL_ISSUED, own["goodmoral.request"])
     emit(world["counselor"], actions.GOOD_MORAL_PREPARED, own["goodmoral.request"])
-    assert ids(gss) == list(reversed(expected))
-    StaffSupervision.objects.filter(staff=gss).delete()
-    assert ids(gss) == [expected[0]]  # Good Moral staff reads have no delegated college scope.
+    assert ids(goa) == list(reversed(expected))
+    StaffSupervision.objects.filter(staff=goa).delete()
+    assert ids(goa) == [expected[0]]  # Good Moral staff reads have no delegated college scope.
 
 
 def test_appointment_relationship_scope_and_head_are_not_global(world):
@@ -342,10 +342,10 @@ def test_appointment_relationship_scope_and_head_are_not_global(world):
     source.save(update_fields=["service"])
     own = emit(world["counselor"], actions.APPOINTMENT_RESCHEDULED, source)
     emit(world["head"], actions.APPOINTMENT_RESCHEDULED, source)
-    emit(world["gss"], actions.APPOINTMENT_RESCHEDULED, source)
+    emit(world["goa"], actions.APPOINTMENT_RESCHEDULED, source)
     assert ids(world["counselor"]) == [own.id]
     assert ids(world["head"]) == []
-    assert ids(world["gss"]) == []
+    assert ids(world["goa"]) == []
     source.provider = world["unrelated"]
     source.save(update_fields=["provider"])
     assert ids(world["counselor"]) == []
@@ -356,7 +356,7 @@ def test_appointment_relationship_scope_and_head_are_not_global(world):
     [
         ("student", "inventory.view_self"),
         ("counselor", "inventory.view"),
-        ("gss", "good_moral.view"),
+        ("goa", "good_moral.view"),
         ("head", "exit_interviews.view"),
     ],
 )
@@ -364,7 +364,7 @@ def test_revoked_read_capabilities_hide_previously_eligible_events(world, viewer
     action = {
         "student": actions.INVENTORY_SUBMITTED,
         "counselor": actions.INVENTORY_REOPENED,
-        "gss": actions.GOOD_MORAL_PREPARED,
+        "goa": actions.GOOD_MORAL_PREPARED,
         "head": actions.EXIT_INTERVIEW_REOPENED,
     }[viewer]
     actor = world[viewer]
@@ -578,9 +578,9 @@ def test_assisted_creation_requires_persisted_initiator_and_origin(world):
     assert forged.pk not in ids(world["student"])
     assert forged.pk not in ids(world["counselor"])
     request.initiation_origin = "GCO_ASSISTED"
-    request.initiated_by = world["gss"]
+    request.initiated_by = world["goa"]
     request.save(update_fields=["initiation_origin", "initiated_by"])
     assert forged.pk not in ids(world["student"])
-    verified = emit(world["gss"], actions.GOOD_MORAL_REQUEST_CREATED, request)
+    verified = emit(world["goa"], actions.GOOD_MORAL_REQUEST_CREATED, request)
     assert ids(world["student"]) == [verified.pk]
-    assert ids(world["gss"]) == [verified.pk]
+    assert ids(world["goa"]) == [verified.pk]

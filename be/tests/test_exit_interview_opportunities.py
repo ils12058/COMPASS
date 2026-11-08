@@ -566,9 +566,9 @@ def test_concurrent_f4_creation_and_reopen_preserve_checked_submission_provenanc
 
 
 @pytest.mark.django_db
-def test_gss_opportunity_metadata_never_exposes_response_content():
+def test_goa_opportunity_metadata_never_exposes_response_content():
     student, _, year, _ = setup_student()
-    staff = make_user("opportunity-staff@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    staff = make_user("opportunity-staff@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     client = auth_client(staff)
     opened = client.post(
         "/api/v1/exit-interviews/opportunities",
@@ -610,9 +610,9 @@ def test_gss_opportunity_metadata_never_exposes_response_content():
 
 
 @pytest.mark.django_db
-def test_gss_can_revoke_only_opportunity_access_and_override_revocation_is_enforced():
+def test_goa_can_revoke_only_opportunity_access_and_override_revocation_is_enforced():
     student, _, year, _ = setup_student()
-    staff = make_user("opportunity-revoker@example.edu", role="GUIDANCE_SERVICES_STAFF")
+    staff = make_user("opportunity-revoker@example.edu", role="GUIDANCE_OFFICE_ASSISTANT")
     opportunity = open_for(student, staff, year, source="MANUAL")
     client = auth_client(staff)
     url = f"/api/v1/exit-interviews/opportunities/{opportunity.pk}/revoke"

@@ -126,7 +126,7 @@ class ServiceDeliveryMode(models.Model):
 class ServiceProviderRole(models.Model):
     """Legacy role-level provider configuration (ADR-089).
 
-    Historical rows, including Guidance Services Staff ones, are kept for history only. COMPASS
+    Historical rows, including Guidance Office Assistant ones, are kept for history only. COMPASS
     no longer writes or reads them for eligibility: Counselor is the one provider class, and
     ``Service.provider_coverage`` with ``ServiceCounselorProvider`` decides qualification.
     """

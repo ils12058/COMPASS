@@ -100,7 +100,7 @@ test("Messages access pairs each identity with its own capability", () => {
     },
   );
   assert.equal(getGuidanceMessagesAccess(counselor).canManageStaff, true);
-  assert.equal(getGuidanceMessagesAccess(account("GUIDANCE_SERVICES_STAFF", ["guidance_messages.view"])).canWrite, false, "View without manage reads only");
+  assert.equal(getGuidanceMessagesAccess(account("GUIDANCE_OFFICE_ASSISTANT", ["guidance_messages.view"])).canWrite, false, "View without manage reads only");
   assert.equal(getGuidanceMessagesAccess(account("STUDENT", ["guidance_messages.view"])).hasWorkspace, false, "A Student needs view_self");
   assert.equal(getGuidanceMessagesAccess(account("COUNSELOR", ["guidance_messages.view_self"])).hasWorkspace, false, "Staff need view");
   const faculty = account("FACULTY", ["guidance_messages.inquiry_view_self", "guidance_messages.inquiry_manage_self"]);
@@ -182,8 +182,8 @@ test("Counselor direct access needs the narrow capability on top of the broad on
     [true, false, true, false, false],
     "Narrow view opens the workspace; writing and starting need narrow manage",
   );
-  const gss = getGuidanceMessagesAccess(account("GUIDANCE_SERVICES_STAFF", ["guidance_messages.view", "guidance_messages.manage"]));
-  assert.deepEqual([gss.canViewDirect, gss.canManageDirect], [false, false], "GSS never holds direct authority");
+  const goa = getGuidanceMessagesAccess(account("GUIDANCE_OFFICE_ASSISTANT", ["guidance_messages.view", "guidance_messages.manage"]));
+  assert.deepEqual([goa.canViewDirect, goa.canManageDirect], [false, false], "GOA never holds direct authority");
   const narrowOnly = getGuidanceMessagesAccess(account("COUNSELOR", [
     "guidance_messages.counselor_direct.view", "guidance_messages.counselor_direct.manage",
   ]));
@@ -203,7 +203,7 @@ test("Faculty and intake staff reach Messages through the workspace and its comm
   assert.ok(commands(faculty).includes("/portal/messages/new"));
   assert.ok(!commands(account("FACULTY", [])).some((href) => href.startsWith("/portal/messages")));
   assert.deepEqual(portalWorkspaceGroups(account("FACULTY", [])), []);
-  const intake = account("GUIDANCE_SERVICES_STAFF", ["guidance_messages.view", "guidance_messages.manage", "guidance_messages.intake"], { designations: ["GENERAL_GUIDANCE_INTAKE"] });
+  const intake = account("GUIDANCE_OFFICE_ASSISTANT", ["guidance_messages.view", "guidance_messages.manage", "guidance_messages.intake"], { designations: ["GENERAL_GUIDANCE_INTAKE"] });
   assert.ok(portalWorkspaceGroups(intake).some((group) => group.links.some((link) => link.href === "/portal/messages")));
   assert.equal(getGuidanceMessagesAccess(intake).viewer, "staff");
 });
@@ -218,8 +218,8 @@ test("Messages is a daily workspace placed before administration", () => {
   assert.ok(labels(student).includes("Communication"));
   const commands = (user) => portalCommandDestinations(user).map((destination) => destination.href);
   assert.ok(commands(student).includes("/portal/messages/new"));
-  assert.ok(!commands(account("GUIDANCE_SERVICES_STAFF", ["guidance_messages.view"])).includes("/portal/messages/new"));
-  assert.ok(commands(account("GUIDANCE_SERVICES_STAFF", ["guidance_messages.view"])).includes("/portal/messages"));
+  assert.ok(!commands(account("GUIDANCE_OFFICE_ASSISTANT", ["guidance_messages.view"])).includes("/portal/messages/new"));
+  assert.ok(commands(account("GUIDANCE_OFFICE_ASSISTANT", ["guidance_messages.view"])).includes("/portal/messages"));
 });
 
 // ── Presentation ──────────────────────────────────────────────────────────────────────────────
@@ -731,7 +731,7 @@ test("template previews are one line and every template query shares one family"
 test("templates belong to staff who write operational Messages; managing them needs its own capability", () => {
   assert.equal(messageTemplatesFor(getGuidanceMessagesAccess(student)), null);
   assert.deepEqual(messageTemplatesFor(getGuidanceMessagesAccess(counselor)), { canManage: false });
-  const manager = account("GUIDANCE_SERVICES_STAFF", ["guidance_messages.view", "guidance_messages.manage", "guidance_messages.templates.manage"]);
+  const manager = account("GUIDANCE_OFFICE_ASSISTANT", ["guidance_messages.view", "guidance_messages.manage", "guidance_messages.templates.manage"]);
   assert.deepEqual(messageTemplatesFor(getGuidanceMessagesAccess(manager)), { canManage: true });
   const viewOnly = account("COUNSELOR", ["guidance_messages.view", "guidance_messages.templates.manage"]);
   assert.equal(messageTemplatesFor(getGuidanceMessagesAccess(viewOnly)), null, "Template management never replaces Messages manage");
@@ -742,7 +742,7 @@ test("templates belong to staff who write operational Messages; managing them ne
 
 test("handler roles have human labels and a stale assignment asks for a new choice", () => {
   assert.equal(handlerRoleLabel("COUNSELOR"), "Counselor");
-  assert.equal(handlerRoleLabel("GUIDANCE_SERVICES_STAFF"), "Guidance Services Staff");
+  assert.equal(handlerRoleLabel("GUIDANCE_OFFICE_ASSISTANT"), "Guidance Office Assistant");
   assert.match(describeAssignError(apiError(422)), /no longer be assigned.*refreshed/);
   assert.match(describeAssignError(apiError(404)), /no longer available/);
   assert.match(describeAssignError(new TypeError("offline")), /Try again/);

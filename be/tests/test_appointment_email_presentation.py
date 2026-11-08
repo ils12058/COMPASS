@@ -739,13 +739,13 @@ def test_former_provider_with_independent_domain_scope_still_gets_minimal_email(
     assert "APT-SYNTHETIC-02" not in message.text_body
 
 
-def test_gss_pilot_link_remains_scoped_and_never_rich(case, settings):
+def test_goa_pilot_link_remains_scoped_and_never_rich(case, settings):
     from compass.organization.models import StaffSupervision
     from tests.test_appointments import create_placement
 
     settings.COMPASS_EMAIL_DISCLOSURE_POLICY = POLICY
     create_placement(case[0], case[1])
-    staff = make_user("email-gss@example.test", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("email-goa@example.test", "GUIDANCE_OFFICE_ASSISTANT")
     supervision = StaffSupervision.objects.create(staff=staff, supervisor=case[1])
     notification = notice(case, NotificationEvent.APPOINTMENT_SCHEDULED, recipient=staff)
     plan, _ = resolve_render(notification)

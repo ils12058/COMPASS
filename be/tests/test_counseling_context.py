@@ -230,8 +230,8 @@ def world(db):
     counselor_b = make_user("counselor.b.context@example.edu", "COUNSELOR")
     unrelated = make_user("unrelated.context@example.edu", "COUNSELOR")
     head = make_head()
-    gss = make_user("context-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
-    StaffSupervision.objects.create(staff=gss, supervisor=head)
+    goa = make_user("context-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    StaffSupervision.objects.create(staff=goa, supervisor=head)
 
     _, cas, cas_program = make_org("CAS")
     _, ccms, _ccms_program = make_org("CCMS")
@@ -254,7 +254,7 @@ def world(db):
         "b": counselor_b,
         "unrelated": unrelated,
         "head": head,
-        "gss": gss,
+        "goa": goa,
         "cas": cas,
         "cas_program": cas_program,
         "ccms": ccms,
@@ -292,7 +292,7 @@ def test_appointment_context_is_exact_provider_time_bounded_and_cancel_revokes(w
     assert access.counselor_id == world["b"].pk
     assert access.appointment_id == appointment.pk
 
-    for actor in (world["a"], world["head"], world["unrelated"], world["gss"]):
+    for actor in (world["a"], world["head"], world["unrelated"], world["goa"]):
         with pytest.raises(CounselingContextNotFound):
             resolve_counseling_context(
                 actor=actor,
@@ -483,7 +483,7 @@ def test_direct_creation_needs_student_submission_and_notification_is_idempotent
     )
     assert access.student_id == world["anna"].pk
 
-    for actor in (world["a"], world["head"], world["unrelated"], world["gss"]):
+    for actor in (world["a"], world["head"], world["unrelated"], world["goa"]):
         with pytest.raises(CounselingContextNotFound):
             resolve_counseling_context(
                 actor=actor,
@@ -967,10 +967,10 @@ def test_context_api_privacy_denials_and_draft_intake_never_leak(world):
         assert response.status_code == 404
         assert str(world["anna"].pk) not in response.content.decode()
 
-    gss_response = auth_client(world["gss"]).get(
+    goa_response = auth_client(world["goa"]).get(
         f"/api/v1/counseling/context/ROUTINE_INTERVIEW/{item.pk}"
     )
-    assert gss_response.status_code == 403
+    assert goa_response.status_code == 403
 
 
 @pytest.mark.django_db
@@ -1073,11 +1073,11 @@ def test_detail_projects_whether_the_appointment_encounter_is_recorded(world):
     assert body["counseling_encounter_recorded"] is False
     assert body["status"] == AppointmentStatus.SCHEDULED
 
-    # 2-4. The fact is not exposed to the Student, another Counselor, GSS, or Head Guidance.
-    for viewer in (world["anna"], world["unrelated"], world["gss"], world["head"]):
+    # 2-4. The fact is not exposed to the Student, another Counselor, GOA, or Head Guidance.
+    for viewer in (world["anna"], world["unrelated"], world["goa"], world["head"]):
         assert appointment_encounter_recorded(actor=viewer, appointment=appointment) is None, viewer
     assert detail_json(world["anna"], appointment)["counseling_encounter_recorded"] is None
-    for outsider in (world["unrelated"], world["gss"], world["head"]):
+    for outsider in (world["unrelated"], world["goa"], world["head"]):
         assert (
             auth_client(outsider).get(f"/api/v1/appointments/{appointment.pk}").status_code == 404
         ), outsider

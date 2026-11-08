@@ -59,8 +59,8 @@ def users(db):
     result = {
         "a": make("CounselorA", "COUNSELOR"),
         "b": make("CounselorB", "COUNSELOR"),
-        "staff": make("José", "GUIDANCE_SERVICES_STAFF"),
-        "other": make("OtherStaff", "GUIDANCE_SERVICES_STAFF"),
+        "staff": make("José", "GUIDANCE_OFFICE_ASSISTANT"),
+        "other": make("OtherStaff", "GUIDANCE_OFFICE_ASSISTANT"),
         "student": make("Student", "STUDENT"),
         "it": make("IT", "IT_ADMIN"),
         "dpo": make("DPO", "INSTITUTIONAL_OFFICER"),

@@ -172,7 +172,7 @@ def test_manage_authorization_uses_effective_capability_not_role_name():
 def test_non_it_baselines_and_institutional_designations_do_not_gain_manage():
     sync_policy()
     counselor = make_user("baseline-counselor@example.edu", "COUNSELOR")
-    staff = make_user("baseline-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("baseline-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("baseline-student@example.edu", "STUDENT")
     officer = make_user("baseline-officer@example.edu", "INSTITUTIONAL_OFFICER")
     dpo = make_user("baseline-dpo@example.edu", "INSTITUTIONAL_OFFICER")

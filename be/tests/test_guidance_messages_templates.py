@@ -65,14 +65,14 @@ def names(world, *, actor=None, **query):
 def test_capability_policy_is_staff_only_and_depends_on_messages_manage():
     assert CAPABILITY_DEPENDENCIES[MANAGE] == {"guidance_messages.manage"}
     assert MANAGE in ROLE_CAPABILITY_GRANTS["COUNSELOR"]
-    assert MANAGE in ROLE_CAPABILITY_GRANTS["GUIDANCE_SERVICES_STAFF"]
+    assert MANAGE in ROLE_CAPABILITY_GRANTS["GUIDANCE_OFFICE_ASSISTANT"]
     for role in ["STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]:
         assert MANAGE not in ROLE_CAPABILITY_GRANTS[role]
     for grants in DESIGNATION_CAPABILITY_GRANTS.values():
         assert MANAGE not in grants
 
 
-@pytest.mark.parametrize("manager", ["counselor", "gss", "head", "head_gss"])
+@pytest.mark.parametrize("manager", ["counselor", "goa", "head", "head_goa"])
 def test_baseline_staff_create_edit_archive_and_restore(world, manager):
     actor = getattr(world, manager)
     template = create(world, actor=actor)
@@ -101,9 +101,9 @@ def test_baseline_staff_create_edit_archive_and_restore(world, manager):
 
 def test_override_removing_template_management_keeps_use_but_blocks_management(world):
     template = create(world)
-    deny(world.gss, MANAGE)
-    assert names(world, actor=world.gss) == ["Office follow-up"]
-    client = auth_client(world.gss)
+    deny(world.goa, MANAGE)
+    assert names(world, actor=world.goa) == ["Office follow-up"]
+    client = auth_client(world.goa)
     assert post(client, "/templates", {"name": "New", "body": TEXT}).status_code == 403
     assert patch(client, f"/templates/{template.pk}", {"body": "x"}).status_code == 403
     assert post(client, f"/templates/{template.pk}/archive", {}).status_code == 403
@@ -247,12 +247,12 @@ def test_database_constraints_guard_shape_names_and_length(world):
 def test_update_audits_changed_fields_only_and_skips_no_op(world):
     template = create(world)
     templates.update_template(
-        expected_updated_at=template.updated_at, actor=world.gss, template_id=template.pk, body=TEXT
+        expected_updated_at=template.updated_at, actor=world.goa, template_id=template.pk, body=TEXT
     )
     assert not AuditEvent.objects.filter(action="guidance_messages.template.updated").exists()
     templates.update_template(
         expected_updated_at=template.updated_at,
-        actor=world.gss,
+        actor=world.goa,
         template_id=template.pk,
         name="Office reply",
         body="New text",
@@ -266,11 +266,11 @@ def test_update_audits_changed_fields_only_and_skips_no_op(world):
     assert "New text" not in json.dumps(event.metadata)
     with pytest.raises(InvalidMessageInput):
         templates.update_template(
-            expected_updated_at=template.updated_at, actor=world.gss, template_id=template.pk
+            expected_updated_at=template.updated_at, actor=world.goa, template_id=template.pk
         )
     with pytest.raises(TemplateNotFound):
         templates.update_template(
-            expected_updated_at=template.updated_at, actor=world.gss, template_id=uuid4(), body="x"
+            expected_updated_at=template.updated_at, actor=world.goa, template_id=uuid4(), body="x"
         )
 
 
@@ -279,7 +279,7 @@ def test_stale_editor_and_archived_template_cannot_be_overwritten(world):
     opened = template.updated_at
     templates.update_template(
         expected_updated_at=template.updated_at,
-        actor=world.gss,
+        actor=world.goa,
         template_id=template.pk,
         body="First save",
     )
@@ -314,13 +314,13 @@ def test_archive_hides_from_picker_and_restore_returns_it(world):
     create(world, name="Appointment reminder")
     client = auth_client(world.counselor)
     assert post(client, f"/templates/{template.pk}/archive", {}).json()["status"] == "ARCHIVED"
-    assert names(world, actor=world.gss) == ["Appointment reminder"]
+    assert names(world, actor=world.goa) == ["Appointment reminder"]
     assert names(world, status="ARCHIVED") == ["Office follow-up"]
     # Repeating the current state records nothing.
     assert post(client, f"/templates/{template.pk}/archive", {}).status_code == 200
     assert AuditEvent.objects.filter(action="guidance_messages.template.archived").count() == 1
     assert post(client, f"/templates/{template.pk}/restore", {}).json()["status"] == "ACTIVE"
-    assert names(world, actor=world.gss) == ["Appointment reminder", "Office follow-up"]
+    assert names(world, actor=world.goa) == ["Appointment reminder", "Office follow-up"]
     assert AuditEvent.objects.filter(action="guidance_messages.template.restored").count() == 1
     assert post(client, f"/templates/{uuid4()}/archive", {}).status_code == 404
 
@@ -378,7 +378,7 @@ def test_message_written_from_a_template_is_an_ordinary_message(world):
     assert not any("template" in field.name for field in GuidanceMessage._meta.get_fields())
     thread, _ = office(world)
     template = create(world)
-    staff = auth_client(world.gss)
+    staff = auth_client(world.goa)
     chosen = staff.get(BASE + "/templates").json()["items"][0]
     edited = chosen["body"].replace("office hours", "office hours this Friday")
     payload = {"body": edited, "client_message_id": str(uuid4())}

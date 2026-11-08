@@ -41,7 +41,7 @@ def voided_notice_exists(call_slip: CallSlip) -> bool:
 @pytest.mark.django_db
 def test_live_and_historical_direct_issuance_persist_provenance_and_govern_void_notification():
     sync_policy()
-    counselor, _other, _gss, student, _student_b = setup_scope()
+    counselor, _other, _goa, student, _student_b = setup_scope()
     live = create_for(counselor, student, key="live", fingerprint="1" * 64, notify_student=True)
     quiet = create_for(counselor, student, key="quiet", fingerprint="2" * 64)
 
@@ -74,7 +74,7 @@ def test_live_and_historical_direct_issuance_persist_provenance_and_govern_void_
 def test_referral_driven_issuance_persists_provenance():
     sync_policy()
     head = make_head()
-    _counselor, _other, _gss, student, _student_b = setup_scope()
+    _counselor, _other, _goa, student, _student_b = setup_scope()
     live_referral = create_referral_for(head, student, key="ref-live", fingerprint="3" * 64)
     quiet_referral = create_referral_for(head, student, key="ref-quiet", fingerprint="4" * 64)
 
@@ -109,7 +109,7 @@ def test_referral_driven_issuance_persists_provenance():
 @pytest.mark.django_db
 def test_operational_api_projects_provenance_and_void_consequence_only_to_guidance():
     sync_policy()
-    counselor, _other, _gss, student, _student_b = setup_scope()
+    counselor, _other, _goa, student, _student_b = setup_scope()
     live = create_for(counselor, student, key="api-live", fingerprint="7" * 64, notify_student=True)
     quiet = create_for(counselor, student, key="api-quiet", fingerprint="8" * 64)
     legacy = create_for(counselor, student, key="api-legacy", fingerprint="9" * 64)
@@ -145,7 +145,7 @@ def test_operational_api_projects_provenance_and_void_consequence_only_to_guidan
 @pytest.mark.django_db
 def test_lifecycle_state_filters_discover_active_completed_and_voided_call_slips():
     sync_policy()
-    counselor, _other, _gss, student, _student_b = setup_scope()
+    counselor, _other, _goa, student, _student_b = setup_scope()
     active = create_for(counselor, student, key="state-active", fingerprint="c" * 64)
     completed = create_for(counselor, student, key="state-completed", fingerprint="d" * 64)
     voided = create_for(counselor, student, key="state-voided", fingerprint="e" * 64)
@@ -185,7 +185,7 @@ def test_lifecycle_state_filters_discover_active_completed_and_voided_call_slips
 def test_counseling_context_history_marks_voided_call_slips_and_referrals():
     sync_policy()
     head = make_head()
-    _counselor, _other, _gss, student, _student_b = setup_scope()
+    _counselor, _other, _goa, student, _student_b = setup_scope()
     referral = create_referral_for(head, student, key="history-ref", fingerprint="f" * 64)
     slip = create_for(head, student, key="history-slip", fingerprint="0" * 64)
     void_call_slip(actor=head, call_slip_id=slip.pk, reason="Error", context=audit_context(head))
@@ -209,7 +209,7 @@ def test_referral_void_conflict_explains_completed_linked_call_slip():
 
     sync_policy()
     head = make_head()
-    _counselor, _other, _gss, student, _student_b = setup_scope()
+    _counselor, _other, _goa, student, _student_b = setup_scope()
     referral = create_referral_for(head, student, key="void-completed", fingerprint="1" * 64)
     slip = create_from_referral_for(
         head,

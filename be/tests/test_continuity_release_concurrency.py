@@ -138,7 +138,7 @@ def test_read_linearizes_before_real_supported_mutation(selected_case, monkeypat
         if mutation == "deactivate":
             return set_account_active(**options, target_id=c.receiver.pk, is_active=False)
         if mutation == "role":
-            return change_role(**options, target_id=c.receiver.pk, role="GUIDANCE_SERVICES_STAFF")
+            return change_role(**options, target_id=c.receiver.pk, role="GUIDANCE_OFFICE_ASSISTANT")
         if mutation == "student_lifecycle":
             return set_student_lifecycle(**options, target_id=c.student.pk, status="FORMER")
         if mutation == "placement":

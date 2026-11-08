@@ -59,11 +59,11 @@ for (const width of [320, 375, 390, 430, 768, 1440]) {
   });
 }
 
-for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
   const state = world(role);
   await check(`navigation and direct route authority for ${role}`, "/portal/operations", state.options(), async (page) => {
     const nav = page.getByRole("navigation", { name: "Portal navigation" });
-    if (["COUNSELOR", "GUIDANCE_SERVICES_STAFF"].includes(role)) {
+    if (["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(role)) {
       await shown(page.getByRole("heading", { name: "Guidance operations", exact: true }));
       await shown(page.getByText(labels[0], { exact: true }));
       const links = await nav.locator("a").evaluateAll(nodes => nodes.map(node => {
@@ -72,7 +72,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN
         return label.textContent;
       }));
       assert.deepEqual(links.slice(1, 3).map((value) => value.trim()), ["My work", "Guidance operations"]);
-      if (role === "GUIDANCE_SERVICES_STAFF") {
+      if (role === "GUIDANCE_OFFICE_ASSISTANT") {
         await hidden(page.getByText(labels[1], { exact: true }));
         await hidden(page.getByText(labels[3], { exact: true }));
         await hidden(page.getByText("Your upcoming appointments", { exact: true }));
@@ -148,8 +148,8 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN
   const state = world();
   await check("new account discards previous confirmed protected metrics", "/portal/operations", state.options({ beforeNavigate: async ({ page }) => page.clock.install() }), async (page) => {
     await shown(page.getByText(labels[1], { exact: true }));
-    state.account = operationsAccount("GUIDANCE_SERVICES_STAFF", { id: "synthetic-operations-B" });
-    state.data = operationsData("GUIDANCE_SERVICES_STAFF");
+    state.account = operationsAccount("GUIDANCE_OFFICE_ASSISTANT", { id: "synthetic-operations-B" });
+    state.data = operationsData("GUIDANCE_OFFICE_ASSISTANT");
     state.data.backlog.guidance_messages = null;
     await page.clock.fastForward(31_000);
     await page.evaluate(() => { window.dispatchEvent(new Event("offline")); window.dispatchEvent(new Event("online")); });

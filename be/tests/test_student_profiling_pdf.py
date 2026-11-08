@@ -456,7 +456,7 @@ def test_pdf_endpoint_reuses_reports_view_without_recent_mfa(monkeypatch):
 
     head = make_head()
     counselor = make_user("ordinary-pdf@example.edu", "COUNSELOR")
-    staff = make_user("staff-pdf@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("staff-pdf@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("student-pdf@example.edu", "STUDENT")
     admin = make_user("admin-pdf@example.edu", "IT_ADMIN")
     dpo = make_user("dpo-pdf@example.edu", "INSTITUTIONAL_OFFICER")

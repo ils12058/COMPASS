@@ -29,7 +29,7 @@ test("Faculty has only own-account destinations, including with a stale authorit
   assert.equal(roleLabels.FACULTY, "Faculty");
   assert.deepEqual(compatibleDesignations("FACULTY"), []);
   assert.deepEqual(compatibleDesignations("COUNSELOR"), ["HEAD_GUIDANCE_COUNSELOR", "GENERAL_GUIDANCE_INTAKE"]);
-  assert.deepEqual(compatibleDesignations("GUIDANCE_SERVICES_STAFF"), ["GENERAL_GUIDANCE_INTAKE"]);
+  assert.deepEqual(compatibleDesignations("GUIDANCE_OFFICE_ASSISTANT"), ["GENERAL_GUIDANCE_INTAKE"]);
 });
 
 test("Faculty may reach only their own Guidance Office inquiry paths", () => {

@@ -167,7 +167,7 @@ def make_appointment(
 def test_counseling_capabilities_are_counselor_only_and_revoke_still_wins():
     sync_policy()
     counselor = make_user("counselor@example.edu", "COUNSELOR")
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("student@example.edu", "STUDENT")
     admin = make_user("admin@example.edu", "IT_ADMIN")
     head = make_user("head@example.edu", "COUNSELOR")
@@ -180,7 +180,7 @@ def test_counseling_capabilities_are_counselor_only_and_revoke_still_wins():
     assert counselor.has_capability("counseling.manage_assigned")
     assert head.has_capability("counseling.view_assigned")
     assert head.has_capability("counseling.manage_assigned")
-    assert not gss.has_capability("counseling.view_assigned")
+    assert not goa.has_capability("counseling.view_assigned")
     assert not student.has_capability("counseling.view_assigned")
     assert not admin.has_capability("counseling.view_assigned")
 
@@ -680,29 +680,29 @@ def test_encounter_dates_and_times_follow_manila_under_a_utc_runtime():
 
 
 @pytest.mark.django_db
-def test_student_and_gss_cannot_be_used_as_counseling_provider_or_selected_student():
+def test_student_and_goa_cannot_be_used_as_counseling_provider_or_selected_student():
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("student@example.edu", "STUDENT")
     create_counseling_service(admin)
     started_at, ended_at = actual_times()
 
     with pytest.raises(CounselingNotPermitted, match="active Counselor"):
         create_encounter(
-            counselor=gss,
+            counselor=goa,
             student_id=student.pk,
             entry_mode="WALK_IN",
             delivery_mode="IN_PERSON",
             started_at=started_at,
             ended_at=ended_at,
-            context=context(gss),
+            context=context(goa),
         )
     with pytest.raises(CounselingNotPermitted, match="active Student"):
         create_encounter(
             counselor=counselor,
-            student_id=gss.pk,
+            student_id=goa.pk,
             entry_mode="WALK_IN",
             delivery_mode="IN_PERSON",
             started_at=started_at,
@@ -870,7 +870,7 @@ def test_api_assignment_privacy_student_lookup_and_no_idempotency_requirement():
     other = make_user("other@example.edu", "COUNSELOR")
     student = make_user("student@example.edu", "STUDENT")
     make_user("inactive@example.edu", "STUDENT", active=False)
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     create_counseling_service(admin)
     started_at, ended_at = actual_times()
     payload = {
@@ -911,7 +911,7 @@ def test_api_assignment_privacy_student_lookup_and_no_idempotency_requirement():
     assert (
         auth_client(student).get(f"/api/v1/counseling/encounters/{encounter_id}").status_code == 403
     )
-    assert auth_client(gss).get(f"/api/v1/counseling/encounters/{encounter_id}").status_code == 403
+    assert auth_client(goa).get(f"/api/v1/counseling/encounters/{encounter_id}").status_code == 403
     assert (
         auth_client(admin).get(f"/api/v1/counseling/encounters/{encounter_id}").status_code == 403
     )

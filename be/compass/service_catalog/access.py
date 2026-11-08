@@ -10,11 +10,11 @@ from django.db.models import QuerySet
 from compass.accounts.models import User
 from compass.organization.models import StaffSupervision
 
-SLOT_STAFF_ROLES = frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
+SLOT_STAFF_ROLES = frozenset({"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"})
 
 
 def current_slot_staff(actor: User | None, *, lock_supervision: bool = False) -> User | None:
-    """Reload current staff identity and capability, including current GSS supervision."""
+    """Reload current staff identity and capability, including current GOA supervision."""
 
     actor_id = getattr(actor, "pk", None)
     if not actor_id:
@@ -30,7 +30,7 @@ def current_slot_staff(actor: User | None, *, lock_supervision: bool = False) ->
     ):
         return None
     if (
-        current.role.code == "GUIDANCE_SERVICES_STAFF"
+        current.role.code == "GUIDANCE_OFFICE_ASSISTANT"
         and supervised_counselor(current, lock=lock_supervision) is None
     ):
         return None
@@ -38,12 +38,12 @@ def current_slot_staff(actor: User | None, *, lock_supervision: bool = False) ->
 
 
 def supervised_counselor(staff: User | None, *, lock: bool = False) -> User | None:
-    """Resolve only the current direct, active Counselor supervisor for one GSS account."""
+    """Resolve only the current direct, active Counselor supervisor for one GOA account."""
 
     staff_id = getattr(staff, "pk", None)
     if not staff_id or not getattr(staff, "is_active", False):
         return None
-    if getattr(getattr(staff, "role", None), "code", None) != "GUIDANCE_SERVICES_STAFF":
+    if getattr(getattr(staff, "role", None), "code", None) != "GUIDANCE_OFFICE_ASSISTANT":
         return None
     queryset = StaffSupervision.objects.filter(
         staff_id=staff_id,

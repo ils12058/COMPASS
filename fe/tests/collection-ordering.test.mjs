@@ -165,7 +165,7 @@ test("every sortable collection has a closed generated ordering enum", () => {
 
 // Queues and directories ---------------------------------------------------------------------------
 
-const goodMoralStaff = person({ id: "staff", role: "GUIDANCE_SERVICES_STAFF", capabilities: ["good_moral.view"] });
+const goodMoralStaff = person({ id: "staff", role: "GUIDANCE_OFFICE_ASSISTANT", capabilities: ["good_moral.view"] });
 const goodMoralRow = (id, name, created_at) => ({
   id,
   variant: "GRADUATE",

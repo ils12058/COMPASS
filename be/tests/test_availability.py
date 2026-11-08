@@ -125,7 +125,7 @@ def test_availability_capability_policy_matches_role_and_designation_boundaries(
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("student@example.edu", "STUDENT")
     head = make_user("head@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
@@ -139,9 +139,9 @@ def test_availability_capability_policy_matches_role_and_designation_boundaries(
     assert counselor.has_capability("availability.view")
     assert counselor.has_capability("availability.manage_self")
     assert not counselor.has_capability("availability.manage")
-    assert gss.has_capability("availability.view")
-    assert not gss.has_capability("availability.manage_self")
-    assert not gss.has_capability("availability.manage")
+    assert goa.has_capability("availability.view")
+    assert not goa.has_capability("availability.manage_self")
+    assert not goa.has_capability("availability.manage")
     assert student.has_capability("availability.view")
     assert not student.has_capability("availability.manage_self")
     assert not student.has_capability("availability.manage")
@@ -226,7 +226,7 @@ def test_provider_configuration_accepts_counselor_and_allows_legacy_cleanup_only
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("c@example.edu", "COUNSELOR")
-    gss = make_user("g@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("g@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("s@example.edu", "STUDENT")
     other_admin = make_user("a2@example.edu", "IT_ADMIN")
     inactive = make_user("inactive@example.edu", "COUNSELOR", active=False)
@@ -239,13 +239,13 @@ def test_provider_configuration_accepts_counselor_and_allows_legacy_cleanup_only
         )
         == 1
     )
-    for provider in (gss, student, other_admin, inactive):
+    for provider in (goa, student, other_admin, inactive):
         with pytest.raises(AvailabilityNotApplicable):
             replace_provider_weekly(
                 provider_id=provider.pk, windows=[weekly()], context=context(actor)
             )
 
-    for legacy_provider in (gss, inactive):
+    for legacy_provider in (goa, inactive):
         ProviderAvailabilityWindow.objects.create(
             provider=legacy_provider,
             weekday="MONDAY",
@@ -505,7 +505,7 @@ def test_effective_query_rejects_inactive_service_unsupported_mode_role_and_larg
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("c@example.edu", "COUNSELOR")
-    gss = make_user("g@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("g@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     inactive_service = create_service(
         code="INACTIVE",
         name="Inactive",
@@ -537,7 +537,7 @@ def test_effective_query_rejects_inactive_service_unsupported_mode_role_and_larg
         )
     with pytest.raises(AvailabilityNotApplicable, match="operationally available"):
         compute_base_availability(
-            provider_id=gss.pk,
+            provider_id=goa.pk,
             service_id=service.pk,
             delivery_mode="IN_PERSON",
             start_date=date(2026, 9, 21),
@@ -628,9 +628,12 @@ def test_self_service_uses_authenticated_counselor_and_does_not_require_recent_m
 
 
 @pytest.mark.django_db
-def test_gss_and_student_cannot_use_counselor_self_mutation_and_manage_self_revoke_wins():
+def test_goa_and_student_cannot_use_counselor_self_mutation_and_manage_self_revoke_wins():
     sync_policy()
-    for role, email in [("GUIDANCE_SERVICES_STAFF", "g@example.edu"), ("STUDENT", "s@example.edu")]:
+    for role, email in [
+        ("GUIDANCE_OFFICE_ASSISTANT", "g@example.edu"),
+        ("STUDENT", "s@example.edu"),
+    ]:
         user = make_user(email, role)
         client = auth_client(user)
         response = client.put(
@@ -879,17 +882,17 @@ def test_explicit_manage_override_allows_cross_provider_edit_and_revoke_blocks_i
 
 @pytest.mark.django_db
 @override_settings(TIME_ZONE="Asia/Manila")
-def test_gss_legacy_schedule_is_non_operational_but_cleanup_compatible():
+def test_goa_legacy_schedule_is_non_operational_but_cleanup_compatible():
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
-    gss = make_user("g@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("g@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     service = active_service(actor)
     replace_office_weekly(
         windows=[weekly(start=time(8), end=time(17))],
         context=context(actor),
     )
     ProviderAvailabilityWindow.objects.create(
-        provider=gss,
+        provider=goa,
         weekday="MONDAY",
         start_time=time(8),
         end_time=time(12),
@@ -898,16 +901,16 @@ def test_gss_legacy_schedule_is_non_operational_but_cleanup_compatible():
 
     with pytest.raises(AvailabilityNotApplicable, match="operationally available"):
         compute_base_availability(
-            provider_id=gss.pk,
+            provider_id=goa.pk,
             service_id=service.pk,
             delivery_mode="IN_PERSON",
             start_date=date(2026, 9, 21),
             end_date=date(2026, 9, 22),
         )
 
-    assert ProviderAvailabilityWindow.objects.filter(provider=gss).exists()
+    assert ProviderAvailabilityWindow.objects.filter(provider=goa).exists()
     cleaned = replace_provider_weekly(
-        provider_id=gss.pk,
+        provider_id=goa.pk,
         windows=[],
         context=context(actor),
     )
@@ -1046,23 +1049,23 @@ def test_provider_discovery_supports_search_and_canonical_pagination():
 
 
 @pytest.mark.django_db
-def test_provider_discovery_limits_gss_to_legacy_cleanup_without_broadening_eligibility():
+def test_provider_discovery_limits_goa_to_legacy_cleanup_without_broadening_eligibility():
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
-    clean_gss = make_user(
-        "clean-gss@example.edu",
-        "GUIDANCE_SERVICES_STAFF",
+    clean_goa = make_user(
+        "clean-goa@example.edu",
+        "GUIDANCE_OFFICE_ASSISTANT",
         first_name="Clean",
         last_name="Staff",
     )
-    legacy_gss = make_user(
-        "legacy-gss@example.edu",
-        "GUIDANCE_SERVICES_STAFF",
+    legacy_goa = make_user(
+        "legacy-goa@example.edu",
+        "GUIDANCE_OFFICE_ASSISTANT",
         first_name="Legacy",
         last_name="Staff",
     )
     ProviderAvailabilityWindow.objects.create(
-        provider=legacy_gss,
+        provider=legacy_goa,
         weekday="MONDAY",
         start_time=time(8),
         end_time=time(12),
@@ -1073,11 +1076,11 @@ def test_provider_discovery_limits_gss_to_legacy_cleanup_without_broadening_elig
     response = client.get("/api/v1/availability/providers")
     assert response.status_code == 200
     ids = {item["id"] for item in response.json()["items"]}
-    assert str(legacy_gss.pk) in ids
-    assert str(clean_gss.pk) not in ids
+    assert str(legacy_goa.pk) in ids
+    assert str(clean_goa.pk) not in ids
 
     rejected = client.put(
-        f"/api/v1/availability/providers/{legacy_gss.pk}/weekly",
+        f"/api/v1/availability/providers/{legacy_goa.pk}/weekly",
         data=json.dumps(
             {
                 "windows": [
@@ -1097,7 +1100,7 @@ def test_provider_discovery_limits_gss_to_legacy_cleanup_without_broadening_elig
     assert rejected.json()["error"]["code"] == "availability_not_applicable"
 
     cleaned = client.put(
-        f"/api/v1/availability/providers/{legacy_gss.pk}/weekly",
+        f"/api/v1/availability/providers/{legacy_goa.pk}/weekly",
         data=json.dumps({"windows": []}),
         content_type="application/json",
         **csrf(client),

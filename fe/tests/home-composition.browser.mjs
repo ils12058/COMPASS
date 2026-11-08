@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import { createBrowserHarness } from "./support/browser-harness.mjs";
 import { homeWorld } from "./support/ux15-home-fixtures.mjs";
 import { counselorWorld, counselorAppointment, workItem } from "./support/ux15-counselor-home-fixtures.mjs";
-import { gssWorld } from "./support/ux15-gss-home-fixtures.mjs";
+import { goaWorld } from "./support/ux15-goa-home-fixtures.mjs";
 const h = await createBrowserHarness("home-composition");
 const cases = [
   ["one-work-many-appointments", () => counselorWorld({ work: [workItem("ROUTINE_EVALUATION", 1)], appointments: [1,2,3,4,5].map(n => counselorAppointment(n)) })],
   ["many-work-empty-agenda", () => counselorWorld({ work: [1,2,3,4,5].map(n => workItem("ROUTINE_EVALUATION", n)), appointments: [] })],
   ["empty-work-and-agenda", () => counselorWorld({ work: [], appointments: [] })],
   ["absent-summary-and-announcements", () => { const w=counselorWorld(); w.summary.guidance=null; w.announcements=[]; return w; }],
-  ["gss-single-work", () => gssWorld({ work: [workItem("GUIDANCE_MESSAGE_REPLY", 1)] })],
+  ["goa-single-work", () => goaWorld({ work: [workItem("GUIDANCE_MESSAGE_REPLY", 1)] })],
   ["student-empty", () => { const w=homeWorld({ items: [] }); w.announcements=[]; return w; }],
   ["head-without-oversight", () => counselorWorld({ head: true, capabilities: ["appointments.view_self"] })],
   ["unavailable-work", () => { const w=counselorWorld(); w.workStatus=503; return w; }],

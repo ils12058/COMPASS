@@ -19,12 +19,12 @@ import { useGuidanceOperations } from "@/features/guidance-operations/guidance-o
 import { OverviewAnnouncements } from "@/features/portal/home/overview-announcements";
 import type { OverviewAttentionData } from "@/features/portal/home/overview-work";
 import {
-  GSS_HOME_PREVIEW_SIZE,
-  getGssHomeDestinations,
-  getGssManagedAppointmentParams,
-  presentGssOperations,
-  presentGssWork,
-} from "@/features/portal/home/gss-home-presentation";
+  GOA_HOME_PREVIEW_SIZE,
+  getGoaHomeDestinations,
+  getGoaManagedAppointmentParams,
+  presentGoaOperations,
+  presentGoaWork,
+} from "@/features/portal/home/goa-home-presentation";
 import { CompassApiError } from "@/lib/api/errors";
 import { formatInstitutionalDateTime, institutionalDateInputValue } from "@/lib/institutional-time";
 import {
@@ -48,7 +48,7 @@ function workErrorMessage(error: unknown): string {
   return "My work could not be loaded. Try again.";
 }
 
-function appointmentErrorMessageForGss(error: unknown): string {
+function appointmentErrorMessageForGoa(error: unknown): string {
   if (error instanceof CompassApiError && error.status === 403) return "Managed Appointments are not available for this account.";
   if (error instanceof CompassApiError && error.status === 401) return "Your session has ended. Sign in again to view managed Appointments.";
   return "Today's managed Appointments could not be loaded. Try again.";
@@ -58,15 +58,15 @@ function WorkPreview({ user, data }: { user: UserSummary; data: OverviewAttentio
   const initialError = data.workIsError && !data.workHasConfirmedData;
   const accessDenied = isAuthorizationFailure(data.workError);
   const items = data.canonicalWorkItems.flatMap((item) => {
-    const row = presentGssWork(item, user, data.workGeneratedAt);
+    const row = presentGoaWork(item, user, data.workGeneratedAt);
     return row ? [{ item, row }] : [];
   });
 
   return (
-    <Panel aria-labelledby="gss-work-heading">
+    <Panel aria-labelledby="goa-work-heading">
       <PanelHeader
         title="My work"
-        titleId="gss-work-heading"
+        titleId="goa-work-heading"
         actions={!accessDenied ? (
           <SectionLink href="/portal/work" label="All work" accessibleLabel="View all work" icon={ListChecks} />
         ) : undefined}
@@ -109,7 +109,7 @@ function WorkPreview({ user, data }: { user: UserSummary; data: OverviewAttentio
       ) : null}
 
       {data.workHasConfirmedData && data.workHasNext ? (
-        <PanelMessage>Showing the first {data.workPageSize ?? GSS_HOME_PREVIEW_SIZE} items. More work is available in the full queue.</PanelMessage>
+        <PanelMessage>Showing the first {data.workPageSize ?? GOA_HOME_PREVIEW_SIZE} items. More work is available in the full queue.</PanelMessage>
       ) : null}
 
       {data.workHasConfirmedData && data.workGeneratedAt ? (
@@ -123,7 +123,7 @@ function WorkPreview({ user, data }: { user: UserSummary; data: OverviewAttentio
 
 function ManagedSchedule({ user, today }: { user: UserSummary; today: string }) {
   const access = getAppointmentAccess(user);
-  const params = getGssManagedAppointmentParams(today);
+  const params = getGoaManagedAppointmentParams(today);
   const query = useAppointmentsListManaged(params, {
     query: {
       enabled: access.canManage,
@@ -144,10 +144,10 @@ function ManagedSchedule({ user, today }: { user: UserSummary; today: string }) 
   const initialError = query.isError && !page;
 
   return (
-    <Panel className="@container/agenda" aria-labelledby="gss-schedule-heading">
+    <Panel className="@container/agenda" aria-labelledby="goa-schedule-heading">
       <PanelHeader
         title="Today's managed Appointments"
-        titleId="gss-schedule-heading"
+        titleId="goa-schedule-heading"
         actions={page || !initialError ? (
           <SectionLink href={todayHref} label="Schedule" accessibleLabel="View full schedule" icon={CalendarClock} />
         ) : undefined}
@@ -162,7 +162,7 @@ function ManagedSchedule({ user, today }: { user: UserSummary; today: string }) 
       ) : null}
       {initialError ? (
         <Notice role="alert" tone="warning" action={<Button variant="secondary" disabled={query.isFetching} onClick={() => void query.refetch()}>Retry</Button>}>
-          {appointmentErrorMessageForGss(query.error)}
+          {appointmentErrorMessageForGoa(query.error)}
         </Notice>
       ) : null}
 
@@ -179,7 +179,7 @@ function ManagedSchedule({ user, today }: { user: UserSummary; today: string }) 
           {query.isError ? "The last confirmed result showed no scheduled managed Appointments today." : "No scheduled managed Appointments today."}
         </PanelMessage>
       ) : null}
-      {page?.has_next ? <PanelMessage>Showing the first {GSS_HOME_PREVIEW_SIZE} scheduled Appointments. Open the full schedule to see more.</PanelMessage> : null}
+      {page?.has_next ? <PanelMessage>Showing the first {GOA_HOME_PREVIEW_SIZE} scheduled Appointments. Open the full schedule to see more.</PanelMessage> : null}
       {page ? <p className="border-t border-border px-4 py-2.5 text-xs text-muted sm:px-5">Times shown in Philippine Time.</p> : null}
     </Panel>
   );
@@ -188,14 +188,14 @@ function ManagedSchedule({ user, today }: { user: UserSummary; today: string }) 
 function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
   const query = useGuidanceOperations(user);
   const data = safeQueryData(query)?.data;
-  const metrics = data ? presentGssOperations(data, user) : null;
+  const metrics = data ? presentGoaOperations(data, user) : null;
   const initialError = query.isError && !data;
   const accessDenied = isAuthorizationFailure(query.error);
   const allZero = Boolean(metrics?.length) && metrics?.every((metric) => metric.count === 0);
 
   return (
-    <Panel aria-labelledby="gss-operations-heading">
-      <PanelHeader className="border-b-0 pb-1" title="Office workload" titleId="gss-operations-heading" />
+    <Panel aria-labelledby="goa-operations-heading">
+      <PanelHeader className="border-b-0 pb-1" title="Office workload" titleId="goa-operations-heading" />
       <p className="px-4 pb-3 text-sm leading-6 text-muted sm:px-5">Counts reflect office demand within your scope, not individual assignments.</p>
 
       {query.isError && data ? (
@@ -239,13 +239,13 @@ function GuidanceOperationsSnapshot({ user }: { user: UserSummary }) {
 }
 
 function OfficeDestinations({ user }: { user: UserSummary }) {
-  const destinations = getGssHomeDestinations(user);
+  const destinations = getGoaHomeDestinations(user);
   if (destinations.length === 0) return null;
-  return <HomeShortcuts title="Continue in your workspaces" titleId="gss-destinations-heading" destinations={destinations}
+  return <HomeShortcuts title="Continue in your workspaces" titleId="goa-destinations-heading" destinations={destinations}
     illustration={destinations.some(item => item.href === "/portal/appointments") ? "/illustrations/appointment-calendar-3d.png" : undefined} />;
 }
 
-export function GssHome({ user, attention, now }: { user: UserSummary; attention: OverviewAttentionData; now: Date }) {
+export function GoaHome({ user, attention, now }: { user: UserSummary; attention: OverviewAttentionData; now: Date }) {
   const today = institutionalDateInputValue(now);
   const hasManagedSchedule = getAppointmentAccess(user).canManage;
   return <div className="@container grid min-w-0 gap-5">

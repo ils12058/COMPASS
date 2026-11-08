@@ -199,7 +199,7 @@ def test_media_capabilities_are_narrow_and_head_designation_does_not_bypass_assi
     student = make_user("student@example.edu", "STUDENT")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
     head = make_user("head@example.edu", "COUNSELOR")
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("admin@example.edu", "IT_ADMIN")
     UserDesignation.objects.create(
         user=head,
@@ -209,7 +209,7 @@ def test_media_capabilities_are_narrow_and_head_designation_does_not_bypass_assi
     assert student.has_capability("ecounseling.consent_self")
     assert counselor.has_capability("ecounseling.manage_media_assigned")
     assert head.has_capability("ecounseling.manage_media_assigned")
-    assert not gss.has_capability("ecounseling.manage_media_assigned")
+    assert not goa.has_capability("ecounseling.manage_media_assigned")
     assert not admin.has_capability("ecounseling.manage_media_assigned")
 
 

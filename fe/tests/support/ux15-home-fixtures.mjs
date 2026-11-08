@@ -26,7 +26,7 @@ export function homeWorld({ role = "STUDENT", lifecycle = "CURRENT", capabilitie
     account: messagesAccount(role, { first_name: "Alex", last_name: "Rivera", designations,
       student_lifecycle_status: role === "STUDENT" ? lifecycle : null,
       ...(capabilities ? { capabilities } : role === "STUDENT" ? { capabilities: homeCapabilities }
-        : ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"].includes(role) ? { capabilities: [
+        : ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(role) ? { capabilities: [
           ...messagesAccount(role).capabilities, "good_moral.view", "good_moral.prepare",
           ...(role === "COUNSELOR" ? ["routine_interviews.view_assigned", "routine_interviews.manage_assigned", "good_moral.issue"] : []),
         ] } : {}) }),
@@ -34,9 +34,9 @@ export function homeWorld({ role = "STUDENT", lifecycle = "CURRENT", capabilitie
     actionsHold: null, summaryHold: null, announcementsHold: null,
     summary: { generated_at: homeInstant, student: role === "STUDENT" ? {
       upcoming_appointments_count: 2, routine_intake_draft_count: lifecycle === "CURRENT" ? 1 : null, good_moral_requested_count: 1, active_call_slip_count: 1,
-    } : null, guidance: ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"].includes(role) ? {
+    } : null, guidance: ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(role) ? {
       upcoming_self_appointments_count: role === "COUNSELOR" ? 2 : null,
-      upcoming_managed_appointments_count: role === "GUIDANCE_SERVICES_STAFF" ? 3 : null,
+      upcoming_managed_appointments_count: role === "GUIDANCE_OFFICE_ASSISTANT" ? 3 : null,
       routine_evaluation_pending_count: role === "COUNSELOR" ? 2 : null,
       good_moral_requested_count: 1, good_moral_ready_count: 2, active_call_slip_count: 1,
     } : null, platform: role === "IT_ADMIN" ? {

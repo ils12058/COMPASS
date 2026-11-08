@@ -128,7 +128,7 @@ def test_policy_grants_service_catalog_capabilities_and_preserves_overrides():
     sync_policy()
     admin = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
-    staff = make_user("staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("student@example.edu", "STUDENT")
     head = Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     dpo = Designation.objects.get(code="DPO")
@@ -288,7 +288,7 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
     sync_policy()
     actor = make_user("admin@example.edu", "IT_ADMIN")
     counselor = make_user("counselor@example.edu", "COUNSELOR")
-    staff = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     inactive = make_user("inactive@example.edu", "COUNSELOR", active=False)
     with pytest.raises(InvalidServiceCatalogInput, match="delivery_modes"):
         create_service(
@@ -308,8 +308,8 @@ def test_delivery_modes_and_selected_counselors_are_closed_and_validated():
     selected = {"provider_coverage": "SELECTED_COUNSELORS"}
     with pytest.raises(ServiceCatalogConflict, match="Only Counselors"):
         create_service(
-            code="GSS_PROVIDER",
-            name="GSS provider",
+            code="GOA_PROVIDER",
+            name="GOA provider",
             selected_counselor_ids=[staff.pk],
             context=context(actor),
             **selected,
@@ -456,7 +456,7 @@ def test_counselor_qualification_follows_coverage_not_college_or_legacy_roles():
     actor = make_user("admin@example.edu", "IT_ADMIN")
     selected = make_user("selected@example.edu", "COUNSELOR")
     unselected = make_user("unselected@example.edu", "COUNSELOR")
-    staff = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("student@example.edu", "STUDENT")
     head = make_user("head@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
@@ -468,9 +468,9 @@ def test_counselor_qualification_follows_coverage_not_college_or_legacy_roles():
     CounselorResponsibility.objects.create(college=college, counselor=unselected)
 
     everyone = configured_service(actor, code="EVERYONE", active=True)
-    # Historical GSS provider rows survive but never grant eligibility.
+    # Historical GOA provider rows survive but never grant eligibility.
     ServiceProviderRole.objects.create(
-        service=everyone, role=Role.objects.get(code="GUIDANCE_SERVICES_STAFF")
+        service=everyone, role=Role.objects.get(code="GUIDANCE_OFFICE_ASSISTANT")
     )
     assert service_counselor_eligible(everyone, selected)
     assert service_counselor_eligible(everyone, unselected)
@@ -518,7 +518,7 @@ def test_provider_management_reads_are_manager_only_and_narrow():
     admin = make_user("admin@example.edu", "IT_ADMIN")
     alpha = make_user("alpha@example.edu", "COUNSELOR")
     make_user("beta@example.edu", "COUNSELOR")
-    make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     make_user("inactive@example.edu", "COUNSELOR", active=False)
     student = make_user("student@example.edu", "STUDENT")
     service = configured_service(

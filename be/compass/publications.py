@@ -25,7 +25,7 @@ def eligible_audiences_for(user) -> tuple[str, ...]:
     role_code = getattr(getattr(user, "role", None), "code", None)
     if role_code == "STUDENT":
         audiences.append(PublicationAudience.STUDENTS)
-    elif role_code in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}:
+    elif role_code in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}:
         audiences.append(PublicationAudience.GCO_PERSONNEL)
     return tuple(value.value for value in audiences)
 

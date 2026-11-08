@@ -109,7 +109,7 @@ def test_faculty_opens_an_inquiry_by_service_and_http(world):
 
 
 @pytest.mark.parametrize(
-    "name", ["student", "counselor", "gss", "head", "admin", "dpo"],
+    "name", ["student", "counselor", "goa", "head", "admin", "dpo"],
 )
 def test_only_faculty_may_open_an_inquiry(world, name):
     with_intake(world.other)
@@ -176,7 +176,7 @@ def test_creation_waits_for_an_intake_holder(world):
         inquiry(actor)
     assert GuidanceThread.objects.count() == 0
 
-    with_intake(world.gss)
+    with_intake(world.goa)
     assert policy.has_intake_staff()
     thread, _ = inquiry(actor)
     assert thread.requester_id == actor.pk
@@ -208,7 +208,7 @@ def test_five_open_inquiries_is_the_cap(world):
     assert GuidanceThread.objects.filter(requester=actor, status=ThreadStatus.OPEN).count() == 6
 
 
-@pytest.mark.parametrize("name", ["counselor", "gss", "head", "admin", "dpo"])
+@pytest.mark.parametrize("name", ["counselor", "goa", "head", "admin", "dpo"])
 def test_inquiries_are_concealed_from_staff_without_intake(world, name):
     _, _, thread, _ = open_inquiry(world)
     actor = getattr(world, name)
@@ -252,7 +252,7 @@ def test_inquiries_are_concealed_from_other_faculty(world):
 
 def test_recipients_are_the_requester_and_effective_intake_only(world):
     requester, holder, thread, _ = open_inquiry(world)
-    sidelined = with_intake(world.gss)
+    sidelined = with_intake(world.goa)
     deny(sidelined, "guidance_messages.intake")
 
     assert set(policy.recipient_ids(thread)) == {requester.pk, holder.pk}

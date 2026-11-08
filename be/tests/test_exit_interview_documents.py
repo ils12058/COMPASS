@@ -158,7 +158,7 @@ def test_pdf_endpoints_enforce_owner_head_scope_and_fail_closed_release(monkeypa
         == 403
     )
     assert (
-        auth_client(make_user("exit-pdf-gss@example.edu", role="GUIDANCE_SERVICES_STAFF"))
+        auth_client(make_user("exit-pdf-goa@example.edu", role="GUIDANCE_OFFICE_ASSISTANT"))
         .get(head_url)
         .status_code
         == 403

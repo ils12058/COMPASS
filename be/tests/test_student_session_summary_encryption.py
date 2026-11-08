@@ -319,14 +319,14 @@ def test_student_drafts_and_other_students_filtered_before_decryption(world, mon
 
 
 @pytest.mark.parametrize(
-    "kind", ["other", "head", "gss", "admin", "dpo", "inactive", "revoked", "student-revoked"]
+    "kind", ["other", "head", "goa", "admin", "dpo", "inactive", "revoked", "student-revoked"]
 )
 def test_denied_actors_never_decrypt(world, monkeypatch, kind):
     item = draft(world)
     publish(world)
     role = (
-        "GUIDANCE_SERVICES_STAFF"
-        if kind == "gss"
+        "GUIDANCE_OFFICE_ASSISTANT"
+        if kind == "goa"
         else "IT_ADMIN"
         if kind in {"admin", "dpo"}
         else "STUDENT"

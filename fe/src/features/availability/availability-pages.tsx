@@ -356,7 +356,7 @@ function ProviderWorkspace({
   const { user } = usePortalSession();
   const operational =
     provider.role === "COUNSELOR" && provider.is_active;
-  const legacy = provider.role === "GUIDANCE_SERVICES_STAFF";
+  const legacy = provider.role === "GUIDANCE_OFFICE_ASSISTANT";
   const canPreview =
     operational && user.capabilities.includes("availability.view");
 
@@ -461,7 +461,7 @@ function ProviderWorkspace({
         <Notice tone="warning" className="mb-5 max-w-3xl">
           <span className="text-muted">
             {legacy
-              ? "This is historical Guidance Services Staff Availability. Existing configuration can be reviewed or removed, but new operational Availability cannot be configured."
+              ? "This is historical Guidance Office Assistant Availability. Existing configuration can be reviewed or removed, but new operational Availability cannot be configured."
               : "This Counselor is inactive. Existing Availability can be reviewed or removed, but new Availability cannot be added."}
           </span>
         </Notice>
@@ -675,7 +675,7 @@ export function ProviderAvailabilityPage() {
               <tbody className={dataTable.body}>
                 {providersData.data.items.map((provider) => {
                   const legacy =
-                    provider.role === "GUIDANCE_SERVICES_STAFF";
+                    provider.role === "GUIDANCE_OFFICE_ASSISTANT";
                   return (
                     <tr key={provider.id} className={dataTable.row}>
                       <th scope="row" className={cn(dataTable.cell, "py-1.5 align-middle font-normal")}>

@@ -30,7 +30,7 @@ recovery and web-only key rotation tooling. It does not own Service Catalog or G
 | Reader | Operational Follow-Ups | Confidential Follow-Ups | Recovery |
 |---|---|---|---|
 | Counselor | Assigned records in current handled scope | Assigned canonical source relationship plus current source capabilities | Operational records in current scope whose owner is ineligible |
-| Guidance Services Staff | Assigned records in current supervisor-derived scope | None | Same narrow operational recovery scope |
+| Guidance Office Assistant | Assigned records in current supervisor-derived scope | None | Same narrow operational recovery scope |
 | Head Guidance Counselor | Assigned operational records; institutional operational scope | Own assigned source relationship only | Operational institutional scope only |
 | Student, IT Administrator, DPO without a Guidance business role | None | None | None |
 

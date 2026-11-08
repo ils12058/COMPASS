@@ -59,10 +59,10 @@ for (const width of [320, 375, 390, 430, 768, 1440]) {
   });
 }
 
-for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
   const state = world(role);
   await check(`My work navigation and direct route for ${role}`, "/portal/work", state.options(), async (page) => {
-    if (["COUNSELOR", "GUIDANCE_SERVICES_STAFF"].includes(role)) {
+    if (["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(role)) {
       await shown(page.getByRole("heading", { name: "My work", exact: true }));
       const nav = page.getByRole("navigation", { name: "Portal navigation" });
       assert.equal(await nav.getByRole("link", { name: "My work", exact: true }).count(), 1);
@@ -149,7 +149,7 @@ for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN
   const state = world();
   await check("account boundary discards prior confirmed work", "/portal/work", state.options({ beforeNavigate: async ({ page }) => page.clock.install() }), async (page) => {
     await shown(page.getByText(titles[1], { exact: true }));
-    state.account = messagesAccount("GUIDANCE_SERVICES_STAFF", { id: "synthetic-account-B" }); state.items = [];
+    state.account = messagesAccount("GUIDANCE_OFFICE_ASSISTANT", { id: "synthetic-account-B" }); state.items = [];
     await page.clock.fastForward(31_000);
     await page.evaluate(() => { window.dispatchEvent(new Event("offline")); window.dispatchEvent(new Event("online")); });
     await shown(page.getByText("You’re caught up.", { exact: true }));

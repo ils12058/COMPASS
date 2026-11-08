@@ -511,7 +511,8 @@ def test_paper_referrer_name_never_creates_faculty_ownership(world):
 
 
 @pytest.mark.parametrize(
-    "role", ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]
+    "role",
+    ["STUDENT", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"],
 )
 def test_other_roles_cannot_use_faculty_contracts_even_with_raw_grants(world, role):
     from compass.authentication.sessions import create_auth_session

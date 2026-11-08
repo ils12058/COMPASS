@@ -27,7 +27,7 @@ const user = (role, capabilities, extra = {}) => ({ id: "00000000-0000-4000-8000
 // Current role/designation authority from accounts/policy.py; unused confidential-domain grants
 // are omitted. Tests below separately exercise overridden effective capabilities.
 const student = user("STUDENT", ["accounts.view", "organization.structure.view", "services.catalog.view", "availability.view", "appointments.view_self", "appointments.manage_self", "inventory.view_self", "inventory.manage_self", "exit_interviews.view_self", "exit_interviews.manage_self", "routine_interviews.view_self", "routine_interviews.manage_self", "student_session_summaries.view_self", "call_slips.view_self", "good_moral.view_self", "good_moral.request_self", "feedback.submit_customer_feedback", "feedback.submit_csm", "graduate_tracer.view_self", "graduate_tracer.manage_self", "student_academics.view_self"]);
-const staff = user("GUIDANCE_SERVICES_STAFF", ["exit_interviews.manage_opportunities", "academic_years.view", "institutional_forms.view", "good_moral.view", "good_moral.prepare", "accounts.view", "organization.structure.view", "services.catalog.view", "availability.view", "appointments.view_self", "appointments.manage", "referrals.view", "referrals.manage", "call_slips.view", "call_slips.manage", "announcements.manage", "resources.manage"]);
+const staff = user("GUIDANCE_OFFICE_ASSISTANT", ["exit_interviews.manage_opportunities", "academic_years.view", "institutional_forms.view", "good_moral.view", "good_moral.prepare", "accounts.view", "organization.structure.view", "services.catalog.view", "availability.view", "appointments.view_self", "appointments.manage", "referrals.view", "referrals.manage", "call_slips.view", "call_slips.manage", "announcements.manage", "resources.manage"]);
 const counselor = user("COUNSELOR", [...staff.capabilities.filter((code) => code !== "exit_interviews.manage_opportunities"), "academic_years.view", "institutional_forms.view", "availability.manage_self", "inventory.view", "inventory.reopen", "counseling.view_assigned", "counseling.manage_assigned", "routine_interviews.view_assigned", "reports.view", "good_moral.view", "good_moral.manage", "good_moral.issue"]);
 const head = { ...counselor, designations: ["HEAD_GUIDANCE_COUNSELOR"], capabilities: [...counselor.capabilities, "exit_interviews.manage_opportunities", "organization.manage", "services.manage", "availability.manage", "academic_years.manage", "exit_interviews.view", "feedback.view_customer_feedback", "feedback.view_csm", "graduate_tracer.view", "student_academics.view", "student_academics.manage", "student_academics.import"] };
 const it = user("IT_ADMIN", ["accounts.view", "accounts.manage", "platform_operations.view", "platform_operations.manage", "organization.structure.view", "organization.manage", "services.catalog.view", "services.manage", "availability.view", "availability.manage", "student_academics.view", "student_academics.manage", "student_academics.import"]);
@@ -63,7 +63,7 @@ test("Exit Interviews label follows effective actions, not the role, in the dock
   // Reviewers see Exit Interviews, including staff granted reviewer authority.
   assert.equal(label(head), "Exit Interviews");
   assert.equal(label({ ...staff, capabilities: [...staff.capabilities, "exit_interviews.view"] }), "Exit Interviews");
-  assert.equal(label(user("GUIDANCE_SERVICES_STAFF", ["exit_interviews.view"])), "Exit Interviews");
+  assert.equal(label(user("GUIDANCE_OFFICE_ASSISTANT", ["exit_interviews.view"])), "Exit Interviews");
   // A revoked review capability falls back to access wording on the next session state.
   assert.equal(label({ ...head, capabilities: head.capabilities.filter((code) => code !== "exit_interviews.view") }), "Exit Interview access");
   // Students with a self-service workspace.
@@ -82,7 +82,7 @@ test("Students get self destinations and never staff/admin/DPO destinations", ()
   assert.ok(!hrefs({ ...student, student_lifecycle_status: "GRADUATED" }).includes("/portal/appointments/book"));
 });
 
-test("GSS, Counselor, and Head Guidance keep their distinct scheduling and operational scopes", () => {
+test("GOA, Counselor, and Head Guidance keep their distinct scheduling and operational scopes", () => {
   assert.ok(hrefs(staff).includes("/portal/appointments/manage"));
   assert.ok(!hrefs(staff).includes("/portal/appointments/my"));
   assert.ok(!hrefs(staff).some((path) => path.startsWith("/portal/availability")));

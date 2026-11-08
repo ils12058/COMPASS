@@ -197,13 +197,13 @@ def setup_scope():
     counselor_b = make_user("counselor.b@example.edu", "COUNSELOR")
     CounselorResponsibility.objects.create(college=college_a, counselor=counselor_a)
     CounselorResponsibility.objects.create(college=college_b, counselor=counselor_b)
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
-    StaffSupervision.objects.create(staff=gss, supervisor=counselor_a)
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    StaffSupervision.objects.create(staff=goa, supervisor=counselor_a)
     student_a = make_user("student.a@example.edu", "STUDENT")
     student_b = make_user("student.b@example.edu", "STUDENT")
     StudentAcademicProfile.objects.create(student=student_a, current_college=college_a)
     StudentAcademicProfile.objects.create(student=student_b, current_college=college_b)
-    return counselor_a, counselor_b, gss, student_a, student_b
+    return counselor_a, counselor_b, goa, student_a, student_b
 
 
 def create_for(
@@ -330,16 +330,16 @@ def test_uuid_only_identity_and_no_human_reference_counter():
 
 
 @pytest.mark.django_db
-def test_counselor_gss_and_head_issuer_and_scope_rules():
+def test_counselor_goa_and_head_issuer_and_scope_rules():
     sync_policy()
-    counselor_a, counselor_b, gss, student_a, student_b = setup_scope()
+    counselor_a, counselor_b, goa, student_a, student_b = setup_scope()
 
     own = create_for(counselor_a, student_a, key="own", fingerprint="a" * 64)
-    encoded = create_for(gss, student_a, key="gss", fingerprint="b" * 64)
+    encoded = create_for(goa, student_a, key="goa", fingerprint="b" * 64)
     assert own.issued_by_id == counselor_a.pk
     assert own.recorded_by_id == counselor_a.pk
     assert encoded.issued_by_id == counselor_a.pk
-    assert encoded.recorded_by_id == gss.pk
+    assert encoded.recorded_by_id == goa.pk
 
     with pytest.raises(CallSlipNotPermitted):
         create_for(
@@ -353,7 +353,7 @@ def test_counselor_gss_and_head_issuer_and_scope_rules():
     head_item = create_for(head, student_b, key="head", fingerprint="d" * 64)
     assert head_item.issued_by_id == head.pk
 
-    head_staff = make_user("head.staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    head_staff = make_user("head.staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     StaffSupervision.objects.create(staff=head_staff, supervisor=head)
     with pytest.raises(CallSlipNotPermitted):
         create_for(head_staff, student_a, key="denied-head-staff", fingerprint="f" * 64)
@@ -400,19 +400,19 @@ def test_counselor_gss_and_head_issuer_and_scope_rules():
 
 
 @pytest.mark.django_db
-def test_gss_requires_current_active_counselor_supervisor():
+def test_goa_requires_current_active_counselor_supervisor():
     sync_policy()
-    counselor, _, gss, student, _ = setup_scope()
-    StaffSupervision.objects.filter(staff=gss).delete()
+    counselor, _, goa, student, _ = setup_scope()
+    StaffSupervision.objects.filter(staff=goa).delete()
 
     with pytest.raises(CallSlipNotPermitted, match="supervising Counselor"):
-        create_for(gss, student, key="no-supervisor", fingerprint="a" * 64)
+        create_for(goa, student, key="no-supervisor", fingerprint="a" * 64)
 
-    StaffSupervision.objects.create(staff=gss, supervisor=counselor)
+    StaffSupervision.objects.create(staff=goa, supervisor=counselor)
     counselor.is_active = False
     counselor.save(update_fields=["is_active", "updated_at"])
     with pytest.raises(CallSlipNotPermitted, match="active supervising Counselor"):
-        create_for(gss, student, key="inactive-supervisor", fingerprint="b" * 64)
+        create_for(goa, student, key="inactive-supervisor", fingerprint="b" * 64)
 
 
 @pytest.mark.django_db
@@ -1914,42 +1914,42 @@ def test_atomic_referral_call_slip_nonvoided_link_blocks_and_voided_link_allows_
 
 
 @pytest.mark.django_db
-def test_atomic_referral_call_slip_preserves_gss_head_and_scope_authority():
+def test_atomic_referral_call_slip_preserves_goa_head_and_scope_authority():
     sync_policy()
-    counselor_a, counselor_b, gss, student_a, student_b = setup_scope()
+    counselor_a, counselor_b, goa, student_a, student_b = setup_scope()
     action_at = timezone.now() - timedelta(minutes=5)
 
     referral_a = create_referral_for(
         counselor_a,
         student_a,
-        key="gss-ref",
+        key="goa-ref",
         fingerprint="e2" * 32,
     )
     issued = create_from_referral_for(
-        gss,
+        goa,
         referral_a,
-        key="gss-call",
+        key="goa-call",
         fingerprint="f2" * 32,
         action_occurred_at=action_at,
         action_remarks="Staff encoded source action",
     )
     action = ReferralAction.objects.get(referral=referral_a)
     assert issued.issued_by_id == counselor_a.pk
-    assert issued.recorded_by_id == gss.pk
-    assert action.recorded_by_id == gss.pk
+    assert issued.recorded_by_id == goa.pk
+    assert action.recorded_by_id == goa.pk
 
     no_supervision_referral = create_referral_for(
         counselor_a,
         student_a,
-        key="gss-no-supervision-ref",
+        key="goa-no-supervision-ref",
         fingerprint="a3" * 32,
     )
-    StaffSupervision.objects.filter(staff=gss).delete()
+    StaffSupervision.objects.filter(staff=goa).delete()
     with pytest.raises((CallSlipNotFound, CallSlipNotPermitted)):
         create_from_referral_for(
-            gss,
+            goa,
             no_supervision_referral,
-            key="gss-no-supervision-call",
+            key="goa-no-supervision-call",
             fingerprint="b3" * 32,
             action_occurred_at=action_at,
             action_remarks="Must not persist",
@@ -2144,7 +2144,7 @@ def test_saved_legacy_call_slip_identity_survives_sync_and_reprint():
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("role", ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"])
+@pytest.mark.parametrize("role", ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"])
 def test_view_only_operational_account_cannot_mutate_call_slip(role):
     from compass.accounts.models import Capability, UserCapabilityOverride
 

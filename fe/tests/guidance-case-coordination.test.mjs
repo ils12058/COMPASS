@@ -94,7 +94,7 @@ test("case coordination needs the narrow capability on top of broad view and nev
   for (const partial of [
     account("COUNSELOR", [VIEW, MANAGE]),
     account("COUNSELOR", ["guidance_messages.view", MANAGE]),
-    account("GUIDANCE_SERVICES_STAFF", [...CASE_CAPS, VIEW, MANAGE]),
+    account("GUIDANCE_OFFICE_ASSISTANT", [...CASE_CAPS, VIEW, MANAGE]),
     account("IT_ADMIN", [...CASE_CAPS, VIEW, MANAGE]),
     student,
   ]) {

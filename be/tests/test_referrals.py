@@ -116,14 +116,14 @@ def setup_scope():
     counselor_b = make_user("counselor.b@example.edu", "COUNSELOR")
     CounselorResponsibility.objects.create(college=college_a, counselor=counselor_a)
     CounselorResponsibility.objects.create(college=college_b, counselor=counselor_b)
-    gss = make_user("gss@example.edu", "GUIDANCE_SERVICES_STAFF")
-    StaffSupervision.objects.create(staff=gss, supervisor=counselor_a)
+    goa = make_user("goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    StaffSupervision.objects.create(staff=goa, supervisor=counselor_a)
     student_a = make_user("student.a@example.edu", "STUDENT")
     student_b = make_user("student.b@example.edu", "STUDENT")
     unaffiliated = make_user("student.none@example.edu", "STUDENT")
     StudentAcademicProfile.objects.create(student=student_a, current_college=college_a)
     StudentAcademicProfile.objects.create(student=student_b, current_college=college_b)
-    return counselor_a, counselor_b, gss, student_a, student_b, unaffiliated
+    return counselor_a, counselor_b, goa, student_a, student_b, unaffiliated
 
 
 def create_for(
@@ -557,7 +557,7 @@ def test_reference_sequence_is_yearly_independent_from_appointments_and_exhausti
 @pytest.mark.django_db
 def test_referral_scope_is_current_organization_scope_without_assigned_counselor_field():
     sync_policy()
-    counselor_a, counselor_b, gss, student_a, student_b, unaffiliated = setup_scope()
+    counselor_a, counselor_b, goa, student_a, student_b, unaffiliated = setup_scope()
     head = make_head()
     now = timezone.now()
 
@@ -588,12 +588,12 @@ def test_referral_scope_is_current_organization_scope_without_assigned_counselor
 
     a = create_for(counselor_a, student_a, key="a", fingerprint="a" * 64, now=now)
     b = create_for(counselor_b, student_b, key="b", fingerprint="b" * 64, now=now)
-    gss_item = create_for(gss, student_a, key="gss", fingerprint="c" * 64, now=now)
+    goa_item = create_for(goa, student_a, key="goa", fingerprint="c" * 64, now=now)
 
-    assert {item.pk for item in list_referrals(actor=counselor_a).items} == {a.pk, gss_item.pk}
-    assert {item.pk for item in list_referrals(actor=gss).items} == {a.pk, gss_item.pk}
+    assert {item.pk for item in list_referrals(actor=counselor_a).items} == {a.pk, goa_item.pk}
+    assert {item.pk for item in list_referrals(actor=goa).items} == {a.pk, goa_item.pk}
     assert {item.pk for item in list_referrals(actor=counselor_b).items} == {b.pk}
-    assert {item.pk for item in list_referrals(actor=head).items} == {a.pk, b.pk, gss_item.pk}
+    assert {item.pk for item in list_referrals(actor=head).items} == {a.pk, b.pk, goa_item.pk}
 
     student_a.first_name = "Current"
     student_a.middle_name = "LiveMiddle"
@@ -613,13 +613,13 @@ def test_referral_scope_is_current_organization_scope_without_assigned_counselor
     for term in ("REF-A-001", "Current", "LiveMiddle", "Identity", "Alpha ReferralMiddle"):
         assert {item.pk for item in list_referrals(actor=counselor_a, search=term).items} == {
             a.pk,
-            gss_item.pk,
+            goa_item.pk,
         }
     assert {
         item.pk for item in list_referrals(actor=counselor_a, student_id=student_a.pk).items
     } == {
         a.pk,
-        gss_item.pk,
+        goa_item.pk,
     }
     assert list_referrals(actor=counselor_a, search="REF-B-001").items == ()
     assert list_referrals(actor=counselor_a, student_id=student_b.pk).items == ()
@@ -954,7 +954,7 @@ def test_head_referral_oversight_is_not_inherited_by_supervised_staff():
     sync_policy()
     _, _, _, student_a, student_b, _ = setup_scope()
     head = make_head("scope-head@example.edu")
-    staff = make_user("scope-head-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("scope-head-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     StaffSupervision.objects.create(staff=staff, supervisor=head)
     a = create_for(head, student_a, key="head-a", fingerprint="a" * 64)
     b = create_for(head, student_b, key="head-b", fingerprint="b" * 64)

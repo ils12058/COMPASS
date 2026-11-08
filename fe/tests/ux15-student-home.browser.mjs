@@ -261,23 +261,23 @@ if (!baseline) {
       assert.equal(await page.locator("#student-home-services-heading").count(), 0);
     });
   }
-  for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+  for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
     const state = homeWorld({ role, designations: role === "COUNSELOR" ? ["HEAD_GUIDANCE_COUNSELOR"] : role === "INSTITUTIONAL_OFFICER" ? ["DPO"] : [] });
     await check(`professional-home-${role}-preserves-queues-metrics-and-role-boundaries`, "/portal", state.options(), async (page, { requests }) => {
       await shown(page.getByText(state.announcements[0].title, { exact: true }));
       assert.equal(await page.locator("#student-home-services-heading").count(), 0);
       assert.equal(requests.filter((r) => r.pathname === "/api/v1/student-actions").length, 0);
-      if (["COUNSELOR", "GUIDANCE_SERVICES_STAFF"].includes(role)) {
+      if (["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(role)) {
         await shown(page.getByRole("link", { name: "View all work", exact: true }));
         if (role === "COUNSELOR") {
           await shown(page.locator("#counselor-work-heading"));
           await shown(page.locator('section[aria-labelledby="counselor-work-heading"]').getByText("Review Routine Interview", { exact: true }));
           assert.equal(await page.locator("#overview-attention-heading").count(), 0);
-        } else if (role === "GUIDANCE_SERVICES_STAFF") {
-          await shown(page.getByRole("heading", { name: "Guidance Services Home", exact: true }));
-          await shown(page.locator("#gss-work-heading"));
-          await shown(page.locator("#gss-operations-heading"));
-          assert.equal(await page.getByText("Review Routine Interview", { exact: true }).count(), 0, "Counselor evaluation work stays out of GSS Home");
+        } else if (role === "GUIDANCE_OFFICE_ASSISTANT") {
+          await shown(page.getByRole("heading", { name: "Guidance Office Home", exact: true }));
+          await shown(page.locator("#goa-work-heading"));
+          await shown(page.locator("#goa-operations-heading"));
+          assert.equal(await page.getByText("Review Routine Interview", { exact: true }).count(), 0, "Counselor evaluation work stays out of GOA Home");
           assert.equal(await page.locator("#overview-attention-heading, #overview-summary-heading, #counselor-work-heading").count(), 0);
         } else {
           assert.equal(await page.locator("#counselor-work-heading").count(), 0);

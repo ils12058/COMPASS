@@ -284,7 +284,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
   });
   const canViewReminders =
     access.canManage &&
-    (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF");
+    (user.role === "COUNSELOR" || user.role === "GUIDANCE_OFFICE_ASSISTANT");
   const remindersQuery = useAppointmentsListReminders(appointmentId, {
     query: { enabled: Boolean(appointmentQuery.isSuccess && canViewReminders), retry: false },
   });
@@ -774,7 +774,7 @@ function DetailContent({ appointmentId }: { appointmentId: string }) {
           {canCancel || canReschedule || canReassign || canComplete || canMarkNoShow || finishOffered ? (
             // The usual outcome leads; cancelling, the destructive one, comes last.
             <div ref={finishActionsRef} className="mt-4 flex flex-wrap gap-2">
-              {access.canManage && (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF") ? (
+              {access.canManage && (user.role === "COUNSELOR" || user.role === "GUIDANCE_OFFICE_ASSISTANT") ? (
                 <Button variant="secondary" disabled={pending || detailsUnconfirmed} onClick={() => setReminderOpen(true)}>Send reminder</Button>
               ) : null}
               {finishOffered ? (

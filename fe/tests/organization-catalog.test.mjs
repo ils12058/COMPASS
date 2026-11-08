@@ -22,7 +22,7 @@ for (const [name, role, capabilities, enter, edit, relationships] of [
   ["Catalog only", "COUNSELOR", ["organization.structure.view", "organization.catalog.manage"], true,true,false],
   ["Relationships only", "COUNSELOR", ["organization.structure.view", "organization.manage"], true,false,true],
   ["Both", "IT_ADMIN", ["organization.structure.view", "organization.manage", "organization.catalog.manage", "student_academics.view", "student_academics.manage"], true,true,true],
-  ["Staff reference viewer", "GUIDANCE_SERVICES_STAFF", ["organization.structure.view"], true,false,false],
+  ["Staff reference viewer", "GUIDANCE_OFFICE_ASSISTANT", ["organization.structure.view"], true,false,false],
   ["Student selector reader", "STUDENT", ["organization.structure.view"], false,false,false],
   ["Academic records viewer", "COUNSELOR", ["organization.structure.view", "student_academics.view"], true,false,false],
   ["Unsupported Catalog grant", "INSTITUTIONAL_OFFICER", ["organization.structure.view", "organization.catalog.manage"], false,false,false],

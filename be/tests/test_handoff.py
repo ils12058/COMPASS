@@ -132,7 +132,7 @@ def test_denied_relationship_never_decrypts(workflow_case, monkeypatch, who, ope
 
 
 @pytest.mark.parametrize(
-    "role", ["IT_ADMIN", "GUIDANCE_SERVICES_STAFF", "STUDENT", "INSTITUTIONAL_OFFICER"]
+    "role", ["IT_ADMIN", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "INSTITUTIONAL_OFFICER"]
 )
 def test_unsupported_role_even_with_overrides(workflow_case, role, monkeypatch):
     c = workflow_case

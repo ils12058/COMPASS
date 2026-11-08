@@ -136,7 +136,7 @@ def env():
     admin = make_user("admin-slots@example.edu", "IT_ADMIN")
     counselor = make_user("counselor-slots@example.edu", "COUNSELOR")
     counselor_b = make_user("counselor-b-slots@example.edu", "COUNSELOR")
-    gss = make_user("gss-slots@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("goa-slots@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student_1 = make_user("student1-slots@example.edu", "STUDENT")
     student_2 = make_user("student2-slots@example.edu", "STUDENT")
 
@@ -163,7 +163,7 @@ def env():
         "admin": admin,
         "counselor": counselor,
         "counselor_b": counselor_b,
-        "gss": gss,
+        "goa": goa,
         "student_1": student_1,
         "student_2": student_2,
         "service": service,
@@ -232,16 +232,16 @@ def test_create_fixed_slot_validation_and_audit(env):
 
 
 @pytest.mark.django_db
-def test_gss_operational_provider_picker_uses_appointment_scope_not_services_manage(env):
-    gss = env["gss"]
+def test_goa_operational_provider_picker_uses_appointment_scope_not_services_manage(env):
+    goa = env["goa"]
     counselor = env["counselor"]
     service = env["service"]
-    outsider = make_user("unscoped-gss-provider-picker@example.edu", "GUIDANCE_SERVICES_STAFF")
-    StaffSupervision.objects.create(staff=gss, supervisor=counselor)
-    assert gss.has_capability("appointments.manage")
-    assert not gss.has_capability("services.manage")
+    outsider = make_user("unscoped-goa-provider-picker@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    StaffSupervision.objects.create(staff=goa, supervisor=counselor)
+    assert goa.has_capability("appointments.manage")
+    assert not goa.has_capability("services.manage")
 
-    client = auth_client(gss)
+    client = auth_client(goa)
     candidates = client.get(f"/api/v1/services/{service.pk}/operational-provider-candidates")
     assert candidates.status_code == 200, candidates.content
     assert {row["id"] for row in candidates.json()["items"]} == {str(counselor.pk)}
@@ -1044,7 +1044,7 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
     admin = env["admin"]
     counselor = env["counselor"]
     counselor_b = env["counselor_b"]
-    gss = env["gss"]
+    goa = env["goa"]
     service = env["service"]
     student = env["student_1"]
 
@@ -1052,7 +1052,7 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
     no_mfa_counselor = auth_client(counselor, recent_mfa=False)
     counselor_client = auth_client(counselor, recent_mfa=True)
     counselor_b_client = auth_client(counselor_b, recent_mfa=True)
-    gss_client = auth_client(gss, recent_mfa=True)
+    goa_client = auth_client(goa, recent_mfa=True)
     student_client = auth_client(student, recent_mfa=False)
 
     start = future_local_start(hour=15)
@@ -1065,7 +1065,7 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
         "is_published": True,
     }
 
-    # 1. IT_ADMIN (services.manage without COUNSELOR/GSS + appointments.manage) rejected with 403
+    # 1. IT_ADMIN (services.manage without COUNSELOR/GOA + appointments.manage) rejected with 403
     assert admin_client.get(f"/api/v1/services/{service.pk}/slots").status_code == 403
     assert (
         admin_client.post(
@@ -1114,15 +1114,15 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
     other_slots = counselor_b_client.get(f"/api/v1/services/{service.pk}/slots").json()
     assert all(slot["id"] != slot_id for slot in other_slots)
 
-    # A GSS may manage only the directly supervised Counselor's slots, and does not
+    # A GOA may manage only the directly supervised Counselor's slots, and does not
     # inherit that Counselor's Appointment participant-data access.
-    StaffSupervision.objects.create(staff=gss, supervisor=counselor)
-    gss_slots = gss_client.get(f"/api/v1/services/{service.pk}/slots")
-    assert gss_slots.status_code == 200
-    gss_slot = next(s for s in gss_slots.json() if s["id"] == slot_id)
-    assert gss_slot["has_booking_history"] is True
-    assert gss_slot["student_name"] is None
-    assert gss_slot["appointment_id"] is None
+    StaffSupervision.objects.create(staff=goa, supervisor=counselor)
+    goa_slots = goa_client.get(f"/api/v1/services/{service.pk}/slots")
+    assert goa_slots.status_code == 200
+    goa_slot = next(s for s in goa_slots.json() if s["id"] == slot_id)
+    assert goa_slot["has_booking_history"] is True
+    assert goa_slot["student_name"] is None
+    assert goa_slot["appointment_id"] is None
 
     unrelated_mutation = counselor_b_client.patch(
         f"/api/v1/services/{service.pk}/slots/{slot_id}",
@@ -1140,13 +1140,13 @@ def test_api_fixed_slot_authorization_scope_redaction_and_cross_service_isolatio
     )
     assert head_mutation.status_code == 404
 
-    gss_mutation = gss_client.patch(
+    goa_mutation = goa_client.patch(
         f"/api/v1/services/{service.pk}/slots/{slot_id}",
         data=json.dumps({"is_published": False}),
         content_type="application/json",
-        **csrf(gss_client),
+        **csrf(goa_client),
     )
-    assert gss_mutation.status_code == 200
+    assert goa_mutation.status_code == 200
 
     withdraw_res = counselor_client.post(
         f"/api/v1/services/{service.pk}/slots/{slot_id}/withdraw",
@@ -1217,10 +1217,10 @@ def test_fixed_slot_management_rechecks_capability_and_active_identity(env):
         actor=counselor,
         context=AuditContext.user(counselor),
     )
-    gss = make_user("supervised-gss-slots@example.edu", "GUIDANCE_SERVICES_STAFF")
-    StaffSupervision.objects.create(staff=gss, supervisor=counselor)
-    gss_client = auth_client(gss, recent_mfa=True)
-    assert gss_client.get(f"/api/v1/services/{service.pk}/slots").status_code == 200
+    goa = make_user("supervised-goa-slots@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    StaffSupervision.objects.create(staff=goa, supervisor=counselor)
+    goa_client = auth_client(goa, recent_mfa=True)
+    assert goa_client.get(f"/api/v1/services/{service.pk}/slots").status_code == 200
 
     set_user_capability_override(
         user=counselor,
@@ -1239,7 +1239,7 @@ def test_fixed_slot_management_rechecks_capability_and_active_identity(env):
         ).status_code
         == 403
     )
-    assert gss_client.get(f"/api/v1/services/{service.pk}/slots").status_code == 403
+    assert goa_client.get(f"/api/v1/services/{service.pk}/slots").status_code == 403
 
     inactive_client = auth_client(counselor_b, recent_mfa=True)
     counselor_b.is_active = False

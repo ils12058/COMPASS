@@ -742,7 +742,7 @@ def test_combined_prior_and_boarding_validation_precedes_encrypt(world, monkeypa
             services.replace_current_inventory(student=world["student"], values=values)
 
 
-@pytest.mark.parametrize("role", ["GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER"])
+@pytest.mark.parametrize("role", ["GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"])
 def test_non_counselor_roles_never_decrypt_raw_inventory(world, monkeypatch, role):
     item = submitted(world)
     actor = make_user(f"private-denied-{role.lower()}@example.edu", role)

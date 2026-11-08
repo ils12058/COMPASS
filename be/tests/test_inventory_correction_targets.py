@@ -375,7 +375,7 @@ def test_service_rejects_unknown_targets_inside_the_transaction_without_partial_
 def test_reopen_authorization_and_scope_are_unchanged(world):
     item = world["item"]
     body = {"reason": REASON, "targets": [T.PERSONAL_NICKNAME.value]}
-    staff = make_user("corr-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("corr-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     for actor, expected in ((world["student"], 403), (staff, 403), (world["admin"], 403)):
         response = reopen_api(actor, item, body)
         assert response.status_code == expected

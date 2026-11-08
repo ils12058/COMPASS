@@ -411,15 +411,15 @@ def test_student_appointments_registrations_and_reschedules_share_one_overlap_po
 
 
 @pytest.mark.django_db
-def test_group_registration_stays_separate_and_internal_gss_is_not_an_appointment_provider(
+def test_group_registration_stays_separate_and_internal_goa_is_not_an_appointment_provider(
     schedule_env,
 ):
     from compass.counseling.models import CounselingEncounter
 
     counselor = schedule_env["counselor"]
     student = schedule_env["student"]
-    gss = _user("corr1b-direct-facilitator@example.test", "GUIDANCE_SERVICES_STAFF")
-    StaffSupervision.objects.create(staff=gss, supervisor=counselor)
+    goa = _user("corr1b-direct-facilitator@example.test", "GUIDANCE_OFFICE_ASSISTANT")
+    StaffSupervision.objects.create(staff=goa, supervisor=counselor)
     start = _future_monday(hour=10)
     session = create_group_session(
         service_id=schedule_env["service"].pk,
@@ -428,7 +428,7 @@ def test_group_registration_stays_separate_and_internal_gss_is_not_an_appointmen
         starts_at=start,
         ends_at=start + timedelta(hours=1),
         capacity=10,
-        facilitator_ids=[gss.pk],
+        facilitator_ids=[goa.pk],
     )
     publish_group_session(session_id=session.pk, actor=counselor)
     appointments_before = Appointment.objects.count()
@@ -440,7 +440,7 @@ def test_group_registration_stays_separate_and_internal_gss_is_not_an_appointmen
     assert Appointment.objects.count() == appointments_before
     assert CounselingEncounter.objects.count() == encounters_before
     with pytest.raises(AppointmentNotSchedulable, match="active Counselor"):
-        _appointment(schedule_env, student=student, provider=gss, starts_at=start)
+        _appointment(schedule_env, student=student, provider=goa, starts_at=start)
 
 
 @pytest.mark.django_db(transaction=True)

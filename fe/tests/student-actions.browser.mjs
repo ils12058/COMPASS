@@ -61,7 +61,7 @@ for (const width of [320, 375, 390, 430, 768, 1440]) {
   });
 }
 
-for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
   const state = world(role);
   await check(`My actions navigation and direct route for ${role}`, "/portal/actions", state.options(), async (page) => {
     if (role === "STUDENT") {

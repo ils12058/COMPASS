@@ -44,12 +44,12 @@ def build_world(monkeypatch):
 
     counselor_a = staff("counselor-a", "COUNSELOR")
     counselor_b = staff("counselor-b", "COUNSELOR")
-    gss_a = staff("gss-a", "GUIDANCE_SERVICES_STAFF")
+    goa_a = staff("goa-a", "GUIDANCE_OFFICE_ASSISTANT")
     head = staff("head", "COUNSELOR")
     head.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
     CounselorResponsibility.objects.create(college=base.ccms, counselor=counselor_a)
     CounselorResponsibility.objects.create(college=college_b, counselor=counselor_b)
-    StaffSupervision.objects.create(staff=gss_a, supervisor=counselor_a)
+    StaffSupervision.objects.create(staff=goa_a, supervisor=counselor_a)
     projection, created = submit(base)
     assert created
     referral = Referral.objects.get(pk=projection["id"])
@@ -58,7 +58,7 @@ def build_world(monkeypatch):
         college_b=college_b,
         counselor_a=counselor_a,
         counselor_b=counselor_b,
-        gss_a=gss_a,
+        goa_a=goa_a,
         head=head,
         referral=referral,
     )
@@ -170,7 +170,7 @@ def test_idempotent_open_reuses_one_thread_and_one_message(world):
 def test_in_scope_staff_read_and_reply_but_can_never_create(world):
     thread, _ = open_thread(world)
 
-    for actor in (world.counselor_a, world.gss_a, world.head):
+    for actor in (world.counselor_a, world.goa_a, world.head):
         assert services.get_thread(actor=actor, thread_id=thread.pk).pk == thread.pk, (
             actor.role.code
         )
@@ -518,7 +518,7 @@ def test_recipients_are_the_submitter_and_in_scope_staff_only(world):
     assert recipients == {
         world.faculty.pk,
         world.counselor_a.pk,
-        world.gss_a.pk,
+        world.goa_a.pk,
         world.head.pk,
     }
     assert world.student.pk not in recipients

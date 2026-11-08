@@ -629,8 +629,8 @@ reference structure synchronized by deployment; ordinary portal users do not cre
 or disable that institutional topology. PostgreSQL rows remain so Inventory, reporting, routing,
 and historical foreign keys retain stable relational identities.
 
-Student current placement, one default Counselor responsibility per College, and Guidance Services Staff
-supervision remain genuine GCO operational relationships. Effective organizational scope is default
+Student current placement, one default Counselor responsibility per College, and Guidance Office
+Assistant supervision remain genuine GCO operational relationships. Effective organizational scope is default
 responsibility/routing context rather than a permanent authorization wall. An active Counselor
 holding the HEAD_GUIDANCE_COUNSELOR designation has institution-wide responsibility over active
 Colleges under active Campuses and is the deterministic fallback only when exactly one valid Head
@@ -661,7 +661,7 @@ refines ADR-018). Each Service stores:
 Counselor is the only provider class. A Counselor qualifies for new work on a Service when the
 account is active, its primary role is COUNSELOR, and coverage is all Counselors or selects them;
 Head Guidance Counselors qualify through their Counselor role. Legacy provider-role rows remain as
-history and are never used for eligibility. Guidance Services Staff can administer scoped
+history and are never used for eligibility. Guidance Office Assistants can administer scoped
 Appointments but cannot act as providers. ONLINE Counseling is a delivery mode, not a separate
 E-Counseling Service.
 
@@ -679,12 +679,12 @@ never modifies those Appointments.
 
 `services.catalog.view` permits authenticated active catalog reads. Inactive draft configuration additionally
 requires `services.manage`; all writes require `services.manage` plus recent MFA. IT Admin
-receives view/manage, Counselor/GSS/Student receive view, and the Head Guidance Counselor
+receives view/manage, Counselor/GOA/Student receive view, and the Head Guidance Counselor
 designation grants manage. Capability overrides remain authoritative.
 
 Provider qualification is intentionally narrow: it does not imply organization scope,
 availability, student preference, case/resource authorization, or record access. Head remains a
-COUNSELOR, while GSS organizational responsibility continues to come from the supervising
+COUNSELOR, while GOA organizational responsibility continues to come from the supervising
 Counselor.
 
 ```text
@@ -715,11 +715,11 @@ calculation uses half-open `[start, end)` semantics. Empty schedules fail closed
 weekly overlaps are rejected for the same delivery-mode context.
 
 Provider and Office schedules are independent. A provider must be an active Counselor to receive
-new schedule configuration. Historical GSS schedule rows remain readable but do not confer live
+new schedule configuration. Historical GOA schedule rows remain readable but do not confer live
 provider eligibility. Counselors may manage only their own Provider Availability through the
 `/availability/me/...` API using `availability.manage_self`. Head Guidance Counselors remain
 Counselors and receive separate administrative `availability.manage` authority through their
-Head designation. GSS has no self-management grant by default. Both administrative Availability
+Head designation. GOA has no self-management grant by default. Both administrative Availability
 changes and Counselor self-service rely on their respective capabilities and do not require recent
 MFA.
 
@@ -818,7 +818,7 @@ ADR-082 selectively encrypts 13 direct-contact/narrative fields, opportunity not
 reasons in three independently bound envelopes under the one required ordered
 `EXIT_INTERVIEW_CONFIDENTIAL_CONTENT_ENCRYPTION_KEYS`. Structured survey dimensions, both rating
 models, workflow/provenance and historical name search stay queryable. Authorized logical API/PDF
-fields remain unchanged; Head DRAFT and GSS response boundaries remain enforced before decrypt.
+fields remain unchanged; Head DRAFT and GOA response boundaries remain enforced before decrypt.
 Good Moral graduation eligibility requires metadata only.
 
 For local setup, provision a separate local keyring in `.env`; do not reuse Django, TOTP, Web Push

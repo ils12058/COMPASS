@@ -4,7 +4,7 @@ import { user, appointment, appointmentId } from "./support/ui-hierarchy-fixture
 import { sessionFor } from "./support/guidance-messages-fixtures.mjs";
 
 const { check, shown, hidden, noHorizontalOverflow, screenshot, finish } = await createBrowserHarness("appointment-reminders");
-for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"]) {
+for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"]) {
   const submissions = [];
   const row = { appointment_id: appointmentId, reference_code: appointment.reference_code,
     student_name: appointment.student.display_name, eligible: true, reason: "ELIGIBLE", issued_at: null };

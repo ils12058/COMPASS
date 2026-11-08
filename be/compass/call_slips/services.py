@@ -65,7 +65,7 @@ from .models import (
 )
 
 CALL_SLIP_FORM_FAMILY_KEY = "call_slip"
-OPERATIONAL_ROLES = frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
+OPERATIONAL_ROLES = frozenset({"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"})
 DEFAULT_PAGE_SIZE = 20
 MAX_PAGE_SIZE = 50
 MAX_COURSE_YEAR_LENGTH = 255
@@ -475,13 +475,13 @@ def _existing_creation_locked(
 def _resolve_issuer_locked(actor: User) -> User:
     if actor.role.code == "COUNSELOR":
         return actor
-    if actor.role.code != "GUIDANCE_SERVICES_STAFF":
+    if actor.role.code != "GUIDANCE_OFFICE_ASSISTANT":
         raise CallSlipNotPermitted("Only Guidance operational actors may issue Call Slips.")
 
     supervision = StaffSupervision.objects.select_for_update().filter(staff_id=actor.pk).first()
     if supervision is None:
         raise CallSlipNotPermitted(
-            "Guidance Services Staff requires a current supervising Counselor."
+            "Guidance Office Assistant requires a current supervising Counselor."
         )
     supervisor = (
         User.objects.select_for_update(of=("self",))
@@ -491,7 +491,7 @@ def _resolve_issuer_locked(actor: User) -> User:
     )
     if supervisor is None or not supervisor.is_active or supervisor.role.code != "COUNSELOR":
         raise CallSlipNotPermitted(
-            "Guidance Services Staff requires an active supervising Counselor."
+            "Guidance Office Assistant requires an active supervising Counselor."
         )
     return supervisor
 

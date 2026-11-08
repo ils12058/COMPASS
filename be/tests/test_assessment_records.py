@@ -68,7 +68,7 @@ def world():
     head = user("head", "COUNSELOR")
     head.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
     ordinary = user("ordinary", "COUNSELOR")
-    gss = user("staff", "GUIDANCE_SERVICES_STAFF")
+    goa = user("staff", "GUIDANCE_OFFICE_ASSISTANT")
     admin = user("admin", "IT_ADMIN")
     dpo = user("dpo", "INSTITUTIONAL_OFFICER")
     dpo.designations.add(Designation.objects.get(code="DPO"))
@@ -119,7 +119,7 @@ def test_head_designation_grants_and_dependency_only(world):
     assert auth_client(world.head).get(BASE).status_code == 200
 
 
-@pytest.mark.parametrize("actor", ["ordinary", "gss", "student", "admin", "dpo"])
+@pytest.mark.parametrize("actor", ["ordinary", "goa", "student", "admin", "dpo"])
 def test_baseline_unsupported_access_denied(world, actor):
     user = getattr(world, actor)
     item = record(world)
@@ -131,7 +131,7 @@ def test_baseline_unsupported_access_denied(world, actor):
         services.get_record(actor=user, record_id=item.pk)
 
 
-@pytest.mark.parametrize("actor", ["gss", "student", "admin", "dpo"])
+@pytest.mark.parametrize("actor", ["goa", "student", "admin", "dpo"])
 def test_role_fence_survives_unusual_override(world, actor):
     user = getattr(world, actor)
     grant(user)
@@ -146,7 +146,7 @@ def test_inactive_stale_and_changed_identity_and_anonymous(world):
     assert client.get(BASE).status_code == 401
     with pytest.raises(AssessmentRecordAccessDenied):
         services.list_records(actor=world.head)
-    User.objects.filter(pk=world.head.pk).update(is_active=True, role=world.gss.role)
+    User.objects.filter(pk=world.head.pk).update(is_active=True, role=world.goa.role)
     assert client.get(BASE).status_code == 403
     with pytest.raises(AssessmentRecordAccessDenied):
         services.list_records(actor=world.head)
@@ -295,12 +295,12 @@ def test_effective_manage_and_view_revocation_rechecks_fresh_requests(world, act
 
 @pytest.mark.parametrize("supervisor_name", ["head", "ordinary"])
 def test_staff_with_override_and_supervision_never_manages_assessment_types(world, supervisor_name):
-    StaffSupervision.objects.create(staff=world.gss, supervisor=getattr(world, supervisor_name))
-    grant(world.gss)
-    # Head-supervised GSS may inherit college visibility, but not Counselor actor eligibility.
-    assert world.gss.has_capability("assessment_records.manage")
+    StaffSupervision.objects.create(staff=world.goa, supervisor=getattr(world, supervisor_name))
+    grant(world.goa)
+    # Head-supervised GOA may inherit college visibility, but not Counselor actor eligibility.
+    assert world.goa.has_capability("assessment_records.manage")
     before = AuditEvent.objects.count()
-    client = auth_client(world.gss)
+    client = auth_client(world.goa)
     assert client.get(BASE + "/types").status_code == 403
     assert (
         client.post(
@@ -319,10 +319,10 @@ def test_staff_with_override_and_supervision_never_manages_assessment_types(worl
         == 403
     )
     with pytest.raises(AssessmentRecordAccessDenied):
-        services.create_type(actor=world.gss, values={"name": "Forbidden"})
+        services.create_type(actor=world.goa, values={"name": "Forbidden"})
     with pytest.raises(AssessmentRecordAccessDenied):
         services.update_type(
-            actor=world.gss, type_id=world.assessment_type.pk, values={"is_active": False}
+            actor=world.goa, type_id=world.assessment_type.pk, values={"is_active": False}
         )
     assert AuditEvent.objects.count() == before
     world.assessment_type.refresh_from_db()
@@ -588,7 +588,7 @@ def test_picker_is_narrow_current_active_student_and_structural_search(world):
     User.objects.filter(pk=world.student.pk).update(student_lifecycle_status="GRADUATED")
     User.objects.filter(pk=world.other_student.pk).update(is_active=False)
     assert services.eligible_students(actor=world.head).items == ()
-    for student in (world.student, world.other_student, world.gss):
+    for student in (world.student, world.other_student, world.goa):
         with pytest.raises(AssessmentRecordNotFound):
             record(world, student_id=student.pk)
 

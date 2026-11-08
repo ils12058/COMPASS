@@ -213,7 +213,7 @@ def test_reports_view_is_counselor_baseline_but_does_not_fabricate_scope():
     sync_policy()
     head = make_head()
     counselor = make_user("counselor-reports@example.edu", role="COUNSELOR", lifecycle=None)
-    staff = make_user("staff-reports@example.edu", role="GUIDANCE_SERVICES_STAFF", lifecycle=None)
+    staff = make_user("staff-reports@example.edu", role="GUIDANCE_OFFICE_ASSISTANT", lifecycle=None)
     student = make_user("student-reports@example.edu")
     admin = make_user("admin-reports@example.edu", role="IT_ADMIN", lifecycle=None)
 
@@ -286,7 +286,7 @@ def test_report_scope_zero_scope_and_unsupported_roles_are_denied():
     zero_scope = make_user("scope-zero@example.edu", role="COUNSELOR", lifecycle=None)
     staff = make_user(
         "scope-staff@example.edu",
-        role="GUIDANCE_SERVICES_STAFF",
+        role="GUIDANCE_OFFICE_ASSISTANT",
         lifecycle=None,
     )
     student = make_user("scope-student@example.edu")
@@ -371,7 +371,7 @@ def test_student_profile_endpoint_authorization_and_unauthenticated_boundary():
     head = make_head()
     denied = [
         make_user("ordinary@example.edu", role="COUNSELOR", lifecycle=None),
-        make_user("staff@example.edu", role="GUIDANCE_SERVICES_STAFF", lifecycle=None),
+        make_user("staff@example.edu", role="GUIDANCE_OFFICE_ASSISTANT", lifecycle=None),
         make_user("student@example.edu"),
         make_user("it@example.edu", role="IT_ADMIN", lifecycle=None),
     ]

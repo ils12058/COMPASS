@@ -248,8 +248,8 @@ def make_scope():
     counselor_b = make_user(f"counselor-b-{uuid4().hex[:5]}@example.edu", "COUNSELOR")
     CounselorResponsibility.objects.create(college=college_a, counselor=counselor_a)
     CounselorResponsibility.objects.create(college=college_b, counselor=counselor_b)
-    gss = make_user(f"gss-{uuid4().hex[:5]}@example.edu", "GUIDANCE_SERVICES_STAFF")
-    StaffSupervision.objects.create(staff=gss, supervisor=counselor_a)
+    goa = make_user(f"goa-{uuid4().hex[:5]}@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
+    StaffSupervision.objects.create(staff=goa, supervisor=counselor_a)
     student_a = make_user(
         f"student-a-{uuid4().hex[:5]}@example.edu",
         "STUDENT",
@@ -262,7 +262,7 @@ def make_scope():
     )
     StudentAcademicProfile.objects.create(student=student_a, current_college=college_a)
     StudentAcademicProfile.objects.create(student=student_b, current_college=college_b)
-    return counselor_a, counselor_b, gss, student_a, student_b
+    return counselor_a, counselor_b, goa, student_a, student_b
 
 
 @pytest.mark.django_db
@@ -778,7 +778,7 @@ def test_reassignment_candidates_are_scoped_to_appointment_and_actual_availabili
     assert overlapping.pk not in ids
     assert unavailable.pk not in ids
 
-    outsider = make_user("reassign-outsider@example.edu", "GUIDANCE_SERVICES_STAFF")
+    outsider = make_user("reassign-outsider@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     with pytest.raises(AppointmentNotFound):
         list_reassignment_candidates(
             appointment_id=item.pk,
@@ -790,7 +790,7 @@ def test_reassignment_candidates_are_scoped_to_appointment_and_actual_availabili
 @pytest.mark.django_db
 def test_domain_student_selectors_share_scope_search_pagination_and_minimal_projection():
     sync_policy()
-    counselor_a, _, gss, student_a, student_b = make_scope()
+    counselor_a, _, goa, student_a, student_b = make_scope()
     head = make_head("selector-head@example.edu")
     unaffiliated = make_user(
         "selector-unaffiliated@example.edu",
@@ -808,8 +808,8 @@ def test_domain_student_selectors_share_scope_search_pagination_and_minimal_proj
     for listing in (list_referral_students, list_call_slip_students):
         counselor_page = listing(actor=counselor_a)
         assert [row.id for row in counselor_page.items] == [student_a.pk]
-        gss_page = listing(actor=gss)
-        assert [row.id for row in gss_page.items] == [student_a.pk]
+        goa_page = listing(actor=goa)
+        assert [row.id for row in goa_page.items] == [student_a.pk]
         head_ids = {row.id for row in listing(actor=head).items}
         assert {student_a.pk, student_b.pk, unaffiliated.pk} <= head_ids
         assert inactive.pk not in head_ids
@@ -825,7 +825,7 @@ def test_domain_student_selectors_share_scope_search_pagination_and_minimal_proj
     assert {row["id"] for row in response.json()["items"]} == {str(student_a.pk)}
     assert "email" not in response.json()["items"][0]
 
-    response = auth_client(gss).get("/api/v1/call-slips/students")
+    response = auth_client(goa).get("/api/v1/call-slips/students")
     assert response.status_code == 200
     assert {row["id"] for row in response.json()["items"]} == {str(student_a.pk)}
     assert "email" not in response.json()["items"][0]

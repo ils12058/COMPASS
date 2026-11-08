@@ -172,7 +172,7 @@ def test_graduate_tracer_aggregate_requires_global_report_scope():
     CounselorResponsibility.objects.create(college=college, counselor=counselor)
     staff = make_user(
         "gts-staff@example.edu",
-        role="GUIDANCE_SERVICES_STAFF",
+        role="GUIDANCE_OFFICE_ASSISTANT",
         lifecycle=None,
     )
     student = make_user("gts-student@example.edu")

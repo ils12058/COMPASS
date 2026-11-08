@@ -52,10 +52,10 @@ def assign(client, thread, handler):
 def test_ordinary_counselor_college_lists_its_counselor_and_supervised_staff(world):
     thread, _ = office(world)
     expected = sorted(
-        [world.counselor, world.gss, world.head, world.head_gss],
+        [world.counselor, world.goa, world.head, world.head_goa],
         key=lambda user: user.get_full_name().lower(),
     )
-    for actor in [world.counselor, world.gss]:
+    for actor in [world.counselor, world.goa]:
         assert eligible(world, thread, actor=actor) == [user.pk for user in expected]
     # Another ordinary Counselor cannot handle this College without responsibility.
     for outsider in [world.other]:
@@ -66,30 +66,30 @@ def test_ordinary_counselor_college_lists_its_counselor_and_supervised_staff(wor
 def test_staff_are_eligible_only_through_valid_current_supervision(world, breakage):
     thread, _ = office(world)
     if breakage == "removed":
-        StaffSupervision.objects.filter(staff=world.gss).delete()
+        StaffSupervision.objects.filter(staff=world.goa).delete()
     elif breakage == "inactive-supervisor":
-        StaffSupervision.objects.filter(staff=world.gss).update(supervisor=world.other)
+        StaffSupervision.objects.filter(staff=world.goa).update(supervisor=world.other)
         world.other.is_active = False
         world.other.save(update_fields=("is_active",))
     else:
-        StaffSupervision.objects.filter(staff=world.gss).update(supervisor=world.admin)
-    assert world.gss.pk not in eligible(world, thread)
+        StaffSupervision.objects.filter(staff=world.goa).update(supervisor=world.admin)
+    assert world.goa.pk not in eligible(world, thread)
 
 
 # C. Head and D. Head's supervised staff.
 @pytest.mark.parametrize("college_index", [2, 3], ids=["explicit", "unique-head-fallback"])
 def test_head_and_head_staff_for_explicit_or_unique_fallback_colleges(world, college_index):
     thread = office_in(world, college_index)
-    for actor in [world.head, world.head_gss]:
-        assert set(eligible(world, thread, actor=actor)) == {world.head.pk, world.head_gss.pk}
-    for outsider in [world.counselor, world.gss, world.other]:
+    for actor in [world.head, world.head_goa]:
+        assert set(eligible(world, thread, actor=actor)) == {world.head.pk, world.head_goa.pk}
+    for outsider in [world.counselor, world.goa, world.other]:
         assert not policy.eligible_handler(outsider, thread)
 
 
 def test_head_and_head_staff_eligible_across_other_counselors_college(world):
     thread = office_in(world, 1)
-    expected = {world.other.pk, world.head.pk, world.head_gss.pk}
-    for actor in [world.other, world.head, world.head_gss]:
+    expected = {world.other.pk, world.head.pk, world.head_goa.pk}
+    for actor in [world.other, world.head, world.head_goa]:
         assert set(eligible(world, thread, actor=actor)) == expected
         assert policy.eligible_handler(actor, thread)
 
@@ -98,16 +98,16 @@ def test_inactive_counselors_college_falls_back_only_to_the_unique_head(world):
     thread, _ = office(world)
     world.counselor.is_active = False
     world.counselor.save(update_fields=("is_active",))
-    assert set(eligible(world, thread, actor=world.head)) == {world.head.pk, world.head_gss.pk}
+    assert set(eligible(world, thread, actor=world.head)) == {world.head.pk, world.head_goa.pk}
 
 
 # E. Multiple Heads.
 def test_multiple_heads_preserve_visibility_but_do_not_assign_a_new_fallback(world):
     fallback = office_in(world, 3)
     world.other.designations.add(Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"))
-    expected = {world.head.pk, world.head_gss.pk, world.other.pk}
+    expected = {world.head.pk, world.head_goa.pk, world.other.pk}
     assert {user.pk for user in policy.eligible_handlers(fallback)} == expected
-    for actor in [world.head, world.head_gss, world.other]:
+    for actor in [world.head, world.head_goa, world.other]:
         assert set(eligible(world, fallback, actor=actor)) == expected
     # A second Head may view even an explicitly Head-assigned College.
     StudentAcademicProfile.objects.filter(student=world.student).update(
@@ -121,18 +121,18 @@ def test_multiple_heads_preserve_visibility_but_do_not_assign_a_new_fallback(wor
 # F. Inactive users and G. capability.
 def test_inactive_staff_are_excluded(world):
     thread, _ = office(world)
-    world.gss.is_active = False
-    world.gss.save(update_fields=("is_active",))
-    assert set(eligible(world, thread)) == {world.counselor.pk, world.head.pk, world.head_gss.pk}
+    world.goa.is_active = False
+    world.goa.save(update_fields=("is_active",))
+    assert set(eligible(world, thread)) == {world.counselor.pk, world.head.pk, world.head_goa.pk}
 
 
 @pytest.mark.parametrize("code", ["guidance_messages.manage", "guidance_messages.view"])
 def test_capability_override_removing_manage_makes_a_candidate_ineligible(world, code):
     thread, _ = office(world)
-    deny(world.gss, code)
-    assert set(eligible(world, thread)) == {world.counselor.pk, world.head.pk, world.head_gss.pk}
+    deny(world.goa, code)
+    assert set(eligible(world, thread)) == {world.counselor.pk, world.head.pk, world.head_goa.pk}
     with pytest.raises(InvalidMessageInput):
-        services.assign_handler(actor=world.counselor, thread_id=thread.pk, handler_id=world.gss.pk)
+        services.assign_handler(actor=world.counselor, thread_id=thread.pk, handler_id=world.goa.pk)
 
 
 # H. Unauthorized requesters and I. Counseling threads are concealed.
@@ -149,25 +149,25 @@ def test_unauthorized_requesters_are_concealed(world, actor):
 
 def test_head_and_supervised_staff_can_manage_and_be_assigned_across_colleges(world):
     thread, _ = office(world)
-    for actor in [world.head, world.head_gss]:
+    for actor in [world.head, world.head_goa]:
         response = auth_client(actor).get(f"{BASE}/threads/{thread.pk}/eligible-handlers")
         assert response.status_code == 200
         assert {row["id"] for row in response.json()["items"]} >= {
             str(world.head.pk),
-            str(world.head_gss.pk),
+            str(world.head_goa.pk),
         }
-    assigned = assign(auth_client(world.counselor), thread, world.head_gss)
+    assigned = assign(auth_client(world.counselor), thread, world.head_goa)
     assert assigned.status_code == 200
     thread.refresh_from_db()
-    assert thread.assigned_to_id == world.head_gss.pk
+    assert thread.assigned_to_id == world.head_goa.pk
     # Handler status has no bearing on the student's default routing or access scope.
     assert policy.eligible_handler(world.head, thread)
 
 
 def test_view_only_staff_and_guessed_threads_are_concealed(world):
     thread, _ = office(world)
-    deny(world.gss, "guidance_messages.manage")
-    client = auth_client(world.gss)
+    deny(world.goa, "guidance_messages.manage")
+    client = auth_client(world.goa)
     assert client.get(f"{BASE}/threads/{thread.pk}/eligible-handlers").status_code == 404
     assert client.get(f"{BASE}/threads/{uuid4()}/eligible-handlers").status_code == 404
     guessed = auth_client(world.counselor).get(f"{BASE}/threads/{uuid4()}/eligible-handlers")
@@ -188,9 +188,9 @@ def test_stale_candidate_is_rejected_by_the_assignment_revalidation(world):
     thread, _ = office(world)
     client = auth_client(world.counselor)
     listed = client.get(f"{BASE}/threads/{thread.pk}/eligible-handlers").json()["items"]
-    assert str(world.gss.pk) in {item["id"] for item in listed}
-    StaffSupervision.objects.filter(staff=world.gss).delete()
-    response = assign(client, thread, world.gss)
+    assert str(world.goa.pk) in {item["id"] for item in listed}
+    StaffSupervision.objects.filter(staff=world.goa).delete()
+    response = assign(client, thread, world.goa)
     assert response.status_code == 422
     assert response.json()["error"]["code"] == "invalid_guidance_message_input"
     thread.refresh_from_db()
@@ -216,8 +216,8 @@ def test_response_is_bounded_and_private(world):
     assert set(page) == {"items", "page", "page_size", "has_next"}
     for item in page["items"]:
         assert set(item) == {"id", "display_name", "role"}
-        assert item["role"] in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
-    assert {item["role"] for item in page["items"]} == {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        assert item["role"] in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
+    assert {item["role"] for item in page["items"]} == {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
     assert "@" not in response.content.decode()
     assert (
         not AuditEvent.objects.filter(action__startswith="guidance_messages.thread.")
@@ -228,9 +228,9 @@ def test_response_is_bounded_and_private(world):
 
 def test_search_matches_display_name_only_and_pages_deterministically(world):
     thread, _ = office(world)
-    assert set(eligible(world, thread, search="  GSS ")) == {world.gss.pk, world.head_gss.pk}
+    assert set(eligible(world, thread, search="  GOA ")) == {world.goa.pk, world.head_goa.pk}
     assert eligible(world, thread, search="synthetic counselor") == [world.counselor.pk]
-    assert eligible(world, thread, search=world.gss.email) == []
+    assert eligible(world, thread, search=world.goa.email) == []
     assert eligible(world, thread, search="example.edu") == []
     first, more = services.eligible_handlers(
         actor=world.counselor, thread_id=thread.pk, page=1, page_size=2
@@ -273,20 +273,20 @@ def test_assignment_never_grants_or_preserves_content_access(
     )
     sequence = thread.last_sequence
     with django_capture_on_commit_callbacks(execute=True):
-        response = assign(auth_client(world.counselor), thread, world.gss)
+        response = assign(auth_client(world.counselor), thread, world.goa)
     assert response.status_code == 200
-    assert response.json()["assigned_to"]["id"] == str(world.gss.pk)
+    assert response.json()["assigned_to"]["id"] == str(world.goa.pk)
     assert {frame["type"] for frame in frames} == {"messages.thread_changed"}
     assert all(set(frame) <= {"v", "type", "thread_id"} for frame in frames)
     thread.refresh_from_db()
     assert thread.last_sequence == sequence
     assert thread.messages.count() == sequence
-    StaffSupervision.objects.filter(staff=world.gss).delete()
+    StaffSupervision.objects.filter(staff=world.goa).delete()
     thread.refresh_from_db()
-    assert thread.assigned_to_id == world.gss.pk
+    assert thread.assigned_to_id == world.goa.pk
     with pytest.raises(ThreadNotFound):
-        services.get_thread(actor=world.gss, thread_id=thread.pk)
-    assert auth_client(world.gss).get(f"{BASE}/threads/{thread.pk}/messages").status_code == 404
+        services.get_thread(actor=world.goa, thread_id=thread.pk)
+    assert auth_client(world.goa).get(f"{BASE}/threads/{thread.pk}/messages").status_code == 404
     # A College Counselor keeps access without being the assignee.
     assert services.get_thread(actor=world.counselor, thread_id=thread.pk).pk == thread.pk
 
@@ -297,7 +297,7 @@ def test_responsibility_change_moves_eligibility_with_the_college(world):
     assert set(eligible(world, thread, actor=world.other)) == {
         world.other.pk,
         world.head.pk,
-        world.head_gss.pk,
+        world.head_goa.pk,
     }
     assert not policy.eligible_handler(world.counselor, thread)
-    assert not policy.eligible_handler(world.gss, thread)
+    assert not policy.eligible_handler(world.goa, thread)

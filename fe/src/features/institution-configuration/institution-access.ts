@@ -17,7 +17,7 @@ export function canManageOrganization(user: CapabilityUser): boolean {
 }
 
 function isCatalogStaff(user: CapabilityUser): boolean {
-  return user.role === "IT_ADMIN" || user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF";
+  return user.role === "IT_ADMIN" || user.role === "COUNSELOR" || user.role === "GUIDANCE_OFFICE_ASSISTANT";
 }
 
 export function canManageOrganizationCatalog(user: CapabilityUser): boolean {

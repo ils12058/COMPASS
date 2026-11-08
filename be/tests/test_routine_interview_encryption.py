@@ -431,7 +431,7 @@ def test_denied_actors_and_draft_intakes_are_never_decrypted(world, decryptions)
         user=head,
         designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR"),
     )
-    gss = make_user("enc-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = make_user("enc-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     dpo = make_user("enc-dpo@example.edu", "INSTITUTIONAL_OFFICER")
     UserDesignation.objects.create(user=dpo, designation=Designation.objects.get(code="DPO"))
     other_student = make_user("enc-other-student@example.edu", "STUDENT")
@@ -440,7 +440,7 @@ def test_denied_actors_and_draft_intakes_are_never_decrypted(world, decryptions)
     for actor, status in (
         (other_counselor, 404),
         (head, 404),
-        (gss, 403),
+        (goa, 403),
         (world["admin"], 403),
         (dpo, 403),
     ):

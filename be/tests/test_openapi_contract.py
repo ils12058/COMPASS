@@ -2121,7 +2121,7 @@ def test_policy_enums_and_sensitive_model_fields_are_contract_safe() -> None:
     assert schemas["RoleCode"]["enum"] == [
         "COUNSELOR",
         "FACULTY",
-        "GUIDANCE_SERVICES_STAFF",
+        "GUIDANCE_OFFICE_ASSISTANT",
         "INSTITUTIONAL_OFFICER",
         "IT_ADMIN",
         "STUDENT",

@@ -824,7 +824,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
                             }}
                           />
                           <span>
-                            {candidate.display_name} <span className="text-xs text-muted">· {candidate.role === "COUNSELOR" ? "Counselor" : "Guidance Services Staff"}</span>
+                            {candidate.display_name} <span className="text-xs text-muted">· {candidate.role === "COUNSELOR" ? "Counselor" : "Guidance Office Assistant"}</span>
                           </span>
                         </label>
                       </li>
@@ -902,7 +902,7 @@ export function ServiceGroupSessionsStaffPanel({ service, attendanceOnly = false
                     const candidate = facilitatorCandidates.find((item) => item.id === id);
                     return candidate ? (
                       <option key={id} value={`internal:${id}`}>
-                        {candidate.display_name} · {candidate.role === "COUNSELOR" ? "Counselor" : "Guidance Services Staff"}
+                        {candidate.display_name} · {candidate.role === "COUNSELOR" ? "Counselor" : "Guidance Office Assistant"}
                       </option>
                     ) : null;
                   })}

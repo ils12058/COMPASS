@@ -67,7 +67,7 @@ def actors(approved):
     student = make_user(f"gm4-{uuid4()}@example.test", lifecycle="CURRENT")
     make_placement(student)
     make_inventory(student, make_academic_year())
-    inspector = person("gm4-inspector", "GUIDANCE_SERVICES_STAFF")
+    inspector = person("gm4-inspector", "GUIDANCE_OFFICE_ASSISTANT")
     counselor = person("gm4-issuer", "COUNSELOR")
     grant(inspector)
     activate()
@@ -221,8 +221,8 @@ def test_authenticated_api_full_workflow_exact_provenance_and_owned_pdf(actors, 
         "student-verify",
         "student-prepare",
         "student-issue",
-        "ungranted-gss",
-        "gss-issue",
+        "ungranted-goa",
+        "goa-issue",
         "ungranted-counselor",
         "it-verify",
         "it-issue",
@@ -246,8 +246,8 @@ def test_real_session_denials_leave_all_receipt_and_outcome_facts_unchanged(acto
     actor = inspector
     if case.startswith("student"):
         actor = student
-    elif case == "ungranted-gss":
-        actor = person("ungranted", "GUIDANCE_SERVICES_STAFF")
+    elif case == "ungranted-goa":
+        actor = person("ungranted", "GUIDANCE_OFFICE_ASSISTANT")
     elif case == "ungranted-counselor":
         actor = counselor
     elif case.startswith("it"):

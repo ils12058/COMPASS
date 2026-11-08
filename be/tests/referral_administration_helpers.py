@@ -34,7 +34,7 @@ def seal_admin(world, kind, **changes):
             if faculty
             else {world.counselor.pk, world.staff.pk, world.other_counselor.pk}
         ),
-        roles=frozenset({"FACULTY"} if faculty else {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}),
+        roles=frozenset({"FACULTY"} if faculty else {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}),
         student_college_ids=frozenset({world.ccms.pk}),
     )
     values.update(changes)
@@ -58,7 +58,7 @@ def make_world(monkeypatch):
     world = intake_world(monkeypatch)
     world.counselor = person("ccms-counselor", "COUNSELOR")
     world.other_counselor = person("cas-counselor", "COUNSELOR")
-    world.staff = person("gss", "GUIDANCE_SERVICES_STAFF")
+    world.staff = person("goa", "GUIDANCE_OFFICE_ASSISTANT")
     CounselorResponsibility.objects.create(college=world.ccms, counselor=world.counselor)
     CounselorResponsibility.objects.create(college=world.cas, counselor=world.other_counselor)
     StaffSupervision.objects.create(staff=world.staff, supervisor=world.counselor)

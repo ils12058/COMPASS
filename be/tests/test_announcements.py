@@ -71,7 +71,7 @@ def csrf(client: Client) -> dict[str, str]:
 def test_announcement_management_capability_baseline_head_compatibility_and_override():
     sync_policy()
     counselor = make_user("announcement-counselor@example.edu", "COUNSELOR")
-    staff = make_user("announcement-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("announcement-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("announcement-student@example.edu", "STUDENT")
     admin = make_user("announcement-admin@example.edu", "IT_ADMIN")
     officer = make_user("announcement-officer@example.edu", "INSTITUTIONAL_OFFICER")
@@ -101,7 +101,7 @@ def test_announcement_lifecycle_audience_expiry_ordering_and_audit_are_bounded()
     sync_policy()
     counselor = make_user("announcement-publisher@example.edu", "COUNSELOR")
     student = make_user("announcement-reader@example.edu", "STUDENT")
-    staff = make_user("announcement-gss@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("announcement-goa@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     admin = make_user("announcement-it@example.edu", "IT_ADMIN")
     officer = make_user("announcement-institutional@example.edu", "INSTITUTIONAL_OFFICER")
     now = timezone.now()
@@ -258,7 +258,7 @@ def test_announcement_lifecycle_audience_expiry_ordering_and_audit_are_bounded()
 def test_announcement_api_enforces_management_and_returns_raw_markdown_without_html_surface():
     sync_policy()
     counselor = make_user("announcement-api-counselor@example.edu", "COUNSELOR")
-    staff = make_user("announcement-api-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("announcement-api-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("announcement-api-student@example.edu", "STUDENT")
     markdown = "<script>alert('x')</script>\n\n**Guidance source**"
 
@@ -312,7 +312,7 @@ def test_announcement_api_enforces_management_and_returns_raw_markdown_without_h
         data=json.dumps(
             {
                 "title": "Staff-authored",
-                "body_markdown": "Guidance Services Staff may publish directly.",
+                "body_markdown": "Guidance Office Assistant may publish directly.",
                 "audience": "ALL_AUTHENTICATED",
             }
         ),
@@ -327,7 +327,7 @@ def test_public_announcement_audience_is_anonymous_only_when_explicitly_public()
     sync_policy()
     counselor = make_user("announcement-public-publisher@example.edu", "COUNSELOR")
     student = make_user("announcement-public-student@example.edu", "STUDENT")
-    staff = make_user("announcement-public-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("announcement-public-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     now = timezone.now()
 
     public_item = create_announcement(

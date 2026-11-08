@@ -207,7 +207,7 @@ def test_notification_ownership_never_grants_record_link(case, change):
 def test_staff_link_tracks_current_college_and_supervision(case):
     student, counselor, item = case
     create_placement(student, counselor)
-    staff = make_user("staff@example.test", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("staff@example.test", "GUIDANCE_OFFICE_ASSISTANT")
     supervision = StaffSupervision.objects.create(staff=staff, supervisor=counselor)
     notice = notification_for(item, staff)
     assert (
@@ -476,7 +476,7 @@ def test_linked_delivery_keeps_concurrent_claim_protection(case, monkeypatch):
 def test_final_check_requeries_staff_scope(case, change, monkeypatch):
     student, counselor, item = case
     create_placement(student, counselor)
-    staff = make_user("scope-staff@example.test", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("scope-staff@example.test", "GUIDANCE_OFFICE_ASSISTANT")
     StaffSupervision.objects.create(staff=staff, supervisor=counselor)
     notice = notification_for(item, staff)
     original = delivery_module.render_notification_email

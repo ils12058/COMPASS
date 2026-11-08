@@ -50,7 +50,7 @@ for (const width of [320, 1440]) {
 for (const [perspective, role, event] of [
   ["counselor", "COUNSELOR", item("inventory.reopened", "Individual Inventory returned for correction", "You returned an Individual Inventory for correction.", 0)],
   ["head", "COUNSELOR", item("exit_interview.reopened", "Exit Interview returned for correction", "You returned an Exit Interview for correction.", 0)],
-  ["gss", "GUIDANCE_SERVICES_STAFF", item("good_moral.prepared", "Good Moral certificate prepared", "You prepared a Good Moral certificate.", 0)],
+  ["goa", "GUIDANCE_OFFICE_ASSISTANT", item("good_moral.prepared", "Good Moral certificate prepared", "You prepared a Good Moral certificate.", 0)],
   ["it", "IT_ADMIN", account],
   ["dpo", "INSTITUTIONAL_OFFICER", account],
 ]) {

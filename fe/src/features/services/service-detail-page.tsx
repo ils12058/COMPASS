@@ -385,7 +385,7 @@ export function ServiceDetailPage() {
         <div className="space-y-5">
           {service.booking_pathways?.includes(BookingPathway.FIXED_DATE_SLOT) &&
           user.capabilities.includes("appointments.manage") &&
-          (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF") ? (
+          (user.role === "COUNSELOR" || user.role === "GUIDANCE_OFFICE_ASSISTANT") ? (
             <Panel as="div"><ServiceFixedSlotsStaffPanel service={service} /></Panel>
           ) : null}
 
@@ -397,7 +397,7 @@ export function ServiceDetailPage() {
 
           {service.booking_pathways?.includes(BookingPathway.GROUP_SESSION) &&
           user.capabilities.includes("appointments.manage") &&
-          (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF") ? (
+          (user.role === "COUNSELOR" || user.role === "GUIDANCE_OFFICE_ASSISTANT") ? (
             <Panel as="div"><ServiceGroupSessionsStaffPanel service={service} /></Panel>
           ) : null}
 

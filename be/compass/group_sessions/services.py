@@ -60,7 +60,7 @@ from compass.service_catalog.services import (
     service_supports_delivery_mode,
 )
 
-INTERNAL_FACILITATOR_ROLE_CODES = frozenset({"COUNSELOR", "GUIDANCE_SERVICES_STAFF"})
+INTERNAL_FACILITATOR_ROLE_CODES = frozenset({"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"})
 
 
 def _normalize_facilitator_assignments(
@@ -243,7 +243,7 @@ def _actor_schedule_lock_ids(actor: User) -> tuple[uuid.UUID, ...]:
     if current is None:
         raise ValidationError("Group session not found.")
     ids = {current.pk}
-    if current.role.code == "GUIDANCE_SERVICES_STAFF":
+    if current.role.code == "GUIDANCE_OFFICE_ASSISTANT":
         supervisor = supervised_counselor(current)
         if supervisor is None:
             raise ValidationError("Group session not found.")
@@ -325,7 +325,7 @@ def list_group_facilitator_candidates(
     current = current_group_session_staff(actor)
     if current is None:
         raise PermissionError("Group Session management access is required.")
-    if current.role.code == "GUIDANCE_SERVICES_STAFF":
+    if current.role.code == "GUIDANCE_OFFICE_ASSISTANT":
         supervisor = supervised_counselor(current)
         if supervisor is None:
             raise PermissionError("Group Session management access is required.")
@@ -337,11 +337,11 @@ def list_group_facilitator_candidates(
             StaffSupervision.objects.filter(
                 supervisor_id=current.pk,
                 staff__is_active=True,
-                staff__role__code="GUIDANCE_SERVICES_STAFF",
+                staff__role__code="GUIDANCE_OFFICE_ASSISTANT",
             ).values_list("staff_id", flat=True)
         )
         # A Counselor may explicitly invite another current Counselor as a session facilitator.
-        # GSS candidates stay restricted to directly supervised staff.
+        # GOA candidates stay restricted to directly supervised staff.
         scoped = Q(role__code="COUNSELOR") | Q(pk__in=direct_staff_ids)
 
     candidates = User.objects.select_related("role").filter(

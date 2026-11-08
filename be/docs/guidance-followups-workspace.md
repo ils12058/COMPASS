@@ -9,7 +9,7 @@ Student selection is scoped to active current Students in operational responsibi
 operational institutional scope). Confidential source contexts require the existing Counselor
 relationship; assignment never creates that relationship. Confidential creation/assignment offers
 only the source's authorized Counselor. Every submission independently rechecks source/recipient
-and effective capabilities. GSS's persisted code is `GUIDANCE_SERVICES_STAFF`.
+and effective capabilities. GOA's persisted code is `GUIDANCE_OFFICE_ASSISTANT`.
 
 Lists contain only records currently assigned to the reader and authorized by current resource
 policy. Assignee filters narrow that set; they do not grant oversight. Due-date filters/order run

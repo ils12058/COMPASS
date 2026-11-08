@@ -294,7 +294,7 @@ def test_media_viewers_do_not_need_consent_management_or_download_capabilities(f
         )
 
 
-@pytest.mark.parametrize("role", ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN"])
+@pytest.mark.parametrize("role", ["STUDENT", "COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "IT_ADMIN"])
 def test_unrelated_or_designated_accounts_never_receive_the_hint(frames, role):
     student, counselor, appointment, _ = authorized_session()
     other = make_user(f"unrelated-{role}@example.edu", role)

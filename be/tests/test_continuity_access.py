@@ -164,7 +164,7 @@ def test_only_exact_receiver_can_use_grant(selected_case, monkeypatch, who):
     assert reads().count() == 0
 
 
-@pytest.mark.parametrize("role", ["IT_ADMIN", "GUIDANCE_SERVICES_STAFF", "INSTITUTIONAL_OFFICER"])
+@pytest.mark.parametrize("role", ["IT_ADMIN", "GUIDANCE_OFFICE_ASSISTANT", "INSTITUTIONAL_OFFICER"])
 def test_unsupported_roles_with_unusual_capabilities(selected_case, role, monkeypatch):
     c = selected_case
     g = approved(c)
@@ -210,7 +210,7 @@ def test_current_authority_rechecked_before_decrypt(selected_case, monkeypatch, 
         User.objects.filter(pk=c.receiver.pk).update(is_active=False)
     elif change == "role":
         User.objects.filter(pk=c.receiver.pk).update(
-            role=Role.objects.get(code="GUIDANCE_SERVICES_STAFF")
+            role=Role.objects.get(code="GUIDANCE_OFFICE_ASSISTANT")
         )
     elif change in {"revoke", "view_revoke", "source_capability"}:
         cap = {

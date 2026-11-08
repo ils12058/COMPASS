@@ -21,7 +21,7 @@ export function getAppointmentAccess(user: UserSummary): AppointmentAccess {
   const canManage = user.capabilities.includes("appointments.manage");
   const canManageSlots =
     canManage &&
-    (user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF");
+    (user.role === "COUNSELOR" || user.role === "GUIDANCE_OFFICE_ASSISTANT");
 
   return {
     canViewSelf,

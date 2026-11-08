@@ -163,7 +163,7 @@ def test_role_capability_and_mfa_reset_keep_step_up():
     stale = client_for(admin, recent=False)
 
     for method, path, payload in (
-        ("put", f"/api/v1/accounts/{target.pk}/role", {"role": "GUIDANCE_SERVICES_STAFF"}),
+        ("put", f"/api/v1/accounts/{target.pk}/role", {"role": "GUIDANCE_OFFICE_ASSISTANT"}),
         (
             "put",
             f"/api/v1/accounts/{target.pk}/capability-overrides/reports.view",

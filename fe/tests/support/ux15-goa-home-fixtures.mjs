@@ -3,11 +3,11 @@ import { messagesAccount } from "./guidance-messages-fixtures.mjs";
 import { appointment as baseAppointment } from "./ui-hierarchy-fixtures.mjs";
 import { workItem } from "./ux15-counselor-home-fixtures.mjs";
 
-export const gssHomeDate = "2026-10-22";
-export const gssAppointmentId = "d0000000-0000-4000-8000-000000000501";
+export const goaHomeDate = "2026-10-22";
+export const goaAppointmentId = "d0000000-0000-4000-8000-000000000501";
 
-const gssCapabilities = [
-  ...messagesAccount("GUIDANCE_SERVICES_STAFF").capabilities,
+const goaCapabilities = [
+  ...messagesAccount("GUIDANCE_OFFICE_ASSISTANT").capabilities,
   "appointments.manage",
   "good_moral.view",
   "good_moral.prepare",
@@ -16,7 +16,7 @@ const gssCapabilities = [
   "referrals.view",
 ];
 
-export const gssHomeWork = [
+export const goaHomeWork = [
   workItem("GUIDANCE_FOLLOW_UP", 1, "TIME_SENSITIVE", { due_at: "2026-10-22T10:00:00+08:00" }),
   workItem("GUIDANCE_MESSAGE_REPLY", 2),
   workItem("GOOD_MORAL_PREPARATION", 3),
@@ -27,7 +27,7 @@ export const gssHomeWork = [
 
 export function managedAppointment(n, {
   hour = 9 + n,
-  studentName = `Synthetic GSS Student ${n}`,
+  studentName = `Synthetic GOA Student ${n}`,
   status = "SCHEDULED",
   startsAt,
   endsAt,
@@ -36,10 +36,10 @@ export function managedAppointment(n, {
   const end = endsAt ?? `2026-10-22T${String(hour + 1).padStart(2, "0")}:00:00+08:00`;
   return {
     ...baseAppointment,
-    id: n === 1 ? gssAppointmentId : `d0000000-0000-4000-8000-${String(500 + n).padStart(12, "0")}`,
-    reference_code: `APT-GSS-SYN-${n}`,
-    student_id: `synthetic-gss-student-${n}`,
-    student: { ...baseAppointment.student, id: `synthetic-gss-student-${n}`, display_name: studentName },
+    id: n === 1 ? goaAppointmentId : `d0000000-0000-4000-8000-${String(500 + n).padStart(12, "0")}`,
+    reference_code: `APT-GOA-SYN-${n}`,
+    student_id: `synthetic-goa-student-${n}`,
+    student: { ...baseAppointment.student, id: `synthetic-goa-student-${n}`, display_name: studentName },
     provider: { ...baseAppointment.provider, id: `synthetic-counselor-${n}`, display_name: `Sam Counselor ${n}` },
     service: { ...baseAppointment.service, name: "Career Guidance" },
     starts_at: start,
@@ -74,9 +74,9 @@ function dateInManila(value) {
   return `${fields.year}-${fields.month}-${fields.day}`;
 }
 
-export function gssWorld({
-  capabilities = gssCapabilities,
-  work = gssHomeWork,
+export function goaWorld({
+  capabilities = goaCapabilities,
+  work = goaHomeWork,
   appointments = [
     managedAppointment(1, { studentName: "Alexandria Maria Catherine Johnson Williams" }),
     managedAppointment(2, { hour: 11 }),
@@ -89,7 +89,7 @@ export function gssWorld({
   ],
   operations,
 } = {}) {
-  const state = homeWorld({ role: "GUIDANCE_SERVICES_STAFF", capabilities, items: [] });
+  const state = homeWorld({ role: "GUIDANCE_OFFICE_ASSISTANT", capabilities, items: [] });
   state.work = structuredClone(work);
   state.workStatus = 200;
   state.appointments = structuredClone(appointments);

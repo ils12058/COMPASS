@@ -77,7 +77,7 @@ assignment, and Student self scope remain authoritative. Options never require
 `institutional_forms.view`. Unauthorized records contribute neither rows nor
 revision choices. The provider summary requires `availability.manage` and uses the
 same eligibility queryset as the directory: Counselors (including inactive accounts)
-and legacy Guidance Services Staff with existing Availability configuration. Other
+and legacy Guidance Office Assistant accounts with existing Availability configuration. Other
 accounts return 404 after authorization; existing mutation rules remain authoritative.
 
 ## Frontend routes and components

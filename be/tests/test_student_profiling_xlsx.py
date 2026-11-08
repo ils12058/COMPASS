@@ -132,7 +132,7 @@ def test_xlsx_endpoint_reuses_reports_view_without_recent_mfa(monkeypatch):
 
     head = make_head("head-xlsx@example.edu")
     counselor = make_user("ordinary-xlsx@example.edu", "COUNSELOR")
-    staff = make_user("staff-xlsx@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("staff-xlsx@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("student-xlsx@example.edu", "STUDENT")
     admin = make_user("admin-xlsx@example.edu", "IT_ADMIN")
     dpo = make_user("dpo-xlsx@example.edu", "INSTITUTIONAL_OFFICER")

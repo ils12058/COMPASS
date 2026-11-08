@@ -23,7 +23,7 @@ export function getGoodMoralAccess(user: UserSummary): GoodMoralAccess {
   const canRequestSelf =
     isStudent && user.capabilities.includes("good_moral.request_self");
   const canViewOperational =
-    (isCounselor || user.role === "GUIDANCE_SERVICES_STAFF") && user.capabilities.includes("good_moral.view");
+    (isCounselor || user.role === "GUIDANCE_OFFICE_ASSISTANT") && user.capabilities.includes("good_moral.view");
   const canManageOperational =
     isCounselor && user.capabilities.includes("good_moral.manage");
   const canInitiate = canViewOperational && user.capabilities.includes("good_moral.initiate");

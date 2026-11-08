@@ -47,7 +47,7 @@ async function chooseCurrent(page) {
   await shown(dialog.getByText(/Student will receive a COMPASS notification and email/));
   return dialog;
 }
-for (const role of ['COUNSELOR', 'GUIDANCE_SERVICES_STAFF']) {
+for (const role of ['COUNSELOR', 'GUIDANCE_OFFICE_ASSISTANT']) {
   const f = fixture({ role, hold: true });
   await check(`${role} confirmation, double submit and operational navigation`, start, f.options, async page => {
     const dialog = await chooseCurrent(page);
@@ -88,7 +88,7 @@ for (const role of ['COUNSELOR', 'GUIDANCE_SERVICES_STAFF']) {
   });
 }
 {
-  const f = fixture({ role: 'GUIDANCE_SERVICES_STAFF' });
+  const f = fixture({ role: 'GUIDANCE_OFFICE_ASSISTANT' });
   await check('local postgraduate lifecycle keeps F6 claim available while F4 stays unavailable', start, f.options, async page => {
     await page.getByLabel('Search Students').fill('Postgraduate');
     await page.getByRole('button', { name: 'Search', exact: true }).click();
@@ -99,7 +99,7 @@ for (const role of ['COUNSELOR', 'GUIDANCE_SERVICES_STAFF']) {
     await hidden(page.getByLabel('Year level'));
     await shown(page.locator('#assisted-degree'));
     await shown(page.getByText(/COMPASS hasn't verified the degree or graduation date/i));
-    await screenshot(page, 'gss-local-postgraduate-f6-claim');
+    await screenshot(page, 'goa-local-postgraduate-f6-claim');
   });
 }
 for (const errorCode of ['good_moral_inventory_required', 'good_moral_exit_interview_required', 'good_moral_not_found', 'good_moral_conflict']) {
@@ -155,10 +155,10 @@ for (const errorCode of ['good_moral_inventory_required', 'good_moral_exit_inter
   });
 }
 for (const device of ['phone', 'tablet']) {
-  const f = fixture({ role: 'GUIDANCE_SERVICES_STAFF' });
+  const f = fixture({ role: 'GUIDANCE_OFFICE_ASSISTANT' });
   await check(`${device} layout and keyboard review`, start, { ...f.options, device }, async page => {
     await chooseCurrent(page); await noHorizontalOverflow(page);
-    if (device === 'tablet') await screenshot(page, 'gss-assisted-f4');
+    if (device === 'tablet') await screenshot(page, 'goa-assisted-f4');
     await page.getByRole('alertdialog').getByRole('button', { name: 'Cancel', exact: true }).focus();
     await page.keyboard.press('Enter');
     await page.waitForFunction(() => document.activeElement?.textContent === 'Review request');

@@ -166,15 +166,15 @@ def test_operational_lists_follow_placement_college_not_inventory_program_colleg
 @pytest.mark.parametrize(
     "list_students", [list_referral_students, list_call_slip_students, list_exit_students]
 )
-def test_gss_head_picker_uses_only_explicit_and_valid_fallback_colleges(list_students):
+def test_goa_head_picker_uses_only_explicit_and_valid_fallback_colleges(list_students):
     call_command("sync_identity_policy", verbosity=0)
     head = _user("picker-head@example.edu", "COUNSELOR")
     other = _user("picker-other@example.edu", "COUNSELOR")
-    gss = _user("picker-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    goa = _user("picker-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     UserDesignation.objects.create(
         user=head, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     )
-    StaffSupervision.objects.create(staff=gss, supervisor=head)
+    StaffSupervision.objects.create(staff=goa, supervisor=head)
     campus = Campus.objects.create(code="PICK", name="Picker")
     colleges = [
         College.objects.create(campus=campus, code=code, name=code) for code in ("EX", "FB", "OUT")
@@ -191,11 +191,11 @@ def test_gss_head_picker_uses_only_explicit_and_valid_fallback_colleges(list_stu
         }
 
     assert listed(head) == {student.pk for student in students}
-    assert listed(gss) == {students[0].pk, students[1].pk}
+    assert listed(goa) == {students[0].pk, students[1].pk}
     UserDesignation.objects.create(
         user=other, designation=Designation.objects.get(code="HEAD_GUIDANCE_COUNSELOR")
     )
-    assert listed(gss) == {students[0].pk}
+    assert listed(goa) == {students[0].pk}
     head.is_active = False
     head.save(update_fields=["is_active"])
-    assert listed(gss) == set()
+    assert listed(goa) == set()

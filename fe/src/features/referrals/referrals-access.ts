@@ -9,7 +9,7 @@ export type ReferralAccess = {
 
 export function getReferralAccess(user: UserSummary): ReferralAccess {
   const isOperational =
-    user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF";
+    user.role === "COUNSELOR" || user.role === "GUIDANCE_OFFICE_ASSISTANT";
   const canView = isOperational && user.capabilities.includes("referrals.view");
   const canManage = isOperational && user.capabilities.includes("referrals.manage");
 

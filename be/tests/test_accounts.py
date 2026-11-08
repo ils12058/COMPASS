@@ -139,7 +139,7 @@ def test_policy_sync_is_idempotent_and_does_not_create_django_model_permissions(
         "FACULTY",
         "IT_ADMIN",
         "COUNSELOR",
-        "GUIDANCE_SERVICES_STAFF",
+        "GUIDANCE_OFFICE_ASSISTANT",
         "STUDENT",
         "INSTITUTIONAL_OFFICER",
     }
@@ -211,7 +211,7 @@ def test_policy_sync_removes_all_retired_capability_state():
 @pytest.mark.django_db
 def test_reference_reads_do_not_grant_management_to_students_or_staff():
     sync_policy()
-    for role_code in ("STUDENT", "GUIDANCE_SERVICES_STAFF"):
+    for role_code in ("STUDENT", "GUIDANCE_OFFICE_ASSISTANT"):
         actor = make_user(role=role_code, email=f"reference-{role_code.lower()}@example.edu")
         assert actor.has_capability("organization.structure.view")
         assert actor.has_capability("services.catalog.view")
@@ -278,11 +278,11 @@ def test_counselor_baseline_adds_scoped_authority_without_admin_expansion():
     assert all(counselor.has_capability(code) for code in expected)
     assert all(not counselor.has_capability(code) for code in denied)
 
-    gss = make_user(role="GUIDANCE_SERVICES_STAFF", email="baseline-gss@example.edu")
-    assert not gss.has_capability("reports.view")
-    assert gss.has_capability("academic_years.view")
-    assert gss.has_capability("institutional_forms.view")
-    assert gss.has_capability("exit_interviews.manage_opportunities")
+    goa = make_user(role="GUIDANCE_OFFICE_ASSISTANT", email="baseline-goa@example.edu")
+    assert not goa.has_capability("reports.view")
+    assert goa.has_capability("academic_years.view")
+    assert goa.has_capability("institutional_forms.view")
+    assert goa.has_capability("exit_interviews.manage_opportunities")
 
 
 @pytest.mark.django_db

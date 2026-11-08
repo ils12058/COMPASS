@@ -94,7 +94,7 @@ def historical_fixture(db, apps):
     for key, role in [
         ("student", "STUDENT"),
         ("counselor", "COUNSELOR"),
-        ("staff", "GUIDANCE_SERVICES_STAFF"),
+        ("staff", "GUIDANCE_OFFICE_ASSISTANT"),
     ]:
         r = manager("accounts", "Role").create(code=role, name=role)
         people[key] = manager("accounts", "User").create(

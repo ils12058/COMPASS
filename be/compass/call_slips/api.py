@@ -217,7 +217,7 @@ def _require_operational(request, capability: str) -> None:
     user = request.auth_user
     if (
         not user.is_active
-        or user.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        or user.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         or not user.has_capability(capability)
     ):
         raise APIError(403, "permission_denied", f"The {capability} capability is required.")

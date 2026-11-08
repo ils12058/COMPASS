@@ -35,7 +35,7 @@ from .. import DATASET_NAMESPACE
 from .. import workflows as wf
 from ..content import forms, narratives
 from ..history import seed_exit_interview
-from ..staff import COUNSELOR_A, COUNSELOR_B, COUNSELOR_C, GSS_A, HEAD_GUIDANCE
+from ..staff import COUNSELOR_A, COUNSELOR_B, COUNSELOR_C, GOA_A, HEAD_GUIDANCE
 from ..students import STUDENTS_BY_KEY
 from ..support import SeedSession, align_timestamps, idempotency_key, request_fingerprint
 from ..timeline import academic_semester
@@ -312,7 +312,7 @@ ACTION_UNITS = (
     _unit("ar_16", _referral("ar_16", COUNSELOR_C.key, call_slip=True), Referral),
     _unit("ar_17", _good_moral("ar_17", None), GoodMoralRequest),
     _unit("ar_18", _good_moral("ar_18", COUNSELOR_A.key), GoodMoralRequest),
-    _unit("ar_19", _referral("ar_19", GSS_A.key, call_slip=False), Referral),
+    _unit("ar_19", _referral("ar_19", GOA_A.key, call_slip=False), Referral),
     _unit("ar_20", _referral("ar_20", COUNSELOR_B.key, call_slip=False), Referral),
     _unit("ar_21", _routine_evaluation_pending, RoutineInterview),
     _unit("ar_22", _awaiting_outcome("ar_22", COUNSELOR_B.key), Appointment),

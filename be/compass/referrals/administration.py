@@ -20,7 +20,7 @@ def _actor(actor, *, manage=False):
     if (
         actor is None
         or not actor.is_active
-        or actor.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}
+        or actor.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}
         or not actor.has_capability("referrals.view")
         or (manage and not actor.has_capability("referrals.manage"))
     ):

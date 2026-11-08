@@ -529,7 +529,7 @@ def _abandon_or_503(store, reservation) -> None:
 
 def _require_reminder_manager(request, *, recent_mfa: bool = False):
     user = request.auth_user
-    if not user.is_active or user.role.code not in {"COUNSELOR", "GUIDANCE_SERVICES_STAFF"}:
+    if not user.is_active or user.role.code not in {"COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"}:
         raise APIError(403, "permission_denied", "Appointment management access is required.")
     _require(request, "appointments.manage")
     if recent_mfa:

@@ -30,7 +30,7 @@ const STAFF_CAPABILITIES = ["guidance_messages.view", "guidance_messages.manage"
 /** A session user with the Messages capabilities its role receives, unless `capabilities` replaces them. */
 export function messagesAccount(role, { capabilities, ...fields } = {}) {
   const base = user(role);
-  const messages = role === "STUDENT" ? STUDENT_CAPABILITIES : role === "COUNSELOR" || role === "GUIDANCE_SERVICES_STAFF" ? STAFF_CAPABILITIES : [];
+  const messages = role === "STUDENT" ? STUDENT_CAPABILITIES : role === "COUNSELOR" || role === "GUIDANCE_OFFICE_ASSISTANT" ? STAFF_CAPABILITIES : [];
   return {
     ...base,
     first_name: role === "STUDENT" ? "Maria" : "Ana",
@@ -71,8 +71,8 @@ export function createMessagesBackend({ viewerId, viewerRole = viewerId === STUD
     // Current eligible Office handlers (ADR-104), as the backend's workload check would list them.
     handlers: [
       { ...COUNSELOR, role: "COUNSELOR" },
-      { ...OTHER_STAFF, role: "GUIDANCE_SERVICES_STAFF" },
-      { ...LONG_STAFF, role: "GUIDANCE_SERVICES_STAFF" },
+      { ...OTHER_STAFF, role: "GUIDANCE_OFFICE_ASSISTANT" },
+      { ...LONG_STAFF, role: "GUIDANCE_OFFICE_ASSISTANT" },
     ],
     // (payload, thread) => undefined to proceed or { status, body } to refuse an assignment.
     onAssign: null,

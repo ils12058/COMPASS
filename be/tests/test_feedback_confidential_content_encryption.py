@@ -227,7 +227,14 @@ def test_raw_storage_queryable_metadata_content_free_audit_and_authorized_detail
 @pytest.mark.parametrize("family", NAMES)
 @pytest.mark.parametrize(
     "role",
-    ["STUDENT", "COUNSELOR", "GUIDANCE_SERVICES_STAFF", "IT_ADMIN", "INSTITUTIONAL_OFFICER", "DPO"],
+    [
+        "STUDENT",
+        "COUNSELOR",
+        "GUIDANCE_OFFICE_ASSISTANT",
+        "IT_ADMIN",
+        "INSTITUTIONAL_OFFICER",
+        "DPO",
+    ],
 )
 def test_denied_detail_never_decrypts(world, family, role, monkeypatch):
     item = submitted(world, family)

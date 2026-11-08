@@ -31,7 +31,7 @@ from .presenters import ActivityItem
 
 STUDENT = "STUDENT"
 COUNSELOR = "COUNSELOR"
-OPERATIONAL = frozenset({COUNSELOR, "GUIDANCE_SERVICES_STAFF"})
+OPERATIONAL = frozenset({COUNSELOR, "GUIDANCE_OFFICE_ASSISTANT"})
 
 
 @dataclass(frozen=True, slots=True)

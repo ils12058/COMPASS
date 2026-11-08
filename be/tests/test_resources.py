@@ -116,7 +116,7 @@ def create_draft(
 def test_resource_management_capability_baseline_and_head_compatibility():
     sync_policy()
     counselor = make_user("resource-counselor@example.edu", "COUNSELOR")
-    staff = make_user("resource-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("resource-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     head = make_user("resource-head@example.edu", "COUNSELOR")
     UserDesignation.objects.create(
         user=head,
@@ -484,9 +484,9 @@ def test_failed_object_cleanup_is_logged_without_changing_the_database_outcome(c
 
 
 @pytest.mark.django_db
-def test_resource_api_hides_storage_key_and_gss_can_publish_without_head_approval():
+def test_resource_api_hides_storage_key_and_goa_can_publish_without_head_approval():
     sync_policy()
-    staff = make_user("resource-api-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("resource-api-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
     student = make_user("resource-api-student@example.edu", "STUDENT")
     client = auth_client(staff)
 
@@ -527,7 +527,7 @@ def test_public_resource_readers_only_receive_public_published_content():
     sync_policy()
     counselor = make_user("resource-public-publisher@example.edu", "COUNSELOR")
     student = make_user("resource-public-student@example.edu", "STUDENT")
-    staff = make_user("resource-public-staff@example.edu", "GUIDANCE_SERVICES_STAFF")
+    staff = make_user("resource-public-staff@example.edu", "GUIDANCE_OFFICE_ASSISTANT")
 
     public_article = create_draft(
         actor=counselor,

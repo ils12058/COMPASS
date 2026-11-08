@@ -124,8 +124,8 @@ for (const mode of ['DORMANT', 'FENCED']) {
   const f = fixture({ item }); await check('backend-refusal-hides-verification-despite-capability', route, f.options, async page => { await hidden(page.getByRole('button', { name: 'Verify receipt', exact: true })); });
 }
 {
-  const f = fixture({ account: { ...inspector, role: 'GUIDANCE_SERVICES_STAFF' } });
-  await check('gss-intentional-inspection-pins-payload-and-refreshes-provenance', route, f.options, async page => {
+  const f = fixture({ account: { ...inspector, role: 'GUIDANCE_OFFICE_ASSISTANT' } });
+  await check('goa-intentional-inspection-pins-payload-and-refreshes-provenance', route, f.options, async page => {
     const dialog = await openInspection(page); const checkbox = dialog.getByRole('checkbox');
     assert.equal(await checkbox.isChecked(), false); assert.equal(await dialog.getByRole('button', { name: 'Verify receipt', exact: true }).isDisabled(), true);
     await shown(dialog.getByText(requestId, { exact: true })); await shown(dialog.getByText('OR-SYNTHETIC-000125', { exact: true }));

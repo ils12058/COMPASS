@@ -3,7 +3,7 @@ import type { GuidanceViewer } from "./guidance-messages-presentation";
 
 // Presentation only (ADR-102). The API decides every thread: College scope, supervision, Head
 // fallback and exact Counseling participation are never repeated here. A Student reads their own
-// conversations; Counselors and Guidance Services Staff read the ones their workload allows; a
+// conversations; Counselors and Guidance Office Assistant read the ones their workload allows; a
 // Faculty member reads the Guidance Office inquiries they wrote and the referral conversations
 // they started. IT Admin, Institutional Officers, Head and DPO designations add nothing.
 export type GuidanceMessagesAccess = {
@@ -16,9 +16,9 @@ export type GuidanceMessagesAccess = {
   canViewSelf: boolean;
   /** Student: may write to the Guidance Office or a Counseling relationship. */
   canManageSelf: boolean;
-  /** Counselor or Guidance Services Staff: may open the workspace for their workload. */
+  /** Counselor or Guidance Office Assistant: may open the workspace for their workload. */
   canViewStaff: boolean;
-  /** Counselor or Guidance Services Staff: may write, start Office conversations, resolve and reopen. */
+  /** Counselor or Guidance Office Assistant: may write, start Office conversations, resolve and reopen. */
   canManageStaff: boolean;
   /** Faculty: may open the workspace for their own Guidance Office inquiries. */
   canViewInquirySelf: boolean;
@@ -53,7 +53,7 @@ export type GuidanceMessagesAccess = {
 
 export function getGuidanceMessagesAccess(user: UserSummary): GuidanceMessagesAccess {
   const isStudent = user.role === "STUDENT";
-  const isStaff = user.role === "COUNSELOR" || user.role === "GUIDANCE_SERVICES_STAFF";
+  const isStaff = user.role === "COUNSELOR" || user.role === "GUIDANCE_OFFICE_ASSISTANT";
   const isFaculty = user.role === "FACULTY";
   const canViewSelf = isStudent && user.capabilities.includes("guidance_messages.view_self");
   const canManageSelf = canViewSelf && user.capabilities.includes("guidance_messages.manage_self");

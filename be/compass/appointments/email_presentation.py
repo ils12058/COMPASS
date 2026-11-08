@@ -85,7 +85,7 @@ def scheduled_appointment_email_access(
         kind = AppointmentEmailRecipient.STUDENT
     elif item.provider_id == recipient.pk and recipient.role.code == "COUNSELOR":
         kind = AppointmentEmailRecipient.CURRENT_COUNSELOR
-    elif recipient.role.code == "GUIDANCE_SERVICES_STAFF":
+    elif recipient.role.code == "GUIDANCE_OFFICE_ASSISTANT":
         kind = AppointmentEmailRecipient.AUTHORIZED_STAFF
     else:
         # A formerly assigned or unrelated Counselor gets no new link through
@@ -260,7 +260,7 @@ def resolve_appointment_email_facts(
     elif item.provider_id == recipient_id and recipient.role.code == "COUNSELOR":
         kind = AppointmentEmailRecipient.CURRENT_COUNSELOR
     else:
-        # No GSS/other rich delivery. Preserve only the existing Scheduled link pilot.
+        # No GOA/other rich delivery. Preserve only the existing Scheduled link pilot.
         return AppointmentEmailResolution(AppointmentEmailEligibility.RECIPIENT_MINIMAL)
     if not _valid_interval(item.starts_at, item.ends_at) or not _display_text(item.reference_code):
         return AppointmentEmailResolution(AppointmentEmailEligibility.PROVENANCE_UNAVAILABLE, kind)

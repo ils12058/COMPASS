@@ -196,20 +196,20 @@ def test_external_facilitator_is_a_guest_identity_with_non_destructive_history(
 
 
 @pytest.mark.django_db
-def test_gss_facilitator_candidates_are_scoped_without_services_manage(counselor):
-    gss = make_user("event-candidates-gss@example.test", "GUIDANCE_SERVICES_STAFF")
-    out_of_scope_gss = make_user("outside-event-gss@example.test", "GUIDANCE_SERVICES_STAFF")
-    StaffSupervision.objects.create(staff=gss, supervisor=counselor)
-    assert gss.has_capability("appointments.manage")
-    assert not gss.has_capability("services.manage")
+def test_goa_facilitator_candidates_are_scoped_without_services_manage(counselor):
+    goa = make_user("event-candidates-goa@example.test", "GUIDANCE_OFFICE_ASSISTANT")
+    out_of_scope_goa = make_user("outside-event-goa@example.test", "GUIDANCE_OFFICE_ASSISTANT")
+    StaffSupervision.objects.create(staff=goa, supervisor=counselor)
+    assert goa.has_capability("appointments.manage")
+    assert not goa.has_capability("services.manage")
 
-    client = auth_client(gss)
+    client = auth_client(goa)
     response = client.get("/api/v1/group-sessions/facilitator-candidates")
     assert response.status_code == 200, response.content
     candidate_ids = {row["id"] for row in response.json()}
-    assert str(gss.pk) in candidate_ids
+    assert str(goa.pk) in candidate_ids
     assert str(counselor.pk) in candidate_ids
-    assert str(out_of_scope_gss.pk) not in candidate_ids
+    assert str(out_of_scope_goa.pk) not in candidate_ids
 
 
 @pytest.mark.django_db
@@ -1215,16 +1215,16 @@ def test_group_session_staff_scope_and_facilitator_participant_privacy(
 
 
 @pytest.mark.django_db
-def test_group_session_gss_and_supervisor_are_limited_to_direct_responsibility(
+def test_group_session_goa_and_supervisor_are_limited_to_direct_responsibility(
     group_service, counselor, other_counselor
 ):
-    gss = make_user("events-gss@example.test", "GUIDANCE_SERVICES_STAFF")
-    StaffSupervision.objects.create(staff=gss, supervisor=counselor)
+    goa = make_user("events-goa@example.test", "GUIDANCE_OFFICE_ASSISTANT")
+    StaffSupervision.objects.create(staff=goa, supervisor=counselor)
     now = timezone.now()
     session = create_group_session(
         service_id=group_service.id,
-        organizer=gss,
-        title="GSS Organized Workshop",
+        organizer=goa,
+        title="GOA Organized Workshop",
         starts_at=now + timedelta(days=7),
         ends_at=now + timedelta(days=7, hours=1),
         capacity=10,

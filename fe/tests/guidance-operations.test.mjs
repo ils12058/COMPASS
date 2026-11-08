@@ -25,9 +25,9 @@ function render(data, user = operationsAccount("COUNSELOR")) {
 }
 
 test("Guidance operations follows My work for the two canonical Guidance roles", () => {
-  for (const role of ["COUNSELOR", "GUIDANCE_SERVICES_STAFF", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
+  for (const role of ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT", "STUDENT", "IT_ADMIN", "INSTITUTIONAL_OFFICER"]) {
     const user = operationsAccount(role, { capabilities: [] });
-    const allowed = ["COUNSELOR", "GUIDANCE_SERVICES_STAFF"].includes(role);
+    const allowed = ["COUNSELOR", "GUIDANCE_OFFICE_ASSISTANT"].includes(role);
     assert.equal(hasGuidanceOperations(user), allowed);
     const links = portalWorkspaceGroups(user).flatMap((group) => group.links);
     assert.equal(links.some((link) => link.href === "/portal/operations"), allowed);
@@ -36,10 +36,10 @@ test("Guidance operations follows My work for the two canonical Guidance roles",
 });
 
 test("null is omitted and authorized zero remains an explicit metric", () => {
-  const data = operationsData("GUIDANCE_SERVICES_STAFF");
+  const data = operationsData("GUIDANCE_OFFICE_ASSISTANT");
   data.backlog.good_moral_preparation.count = 0;
   data.backlog.good_moral_preparation.oldest_waiting_since = null;
-  const html = render(data, operationsAccount("GUIDANCE_SERVICES_STAFF"));
+  const html = render(data, operationsAccount("GUIDANCE_OFFICE_ASSISTANT"));
   assert.doesNotMatch(html, /Routine evaluations pending|Good Moral ready for issuance|Your upcoming appointments/);
   assert.match(html, /Good Moral needs preparation/);
   assert.match(html, /<dd[^>]*>0<\/dd>/);
@@ -76,8 +76,8 @@ test("only existing exact-population routes link from metrics", () => {
   assert.equal(rows.backlog.find((row) => row.label === "Good Moral ready for issuance").href, "/portal/good-moral?status=READY_FOR_ISSUANCE");
   assert.equal(rows.schedule.find((row) => row.label === "Your upcoming appointments").href, "/portal/appointments/my?status=UPCOMING");
   assert.equal(rows.schedule.find((row) => row.label === "Active Call Slips").href, "/portal/call-slips?state=ACTIVE");
-  const gss = presentOperations(operationsData("GUIDANCE_SERVICES_STAFF"), operationsAccount("GUIDANCE_SERVICES_STAFF"));
-  assert.equal(gss.schedule.find((row) => row.label === "Upcoming managed appointments").href, "/portal/appointments/manage?status=UPCOMING");
+  const goa = presentOperations(operationsData("GUIDANCE_OFFICE_ASSISTANT"), operationsAccount("GUIDANCE_OFFICE_ASSISTANT"));
+  assert.equal(goa.schedule.find((row) => row.label === "Upcoming managed appointments").href, "/portal/appointments/manage?status=UPCOMING");
 });
 
 test("empty wording is constrained to available workflows and leaves schedule context", () => {
