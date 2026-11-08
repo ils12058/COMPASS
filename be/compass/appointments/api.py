@@ -16,6 +16,8 @@ from compass.accounts.profile_photos import profile_photo_projection
 from compass.appointments.reminders import (
     issue_bulk_reminders,
     issue_manual_reminder,
+    list_reminder_activity,
+    list_upcoming_reminders,
     preview_reminders,
     reminder_history,
 )
@@ -163,6 +165,46 @@ class AppointmentReminderHistoryEntry(StrictSchema):
 
 class AppointmentReminderHistoryResponse(StrictSchema):
     items: list[AppointmentReminderHistoryEntry]
+
+
+class AppointmentReminderCounselor(StrictSchema):
+    id: UUID
+    display_name: str
+
+
+class AppointmentReminderUpcomingEntry(StrictSchema):
+    appointment_id: UUID
+    reference_code: str
+    student_name: str
+    counselor: AppointmentReminderCounselor
+    service_name: str
+    starts_at: datetime
+    next_automatic: AppointmentReminderHistoryKind | None
+    last_reminder_kind: AppointmentReminderHistoryKind | None
+    last_reminder_at: datetime | None
+    manual_available: bool
+    manual_reason: str
+
+
+class AppointmentReminderUpcomingPage(StrictSchema):
+    items: list[AppointmentReminderUpcomingEntry]
+    page: int
+    page_size: int
+    has_next: bool
+    ordering: AppointmentListOrdering
+
+
+class AppointmentReminderActivityEntry(AppointmentReminderHistoryEntry):
+    appointment_id: UUID
+    reference_code: str
+    student_name: str
+
+
+class AppointmentReminderActivityPage(StrictSchema):
+    items: list[AppointmentReminderActivityEntry]
+    page: int
+    page_size: int
+    has_next: bool
 
 
 class AppointmentHistoryEventType(StrEnum):
@@ -495,6 +537,29 @@ def _require_reminder_manager(request, *, recent_mfa: bool = False):
         require_recent_mfa_for_request(request)
 
 
+def _reminder_entry(row) -> dict[str, object]:
+    """One reminder occurrence, shared by the per-Appointment history and the activity list."""
+
+    return {
+        "id": row["id"],
+        "kind": row["kind"],
+        "issued_at": _institutional(row["issued_at"]),
+        "scheduled_start": _institutional(row["scheduled_start"]),
+        "issued_by": (
+            {
+                "id": row["issued_by"].pk,
+                "display_name": row["issued_by"].get_full_name(),
+            }
+            if row["issued_by"]
+            else None
+        ),
+        "is_current": row["is_current"],
+        "in_app": row["in_app"],
+        "email": row["email"],
+        "push": row["push"],
+    }
+
+
 @router.post(
     "/reminders/preview",
     response=response_with_errors(AppointmentReminderPreviewResponse, 401, 403, 422),
@@ -580,28 +645,113 @@ def appointments_list_reminders(request, appointment_id: UUID):
     if rows is None:
         # Same concealment as a missing Appointment: no existence or scope oracle.
         raise APIError(404, "appointment_not_found", "The appointment was not found.")
+    return {"items": [_reminder_entry(row) for row in rows]}
+
+
+@router.get(
+    "/reminders/upcoming",
+    response=response_with_errors(AppointmentReminderUpcomingPage, 401, 403, 422),
+    auth=session_auth,
+    operation_id="appointmentsListUpcomingReminders",
+)
+def appointments_list_upcoming_reminders(
+    request,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    provider_id: UUID | None = None,
+    manual_available: bool | None = None,
+    ordering: AppointmentListOrdering | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    try:
+        result = list_upcoming_reminders(
+            actor=request.auth_user,
+            from_date=from_date,
+            to_date=to_date,
+            provider_id=provider_id,
+            manual_available=manual_available,
+            ordering=ordering,
+            page=page,
+            page_size=page_size,
+        )
+    except PermissionError as exc:
+        raise APIError(
+            403, "permission_denied", "Appointment management access is required."
+        ) from exc
+    except ValueError as exc:
+        raise APIError(422, "invalid_reminder_request", str(exc)) from exc
     return {
         "items": [
             {
-                "id": row["id"],
-                "kind": row["kind"],
-                "issued_at": _institutional(row["issued_at"]),
-                "scheduled_start": _institutional(row["scheduled_start"]),
-                "issued_by": (
-                    {
-                        "id": row["issued_by"].pk,
-                        "display_name": row["issued_by"].get_full_name(),
-                    }
-                    if row["issued_by"]
-                    else None
-                ),
-                "is_current": row["is_current"],
-                "in_app": row["in_app"],
-                "email": row["email"],
-                "push": row["push"],
+                "appointment_id": row["appointment_id"],
+                "reference_code": row["reference_code"],
+                "student_name": row["student_name"],
+                "counselor": {
+                    "id": row["counselor_id"],
+                    "display_name": row["counselor_name"],
+                },
+                "service_name": row["service_name"],
+                "starts_at": _institutional(row["starts_at"]),
+                "next_automatic": row["next_automatic"],
+                "last_reminder_kind": row["last_reminder_kind"],
+                "last_reminder_at": _institutional(row["last_reminder_at"]),
+                "manual_available": row["manual_available"],
+                "manual_reason": row["manual_reason"],
             }
-            for row in rows
-        ]
+            for row in result["items"]
+        ],
+        "page": result["page"],
+        "page_size": result["page_size"],
+        "has_next": result["has_next"],
+        "ordering": result["ordering"],
+    }
+
+
+@router.get(
+    "/reminders/activity",
+    response=response_with_errors(AppointmentReminderActivityPage, 401, 403, 422),
+    auth=session_auth,
+    operation_id="appointmentsListReminderActivity",
+)
+def appointments_list_reminder_activity(
+    request,
+    kind: AppointmentReminderHistoryKind | None = None,
+    from_date: date | None = None,
+    to_date: date | None = None,
+    delivery: AppointmentReminderTransportState | None = None,
+    page: int = 1,
+    page_size: int = DEFAULT_PAGE_SIZE,
+):
+    try:
+        result = list_reminder_activity(
+            actor=request.auth_user,
+            kind=kind.value if kind else None,
+            from_date=from_date,
+            to_date=to_date,
+            delivery=delivery.value if delivery else None,
+            page=page,
+            page_size=page_size,
+        )
+    except PermissionError as exc:
+        raise APIError(
+            403, "permission_denied", "Appointment management access is required."
+        ) from exc
+    except ValueError as exc:
+        raise APIError(422, "invalid_reminder_request", str(exc)) from exc
+    return {
+        "items": [
+            {
+                **_reminder_entry(row),
+                "appointment_id": row["appointment_id"],
+                "reference_code": row["reference_code"],
+                "student_name": row["student_name"],
+            }
+            for row in result["items"]
+        ],
+        "page": result["page"],
+        "page_size": result["page_size"],
+        "has_next": result["has_next"],
     }
 
 

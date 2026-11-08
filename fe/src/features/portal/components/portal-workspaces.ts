@@ -1,5 +1,6 @@
 import {
   Award,
+  BellRing,
   BookOpen,
   Building2,
   CalendarClock,
@@ -95,6 +96,7 @@ export function portalWorkspaceGroups(user: UserSummary, facultyAvailability?: F
   const hasServices = hasServicesWorkspace(user);
   const hasAvailability = hasAvailabilityWorkspace(user);
   const hasAppointments = getAppointmentAccess(user).hasWorkspace;
+  const hasReminders = getAppointmentAccess(user).canManage;
   const hasGroupSessions = hasGroupSessionsWorkspace(user);
   // Students with their own Messages, and Guidance staff with Messages for their workload. No other
   // role or designation (IT Admin, Institutional Officer, Head, DPO) adds it.
@@ -143,6 +145,7 @@ export function portalWorkspaceGroups(user: UserSummary, facultyAvailability?: F
       label: "Scheduling",
       links: [
         { href: "/portal/appointments", label: "Appointments", icon: CalendarClock, visible: hasAppointments },
+        { href: "/portal/reminders", label: "Reminders", icon: BellRing, visible: hasReminders },
         { href: "/portal/group-sessions", label: "Group Sessions", icon: UsersRound, visible: hasGroupSessions },
         { href: "/portal/availability", label: "Availability", icon: Clock3, visible: hasAvailability },
         { href: "/portal/services", label: "Services", icon: HeartHandshake, visible: hasServices },
