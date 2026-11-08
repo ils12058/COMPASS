@@ -91,7 +91,6 @@ class Command(BaseCommand):
                         "duplicate_count": row.duplicate_count,
                         "identity_verified": row.identity_verified,
                         "mitigation_state": row.mitigation_state,
-                        "mitigation_failure_code": row.mitigation_failure_code,
                         "terminal_evidence_confirmed": completed,
                         "physical_cutoff_verified": False,
                         "current_review_required": not completed,

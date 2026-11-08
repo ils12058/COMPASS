@@ -3,6 +3,7 @@
 import { createContext, useContext } from "react";
 
 import type { CallSnapshot } from "@/features/ecounseling/call/call-model";
+import type { CaptureKind } from "@/features/ecounseling/use-capture-stop";
 import type { MediaWorkspaceState } from "@/lib/api/generated/model";
 
 import type { JoinAvailability, RuntimeState } from "./runtime-model";
@@ -19,8 +20,6 @@ export type CallControls = CallSnapshot & {
   selectMicrophone: (id: string) => Promise<void>;
   selectSpeaker: (id: string) => Promise<void>;
 };
-
-export type CaptureKind = "recording";
 
 export type ActiveECounselingCall = {
   role: "STUDENT" | "COUNSELOR" | null;

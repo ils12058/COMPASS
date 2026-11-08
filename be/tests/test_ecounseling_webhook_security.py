@@ -38,7 +38,7 @@ from compass.ecounseling.services import (
     process_daily_webhook,
 )
 from compass.ecounseling.tasks import replay_media_webhooks
-from compass.ecounseling.webhooks import replay_due_events, replay_receipt
+from compass.ecounseling.webhooks import replay_receipt
 from compass.integrations.daily import DailyWebhookSignatureInvalid
 from tests.test_daily_diagnostics import PRIVATE_TEXT, assert_private_absent
 from tests.test_ecounseling_reconciliation import MetadataOnlyDaily, metadata, pending_capture
@@ -251,7 +251,7 @@ def test_no_reservation_never_adopts_foreign_artifact_or_issues_stop(kind):
         not ECounselingMediaCapture.objects.exists()
         and not ECounselingMediaArtifact.objects.exists()
     )
-    assert row.mitigation_state == "REVIEW_REQUIRED" and row.mitigation_attempted_at is None
+    assert row.mitigation_state == "REVIEW_REQUIRED"
 
 
 def test_conflicting_reused_applied_event_id_quarantines_binding_and_fences_metadata_and_custody(
@@ -372,7 +372,7 @@ def test_authenticity_envelope_and_size_rejections_never_create_receipts(mode):
     assert not Receipt.objects.exists()
 
 
-def test_replay_is_delayed_finite_age_bounded_and_disabled_by_default():
+def test_replay_is_delayed_and_finite_age_bounded():
     _, capture = reservation("RECORDING")
     event = body_for(capture, "ready-to-download")
     signed(event)
@@ -381,8 +381,6 @@ def test_replay_is_delayed_finite_age_bounded_and_disabled_by_default():
     row.refresh_from_db()
     assert row.processing_attempts == 1
     assert not replay_receipt(row.pk)
-    with override_settings(ECOUNSELING_WEBHOOK_REPLAY_ENABLED=False):
-        assert replay_due_events() == 0
     for _ in range(6):
         row.next_attempt_at = timezone.now() - timedelta(seconds=1)
         row.save(update_fields=["next_attempt_at"])
@@ -451,7 +449,7 @@ def test_unknown_room_has_durable_closed_evidence_without_provider_action(kind):
     signed(event)
     row = Receipt.objects.get(provider_event_id=event["id"])
     assert row.anomaly_code == "UNKNOWN_ROOM" and row.capture_id is None
-    assert row.operator_review_required and row.mitigation_attempted_at is None
+    assert row.operator_review_required
 
 
 def test_expired_room_start_is_historical_uncertainty_without_new_stop(kind):
@@ -464,7 +462,6 @@ def test_expired_room_start_is_historical_uncertainty_without_new_stop(kind):
     row = Receipt.objects.get(provider_event_id=event["id"])
     assert row.anomaly_code == "EXPIRED_ROOM_START" and row.operator_review_required
     assert capture.provider_artifact_id is None and capture.status == "START_REQUESTED"
-    assert row.mitigation_attempted_at is None
 
 
 def test_webhook_after_metadata_completion_fills_only_absent_readiness_anchor(kind):
@@ -586,14 +583,3 @@ def test_historical_unverified_binding_cannot_be_certified_by_metadata_or_custod
     row.refresh_from_db()
     assert capture.provider_binding_verified_at and capture.status == "READY"
     assert row.processing_outcome == "APPLIED" and capture.reconciliation.attempts == 1
-
-
-def test_old_receipt_stays_historically_unverified_without_inferred_processing():
-    _, capture = reservation("RECORDING")
-    event = body_for(capture)
-    row = Receipt.objects.create(provider_event_id=event["id"], event_type=event["type"])
-    assert signed(event).duplicate
-    row.refresh_from_db()
-    capture.refresh_from_db()
-    assert row.processing_outcome == "HISTORICAL_UNVERIFIED" and not row.identity_verified
-    assert capture.provider_binding_verified_at is None and capture.provider_artifact_id is None

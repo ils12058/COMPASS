@@ -73,7 +73,7 @@ def fake_only_boundaries(monkeypatch, caplog):
         monkeypatch.setattr(path, forbidden)
     monkeypatch.setattr("compass.ecounseling.artifacts.enqueue_artifact", lambda *_: None)
     caplog.set_level(logging.INFO, logger="compass.ecounseling.diagnostics")
-    with override_settings(DAILY_ENABLED=True, ECOUNSELING_CAPTURE_RECONCILIATION_ENABLED=True):
+    with override_settings(DAILY_ENABLED=True):
         yield
 
 
@@ -569,11 +569,10 @@ def test_persistent_diagnostic_vocabulary_rejects_raw_provider_prose(field):
         Recovery.objects.filter(capture=capture).update(**{field: "raw private"})
 
 
-@pytest.mark.parametrize(("enabled", "daily"), [(False, True), (True, False)])
-def test_disabled_recovery_does_not_consume_budget_or_contact_daily(enabled, daily):
+def test_disabled_daily_recovery_does_not_consume_budget_or_contact_daily():
     *_, capture = pending_capture()
     client = MetadataOnlyDaily(metadata(capture))
-    with override_settings(ECOUNSELING_CAPTURE_RECONCILIATION_ENABLED=enabled, DAILY_ENABLED=daily):
+    with override_settings(DAILY_ENABLED=False):
         assert reconcile_captures(client=client)["disabled"] == 1
     assert not client.calls and not Recovery.objects.exists()
 
@@ -598,17 +597,17 @@ def test_new_task_is_independent_of_artifact_recovery_and_sanitizes_task_failure
     assert recover_media_artifacts() == 0
 
 
-@pytest.mark.parametrize("enabled", [False, True])
-def test_beat_registration_is_opted_in_only_after_worker_upgrade(enabled, monkeypatch):
-    monkeypatch.setenv("ECOUNSELING_CAPTURE_RECONCILIATION_ENABLED", str(enabled).lower())
+def test_beat_registration_is_always_on():
     namespace = runpy.run_path("config/settings.py")
     schedule = namespace["CELERY_BEAT_SCHEDULE"]
-    assert ("ecounseling-capture-reconciliation" in schedule) is enabled
-    if enabled:
-        assert schedule["ecounseling-capture-reconciliation"] == {
-            "task": reconcile_media_captures.name,
-            "schedule": 60,
-        }
+    assert schedule["ecounseling-capture-reconciliation"] == {
+        "task": reconcile_media_captures.name,
+        "schedule": 60,
+    }
+    assert schedule["ecounseling-media-webhook-replay"] == {
+        "task": "compass.ecounseling.replay_media_webhooks",
+        "schedule": 60,
+    }
     assert schedule["ecounseling-artifact-recovery"]["task"] == recover_media_artifacts.name
 
 

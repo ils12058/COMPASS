@@ -13,8 +13,6 @@ import { ActiveECounselingCallContext } from "../src/features/ecounseling/runtim
 import { initialCallSnapshot } from "../src/features/ecounseling/call/call-model.ts";
 import { finishCounselingState, unconfirmedFinishMessage } from "../src/features/counseling/finish-counseling-availability.ts";
 import { counselingErrorMessage, unconfirmedEncounterMessage } from "../src/features/counseling/counseling-shared.tsx";
-import { sessionEncounterPreset } from "../src/features/ecounseling/ecounseling-shared.ts";
-import { encounterCreatePayload } from "../src/features/counseling/record-encounter-form.tsx";
 import { CompassApiError } from "../src/lib/api/errors.ts";
 import { PortalSessionProvider } from "../src/features/portal/components/portal-session.tsx";
 import { UnsavedChangesProvider } from "../src/features/form-safety/unsaved-changes-provider.tsx";
@@ -229,23 +227,6 @@ test("the access-period refusal keeps its shared copy", () => {
     counselingErrorMessage(conflict, "The Appointment could not be finished."),
     "This Counseling session is already recorded with different details. Review it in My counseling encounters.",
   );
-});
-
-test("the session's own recording path can only ever create an Appointment-origin Encounter", () => {
-  const started = "2026-10-08T02:05:30Z";
-  const ended = "2026-10-08T02:55:15Z";
-  const fromSession = encounterCreatePayload(sessionEncounterPreset(workspace()), started, ended);
-  assert.equal(fromSession.entry_mode, "APPOINTMENT");
-  assert.equal(fromSession.appointment_id, appointmentId);
-  assert.equal(fromSession.student_id, undefined);
-
-  // The direct lookup paths name a Student and never an Appointment, so the pair cannot be sent.
-  for (const entryMode of ["WALK_IN", "CALLED_IN", "REFERRED"]) {
-    const direct = encounterCreatePayload({ entryMode, studentId: "student", studentName: "Student Example", deliveryMode: "IN_PERSON" }, started, ended);
-    assert.equal(direct.entry_mode, entryMode);
-    assert.equal(direct.appointment_id, undefined);
-    assert.equal(direct.student_id, "student");
-  }
 });
 
 // One static render of the real session workspace. The call runtime is a portal-level context, so an

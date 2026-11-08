@@ -312,12 +312,6 @@ ECOUNSELING_JOIN_EARLY_SECONDS = env_int("ECOUNSELING_JOIN_EARLY_SECONDS", 600)
 ECOUNSELING_REJOIN_GRACE_SECONDS = env_int("ECOUNSELING_REJOIN_GRACE_SECONDS", 900)
 ECOUNSELING_MEDIA_ACCESS_URL_TTL_SECONDS = env_int("ECOUNSELING_MEDIA_ACCESS_URL_TTL_SECONDS", 300)
 ECOUNSELING_MEDIA_MAX_BYTES = env_int("ECOUNSELING_MEDIA_MAX_BYTES", 10 * 1024**3)
-# Activate separately after migration and worker upgrade. No provider command retry is enabled.
-ECOUNSELING_CAPTURE_RECONCILIATION_ENABLED = env_bool(
-    "ECOUNSELING_CAPTURE_RECONCILIATION_ENABLED", False
-)
-# Upgrade migration and all workers before activating this DB-only completion replay task.
-ECOUNSELING_WEBHOOK_REPLAY_ENABLED = env_bool("ECOUNSELING_WEBHOOK_REPLAY_ENABLED", False)
 ECOUNSELING_CAPTURE_RECONCILIATION_INTERVAL_SECONDS = env_int(
     "ECOUNSELING_CAPTURE_RECONCILIATION_INTERVAL_SECONDS", 60
 )
@@ -837,8 +831,6 @@ CELERY_TASK_SEND_SENT_EVENT = False
 CELERY_WORKER_SEND_TASK_EVENTS = False
 CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
 CELERY_IMPORTS = ("compass.tasks", "compass.appointments.reminder_tasks")
-# Safe by default in local and live staging; an operator must explicitly enable.
-APPOINTMENT_AUTO_REMINDERS_ENABLED = env_bool("APPOINTMENT_AUTO_REMINDERS_ENABLED", False)
 CELERY_BEAT_SCHEDULE = {
     "graduate-tracer-reminders-dispatch-due": {
         "task": "compass.graduate_tracer.reminders.dispatch_due",
@@ -850,6 +842,14 @@ CELERY_BEAT_SCHEDULE = {
     },
     "ecounseling-artifact-recovery": {
         "task": "compass.ecounseling.recover_media_artifacts",
+        "schedule": 60,
+    },
+    "ecounseling-capture-reconciliation": {
+        "task": "compass.ecounseling.reconcile_media_captures",
+        "schedule": ECOUNSELING_CAPTURE_RECONCILIATION_INTERVAL_SECONDS,
+    },
+    "ecounseling-media-webhook-replay": {
+        "task": "compass.ecounseling.replay_media_webhooks",
         "schedule": 60,
     },
     # In-app retention discovery and disposition dispatch are retired (ADR-114). Do not
@@ -867,16 +867,6 @@ CELERY_BEAT_SCHEDULE = {
         "schedule": NOTIFICATION_EMAIL_DISPATCH_INTERVAL_SECONDS,
     },
 }
-if ECOUNSELING_CAPTURE_RECONCILIATION_ENABLED:
-    CELERY_BEAT_SCHEDULE["ecounseling-capture-reconciliation"] = {
-        "task": "compass.ecounseling.reconcile_media_captures",
-        "schedule": ECOUNSELING_CAPTURE_RECONCILIATION_INTERVAL_SECONDS,
-    }
-if ECOUNSELING_WEBHOOK_REPLAY_ENABLED:
-    CELERY_BEAT_SCHEDULE["ecounseling-media-webhook-replay"] = {
-        "task": "compass.ecounseling.replay_media_webhooks",
-        "schedule": 60,
-    }
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 

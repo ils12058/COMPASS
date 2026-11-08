@@ -7,27 +7,22 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 import { withNextRouter } from "./support/next-router.mjs";
-import { formatAppointmentDateTime } from "../src/features/appointments/appointments-shared.tsx";
 import { actualTimeIssues, firstActualTimeIssue } from "../src/features/counseling/actual-time-fields.tsx";
 import { EncounterCorrectionForm, encounterCorrectionPayload, savedEncounterTimeInput } from "../src/features/counseling/encounter-correction-form.tsx";
+import { contextEncounterPreset } from "../src/features/counseling/encounter-origin.ts";
 import { RecordEncounterForm, encounterCreatePayload } from "../src/features/counseling/record-encounter-form.tsx";
-import { sessionEncounterPreset } from "../src/features/ecounseling/ecounseling-shared.ts";
 import { institutionalDateTimeInputToISO } from "../src/lib/institutional-time.ts";
 
 // The browser's zone is not the institution's: every time below is still read in Philippine Time.
 process.env.TZ = "America/Los_Angeles";
 
 const NOW = Date.parse("2026-10-13T14:30:00Z"); // 10:30 PM in Manila
-const SCHEDULED = { starts_at: "2026-10-13T13:00:00Z", ends_at: "2026-10-13T14:00:00Z" }; // 9–10 PM
-
-function workspace({ id = "appointment-a", student = { id: "student-a", display_name: "Synthetic Student A", institutional_id: "SYNTH-2026-0203" } } = {}) {
-  return {
-    appointment: { id, reference_code: `APT-${id}`, status: "SCHEDULED", delivery_mode: "ONLINE", ...SCHEDULED },
+function appointmentPreset({ id = "appointment-a", student = { id: "student-a", display_name: "Synthetic Student A", institutional_id: "SYNTH-2026-0203" } } = {}) {
+  return contextEncounterPreset("APPOINTMENT", id, {
     student,
-    counseling_encounter: null,
-    counseling_context_available: true,
-    routine_interview: null,
-  };
+    entry_mode: "APPOINTMENT",
+    delivery_mode: "ONLINE",
+  });
 }
 
 function render(element) {
@@ -73,25 +68,22 @@ test("actual times are sent as the institutional instant whatever the browser zo
   assert.equal(institutionalDateTimeInputToISO("2026-01-06T09:00:30"), "2026-01-06T01:00:30.000Z");
 });
 
-test("the session preset carries each Student's own Institutional ID and the schedule as reference", () => {
-  const first = sessionEncounterPreset(workspace());
-  const second = sessionEncounterPreset(workspace({ id: "appointment-b", student: { id: "student-b", display_name: "Synthetic Student B", institutional_id: null } }));
+test("the appointment context preset carries each Student's own Institutional ID", () => {
+  const first = appointmentPreset();
+  const second = appointmentPreset({ id: "appointment-b", student: { id: "student-b", display_name: "Synthetic Student B", institutional_id: null } });
   assert.deepEqual(first, {
     entryMode: "APPOINTMENT",
     appointmentId: "appointment-a",
-    appointmentReference: "APT-appointment-a",
     studentName: "Synthetic Student A",
     institutionalId: "SYNTH-2026-0203",
     deliveryMode: "ONLINE",
-    scheduledStartsAt: SCHEDULED.starts_at,
-    scheduledEndsAt: SCHEDULED.ends_at,
   });
   assert.equal(second.institutionalId, null, "Another Student never inherits an ID");
   assert.equal(second.appointmentId, "appointment-b");
 });
 
 test("recording sends the entered actual times, never the scheduled ones", () => {
-  const preset = sessionEncounterPreset(workspace());
+  const preset = appointmentPreset();
   const payload = encounterCreatePayload(preset, institutionalDateTimeInputToISO("2026-10-13T21:20"), institutionalDateTimeInputToISO("2026-10-13T22:25"));
   assert.deepEqual(payload, {
     appointment_id: "appointment-a",
@@ -102,13 +94,12 @@ test("recording sends the entered actual times, never the scheduled ones", () =>
   assert.doesNotMatch(JSON.stringify(payload), /13:00:00|14:00:00|scheduled/);
 });
 
-test("the record form shows the Student's ID and the schedule, with blank actual times", () => {
-  const preset = sessionEncounterPreset(workspace());
+test("the record form shows the Student's ID with blank actual times", () => {
+  const preset = appointmentPreset();
   const html = render(h(RecordEncounterForm, { preset, framed: false, onCancel() {} }));
   assert.match(html, /Synthetic Student A/);
   assert.match(html, /Institutional ID: SYNTH-2026-0203/);
-  assert.match(html, /Scheduled appointment/);
-  assert.ok(html.includes(formatAppointmentDateTime(SCHEDULED.starts_at, SCHEDULED.ends_at)), "Scheduled time uses the institutional appointment format");
+  assert.doesNotMatch(html, /Scheduled appointment/);
   assert.match(html, /<legend[^>]*>Actual counseling interaction<\/legend>/);
   assert.match(html, /actually started and ended, in Philippine Time\. These times may differ from the scheduled appointment\./);
   for (const id of ["counseling-started-at", "counseling-ended-at"]) {
@@ -127,7 +118,7 @@ test("the record form shows the Student's ID and the schedule, with blank actual
 });
 
 test("a Student without an Institutional ID is shown honestly", () => {
-  const preset = sessionEncounterPreset(workspace({ student: { id: "student-c", display_name: "Synthetic Student C", institutional_id: null } }));
+  const preset = appointmentPreset({ student: { id: "student-c", display_name: "Synthetic Student C", institutional_id: null } });
   const html = render(h(RecordEncounterForm, { preset, framed: false }));
   assert.match(html, /Institutional ID: Not provided/);
   assert.doesNotMatch(html, /Institutional ID: (?:undefined|null|<)/);

@@ -2,7 +2,6 @@
 
 from datetime import timedelta
 
-from django.conf import settings
 from django.db import DatabaseError, connection, transaction
 from django.utils import timezone
 
@@ -401,8 +400,6 @@ def process_event(*, event_type, event_id, event_ts, payload):
                 or (receipt.processing_outcome == Outcome.MALFORMED and not receipt.applied_at)
             ):
                 _conflict(receipt)
-            elif receipt.processing_outcome == Outcome.HISTORICAL:
-                pass  # Historical receipts never become retroactively verified.
             elif not created and receipt.processing_outcome not in (Outcome.UNRESOLVED,):
                 # New optional contradictory evidence must not hide behind event-ID deduplication.
                 if receipt.capture_id and receipt.applied_at:
@@ -510,8 +507,6 @@ def replay_for_capture(capture_id):
 
 
 def replay_due_events():
-    if not settings.ECOUNSELING_WEBHOOK_REPLAY_ENABLED:
-        return 0
     ids = list(
         Receipt.objects.filter(
             processing_outcome=Outcome.UNRESOLVED,

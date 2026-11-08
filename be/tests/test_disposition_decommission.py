@@ -388,7 +388,6 @@ def test_callback_for_a_room_absent_from_the_new_database_creates_nothing():
         signed(event)
     receipt = Receipt.objects.get(provider_event_id=event["id"])
     assert receipt.anomaly_code == "UNKNOWN_ROOM" and receipt.capture_id is None
-    assert receipt.mitigation_attempted_at is None
     assert ECounselingRoom.objects.count() == rooms
     assert ECounselingMediaCapture.objects.count() == captures
     assert not ECounselingMediaArtifact.objects.exists()

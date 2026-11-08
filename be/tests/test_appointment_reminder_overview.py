@@ -7,7 +7,6 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
-from django.test import override_settings
 from django.utils import timezone
 
 from compass.appointments.models import (
@@ -199,7 +198,6 @@ def test_upcoming_window_defaults_to_seven_days_and_caps_at_thirty(overview):
 
 
 @pytest.mark.django_db
-@override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=True)
 def test_upcoming_reports_next_automatic_reminder_and_manual_availability(overview):
     first = overview.make("APT-OV-24H", starts_at=overview.now + timedelta(hours=30))
     overview.make("APT-OV-3H", starts_at=overview.now + timedelta(hours=20))
@@ -245,15 +243,6 @@ def test_upcoming_reports_next_automatic_reminder_and_manual_availability(overvi
     for row in response.json()["items"]:
         assert set(row) == UPCOMING_FIELDS
     assert neither.pk
-
-
-@pytest.mark.django_db
-def test_upcoming_reports_no_automatic_reminder_when_sending_is_disabled(overview):
-    overview.make("APT-OV-24H", starts_at=overview.now + timedelta(hours=30))
-    client = auth_client(overview.goa)
-    response = client.get(UPCOMING)
-    assert response.status_code == 200
-    assert response.json()["items"][0]["next_automatic"] is None
 
 
 @pytest.mark.django_db

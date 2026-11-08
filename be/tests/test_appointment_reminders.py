@@ -6,7 +6,6 @@ from unittest.mock import patch
 from uuid import uuid4
 
 import pytest
-from django.test import override_settings
 from django.utils import timezone
 
 from compass.appointments.models import AppointmentReminderKind, AppointmentReminderOccurrence
@@ -75,13 +74,6 @@ def test_manager_requires_appropriate_role_and_capability():
     assert not _manager(actor("GUIDANCE_OFFICE_ASSISTANT", False))
 
 
-@override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=False)
-def test_automatic_dispatch_is_off_by_default():
-    with patch("compass.appointments.reminders.Appointment.objects") as objects:
-        assert dispatch_due_reminders() == 0
-        objects.filter.assert_not_called()
-
-
 @pytest.mark.django_db
 def test_external_delivery_rejects_absent_occurrence():
     notification = SimpleNamespace(source_type="appointment_reminder", source_id=uuid4())
@@ -139,7 +131,6 @@ def send_case(case, *, key=None, now=None):
 
 
 @pytest.mark.django_db
-@override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=True)
 @pytest.mark.parametrize("lead", [3, 24])
 def test_automatic_dispatch_is_durable_student_only_and_repeat_safe(reminder_case, lead):
     from compass.appointments.models import Appointment
@@ -160,7 +151,6 @@ def test_automatic_dispatch_is_durable_student_only_and_repeat_safe(reminder_cas
 
 
 @pytest.mark.django_db
-@override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=True)
 def test_bounded_discovery_advances_past_issued_candidates(reminder_case):
     from compass.appointments.models import Appointment
 
@@ -246,7 +236,6 @@ def test_stale_reminders_disappear_and_email_never_hands_off(reminder_case, chan
 
 
 @pytest.mark.django_db
-@override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=True)
 def test_new_revision_can_issue_new_logical_occurrence(reminder_case):
     from compass.appointments.models import Appointment
     from compass.notifications.models import Notification
@@ -264,7 +253,6 @@ def test_new_revision_can_issue_new_logical_occurrence(reminder_case):
 
 
 @pytest.mark.django_db(transaction=True)
-@override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=True)
 @pytest.mark.parametrize("race", ["scheduler", "manual_bulk", "auto_manual"])
 def test_postgresql_concurrent_issuers_produce_one_occurrence(reminder_case, race):
     from concurrent.futures import ThreadPoolExecutor
@@ -334,7 +322,6 @@ def test_manual_http_uses_canonical_role_and_durable_request_id(reminder_case):
 
 
 @pytest.mark.django_db
-@override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=True)
 def test_bounded_scheduler_does_not_starve_behind_short_notice_rows(reminder_case):
     from compass.appointments.models import Appointment
 
@@ -359,7 +346,6 @@ def test_bounded_scheduler_does_not_starve_behind_short_notice_rows(reminder_cas
 
 
 @pytest.mark.django_db
-@override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=True)
 def test_manual_reminder_does_not_block_later_automatic_reminder(reminder_case):
     from compass.appointments.models import Appointment
 
@@ -385,7 +371,6 @@ def test_manual_reminder_does_not_block_later_automatic_reminder(reminder_case):
 
 
 @pytest.mark.django_db
-@override_settings(APPOINTMENT_AUTO_REMINDERS_ENABLED=True)
 def test_prior_automatic_reminder_does_not_block_manual_reminder(reminder_case):
     _, _, item, now = reminder_case
     # Dispatch automatic 24h reminder

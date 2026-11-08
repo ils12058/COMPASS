@@ -13,7 +13,6 @@ from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 from uuid import UUID
 
-from django.conf import settings
 from django.db import transaction
 from django.db.models import Exists, F, OuterRef, Q
 from django.db.models.functions import Coalesce
@@ -314,10 +313,8 @@ def _next_automatic(item: Appointment, at, *, issued_kinds: set[str]) -> str | N
     """The next automatic occurrence the dispatcher will still issue, if any.
 
     Mirrors the dispatcher's per-Appointment conditions: the window must not have
-    passed, the current revision must predate it, and automatic sending must be enabled.
+    passed and the current revision must predate it.
     """
-    if not settings.APPOINTMENT_AUTO_REMINDERS_ENABLED:
-        return None
     if not item.student.is_active or item.student.role.code != "STUDENT":
         return None
     revision_since = _revision_since(item)
@@ -701,9 +698,7 @@ def issue_bulk_reminders(
 
 
 def dispatch_due_reminders(*, now=None) -> int:
-    """Beat discovery: bounded windows, no backfill, and no sends unless enabled."""
-    if not settings.APPOINTMENT_AUTO_REMINDERS_ENABLED:
-        return 0
+    """Beat discovery: bounded windows and no backfill."""
     at = now or timezone.now()
     # Restrict the scan to candidate starts; no perpetual all-appointment sweep.
     count = 0

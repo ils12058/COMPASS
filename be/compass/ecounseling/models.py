@@ -351,7 +351,6 @@ class ECounselingCaptureReconciliation(models.Model):
 
 
 class WebhookOutcome(models.TextChoices):
-    HISTORICAL = "HISTORICAL_UNVERIFIED", "Historical unverified receipt"
     ACCEPTED = "ACCEPTED_TELEMETRY", "Accepted meeting telemetry"
     APPLIED = "APPLIED", "Applied to verified capture"
     UNRESOLVED = "UNRESOLVED_IDENTITY", "Unresolved identity"
@@ -389,10 +388,6 @@ class WebhookSeverity(models.TextChoices):
 class WebhookMitigation(models.TextChoices):
     NONE = "NOT_APPLICABLE", "No provider action applicable"
     REVIEW = "REVIEW_REQUIRED", "Unsafe or unknown targeting; review required"
-    ATTEMPTED = "ATTEMPT_RESERVED", "One attempt reserved; outcome unknown"
-    ACK = "ACK_UNVERIFIED", "Command acknowledged; cessation unverified"
-    FAILED = "FAILED_UNVERIFIED", "Command failed; cessation unverified"
-    SUPERSEDED = "SUPERSEDED", "Protected evidence superseded the attempt"
 
 
 class DailyWebhookReceipt(models.Model):
@@ -416,7 +411,7 @@ class DailyWebhookReceipt(models.Model):
         related_name="webhook_receipts",
     )
     processing_outcome = models.CharField(
-        max_length=32, choices=WebhookOutcome.choices, default=WebhookOutcome.HISTORICAL
+        max_length=32, choices=WebhookOutcome.choices, default=WebhookOutcome.UNRESOLVED
     )
     identity_verified = models.BooleanField(default=False)
     provider_instance_id = models.CharField(max_length=160, null=True)
@@ -444,10 +439,6 @@ class DailyWebhookReceipt(models.Model):
     severity = models.CharField(max_length=8, choices=WebhookSeverity.choices, null=True)
     operator_review_required = models.BooleanField(default=False)
     mitigation_state = models.CharField(max_length=20, choices=WebhookMitigation.choices, null=True)
-    mitigation_attempted_at = models.DateTimeField(null=True)
-    mitigation_failure_code = models.CharField(
-        max_length=32, choices=[(code.value, code.value) for code in DailyFailureCode], null=True
-    )
 
     class Meta:
         default_permissions = ()
@@ -475,11 +466,6 @@ class DailyWebhookReceipt(models.Model):
                 condition=Q(mitigation_state__isnull=True)
                 | Q(mitigation_state__in=WebhookMitigation.values),
                 name="daily_receipt_mitigation_valid",
-            ),
-            models.CheckConstraint(
-                condition=Q(mitigation_failure_code__isnull=True)
-                | Q(mitigation_failure_code__in=[code.value for code in DailyFailureCode]),
-                name="daily_receipt_failure_valid",
             ),
             models.CheckConstraint(
                 condition=Q(processing_attempts__lte=6), name="daily_receipt_attempts_bounded"

@@ -1,6 +1,7 @@
 import type { Mutation, Query, QueryClient, QueryKey } from "@tanstack/react-query";
 
 import { isAuthorityError, isMutationAuthorityError } from "@/features/freshness/query-freshness";
+import type { CaptureKind } from "@/features/ecounseling/use-capture-stop";
 import { CompassApiError } from "@/lib/api/errors";
 import { getCounselingContextGetOverviewQueryKey, getCounselingGetEncounterQueryKey } from "@/lib/api/generated/counseling/counseling";
 import { getECounselingGetAssignedWorkspaceQueryKey, getECounselingGetMyWorkspaceQueryKey } from "@/lib/api/generated/e-counseling/e-counseling";
@@ -12,7 +13,6 @@ import { getAuthGetSessionQueryKey } from "@/lib/api/generated/auth/auth";
 
 import { captureSafetyState } from "./runtime/runtime-model";
 
-type CaptureKind = "recording";
 export type ResourceDenial = { error: CompassApiError; captureKinds: CaptureKind[] };
 type Resource = { epoch: number; denial: ResourceDenial | null; paths: Set<string>; captureKinds: CaptureKind[] };
 

@@ -414,7 +414,7 @@ def reconcile_captures(*, client=None):
     counts = {
         key: 0 for key in ("disabled", "discovered", "considered", "claimed", "metadata_checks")
     }
-    if not _policy("ENABLED") or not settings.DAILY_ENABLED:
+    if not settings.DAILY_ENABLED:
         counts["disabled"] = 1
         return counts
     # Production I/O must never run inside an enclosing application transaction. Django's
